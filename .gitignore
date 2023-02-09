@@ -22,6 +22,8 @@ sdist
 .eggs
 venv
 _version.py
+rgi_cython.c
+rgi_cython*.so
 
 # test
 .mypy_cache

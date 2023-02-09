@@ -1,6 +1,6 @@
 # https://setuptools.readthedocs.io/en/latest/
 [build-system]
-requires = ["setuptools", "setuptools_scm", "wheel"]
+requires = ["setuptools", "setuptools_scm", "wheel", "cython", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -36,7 +36,7 @@ dependencies = [
     "overrides>=6.1",
     "pandas>=1.4",
     "pyproj>=3.5",
-    "scipy>=1.9,<1.10",  # FIXME: To be fixed early 2023
+    "scipy>=1.10",
     "xarray>=2022.3",
 ]
 dynamic = ["version"]

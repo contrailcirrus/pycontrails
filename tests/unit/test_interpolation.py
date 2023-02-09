@@ -37,8 +37,8 @@ def test_basic_interpolation(mda: MetDataArray, caplog):
         # Confirm that the logger in _localize emitted messages
         assert len(caplog.records) == 4
 
-    assert out1.dtype == "float64"
-    assert out2.dtype == "float64"
+    assert out1.dtype == mda.data.dtype
+    assert out2.dtype == mda.data.dtype
 
     out3 = mda.interpolate(
         longitude.astype("float32"),
@@ -54,8 +54,8 @@ def test_basic_interpolation(mda: MetDataArray, caplog):
         time,
         localize=True,
     )
-    assert out3.dtype == "float32"
-    assert out4.dtype == "float32"
+    assert out3.dtype == mda.data.dtype
+    assert out4.dtype == mda.data.dtype
 
     np.testing.assert_array_equal(out1, out2)
     np.testing.assert_array_equal(out3, out4)
@@ -208,19 +208,27 @@ def test_regular_4d_grid_interpolator(mda: MetDataArray, dtype: str):
     values = mda.values
 
     kwargs = {"method": "linear", "bounds_error": True, "fill_value": np.nan}
-    rgi1 = interp_mod._PycontrailsRegularGridInterpolator(points, values, **kwargs)
+    rgi1 = interp_mod.PycontrailsRegularGridInterpolator(points, values, **kwargs)
     rgi2 = scipy.interpolate.RegularGridInterpolator(points, values, **kwargs)
 
     rng = np.random.default_rng(6567)
-    x0 = rng.uniform(x.min(), x.max(), size=1000)
-    y0 = rng.uniform(y.min(), y.max(), size=1000)
-    z0 = rng.uniform(z.min(), z.max(), size=1000)
-    t0 = rng.uniform(t.min(), t.max(), size=1000)
+    n = 100_000
+    x0 = rng.uniform(x.min(), x.max(), size=n)
+    y0 = rng.uniform(y.min(), y.max(), size=n)
+    z0 = rng.uniform(z.min(), z.max(), size=n)
+    t0 = rng.uniform(t.min(), t.max(), size=n)
     xi = np.stack([x0, y0, z0, t0], axis=1)
 
     out1 = rgi1(xi)
     out2 = rgi2(xi)
-    np.testing.assert_array_equal(out1, out2)
+
+    # The pycontrails version always uses the same dtype as the underlying values array
+    assert out1.dtype == mda.data.dtype
+
+    # The scipy version essentially always promotes to float64
+    assert out2.dtype == np.float64
+
+    np.testing.assert_allclose(out1, out2, rtol=1e-7)
 
 
 @pytest.mark.parametrize("localize", [True, False])
@@ -231,6 +239,8 @@ def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: boo
     Previously, scipy 1.8 could not handle singleton dimensions. This was fixed in
     scipy 1.9 and the pycontrails homegrown implementation was removed in
     pycontrails 0.25.6.
+
+    Implementations changed again in scipy 1.10 and pycontrails ~0.35.
     """
     da = mda.data.isel(**{dim: [0]})
     x = da["longitude"].values
@@ -239,10 +249,11 @@ def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: boo
     t = da["time"].values
 
     rng = np.random.default_rng(6567)
-    x0 = rng.uniform(x.min(), x.max(), size=1000)
-    y0 = rng.uniform(y.min(), y.max(), size=1000)
-    z0 = rng.uniform(z.min(), z.max(), size=1000)
-    t0 = rng.uniform(t.min(), t.max(), size=1000).astype("datetime64[ns]")
+    n = 100_000
+    x0 = rng.uniform(x.min(), x.max(), size=n)
+    y0 = rng.uniform(y.min(), y.max(), size=n)
+    z0 = rng.uniform(z.min(), z.max(), size=n)
+    t0 = rng.uniform(t.min(), t.max(), size=n).astype("datetime64[ns]")
 
     # Run interpolation through pycontrails interface
     kwargs = {"method": "linear", "bounds_error": True, "fill_value": np.nan}
@@ -264,7 +275,7 @@ def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: boo
     out2 = rgi(xi)
     assert np.all(np.isfinite(out2))
 
-    np.testing.assert_array_equal(out1, out2)
+    np.testing.assert_allclose(out1, out2, rtol=1e-7)
 
 
 @pytest.mark.parametrize("method", ["nearest", "slinear", "cubic", "quintic"])
@@ -290,22 +301,23 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str):
     if method in ["cubic", "quintic"]:
         with pytest.raises(ValueError, match=r"requires at least  \d points per dimension"):
             interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
+        return
 
-    else:
-        out1 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
-        assert np.all(np.isfinite(out1))
-        assert out1.dtype == "float32"
+    out1 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
+    assert np.all(np.isfinite(out1))
+    assert out1.dtype == "float32"
 
-        kwargs = {"method": "linear", "bounds_error": True, "fill_value": np.nan, "localize": True}
-        out2 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
-        assert np.all(np.isfinite(out2))
+    kwargs = {"method": "linear", "bounds_error": True, "fill_value": np.nan, "localize": True}
+    out2 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
+    assert np.all(np.isfinite(out2))
 
-        # Pin the RMSE (out of curiosity)
-        rmse = (np.mean((out1 - out2) ** 2)) ** 0.5
-        if method == "nearest":
-            assert rmse == pytest.approx(3.3319389404787603, rel=1e-10)
-        elif method == "slinear":
-            assert rmse == pytest.approx(4.396390797304203e-06, rel=1e-10)
+    if method == "slinear":
+        np.testing.assert_array_equal(out1, out2)
+        return
+
+    # Pin the RMSE (out of curiosity)
+    rmse = (np.mean((out1 - out2) ** 2)) ** 0.5
+    assert rmse == pytest.approx(2.9081914836171467, rel=1e-10)
 
 
 @pytest.fixture
