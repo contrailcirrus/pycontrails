@@ -1,0 +1,11 @@
+@import "theme.css";
+
+
+a.navbar-brand img.logo__image {
+    min-height: 8rem;
+    border-radius: 100px;
+}
+
+.bd-sidebar-primary .sidebar-primary-items__end {
+     margin-top: unset; 
+}

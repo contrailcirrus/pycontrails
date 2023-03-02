@@ -1,0 +1,16 @@
+repos:
+- repo: local
+  hooks:
+  - id: isort
+    name: isort
+    language_version: python3 # Should be a command that runs python3.8+
+    language: python
+    entry: isort
+    types: [python]
+  - id: black
+    name: black
+    language_version: python3 # Should be a command that runs python3.8+
+    language: python
+    entry: black
+    types: [file]
+    files: \.(py|ipynb)$

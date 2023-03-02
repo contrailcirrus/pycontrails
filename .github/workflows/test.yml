@@ -1,0 +1,104 @@
+# Run unit tests from the ground up
+# installing "pycontrails" into the Github OS environments
+
+# TODO: Include windows platforms testing here
+
+name: Unit tests
+
+on:
+  # run on push to main
+  push:
+    branches: [ "main" ]
+  
+  # run on all PRs
+  pull_request:
+
+  # Allows run manually from the Actions tab
+  workflow_dispatch:
+
+# Global variables
+env:
+  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
+  BADA_CACHE_DIR: '${{ github.workspace }}/.cache/bada/'
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  unit-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]  # add 'windows-latest'
+        pyversion: ['3.9', '3.10', '3.11']
+    runs-on: ${{ matrix.os }}
+
+    # set from https://github.com/google-github-actions/auth
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.pyversion }}
+        cache: 'pip'
+        cache-dependency-path: pyproject.toml
+
+    - name: Cache mypy and pytest
+      id: cache-test
+      uses: actions/cache@v3
+      with:
+        # Note the caches are specific to branches, so we don't need to specify here
+        # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache
+        key: ${{ runner.os }}-mypy-pytest
+        path: |
+          ${{ github.workspace }}/.mypy_cache
+          ${{ github.workspace }}/.pytest_cache
+
+    - name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
+    
+    # download BADA files for testing
+    - name: BADA files
+      run: |
+        mkdir -p ${{ env.BADA_CACHE_DIR }}
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ env.BADA_CACHE_DIR }}
+        ls -la ${{ env.BADA_CACHE_DIR }}
+
+    - name: Install pycontrails (dev)
+      run: make dev-install
+
+    - name: Install pycontrails-bada extension
+      run: |
+        mkdir -p ~/.ssh/ && ssh-keyscan github.com > ~/.ssh/known_hosts
+        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        pip install ".[bada]"
+
+    - name: Show environment
+      run: |
+        pwd
+        ls -la
+        which python
+        python --version
+        which mypy
+        mypy --version
+        python -m pip list
+        python -m pip check
+
+    - name: QC & Test
+      run: |
+        make flake8
+        make mypy
+        make pytest
+        make pydocstyle

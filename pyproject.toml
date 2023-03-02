@@ -1,0 +1,217 @@
+# https://setuptools.readthedocs.io/en/latest/
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pycontrails"
+version = "0.37.0"
+authors = [
+    {name = "Breakthrough Energy", email = "py@contrails.org"},
+]
+description = "Python library for contrail modeling"
+keywords = ["contrails", "climate", "geospatial"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+]
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+dynamic = ["readme"]
+
+dependencies = [
+    "dask>=2022.3",
+    "numpy>=1.22",
+    "overrides>=6.1",
+    "pandas>=1.4",
+    "pyproj>=3.0",
+    "scipy>=1.9,<1.10",  # FIXME: To be fixed early 2023
+    "xarray>=2022.3",
+]
+
+[project.urls]
+repository = "https://github.com/contrailcirrus/pycontrails"
+issues = "https://github.com/contrailcirrus/pycontrails/issues"
+
+[tool.setuptools.dynamic]
+readme = {file = "README.md"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]  # exclude packages matching these glob patterns (empty by default)
+
+[tool.setuptools.package-data]
+"pycontrails.models.cirium" = ["static/*.csv"]
+"pycontrails.models.emissions" = ["static/*.csv"]
+
+[project.optional-dependencies]
+accf = [
+    "climaccf @ git+ssh://git@github.com/contrailcirrus/climaccf.git"
+]
+
+# private dependency
+bada = [
+    "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
+]
+
+# private dependency
+cirium = [
+    "pycontrails-cirium @ git+ssh://git@github.com/contrailcirrus/pycontrails-cirium.git"
+]
+
+dev = [
+    "black>=22",
+    "black[jupyter]",
+    "dep_license",
+    "fastparquet>=0.8",
+    "flake8>=3.8",
+    "ipdb>=0.13",
+    "isort>=5.4",
+    "memory_profiler",
+    "mypy>=0.99",
+    "mypy-extensions>=0.4",
+    "platformdirs>=3.0",
+    "pre-commit>=2.10",
+    "psutil",
+    "pyarrow>=5.0",
+    "pydocstyle>=6.1",
+    "pytest>=6.1",
+    "pytest-cov>=2.11",
+    "requests>=2.25",
+]
+
+docs = [
+    "myst-parser>=0.18",
+    "nbsphinx>=0.8",
+    "nbval",
+    "sphinx>=4.2",
+    "sphinx-autobuild>=0.7",
+    "sphinx-book-theme>=1.0.0rc2",
+    "sphinxcontrib-bibtex>=2.2",
+    "sphinx_copybutton>=0.5",
+]
+
+ecmwf = [
+    "cdsapi>=0.4",
+    "cfgrib>=0.9",
+    "eccodes>=1.4",
+    "ecmwflibs>=0.4",
+    "ecmwf-api-client>=1.6",
+    "netcdf4>=1.6.1",
+    "platformdirs>=3.0",
+    "requests>=2.25",
+]
+
+gcp = [
+    "google-cloud-storage>=2.1",
+    "platformdirs>=3.0",
+    "tqdm>=4.61",
+]
+
+gfs = [
+    "boto3>=1.20",
+    "cfgrib>=0.9",
+    "eccodes>=1.4",
+    "platformdirs>=3.0",
+    "tqdm>=4.61",
+]
+
+jupyter = [
+    "ipywidgets>=7.6",
+    "jupyterlab>=2.2",
+]
+
+open3d = [
+    "open3d>=0.14",
+]
+
+vis = [
+    "matplotlib>=3.3",
+    "scikit-learn>=0.23",
+    "scikit-image>=0.18",
+    "seaborn>=0.11",
+    "shapely>=2.0",
+]
+
+zarr = [
+    "fsspec>=2022.7.1",
+    "zarr>=2.12",
+]
+
+
+# https://mypy.readthedocs.io/en/stable/config_file.html
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+# disallow_any_generics = true  # TOOD: support this in the future
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = false
+show_error_codes = true
+
+# # --strict
+# disallow_untyped_calls = true
+# disallow_subclassing_any = true
+# disallow_incomplete_defs = true
+# disallow_untyped_decorators = true
+# no_implicit_optional = true
+# warn_unused_ignores = true
+# warn_return_any = true
+# implicit_reexport = false
+# strict_equality = true
+# # --strict end
+
+
+# https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
+[tool.black]
+line-length = 100
+
+# https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#isort
+[tool.isort]
+profile = "black"
+line_length = 100
+
+# https://docs.pytest.org/en/7.1.x/reference/customize.html
+[tool.pytest.ini_options]
+doctest_optionflags = [
+    "ELLIPSIS",
+    "NORMALIZE_WHITESPACE",
+    "NUMBER"
+]
+filterwarnings = [
+    "error::UserWarning",
+    "error::RuntimeWarning",
+    "ignore:`np.bool8` is a deprecated alias:DeprecationWarning:skimage.util.dtype",
+    "ignore:'cgi' is deprecated and slated:DeprecationWarning:google.cloud.storage.blob",
+    "ignore:Engine 'cfgrib' loading failed:RuntimeWarning:xarray.backends.plugins",
+]
+testpaths = ["tests/unit"]
+
+# https://www.pydocstyle.org/en/stable/usage.html#configuration-files
+[tool.pydocstyle]
+ignore = [
+    "D105",
+    "D107",
+    "D202",
+    "D203",
+    "D212",
+    "D213",
+    "D402",
+    "D413",
+]
+ignore_decorators = "overrides"
+
+# license check
+# https://github.com/abduhbm/dep-license
+[tool.deplic]
+banned = [
+    "AGPL-3.0",
+    "GPL",
+    "AGPL",
+]

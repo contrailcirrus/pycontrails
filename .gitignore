@@ -1,0 +1,56 @@
+# ide
+*.sublime-workspace
+*.sublime-project
+.ipynb_checkpoints/
+.vscode
+.DS_Store
+.idea
+_main_debug.py
+*.swp
+*.swo
+
+# build / dist
+__pycache__
+*.pyc
+*.zip
+*.rdb
+*.egg
+*.egg-info
+dist
+build
+sdist
+.eggs
+venv
+
+# test
+.mypy_cache
+.pytest_cache
+.cache
+.coverage
+artifacts
+settings.json
+.coverage*
+coverage
+*.stats
+*.prof
+tests/fixtures/cache
+tests/integration/data
+tests/benchmark/north-atlantic-study/inputs
+tests/benchmark/north-atlantic-study/outputs
+tests/benchmark/cocip-fortran/outputs
+tests/benchmark/cocip/inputs
+tests/benchmark/cocip/outputs
+*.log
+
+# docs
+docs/_build
+docs/api/
+docs/CHANGELOG.md
+
+# data
+.ecmwf
+*.nc
+bada/
+
+# docker
+id_rsa
