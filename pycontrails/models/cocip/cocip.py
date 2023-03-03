@@ -1167,7 +1167,7 @@ class Cocip(Model):
         # create new Flight / Fleet output from dataframe with flight attrs
 
         self.source = type(self.source)(df, attrs=self.source.attrs, copy=False)
-        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].sum())
+        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0).sum())
 
     def _fill_empty_flight_results(self, return_list_flight: bool) -> Flight | list[Flight]:
         """Fill empty results into flight / fleet and return.

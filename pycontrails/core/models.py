@@ -469,7 +469,6 @@ class Model(ABC):
             raise ValueError("Attribute `source` must be a GeoVectorDataset")
 
         if self.met is None:
-            logger.debug("Avoiding downselecting met because met is None")
             return
 
         # return if downselect_met is False
