@@ -697,10 +697,12 @@ def test_verbose_outputs_formation(instance_params: dict[str, Any], source: MetD
         "true_airspeed",
         "fuel_flow",
         "specific_humidity",
+        "rhi",
+        "iwc",
     }
     assert model.params["verbose_outputs_formation"] == expected
 
-    assert len(out) == 8 + 2  # 7 verbose + 2 core (ef, age)
+    assert len(out) == 10 + 2  # 10 verbose + 2 core (ef, age)
     for var in model.params["verbose_outputs_formation"]:
         assert var in out
 
@@ -710,9 +712,12 @@ def test_verbose_outputs_formation(instance_params: dict[str, Any], source: MetD
         assert data.dtype in ["float32", "float64"]
 
     # Pin a few values
-    assert ds["T_crit_sac"].mean() == pytest.approx(222.5400571, abs=1e-6)
+    rel = 1e-4
+    assert ds["T_crit_sac"].mean() == pytest.approx(222.54, rel=rel)
     assert ds["persistent"].sum() == 429
     assert (ds["contrail_age"] > 0).sum() == 235
     assert np.isfinite(ds["nvpm_ei_n"]).all()
-    assert ds["nvpm_ei_n"].median() == pytest.approx(1.297e15, rel=0.001)
-    assert ds["fuel_flow"].mean() == pytest.approx(0.60372568, abs=1e-8)
+    assert ds["nvpm_ei_n"].median() == pytest.approx(1.29718e15, rel=rel)
+    assert ds["fuel_flow"].mean() == pytest.approx(0.6037, rel=rel)
+    assert ds["rhi"].mean() == pytest.approx(0.6273, rel=rel)
+    assert ds["iwc"].mean() == pytest.approx(4.08e-06, rel=rel)

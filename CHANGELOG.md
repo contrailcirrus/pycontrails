@@ -1,6 +1,12 @@
 
 # Changelog
 
+## 0.37.1
+
+#### Features
+
+- Include "rhi" and "iwc" variables in `CocipGrid` verbose outputs.
+
 ## 0.37.0
 
 #### Breaking changes

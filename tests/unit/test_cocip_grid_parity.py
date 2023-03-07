@@ -110,7 +110,7 @@ def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
     )
     out2 = cg.eval(fl)
     assert len(fl.data) == 16
-    assert len(cg.source.data) == 23
+    assert len(cg.source.data) == 25
 
     # Clunky but reliable way to access CocipGrid downwash data
     downwash2 = cg.contrail.groupby("index").first()
@@ -124,7 +124,7 @@ def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
 
     # Ignore anything fl came with -- those are already identical
     common_keys = set(cg.source).intersection(cocip.source).difference(fl)
-    assert common_keys == {"contrail_age", "nvpm_ei_n", "sac", "specific_humidity"}
+    assert common_keys == {"contrail_age", "nvpm_ei_n", "sac", "specific_humidity", "rhi"}
     exclude_keys = ["contrail_age"]  # This is checked below
     for key in common_keys.difference(exclude_keys):
         np.testing.assert_array_equal(cocip.source[key], cg.source[key], err_msg=key)

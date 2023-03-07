@@ -1629,9 +1629,9 @@ class GeoVectorDataset(VectorDataset):
         self,
         met: met_module.MetDataType,
         *,
-        longitude_buffer: tuple[float, float] = (0, 0),
-        latitude_buffer: tuple[float, float] = (0, 0),
-        level_buffer: tuple[float, float] = (0, 0),
+        longitude_buffer: tuple[float, float] = (0.0, 0.0),
+        latitude_buffer: tuple[float, float] = (0.0, 0.0),
+        level_buffer: tuple[float, float] = (0.0, 0.0),
         time_buffer: tuple[np.timedelta64, np.timedelta64] = (
             np.timedelta64(0, "h"),
             np.timedelta64(0, "h"),
