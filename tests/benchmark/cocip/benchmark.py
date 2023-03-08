@@ -28,8 +28,8 @@ logging.basicConfig(
 )
 
 # setup
-INPUT_PATH = pathlib.Path("inputs")
-OUTPUT_PATH = pathlib.Path("outputs")
+INPUT_PATH = pathlib.Path(__file__).parent / "inputs"
+OUTPUT_PATH = pathlib.Path(__file__).parent / "outputs"
 FLIGHT_METADATA_FILE = "flight-metadata.pq"
 FLIGHT_WAYPOINT_FILE = "flight-waypoints.pq"
 
@@ -139,13 +139,13 @@ def load_ERA5() -> tuple[MetDataset, MetDataset]:
         time=time,
         variables=Cocip.met_variables,
         pressure_levels=pressure_levels,
-        paths=list(pathlib.Path(INPUT_PATH / "met").glob("*.nc")),
+        paths=list((INPUT_PATH / "met").glob("*.nc")),
         cachestore=None,
     )
     era5sl = ERA5(
         time=time,
         variables=Cocip.rad_variables,
-        paths=list(pathlib.Path(INPUT_PATH / "rad").glob("*.nc")),
+        paths=list((INPUT_PATH / "rad").glob("*.nc")),
         cachestore=None,
     )
 
