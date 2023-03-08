@@ -29,10 +29,18 @@ jobs:
       id-token: 'write'
 
     steps:
+    # https://github.com/easimon/maximize-build-space
+    - name: Maximize build space
+      uses: easimon/maximize-build-space@master
+      with:
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.11'
         cache: 'pip'
         cache-dependency-path: pyproject.toml
 
@@ -60,10 +68,10 @@ jobs:
         mkdir tests/benchmark/cocip/bada
         gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 tests/benchmark/cocip/bada/
         gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 tests/benchmark/cocip/bada/
-    
+
     - name: Download inputs & outputs
+      working-directory: ./tests/benchmark/cocip/
       run: |
-        cd tests/benchmark/cocip/
         make download-inputs
         make download-outputs
 
@@ -79,6 +87,5 @@ jobs:
         python -m pip check
 
     - name: Compare
-      run: |
-        cd tests/benchmark/cocip/
-        make compare
+      working-directory: ./tests/benchmark/cocip/
+      run: make compare
