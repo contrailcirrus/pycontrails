@@ -78,6 +78,7 @@ jobs:
 
     - name: Show environment
       run: |
+        df -h
         pwd
         ls -la
         which python
