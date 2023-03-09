@@ -65,6 +65,8 @@ class ACCFParams(ModelParams):
     h2o_scaling: float = 1.0
     o3_scaling: float = 1.0
 
+    horizontal_resolution: float = 0.5
+
     emission_scenario: str = "pulse"
 
     time_horizon: str = "20"
@@ -210,7 +212,7 @@ class ACCF(Model):
 
         if isinstance(self.source, GeoVectorDataset):
             self.downselect_met()
-            if self.surface:
+            if hasattr(self,"surface"):
                 self.surface = self.source.downselect_met(self.surface)
 
         self.set_source_met()
@@ -246,7 +248,7 @@ class ACCF(Model):
             if isinstance(self.source, GeoVectorDataset):
                 self.source[key] = self.source.intersect_met(maCCFs[key])
             else:
-                self.source[key] = arr.data
+                self.source[key] = (maCCFs.dim_order, arr.data)
 
             # Tag output with additional attrs when source is MetDataset
             if isinstance(self.source, MetDataset):
@@ -278,7 +280,7 @@ class ACCF(Model):
                 if matching_variable:
                     self.ds_met = self.ds_met.rename({var: matching_variable[0].short_name})
 
-        if self.surface:
+        if hasattr(self,'surface'):
             self.ds_sur = self.surface.data.squeeze().transpose("time", "latitude", "longitude")
             for var in self.ds_sur.data_vars:
                 matching_variable = [v for v in self.sur_variables if var == v.standard_name]
@@ -314,7 +316,7 @@ class ACCF(Model):
             "lat_bound": self.params["lat_bound"],
             "lon_bound": self.params["lon_bound"],
             "time_bound": None,
-            "horizontal_resolution": None,
+            "horizontal_resolution": self.params["horizontal_resolution"],
             "NOx&inverse_EIs": self.params["nox_ei"],
             "output_format": "netCDF",
             "mean": False,
