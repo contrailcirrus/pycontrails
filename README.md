@@ -4,6 +4,7 @@
 
 [![Unit test](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml)
 [![Docs](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml)
+[![Chat](https://img.shields.io/matrix/pycontrails-community:matrix.org.svg?label=Chat&logo=matrix)](https://matrix.to/#/#pycontrails-community:matrix.org)
 
 ## Documentation
 
