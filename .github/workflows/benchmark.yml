@@ -65,10 +65,11 @@ jobs:
 
     # download data
     - name: BADA files
+      working-directory: ./tests/benchmark/cocip/
       run: |
-        mkdir tests/benchmark/cocip/bada
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 tests/benchmark/cocip/bada/
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 tests/benchmark/cocip/bada/
+        mkdir -p bada
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 bada/
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 bada/
 
     - name: Download inputs & outputs
       working-directory: ./tests/benchmark/cocip/
@@ -77,14 +78,14 @@ jobs:
         make download-outputs
 
     - name: Show environment
+      working-directory: ./tests/benchmark/cocip/
       run: |
         df -h
+        du * -h
         pwd
-        ls -la
+        ls -lash
         which python
         python --version
-        which mypy
-        mypy --version
         python -m pip list
         python -m pip check
 
