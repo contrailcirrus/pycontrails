@@ -84,6 +84,7 @@ dev = [
     "pytest>=6.1",
     "pytest-cov>=2.11",
     "requests>=2.25",
+    "wheel>=0.38",
 ]
 
 docs = [
@@ -92,7 +93,7 @@ docs = [
     "nbval",
     "sphinx>=4.2",
     "sphinx-autobuild>=0.7",
-    "sphinx-book-theme>=1.0.0rc2",
+    "sphinx-book-theme>=1.0.0",
     "sphinxcontrib-bibtex>=2.2",
     "sphinx_copybutton>=0.5",
 ]
