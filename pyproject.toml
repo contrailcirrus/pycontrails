@@ -47,7 +47,7 @@ readme = {file = "README.md"}
 exclude = ["tests*"]  # exclude packages matching these glob patterns (empty by default)
 
 [tool.setuptools.package-data]
-"pycontrails.models.cirium" = ["static/*.csv"]
+"pycontrails" = ["py.typed"]  # https://mypy.readthedocs.io/en/stable/installed_packages.html#creating-pep-561-compatible-packages
 "pycontrails.models.emissions" = ["static/*.csv"]
 
 [project.optional-dependencies]
