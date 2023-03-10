@@ -58,6 +58,9 @@ class ACCFParams(ModelParams):
     lon_bound: tuple[float, float] | None = None
 
     efficacy: bool = True
+    efficacy_option: str = "lee_2021"
+
+    accf_v: str = "V1.0"
 
     ch4_scaling: float = 1.0
     co2_scaling: float = 1.0
@@ -65,13 +68,19 @@ class ACCFParams(ModelParams):
     h2o_scaling: float = 1.0
     o3_scaling: float = 1.0
 
+    sep_ri_rw: bool = False
+
+    climate_indicator: str = "ATR"
+
     horizontal_resolution: float = 0.5
 
     emission_scenario: str = "pulse"
 
-    time_horizon: str = "20"
+    time_horizon: int = 20
 
     pfca: str = "PCFA-ISSR"
+
+    merged: bool = True
 
     #: RHI Threshold
     issr_rhi_threshold: float = 0.9
@@ -82,6 +91,8 @@ class ACCFParams(ModelParams):
     sac_eta: float = 0.3
 
     nox_ei: str = "TTV"
+
+    PMO: bool = False
 
 
 class ACCF(Model):
@@ -317,15 +328,21 @@ class ACCF(Model):
             "lon_bound": self.params["lon_bound"],
             "time_bound": None,
             "horizontal_resolution": self.params["horizontal_resolution"],
+            "NOx_aCCF": True,
             "NOx&inverse_EIs": self.params["nox_ei"],
             "output_format": "netCDF",
             "mean": False,
             "std": False,
+            "merged": self.params["merged"],
+            "aCCF-V": self.params["accf_v"],
             "efficacy": self.params["efficacy"],
+            "efficacy-option": self.params["efficacy_option"],
             "emission_scenario": self.params["emission_scenario"],
-            "climate_indicator": "ATR",
-            "time_horizon": self.params["time_horizon"],
+            "climate_indicator": self.params["climate_indicator"],
+            "TimeHorizon": self.params["time_horizon"],
             "ac_type": "wide-body",
+            "sep_ri_rw" : self.params["sep_ri_rw"],
+            "PMO" : self.params["PMO"],
             "aCCF-scalingF": {
                 "CH4": self.params["ch4_scaling"],
                 "CO2": self.params["co2_scaling"],
@@ -344,6 +361,7 @@ class ACCF(Model):
                 "eta": self.params["sac_eta"],
             },
             "Chotspots": False,
+            "hotspots_binary": True,
             "color": "Reds",
             "geojson": False,
             "save_path": "./",
