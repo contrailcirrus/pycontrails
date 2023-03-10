@@ -10,12 +10,12 @@ help:
 # download inputs
 download-inputs:
 	mkdir -p inputs
-	gsutil rsync -d -r $(GCP_BUCKET)/cocip/inputs inputs/
+	gsutil -m rsync -d -r $(GCP_BUCKET)/cocip/inputs inputs/
 
 # download outputs
 download-outputs:
 	mkdir -p outputs
-	gsutil rsync -d -r $(GCP_BUCKET)/cocip/outputs outputs/
+	gsutil -m rsync -d -r $(GCP_BUCKET)/cocip/outputs outputs/
 
 # run model and generate output data
 generate-outputs:
@@ -27,9 +27,9 @@ compare:
 
 # sync data after regenerating
 upload-inputs:
-	gsutil rsync -n -x ".*.DS_Store" -d -r inputs/ gs://contrails-301217-benchmark-data/cocip/inputs
+	gsutil -m rsync -n -x ".*.DS_Store" -d -r inputs/ gs://contrails-301217-benchmark-data/cocip/inputs
 
 upload-outputs:
-	gsutil rsync -x ".*.DS_Store" -d -r outputs/ gs://contrails-301217-benchmark-data/cocip/outputs
+	gsutil -m rsync -x ".*.DS_Store" -d -r outputs/ gs://contrails-301217-benchmark-data/cocip/outputs
 
 upload: upload-inputs upload-outputs
