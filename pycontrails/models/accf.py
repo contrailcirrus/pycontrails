@@ -223,7 +223,7 @@ class ACCF(Model):
 
         if isinstance(self.source, GeoVectorDataset):
             self.downselect_met()
-            if hasattr(self,"surface"):
+            if hasattr(self, "surface"):
                 self.surface = self.source.downselect_met(self.surface)
 
         self.set_source_met()
@@ -259,7 +259,7 @@ class ACCF(Model):
             if isinstance(self.source, GeoVectorDataset):
                 self.source[key] = self.source.intersect_met(maCCFs[key])
             else:
-                self.source[key] = (maCCFs.dim_order, arr.data)
+                self.source[key] = (maCCFs.dim_order, arr.data)  # type: ignore
 
             # Tag output with additional attrs when source is MetDataset
             if isinstance(self.source, MetDataset):
@@ -291,7 +291,7 @@ class ACCF(Model):
                 if matching_variable:
                     self.ds_met = self.ds_met.rename({var: matching_variable[0].short_name})
 
-        if hasattr(self,'surface'):
+        if hasattr(self, 'surface'):
             self.ds_sur = self.surface.data.squeeze().transpose("time", "latitude", "longitude")
             for var in self.ds_sur.data_vars:
                 matching_variable = [v for v in self.sur_variables if var == v.standard_name]
