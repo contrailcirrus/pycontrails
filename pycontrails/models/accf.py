@@ -226,6 +226,14 @@ class ACCF(Model):
             if hasattr(self, "surface"):
                 self.surface = self.source.downselect_met(self.surface)
 
+        if isinstance(self.source, MetDataset):
+            if self.source['longitude'].size > 1:
+                hres = abs(self.source['longitude'].data[1] - self.source['longitude'].data[0])
+                self.params["horizontal_resolution"] = float(hres)
+            elif self.source['latitude'].size > 1:
+                hres = abs(self.source['latitude'].data[1] - self.source['latitude'].data[0])
+                self.params["horizontal_resolution"] = float(hres)
+
         self.set_source_met()
         self._update_accf_config()
         self._generate_weather_store()
