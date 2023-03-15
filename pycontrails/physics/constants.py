@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-################
+# -------
 # General
-################
+# -------
 
 # NOTE: Use a decimal point for each float-valued constant. This is important for
 # converting to numpy arrays.
@@ -18,14 +18,16 @@ g: float = 9.80665
 #: Radius of Earth :math:`[m]`
 radius_earth: float = 6371229.0
 
-#: Average height of the tropopause :math:`[m]`
+#: ISA height of the tropopause :math:`[m]`
+#: :cite:`InternationalStandardAtmosphere2023`
 h_tropopause: float = 11000.0
 
-################
+# -------------
 # Thermodynamic
-################
+# -------------
 
 #: Surface pressure, international standard atmosphere :math:`[Pa]`
+#: :cite:`InternationalStandardAtmosphere2023`
 p_surface: float = 101325.0
 
 #: Isobaric heat capacity of dry air :math:`[J \ kg^{-1} \ K^{-1}]`
@@ -71,6 +73,7 @@ T_msl: float = 288.15
 c_msl: float = 340.294
 
 #: The rate at which the ISA ambient temperature falls with altitude :math:`[K \ m^{-1}]`
+#: :cite:`InternationalStandardAtmosphere2023`
 T_lapse_rate: float = -0.0065
 
 #: Average incident solar radiation, :math:`[W \ m^{-2}]`
@@ -78,16 +81,16 @@ T_lapse_rate: float = -0.0065
 #: From :cite:`UOSRMLSolar` citing :cite:`paltridgeRadiativeProcessesMeteorology1976`
 solar_constant: float = 1361.0
 
-################
+# ----
 # Fuel
-################
+# ----
 
 #: Isobaric heat capacity of combustion products :math:`[J \ kg^{-1} \ K^{-1}]`
 c_p_combustion: float = 1250.0
 
-################
+# ------------------
 # Optical Properties
-################
+# ------------------
 
 #: Real refractive index of ice
 mu_ice: float = 1.31
@@ -98,9 +101,9 @@ lambda_light: float = 550e-9
 #: Ratio between the volume mean radius and the effective radius (Uncertainty +- 0.3)
 c_r: float = 0.9
 
-################
+# ------
 # Flight
-################
+# ------
 
 #: Nominal rate of climb/descent of aircraft [:math:`m \ s^{-1}``]
 nominal_rocd: float = 12.7
