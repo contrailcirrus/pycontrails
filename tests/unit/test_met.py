@@ -14,7 +14,7 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore, MetDataArray, MetDataset, MetVariable
 from pycontrails.core import cache as cache_module
-from pycontrails.core.met import originates_from_ecmwf
+from pycontrails.core.met import originates_from_ecmwf, shift_longitude
 from pycontrails.datalib.ecmwf import ERA5
 from tests import OPEN3D_AVAILABLE
 
@@ -210,6 +210,25 @@ def test_wrap_longitude(zero_like_da: xr.DataArray, met_ecmwf_pl_path: str) -> N
     # automatic wrapping inspection
     mda = MetDataArray(da)
     assert mda.is_wrapped
+
+
+def test_shift_longitude(zero_like_da: xr.DataArray) -> None:
+    da = zero_like_da.copy()
+
+    lons = da["longitude"].values
+    lons[lons < 0] = lons[lons < 0] + 360
+
+    da = da.assign_coords(longitude=lons)
+    assert np.all(da["longitude"].values >= 0)
+
+    da2 = shift_longitude(da)
+
+    # longitude correctly translated
+    assert np.all(da2["longitude"].values <= 180)
+    assert np.all(da2["longitude"].values >= -180)
+
+    # longitude sorted
+    assert np.all(np.diff(da2["longitude"].values) > 0)
 
 
 @pytest.fixture

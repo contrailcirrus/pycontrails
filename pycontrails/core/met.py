@@ -233,8 +233,9 @@ class MetBase(ABC, Generic[XArrayType]):
             # This longitude shifting can give rise to precision errors with float32
             # Only shift if necessary
             if np.any(lon >= 180) or np.any(lon < -180):
-                self.data = self.data.assign_coords(longitude=((lon + 180.0) % 360.0) - 180.0)
-            self.data = self.data.sortby("longitude", ascending=True)
+                self.data = shift_longitude(self.data)
+            else:
+                self.data = self.data.sortby("longitude", ascending=True)
 
             # wrap longitude, if requested
             if wrap_longitude:
@@ -2111,6 +2112,27 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
         return False
 
 
+def shift_longitude(data: XArrayType) -> XArrayType:
+    """Shift longitude values from [0, 360) to [-180, 180) domain.
+
+    Sorts data by ascending longitude values.
+
+    Parameters
+    ----------
+    data : XArrayType
+        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
+
+
+    Returns
+    -------
+    XArrayType
+        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude values on [-180, 180).
+    """
+    return data.assign_coords(
+        longitude=((data["longitude"].values + 180.0) % 360.0) - 180.0
+    ).sortby("longitude", ascending=True)
+
+
 def _wrap_longitude(data: XArrayType) -> XArrayType:
     """Wrap longitude grid coordinates.
 
@@ -2132,7 +2154,7 @@ def _wrap_longitude(data: XArrayType) -> XArrayType:
     Parameters
     ----------
     data : XArrayType
-        DataArray with longitude dimension
+        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
 
     Returns
     -------
