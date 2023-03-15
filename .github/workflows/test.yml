@@ -100,5 +100,7 @@ jobs:
       run: |
         make flake8
         make mypy
+        make black-check
         make pytest
         make pydocstyle
+

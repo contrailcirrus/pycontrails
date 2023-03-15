@@ -64,10 +64,19 @@ dev-pycontrails-bada:
 # QC, Test
 # -----------
 
-flake8:
+flake8: black-check
 	flake8 pycontrails tests
 
+black:
+	black pycontrails
+
+black-check:
+	black pycontrails --check
+
 nbblack:
+	black docs/examples/*.ipynb
+
+nbblack-check:
 	black docs/examples/*.ipynb --check
 	
 mypy:
@@ -105,10 +114,10 @@ ensure-era5-cached:
 doctest: ensure-era5-cached
 	pytest --doctest-modules pycontrails -vv
 
-nbtest: ensure-era5-cached
+nbtest: ensure-era5-cached nbblack-check
 	pytest -W ignore --nbval-lax -p no:python docs/examples
 
-test: flake8 mypy pytest doctest nbblack pydocstyle
+test: flake8 mypy pytest doctest black-check nbblack-check pydocstyle
 
 profile:
 	python -m cProfile -o $(script).prof $(script)
