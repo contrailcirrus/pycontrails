@@ -227,11 +227,11 @@ class ACCF(Model):
                 self.surface = self.source.downselect_met(self.surface)
 
         if isinstance(self.source, MetDataset):
-            if self.source['longitude'].size > 1:
-                hres = abs(self.source['longitude'].data[1] - self.source['longitude'].data[0])
+            if self.source["longitude"].size > 1:
+                hres = abs(self.source["longitude"].data[1] - self.source["longitude"].data[0])
                 self.params["horizontal_resolution"] = float(hres)
-            elif self.source['latitude'].size > 1:
-                hres = abs(self.source['latitude'].data[1] - self.source['latitude'].data[0])
+            elif self.source["latitude"].size > 1:
+                hres = abs(self.source["latitude"].data[1] - self.source["latitude"].data[0])
                 self.params["horizontal_resolution"] = float(hres)
 
         self.set_source_met()
@@ -299,7 +299,7 @@ class ACCF(Model):
                 if matching_variable:
                     self.ds_met = self.ds_met.rename({var: matching_variable[0].short_name})
 
-        if hasattr(self, 'surface'):
+        if hasattr(self, "surface"):
             self.ds_sur = self.surface.data.squeeze().transpose("time", "latitude", "longitude")
             for var in self.ds_sur.data_vars:
                 matching_variable = [v for v in self.sur_variables if var == v.standard_name]
@@ -349,8 +349,8 @@ class ACCF(Model):
             "climate_indicator": self.params["climate_indicator"],
             "TimeHorizon": self.params["time_horizon"],
             "ac_type": "wide-body",
-            "sep_ri_rw" : self.params["sep_ri_rw"],
-            "PMO" : self.params["PMO"],
+            "sep_ri_rw": self.params["sep_ri_rw"],
+            "PMO": self.params["PMO"],
             "aCCF-scalingF": {
                 "CH4": self.params["ch4_scaling"],
                 "CO2": self.params["co2_scaling"],
