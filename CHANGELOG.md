@@ -1,6 +1,16 @@
 
 # Changelog
 
+## 0.37.2
+
+ACCF integration updates
+
+#### Fixes
+
+- Fixes ability to evaluate ACCF model over a `MetDataset` grid by passing in tuple of (dims, data) when assigning data
+- Fixes minor issues with ACCF configuration and allows more configuration options
+- Updates example ACCF notebook with example of how to set configuration options when evaluating ACCFs over a grid
+
 ## 0.37.1
 
 #### Features
