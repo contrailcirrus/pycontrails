@@ -1,6 +1,14 @@
 
 # Changelog
 
+## 0.37.3
+
+#### Internals
+
+- Add citations for ISA calculations
+- Abstract functionality to convert a Dataset or DataArray to longitude coordinates [-180, 180) into `core.met.shift_longitude`. Add tests for method.
+- Add auto-formatting checks to CI testing
+
 ## 0.37.2
 
 ACCF integration updates
