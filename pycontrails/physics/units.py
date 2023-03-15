@@ -11,6 +11,8 @@ from pycontrails.utils.types import ArrayScalarLike, support_arraylike
 def pl_to_ft(pl: ArrayScalarLike) -> ArrayScalarLike:
     r"""Convert from pressure level (hPa) to altitude (ft).
 
+    Assumes the ICAO standard atmosphere.
+
     Parameters
     ----------
     pl : ArrayScalarLike
@@ -20,12 +22,20 @@ def pl_to_ft(pl: ArrayScalarLike) -> ArrayScalarLike:
     -------
     ArrayScalarLike
         altitude, [:math:`ft`]
+
+    See Also
+    --------
+    pl_to_m
+    ft_to_pl
+    m_to_T_isa
     """
     return m_to_ft(pl_to_m(pl))
 
 
 def ft_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     r"""Convert from altitude (ft) to pressure level (hPa).
+
+    Assumes the ICAO standard atmosphere.
 
     Parameters
     ----------
@@ -36,6 +46,12 @@ def ft_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     -------
     ArrayScalarLike
         pressure level, [:math:`hPa`], [:math:`mbar`]
+
+    See Also
+    --------
+    m_to_pl
+    pl_to_ft
+    m_to_T_isa
     """
     return m_to_pl(ft_to_m(h))
 
@@ -61,7 +77,6 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
 
     Assumes the ICAO standard atmosphere.
 
-
     Parameters
     ----------
     h : ArrayScalarLike
@@ -72,10 +87,19 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
     ArrayScalarLike
         ICAO standard atmosphere ambient temperature, [:math:`K`]
 
+
+    References
+    ----------
+    - :cite:`InternationalStandardAtmosphere2023`
+
     Notes
     -----
-    Source: https://en.wikipedia.org/wiki/International_Standard_Atmosphere#ICAO_Standard_Atmosphere
-    TODO: Reference
+    See https://en.wikipedia.org/wiki/International_Standard_Atmosphere
+
+    See Also
+    --------
+    m_to_pl
+    ft_to_pl
     """
     h_min = np.minimum(h, constants.h_tropopause)
     return constants.T_msl + h_min * constants.T_lapse_rate  # type: ignore[return-value]
@@ -109,9 +133,18 @@ def m_to_pl(h: np.ndarray) -> np.ndarray:
     np.ndarray
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
+    References
+    ----------
+    - :cite:`BarometricFormula2023`
+
     Notes
     -----
-    TODO: reference
+    See https://en.wikipedia.org/wiki/Barometric_formula
+
+    See Also
+    --------
+    m_to_T_isa
+    ft_to_pl
     """
     condlist = [h < constants.h_tropopause, h >= constants.h_tropopause]
     funclist = [_low_altitude_m_to_pl, _high_altitude_m_to_pl, np.nan]  # nan passed through
@@ -139,7 +172,7 @@ def pl_to_m(pl: np.ndarray) -> np.ndarray:
 
     Function is slightly different from the classical formula:
     ``constants.T_msl / 0.0065) * (1 - (pl_pa / constants.p_surface) ** (1 / 5.255)``
-    in order to provide a mathematical inverse to the ``m_to_pl`` function.
+    in order to provide a mathematical inverse to :func:`m_to_pl`.
 
     For low altitudes (below the tropopause), this implementation closely agrees to classical
     formula.
@@ -153,6 +186,20 @@ def pl_to_m(pl: np.ndarray) -> np.ndarray:
     -------
     ArrayLike
         altitude, [:math:`m`]
+
+    References
+    ----------
+    - :cite:`BarometricFormula2023`
+
+    Notes
+    -----
+    See https://en.wikipedia.org/wiki/Barometric_formula
+
+    See Also
+    --------
+    pl_to_ft
+    m_to_pl
+    m_to_T_isa
     """
     pl_tropopause = m_to_pl(constants.h_tropopause)
     condlist = [pl < pl_tropopause, pl >= pl_tropopause]
