@@ -1657,6 +1657,7 @@ class MetDataArray(MetBase):
         min_area_to_iterate: float = 0.0,
         epsilon: float = 0.15,
         precision: int | None = None,
+        depth: int = 2,
         include_altitude: bool = False,
     ) -> dict[str, Any]:
         """Create GeoJSON Feature artifact from spatial array on a single level and time slice.
@@ -1716,6 +1717,10 @@ class MetDataArray(MetBase):
             the geometry of the polygon. Values in the interval [0, 0.2] are reasonable.
         precision : int, optional
             Number of decimal places to round coordinates to. If None, no rounding is performed.
+        depth : int, optional
+            Number of levels of nesting to include in the output. By default, 2, meaning that
+            the exterior and interior rings are both included. Set to 1 to include only the
+            exterior ring. Must be 1 or 2.
         include_altitude : bool, optional
             If True, include the array altitude [:math:`m`] as a z-coordinate in the
             `GeoJSON output <https://www.rfc-editor.org/rfc/rfc7946#section-3.1.1>`.
@@ -1762,6 +1767,11 @@ class MetDataArray(MetBase):
                 f"The fill_value {fill_value} expected to be less than the iso_value {iso_value}"
             )
 
+        if depth not in (1, 2):
+            raise ValueError(
+                f"Invalid depth value {depth}. Must be 1 or 2. See docstring for details."
+            )
+
         arr, altitude = _extract_2d_arr_and_altitude(self, level, time)
         if not include_altitude:
             altitude = None  # this logic used below
@@ -1790,7 +1800,7 @@ class MetDataArray(MetBase):
             min_area=min_area,
             min_area_to_iterate=min_area_to_iterate,
             epsilon=epsilon,
-            depth=2,
+            depth=depth,
         )
 
         # Convert to nested lists of coordinates for GeoJSON representation
