@@ -8,6 +8,7 @@ See Also
 
 from __future__ import annotations
 
+import warnings
 from typing import Iterator
 
 import numpy as np
@@ -241,6 +242,12 @@ def clean_contours(
 
     This function also calls :func:`shapely.simplify` to simplify the contours.
 
+    .. versionchanged:: 0.38.0
+
+        Apply a smaller buffer when simplifying contours. This allows for changes
+        to the underlying polygon topology. Previously, any contour topology was
+        preserved when simplifying.
+
     Parameters
     ----------
     contours : list[npt.NDArray[np.float_]]
@@ -263,14 +270,58 @@ def clean_contours(
         if shapely.Polygon(lr).area < min_area:
             continue
 
-        lr_new = lr.simplify(epsilon, preserve_topology=False)
-        if not lr_new.is_simple or not lr_new.is_valid:
-            lr_new = lr.simplify(epsilon, preserve_topology=True)
+        if epsilon:
+            lr = _buffer_simplify_iterate(lr, epsilon)
 
-        coords = np.asarray(lr_new.coords)
+        coords = np.asarray(lr.coords)
         out.append(coords)
 
     return out
+
+
+def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.LinearRing:
+    """Simplify a linear ring by iterating over a larger buffer.
+
+    This function calls :func:`shapely.buffer` and :func:`shapely.simplify`
+    over a range of buffer distances. The buffer allows for the topology
+    of the contour to change, which is useful for simplifying contours.
+    Applying a buffer does introduce a slight bias towards the exterior
+    of the contour.
+
+    Parameters
+    ----------
+    lr : shapely.LinearRing
+        Linear ring to simplify.
+    epsilon : float
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
+
+    Returns
+    -------
+    shapely.LinearRing
+        Simplified linear ring.
+    """
+    # Applying a naive lr.buffer(0) can destroy the polygon completely
+    # https://stackoverflow.com/a/20873812
+
+    is_ccw = lr.is_ccw
+
+    n_attempts = 10  # could elevate this to a parameter
+    for i in range(1, n_attempts + 1):
+        distance = epsilon * i / n_attempts
+
+        # Taking the buffer can change the orientation of the contour
+        lr = lr.buffer(distance).exterior
+        if lr.is_ccw != is_ccw:
+            lr = shapely.LineString(lr.coords[::-1])
+
+        out = lr.simplify(epsilon, preserve_topology=False)
+        if out.is_simple and out.is_valid:
+            return out
+
+    warnings.warn(
+        f"Could not simplify contour with epsilon {epsilon}. Try passing a smaller epsilon."
+    )
+    return lr.simplify(epsilon, preserve_topology=True)
 
 
 def contour_to_lon_lat(

@@ -1657,7 +1657,7 @@ class MetDataArray(MetBase):
         iso_value: float | None = None,
         min_area: float = 0.0,
         min_area_to_iterate: float = 0.0,
-        epsilon: float = 0.15,
+        epsilon: float = 0.0,
         precision: int | None = None,
         depth: int = 2,
         include_altitude: bool = False,
@@ -1684,6 +1684,10 @@ class MetDataArray(MetBase):
             - ``fill_value``
             - ``min_area``
             - ``include_altitude``
+
+        .. versionchanged:: 0.38.0
+
+            Change default value of ``epsilon`` from 0.15 to 0.
 
         Parameters
         ----------
