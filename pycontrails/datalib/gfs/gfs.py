@@ -22,8 +22,7 @@ import xarray as xr
 from overrides import overrides
 
 import pycontrails
-from pycontrails.core import cache, datalib
-from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.core import cache, datalib, met
 from pycontrails.datalib.gfs.variables import (
     PRESSURE_LEVEL_VARIABLES,
     SURFACE_VARIABLES,
@@ -44,44 +43,23 @@ LOG = logging.getLogger(__name__)
 GFS_FORECAST_BUCKET = "noaa-gfs-bdp-pds"
 
 
-def standardize_variables(ds: xr.Dataset, variables: list[MetVariable]) -> xr.Dataset:
-    """Rename all variables in dataset to standard name.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Loaded ECMWF dataset
-    variables : list[MetVariable]
-        Data source variables
-
-    Returns
-    -------
-    xr.Dataset
-        Dataset with standardized variables
-    """
-    for var in ds.data_vars:
-        matching_variable = [v for v in variables if var == v.short_name]
-        if matching_variable:
-            ds = ds.rename({var: matching_variable[0].standard_name})
-
-    return ds
-
-
 class GFSForecast(datalib.MetDataSource):
     """GFS Forecast data access.
 
     Parameters
     ----------
-    time : :type:`datalib.TimeInput`
+    time : `datalib.TimeInput`
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
-        Input must be a single datetime-like or tuple of datetime-like (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
+        Input must be a single datetime-like or tuple of datetime-like (datetime,
+        :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
-        All times will be downloaded for a single forecast model run nearest to the start time (see :attr:`forecast_time`)
+        All times will be downloaded for a single forecast model run nearest to the start time
+        (see :attr:`forecast_time`)
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
-    variables : :type:`datalib.VariableInput`
+    variables : `datalib.VariableInput`
         Variable name (i.e. "temperature", ["temperature, relative_humidity"])
         See :attr:`pressure_level_variables` for the list of available variables.
-    pressure_levels : :type:`datalib.PressureLevelInput`, optional
+    pressure_levels : `datalib.PressureLevelInput`, optional
         Pressure levels for data, in hPa (mbar)
         Set to [-1] for to download surface level parameters.
         Defaults to [-1].
@@ -93,7 +71,7 @@ class GFSForecast(datalib.MetDataSource):
     grid : float, optional
         Specify latitude/longitude grid spacing in data.
         Defaults to 0.25.
-    forecast_time : :type:`DatetimeLike`, optional
+    forecast_time : `DatetimeLike`, optional
         Specify forecast run by runtime.
         Defaults to None.
     cachestore : :class:`cache.CacheStore` | None, optional
@@ -251,7 +229,7 @@ class GFSForecast(datalib.MetDataSource):
         ]
 
     @property
-    def pressure_level_variables(self) -> list[MetVariable]:
+    def pressure_level_variables(self) -> list[met.MetVariable]:
         """GFS pressure level parameters.
 
         Returns
@@ -262,7 +240,7 @@ class GFSForecast(datalib.MetDataSource):
         return PRESSURE_LEVEL_VARIABLES
 
     @property
-    def single_level_variables(self) -> list[MetVariable]:
+    def single_level_variables(self) -> list[met.MetVariable]:
         """GFS surface level parameters.
 
         Returns
@@ -414,7 +392,7 @@ class GFSForecast(datalib.MetDataSource):
         dataset: xr.Dataset | None = None,
         xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> MetDataset:
+    ) -> met.MetDataset:
         xr_kwargs = xr_kwargs or {}
 
         #  short-circuit file paths if provided
@@ -601,7 +579,7 @@ class GFSForecast(datalib.MetDataSource):
 
         return ds
 
-    def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> MetDataset:
+    def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> met.MetDataset:
         """Process the :class:`xr.Dataset` opened from cache or local files.
 
         Parameters
@@ -636,13 +614,13 @@ class GFSForecast(datalib.MetDataSource):
             ds = ds.sel(dict(level=self.pressure_levels))
 
         # harmonize variable names
-        ds = standardize_variables(ds, self.variables)
+        ds = met.standardize_variables(ds, self.variables)
 
         if "cachestore" not in kwargs:
             kwargs["cachestore"] = self.cachestore
 
         ds.attrs["met_source"] = type(self).__name__
-        return MetDataset(ds, **kwargs)
+        return met.MetDataset(ds, **kwargs)
 
 
 def _download_with_progress(

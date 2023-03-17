@@ -16,6 +16,7 @@ from typing import (
     Any,
     Generic,
     Hashable,
+    Iterable,
     Iterator,
     Literal,
     Mapping,
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
 
 XArrayType = TypeVar("XArrayType", xr.Dataset, xr.DataArray)
 MetDataType = TypeVar("MetDataType", "MetDataset", "MetDataArray")
+DatasetType = TypeVar("DatasetType", xr.Dataset, "MetDataset")
 
 
 class MetBase(ABC, Generic[XArrayType]):
@@ -2340,22 +2342,37 @@ def downselect(data: XArrayType, bbox: list[float]) -> XArrayType:
     return data.where(cond, drop=True)
 
 
-def standardize_variables(mds: MetDataset, variables: Sequence[MetVariable]) -> MetDataset:
-    """Rename all variables in dataset to standard name.
+def standardize_variables(ds: DatasetType, variables: Iterable[MetVariable]) -> DatasetType:
+    """Rename all variables in dataset from short name to standard name.
+
+    This function does not change any variables in ``ds`` that are not found in ``variables``.
+
+    When there are multiple variables with the same short name, the last one is used.
 
     Parameters
     ----------
-    mds : MetDataset
-        Loaded ECMWF dataset
-    variables : list[MetVariable]
+    ds : DatasetType
+        An :class:`xr.Dataset` or :class:`MetDataset`. When a :class:`MetDataset` is
+        passed, the underlying :class:`xr.Dataset` is modified in place.
+    variables : Iterable[MetVariable]
         Data source variables
-    """
-    for var in mds.data.data_vars:
-        matching_variable = [v for v in variables if var == v.short_name]
-        if matching_variable:
-            mds.data = mds.data.rename({var: matching_variable[0].standard_name})
 
-    return mds
+    Returns
+    -------
+    DatasetType
+        Dataset with variables renamed to standard names
+    """
+    if isinstance(ds, xr.Dataset):
+        return _standardize_variables(ds, variables)
+
+    ds.data = _standardize_variables(ds.data, variables)
+    return ds
+
+
+def _standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> xr.Dataset:
+    variables_dict: dict[Hashable, str] = {v.short_name: v.standard_name for v in variables}
+    name_dict = {var: variables_dict[var] for var in ds.data_vars if var in variables_dict}
+    return ds.rename(name_dict)
 
 
 def originates_from_ecmwf(met: MetDataset | MetDataArray) -> bool:

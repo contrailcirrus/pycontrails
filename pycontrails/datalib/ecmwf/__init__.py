@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pycontrails.datalib.ecmwf.common import standardize_ecmwf_variables
 from pycontrails.datalib.ecmwf.era5 import ERA5
 from pycontrails.datalib.ecmwf.hres import HRES
 from pycontrails.datalib.ecmwf.ifs import IFS
