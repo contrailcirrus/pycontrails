@@ -209,6 +209,11 @@ def find_contours_to_depth(
     for c in contours:
         child = NestedContours(c)
 
+        # When depth == 1, we are at the bottom of the recursion
+        if depth == 1:
+            root.add(child)
+            continue
+
         # If the area is too small, don't recurse
         if shapely.Polygon(c).area < min_area_to_iterate:
             root.add(child)
