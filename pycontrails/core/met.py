@@ -1792,6 +1792,7 @@ class MetDataArray(MetBase):
         # default iso_value
         if iso_value is None:
             iso_value = (np.nanmax(arr) + np.nanmin(arr)) / 2
+            warnings.warn(f"The 'iso_value' parameter was not specified. Using value: {iso_value}")
 
         # We'll get a nice error message if dependencies are not installed
         import pycontrails.core.polygon as polygon
