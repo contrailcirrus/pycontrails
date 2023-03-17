@@ -112,7 +112,7 @@ def calc_exterior_contours(
     min_area: float | None
         Minimum area of a contour to be considered. Passed into :func:`clean_contours`.
     epsilon : float
-        Passed into :func:`simplify_contour`.
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
     positive_orientation: {"high", "low"}
         Passed into :func:`skimage.measure.find_contours`
 
@@ -180,7 +180,7 @@ def find_contours_to_depth(
     min_area_to_iterate : float
         Minimum area of a contour to be considered when recursing.
     epsilon : float
-        Passed into :func:`simplify_contour`.
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
     depth : int
         Depth to which to recurse. For GeoJSON Polygons, this should be 2 in order to
         generate Polygons with exterior contours and interior contours.
@@ -239,7 +239,7 @@ def clean_contours(
 ) -> list[npt.NDArray[np.float_]]:
     """Remove degenerate contours, contours that are not closed, and contours with negligible area.
 
-    This function also calls :func:`simplify_contour` to simplify the contours.
+    This function also calls :func:`shapely.simplify` to simplify the contours.
 
     Parameters
     ----------
@@ -248,7 +248,7 @@ def clean_contours(
     min_area : float
         Minimum area for a contour to be kept. If 0, this filter is not applied.
     epsilon : float
-        Passed into :func:`simplify_contour`.
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
 
     Returns
     -------
