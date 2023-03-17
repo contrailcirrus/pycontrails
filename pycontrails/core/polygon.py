@@ -305,21 +305,28 @@ def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.
     shapely.LinearRing
         Simplified linear ring.
     """
+    # Try to simplify without a buffer first
+    # This seems to be computationally faster
+    out = lr.simplify(epsilon, preserve_topology=False)
+    if out.is_simple and out.is_valid:
+        return out
+
     # Applying a naive lr.buffer(0) can destroy the polygon completely
     # https://stackoverflow.com/a/20873812
 
     is_ccw = lr.is_ccw
 
-    n_attempts = 10  # could elevate this to a parameter
-    for i in range(1, n_attempts + 1):
-        distance = epsilon * i / n_attempts
+    # Values here are somewhat ad hoc: These seem to allow the algorithm to
+    # terminate and are not too computationally expensive
+    for i in range(1, 11):
+        distance = epsilon * i / 10
 
         # Taking the buffer can change the orientation of the contour
-        lr = lr.buffer(distance).exterior
-        if lr.is_ccw != is_ccw:
-            lr = shapely.LineString(lr.coords[::-1])
+        out = lr.buffer(distance, join_style="mitre", quad_segs=2).exterior
+        if out.is_ccw != is_ccw:
+            out = shapely.LineString(out.coords[::-1])
 
-        out = lr.simplify(epsilon, preserve_topology=False)
+        out = out.simplify(epsilon, preserve_topology=False)
         if out.is_simple and out.is_valid:
             return out
 

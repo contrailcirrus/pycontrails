@@ -699,6 +699,8 @@ def test_polygon_iso_value(island_slice: MetDataArray, iso_value: float) -> None
 
     if iso_value == 1:
         assert coords == []
+    elif iso_value == 0.9:
+        assert len(coords[0][0]) == 5
     else:
         assert len(coords[0][0]) == 9
 
