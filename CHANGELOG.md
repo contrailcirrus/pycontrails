@@ -1,12 +1,28 @@
 
 # Changelog
 
+## 0.38.0
+
+#### Breaking changes
+
+- Change default value of `epsilon` parameter in method `MetDataArray.to_polygon_feature` from 0.15 to 0.0.
+- Change the polygon simplification algorithm. The new implementation uses `shapely.buffer` and doesn't try to preserve the topology of the simplified polygon. This change may result in slightly different polygon geometries.
+
+#### Internals
+
+- Add `depth` parameter to `MetDataArray.to_polygon_feature` to control the depth of the contour searching.
+- Warn if `iso_value` is not specified in `MetDataArray.to_polygon_feature`.
+
+#### Fixes
+
+- Consolidate three redundant implementations of standardizing variables into a single `met.standardize_variables`.
+
 ## 0.37.3
 
 #### Internals
 
 - Add citations for ISA calculations
-- Abstract functionality to convert a Dataset or DataArray to longitude coordinates [-180, 180) into `core.met.shift_longitude`. Add tests for method.
+- Abstract functionality to convert a Dataset or DataArray to longitude coordinates `[-180, 180)` into `core.met.shift_longitude`. Add tests for method.
 - Add auto-formatting checks to CI testing
 
 ## 0.37.2

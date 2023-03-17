@@ -293,6 +293,8 @@ def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.
     Applying a buffer does introduce a slight bias towards the exterior
     of the contour.
 
+    .. versionadded:: 0.38.0
+
     Parameters
     ----------
     lr : shapely.LinearRing
