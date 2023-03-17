@@ -1752,20 +1752,21 @@ class MetDataArray(MetBase):
         >>> mda.shape
         (1440, 721, 1, 1)
 
-        >>> pprint(mda.to_polygon_feature(iso_value=239.5, precision=2))
-        {'geometry': {'coordinates': [[[[43.66, -33.5],
-                                        [43.5, -33.29],
+        >>> pprint(mda.to_polygon_feature(iso_value=239.5, precision=2, epsilon=0.2))
+        {'geometry': {'coordinates': [[[[43.67, -33.5],
+                                        [43.5, -33.28],
                                         [43.44, -33.75],
-                                        [43.5, -34.1],
+                                        [43.5, -34.11],
                                         [43.67, -33.75],
-                                        [43.66, -33.5]]],
+                                        [43.67, -33.5]]],
                                       [[[167.83, -22.5],
                                         [167.75, -22.31],
-                                        [167.66, -22.5],
+                                        [167.65, -22.5],
                                         [167.83, -22.5]]]],
                       'type': 'MultiPolygon'},
          'properties': {},
          'type': 'Feature'}
+
         """
         # Not completely sure if this is necessary ...
         if iso_value is not None and fill_value > iso_value:
