@@ -1,14 +1,32 @@
 Copyright 2023 Breakthrough Energy
 
 The Contrail Cirrus Prediction Model (CoCiP) originated at the DLR Institute of Atmospheric Physics.
-It was developed by Ulrich Schumann, see  SSchumann, U. 2012. "A Contrail Cirrus Prediction Model." Geoscientific Model Development 5 (3): 543–80. https://doi.org/10.5194/gmd-5-543-2012., and related publications:
+It was developed by Ulrich Schumann, see Schumann, U. 2012. "A Contrail Cirrus Prediction Model." 
+Geoscientific Model Development 5 (3): 543–80. https://doi.org/10.5194/gmd-5-543-2012. 
+and related publications:
 
-Schumann, U., B. Mayer, K. Graf, and H. Mannstein. 2012. "A Parametric Radiative Forcing Model for Contrail Cirrus." Journal of Applied Meteorology and Climatology 51 (7): 1391–1406. https://doi.org/10.1175/JAMC-D-11-0242.1.
+Schumann, U., B. Mayer, K. Graf, and H. Mannstein. 2012. 
+"A Parametric Radiative Forcing Model for Contrail Cirrus." 
+Journal of Applied Meteorology and Climatology 51 (7): 1391–1406. 
+https://doi.org/10.1175/JAMC-D-11-0242.1.
 
-Schumann, U., J. E. Penner, Yibin Chen, Cheng Zhou, and K. Graf. 2015. "Dehydration Effects from Contrails in a Coupled Contrail–Climate Model." Atmospheric Chemistry and Physics 15 (19): 11179–99. https://doi.org/10.5194/acp-15-11179-2015.
+Schumann, U., J. E. Penner, Yibin Chen, Cheng Zhou, and K. Graf. 2015. 
+"Dehydration Effects from Contrails in a Coupled Contrail–Climate Model." 
+Atmospheric Chemistry and Physics 15 (19): 11179–99. 
+https://doi.org/10.5194/acp-15-11179-2015.
 
-Schumann, Ulrich, and Andrew J. Heymsfield. 2017. "On the Life Cycle of Individual Contrails and Contrail Cirrus." Meteorological Monographs 58 (1): 3.1-3.24. https://doi.org/10.1175/AMSMONOGRAPHS-D-16-0005.1.
+Schumann, Ulrich, and Andrew J. Heymsfield. 2017. 
+"On the Life Cycle of Individual Contrails and Contrail Cirrus." 
+Meteorological Monographs 58 (1): 3.1-3.24. 
+https://doi.org/10.1175/AMSMONOGRAPHS-D-16-0005.1.
 
-Teoh, Roger, Ulrich Schumann, Arnab Majumdar, and Marc E. J. Stettler. 2020. "Mitigating the Climate Forcing of Aircraft Contrails by Small-Scale Diversions and Technology Adoption." Environmental Science & Technology 54 (5): 2941–50. https://doi.org/10.1021/acs.est.9b05608.
+Teoh, Roger, Ulrich Schumann, Arnab Majumdar, and Marc E. J. Stettler. 2020. 
+"Mitigating the Climate Forcing of Aircraft Contrails by Small-Scale Diversions and Technology Adoption." 
+Environmental Science & Technology 54 (5): 2941–50. 
+https://doi.org/10.1021/acs.est.9b05608.
 
-Teoh, Roger, Ulrich Schumann, Arnab Majumdar, and Marc E. J. Stettler. 2020. "Mitigating the Climate Forcing of Aircraft Contrails by Small-Scale Diversions and Technology Adoption." Environmental Science & Technology 54 (5): 2941–50. https://doi.org/10.1021/acs.est.9b05608.
+Teoh, Roger, Ulrich Schumann, Edward Gryspeerdt, Marc Shapiro, Jarlath Molloy, 
+George Koudis, Christiane Voigt, and Marc E. J. Stettler. 2022. 
+"Aviation Contrail Climate Effects in the North Atlantic from 2016 to 2021."
+Atmospheric Chemistry and Physics 22 (16): 10919–35. 
+https://doi.org/10.5194/acp-22-10919-2022.
