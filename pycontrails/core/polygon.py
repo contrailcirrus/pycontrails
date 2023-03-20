@@ -281,7 +281,7 @@ def clean_contours(
     list[npt.NDArray[np.float_]]
         Cleaned list of contours.
     """
-    lrs = []
+    lr_list = []
     for contour in contours:
         lr = shapely.LinearRing(contour)
         if not lr.is_valid:
@@ -293,10 +293,10 @@ def clean_contours(
         if epsilon:
             lr = _buffer_simplify_iterate(lr, epsilon)
 
-        lrs.append(lr)
+        lr_list.append(lr)
 
     # After simplifying, the polygons may not longer be disjoint.
-    mp = shapely.MultiPolygon([shapely.Polygon(lr) for lr in lrs])
+    mp = shapely.MultiPolygon([shapely.Polygon(lr) for lr in lr_list])
     mp = _make_multipolygon_valid(mp, convex_hull)
 
     return [np.asarray(p.exterior.coords) for p in mp.geoms]
@@ -315,13 +315,13 @@ def _take_convex_hull(lr: shapely.LinearRing) -> shapely.Polygon:
     shapely.LinearRing
         Convex hull of the input.
     """
-    ch = lr.convex_hull
-    if lr.is_ccw == ch.exterior.is_ccw:
-        return ch
-    return shapely.Polygon(ch.exterior.coords[::-1])
+    convex_hull = lr.convex_hull
+    if lr.is_ccw == convex_hull.exterior.is_ccw:
+        return convex_hull
+    return shapely.Polygon(convex_hull.exterior.coords[::-1])
 
 
-def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.LinearRing:
+def _buffer_simplify_iterate(linear_ring: shapely.LinearRing, epsilon: float) -> shapely.LinearRing:
     """Simplify a linear ring by iterating over a larger buffer.
 
     This function calls :func:`shapely.buffer` and :func:`shapely.simplify`
@@ -334,7 +334,7 @@ def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.
 
     Parameters
     ----------
-    lr : shapely.LinearRing
+    linear_ring : shapely.LinearRing
         Linear ring to simplify.
     epsilon : float
         Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
@@ -346,14 +346,14 @@ def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.
     """
     # Try to simplify without a buffer first
     # This seems to be computationally faster
-    out = lr.simplify(epsilon, preserve_topology=False)
+    out = linear_ring.simplify(epsilon, preserve_topology=False)
     if out.is_simple and out.is_valid:
         return out
 
-    # Applying a naive lr.buffer(0) can destroy the polygon completely
+    # Applying a naive linear_ring.buffer(0) can destroy the polygon completely
     # https://stackoverflow.com/a/20873812
 
-    is_ccw = lr.is_ccw
+    is_ccw = linear_ring.is_ccw
 
     # Values here are somewhat ad hoc: These seem to allow the algorithm to
     # terminate and are not too computationally expensive
@@ -361,7 +361,7 @@ def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.
         distance = epsilon * i / 10
 
         # Taking the buffer can change the orientation of the contour
-        out = lr.buffer(distance, join_style="mitre", quad_segs=2).exterior
+        out = linear_ring.buffer(distance, join_style="mitre", quad_segs=2).exterior
         if out.is_ccw != is_ccw:
             out = shapely.LineString(out.coords[::-1])
 
@@ -372,7 +372,7 @@ def _buffer_simplify_iterate(lr: shapely.LinearRing, epsilon: float) -> shapely.
     warnings.warn(
         f"Could not simplify contour with epsilon {epsilon}. Try passing a smaller epsilon."
     )
-    return lr.simplify(epsilon, preserve_topology=True)
+    return linear_ring.simplify(epsilon, preserve_topology=True)
 
 
 def _make_multipolygon_valid(mp: shapely.MultiPolygon, convex_hull: bool) -> shapely.MultiPolygon:
