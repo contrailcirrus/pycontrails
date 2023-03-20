@@ -164,6 +164,7 @@ def test_contour_to_lon_lat(barr: np.ndarray, altitude: float | None):
         threshold=0.5,
         min_area=0,
         epsilon=0.1,
+        convex_hull=False,
         positive_orientation="high",
     )
     longitude = np.arange(0, 25, 0.25)

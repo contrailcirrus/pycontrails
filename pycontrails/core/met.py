@@ -1660,6 +1660,7 @@ class MetDataArray(MetBase):
         epsilon: float = 0.0,
         precision: int | None = None,
         depth: int = 2,
+        convex_hull: bool = False,
         include_altitude: bool = False,
     ) -> dict[str, Any]:
         """Create GeoJSON Feature artifact from spatial array on a single level and time slice.
@@ -1727,6 +1728,10 @@ class MetDataArray(MetBase):
             Number of levels of nesting to include in the output. By default, 2, meaning that
             the exterior and interior rings are both included. Set to 1 to include only the
             exterior ring. Must be 1 or 2.
+        convex_hull : bool, optional
+            EXPERIMENTAL. If True, compute the convex hull of each polygon. Only implemented
+            for depth=1. False by default. A warning is issued if the underlying algorithm
+            fails to make valid polygons after computing the convex hull.
         include_altitude : bool, optional
             If True, include the array altitude [:math:`m`] as a z-coordinate in the
             `GeoJSON output <https://www.rfc-editor.org/rfc/rfc7946#section-3.1.1>`.
@@ -1778,6 +1783,8 @@ class MetDataArray(MetBase):
             raise ValueError(
                 f"Invalid depth value {depth}. Must be 1 or 2. See docstring for details."
             )
+        if convex_hull and depth != 1:
+            raise ValueError(f"Set depth=1 to use the 'convex_hull' parameter. Found depth={depth}")
 
         arr, altitude = _extract_2d_arr_and_altitude(self, level, time)
         if not include_altitude:
@@ -1809,6 +1816,7 @@ class MetDataArray(MetBase):
             min_area_to_iterate=min_area_to_iterate,
             epsilon=epsilon,
             depth=depth,
+            convex_hull=convex_hull,
         )
 
         # Convert to nested lists of coordinates for GeoJSON representation
