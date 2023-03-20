@@ -8,7 +8,7 @@
 
 ## Documentation
 
-**pycontrails** documentation available at [https://py.contrails.earth](https://py.contrails.earth/).
+**pycontrails** documentation available at [https://py.contrails.org](https://py.contrails.org/).
 
 See [docs/README.md](docs/README.md) for documentation development instructions.
 
