@@ -11,11 +11,13 @@
 #### Internals
 
 - Add `depth` parameter to `MetDataArray.to_polygon_feature` to control the depth of the contour searching.
+- Add experimental `convex_hull` parameter to `MetDataArray.to_polygon_feature` to control whether to take the convex hull of each contour.
 - Warn if `iso_value` is not specified in `MetDataArray.to_polygon_feature`.
 
 #### Fixes
 
 - Consolidate three redundant implementations of standardizing variables into a single `met.standardize_variables`.
+- Ensure simplified polygons returned by `MetDataArray.to_polygon_feature` are disjoint. While non-disjoint polygons don't violate the GeoJSON spec, they can cause problems in some applications.
 
 ## 0.37.3
 
