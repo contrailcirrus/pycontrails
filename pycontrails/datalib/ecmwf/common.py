@@ -3,35 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Hashable, Iterable
+from typing import Any
 
 LOG = logging.getLogger(__name__)
 
 import numpy as np
 import xarray as xr
 
-from pycontrails.core import datalib
-from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.core import datalib, met
 
 
-def standardize_ecmwf_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> xr.Dataset:
-    """Rename all variables in dataset from short name to standard name.
-
-    This function does not change any variables in ``ds`` that are not in ``variables``.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Loaded ECMWF dataset
-    variables : Sequence[MetVariable]
-        Data source variables
-    """
-    variables_dict: dict[Hashable, str] = {v.short_name: v.standard_name for v in variables}
-    name_dict = {var: variables_dict[var] for var in ds.data_vars if var in variables_dict}
-    return ds.rename(name_dict)
-
-
-def rad_accumulated_to_average(mds: MetDataset, key: str, dt_accumulation: int) -> None:
+def rad_accumulated_to_average(mds: met.MetDataset, key: str, dt_accumulation: int) -> None:
     """Convert accumulated radiation value to instantaneous average.
 
     Parameters
@@ -72,7 +54,7 @@ class ECMWFAPI(datalib.MetDataSource):
         return [v.ecmwf_id for v in self.variables if v.ecmwf_id is not None]
 
     # TODO: this could be functional, but there many properties utilized
-    def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> MetDataset:
+    def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> met.MetDataset:
         """Process the :class:`xr.Dataset` opened from cache or local files.
 
         Parameters
@@ -126,7 +108,7 @@ class ECMWFAPI(datalib.MetDataSource):
             raise KeyError(f"Input dataset is missing level coordinates {missing_levels}")
 
         # harmonize variable names
-        ds = standardize_ecmwf_variables(ds, self.variables)
+        ds = met.standardize_variables(ds, self.variables)
 
         if "cachestore" not in kwargs:
             kwargs["cachestore"] = self.cachestore
@@ -146,4 +128,4 @@ class ECMWFAPI(datalib.MetDataSource):
             ] = "Relative humidity rescaled to [0 - 1] instead of %"
 
         ds.attrs["met_source"] = type(self).__name__
-        return MetDataset(ds, **kwargs)
+        return met.MetDataset(ds, **kwargs)

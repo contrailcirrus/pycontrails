@@ -8,6 +8,7 @@ See Also
 
 from __future__ import annotations
 
+import warnings
 from typing import Iterator
 
 import numpy as np
@@ -15,6 +16,7 @@ import numpy.typing as npt
 
 try:
     import shapely
+    import shapely.validation
     from skimage import draw, measure
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
@@ -83,6 +85,7 @@ def calc_exterior_contours(
     threshold: float,
     min_area: float,
     epsilon: float,
+    convex_hull: bool,
     positive_orientation: str,
 ) -> list[npt.NDArray[np.float_]]:
     """Calculate exterior contours of the padded array ``arr``.
@@ -112,7 +115,9 @@ def calc_exterior_contours(
     min_area: float | None
         Minimum area of a contour to be considered. Passed into :func:`clean_contours`.
     epsilon : float
-        Passed into :func:`simplify_contour`.
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
+    convex_hull : bool
+        Passed into :func:`clean_contours`.
     positive_orientation: {"high", "low"}
         Passed into :func:`skimage.measure.find_contours`
 
@@ -142,7 +147,7 @@ def calc_exterior_contours(
     # contours we are left with just exterior contours
     contours = measure.find_contours(marr, **kwargs)
 
-    return clean_contours(contours, min_area, epsilon)
+    return clean_contours(contours, min_area, epsilon, convex_hull)
 
 
 def find_contours_to_depth(
@@ -152,6 +157,7 @@ def find_contours_to_depth(
     min_area_to_iterate: float,
     epsilon: float,
     depth: int,
+    convex_hull: bool = False,
     positive_orientation: str = "high",
     root: NestedContours | None = None,
 ) -> NestedContours:
@@ -180,10 +186,12 @@ def find_contours_to_depth(
     min_area_to_iterate : float
         Minimum area of a contour to be considered when recursing.
     epsilon : float
-        Passed into :func:`simplify_contour`.
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
     depth : int
         Depth to which to recurse. For GeoJSON Polygons, this should be 2 in order to
         generate Polygons with exterior contours and interior contours.
+    convex_hull : bool, optional
+        Passed into :func:`clean_contours`. Default is False.
     positive_orientation : {"high", "low"}
         Passed into :func:`skimage.measure.find_contours`. By default, "high", meaning
         top level exterior contours always have counter-clockwise orientation. This
@@ -204,9 +212,16 @@ def find_contours_to_depth(
         return root
 
     root = root or NestedContours()
-    contours = calc_exterior_contours(arr, threshold, min_area, epsilon, positive_orientation)
+    contours = calc_exterior_contours(
+        arr, threshold, min_area, epsilon, convex_hull, positive_orientation
+    )
     for c in contours:
         child = NestedContours(c)
+
+        # When depth == 1, we are at the bottom of the recursion
+        if depth == 1:
+            root.add(child)
+            continue
 
         # If the area is too small, don't recurse
         if shapely.Polygon(c).area < min_area_to_iterate:
@@ -235,11 +250,20 @@ def find_contours_to_depth(
 
 
 def clean_contours(
-    contours: list[npt.NDArray[np.float_]], min_area: float, epsilon: float
+    contours: list[npt.NDArray[np.float_]],
+    min_area: float,
+    epsilon: float,
+    convex_hull: bool,
 ) -> list[npt.NDArray[np.float_]]:
     """Remove degenerate contours, contours that are not closed, and contours with negligible area.
 
-    This function also calls :func:`simplify_contour` to simplify the contours.
+    This function also calls :func:`shapely.simplify` to simplify the contours.
+
+    .. versionchanged:: 0.38.0
+
+        Apply a smaller buffer when simplifying contours. This allows for changes
+        to the underlying polygon topology. Previously, any contour topology was
+        preserved when simplifying.
 
     Parameters
     ----------
@@ -248,29 +272,162 @@ def clean_contours(
     min_area : float
         Minimum area for a contour to be kept. If 0, this filter is not applied.
     epsilon : float
-        Passed into :func:`simplify_contour`.
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
+    convex_hull : bool
+        If True, use the convex hull of the contour as the simplified contour.
 
     Returns
     -------
     list[npt.NDArray[np.float_]]
         Cleaned list of contours.
     """
-    out = []
+    lr_list = []
     for contour in contours:
         lr = shapely.LinearRing(contour)
         if not lr.is_valid:
             continue
         if shapely.Polygon(lr).area < min_area:
             continue
+        if convex_hull:
+            lr = _take_convex_hull(lr).exterior
+        if epsilon:
+            lr = _buffer_simplify_iterate(lr, epsilon)
 
-        lr_new = lr.simplify(epsilon, preserve_topology=False)
-        if not lr_new.is_simple or not lr_new.is_valid:
-            lr_new = lr.simplify(epsilon, preserve_topology=True)
+        lr_list.append(lr)
 
-        coords = np.asarray(lr_new.coords)
-        out.append(coords)
+    # After simplifying, the polygons may not longer be disjoint.
+    mp = shapely.MultiPolygon([shapely.Polygon(lr) for lr in lr_list])
+    mp = _make_multipolygon_valid(mp, convex_hull)
 
-    return out
+    return [np.asarray(p.exterior.coords) for p in mp.geoms]
+
+
+def _take_convex_hull(lr: shapely.LinearRing) -> shapely.Polygon:
+    """Take the convex hull of a linear ring and preserve the orientation.
+
+    Parameters
+    ----------
+    lr : shapely.LinearRing
+        Linear ring to take the convex hull of.
+
+    Returns
+    -------
+    shapely.LinearRing
+        Convex hull of the input.
+    """
+    convex_hull = lr.convex_hull
+    if lr.is_ccw == convex_hull.exterior.is_ccw:
+        return convex_hull
+    return shapely.Polygon(convex_hull.exterior.coords[::-1])
+
+
+def _buffer_simplify_iterate(linear_ring: shapely.LinearRing, epsilon: float) -> shapely.LinearRing:
+    """Simplify a linear ring by iterating over a larger buffer.
+
+    This function calls :func:`shapely.buffer` and :func:`shapely.simplify`
+    over a range of buffer distances. The buffer allows for the topology
+    of the contour to change, which is useful for simplifying contours.
+    Applying a buffer does introduce a slight bias towards the exterior
+    of the contour.
+
+    .. versionadded:: 0.38.0
+
+    Parameters
+    ----------
+    linear_ring : shapely.LinearRing
+        Linear ring to simplify.
+    epsilon : float
+        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
+
+    Returns
+    -------
+    shapely.LinearRing
+        Simplified linear ring.
+    """
+    # Try to simplify without a buffer first
+    # This seems to be computationally faster
+    out = linear_ring.simplify(epsilon, preserve_topology=False)
+    if out.is_simple and out.is_valid:
+        return out
+
+    # Applying a naive linear_ring.buffer(0) can destroy the polygon completely
+    # https://stackoverflow.com/a/20873812
+
+    is_ccw = linear_ring.is_ccw
+
+    # Values here are somewhat ad hoc: These seem to allow the algorithm to
+    # terminate and are not too computationally expensive
+    for i in range(1, 11):
+        distance = epsilon * i / 10
+
+        # Taking the buffer can change the orientation of the contour
+        out = linear_ring.buffer(distance, join_style="mitre", quad_segs=2).exterior
+        if out.is_ccw != is_ccw:
+            out = shapely.LineString(out.coords[::-1])
+
+        out = out.simplify(epsilon, preserve_topology=False)
+        if out.is_simple and out.is_valid:
+            return out
+
+    warnings.warn(
+        f"Could not simplify contour with epsilon {epsilon}. Try passing a smaller epsilon."
+    )
+    return linear_ring.simplify(epsilon, preserve_topology=True)
+
+
+def _make_multipolygon_valid(mp: shapely.MultiPolygon, convex_hull: bool) -> shapely.MultiPolygon:
+    """Make a multipolygon valid.
+
+    This function attempts to make a multipolygon valid by iteratively
+    applying :func:`shapely.unary_union` to convert non-disjoint polygons
+    into disjoint polygons by merging them. If the multipolygon is still
+    invalid after 5 attempts, a warning is raised and the last
+    multipolygon is returned.
+
+    .. versionadded:: 0.38.0
+
+    Parameters
+    ----------
+    mp : shapely.MultiPolygon
+        Multipolygon to make valid.
+    convex_hull : bool
+        If True, take the convex hull of merged polygons.
+
+    Returns
+    -------
+    shapely.MultiPolygon
+        Valid multipolygon.
+    """
+    if mp.is_empty:
+        return mp
+
+    # Get orientation of the first polygon. We assume that all polygons
+    # share this orientation.
+    is_ccw = mp.geoms[0].exterior.is_ccw
+
+    n_attemps = 5
+    for _ in range(n_attemps):
+        if mp.is_valid:
+            return mp
+
+        mp = shapely.unary_union(mp)
+        if isinstance(mp, shapely.Polygon):
+            mp = shapely.MultiPolygon([mp])
+
+        # Make sure the orientation of the polygons is consistent
+        # There is a shapely.geometry.polygon.orient function, but it doesn't look any better
+        if mp.geoms[0].exterior.is_ccw != is_ccw:
+            mp = shapely.MultiPolygon([shapely.Polygon(p.exterior.coords[::-1]) for p in mp.geoms])
+
+        if convex_hull:
+            mp = shapely.MultiPolygon([_take_convex_hull(p.exterior) for p in mp.geoms])
+
+    warnings.warn(
+        f"Could not make multipolygon valid after {n_attemps} attempts. "
+        f"According to shapely, the multipolygon is invalid because: "
+        f"{shapely.validation.explain_validity(mp)}"
+    )
+    return mp
 
 
 def contour_to_lon_lat(

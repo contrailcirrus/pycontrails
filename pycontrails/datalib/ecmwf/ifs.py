@@ -15,9 +15,7 @@ import pandas as pd
 import xarray as xr
 from overrides import overrides
 
-from pycontrails.core import datalib
-from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.datalib.ecmwf.common import standardize_ecmwf_variables
+from pycontrails.core import datalib, met
 from pycontrails.datalib.ecmwf.variables import ECMWF_VARIABLES
 from pycontrails.physics import constants
 from pycontrails.utils.types import DatetimeLike
@@ -102,7 +100,7 @@ class IFS(datalib.MetDataSource):
         return f"{base}\n\t" f"Forecast date: {self.forecast_date}"
 
     @property
-    def supported_variables(self) -> list[MetVariable]:
+    def supported_variables(self) -> list[met.MetVariable]:
         """IFS parameters available.
 
         Returns
@@ -132,7 +130,7 @@ class IFS(datalib.MetDataSource):
         dataset: xr.Dataset | None = None,
         xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> MetDataset:
+    ) -> met.MetDataset:
         xr_kwargs = xr_kwargs or {}
 
         #  short-circuit dataset or file paths if provided
@@ -190,10 +188,10 @@ class IFS(datalib.MetDataSource):
             ds = ds.expand_dims({"level": [-1]})
 
         # harmonize variable names
-        ds = standardize_ecmwf_variables(ds, self.variables)
+        ds = met.standardize_variables(ds, self.variables)
 
         ds.attrs["met_source"] = type(self).__name__
-        return MetDataset(ds, **kwargs)
+        return met.MetDataset(ds, **kwargs)
 
     @overrides
     def download_dataset(self, times: list[datetime]) -> None:

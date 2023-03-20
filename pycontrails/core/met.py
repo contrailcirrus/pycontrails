@@ -16,6 +16,7 @@ from typing import (
     Any,
     Generic,
     Hashable,
+    Iterable,
     Iterator,
     Literal,
     Mapping,
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
 
 XArrayType = TypeVar("XArrayType", xr.Dataset, xr.DataArray)
 MetDataType = TypeVar("MetDataType", "MetDataset", "MetDataArray")
+DatasetType = TypeVar("DatasetType", xr.Dataset, "MetDataset")
 
 
 class MetBase(ABC, Generic[XArrayType]):
@@ -1655,8 +1657,10 @@ class MetDataArray(MetBase):
         iso_value: float | None = None,
         min_area: float = 0.0,
         min_area_to_iterate: float = 0.0,
-        epsilon: float = 0.15,
+        epsilon: float = 0.0,
         precision: int | None = None,
+        depth: int = 2,
+        convex_hull: bool = False,
         include_altitude: bool = False,
     ) -> dict[str, Any]:
         """Create GeoJSON Feature artifact from spatial array on a single level and time slice.
@@ -1681,6 +1685,10 @@ class MetDataArray(MetBase):
             - ``fill_value``
             - ``min_area``
             - ``include_altitude``
+
+        .. versionchanged:: 0.38.0
+
+            Change default value of ``epsilon`` from 0.15 to 0.
 
         Parameters
         ----------
@@ -1716,6 +1724,14 @@ class MetDataArray(MetBase):
             the geometry of the polygon. Values in the interval [0, 0.2] are reasonable.
         precision : int, optional
             Number of decimal places to round coordinates to. If None, no rounding is performed.
+        depth : int, optional
+            Number of levels of nesting to include in the output. By default, 2, meaning that
+            the exterior and interior rings are both included. Set to 1 to include only the
+            exterior ring. Must be 1 or 2.
+        convex_hull : bool, optional
+            EXPERIMENTAL. If True, compute the convex hull of each polygon. Only implemented
+            for depth=1. False by default. A warning is issued if the underlying algorithm
+            fails to make valid polygons after computing the convex hull.
         include_altitude : bool, optional
             If True, include the array altitude [:math:`m`] as a z-coordinate in the
             `GeoJSON output <https://www.rfc-editor.org/rfc/rfc7946#section-3.1.1>`.
@@ -1741,7 +1757,7 @@ class MetDataArray(MetBase):
         >>> mda.shape
         (1440, 721, 1, 1)
 
-        >>> pprint(mda.to_polygon_feature(iso_value=239.5, precision=2))
+        >>> pprint(mda.to_polygon_feature(iso_value=239.5, precision=2, epsilon=0.2))
         {'geometry': {'coordinates': [[[[43.66, -33.5],
                                         [43.5, -33.29],
                                         [43.44, -33.75],
@@ -1755,12 +1771,20 @@ class MetDataArray(MetBase):
                       'type': 'MultiPolygon'},
          'properties': {},
          'type': 'Feature'}
+
         """
         # Not completely sure if this is necessary ...
         if iso_value is not None and fill_value > iso_value:
             warnings.warn(
                 f"The fill_value {fill_value} expected to be less than the iso_value {iso_value}"
             )
+
+        if depth not in (1, 2):
+            raise ValueError(
+                f"Invalid depth value {depth}. Must be 1 or 2. See docstring for details."
+            )
+        if convex_hull and depth != 1:
+            raise ValueError(f"Set depth=1 to use the 'convex_hull' parameter. Found depth={depth}")
 
         arr, altitude = _extract_2d_arr_and_altitude(self, level, time)
         if not include_altitude:
@@ -1780,6 +1804,7 @@ class MetDataArray(MetBase):
         # default iso_value
         if iso_value is None:
             iso_value = (np.nanmax(arr) + np.nanmin(arr)) / 2
+            warnings.warn(f"The 'iso_value' parameter was not specified. Using value: {iso_value}")
 
         # We'll get a nice error message if dependencies are not installed
         import pycontrails.core.polygon as polygon
@@ -1790,7 +1815,8 @@ class MetDataArray(MetBase):
             min_area=min_area,
             min_area_to_iterate=min_area_to_iterate,
             epsilon=epsilon,
-            depth=2,
+            depth=depth,
+            convex_hull=convex_hull,
         )
 
         # Convert to nested lists of coordinates for GeoJSON representation
@@ -2330,22 +2356,37 @@ def downselect(data: XArrayType, bbox: list[float]) -> XArrayType:
     return data.where(cond, drop=True)
 
 
-def standardize_variables(mds: MetDataset, variables: Sequence[MetVariable]) -> MetDataset:
-    """Rename all variables in dataset to standard name.
+def standardize_variables(ds: DatasetType, variables: Iterable[MetVariable]) -> DatasetType:
+    """Rename all variables in dataset from short name to standard name.
+
+    This function does not change any variables in ``ds`` that are not found in ``variables``.
+
+    When there are multiple variables with the same short name, the last one is used.
 
     Parameters
     ----------
-    mds : MetDataset
-        Loaded ECMWF dataset
-    variables : list[MetVariable]
+    ds : DatasetType
+        An :class:`xr.Dataset` or :class:`MetDataset`. When a :class:`MetDataset` is
+        passed, the underlying :class:`xr.Dataset` is modified in place.
+    variables : Iterable[MetVariable]
         Data source variables
-    """
-    for var in mds.data.data_vars:
-        matching_variable = [v for v in variables if var == v.short_name]
-        if matching_variable:
-            mds.data = mds.data.rename({var: matching_variable[0].standard_name})
 
-    return mds
+    Returns
+    -------
+    DatasetType
+        Dataset with variables renamed to standard names
+    """
+    if isinstance(ds, xr.Dataset):
+        return _standardize_variables(ds, variables)
+
+    ds.data = _standardize_variables(ds.data, variables)
+    return ds
+
+
+def _standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> xr.Dataset:
+    variables_dict: dict[Hashable, str] = {v.short_name: v.standard_name for v in variables}
+    name_dict = {var: variables_dict[var] for var in ds.data_vars if var in variables_dict}
+    return ds.rename(name_dict)
 
 
 def originates_from_ecmwf(met: MetDataset | MetDataArray) -> bool:

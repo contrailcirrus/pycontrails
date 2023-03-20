@@ -164,6 +164,7 @@ def test_contour_to_lon_lat(barr: np.ndarray, altitude: float | None):
         threshold=0.5,
         min_area=0,
         epsilon=0.1,
+        convex_hull=False,
         positive_orientation="high",
     )
     longitude = np.arange(0, 25, 0.25)
@@ -199,15 +200,15 @@ def test_contour_find_islands(carr: np.ndarray):
         threshold=0.9,
         min_area=0,
         min_area_to_iterate=0,
-        epsilon=0.1,
+        epsilon=0.05,
         depth=1,
     )
     assert nc.n_children == 2
     child1, child2 = nc
     assert child1.n_children == 0
     assert child2.n_children == 0
-    assert child1.n_vertices == 15
-    assert child2.n_vertices == 27
+    assert child1.n_vertices == 18
+    assert child2.n_vertices == 37
 
     # Confirm each have ccw orientation
     # Shift each island by its center (hack)

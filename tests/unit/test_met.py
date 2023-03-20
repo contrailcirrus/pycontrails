@@ -523,32 +523,33 @@ def test_polygons_sparse_binary_specify_time_level(
     mda, _ = sparse_binary
     # must specify level and time
     with pytest.raises(ValueError, match="coordinates is not 1"):
-        mda.to_polygon_feature()
+        mda.to_polygon_feature(iso_value=0.5)
 
     with pytest.raises(ValueError, match="coordinates is not 1"):
-        mda.to_polygon_feature(level=mda.data["level"][0])
+        mda.to_polygon_feature(level=mda.data["level"][0], iso_value=0.5)
 
     with pytest.raises(ValueError, match="coordinates is not 1"):
-        mda.to_polygon_feature(time=mda.data["time"][0])
+        mda.to_polygon_feature(time=mda.data["time"][0], iso_value=0.5)
 
     # if both are specified, we're okay
     geojson1 = mda.to_polygon_feature(
         level=mda.data["level"][0],
         time=mda.data["time"][0],
+        iso_value=0.5,
     )
 
     # or if only a single level / time slice exists, we're okay
     # a single time coord
     sliced = MetDataArray(mda.data.isel(time=[0]))
-    geojson2 = sliced.to_polygon_feature(level=mda.data["level"][0])
+    geojson2 = sliced.to_polygon_feature(level=mda.data["level"][0], iso_value=0.5)
 
     # a single level coord
     sliced = MetDataArray(mda.data.isel(level=[0]))
-    geojson3 = sliced.to_polygon_feature(time=mda.data["time"][0])
+    geojson3 = sliced.to_polygon_feature(time=mda.data["time"][0], iso_value=0.5)
 
     # single time and level coords
     sliced = MetDataArray(mda.data.isel(time=[0], level=[0]))
-    geojson4 = sliced.to_polygon_feature()
+    geojson4 = sliced.to_polygon_feature(iso_value=0.5)
 
     assert geojson1 == geojson2 == geojson3 == geojson4
 
@@ -561,7 +562,7 @@ def test_polygon_sparse_binary(
     mda = MetDataArray(mda.data.isel(time=[time]))
     level = nonzero_coord["level"]
 
-    geojson = mda.to_polygon_feature(level=level, min_area=0.0)
+    geojson = mda.to_polygon_feature(level=level, min_area=0.0, iso_value=0.5, epsilon=0.0)
     assert geojson["type"] == "Feature"
     assert geojson["geometry"]["type"] == "MultiPolygon"
     coords = geojson["geometry"]["coordinates"]
@@ -596,7 +597,7 @@ def island_slice(island_binary: MetDataArray) -> MetDataArray:
 
 
 def test_polygon_island_binary(island_slice: MetDataArray) -> None:
-    geojson = island_slice.to_polygon_feature()
+    geojson = island_slice.to_polygon_feature(iso_value=0.5, epsilon=0.01, precision=2)
 
     # contains a single polygon
     coords = geojson["geometry"]["coordinates"]
@@ -612,7 +613,9 @@ def test_polygon_island_binary(island_slice: MetDataArray) -> None:
     assert len(coords) == 9
 
     # all vertices have lon and lat value \pm 4 or \pm 4.5
-    assert all(component in [-4.5, -4, 4, 4.5] for coord in coords for component in coord)
+    for coord in coords:
+        for component in coord:
+            assert component in [-4.5, -4, 4, 4.5]
 
 
 def test_nested_polygons(zero_like_da: xr.DataArray) -> None:
@@ -635,7 +638,7 @@ def test_nested_polygons(zero_like_da: xr.DataArray) -> None:
     da = xr.where((island5), 1, da)
 
     mda = MetDataArray(da.isel(level=[0], time=[0]))
-    geojson = mda.to_polygon_feature()
+    geojson = mda.to_polygon_feature(iso_value=0.5)
 
     # contains 1 Polygon with 1 nested polygon
     coords = geojson["geometry"]["coordinates"]
@@ -676,7 +679,7 @@ def test_polygons_with_holes():
     da = xr.DataArray(a, {"longitude": np.arange(20), "latitude": np.arange(10)})
     da = da.expand_dims(level=[-1], time=[0])
     mda = MetDataArray(da)
-    polys = mda.to_polygon_feature()["geometry"]["coordinates"]
+    polys = mda.to_polygon_feature(iso_value=0.5)["geometry"]["coordinates"]
     assert len(polys) == 4
 
     lens = [len(p) for p in polys]
@@ -684,14 +687,14 @@ def test_polygons_with_holes():
 
     # Pin some values from polygon 3
     outer, inner1, inner2 = polys[3]
-    len(outer) == 11
-    len(inner1) == 9  # octogon
-    len(inner2) == 5  # diamond
+    assert len(outer) == 21
+    assert len(inner1) == 9  # octagon
+    assert len(inner2) == 5  # diamond
 
 
 @pytest.mark.parametrize("iso_value", [0, 0.001, 0.5, 0.9, 1])
 def test_polygon_iso_value(island_slice: MetDataArray, iso_value: float) -> None:
-    geojson = island_slice.to_polygon_feature(iso_value=iso_value)
+    geojson = island_slice.to_polygon_feature(iso_value=iso_value, epsilon=0.1)
     coords = geojson["geometry"]["coordinates"]
 
     if iso_value == 1:
@@ -1067,7 +1070,7 @@ def test_include_altitude(met_ecmwf_pl_path: str):
     mds = MetDataset(ds[dict(time=[0])])
     mda = mds["t"]
 
-    geojson = mda.to_polygon_feature(level=225, include_altitude=True)
+    geojson = mda.to_polygon_feature(level=225, include_altitude=True, iso_value=100)
     for poly in geojson["geometry"]["coordinates"]:
         for ring in poly:
             for coord in ring:
@@ -1081,9 +1084,9 @@ def test_include_altitude_raises(met_ecmwf_sl_path: str):
     mds = MetDataset(ds[dict(time=[0])])
     mda = mds["sp"]
     with pytest.raises(ValueError, match=" but altitude is not found"):
-        mda.to_polygon_feature(include_altitude=True)
+        mda.to_polygon_feature(include_altitude=True, iso_value=20000)
 
-    geojson = mda.to_polygon_feature(include_altitude=False)
+    geojson = mda.to_polygon_feature(include_altitude=False, iso_value=20000)
     for poly in geojson["geometry"]["coordinates"]:
         for ring in poly:
             for coord in ring:
@@ -1096,7 +1099,7 @@ def test_to_polygon_feature_collection(met_ecmwf_pl_path: str):
     mds = MetDataset(ds[dict(time=[0])])
     mda = mds["q"]
 
-    fc = mda.to_polygon_feature_collection()
+    fc = mda.to_polygon_feature_collection(iso_value=0.0001)
     assert fc.keys() == {"type", "features"}
     assert fc["type"] == "FeatureCollection"
     features = fc["features"]
