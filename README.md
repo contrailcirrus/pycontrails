@@ -14,8 +14,7 @@ See [docs/README.md](docs/README.md) for documentation development instructions.
 
 ## Requires
 
-- [git](https://git-scm.com/)
-- [Python 3.x](https://www.python.org/downloads/) (3.9 or later)
+- [Python 3](https://www.python.org/downloads/) (3.9 or later)
 
 ## Environment
 
@@ -135,10 +134,6 @@ Run all code quality checks in local environment:
 $ make test
 ```
 
-## Common Issues
-
-> To Add
-
 ## License
 
-> Currently unlicensed
+[Apache License 2.0](LICENSE)
