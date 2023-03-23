@@ -39,9 +39,9 @@ See more options in the [install documentation](https://py.contrails.org/install
 
 ## Get Involved
 
-- Report bugs or suggest updates in [GitHub Issues](https://github.com/contrailcirrus/pycontrails/issues).
+- Ask questions, discuss models, and present ideas in [GitHub Discussions](https://github.com/contrailcirrus/pycontrails/discussions).
+- Report bugs or suggest changes in [GitHub Issues](https://github.com/contrailcirrus/pycontrails/issues).
 - Review the [contributing guidelines](CONTRIBUTING.md) and contribute improvements as [Pull Requests](https://github.com/contrailcirrus/pycontrails/pulls).
-- Ask questions and discuss implementations in [GitHub Discussions](https://github.com/contrailcirrus/pycontrails/discussions).
 
 ## License
 
