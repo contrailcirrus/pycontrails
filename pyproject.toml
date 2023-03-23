@@ -28,7 +28,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 requires-python = ">=3.9"
-license = {file = "LICENSE"}
+license = "Apache-2.0"
 readme = {file = "README.md", content-type = "text/markdown"}
 
 dependencies = [
@@ -42,10 +42,10 @@ dependencies = [
 ]
 
 [project.urls]
-repository = "https://github.com/contrailcirrus/pycontrails"
-issues = "https://github.com/contrailcirrus/pycontrails/issues"
-documentation = "https://py.contrails.org"
-changelog = "https://py.contrails.org/CHANGELOG.html"
+Changelog = "https://py.contrails.org/CHANGELOG.html"
+Documentation = "https://py.contrails.org"
+Issues = "https://github.com/contrailcirrus/pycontrails/issues"
+Repository = "https://github.com/contrailcirrus/pycontrails"
 
 [project.optional-dependencies]
 dev = [
