@@ -8,7 +8,7 @@
 | **Citation**  | TODO |
 | **Tests**     | [![Unit test](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml) [![Docs](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml) |
 | **License**   | [![Apache License 2.0](https://img.shields.io/pypi/l/pycontrails.svg)](LICENSE) |
-| **Community** | [![Github Discussions](https://img.shields.io/github/discussions/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/discussions) [![Github Issues](https://img.shields.io/github/issues/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/issues) [![Github PRs](https://img.shields.io/github/issues-pr/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/pulls) [![Chat](https://img.shields.io/matrix/pycontrails-community:matrix.org.svg?label=Chat&logo=matrix)](https://matrix.to/#/#pycontrails-community:matrix.org) |
+| **Community** | [![Github Discussions](https://img.shields.io/github/discussions/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/discussions) [![Github Issues](https://img.shields.io/github/issues/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/issues) [![Github PRs](https://img.shields.io/github/issues-pr/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/pulls) |
 
 **pycontrails** is an open source project and Python package for modeling aircraft contrails and other
 aviation related climate impacts.
@@ -28,6 +28,14 @@ Requires Python (3.9 or later)
 ```bash
 $ pip install pycontrails
 ```
+
+Install the latest development version directly from GitHub:
+
+```bash
+$ pip install git+https://github.com/contrailcirrus/pycontrails.git
+```
+
+See more options in the [install documentation](https://py.contrails.org/install).
 
 ## Get Involved
 
