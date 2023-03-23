@@ -101,8 +101,7 @@ def get_forecast_filename(
 class HRES(ECMWFAPI):
     """Class to support HRES data access, download, and organization.
 
-    Requires `account with ECMWF <https://apps.ecmwf.int/registration/`_ and
-    `an api key <https://api.ecmwf.int/v1/key/>_ set in local ``~/.ecmwfapirc`` file:
+    Requires account with ECMWF and API key set in local ``~/.ecmwfapirc`` file:
 
     .. code:: json
 
@@ -111,6 +110,9 @@ class HRES(ECMWFAPI):
             "email": "<email>",
             "key": "<key>"
         }
+
+    See `ECMWF Web API <https://www.ecmwf.int/en/computing/software/ecmwf-web-api>`_ documentation
+    for more information.
 
     Parameters
     ----------
@@ -154,7 +156,7 @@ class HRES(ECMWFAPI):
 
     Notes
     -----
-    [MARS Key Word Definitions](https://confluence.ecmwf.int/display/UDOC/Identification+keywords)
+    `MARS key word definitions <https://confluence.ecmwf.int/display/UDOC/Identification+keywords>`_
 
     - `class`: in most cases this will be operational data, or "od", `class reference <https://apps.ecmwf.int/codes/grib/format/mars/class/>`_
     - `stream`: "enfo" = ensemble forecast, "oper" = atmospheric model/HRES, `stream reference <https://apps.ecmwf.int/codes/grib/format/mars/stream/>`_
