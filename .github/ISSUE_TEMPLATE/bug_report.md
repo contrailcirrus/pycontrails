@@ -15,7 +15,7 @@ assignees: ''
 
 - Version: [e.g. 0.25.1]
 - Module: [e.g. units, datalib.ecmwf]
-- OS: [e.g. iOS]
+- OS: [e.g. ubuntu, windows]
 - Reporter:
 
 **Steps to Reproduce**
