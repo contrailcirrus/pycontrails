@@ -47,6 +47,9 @@ issues = "https://github.com/contrailcirrus/pycontrails/issues"
 documentation = "https://py.contrails.org"
 changelog = "https://py.contrails.org/CHANGELOG.html"
 
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE"]
+
 # https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
 [tool.setuptools.packages.find]
 exclude = ["docs*", "tests*"]
