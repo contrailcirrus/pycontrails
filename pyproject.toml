@@ -47,11 +47,13 @@ issues = "https://github.com/contrailcirrus/pycontrails/issues"
 documentation = "https://py.contrails.org"
 changelog = "https://py.contrails.org/CHANGELOG.html"
 
+# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
 [tool.setuptools.packages.find]
-exclude = ["tests*"]  # exclude packages matching these glob patterns (empty by default)
+exclude = ["docs*", "tests*"]
 
+# https://mypy.readthedocs.io/en/stable/installed_packages.html#creating-pep-561-compatible-packages
 [tool.setuptools.package-data]
-"pycontrails" = ["py.typed"]  # https://mypy.readthedocs.io/en/stable/installed_packages.html#creating-pep-561-compatible-packages
+"pycontrails" = ["py.typed"]
 "pycontrails.models.emissions" = ["static/*.csv"]
 
 [project.optional-dependencies]
