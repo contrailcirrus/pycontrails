@@ -1,139 +1,50 @@
-# **pycontrails**
+# pycontrails
 
-> Python library for contrail modeling and analysis.
+> Python library for aviation climate impacts
 
-[![Unit test](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml)
-[![Docs](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml)
-[![Chat](https://img.shields.io/matrix/pycontrails-community:matrix.org.svg?label=Chat&logo=matrix)](https://matrix.to/#/#pycontrails-community:matrix.org)
+|               |                                                                   |
+|---------------|-------------------------------------------------------------------|
+| **Version**   | [![Pypi version](https://img.shields.io/pypi/v/pycontrails.svg)](https://pypi.python.org/pypi/pycontrails) [![Supported python versions](https://img.shields.io/pypi/pyversions/pycontrails.svg)](https://pypi.python.org/pypi/pycontrails) |
+| **Citation**  | TODO |
+| **Tests**     | [![Unit test](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml) [![Docs](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml) |
+| **License**   | [![Apache License 2.0](https://img.shields.io/pypi/l/pycontrails.svg)](LICENSE) |
+| **Community** | [![Github Discussions](https://img.shields.io/github/discussions/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/discussions) [![Github Issues](https://img.shields.io/github/issues/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/issues) [![Github PRs](https://img.shields.io/github/issues-pr/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/pulls) [![Chat](https://img.shields.io/matrix/pycontrails-community:matrix.org.svg?label=Chat&logo=matrix)](https://matrix.to/#/#pycontrails-community:matrix.org) |
+
+
+**pycontrails** is an open source project and Python package for modeling aircraft contrails and other
+aviation related climate impacts.
+
+Pycontrails defines common [data structures](https://py.contrails.org/api.html#data) to efficiently build 
+and run [models](https://py.contrails.org/api.html#models) of aircraft performance, emissions, and radiative forcing.
+The library includes interfaces to common meteorology and flight [data sources](https://py.contrails.org/api.html#datalib) 
+to simplify data access and integration.
+
 
 ## Documentation
 
-**pycontrails** documentation available at [https://py.contrails.org](https://py.contrails.org/).
+Documentation and examples are available at [https://py.contrails.org](https://py.contrails.org/).
 
-See [docs/README.md](docs/README.md) for documentation development instructions.
+<!-- Try out an [interactive Colab Notebook](). -->
 
-## Requires
-
-- [Python 3](https://www.python.org/downloads/) (3.9 or later)
-
-## Environment
-
-Create a dedicated virtual environment:
-
-```bash
-# create environment in <DIR>
-$ python3 -m venv <DIR>
-
-# activate environment (Unix-like)
-$ source <DIR>/bin/activate
-```
-
-If using [Anaconda](https://www.anaconda.com/) / [Miniconda](https://docs.conda.io/en/latest/miniconda.html) Python, create a dedicated Anaconda environment:
-
-```bash
-# create conda environment
-$ conda create -n contrails python=3.10
-
-# activate environment
-$ conda activate contrails
-```
 
 ## Install
 
-After activating the virtual environment, clone the [pycontrails repository](https://github.com/contrailcirrus/pycontrails) onto your machine:
-
-```bash
-$ cd <install-path>
-$ git clone git@github.com:contrailcirrus/pycontrails.git
-$ cd pycontrails
-```
-
-Install dependencies individually using `pip`:
-
-```bash
-# Core dependencies
-$ pip install -e .             # Base installation
-
-# Optional dependencies
-$ pip install -e ".[ecmwf]"    # ECMWF datalib interfaces
-$ pip install -e ".[gfs]"      # GFS datalib interfaces
-$ pip install -e ".[gcp]"      # Google Cloud Platform caching interface
-$ pip install -e ".[vis]"      # For polygon construction methods and plotting support 
-$ pip install -e ".[zarr]"     # Load data from remote Zarr stores
-$ pip install -e ".[jupyter]"  # Install Jupyter lab
-$ pip install -e ".[dev]"      # Development support
-
-# These packages may not support the latest python version
-$ pip install -e ".[accf]"     # ACCF model support
-$ pip install -e ".[open3d]"   # For polyhedra construction methods
-```
-
-Or install all dependencies with shortcut:
-
-```bash
-$ make pip-install  # install each dependency group
-```
-
-## Extensions
-
-### BADA
-
-To install the [pycontrails-BADA](https://github.com/contrailcirrus/pycontrails-bada) extension, run:
+Requires Python (3.9 or later)
 
 ```
-$ pip install -e ".[bada]"
+$ pip install pycontrails
 ```
 
 
-## Develop
+## Get Involved
 
-> [GNU Make](https://www.gnu.org/software/make/) is used for scripting tasks.
-> See [Makefile](Makefile) for the source of each recipe.
+- Report bugs or suggest updates in [GitHub Issues](https://github.com/contrailcirrus/pycontrails/issues).
+- Review the [contributing guidelines](CONTRIBUTING.md) and contribute improvements in [Pull Requests](https://github.com/contrailcirrus/pycontrails/pulls).
+- Ask questions and discuss implementations in [GitHub Discussions](https://github.com/contrailcirrus/pycontrails/discussions).
 
-After activating the virtual environment, clone the [pycontrails repository](https://github.com/contrailcirrus/pycontrails) onto your machine:
-
-```bash
-$ cd <install-path>
-$ git clone https://github.com/contrailcirrus/pycontrails.git
-$ cd pycontrails
-```
-
-### Setup
-
-#### pip
-
-From the root of the git repository, run setup using:
-
-```bash
-$ make dev-install  # install pip dependencies and pre-commit hooks
-```
-
-### Test
-
-Lint the repository with `flake8`:
-
-```bash
-$ make flake8
-```
-
-Run type checking with `mypy`:
-
-```bash
-$ make mypy
-```
-
-Run unit tests with `pytest`:
-
-```bash
-$ make pytest
-```
-
-Run all code quality checks in local environment:
-
-```bash
-$ make test
-```
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[Apache License 2.0](LICENSE) 
+
+See additional attribution in [NOTICE](NOTICE).
