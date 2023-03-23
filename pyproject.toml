@@ -9,7 +9,7 @@ version = "0.38.0"
 authors = [
     {name = "Breakthrough Energy", email = "py@contrails.org"},
 ]
-description = "Python library for contrail modeling"
+description = "Python library for aviation climate impacts"
 keywords = ["contrails", "climate", "geospatial"]
 # https://pypi.org/classifiers/
 classifiers = [
