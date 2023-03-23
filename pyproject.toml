@@ -10,7 +10,7 @@ authors = [
     {name = "Breakthrough Energy", email = "py@contrails.org"},
 ]
 description = "Python library for aviation climate impacts"
-keywords = ["contrails", "climate", "geospatial"]
+keywords = ["contrails", "climate", "aviation", "geospatial"]
 # https://pypi.org/classifiers/
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -29,7 +29,7 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
-dynamic = ["readme"]
+readme = {file = "README.md", content-type = "text/markdown"}
 
 dependencies = [
     "dask>=2022.3",
@@ -44,9 +44,8 @@ dependencies = [
 [project.urls]
 repository = "https://github.com/contrailcirrus/pycontrails"
 issues = "https://github.com/contrailcirrus/pycontrails/issues"
-
-[tool.setuptools.dynamic]
-readme = {file = "README.md"}
+documentation = "https://py.contrails.org"
+changelog = "https://py.contrails.org/CHANGELOG.html"
 
 [tool.setuptools.packages.find]
 exclude = ["tests*"]  # exclude packages matching these glob patterns (empty by default)
