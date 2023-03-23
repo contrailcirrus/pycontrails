@@ -1,7 +1,6 @@
 # Documentation
 
 [Sphinx](https://www.sphinx-doc.org/en/master/) based documentation for the `pycontrails` Python module.
-Built into a website hosted at [https://py.contrails.earth](https://py.contrails.earth).
 
 ## Requirements
 
@@ -36,7 +35,7 @@ Use *italics*, **bold** and ``monospace`` if needed in any explanations (but not
 
 - When you specify a type, it will automatically use the napolean aliases specified in `conf.py`. i.e.
 
-```
+```python
 Parameters
 ----------
 x : np.ndarray
@@ -45,7 +44,7 @@ x : np.ndarray
 
 - When you specify a type outside of the Parameters, then you have to use the [sphinx cross-referencing syntax](https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#cross-referencing-python-objects) (but you don't need to include the `py:` in front
 
-```
+```python
 """
 
 This is a :func:`pd.to_datetime`    # NO
@@ -58,7 +57,7 @@ and :class:`numpy.datetime64`       # YES
 
 - The *See Also* section is *not a list* and will automatically use the aliases specified in `conf.py`. All of the following work
 
-```
+```python
 """
 See Also
 --------
