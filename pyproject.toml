@@ -9,7 +9,7 @@ version = "0.38.0"
 authors = [
     {name = "Breakthrough Energy", email = "py@contrails.org"},
 ]
-description = "Python library for aviation climate impacts"
+description = "Python library for modeling aviation climate impacts"
 keywords = ["contrails", "climate", "aviation", "geospatial"]
 # https://pypi.org/classifiers/
 classifiers = [
@@ -57,20 +57,6 @@ exclude = ["docs*", "tests*"]
 "pycontrails.models.emissions" = ["static/*.csv"]
 
 [project.optional-dependencies]
-accf = [
-    "climaccf @ git+ssh://git@github.com/contrailcirrus/climaccf.git"
-]
-
-# private dependency
-bada = [
-    "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
-]
-
-# private dependency
-cirium = [
-    "pycontrails-cirium @ git+ssh://git@github.com/contrailcirrus/pycontrails-cirium.git"
-]
-
 dev = [
     "black>=22",
     "black[jupyter]",
