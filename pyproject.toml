@@ -47,18 +47,6 @@ issues = "https://github.com/contrailcirrus/pycontrails/issues"
 documentation = "https://py.contrails.org"
 changelog = "https://py.contrails.org/CHANGELOG.html"
 
-[tool.setuptools]
-license-files = ["LICENSE", "NOTICE"]
-
-# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
-[tool.setuptools.packages.find]
-exclude = ["docs*", "tests*"]
-
-# https://mypy.readthedocs.io/en/stable/installed_packages.html#creating-pep-561-compatible-packages
-[tool.setuptools.package-data]
-"pycontrails" = ["py.typed"]
-"pycontrails.models.emissions" = ["static/*.csv"]
-
 [project.optional-dependencies]
 dev = [
     "black>=22",
@@ -140,6 +128,18 @@ zarr = [
     "zarr>=2.12",
 ]
 
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE"]
+
+# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
+[tool.setuptools.packages.find]
+exclude = ["docs*", "tests*"]
+
+# https://mypy.readthedocs.io/en/stable/installed_packages.html#creating-pep-561-compatible-packages
+[tool.setuptools.package-data]
+"pycontrails" = ["py.typed"]
+"pycontrails.models.emissions" = ["static/*.csv"]
 
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]
@@ -162,7 +162,6 @@ show_error_codes = true
 # implicit_reexport = false
 # strict_equality = true
 # # --strict end
-
 
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
 [tool.black]
