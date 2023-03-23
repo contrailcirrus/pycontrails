@@ -13,11 +13,12 @@ import pathlib
 import pandas as pd
 import support
 
-# monkey patch deprecated methods
-from pycontrails import _deprecated
 from pycontrails.models.cocip import cocip as _cocip
 from pycontrails.models.cocip import contrail_properties
 from pycontrails.physics import constants, geo, thermo, units
+
+# monkey patch deprecated methods
+from tests import _deprecated
 
 geo.segment_angle = _deprecated.segment_angle
 thermo.c_pm = lambda x: constants.c_pd

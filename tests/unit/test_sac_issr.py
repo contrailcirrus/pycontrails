@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from pycontrails import Flight, JetA, MetDataArray, MetDataset, _deprecated
+from pycontrails import Flight, JetA, MetDataArray, MetDataset
 from pycontrails.core.met import originates_from_ecmwf
 from pycontrails.models import sac
 from pycontrails.models.humidity_scaling import (
@@ -18,6 +18,7 @@ from pycontrails.models.issr import ISSR
 from pycontrails.models.pcr import PCR
 from pycontrails.models.sac import SAC
 from pycontrails.physics import constants, thermo, units
+from tests import _deprecated
 
 # TODO: Include tests for all simple models here
 # 1) Downselect met results in copy
