@@ -9,8 +9,8 @@ import pytest
 import xarray as xr
 
 from pycontrails import MetDataset
-from pycontrails._deprecated import tau_cirrus_original
 from pycontrails.models.tau_cirrus import tau_cirrus
+from tests._deprecated import tau_cirrus_original
 
 
 @pytest.mark.parametrize("formula", [tau_cirrus, tau_cirrus_original])
