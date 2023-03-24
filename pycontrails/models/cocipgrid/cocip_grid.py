@@ -608,24 +608,6 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         return out
 
 
-class ContrailGrid(CocipGrid):
-    """ContrailGrid has been renamed CocipGrid."""
-
-    def __init__(
-        self,
-        met: MetDataset,
-        rad: MetDataset,
-        params: dict[str, Any] | None = None,
-        **params_kwargs: Any,
-    ):
-        warnings.warn(
-            "ContrailGrid has been renamed CocipGrid. ContrailGrid will be removed in future versions",
-            DeprecationWarning,
-        )
-
-        super().__init__(met, params=params, **params_kwargs)
-
-
 ################################
 # Functions used by CocipGrid
 ################################
