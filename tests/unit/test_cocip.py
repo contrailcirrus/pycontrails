@@ -814,7 +814,8 @@ def test_cocip_gfs(fl: Flight, met_gfs: MetDataset, rad_gfs: MetDataset) -> None
     assert "ef" in out
     assert np.nansum(out["sac"]) > 0
 
-    # TODO: find a test case where EF > 0 with GFS. Unfortunately seems like GFS really doesn't do ISSR regions
+    # TODO: find a test case where EF > 0 with GFS. Unfortunately seems
+    # like GFS really doesn't do ISSR regions
     # assert np.nansum(out["ef"]) > 0
 
 
@@ -873,7 +874,7 @@ def test_cocip_filtering(fl: Flight, met: MetDataset, rad: MetDataset):
 
 
 def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: MetDataset):
-    """Confirm that EF is filled with 0 for in-domain waypoints and nan for out-of-domain waypoints."""
+    """Confirm that EF is filled with 0 for in-domain and nan for out-of-domain waypoints."""
     # Cherrypick some trajectory that is half in-domain and half out-of-domain
     # And make sure SAC is not satisfied for in-domain waypoints
     fl.update(altitude=np.linspace(11000, 13000, 20))
@@ -892,7 +893,7 @@ def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: Me
     cocip = Cocip(**params)
     out = cocip.eval(fl)
 
-    # Check that ef and contrail_age are 0 for in-domain waypoints and nan for out-of-domain waypoints
+    # Check that ef and contrail_age are 0 for in-domain and nan for out-of-domain waypoints
     np.testing.assert_array_equal(out["sac"], [0] * 8 + [np.nan] * 12)
     np.testing.assert_array_equal(out["ef"], [0] * 8 + [np.nan] * 12)
     np.testing.assert_array_equal(

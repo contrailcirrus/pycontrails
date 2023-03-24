@@ -253,7 +253,7 @@ def test_cocip(
 @pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 @pytest.mark.parametrize("bada_priority", [3, 4])
-def test_contrail_grid(cocip_met_rad: tuple[MetDataset, MetDataset], bada_priority: int):
+def test_cocip_grid(cocip_met_rad: tuple[MetDataset, MetDataset], bada_priority: int):
     """Confirm `CocipGrid` maintains float32 precision."""
     # Keep max_age small to avoid blowing out of bounds
     # And keep dt_integration small to make the evolution interesting
