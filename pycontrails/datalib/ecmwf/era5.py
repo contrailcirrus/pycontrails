@@ -52,15 +52,13 @@ class ERA5(ECMWFAPI):
     ----------
     time : datalib.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
-        Input must be datetime-like or tuple of datetime-like (`datetime`, :class:`pd.Timestamp`,
-        :class:`np.datetime64`)
+        Input must be datetime-like or tuple of datetime-like
+        (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         Datafiles will be downloaded from CDS for each day to reduce requests.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
     variables : datalib.VariableInput
-        Variable name (i.e. "air_temperature", ["air_temperature, relative_humidity"])
-        See https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview
-        for more information.
+        Variable name (i.e. "t", "air_temperature", ["air_temperature, relative_humidity"])
     pressure_levels : datalib.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar)
         Set to -1 for to download surface level parameters.
@@ -68,7 +66,6 @@ class ERA5(ECMWFAPI):
     paths : str | list[str] | pathlib.Path | list[pathlib.Path] | None, optional
         Path to CDS NetCDF files to load manually.
         Can include glob patterns to load specific files.
-        See https://xarray.pydata.org/en/stable/generated/xarray.open_mfdataset.html#xarray-open-mfdataset
         Defaults to None, which looks for files in the :attr:`cachestore` or CDS.
     timestep_freq : str, optional
         Manually set the timestep interval within the bounds defined by :attr:`time`.
@@ -86,15 +83,16 @@ class ERA5(ECMWFAPI):
 
     Notes
     -----
-    - Variable list: https://confluence.ecmwf.int/pages/viewpage.action?pageId=82870405#ERA5:datadocumentation-Parameterlistings
-    - https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview
-    - All accumulated radiative quantities are converted to average instantaneous quantities.
+    ERA5 parameter list:
+    https://confluence.ecmwf.int/pages/viewpage.action?pageId=82870405#ERA5:datadocumentation-Parameterlistings
+
+    All accumulated radiative quantities are converted to average instantaneous quantities.
     See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
     for more information.
 
-    ERA5 datasets include "reanalysis-era5-pressure-levels" and "reanalysis-era5-single-levels" for surface level parameters.
-    See https://confluence.ecmwf.int/pages/viewpage.action?pageId=82870405#ERA5:datadocumentation-Table9
-    for variable list for this dataset.
+    Local ``paths`` are loaded using :func:`xarray.open_mfdataset`.
+    Pass ``xr_kwargs`` inputs to :meth:`open_metdataset` to customize file loading.
+
 
     Examples
     --------
@@ -103,12 +101,21 @@ class ERA5(ECMWFAPI):
     >>> from pycontrails import GCPCacheStore
 
     >>> # Store data files from CDS to local disk (default behavior)
-    >>> era5 = ERA5("2020-06-01 12:00:00", variables=["air_temperature", "relative_humidity"], pressure_levels=[350, 300])
+    >>> era5 = ERA5(
+    ...     "2020-06-01 12:00:00",
+    ...     variables=["air_temperature", "relative_humidity"],
+    ...     pressure_levels=[350, 300]
+    ... )
 
     >>> # cache files to google cloud storage
     >>> gcp_cache = cache.GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="ecmwf")
-    >>> era5 = ERA5("2020-06-01 12:00:00", variables=["air_temperature", "relative_humidity"], pressure_levels=[350, 300], cachestore=gcp_cache)
-    """
+    >>> era5 = ERA5(
+    ...     "2020-06-01 12:00:00",
+    ...     variables=["air_temperature", "relative_humidity"],
+    ...     pressure_levels=[350, 300],
+    ...     cachestore=gcp_cache
+    ... )
+    """  # noqa: E501
 
     __slots__ = (
         "product_type",
@@ -161,7 +168,7 @@ class ERA5(ECMWFAPI):
 
         # process inputs
         if product_type in ["ensemble_mean", "ensemble_spread", "ensemble_members"]:
-            # If using a nonstandard product and default timestep_freq, override default for convenience
+            # If using a nonstandard product and default timestep_freq, override default
             if timestep_freq == "1H":
                 timestep_freq = "3H"
 
@@ -399,7 +406,6 @@ class ERA5(ECMWFAPI):
 
         # convert accumulated radiation values to average instantaneous values
         # set minimum for all values to 0
-        # see https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
 
         # accumulations are 3 hours for ensembles, 1 hour for reanalysis
         if "ensemble" in self.product_type:
