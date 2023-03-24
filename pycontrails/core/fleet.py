@@ -187,11 +187,9 @@ class Fleet(Flight):
         # Verify fuel type is consistent across flights
         if fl.fuel != fuel:
             raise AttributeError(
-                (
-                    f"Fuel type on Flight {flight_id} ({fl.fuel.fuel_name}) "
-                    f"is not inconsistent with previous flights ({fuel.fuel_name}). "
-                    "The `fuel` attributes must be consistent between flights in a Fleet."
-                )
+                f"Fuel type on Flight {flight_id} ({fl.fuel.fuel_name}) "
+                f"is not inconsistent with previous flights ({fuel.fuel_name}). "
+                "The `fuel` attributes must be consistent between flights in a Fleet."
             )
 
         # Verify CRS
@@ -218,8 +216,7 @@ class Fleet(Flight):
             attrs["data_keys"] = set(data_keys)
         elif attrs["data_keys"] != data_keys:
             raise ValueError(
-                f"Inconsistent data keys {attrs['data_keys']} "
-                f" and {data_keys} found among flights."
+                f"Inconsistent data keys {attrs['data_keys']}  and {data_keys} found among flights."
             )
 
     @property

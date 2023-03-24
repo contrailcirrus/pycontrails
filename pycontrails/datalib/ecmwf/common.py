@@ -28,7 +28,8 @@ def rad_accumulated_to_average(mds: met.MetDataset, key: str, dt_accumulation: i
     if key in mds.data and not mds.data[key].attrs.get("_pycontrails_modified", False):
         if not np.all(np.diff(mds.data["time"]) == np.timedelta64(dt_accumulation, "s")):
             raise ValueError(
-                f"Dataset expected to have time interval of {dt_accumulation} seconds when converting accumulated parameters"
+                f"Dataset expected to have time interval of {dt_accumulation} seconds when"
+                " converting accumulated parameters"
             )
 
         mds.data[key] = mds.data[key] / dt_accumulation

@@ -19,12 +19,14 @@ RelativeVorticity = MetVariable(
     ecmwf_id=138,
     grib2_id=(0, 2, 12),
     description=(
-        "Atmosphere upward relative vorticity is the vertical component of the 3D air vorticity vector. "
-        "The vertical component arises from horizontal velocity only. "
-        "'Relative' in this context means the vorticity of the air relative to the rotating solid earth reference frame, i.e. excluding the Earth's own rotation. "
-        "In contrast, the quantity with standard name atmosphere_upward_absolute_vorticity includes the Earth's rotation. "
-        "'Upward' indicates a vector component which is positive when directed upward (negative downward). "
-        "A positive value of atmosphere_upward_relative_vorticity indicates anticlockwise rotation when viewed from above."
+        "Atmosphere upward relative vorticity is the vertical component of the 3D air vorticity"
+        " vector. The vertical component arises from horizontal velocity only. 'Relative' in this"
+        " context means the vorticity of the air relative to the rotating solid earth reference"
+        " frame, i.e. excluding the Earth's own rotation. In contrast, the quantity with standard"
+        " name atmosphere_upward_absolute_vorticity includes the Earth's rotation. 'Upward'"
+        " indicates a vector component which is positive when directed upward (negative downward)."
+        " A positive value of atmosphere_upward_relative_vorticity indicates anticlockwise rotation"
+        " when viewed from above."
     ),
 )
 
@@ -39,13 +41,14 @@ PotentialVorticity = MetVariable(
     grib2_id=(0, 2, 14),
     amip="pvu",
     description=(
-        "Potential vorticity is a measure of the capacity for air to rotate in the atmosphere."
-        "If we ignore the effects of heating and friction, potential vorticity is conserved following an air parcel."
-        "It is used to look for places where large wind storms are likely to originate and develop."
-        "Potential vorticity increases strongly above the tropopause and therefore, it can also be used in studies"
-        "related to the stratosphere and stratosphere-troposphere exchanges. Large wind storms develop when a column"
-        "of air in the atmosphere starts to rotate. Potential vorticity is calculated from the wind, temperature and"
-        "pressure across a column of air in the atmosphere."
+        "Potential vorticity is a measure of the capacity for air to rotate in the atmosphere.If we"
+        " ignore the effects of heating and friction, potential vorticity is conserved following an"
+        " air parcel.It is used to look for places where large wind storms are likely to originate"
+        " and develop.Potential vorticity increases strongly above the tropopause and therefore, it"
+        " can also be used in studiesrelated to the stratosphere and stratosphere-troposphere"
+        " exchanges. Large wind storms develop when a columnof air in the atmosphere starts to"
+        " rotate. Potential vorticity is calculated from the wind, temperature andpressure across a"
+        " column of air in the atmosphere."
     ),
 )
 
@@ -59,7 +62,8 @@ CloudAreaFractionInLayer = MetVariable(
     units="[0 - 1]",
     amip="cl",
     description=(
-        "This parameter is the proportion of a grid box covered by cloud (liquid or ice) at a specific pressure level."
+        "This parameter is the proportion of a grid box covered by cloud (liquid or ice) at a"
+        " specific pressure level."
     ),
 )
 
@@ -72,9 +76,10 @@ SpecificCloudLiquidWaterContent = MetVariable(
     ecmwf_id=246,
     grib2_id=(0, 1, 83),
     description=(
-        "This parameter is the mass of cloud liquid water droplets per kilogram of the total mass of moist air. "
-        "The 'total mass of moist air' is the sum of the dry air, water vapour, cloud liquid, cloud ice, rain and falling snow. "
-        "This parameter represents the average value for a grid box."
+        "This parameter is the mass of cloud liquid water droplets per kilogram of the total mass"
+        " of moist air. The 'total mass of moist air' is the sum of the dry air, water vapour,"
+        " cloud liquid, cloud ice, rain and falling snow. This parameter represents the average"
+        " value for a grid box."
     ),
 )
 
@@ -88,9 +93,10 @@ SpecificCloudIceWaterContent = MetVariable(
     ecmwf_id=247,
     grib2_id=(0, 1, 84),
     description=(
-        "This parameter is the mass of cloud ice particles per kilogram of the total mass of moist air. "
-        "The 'total mass of moist air' is the sum of the dry air, water vapour, cloud liquid, cloud ice, rain and falling snow. "
-        "This parameter represents the average value for a grid box."
+        "This parameter is the mass of cloud ice particles per kilogram of the total mass of moist"
+        " air. The 'total mass of moist air' is the sum of the dry air, water vapour, cloud liquid,"
+        " cloud ice, rain and falling snow. This parameter represents the average value for a grid"
+        " box."
     ),
 )
 
@@ -104,11 +110,14 @@ RelativeHumidity = MetVariable(
     ecmwf_id=met_var.RelativeHumidity.ecmwf_id,
     grib2_id=met_var.RelativeHumidity.grib2_id,
     description=(
-        "This parameter is the water vapour pressure as a percentage of the value at which the air becomes saturated "
-        "(the point at which water vapour begins to condense into liquid water or deposition into ice)."
+        "This parameter is the water vapour pressure as a percentage of the value at which the air"
+        " becomes saturated "
+        "(the point at which water vapour begins to condense into liquid water or deposition into"
+        " ice)."
         "For temperatures over 0°C (273.15 K) it is calculated for saturation over water. "
         "At temperatures below -23°C it is calculated for saturation over ice. "
-        "Between -23°C and 0°C this parameter is calculated by interpolating between the ice and water values using a quadratic function."
+        "Between -23°C and 0°C this parameter is calculated by interpolating between the ice and"
+        " water values using a quadratic function."
         "See https://www.ecmwf.int/sites/default/files/elibrary/2016/17117-part-iv-physical-processes.pdf#subsection.7.4.2"
     ),
 )
@@ -121,7 +130,7 @@ TOAIncidentSolarRadiation = MetVariable(
     level_type="nominalTop",
     ecmwf_id=212,
     grib2_id=(192, 128, 212),  # reference ECMWF
-    description=("Top of atmosphere incident solar radiation. Accumulated field."),
+    description="Top of atmosphere incident solar radiation. Accumulated field.",
 )
 
 TopNetSolarRadiation = MetVariable(
@@ -137,7 +146,8 @@ TopNetSolarRadiation = MetVariable(
         "minus the outgoing solar radiation at the top of the atmosphere. "
         "It is the amount of radiation passing through a horizontal plane. "
         "The incoming solar radiation is the amount received from the Sun. "
-        "The outgoing solar radiation is the amount reflected and scattered by the Earth's atmosphere and surface"
+        "The outgoing solar radiation is the amount reflected and scattered by the Earth's"
+        " atmosphere and surface"
         "See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf"
     ),
 )
@@ -152,7 +162,8 @@ TopNetThermalRadiation = MetVariable(
     grib2_id=(0, 5, 5),
     description=(
         "The thermal (also known as terrestrial or longwave) "
-        "radiation emitted to space at the top of the atmosphere is commonly known as the Outgoing Longwave Radiation (OLR). "
+        "radiation emitted to space at the top of the atmosphere is commonly known as the Outgoing"
+        " Longwave Radiation (OLR). "
         "The top net thermal radiation (this parameter) is equal to the negative of OLR."
         "See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf"
     ),
@@ -167,8 +178,9 @@ SurfaceSolarDownwardRadiation = MetVariable(
     ecmwf_id=169,
     grib2_id=(0, 4, 7),
     description=(
-        "This parameter is the amount of solar radiation (also known as shortwave radiation) that reaches a horizontal "
-        "plane at the surface of the Earth. This parameter comprises both direct and diffuse solar radiation."
+        "This parameter is the amount of solar radiation (also known as shortwave radiation) that"
+        " reaches a horizontal plane at the surface of the Earth. This parameter comprises both"
+        " direct and diffuse solar radiation."
     ),
 )
 
@@ -183,7 +195,8 @@ CloudAreaFraction = MetVariable(
     units="[0 - 1]",
     amip="clt",
     description=(
-        "This parameter is the proportion of a grid box covered by cloud (liquid or ice) for a whole atmosphere column."
+        "This parameter is the proportion of a grid box covered by cloud (liquid or ice) for a"
+        " whole atmosphere column."
     ),
 )
 

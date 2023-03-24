@@ -180,7 +180,10 @@ class GFSForecast(datalib.MetDataSource):
 
     def __repr__(self) -> str:
         base = super().__repr__()
-        return f"{base}\n\tForecast time: {getattr(self, 'forecast_time', '')}\n\tSteps: {getattr(self, 'steps', '')}"
+        return (
+            f"{base}\n\tForecast time: {getattr(self, 'forecast_time', '')}\n\tSteps:"
+            f" {getattr(self, 'steps', '')}"
+        )
 
     @property
     def supported_pressure_levels(self) -> list[int]:
@@ -444,10 +447,8 @@ class GFSForecast(datalib.MetDataSource):
                 # make sure this isn't the only time in the dataset
                 if np.all(mds.data["time"].values == forecast_time):
                     raise RuntimeError(
-                        (
-                            f"GFS datasets with data variable {key} must have at least one timestep after the forecast time "
-                            f"to estimate the value of {key} at step 0"
-                        )
+                        f"GFS datasets with data variable {key} must have at least one timestep"
+                        f" after the forecast time to estimate the value of {key} at step 0"
                     )
 
                 # set the 0th value of the data to the 1st value
@@ -535,7 +536,8 @@ class GFSForecast(datalib.MetDataSource):
                 TOAUpwardLongwaveRadiation,
             ]:
                 LOG.debug(
-                    "Radiation data is not provided for the 0th step in GFS. Setting to np.nan using Visibility variable"
+                    "Radiation data is not provided for the 0th step in GFS. Setting to np.nan"
+                    " using Visibility variable"
                 )
                 v = Visibility
             else:

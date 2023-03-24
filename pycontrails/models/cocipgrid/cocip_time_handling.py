@@ -66,7 +66,7 @@ class CocipTimeHandlingMixin:
         if np.any(ratios != ratios.astype(int)):
             raise ValueError(
                 f"met_slice_dt ({met_slice_dt}) must be a multiple "
-                f"of the time difference between met time steps "
+                "of the time difference between met time steps "
                 f"({met_time_diff})"
             )
 
@@ -161,7 +161,7 @@ class CocipTimeHandlingMixin:
         except ModuleNotFoundError as e:
             raise ModuleNotFoundError(
                 f"Running model {type(self).__name__}  with parameter "
-                f"show_progress=True requires the 'tqdm' module, which can be "
+                "show_progress=True requires the 'tqdm' module, which can be "
                 "installed with 'pip install tqdm'. "
                 "Alternatively, set model parameter 'show_progress=False'."
             ) from e

@@ -21,7 +21,8 @@ TotalCloudCoverIsobaric = MetVariable(
     grib2_id=(0, 6, 1),
     units="%",
     description=(
-        "This parameter is the percentage of a grid box covered by cloud (liquid or ice) at a specific pressure level."
+        "This parameter is the percentage of a grid box covered by cloud (liquid or ice) at a"
+        " specific pressure level."
     ),
 )
 
@@ -34,7 +35,8 @@ CloudIceWaterMixingRatio = MetVariable(
     ecmwf_id=260019,
     grib2_id=(0, 1, 23),
     description=(
-        "This parameter is the mass of cloud ice particles per kilogram of the total mass of dry air. "
+        "This parameter is the mass of cloud ice particles per kilogram of the total mass of dry"
+        " air. "
     ),
 )
 
@@ -47,7 +49,8 @@ TOAUpwardShortwaveRadiation = MetVariable(
     level_type="nominalTop",
     grib2_id=(0, 4, 193),
     description=(
-        "This parameter is the outgoing shortwave (solar) radiation at the nominal top of the atmosphere."
+        "This parameter is the outgoing shortwave (solar) radiation at the nominal top of the"
+        " atmosphere."
     ),
 )
 
@@ -59,7 +62,8 @@ TOAUpwardLongwaveRadiation = MetVariable(
     level_type="nominalTop",
     grib2_id=(0, 5, 193),
     description=(
-        "This parameter is the outgoing longwave (thermal) radiation at the nominal top of the atmosphere."
+        "This parameter is the outgoing longwave (thermal) radiation at the nominal top of the"
+        " atmosphere."
     ),
 )
 
@@ -70,7 +74,7 @@ Visibility = MetVariable(
     units="m",
     level_type="surface",
     grib2_id=(0, 19, 0),
-    description=("This parameter is the visibility at the ground or water surface, in meters."),
+    description="This parameter is the visibility at the ground or water surface, in meters.",
 )
 
 

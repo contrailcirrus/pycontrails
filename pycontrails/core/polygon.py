@@ -425,7 +425,7 @@ def _make_multipolygon_valid(mp: shapely.MultiPolygon, convex_hull: bool) -> sha
 
     warnings.warn(
         f"Could not make multipolygon valid after {n_attemps} attempts. "
-        f"According to shapely, the multipolygon is invalid because: "
+        "According to shapely, the multipolygon is invalid because: "
         f"{shapely.validation.explain_validity(mp)}"
     )
     return mp

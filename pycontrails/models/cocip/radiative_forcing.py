@@ -556,7 +556,8 @@ def longwave_radiative_forcing(
     else:
         if not isinstance(r_eff_um, np.ndarray) or r_eff_um.shape != olr.shape:
             raise ValueError(
-                f"User provided effective radius (`r_eff_um`) must have the same shape as `olr` {olr.shape}"
+                "User provided effective radius (`r_eff_um`) must have the same shape as `olr`"
+                f" {olr.shape}"
             )
 
         r_eff_um_h = r_eff_um[habit_weight_idxs[0]]
@@ -672,7 +673,8 @@ def shortwave_radiative_forcing(
     else:
         if not isinstance(r_eff_um, np.ndarray) or r_eff_um.shape != sdr.shape:
             raise ValueError(
-                f"User provided effective radius (`r_eff_um`) must have the same shape as `sdr` {sdr.shape}"
+                "User provided effective radius (`r_eff_um`) must have the same shape as `sdr`"
+                f" {sdr.shape}"
             )
 
         r_eff_um_h = r_eff_um[habit_weight_idxs[0]]

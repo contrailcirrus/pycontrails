@@ -661,7 +661,8 @@ def _boost_spatial_resolution(
 
     if (d_lon <= grid_res) & (d_lat <= grid_res):
         raise ArithmeticError(
-            'Error: Resolution of existing longitude or latitude is already higher than "grid_res". '
+            "Error: Resolution of existing longitude or latitude is already higher than"
+            ' "grid_res". '
         )
 
     if ~is_whole_number:

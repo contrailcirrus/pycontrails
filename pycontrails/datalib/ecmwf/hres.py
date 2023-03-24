@@ -262,7 +262,10 @@ class HRES(ECMWFAPI):
 
     def __repr__(self) -> str:
         base = super().__repr__()
-        return f"{base}\n\tForecast time: {getattr(self, 'forecast_time', '')}\n\tSteps: {getattr(self, 'steps', '')}"
+        return (
+            f"{base}\n\tForecast time: {getattr(self, 'forecast_time', '')}\n\tSteps:"
+            f" {getattr(self, 'steps', '')}"
+        )
 
     @classmethod
     def create_synoptic_time_ranges(
@@ -510,7 +513,9 @@ class HRES(ECMWFAPI):
         step = self.step_offset + self.timesteps.index(t)
 
         # single level or pressure level
-        suffix = f"hres{'sl' if self.pressure_levels == [-1] else 'pl'}{self.grid}{self.stream}{self.field_type}"
+        suffix = (
+            f"hres{'sl' if self.pressure_levels == [-1] else 'pl'}{self.grid}{self.stream}{self.field_type}"
+        )
 
         # return cache path
         return self.cachestore.path(f"{datestr}-{step}-{suffix}.nc")
@@ -613,10 +618,8 @@ class HRES(ECMWFAPI):
             if key in mds.data:
                 if len(mds.data["time"]) < 2:
                     raise RuntimeError(
-                        (
-                            f"HRES datasets with data variable {key} must have at least two timesteps to "
-                            f"calculate the average instantaneous value of {key}"
-                        )
+                        f"HRES datasets with data variable {key} must have at least two timesteps"
+                        f" to calculate the average instantaneous value of {key}"
                     )
 
                 # take the difference between time slices
@@ -674,7 +677,8 @@ class HRES(ECMWFAPI):
             # note the "time" coordinate here is the HRES forecast_time
             elif self.forecast_time != ds["time"].values.astype("datetime64[s]").tolist():
                 raise ValueError(
-                    f"HRES.forecast_time {self.forecast_time} is not the same forecast time listed in file"
+                    f"HRES.forecast_time {self.forecast_time} is not the same forecast time listed"
+                    " in file"
                 )
 
             ds = self._preprocess_hres_dataset(ds)

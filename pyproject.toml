@@ -166,6 +166,7 @@ show_error_codes = true
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
 [tool.black]
 line-length = 100
+preview = true
 
 # https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#isort
 [tool.isort]

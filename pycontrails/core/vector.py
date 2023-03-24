@@ -854,7 +854,7 @@ class VectorDataset:
                 continue
             if raise_error:
                 raise KeyError(
-                    f"{type(self).__name__} instance does not " f"contain data or attr '{v}'"
+                    f"{type(self).__name__} instance does not contain data or attr '{v}'"
                 )
             return False
 

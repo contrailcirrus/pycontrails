@@ -196,7 +196,7 @@ class Model(ABC):
 
     def __repr__(self) -> str:
         params = getattr(self, "params", {})
-        return f"{type(self).__name__} model\n\t" f"{self.long_name}\n\t" f"Params: {params}\n"
+        return f"{type(self).__name__} model\n\t{self.long_name}\n\tParams: {params}\n"
 
     @property
     @abstractmethod

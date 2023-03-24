@@ -97,7 +97,7 @@ class IFS(datalib.MetDataSource):
 
     def __repr__(self) -> str:
         base = super().__repr__()
-        return f"{base}\n\t" f"Forecast date: {self.forecast_date}"
+        return f"{base}\n\tForecast date: {self.forecast_date}"
 
     @property
     def supported_variables(self) -> list[met.MetVariable]:
@@ -243,10 +243,12 @@ class IFS(datalib.MetDataSource):
 
     def _calc_geopotential(self, ds: xr.Dataset) -> xr.DataArray:
         warnings.warn(
-            "The geopotential calculation implementation may assume the underlying grid "
-            "starts at ground level. This may not be the case for IFS data. It may be "
-            "better to use geometric height (altitude) instead of geopotential for downstream "
-            "applications (tau cirrus, etc.).",
+            (
+                "The geopotential calculation implementation may assume the underlying grid "
+                "starts at ground level. This may not be the case for IFS data. It may be "
+                "better to use geometric height (altitude) instead of geopotential for downstream "
+                "applications (tau cirrus, etc.)."
+            ),
             UserWarning,
         )
 

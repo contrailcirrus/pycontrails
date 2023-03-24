@@ -345,8 +345,7 @@ class MetDataSource(abc.ABC):
             Unique hash for met instance (sha1)
         """
         hashstr = (
-            f"{type(self).__name__}{self.timesteps}"
-            f"{self.variable_shortnames}{self.pressure_levels}"
+            f"{type(self).__name__}{self.timesteps}{self.variable_shortnames}{self.pressure_levels}"
         )
         return hashlib.sha1(bytes(hashstr, "utf-8")).hexdigest()
 

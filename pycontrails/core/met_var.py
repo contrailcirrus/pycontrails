@@ -156,7 +156,7 @@ AirTemperature = MetVariable(
     grib2_id=(0, 0, 0),
     amip="ta",
     description=(
-        "Air temperature is the bulk temperature of the air, " "not the surface (skin) temperature."
+        "Air temperature is the bulk temperature of the air, not the surface (skin) temperature."
     ),
 )
 

@@ -138,90 +138,97 @@ def flight_statistics(flight: Flight, contrail: pd.DataFrame | None) -> pd.Serie
         ),
         # Initial contrail length
         "Short-lived contrails": has_short_lived_contrails,
-        "Initial contrail length (km)": np.nansum(flight["segment_length"][flight["sac"] == 1])
-        / 1000
-        if has_short_lived_contrails
-        else 0,
+        "Initial contrail length (km)": (
+            np.nansum(flight["segment_length"][flight["sac"] == 1]) / 1000
+            if has_short_lived_contrails
+            else 0
+        ),
         # Persistent contrail properties
         "Persistent contrails": has_persistent_contrails,
         "First contrail wypt": contrail["time"].min() if has_persistent_contrails else "NaT",  # type: ignore
         "Last contrail wypt": contrail["time"].max() if has_persistent_contrails else "NaT",  # type: ignore
         "RHi initial, Mean": np.nanmean(flight["rhi_1"]) if has_persistent_contrails else 0,
         "RHi initial, Stdev": np.nanstd(flight["rhi_1"]) if has_persistent_contrails else 0,
-        "RHi lifetime, Mean": _get_mean_spatiotemporal_value(contrail, "rhi")
-        if has_persistent_contrails
-        else 0,
-        "Temp initial, Mean (K)": np.nanmean(flight["air_temperature_1"])
-        if has_persistent_contrails
-        else 0,
-        "Temp initial, Stdev (K)": np.nanstd(flight["air_temperature_1"])
-        if has_persistent_contrails
-        else 0,
-        "Temp SAC, Mean (K)": np.nanmean(flight["T_critical_sac"])
-        if has_persistent_contrails
-        else 0,  # TODO: bugs to be resolved?
-        "Temp SAC, Stdev (K)": np.nanstd(flight["T_critical_sac"])
-        if has_persistent_contrails
-        else 0,  # TODO: bugs to be resolved?
-        "Persistent contrail length (km)": np.nansum(
-            flight["segment_length"][flight["persistent_1"] == 1]
-        )
-        / 1000
-        if has_persistent_contrails
-        else 0,
-        "Contrail altitude initial, Mean (ft)": units.m_to_ft(np.nanmean(flight["altitude_1"]))
-        if has_persistent_contrails
-        else 0,
-        "Contrail altitude lifetime, Mean (ft)": units.m_to_ft(
-            _get_mean_spatiotemporal_value(contrail, "altitude")
-        )
-        if has_persistent_contrails
-        else 0,
-        "Contrail age, Mean (h)": _get_mean_contrail_age(contrail)
-        if has_persistent_contrails
-        else 0,
-        "Contrail age, Max (h)": np.nanmax(contrail["age_hours"])  # type: ignore
-        if has_persistent_contrails
-        else 0,
-        "Ice number initial, Mean (m-1)": np.nanmean(flight["n_ice_per_m_1"])
-        if has_persistent_contrails
-        else 0,
-        "Ice number initial, Stdev (m-1)": np.nanstd(flight["n_ice_per_m_1"])
-        if has_persistent_contrails
-        else 0,
-        "Ice number lifetime, Mean (m-1)": _get_mean_spatiotemporal_value(contrail, "n_ice_per_m")
-        if has_persistent_contrails
-        else 0,
-        "Ice vol mean radius, Mean (um)": _get_mean_spatiotemporal_value(contrail, "r_ice_vol")
-        * 1e6
-        if has_persistent_contrails
-        else 0,
-        "Tau contrail, Mean": _get_mean_spatiotemporal_value(contrail, "tau_contrail")
-        if has_persistent_contrails
-        else 0,
-        "Tau cirrus, Mean": _get_mean_spatiotemporal_value(contrail, "tau_cirrus")
-        if has_persistent_contrails
-        else 0,
+        "RHi lifetime, Mean": (
+            _get_mean_spatiotemporal_value(contrail, "rhi") if has_persistent_contrails else 0
+        ),
+        "Temp initial, Mean (K)": (
+            np.nanmean(flight["air_temperature_1"]) if has_persistent_contrails else 0
+        ),
+        "Temp initial, Stdev (K)": (
+            np.nanstd(flight["air_temperature_1"]) if has_persistent_contrails else 0
+        ),
+        "Temp SAC, Mean (K)": (
+            np.nanmean(flight["T_critical_sac"]) if has_persistent_contrails else 0
+        ),  # TODO: bugs to be resolved?
+        "Temp SAC, Stdev (K)": (
+            np.nanstd(flight["T_critical_sac"]) if has_persistent_contrails else 0
+        ),  # TODO: bugs to be resolved?
+        "Persistent contrail length (km)": (
+            np.nansum(flight["segment_length"][flight["persistent_1"] == 1]) / 1000
+            if has_persistent_contrails
+            else 0
+        ),
+        "Contrail altitude initial, Mean (ft)": (
+            units.m_to_ft(np.nanmean(flight["altitude_1"])) if has_persistent_contrails else 0
+        ),
+        "Contrail altitude lifetime, Mean (ft)": (
+            units.m_to_ft(_get_mean_spatiotemporal_value(contrail, "altitude"))
+            if has_persistent_contrails
+            else 0
+        ),
+        "Contrail age, Mean (h)": (
+            _get_mean_contrail_age(contrail) if has_persistent_contrails else 0
+        ),
+        "Contrail age, Max (h)": (
+            np.nanmax(contrail["age_hours"]) if has_persistent_contrails else 0  # type: ignore
+        ),
+        "Ice number initial, Mean (m-1)": (
+            np.nanmean(flight["n_ice_per_m_1"]) if has_persistent_contrails else 0
+        ),
+        "Ice number initial, Stdev (m-1)": (
+            np.nanstd(flight["n_ice_per_m_1"]) if has_persistent_contrails else 0
+        ),
+        "Ice number lifetime, Mean (m-1)": (
+            _get_mean_spatiotemporal_value(contrail, "n_ice_per_m")
+            if has_persistent_contrails
+            else 0
+        ),
+        "Ice vol mean radius, Mean (um)": (
+            _get_mean_spatiotemporal_value(contrail, "r_ice_vol") * 1e6
+            if has_persistent_contrails
+            else 0
+        ),
+        "Tau contrail, Mean": (
+            _get_mean_spatiotemporal_value(contrail, "tau_contrail")
+            if has_persistent_contrails
+            else 0
+        ),
+        "Tau cirrus, Mean": (
+            _get_mean_spatiotemporal_value(contrail, "tau_cirrus")
+            if has_persistent_contrails
+            else 0
+        ),
         # Radiative properties
-        "RF SW (W m-2)": _get_mean_spatiotemporal_value(contrail, "rf_sw")
-        if has_persistent_contrails
-        else 0,
-        "RF LW (W m-2)": _get_mean_spatiotemporal_value(contrail, "rf_lw")
-        if has_persistent_contrails
-        else 0,
-        "RF Net (W m-2)": _get_mean_spatiotemporal_value(contrail, "rf_net")
-        if has_persistent_contrails
-        else 0,
+        "RF SW (W m-2)": (
+            _get_mean_spatiotemporal_value(contrail, "rf_sw") if has_persistent_contrails else 0
+        ),
+        "RF LW (W m-2)": (
+            _get_mean_spatiotemporal_value(contrail, "rf_lw") if has_persistent_contrails else 0
+        ),
+        "RF Net (W m-2)": (
+            _get_mean_spatiotemporal_value(contrail, "rf_net") if has_persistent_contrails else 0
+        ),
         "Total contrail EF (J)": np.nansum(contrail["ef"]) if has_persistent_contrails else 0,  # type: ignore
-        "SDR mean (W m-2)": _get_mean_spatiotemporal_value(contrail, "sdr")
-        if has_persistent_contrails
-        else 0,
-        "RSR mean (W m-2)": _get_mean_spatiotemporal_value(contrail, "rsr")
-        if has_persistent_contrails
-        else 0,
-        "OLR mean (W m-2)": _get_mean_spatiotemporal_value(contrail, "olr")
-        if has_persistent_contrails
-        else 0,
+        "SDR mean (W m-2)": (
+            _get_mean_spatiotemporal_value(contrail, "sdr") if has_persistent_contrails else 0
+        ),
+        "RSR mean (W m-2)": (
+            _get_mean_spatiotemporal_value(contrail, "rsr") if has_persistent_contrails else 0
+        ),
+        "OLR mean (W m-2)": (
+            _get_mean_spatiotemporal_value(contrail, "olr") if has_persistent_contrails else 0
+        ),
     }
 
     return pd.Series(flight_stats)

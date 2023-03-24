@@ -169,13 +169,11 @@ class Emissions(Model):
         # other models deal with possible parameter ambiguity.
         if self.source.fuel != self.params["fuel"]:
             raise AttributeError(
-                (
-                    f"Fuel attribute on Flight ({self.source.fuel.fuel_name}) "
-                    "is not the same as Emissions model parameter "
-                    f"({self.params['fuel'].fuel_name}). The 'fuel' model parameter "
-                    "must be set on init to assemble the nvPM emissions profiles "
-                    "for each engine type."
-                )
+                f"Fuel attribute on Flight ({self.source.fuel.fuel_name}) "
+                "is not the same as Emissions model parameter "
+                f"({self.params['fuel'].fuel_name}). The 'fuel' model parameter "
+                "must be set on init to assemble the nvPM emissions profiles "
+                "for each engine type."
             )
 
         # Ensure that flight has the required variables defined as attrs or columns
