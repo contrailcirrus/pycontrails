@@ -831,30 +831,33 @@ class MetDataset(MetBase):
             met_key: str | None = None
 
             # input is a MetVariable or str
-            if isinstance(variable, (MetVariable, str)):
-                key = variable.standard_name if isinstance(variable, MetVariable) else variable
-                if key in self:
+            if isinstance(variable, MetVariable):
+                if (key := variable.standard_name) in self:
                     met_key = key
+            elif isinstance(variable, str):
+                if variable in self:
+                    met_key = variable
 
             # otherwise, assume input is an sequence
             # Sequence[MetVariable] means that any variable in list will work
             else:
-                for option in variable:
-                    if option.standard_name in self:
-                        met_key = option.standard_name
+                for v in variable:
+                    if (key := v.standard_name) in self:
+                        met_key = key
                         break
 
             if met_key is None:
-                if raise_error:
-                    if isinstance(variable, list):
-                        missing_key = [v.standard_name for v in variable]
-                        raise KeyError(f"Dataset does not contain one of variables `{missing_key}`")
-                    missing_key = (
-                        variable.standard_name if isinstance(variable, MetVariable) else variable
-                    )
-                    raise KeyError(f"Dataset does not contain variable `{missing_key}`")
+                if not raise_error:
+                    return []
 
-                return []
+                if isinstance(variable, MetVariable):
+                    raise KeyError(f"Dataset does not contain variable `{variable.standard_name}`")
+                if isinstance(variable, list):
+                    raise KeyError(
+                        "Dataset does not contain one of variables "
+                        f"`{[v.standard_name for v in variable]}`"
+                    )
+                raise KeyError(f"Dataset does not contain variable `{variable}`")
 
             met_keys.append(met_key)
 
