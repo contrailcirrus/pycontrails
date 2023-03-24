@@ -10,7 +10,6 @@ import numpy as np
 import numpy.typing as npt
 
 from pycontrails.models.cocip import radiative_heating
-from pycontrails.models.cocip.radiative_forcing import RadiativeHeatingConstants
 from pycontrails.physics import constants, thermo, units
 
 logger = logging.getLogger(__name__)

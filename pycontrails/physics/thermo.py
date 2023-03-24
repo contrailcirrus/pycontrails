@@ -160,13 +160,13 @@ def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
     - :cite:`sonntag1994`
     """
     # Buck (Buck Research Manual 1996)
-    # return 6.1121 * np.exp((18.678 * (T - 273.15) / 234.5) * (T - 273.15) / (257.14 + (T - 273.15)))
+    # 6.1121 * np.exp((18.678 * (T - 273.15) / 234.5) * (T - 273.15) / (257.14 + (T - 273.15)))
 
     # Magnus Tetens (Murray, 1967)
-    # return 6.1078 * np.exp(17.269388 * (T - 273.16) / (T – 35.86))
+    # 6.1078 * np.exp(17.269388 * (T - 273.16) / (T – 35.86))
 
     # Guide to Meteorological Instruments and Methods of Observation (CIMO Guide) (WMO, 2008)
-    # return 6.112 * np.exp(17.62 * (T - 273.15) / (243.12 + T - 273.15))
+    # 6.112 * np.exp(17.62 * (T - 273.15) / (243.12 + T - 273.15))
 
     # Sonntag (1994) is used in CoCiP
 

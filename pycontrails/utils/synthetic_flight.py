@@ -102,7 +102,8 @@ class SyntheticFlight:
             flights will have coordinates bounded by the extreme values in this dictionary.
         aircraft_type : str
             A flight type, assumed to exist in the BADA3 or BADA4 dataset.
-            If None provided, a random aircraft type will be chosen from ``SAMPLE_AIRCRAFT`` on every call.
+            If None provided, a random aircraft type will be chosen from
+            ``SAMPLE_AIRCRAFT`` on every call.
         bada3_path : str | pathlib.Path, optional
             A path to a local BADA3 data source.
             Defaults to None.

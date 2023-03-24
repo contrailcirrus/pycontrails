@@ -1,15 +1,15 @@
 """
 Radiative heating of contrail cirrus.
 
-Contrails absorb incoming solar radiation and outgoing longwave radiation, causing it to heat up. 
+Contrails absorb incoming solar radiation and outgoing longwave radiation, causing it to heat up.
 
-1. The additional heating energy drives a local updraft 
-   (but this is negligible and not included in CoCiP); 
-2. The  differential heating rate drives local turbulence. 
-   As radiative emission from the contrail is limited by its low temperature, 
+1. The additional heating energy drives a local updraft
+   (but this is negligible and not included in CoCiP);
+2. The  differential heating rate drives local turbulence.
+   As radiative emission from the contrail is limited by its low temperature,
    the net result is deposition of radiative energy in the contrail.
 
-These equations are provided by Ulrich Schumann and not included in any scientific publications, 
+These equations are provided by Ulrich Schumann and not included in any scientific publications,
 The scientific rationale of including these effects can be found in the references below:
 
 References
@@ -21,15 +21,11 @@ References
 
 from __future__ import annotations
 
-import logging
-import warnings
-from typing import Any, TypeVar
-
 import numpy as np
 import numpy.typing as npt
 
 from pycontrails.models.cocip.radiative_forcing import RadiativeHeatingConstants
-from pycontrails.physics import constants, thermo, units
+from pycontrails.physics import constants
 
 RAD_HEAT = RadiativeHeatingConstants()
 

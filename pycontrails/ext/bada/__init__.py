@@ -1,8 +1,8 @@
 """
-Interface to `pycontrails-bada` extension.
+Interface to ``pycontrails-bada`` extension.
 
-Requires data files obtained with a 
-`BADA License <https://www.eurocontrol.int/model/bada> from Eurocontrol.
+Requires data files obtained with a
+`BADA License <https://www.eurocontrol.int/model/bada>`_ from Eurocontrol.
 """
 
 from __future__ import annotations
