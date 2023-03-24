@@ -54,8 +54,8 @@ def haversine(lons0: ArrayLike, lats0: ArrayLike, lons1: ArrayLike, lats1: Array
     d_lons = units.degrees_to_radians(lons1) - units.degrees_to_radians(lons0)
     d_lats = lats1_rad - lats0_rad
 
-    a = (np.sin(d_lats / 2)) ** 2 + cos_lats0 * cos_lats1 * ((np.sin(d_lons / 2)) ** 2)
-    cc = 2 * np.arctan2(a**0.5, (1 - a) ** 0.5)
+    a = (np.sin(d_lats / 2.0)) ** 2 + cos_lats0 * cos_lats1 * ((np.sin(d_lons / 2.0)) ** 2)
+    cc = 2.0 * np.arctan2(a**0.5, (1.0 - a) ** 0.5)
     return constants.radius_earth * cc
 
 
@@ -120,12 +120,13 @@ def azimuth_to_direction(
 
     num = cos_lat
     denom = tan_az
-    mag = np.sqrt(num * num + denom * denom)
+    mag = np.sqrt(num**2 + denom**2)
 
     # For azimuth in [0, 90) and (270, 360], sin_a positive
-    sign_sin_a = np.where((azimuth - 90) % 360 - 180 >= 0, 1, -1)
+    sign_sin_a = np.where((azimuth - 90.0) % 360.0 - 180.0 >= 0.0, 1.0, -1.0)
+
     # For azimuth in [0, 180), cos_a positive
-    sign_cos_a = np.where(azimuth % 360 - 180 <= 0, 1, -1)
+    sign_cos_a = np.where(azimuth % 360.0 - 180.0 <= 0.0, 1.0, -1.0)
 
     sin_a = sign_sin_a * np.abs(num) / mag
     cos_a = sign_cos_a * np.abs(denom) / mag
@@ -166,7 +167,7 @@ def longitudinal_angle(
     denom = np.cos(lats0) * np.tan(lats1) - np.sin(lats0) * np.cos(d_lon)
     mag = np.sqrt(num**2 + denom**2)
 
-    where = mag > 0
+    where = mag > 0.0
     out = np.full_like(mag, np.nan)
 
     sin_a = np.divide(denom, mag, out=out.copy(), where=where)
@@ -302,7 +303,7 @@ def forward_azimuth(
         cos_dist_ratio - sin_lats * np.sin(dest_lats_rad),
     )
     dest_lons = lons + units.radians_to_degrees(delta_lons_rad)
-    dest_lons = (dest_lons + 180) % 360 - 180
+    dest_lons = (dest_lons + 180.0) % 360.0 - 180.0
 
     return dest_lons, dest_lats
 
@@ -342,7 +343,7 @@ def solar_direct_radiation(
 
     # Use longitude and latitude to determine the dtype
     dtype = np.result_type(longitude, latitude)
-    theta_rad = theta_rad.astype(dtype)
+    theta_rad = theta_rad.astype(dtype, copy=False)
 
     _solar_constant = solar_constant(theta_rad)
     cos_sza = cosine_solar_zenith_angle(longitude, latitude, time, theta_rad)
@@ -458,7 +459,7 @@ def orbital_position(time: ArrayLike) -> ArrayLike:
         Orbital position of Earth, [:math:`rad`]
     """
     dt_day = days_since_reference_year(time)
-    theta = 360 * (dt_day / 365.25)
+    theta = 360.0 * (dt_day / 365.25)
     return units.degrees_to_radians(theta)
 
 
@@ -485,7 +486,7 @@ def days_since_reference_year(time: ArrayLike, ref_year: int = 2000) -> ArrayLik
     date_start = np.datetime64(ref_year - 1970, "Y")
     dt_day = (time - date_start) / np.timedelta64(1, "D")
 
-    if np.any(dt_day < 0):
+    if np.any(dt_day < 0.0):
         raise RuntimeError(
             f"Reference year {ref_year} is greater than the time of one or more waypoints."
         )
@@ -644,11 +645,9 @@ def advect_longitude(
     ArrayLike
         New longitude value, [:math:`\deg`]
     """
-    # Convert dt to seconds value
     # Use the same dtype as longitude, latitude, and u_wind
-    dt_s = dt / np.timedelta64(1, "s")
     dtype = np.result_type(longitude, latitude, u_wind)
-    dt_s = dt_s.astype(dtype)
+    dt_s = _dt_to_float_seconds(dt, dtype)
 
     distance_m = u_wind * dt_s
 
@@ -686,11 +685,9 @@ def advect_latitude(
     ArrayLike
         New latitude value, [:math:`\deg`]
     """
-    # Convert dt to seconds value
     # Use the same dtype as latitude and v_wind
-    dt_s = dt / np.timedelta64(1, "s")
     dtype = np.result_type(latitude, v_wind)
-    dt_s = dt_s.astype(dtype)
+    dt_s = _dt_to_float_seconds(dt, dtype)
 
     distance_m = v_wind * dt_s
 
@@ -727,10 +724,27 @@ def advect_level(
     ArrayLike
         New pressure level, [:math:`hPa`]
     """
-    # Convert dt to seconds value
-    # Use the same dtype as level
-    dt_s = np.divide(dt, np.timedelta64(1, "s"), dtype=level.dtype)
+    dt_s = _dt_to_float_seconds(dt, level.dtype)
+    velocity = vertical_velocity + rho_air * terminal_fall_speed * constants.g
 
-    return (
-        level * 100.0 + (dt_s * (vertical_velocity + rho_air * terminal_fall_speed * constants.g))
-    ) / 100.0
+    return (level * 100.0 + (dt_s * velocity)) / 100.0
+
+
+def _dt_to_float_seconds(dt: np.ndarray | np.timedelta64, dtype: np.dtype) -> np.ndarray:
+    """Convert a time delta to seconds as a float with specified ``dtype`` precision.
+
+    Parameters
+    ----------
+    dt : np.ndarray
+        Time delta for each waypoint
+    dtype : np.dtype
+        Data type of the output array
+
+    Returns
+    -------
+    np.ndarray
+        Time delta in seconds as a float
+    """
+    out = np.empty(dt.shape, dtype=dtype)
+    np.divide(dt, np.timedelta64(1, "s"), out=out)
+    return out
