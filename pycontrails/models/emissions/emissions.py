@@ -469,7 +469,8 @@ class Emissions(Model):
         """
         Assume constant emission indices for nvPM mass and number.
 
-        (nvpm_ei_n = 1e15 /kg-fuel) for a given aircraft-engine pair if data is not available in the ICAO EDB.
+        (nvpm_ei_n = 1e15 /kg-fuel) for a given aircraft-engine pair if data
+        is not available in the ICAO EDB.
 
         - nvpm_ei_m = 0.088 g-nvPM/kg-fuel (Table 2 of Stettler et al., 2013)
         - nvpm_ei_n = 1e15 /kg-fuel (Schumann et al., 2015)
@@ -534,7 +535,8 @@ class Emissions(Model):
         """
         Check if the provided engine is available in the gaseous ICAO EDB.
 
-        Setting ``raise_error`` to True allows functions in this class to be used independently outside of :meth:`eval`.
+        Setting ``raise_error`` to True allows functions in this class to be
+        used independently outside of :meth:`eval`.
 
         Parameters
         ----------
@@ -569,7 +571,8 @@ class Emissions(Model):
         """
         Check if the provided engine is available in the nvPM ICAO EDB.
 
-        Setting ``raise_error`` to True allows functions in this class to be used independently outside of :meth:`eval`.
+        Setting ``raise_error`` to True allows functions in this class to be
+        used independently outside of :meth:`eval`.
 
         Parameters
         ----------
@@ -879,8 +882,9 @@ def get_thrust_setting(
     """
     Approximate the engine thrust setting at cruise conditions.
 
-    The thrust setting is approximated by dividing the fuel mass flow rate by the maximum fuel mass flow rate,
-    and clipped to 3% (0.03) and 100% (1) respectively to account for unrealistic values.
+    The thrust setting is approximated by dividing the fuel mass flow rate
+    by the maximum fuel mass flow rate, and clipped to 3% (0.03) and 100% (1)
+    respectively to account for unrealistic values.
 
     Parameters
     ----------
@@ -898,7 +902,8 @@ def get_thrust_setting(
     Returns
     -------
     npt.NDArray[np.float_]
-        Engine thrust setting. Returns np.nan if engine data is not available in the ICAO EDB dataset.
+        Engine thrust setting. Returns ``np.nan`` if engine data is
+        not available in the ICAO EDB dataset.
     """
     theta_amb = jet.temperature_ratio(air_temperature)
     delta_amb = jet.pressure_ratio(air_pressure)

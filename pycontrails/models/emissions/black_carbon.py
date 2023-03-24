@@ -29,19 +29,20 @@ def mass_emissions_index_fox(
     Parameters
     ----------
     air_pressure: npt.NDArray[np.float_]
-        pressure altitude at each waypoint, [:math:`Pa`]
+        Pressure altitude at each waypoint, [:math:`Pa`]
     air_temperature: npt.NDArray[np.float_]
-        ambient temperature for each waypoint, [:math:`K`]
+        Ambient temperature for each waypoint, [:math:`K`]
     true_airspeed: npt.NDArray[np.float_]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
+        True airspeed for each waypoint, [:math:`m s^{-1}`]
     fuel_flow_per_engine: npt.NDArray[np.float_]
-        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
+        Fuel mass flow rate per engine, [:math:`kg s^{-1}`]
     thrust_setting: npt.NDArray[np.float_]
-        engine thrust setting, which is the fuel mass flow rate divided by the maximum fuel mass flow rate
+        Engine thrust setting, which is the fuel mass flow rate divided by
+        the maximum fuel mass flow rate
     pressure_ratio: float
-        engine pressure ratio from the ICAO EDB
+        Engine pressure ratio from the ICAO EDB
     comp_efficiency: float
-        engine compressor efficiency, assumed to be 0.9
+        Engine compressor efficiency, assumed to be 0.9
 
     Returns
     -------
@@ -107,7 +108,8 @@ def bc_mass_concentration_fox(
 ) -> npt.NDArray[np.float_]:
     """Calculate the black carbon mass concentration for ground conditions (``c_bc_ref``).
 
-    Quantity is computed at the instrument sampling point without correcting for particle line losses.
+    This quantity is computed at the instrument sampling point without correcting
+    for particle line losses.
 
     Parameters
     ----------
@@ -137,7 +139,8 @@ def bc_mass_concentration_cruise_fox(
 ) -> npt.NDArray[np.float_]:
     """Calculate the black carbon mass concentration for cruise conditions (``c_bc_cru``).
 
-    Quantity is computed at the instrument sampling point without correcting for particle line losses.
+    This quantity is computed at the instrument sampling point without correcting
+    for particle line losses.
 
     Parameters
     ----------
@@ -180,8 +183,7 @@ def dopelheuer_lecht_scaling_factor(
     afr_cru: npt.NDArray[np.float_],
     afr_ref: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_]:
-    """
-    Estimate scaling factor to convert the reference BC mass concentration from ground level to cruise.
+    """Estimate scaling factor to convert the reference BC mass concentration from ground to cruise.
 
     Parameters
     ----------
@@ -221,17 +223,17 @@ def mass_emissions_index_imfox(
     thrust_setting: npt.NDArray[np.float_],
     fuel_hydrogen: float,
 ) -> npt.NDArray[np.float_]:
-    r"""
-    Calculate the black carbon mass emissions index using the "Improved" Formation and Oxidation Method (ImFOX).
+    r"""Calculate the BC mass EI using the "Improved" Formation and Oxidation Method (ImFOX).
 
     Parameters
     ----------
     fuel_flow_per_engine: npt.NDArray[np.float_]
-        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
+        Fuel mass flow rate per engine, [:math:`kg s^{-1}`]
     thrust_setting: npt.NDArray[np.float_]
-        engine thrust setting, which is the fuel mass flow rate divided by the maximum fuel mass flow rate
+        Engine thrust setting, which is the fuel mass flow rate divided by the
+        maximum fuel mass flow rate
     fuel_hydrogen: float
-        percentage of hydrogen mass content in the fuel (13.8% for conventional Jet A-1 fuel)
+        Percentage of hydrogen mass content in the fuel (13.8% for conventional Jet A-1 fuel)
 
     Returns
     -------
@@ -252,13 +254,15 @@ def mass_emissions_index_imfox(
 
 
 def air_to_fuel_ratio_imfox(thrust_setting: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
-    """
-    Calculate the air-to-fuel ratio at cruise conditions using Eq. (11) in :cite:`abrahamsonPredictiveModelDevelopment2016`.
+    """Calculate the air-to-fuel ratio at cruise conditions via Abrahamson's method.
+
+    See Eq. (11) in :cite:`abrahamsonPredictiveModelDevelopment2016`.
 
     Parameters
     ----------
     thrust_setting: npt.NDArray[np.float_]
-        Engine thrust setting, which is the fuel mass flow rate divided by the maximum fuel mass flow rate
+        Engine thrust setting, which is the fuel mass flow rate divided by
+        the maximum fuel mass flow rate
 
     Returns
     -------
@@ -273,8 +277,9 @@ def air_to_fuel_ratio_imfox(thrust_setting: npt.NDArray[np.float_]) -> npt.NDArr
 
 
 def turbine_inlet_temperature_imfox(afr: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
-    """
-    Calculate the turbine inlet temperature using Eq. (13) in :cite:`abrahamsonPredictiveModelDevelopment2016`.
+    """Calculate the turbine inlet temperature using Abrahamson's method.
+
+    See Eq. (13) in :cite:`abrahamsonPredictiveModelDevelopment2016`.
 
     Parameters
     ----------
@@ -299,10 +304,10 @@ def bc_mass_concentration_imfox(
     t_4: npt.NDArray[np.float_],
     fuel_hydrogen: float,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate the black carbon mass concentration for ground and cruise conditions with ImFOX methodology.
+    """Calculate the BC mass concentration for ground and cruise conditions with ImFOX methodology.
 
-    Quantity is computed at the instrument sampling point without correcting for particle line losses.
+    This quantity is computed at the instrument sampling point without
+    correcting for particle line losses.
 
     Parameters
     ----------
@@ -403,23 +408,24 @@ def geometric_mean_diameter_sac(
     Parameters
     ----------
     air_pressure: npt.NDArray[np.float_]
-        pressure altitude at each waypoint, [:math:`Pa`]
+        Pressure altitude at each waypoint, [:math:`Pa`]
     air_temperature: npt.NDArray[np.float_]
-        ambient temperature for each waypoint, [:math:`K`]
+        Ambient temperature for each waypoint, [:math:`K`]
     true_airspeed: npt.NDArray[np.float_]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
+        True airspeed for each waypoint, [:math:`m s^{-1}`]
     thrust_setting: npt.NDArray[np.float_]
-        engine thrust setting, which is the fuel mass flow rate divided by the maximum fuel mass flow rate
+        Engine thrust setting, which is the fuel mass flow rate divided by the
+        maximum fuel mass flow rate
     pressure_ratio: float
-        engine pressure ratio from the ICAO EDB
+        Engine pressure ratio from the ICAO EDB
     q_fuel : float
         Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`]
     comp_efficiency: float
-        engine compressor efficiency (assumed to be 0.9)
+        Engine compressor efficiency (assumed to be 0.9)
     delta_loss: float
-        correction factor accounting for particle line losses (assumed to be 5.75 nm), [:math:`nm`]
+        Correction factor accounting for particle line losses (assumed to be 5.75 nm), [:math:`nm`]
     cruise: bool
-        set to true when the aircraft is not on the ground.
+        Set to true when the aircraft is not on the ground.
 
     Returns
     -------

@@ -40,7 +40,8 @@ class RFConstants:
     For example:
 
     - if ``r_vol_um`` for a waypoint < 5 um, the mix of ice particle habits will be 100% droxtals.
-    - if ``r_vol_um`` for a waypoint between 5 and 9.5 um, the mix of ice particle habits will be 30% solid columns, 70% droxtals.
+    - if ``r_vol_um`` for a waypoint between 5 and 9.5 um, the mix of ice particle habits will
+      be 30% solid columns, 70% droxtals.
 
     See Table 2 from :cite:`schumannEffectiveRadiusIce2011`.
 
@@ -73,7 +74,8 @@ class RFConstants:
     #: :math:`\delta_{lr} in Eq. (3) in :cite:`schumannParametricRadiativeForcing2012`
     delta_lr = np.array([0.211276, 0.341194, 0.325496, 0.255921, 0.170265, 1.65441, 0.201949, 0])
 
-    #: Optical depth scaling factor for reduction of the OLR at the contrail level due to existing cirrus above the contrail
+    #: Optical depth scaling factor for reduction of the OLR at the contrail level due
+    #: to existing cirrus above the contrail
     #: :math:`\delta_{lc} in Eq. (4) in :cite:`schumannParametricRadiativeForcing2012`
     delta_lc = np.array(
         [0.159942, 0.0958129, 0.0924850, 0.0462023, 0.132925, 0.0870067, 0.0626339, 0.0665289]
@@ -140,15 +142,16 @@ class RFConstants:
 
 @dataclass
 class RadiativeHeatingConstants:
-    """
+    """Constants/coefficients used to calculate the radiative heating rate.
+
     Constants/coefficients used to calculate the:
      - shortwave differential heating rate
      - longwave differential heating rate
      - shortwave heating rate
      - longwave heating rate
 
-    These coefficients were calibrated based on a least-squares fit relative to the libRadtran radiative transfer model.
-    (Ulrich Schumann, personal communication).
+    These coefficients were calibrated based on a least-squares fit relative
+    to the libRadtran radiative transfer model. (Ulrich Schumann, personal communication).
 
     References
     ----------
@@ -218,15 +221,16 @@ def habit_weights(
 ) -> np.ndarray:
     r"""Assign weights to different ice particle habits for each waypoint.
 
-    For each waypoint, the distinct mix of ice particle habits are approximated using the mean contrail ice particle
-    radius (``r_vol_um``) binned by ``radius_threshold_um``.
+    For each waypoint, the distinct mix of ice particle habits are approximated
+    using the mean contrail ice particle radius (``r_vol_um``) binned by ``radius_threshold_um``.
 
     For example:
 
-    - For waypoints with r_vol_um < 5 um, the mix of ice particle habits will be from Group 1 (100% Droxtals,
+    - For waypoints with r_vol_um < 5 um, the mix of ice particle habits will
+      be from Group 1 (100% Droxtals,
         refer to :attr:`CocipParams().habit_distributions`).
-    - For waypoints with 5 um <= ``r_vol_um`` < 9.5 um, the mix of ice particle habits will be from Group 2
-        (30% solid columns, 70% droxtals)
+    - For waypoints with 5 um <= ``r_vol_um`` < 9.5 um, the mix of ice particle
+      habits will be from Group 2 (30% solid columns, 70% droxtals)
 
     Parameters
     ----------
@@ -242,8 +246,8 @@ def habit_weights(
     Returns
     -------
     np.ndarray
-        n_waypoints x 8 columns, where each column is the weights to the ice particle habits, [:math:`[0 - 1]`], and
-        the sum of each column should be equal to 1.
+        Array with shape ``n_waypoints x 8 columns``, where each column is the weights to the ice
+        particle habits, [:math:`[0 - 1]`], and the sum of each column should be equal to 1.
 
     Raises
     ------
@@ -292,8 +296,7 @@ def habit_weight_regime_idx(r_vol_um: np.ndarray, radius_threshold_um: np.ndarra
 
 
 def effective_radius_by_habit(r_vol_um: np.ndarray, habit_idx: np.ndarray) -> np.ndarray:
-    r"""
-    Calculate the effective radius ``r_eff_um`` based on the mean ice particle radius and habit type.
+    r"""Calculate the effective radius ``r_eff_um`` via the mean ice particle radius and habit type.
 
     The ``habit_idx`` corresponds to the habit types in ``rf_const.habits``.
     Each habit type has a specific parameterization to calculate ``r_eff_um`` based on ``r_vol_um``.
@@ -304,12 +307,14 @@ def effective_radius_by_habit(r_vol_um: np.ndarray, habit_idx: np.ndarray) -> np
     r_vol_um : np.ndarray
         Contrail ice particle volume mean radius, [:math:`\mu m`]
     habit_idx : np.ndarray
-        Habit type index for the contrail ice particle, corresponding to the habits in ``rf_const.habits``.
+        Habit type index for the contrail ice particle, corresponding to the
+        habits in ``rf_const.habits``.
 
     Returns
     -------
     np.ndarray
-        Effective radius of ice particles for each combination of ``r_vol_um`` and ``habit_idx``, [:math:`\mu m`]
+        Effective radius of ice particles for each combination of ``r_vol_um``
+        and ``habit_idx``, [:math:`\mu m`]
 
     References
     ----------
@@ -367,8 +372,7 @@ def effective_radius_solid_column(r_vol_um: np.ndarray) -> np.ndarray:
 
 
 def effective_radius_hollow_column(r_vol_um: np.ndarray) -> np.ndarray:
-    r"""
-    Calculate the effective radius of contrail ice particles assuming a hollow column particle habit.
+    r"""Calculate the effective radius of ice particles assuming a hollow column particle habit.
 
     Parameters
     ----------
@@ -388,8 +392,7 @@ def effective_radius_hollow_column(r_vol_um: np.ndarray) -> np.ndarray:
 
 
 def effective_radius_rough_aggregate(r_vol_um: np.ndarray) -> np.ndarray:
-    r"""
-    Calculate the effective radius of contrail ice particles assuming a rough aggregate particle habit.
+    r"""Calculate the effective radius of ice particles assuming a rough aggregate particle habit.
 
     Parameters
     ----------
@@ -510,9 +513,11 @@ def longwave_radiative_forcing(
     tau_contrail : np.ndarray
         Contrail optical depth at each waypoint
     tau_cirrus : np.ndarray
-        Optical depth of numerical weather prediction (NWP) cirrus above the contrail at each waypoint
+        Optical depth of numerical weather prediction (NWP) cirrus above the
+        contrail at each waypoint
     habit_weights_ : np.ndarray
-        Weights to different ice particle habits for each waypoint, n_waypoints x 8 (habit) columns, [:math:`[0 - 1]`]
+        Weights to different ice particle habits for each waypoint,
+        ``n_waypoints x 8`` (habit) columns, [:math:`[0 - 1]`]
     r_eff_um : np.ndarray, optional
         Provide effective radius corresponding to elements in ``r_vol_um``, [:math:`\mu m`].
         Defaults to None, which means the effective radius will be calculated using ``r_vol_um``
@@ -575,7 +580,8 @@ def longwave_radiative_forcing(
     )
     rf_lw_per_habit = np.maximum(rf_lw_per_habit, 0)
 
-    # Weight and sum the RF contributions of each habit type according the habit weight regime at the waypoint
+    # Weight and sum the RF contributions of each habit type according the habit weight
+    # regime at the waypoint
     # see eqn (12) in :cite:`schumannParametricRadiativeForcing2012`
     # use fancy indexing to re-assign values to 2d array of waypoint x habit type
     rf_lw_weighted = np.zeros_like(habit_weights_)
@@ -611,9 +617,11 @@ def shortwave_radiative_forcing(
     tau_contrail : np.ndarray
         Contrail optical depth for each waypoint
     tau_cirrus : np.ndarray
-        Optical depth of numerical weather prediction (NWP) cirrus above the contrail for each waypoint.
+        Optical depth of numerical weather prediction (NWP) cirrus above the
+        contrail for each waypoint.
     habit_weights_ : np.ndarray
-        Weights to different ice particle habits for each waypoint, n_waypoints x 8 (habit) columns, [:math:`[0 - 1]`]
+        Weights to different ice particle habits for each waypoint,
+        ``n_waypoints x 8`` (habit) columns, [:math:`[0 - 1]`]
     r_eff_um : np.ndarray, optional
         Provide effective radius corresponding to elements in ``r_vol_um``, [:math:`\mu m`].
         Defaults to None, which means the effective radius will be calculated using ``r_vol_um``
@@ -699,7 +707,8 @@ def shortwave_radiative_forcing(
     # see eqn (5) in :cite:`schumannParametricRadiativeForcing2012`
     rf_sw_per_habit = np.minimum(-sdr_h * ((t_a - albedo_) ** 2) * alpha_c * e_sw, 0)
 
-    # Weight and sum the RF contributions of each habit type according the habit weight regime at the waypoint
+    # Weight and sum the RF contributions of each habit type according the
+    # habit weight regime at the waypoint
     # see eqn (12) in :cite:`schumannParametricRadiativeForcing2012`
     # use fancy indexing to re-assign values to 2d array of waypoint x habit type
     rf_sw_weighted = np.zeros_like(habit_weights_)
@@ -739,10 +748,11 @@ def olr_reduction_natural_cirrus(tau_cirrus: np.ndarray, delta_lc: np.ndarray) -
     Parameters
     ----------
     tau_cirrus : np.ndarray
-        Optical depth of numerical weather prediction (NWP) cirrus above the contrail for each waypoint.
+        Optical depth of numerical weather prediction (NWP) cirrus above the
+        contrail for each waypoint.
     delta_lc : np.ndarray
-        Habit specific parameter to approximate the reduction of the outgoing longwave radiation at the contrail level due
-        to natural cirrus above the contrail.
+        Habit specific parameter to approximate the reduction of the outgoing
+        longwave radiation at the contrail level due to natural cirrus above the contrail.
 
     Returns
     -------
@@ -754,8 +764,9 @@ def olr_reduction_natural_cirrus(tau_cirrus: np.ndarray, delta_lc: np.ndarray) -
 
 
 def contrail_effective_emissivity(r_eff_um: np.ndarray, delta_lr: np.ndarray) -> np.ndarray:
-    r"""
-    Calculate the effective emissivity of the contrail, ``f_lw``. Refer to Eq. (3) of Schumann et al. (2012).
+    r"""Calculate the effective emissivity of the contrail, ``f_lw``.
+
+    Refer to Eq. (3) of Schumann et al. (2012).
 
     Parameters
     ----------
@@ -781,8 +792,8 @@ def albedo(sdr: np.ndarray, rsr: np.ndarray) -> np.ndarray:
     Albedo, the diffuse reflection of solar radiation out of the total solar radiation,
     is computed based on the solar direct radiation (`sdr`) and reflected solar radiation (`rsr`).
 
-    Output values range between 0 (corresponding to a black body that absorbs all incident radiation)
-    and 1 (a body that reflects all incident radiation).
+    Output values range between 0 (corresponding to a black body that absorbs
+    all incident radiation) and 1 (a body that reflects all incident radiation).
 
     Parameters
     ----------
@@ -872,18 +883,22 @@ def effective_tau_cirrus(
     Parameters
     ----------
     tau_cirrus : np.ndarray
-        Optical depth of numerical weather prediction (NWP) cirrus above the contrail for each waypoint.
+        Optical depth of numerical weather prediction (NWP) cirrus above the
+        contrail for each waypoint.
     mue : np.ndarray
         Cosine of the solar zenith angle (theta), mue = cos(theta) = sdr/sd0
     delta_sc : np.ndarray
-        Habit-specific parameter to account for the optical depth of natural cirrus above the contrail
+        Habit-specific parameter to account for the optical depth of natural
+        cirrus above the contrail
     delta_sc_aps : np.ndarray
-        Habit-specific parameter to account for the optical depth of natural cirrus above the contrail
+        Habit-specific parameter to account for the optical depth of natural
+        cirrus above the contrail
 
     Returns
     -------
     np.ndarray
-        Effective optical depth of natural cirrus above the contrail, n_waypoints x 8 (habit) columns.
+        Effective optical depth of natural cirrus above the contrail,
+        ``n_waypoints x 8`` (habit) columns.
     """
     tau_cirrus_eff = tau_cirrus / (mue + 1e-6)
     return np.exp(tau_cirrus * delta_sc) - (tau_cirrus_eff * delta_sc_aps)
