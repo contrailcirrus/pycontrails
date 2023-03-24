@@ -40,7 +40,8 @@ def get_forecast_filename(
 ) -> str:
     """Create forecast filename from ECMWF dissemination products.
 
-    The following dissemination filename convention is used for the transmission of ECMWF dissemination products:
+    The following dissemination filename convention is used for the
+    transmission of ECMWF dissemination products:
 
     ```ccSMMDDHHIImmddhhiiE`` where:
 
@@ -118,7 +119,8 @@ class HRES(ECMWFAPI):
     ----------
     time : datalib.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
-        Input must be a datetime-like or tuple of datetime-like (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
+        Input must be a datetime-like or tuple of datetime-like
+        (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         If ``forecast_time`` is unspecified, the forecast time will
         be assumed to be the nearest synoptic hour: 00, 06, 12, 18.
@@ -132,10 +134,9 @@ class HRES(ECMWFAPI):
         Set to -1 for to download surface level parameters.
         Defaults to -1.
     paths : str | list[str] | pathlib.Path | list[pathlib.Path] | None, optional
-        Path to grib files to load manually.
+        Path to CDS NetCDF files to load manually.
         Can include glob patterns to load specific files.
-        See https://xarray.pydata.org/en/stable/generated/xarray.open_mfdataset.html#xarray-open-mfdataset
-        Defaults to None, which looks for files in the :attr:`cachestore` or MARS.
+        Defaults to None, which looks for files in the :attr:`cachestore` or CDS.
     grid : float, optional
         Specify latitude/longitude grid spacing in data.
         Defaults to 0.25.
@@ -143,7 +144,8 @@ class HRES(ECMWFAPI):
         "oper" = atmospheric model/HRES, "enfo" = ensemble forecast.
         Defaults to "oper" (HRES),
     field_type : str, optional
-        Field type can be e.g. forecast (fc), perturbed forecast (pf), control forecast (cf), analysis (an).
+        Field type can be e.g. forecast (fc), perturbed forecast (pf),
+        control forecast (cf), analysis (an).
         Defaults to "fc".
     forecast_time : DatetimeLike, optional
         Specify forecast run by runtime.
@@ -158,19 +160,35 @@ class HRES(ECMWFAPI):
     -----
     `MARS key word definitions <https://confluence.ecmwf.int/display/UDOC/Identification+keywords>`_
 
-    - `class`: in most cases this will be operational data, or "od", `class reference <https://apps.ecmwf.int/codes/grib/format/mars/class/>`_
-    - `stream`: "enfo" = ensemble forecast, "oper" = atmospheric model/HRES, `stream reference <https://apps.ecmwf.int/codes/grib/format/mars/stream/>`_
-    - `expver`: experimental version, production data is 1 or 2, `exper reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=124752178>`_
-    - `date`: there are numerous acceptible date formats, `date reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=118817289>`_
-    - `time`: forecast base time, always in synoptic time (0,6,12,18 UTC), `time reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=118817378>`_
-    - `type`: forecast (oper), perturbed or control forecast (enfo only), or analysis `type background < https://confluence.ecmwf.int/display/FUG/5+Forecast+Ensemble+%28ENS%29+-+Rationale+and+Construction), `type reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=127315300>`_
-    - `levtype`: options include surface, pressure levels, or model levels, `levtype reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335319>`_
-    - `levelist`: list of levels in format specified by **levtype** `levelist reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335403>`_
-    - `param`: list of variables in catalog number, long name or short name, `param reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335858>`_
-    - `step`: hourly time steps from base forecast time, `step reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=118820050>`_
-    - `number`: for ensemble forecasts, ensemble numbers, `number reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335478>`_
-    - `format`: specify netcdf instead of default grib, DEPRECATED `format reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=116970058>`_
-    - `grid`: specify model return grid spacing, `grid reference <https://confluence.ecmwf.int/pages/viewpage.action?pageId=123799065>`_
+    - `class <https://apps.ecmwf.int/codes/grib/format/mars/class/>`_:
+       in most cases this will be operational data, or "od"
+    - `stream <https://apps.ecmwf.int/codes/grib/format/mars/stream/>`_:
+      "enfo" = ensemble forecast, "oper" = atmospheric model/HRES
+    - `expver <https://confluence.ecmwf.int/pages/viewpage.action?pageId=124752178>`_:
+      experimental version, production data is 1 or 2
+    - `date <https://confluence.ecmwf.int/pages/viewpage.action?pageId=118817289>`_:
+      there are numerous acceptible date formats
+    - `time <https://confluence.ecmwf.int/pages/viewpage.action?pageId=118817378>`_:
+      forecast base time, always in synoptic time (0,6,12,18 UTC)
+    - `type <https://confluence.ecmwf.int/pages/viewpage.action?pageId=127315300>`_:
+      forecast (oper), perturbed or control forecast (enfo only), or analysis
+    - `levtype <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335319>`_:
+      options include surface, pressure levels, or model levels
+    - `levelist <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335403>`_:
+      list of levels in format specified by **levtype** `levelist reference `_
+    - `param <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335858>`_:
+      list of variables in catalog number, long name or short name
+    - `step <https://confluence.ecmwf.int/pages/viewpage.action?pageId=118820050>`_:
+      hourly time steps from base forecast time
+    - `number <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335478>`_:
+      for ensemble forecasts, ensemble numbers
+    - `format <https://confluence.ecmwf.int/pages/viewpage.action?pageId=116970058>`_:
+      specify netcdf instead of default grib, DEPRECATED `format reference `_
+    - `grid <https://confluence.ecmwf.int/pages/viewpage.action?pageId=123799065>`_:
+      specify model return grid spacing
+
+    Local ``paths`` are loaded using :func:`xarray.open_mfdataset`.
+    Pass ``xr_kwargs`` inputs to :meth:`open_metdataset` to customize file loading.
 
 
     Examples
@@ -185,7 +203,12 @@ class HRES(ECMWFAPI):
 
     >>> # Cache files to google cloud storage
     >>> gcp_cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="ecmwf")
-    >>> hres = HRES(times, variables="air_temperature", pressure_levels=[300, 250], cachestore=gcp_cache)
+    >>> hres = HRES(
+    ...     times,
+    ...     variables="air_temperature",
+    ...     pressure_levels=[300, 250],
+    ...     cachestore=gcp_cache
+    ... )
     """
 
     __slots__ = ("server", "stream", "field_type", "forecast_time")
@@ -193,7 +216,8 @@ class HRES(ECMWFAPI):
     #: stream type, "oper" = atmospheric model/HRES, "enfo" = ensemble forecast.
     stream: str
 
-    #: Field type, forecast ("fc"), perturbed forecast ("pf"), control forecast ("cf"), analysis ("an").
+    #: Field type, forecast ("fc"), perturbed forecast ("pf"),
+    #: control forecast ("cf"), analysis ("an").
     field_type: str
 
     #: Handle to ECMWFService client
@@ -255,7 +279,7 @@ class HRES(ECMWFAPI):
 
         # if no specific forecast is requested, set the forecast time using timesteps
         elif self.timesteps:
-            # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) to get forecast_time
+            # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) for forecast_time
             self.forecast_time = datalib.round_hour(self.timesteps[0], 6)
 
         # when no forecast_time or time input, forecast_time is defined in _open_and_cache
@@ -434,8 +458,6 @@ class HRES(ECMWFAPI):
     ) -> str | dict[str, Any]:
         """Generate MARS request in MARS request syntax.
 
-        `Brief overview of MARS request syntax <https://confluence.ecmwf.int/display/WEBAPI/Brief+MARS+request+syntax>`_
-
         Parameters
         ----------
         forecast_time : :class:`datetime`, optional
@@ -457,6 +479,10 @@ class HRES(ECMWFAPI):
             Returns MARS query string if ``request_format`` is "mars".
             Returns dict query if ``request_format`` is "dict"
 
+        Notes
+        -----
+        Brief overview of `MARS request syntax
+        https://confluence.ecmwf.int/display/WEBAPI/Brief+MARS+request+syntax>`_
         """
 
         if forecast_time is None:
@@ -496,8 +522,9 @@ class HRES(ECMWFAPI):
             )
             return (
                 f"{request_type},\n\tclass={request['class']},\n\tstream={request['stream']},"
-                f"\n\texpver={request['expver']},\n\tdate={request['date']},\n\ttime={request['time']},"
-                f"\n\ttype={request['type']},\n\tparam={request['param']},\n\tstep={request['step']},"
+                f"\n\texpver={request['expver']},\n\tdate={request['date']},"
+                f"\n\ttime={request['time']},\n\ttype={request['type']},"
+                f"\n\tparam={request['param']},\n\tstep={request['step']},"
                 f"\n\tgrid={request['grid']},\n\tlevtype={request['levtype']}{levelist}"
             )
 
@@ -514,7 +541,8 @@ class HRES(ECMWFAPI):
 
         # single level or pressure level
         suffix = (
-            f"hres{'sl' if self.pressure_levels == [-1] else 'pl'}{self.grid}{self.stream}{self.field_type}"
+            f"hres{'sl' if self.pressure_levels == [-1] else 'pl'}"
+            f"{self.grid}{self.stream}{self.field_type}"
         )
 
         # return cache path
@@ -605,8 +633,8 @@ class HRES(ECMWFAPI):
 
         # convert accumulated radiation values to average instantaneous values
         # set minimum for all values to 0
-        # see https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
-        # !! Note that HRES accumulates from the *start of the forecast*, so we need to take the diff of each accumulated value
+        # !! Note that HRES accumulates from the *start of the forecast*,
+        # so we need to take the diff of each accumulated value
         # the 0th value is set to the 1st value so each time step has a radiation value !!
         dt_accumulation = 60 * 60
 
