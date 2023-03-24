@@ -54,12 +54,13 @@ def initial_iwc(
     Returns
     -------
     npt.NDArray[np.float_]
-        Initial contrail ice water content (iwc) at the original waypoint before the wake vortex phase,
-        [:math:`kg_{H_{2}O}/kg_{air}`]. Returns zero if iwc is is negative (dry air)
+        Initial contrail ice water content (iwc) at the original waypoint
+        before the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`].
+        Returns zero if iwc is is negative (dry air).
     """
     q_sat = thermo.q_sat_ice(air_temperature, air_pressure)
     q_exhaust_ = q_exhaust(air_temperature, air_pressure, fuel_dist, width, depth, ei_h2o)
-    return np.maximum(q_exhaust_ + specific_humidity - q_sat, 0)
+    return np.maximum(q_exhaust_ + specific_humidity - q_sat, 0.0)
 
 
 def q_exhaust(
@@ -117,7 +118,8 @@ def iwc_adiabatic_heating(
     Returns
     -------
     npt.NDArray[np.float_]
-        Change in ice water content due to adiabatic heating from the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
+        Change in ice water content due to adiabatic heating from the wake
+        vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
     """
     p_ice = thermo.e_sat_ice(air_temperature)
     air_temperature_1 = temperature_adiabatic_heating(air_temperature, air_pressure, air_pressure_1)
@@ -177,9 +179,11 @@ def iwc_post_wake_vortex(
     Parameters
     ----------
     iwc : npt.NDArray[np.float_]
-        initial ice water content at each waypoint before the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
+        initial ice water content at each waypoint before the wake vortex
+        phase, [:math:`kg_{H_{2}O}/kg_{air}`]
     iwc_ad : npt.NDArray[np.float_]
-        change in iwc from adiabatic heating during the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
+        change in iwc from adiabatic heating during the wake vortex
+        phase, [:math:`kg_{H_{2}O}/kg_{air}`]
 
     Returns
     -------
@@ -206,21 +210,22 @@ def ice_particle_number(
     T_crit_sac: npt.NDArray[np.float_],
     min_ice_particle_number_nvpm_ei_n: float,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate the initial number of ice particles per distance after the wake vortex phase.
+    """Calculate the initial number of ice particles per distance after the wake vortex phase.
 
-    The initial number of ice particle per distance is calculated from the black carbon number emissions index
-    (`nvpm_ei_n`) and fuel burn per distance (`fuel_dist`). Note that a lower bound for nvpm_ei_n is set at 1e13
-    :math:`kg^{-1}` to account for the activation of ambient aerosol particles and organic volatile particles.
+    The initial number of ice particle per distance is calculated from the black
+    carbon number emissions index ``nvpm_ei_n`` and fuel burn per distance ``fuel_dist``.
+    Note that a lower bound for ``nvpm_ei_n`` is set at ``1e13`` :math:`kg^{-1}` to account
+    for the activation of ambient aerosol particles and organic volatile particles.
 
     Parameters
     ----------
     nvpm_ei_n : npt.NDArray[np.float_]
         black carbon number emissions index, [:math:`kg^{-1}`]
     fuel_dist : npt.NDArray[np.float_]
-        fuel consumption of the flight segment per distance travelled, [:math:`kg m^{-1}`]
+        fuel consumption of the flight segment per distance traveled, [:math:`kg m^{-1}`]
     iwc : npt.NDArray[np.float_]
-        initial ice water content at each flight waypoint before the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
+        initial ice water content at each flight waypoint before the wake vortex
+        phase, [:math:`kg_{H_{2}O}/kg_{air}`]
     iwc_1 : npt.NDArray[np.float_]
         ice water content after the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
     air_temperature : npt.NDArray[np.float_]
@@ -228,7 +233,8 @@ def ice_particle_number(
     T_crit_sac : npt.NDArray[np.float_]
         estimated Schmidt-Appleman temperature threshold for contrail formation, [:math:`K`]
     min_ice_particle_number_nvpm_ei_n : float
-        lower bound for nvpm_ei_n to account for ambient aerosol particles for newer engines [:math:`kg^{-1}`]
+        lower bound for nvpm_ei_n to account for ambient aerosol particles for
+        newer engines [:math:`kg^{-1}`]
 
     Returns
     -------
@@ -247,8 +253,8 @@ def ice_particle_activation_rate(
     """
     Calculate the activation rate of black carbon particles to contrail ice crystals.
 
-    The activation rate is calculated as a function of the difference between the ambient temperature and the
-    Schmidt-Appleman threshold temperature (``T_crit_sac``).
+    The activation rate is calculated as a function of the difference between
+    the ambient temperature and the Schmidt-Appleman threshold temperature ``T_crit_sac``.
 
     Parameters
     ----------
@@ -264,7 +270,8 @@ def ice_particle_activation_rate(
 
     Notes
     -----
-    The equation is not published but based on the raw data from :cite:`brauerAirborneMeasurementsContrail2021`.
+    The equation is not published but based on the raw data
+    from :cite:`brauerAirborneMeasurementsContrail2021`.
 
     References
     ----------
@@ -294,7 +301,8 @@ def ice_particle_survival_factor(
     Parameters
     ----------
     iwc : npt.NDArray[np.float_]
-        initial ice water content at each waypoint before the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
+        initial ice water content at each waypoint before the wake vortex
+        phase, [:math:`kg_{H_{2}O}/kg_{air}`]
     iwc_1 : npt.NDArray[np.float_]
         ice water content after the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
 
@@ -399,7 +407,8 @@ def contrail_persistent(
     n_ice_per_m3 : npt.NDArray[np.float_]
         Contrail ice particle number per volume of air, [:math:`# m^{-3}`]
     params : dict[str, Any]
-        Dictionary of :class:`CocipParams` parameters determining the conditions for end of contrail life.
+        Dictionary of :class:`CocipParams` parameters determining the
+        conditions for end of contrail life.
 
     Returns
     -------
@@ -515,9 +524,9 @@ def contrail_edges(
 
     Returns
     -------
-    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]
-        (lon_edge_l, lat_edge_l, lon_edge_r, lat_edge_r), longitudes and latitudes at the left and right edges of
-        the contrail object, degrees
+    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]  # noqa: E501
+        (lon_edge_l, lat_edge_l, lon_edge_r, lat_edge_r), longitudes and latitudes
+        at the left and right edges of the contrail, degrees
     """
     dlon = units.m_to_longitude_distance(width * sin_a * 0.5, lat)
     dlat = units.m_to_latitude_distance(width * cos_a * 0.5)
@@ -578,7 +587,7 @@ def contrail_vertices(
 
     Returns
     -------
-    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]
+    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]  # noqa: E501
         (lon_1, lat_1, lon_2, lat_2, lon_3, lat_3, lon_4, lat_4) degrees
     """
     dlon_width = units.m_to_longitude_distance(width * sin_a * 0.5, lat)
@@ -725,10 +734,11 @@ def ice_particle_volume_mean_radius(
     Parameters
     ----------
     iwc : npt.NDArray[np.float_]
-        contrail ice water content, i.e., contrail ice mass per kg of air at time t, [:math:`kg_{H_{2}O}/kg_{air}`]
+        contrail ice water content, i.e., contrail ice mass per
+        kg of air, [:math:`kg_{H_{2}O}/kg_{air}`]
 
     n_ice_per_kg_air : npt.NDArray[np.float_]
-        number of ice particles per mass of air at time t, [:math:`# kg^{-1}`]
+        number of ice particles per mass of air, [:math:`# kg^{-1}`]
 
     Returns
     -------
@@ -759,8 +769,9 @@ def ice_particle_terminal_fall_speed(
     """
     Calculate the terminal fall speed of contrail ice particles.
 
-    ``v_t`` is calculated based on a parametric model from :cite:`spichtingerModellingCirrusClouds2009`,
-    using inputs of pressure level, ambient temperature and the ice particle volume mean radius.
+    ``v_t`` is calculated based on a parametric model
+    from :cite:`spichtingerModellingCirrusClouds2009`, using inputs of pressure
+    level, ambient temperature and the ice particle volume mean radius.
 
     Parameters
     ----------
@@ -831,7 +842,8 @@ def horizontal_diffusivity(
     Parameters
     ----------
     ds_dz : npt.NDArray[np.float_]
-        Total wind shear (eastward and northward winds) with respect to altitude (dz), [:math:`m s^{-1} / Pa`]
+        Total wind shear (eastward and northward winds) with respect
+        to altitude (``dz``), [:math:`m s^{-1} / Pa`]
     depth : npt.NDArray[np.float_]
         Contrail depth at each waypoint, [:math:`m`]
 
@@ -879,8 +891,9 @@ def vertical_diffusivity(
     sedimentation_impact_factor : float
         Enhancement parameter denoted by `f_T` in eq. (35) Schumann (2012).
     eff_heat_rate: npt.NDArray[np.float_] | None
-        Effective heating rate, i.e., rate of which the contrail plume is heated, [:math:`K s^{-1}`].
-        If None is passed, the radiative heating effects on contrail cirrus properties is not included.
+        Effective heating rate, i.e., rate of which the contrail plume
+        is heated, [:math:`K s^{-1}`]. If None is passed, the radiative
+        heating effects on contrail cirrus properties are not included.
 
     Returns
     -------
@@ -897,11 +910,13 @@ def vertical_diffusivity(
     Accounts for the turbulence-induced diffusive contrail spreading in the vertical direction.
     See eq. (35) of :cite:`schumannContrailCirrusPrediction2012`.
 
-    The first term in Eq. (35) of Schumann (2012) (c_V * w'_N^2 / N_BV, where c_V = 0.2 and w'_N^2 = 0.1) is different
-    than outlined below. Here, a constant of 0.01 is used when radiative heating effects are not activated. This update
-    comes from Schumann and Graf (2013), which found that the original formulation estimated thinner contrails relative
-    to satellite observations. The vertical diffusivity was enlarged so that the simulated contrails are more consistent
-    with observations.
+    The first term in Eq. (35) of Schumann (2012)
+    (c_V * w'_N^2 / N_BV, where c_V = 0.2 and w'_N^2 = 0.1) is different
+    than outlined below. Here, a constant of 0.01 is used when radiative
+    heating effects are not activated. This update comes from Schumann and
+    Graf (2013), which found that the original formulation estimated thinner
+    contrails relative to satellite observations. The vertical diffusivity
+    was enlarged so that the simulated contrails are more consistent with observations.
     """
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
     n_bv.clip(min=0.001, out=n_bv)
@@ -920,6 +935,7 @@ def vertical_diffusivity(
 # Radiative heating on contrail cirrus
 ####################
 
+# FIXME(@roger): Where should this docstring go?
 """
 Contrails absorb incoming solar radiation and outgoing longwave radiation, causing it to heat up. The: (i) additional
 heating energy drives a local updraft (but this is negligible and not included in CoCiP); and (ii) the  differential
@@ -987,9 +1003,11 @@ def effective_heating_rate(
     Parameters
     ----------
     d_heat_rate: npt.NDArray[np.float_]
-        Differential heating rate, i.e., rate of which the contrail plume is heated, [:math:`K s^{-1}`]
+        Differential heating rate, i.e., rate of which the contrail
+        plume is heated, [:math:`K s^{-1}`]
     cumul_rad_heat: npt.NDArray[np.float_]
-        Cumulative solar and terrestrial radiative heating energy absorbed by the contrail, [:math:`K`]
+        Cumulative solar and terrestrial radiative heating energy
+        absorbed by the contrail, [:math:`K`]
     dT_dz: npt.NDArray[np.float_]
         Temperature gradient with respect to altitude (dz), [:math:`K m^{-1}`]
     depth : npt.NDArray[np.float_]
@@ -1026,8 +1044,9 @@ def differential_heating_rate(
     """
     Calculate the differential heating rate affecting the contrail plume.
 
-    Differential heating rate is the heating rate difference between the upper and lower half of the cirrus layer. The
-    radiative heating effect is dominated by the longwave component. Therefore, this output will always be a positive
+    Differential heating rate is the heating rate difference between the upper and
+    lower half of the cirrus layer. The radiative heating effect is dominated by the
+    longwave component. Therefore, this output will always be a positive
     value (i.e., warmer at the upper contrail edge and cooler at the bottom).
 
     Parameters
@@ -1083,8 +1102,9 @@ def differential_heating_rate_shortwave(
     r"""
     Calculate shortwave differential heating rate.
 
-    Incoming solar radiation heats the contrail top. Therefore, this output will always be a positive value (i.e.,
-    warmer at the upper contrail edge and cooler at the bottom). This effect is approximated using a parametric model
+    Incoming solar radiation heats the contrail top. Therefore, this output will
+    always be a positive value (i.e., warmer at the upper contrail edge and cooler
+    at the bottom). This effect is approximated using a parametric model
     that is calibrated with the libRadtran radiative transfer model.
 
     Parameters
@@ -1147,9 +1167,11 @@ def differential_heating_rate_longwave(
     r"""
     Calculate longwave differential heating rate.
 
-    Contrails absorb outgoing longwave radiation emitted from the warm surface below and heats it up. Therefore, this
-    output will always be a negative value (i.e., warmer at the lower contrail edge and cooler at the top). This effect
-    is approximated using a parametric model that is calibrated with the libRadtran radiative transfer model.
+    Contrails absorb outgoing longwave radiation emitted from the warm surface
+    below and heats it up. Therefore, this output will always be a negative value
+    (i.e., warmer at the lower contrail edge and cooler at the top). This effect
+    is approximated using a parametric model that is calibrated with the
+    libRadtran radiative transfer model.
 
     Parameters
     ----------
@@ -1396,12 +1418,14 @@ def particle_losses_aggregation(
     Returns
     -------
     npt.NDArray[np.float_]
-        Rate of contrail ice particle losses due to sedimentation-induced aggregation, [:math:`# s^{-1}`]
+        Rate of contrail ice particle losses due to sedimentation-induced
+        aggregation, [:math:`# s^{-1}`]
 
     Notes
     -----
-    The aggregation efficiency (``agg_efficiency = 1``) was calibrated based on the observed lifetime and optical
-    properties from the Contrail Library (COLI) database (:cite:`schumannPropertiesIndividualContrails2017`).
+    The aggregation efficiency (``agg_efficiency = 1``) was calibrated based on
+    the observed lifetime and optical properties from the Contrail Library (COLI)
+    database (:cite:`schumannPropertiesIndividualContrails2017`).
 
     References
     ----------
@@ -1443,8 +1467,9 @@ def particle_losses_turbulence(
 
     Notes
     -----
-    The turbulence sublimation efficiency (``turb_efficiency = 0.1``) was calibrated based on the observed lifetime and
-    optical properties from the Contrail Library (COLI) database (:cite:`schumannPropertiesIndividualContrails2017`).
+    The turbulence sublimation efficiency (``turb_efficiency = 0.1``) was calibrated
+    based on the observed lifetime and optical properties from the Contrail Library (COLI)
+    database (:cite:`schumannPropertiesIndividualContrails2017`).
 
     References
     ----------
@@ -1608,15 +1633,16 @@ def plume_temporal_evolution(
     sigma_yz_t1 : npt.NDArray[np.float_]
         sigma_yz governs the contrail plume's temporal evolution at the start of the time step
     dsn_dz_t1 : npt.NDArray[np.float_]
-        vertical gradient of the horizontal velocity (wind shear) normal to the contrail axis at the start of the
-        time step, [:math:`m s^{-1} / Pa`]
-        ::
+        vertical gradient of the horizontal velocity (wind shear) normal to the contrail axis
+        at the start of the time step, [:math:`m s^{-1} / Pa`]::
+
 
                            X-----------------------X               X
                                         ^                           |
                                         | (dsn_dz)                  |  <-- (dsn_dz)
                                         |                           |
                                                                     X
+
     diffuse_h_t1 : npt.NDArray[np.float_]
         horizontal diffusivity at the start of the time step, [:math:`m^{2} s^{-1}`]
     diffuse_v_t1 : npt.NDArray[np.float_]
@@ -1689,9 +1715,11 @@ def new_contrail_dimensions(
     Parameters
     ----------
     sigma_yy_t2 : npt.NDArray[np.float_]
-        element yy, covariance matrix of the Gaussian concentration field, Eq. (6) of Schumann (2012)
+        element yy, covariance matrix of the Gaussian concentration
+        field, Eq. (6) of Schumann (2012)
     sigma_zz_t2 : npt.NDArray[np.float_]
-        element zz, covariance matrix of the Gaussian concentration field, Eq. (6) of Schumann (2012)
+        element zz, covariance matrix of the Gaussian concentration
+        field, Eq. (6) of Schumann (2012)
 
     Returns
     -------
@@ -1719,11 +1747,14 @@ def new_effective_area_from_sigma(
     Parameters
     ----------
     sigma_yy : npt.NDArray[np.float_]
-        element yy, covariance matrix of the Gaussian concentration field, Eq. (6) of Schumann (2012)
+        element yy, covariance matrix of the Gaussian concentration
+        field, Eq. (6) of Schumann (2012)
     sigma_zz : npt.NDArray[np.float_]
-        element zz, covariance matrix of the Gaussian concentration field, Eq. (6) of Schumann (2012)
+        element zz, covariance matrix of the Gaussian concentration
+        field, Eq. (6) of Schumann (2012)
     sigma_yz : npt.NDArray[np.float_]
-        element yz, covariance matrix of the Gaussian concentration field, Eq. (6) of Schumann (2012)
+        element yz, covariance matrix of the Gaussian concentration
+        field, Eq. (6) of Schumann (2012)
 
     Returns
     -------
@@ -1749,20 +1780,26 @@ def new_ice_water_content(
     Parameters
     ----------
     iwc_t1 : npt.NDArray[np.float_]
-        contrail ice water content, i.e., contrail ice mass per kg of air at time t, at the start of the time step
-        [:math:`kg_{H_{2}O}/kg_{air}`]
+        contrail ice water content, i.e., contrail ice mass per kg of air,
+        at the start of the time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_t1 : npt.NDArray[np.float_]
-        specific humidity for each waypoint at the start of the time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+        specific humidity for each waypoint at the start of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_t2 : npt.NDArray[np.float_]
-        specific humidity for each waypoint at the end of the time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+        specific humidity for each waypoint at the end of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_sat_t1 : npt.NDArray[np.float_]
-        saturation humidity for each waypoint at the start of the time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+        saturation humidity for each waypoint at the start of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_sat_t2 : npt.NDArray[np.float_]
-        saturation humidity for each waypoint at the end of the time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+        saturation humidity for each waypoint at the end of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     mass_plume_t1 : npt.NDArray[np.float_]
-        contrail plume mass per unit length at the start of the time step, [:math:`kg_{air} m^{-1}`]
+        contrail plume mass per unit length at the start of the
+        time step, [:math:`kg_{air} m^{-1}`]
     mass_plume_t2 : npt.NDArray[np.float_]
-        contrail plume mass per unit length at the end of the time step, [:math:`kg_{air} m^{-1}`]
+        contrail plume mass per unit length at the end of the
+        time step, [:math:`kg_{air} m^{-1}`]
 
     Returns
     -------
@@ -1772,10 +1809,14 @@ def new_ice_water_content(
     Notes
     -----
     (1) The ice water content is fully conservative.
-    (2) mass_h2o_t2: the total H2O mass (ice + vapour) per unit of contrail plume [Units of kg-H2O/m]
-    (3) q_sat is used to calculate mass_h2o because air inside the contrail is assumed to be ice saturated.
-    (4) (mass_plume_t2 - mass_plume) * q_mean: contrail absorbs (releases) H2O from (to) surrounding air.
-    (5) iwc_t2 = (mass_h2o_t2/mass_plume_t2) - q_sat_t2: H2O in the gas phase is removed (- q_sat_t2)
+    (2) ``mass_h2o_t2``: the total H2O mass (ice + vapour) per unit of
+        contrail plume [Units of kg-H2O/m]
+    (3) ``q_sat`` is used to calculate mass_h2o because air inside the
+        contrail is assumed to be ice saturated.
+    (4) ``(mass_plume_t2 - mass_plume) * q_mean``: contrail absorbs
+        (releases) H2O from (to) surrounding air.
+    (5) ``iwc_t2 = mass_h2o_t2 / mass_plume_t2 - q_sat_t2``: H2O in the
+        gas phase is removed (``- q_sat_t2``).
     """
     q_mean = 0.5 * (q_t1 + q_t2)
     mass_h2o_t1 = mass_plume_t1 * (iwc_t1 + q_sat_t1)
@@ -1791,13 +1832,13 @@ def new_ice_particle_number(
     seg_ratio: npt.NDArray[np.float_] | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate the number of ice particles per distance at the end of the time step (``n_ice_per_m_t2``).
+    """Calculate the number of ice particles per distance at the end of the time step.
 
     Parameters
     ----------
     n_ice_per_m_t1 : npt.NDArray[np.float_]
-        number of contrail ice particles per distance at the start of the time step, [:math:`m^{-1}`]
+        number of contrail ice particles per distance at the start of
+        the time step, [:math:`m^{-1}`]
     dn_dt_agg : npt.NDArray[np.float_]
         rate of ice particle losses due to sedimentation-induced aggregation, [:math:`# s^{-1}`]
     dn_dt_turb : npt.NDArray[np.float_]
@@ -1845,11 +1886,11 @@ def energy_forcing(
     seg_length_t2: npt.NDArray[np.float_] | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate the contrail energy forcing over time step.
+    """Calculate the contrail energy forcing over time step.
 
-    The contrail energy forcing is calculated as the local contrail net radiative forcing (RF', change in energy flux
-    per contrail area) multiplied by its width and integrated over its length and lifetime.
+    The contrail energy forcing is calculated as the local contrail net
+    radiative forcing (RF', change in energy flux per contrail area) multiplied
+    by its width and integrated over its length and lifetime.
 
     Parameters
     ----------
@@ -1882,8 +1923,7 @@ def mean_radiative_flux_per_m(
     width_t1: npt.NDArray[np.float_],
     width_t2: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate the mean radiative flux per length of contrail between two time steps (``rad_flux_per_m``).
+    """Calculate the mean radiative flux per length of contrail between two time steps.
 
     Parameters
     ----------
@@ -1928,9 +1968,9 @@ def mean_energy_flux_per_m(
     -----
     Implementation differs from original fortran in two ways:
 
-    - Discontinuity is no longer set to 0 (this occurs directly in model :mod:`pycontrails.models.cocip.Cocip`)
-    - Instead of taking an average of the previous and following segments, energy flux is only
-      calculated for the following segment.
+    - Discontinuity is no longer set to 0 (this occurs directly in model :class:`Cocip`)
+    - Instead of taking an average of the previous and following segments,
+      energy flux is only calculated for the following segment.
 
     See Also
     --------

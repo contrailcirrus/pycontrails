@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class Cocip(Model):
     r"""Contrail Cirrus Prediction Model (CoCiP).
 
-    Published by Ulrich Schumann *et. al.* (`DLR Institute of Atmospheric Physics <https://www.dlr.de/pa/en/>`_)
+    Published by Ulrich Schumann *et. al.* (`DLR Institute of Atmospheric Physics <https://www.dlr.de/pa/en/>`_)  # noqa: E501
     in :cite:`schumannContrailCirrusPrediction2012`, :cite:`schumannParametricRadiativeForcing2012`.
 
     Parameters
@@ -436,12 +436,14 @@ class Cocip(Model):
             # convention, so the waypoint data is critical.
             if not np.all(np.diff(self.source["waypoint"]) == 1):
                 raise ValueError(
-                    'Found non-sequential waypoints in flight key "waypoint". '
-                    'The CoCiP algorithm requires flight data key "waypoint" to contain sequential waypoints if defined.'
+                    "Found non-sequential waypoints in flight key 'waypoint'. "
+                    "The CoCiP algorithm requires flight data key 'waypoint' "
+                    "to contain sequential waypoints if defined."
                 )
 
         # STEP 3: Test met domain for some overlap
-        # We attach the intersection to the source. It is used in the function _fill_empty_flight_results
+        # We attach the intersection to the source.
+        # This is used in the function _fill_empty_flight_results
         intersection = self.source.coords_intersect_met(met)
         self.source["_met_intersection"] = intersection
         logger.debug(
@@ -543,8 +545,8 @@ class Cocip(Model):
 
         See :class:`Emissions`.
 
-        We should consider supporting OpenAP (https://github.com/TUDelft-CNS-ATM/openap) and alternate
-        performance models in the future.
+        We should consider supporting OpenAP (https://github.com/TUDelft-CNS-ATM/openap)
+        and alternate performance models in the future.
         """
         logger.debug("Processing flight emissions")
 
@@ -908,7 +910,7 @@ class Cocip(Model):
             contrail_2_segments = self._get_contrail_2_segments(time_idx)
             if contrail_2_segments:
                 logger.debug(
-                    "Discover %s new contrail waypoints formed by recent downwash_flight waypoints.",
+                    "Discover %s new contrail waypoints formed by downwash_flight waypoints.",
                     contrail_2_segments.size,
                 )
                 logger.debug("Previously persistent contrail size: %s", latest_contrail.size)
@@ -1008,7 +1010,8 @@ class Cocip(Model):
         contrail["formation_time"] = contrail["time"].copy()
         contrail["age"] = contrail["formation_time"] - contrail["time"]
 
-        # Heating rate, differential heating rate and cumulative heat energy absorbed by the contrail
+        # Heating rate, differential heating rate and
+        # cumulative heat energy absorbed by the contrail
         if self.params["radiative_heating_effects"]:
             contrail["heat_rate"] = np.zeros_like(contrail["n_ice_per_m"])
             contrail["d_heat_rate"] = np.zeros_like(contrail["n_ice_per_m"])
@@ -1310,7 +1313,7 @@ def _process_rad(rad: MetDataset, shift_radiation_time: np.timedelta64) -> MetDa
 
     Notes
     -----
-    - https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
+    - https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf  # noqa: E501
     - https://confluence.ecmwf.int/pages/viewpage.action?pageId=155337784
     """
     logger.debug(f"Shifting radiation time dimension by {shift_radiation_time}")
@@ -1660,8 +1663,8 @@ def calc_outgoing_longwave_radiation(
     Raises
     ------
     ValueError
-        If ``rad`` does not contain ``"toa_upward_longwave_flux"`` or ``"top_net_thermal_radiation"``
-        variable.
+        If ``rad`` does not contain a ``"toa_upward_longwave_flux"``
+        or ``"top_net_thermal_radiation"`` variable.
     """
 
     if "olr" in vector:
@@ -1670,16 +1673,18 @@ def calc_outgoing_longwave_radiation(
     # GFS contains OLR (toa_upward_longwave_flux) variable directly
     if "toa_upward_longwave_flux" in rad:
         interpolate_met(rad, vector, "toa_upward_longwave_flux", "olr", **kwargs)
+        return
 
     # ECMWF contains "top_net_thermal_radiation" which is -1 * OLR
-    elif "top_net_thermal_radiation" in rad:
+    if "top_net_thermal_radiation" in rad:
         interpolate_met(rad, vector, "top_net_thermal_radiation", **kwargs)
-        vector["olr"] = np.maximum(-vector["top_net_thermal_radiation"], 0)
+        vector["olr"] = np.maximum(-vector["top_net_thermal_radiation"], 0.0)
+        return
 
-    else:
-        raise ValueError(
-            "`rad` data must contain either 'toa_upward_longwave_flux' or 'top_net_thermal_radiation' (ECMWF) variable."
-        )
+    raise ValueError(
+        "rad data must contain either 'toa_upward_longwave_flux' "
+        "or 'top_net_thermal_radiation' (ECMWF) variable."
+    )
 
 
 def calc_radiative_properties(contrail: GeoVectorDataset, params: dict[str, Any]) -> None:

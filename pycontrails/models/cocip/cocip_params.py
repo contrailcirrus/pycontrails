@@ -92,7 +92,8 @@ class CocipParams(ModelParams):
     # Outputs
     # -------
 
-    #: Add additional values to flight and contrail that are not explicitly necessary for calculation
+    #: Add additional values to the flight and contrail that are not explicitly
+    #: necessary for calculation.
     #: See also :attr:`CocipGridParams.verbose_outputs_formation` and
     #: :attr:`CocipGridParams.verbose_outputs_evolution`.
     verbose_outputs: bool = False
@@ -107,8 +108,10 @@ class CocipParams(ModelParams):
     #: Denoted :math:`C_{D0}` in eq (14) in :cite:`schumannContrailCirrusPrediction2012`.
     initial_wake_vortex_depth: float = 0.5
 
-    #: Sedimentation impact factor. Denoted by :math:`f_{T}` in eq. (35) of :cite:`schumannContrailCirrusPrediction2012`.
-    #: Schumann describes this as "an important adjustable parameter", and sets it to 0.1 in the original publication.
+    #: Sedimentation impact factor. Denoted by :math:`f_{T}` in eq. (35) of
+    #: :cite:`schumannContrailCirrusPrediction2012`.
+    #: Schumann describes this as "an important adjustable parameter", and sets
+    #: it to 0.1 in the original publication.
     sedimentation_impact_factor: float = 0.5
 
     #: Default ``nvpm_ei_n`` value if no data provided and emissions calculations fails.
@@ -122,18 +125,21 @@ class CocipParams(ModelParams):
     #: Primarily used to support uncertainty estimation.
     nvpm_ei_n_enhancement_factor: float = 1.0
 
-    #: Lower bound for ``nvpm_ei_n`` to account for ambient aerosol particles for newer engines, [:math:`kg^{-1}`]
+    #: Lower bound for ``nvpm_ei_n`` to account for ambient aerosol
+    #: particles for newer engines, [:math:`kg^{-1}`]
     min_ice_particle_number_nvpm_ei_n: float = 1e13
 
     #: Upper bound for contrail plume depth, constraining it to realistic values
-    #: CoCiP only uses the ambient conditions at the mid-point of the Gaussian plume, and the edges could be
-    #: in subsaturated conditions and sublimate. Important when `radiative_heating_effects` is enabled.
+    #: CoCiP only uses the ambient conditions at the mid-point of the Gaussian plume,
+    #: and the edges could be in subsaturated conditions and sublimate. Important when
+    #: :attr:`radiative_heating_effects` is enabled.
     max_contrail_depth: float = 1500.0
 
     #: Experimental. Radiative heating effects on contrail cirrus properties.
-    #: Terrestrial and solar radiances warm the contrail ice particles and cause convective turbulence.
-    #: This effect is expected to enhance vertical mixing and reduce the lifetime of contrail cirrus.
-    #: This parameter is experimental, and the CoCiP implementation of this parameter may change.
+    #: Terrestrial and solar radiances warm the contrail ice particles and cause
+    #: convective turbulence. This effect is expected to enhance vertical mixing
+    #: and reduce the lifetime of contrail cirrus. This parameter is experimental,
+    #: and the CoCiP implementation of this parameter may change.
     #:
     #:  .. versionadded:: 0.28.9
     radiative_heating_effects: bool = False
