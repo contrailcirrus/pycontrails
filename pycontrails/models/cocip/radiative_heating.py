@@ -15,17 +15,84 @@ The scientific rationale of including these effects can be found in the referenc
 References
 ----------
 - :cite:`jensenSpreadingGrowthContrails1998`
-- :cite:`schumannRadiativeHeatingContrail2010`
 - :cite:`schumannLifeCycleIndividual2017`
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import numpy.typing as npt
 
-from pycontrails.models.cocip.radiative_forcing import RadiativeHeatingConstants
 from pycontrails.physics import constants
+
+
+@dataclass
+class RadiativeHeatingConstants:
+    """Constants/coefficients used to calculate the radiative heating rate.
+
+    Constants/coefficients used to calculate the:
+     - shortwave differential heating rate
+     - longwave differential heating rate
+     - shortwave heating rate
+     - longwave heating rate
+
+    These coefficients were calibrated based on a least-squares fit relative
+    to the libRadtran radiative transfer model. (Ulrich Schumann, personal communication).
+
+    References
+    ----------
+    - :cite:`schumannRadiativeHeatingContrail2010`
+    """
+
+    #: Coefficients for shortwave differential heating rate
+    dacth: float = 0.205747e01
+    dacth3: float = 0.898366e00
+    dbcth: float = 0.791045e00
+    dccth: float = 0.612725e00
+    ddcth: float = 0.517342e-02
+    dexalb: float = 0.267568e01
+    dfrsw: float = 0.139286e01
+    dgalbs: float = 0.178497e01
+    d_gamma: float = 0.142104e01
+    d_gamma_s: float = 0.882497e00
+    dqsw: float = 0.631427e-01
+    draddsw: float = 0.261780e00
+    dtt: float = 0.339171e-01
+
+    #: Coefficients for longwave differential heating rate
+    dak: float = 0.357181e01
+    dcrhi: float = 0.623019e-01
+    ddelta: float = 0.198000e01
+    dfrlw: float = 0.609262e00
+    dqlw: float = 0.100000e-05
+    dqrlw: float = 0.160286e00
+    draddlw: float = 0.898529e-05
+    dsigma: float = 0.159884e-06
+
+    #: Coefficients for shortwave heating rate
+    acth: float = 0.156899e01
+    bcth: float = 0.875130e00
+    ccth: float = 0.112445e01
+    dcth: float = 0.236688e-01
+    exal_b: float = 0.410705e00
+    fr_sw: float = 0.537577e01
+    gamma_r: float = 0.762254e00
+    q_sw: float = 0.454176e-01
+    radd_sw: float = 0.991554e00
+    ttt: float = 0.985031e-01
+
+    #: Coefficients for longwave heating rate
+    ak: float = 0.294930e01
+    crhi: float = 0.174422e00
+    czlw: float = 0.393884e-01
+    delta: float = 0.860746e00
+    fr_lw: float = 0.760423e00
+    q_lw: float = 0.152075e02
+    radd_lw: float = 0.308486e-02
+    sigma: float = 0.253499e-04
+
 
 RAD_HEAT = RadiativeHeatingConstants()
 
