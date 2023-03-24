@@ -42,17 +42,10 @@ class JetA(Fuel):
 
     References
     ----------
-    - Celikel, A., Jelinek, F., 2001. Forecasting civil aviation fuel burn and
-        emissions in Europe. EUROCONTROL Experimental Centre.
-        https://www.eurocontrol.me/sites/default/files/library/015_Forecasting_Fuel_Burn_and_Emissions_in_Europe.pdf
-    - Lee, D.S., Fahey, D.W., Skowron, A., Allen, M.R., Burkhardt, U., Chen, Q., Doherty, S.J., Freeman, S., Forster,
-        P.M., Fuglestvedt, J. and Gettelman, A., 2021. The contribution of global aviation to anthropogenic climate
-        forcing for 2000 to 2018. Atmospheric Environment, 244, p.117834.
-    - Stettler, M.E.J., Eastham, S. and Barrett, S.R.H., 2011. Air quality and public health impacts of UK airports.
-        Part I: Emissions. Atmospheric environment, 45(31), pp.5415-5424.
-    - Wilkerson, J.T., Jacobson, M.Z., Malwitz, A., Balasubramanian, S., Wayson, R., Fleming, G., Naiman,
-        A.D. and Lele, S.K., 2010. Analysis of emission data from global commercial aviation: 2004 and 2006.
-        Atmospheric Chemistry and Physics, 10(13), pp.6391-6408.
+    - :cite:`celikel2001forecasting`
+    - :cite:`leeContributionGlobalAviation2021`
+    - :cite:`stettlerAirQualityPublic2011`
+    - :cite:`wilkersonAnalysisEmissionData2010`
     """
 
     fuel_name: str = "Jet A-1"
@@ -63,7 +56,7 @@ class JetA(Fuel):
 
     #: Sulphur oxide, SO2-S gas, emissions index for fuel, :math:`[kg_{SO_{2}} \ kg_{fuel}^{-1}]`
     #: - The EI SO2 is proportional to the fuel sulphur content
-    #: - Celikel and Jelinek (2001): EI_SO2 = 0.84 g/kg-fuel for 450 ppm fuel
+    #: - Celikel (2001): EI_SO2 = 0.84 g/kg-fuel for 450 ppm fuel
     #: - Lee et al. (2021): EI_SO2 = 1.2 g/kg-fuel for 600 ppm fuel
     ei_so2: float = 0.0012
 
@@ -94,13 +87,8 @@ class SAFBlend(Fuel):
 
     References
     ----------
-    - Teoh R., Schumann U., Voigt C., Schripp T., Shapiro M., Engberg Z., Molloy J., Koudis G., Stettler MEJ. Targeted
-        Use of Sustainable Aviation Fuel to Maximise Climate Benefits [In-Review], 2022. Environmental Science &
-        Technology.
-    - Schripp, T., Anderson, B.E., Bauder, U., Rauch, B., Corbin, J.C., Smallwood, G.J., Lobo, P., Crosbie, E.C.,
-        Shook, M.A., Miake-Lye, R.C. and Yu, Z., 2022. Aircraft engine particulate matter emissions from sustainable
-        aviation fuels: Results from ground-based measurements during the NASA/DLR campaign ECLIF2/ND-MAX. Fuel, 325,
-        p.124764.
+    - :cite:`teohTargetedUseSustainable2022`
+    - :cite:`schrippAircraftEngineParticulate2022`
     """
 
     def __init__(self, pct_blend: float) -> None:
@@ -128,9 +116,7 @@ class HydrogenFuel(Fuel):
 
     References
     ----------
-    - Khan, M.A.H., Brierley, J., Tait, K.N., Bullock, S., Shallcross, D.E. and Lowenberg, M.H., 2022. The Emissions
-        of Water Vapour and NOx from Modelled Hydrogen-Fuelled Aircraft and the Impact of NOx Reduction on Climate
-        Compared with Kerosene-Fuelled Aircraft. Atmosphere, 13(10), p.1660.
+    - :cite:`khanEmissionsWaterVapour2022`
     """
 
     fuel_name: str = "Hydrogen"
