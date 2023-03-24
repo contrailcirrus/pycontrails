@@ -227,7 +227,9 @@ def parse_flight_results(fleet: Fleet) -> pd.DataFrame:
     # add extra dimensions
     fleet["altitude_ft"] = fleet.altitude_ft
     fleet["air_pressure"] = fleet.air_pressure
-    # fleet["mach_number"] = units.tas_to_mach_number(fleet["true_airspeed"], fleet["air_temperature"])
+    # fleet["mach_number"] = units.tas_to_mach_number(
+    #     fleet["true_airspeed"], fleet["air_temperature"]
+    # )
 
     # create dataframe from fleet
     fleet_df = fleet.dataframe

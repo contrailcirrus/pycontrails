@@ -568,7 +568,7 @@ def test_polygon_sparse_binary(
     coords = geojson["geometry"]["coordinates"]
     assert isinstance(coords, list)
 
-    # multipolygons are arrays of Polygons, which are in turn arrays of Poylgon definitions of 2D veritices
+    # multipolygons are arrays of Polygons
     assert len(coords) == 1 and len(coords[0])
     coords = coords[0][0]
 

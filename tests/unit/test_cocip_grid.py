@@ -168,7 +168,7 @@ def test_init_bad_met_slice_dt(
 def test_init_bad_dt_integration(
     instance_params: dict[str, Any], dt_integration: np.timedelta64
 ) -> None:
-    """Check that an error is raised when `dt_integration` is not a positive multiple met_slice_dt."""
+    """Check that an error is raised when dt_integration is not a positive multiple met_slice_dt."""
     assert instance_params["dt_integration"] == np.timedelta64(5, "m")
     instance_params["dt_integration"] = dt_integration
     with pytest.raises(ValueError, match="must be a multiple of dt_integration"):
@@ -187,7 +187,7 @@ def test_create_bad_latitude() -> None:
 
 
 def test_create_lon_lat_unspecified() -> None:
-    """Ensure `CocipGrid` uses `lon_step` and `lat_step` of 1 when `longitude` and `latitude` None."""
+    """Ensure `CocipGrid` uses `lon_step` and `lat_step` of 1."""
     source = CocipGrid.create_source(level=[220, 250], time=np.datetime64("2019-01-01"))
     assert source.data["longitude"].size == 360
     assert source.data["latitude"].size == 161  # -80 to 80

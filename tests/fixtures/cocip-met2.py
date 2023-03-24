@@ -96,8 +96,13 @@ pressure_levels = [
     150,
 ]  # select pressure levels
 
-# # load remote met - only necessary when not using regression test inputs
-# era5pl = ERA5(time=time, variables=Cocip.met_variables, pressure_levels=pressure_levels, cachestore=disk_cache)
+# load remote met - only necessary when not using regression test inputs
+# era5pl = ERA5(
+#     time=time,
+#     variables=Cocip.met_variables,
+#     pressure_levels=pressure_levels,
+#     cachestore=disk_cache,
+# )
 # era5sl = ERA5(time=time, variables=Cocip.rad_variables, cachestore=disk_cache)
 
 # load met locally from `input_path`

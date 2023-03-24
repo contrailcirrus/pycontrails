@@ -211,7 +211,10 @@ def test_latitude_advection_divergence():
 
 
 def test_solar_calculations() -> None:
-    """See NOAA_Solar_Calculations_day.xls from https://gml.noaa.gov/grad/solcalc/calcdetails.html."""
+    """Test solar calculations against NOAA Solar Calculator.
+
+    See NOAA_Solar_Calculations_day.xls from https://gml.noaa.gov/grad/solcalc/calcdetails.html.
+    """
 
     noaa_solar_csv = pd.read_csv(get_static_path("NOAA_Solar_Calculations_day.csv"))
 

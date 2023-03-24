@@ -99,7 +99,7 @@ def test_vector_init() -> None:
 
 
 def test_bad_size_pass_data() -> None:
-    """Ensure an error is raised when a dictionary with inconsistent size is passed in constructor."""
+    """Ensure an error is raised when inconsistent sizes are passed in the constructor."""
     data = {
         "a": np.arange(5),
         "b": np.arange(6),

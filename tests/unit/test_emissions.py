@@ -313,7 +313,7 @@ def test_t4_t2_cruise_estimates():
 
 
 def test_nvpm_ein_reductions_from_saf():
-    """Test the ``nvpm.nvpm_number_ei_pct_reduction_due_to_saf`` function with some pinned values."""
+    """Test ``nvpm.nvpm_number_ei_pct_reduction_due_to_saf`` with some pinned values."""
     hydrogen_mass_content = np.array([14.11, 14.15, 14.1, 14.43, 14.47, 14.58, 14.4])
     thrust_setting = np.array([0.30, 0.65, 0.85, 0.3376, 0.4284, 0.3945, np.nan])
     d_nvpm_ein_pct = np.array([-25.55, -15.86, -7.23, -46.30, -42.34, -49.09, -37.96])
@@ -325,7 +325,7 @@ def test_nvpm_ein_reductions_from_saf():
 
 @pytest.mark.parametrize("engine_uid", ["01P20CM128", "01P21GE216", "01P17GE210"])
 def test_stage_combustors_data_length(engine_uid: str):
-    """Comfirm a few handpicked engine with multi-stage combustors have the correct data."""
+    """Confirm a few handpicked engine with multi-stage combustors have the correct data."""
     emissions = Emissions()
     edb_nvpm = emissions.edb_engine_nvpm[engine_uid]
 

@@ -201,7 +201,8 @@ def validate_output(
     continuous = contrail["continuous"].values
     assert np.all(contrail[~continuous]["ef"] == 0)
 
-    # downselect contrail for only continuous points - pycocip has incorrect values in these locations
+    # downselect contrail for only continuous points
+    # pycocip has incorrect values in these locations
     contrail = contrail[continuous]
     pycocip_contrail = pycocip_contrail[
         continuous

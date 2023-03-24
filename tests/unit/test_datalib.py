@@ -140,7 +140,7 @@ def test_parse_variables() -> None:
 
     # raise value error if a str
     with pytest.raises(ValueError, match="must be of type MetVariable"):
-        datalib.parse_variables([["eastward_wind", "northward_wind"]], supported=supported)  # type: ignore[list-item]
+        datalib.parse_variables([["eastward_wind", "northward_wind"]], supported=supported)
 
     # by short name
     v = datalib.parse_variables("t", supported=supported)

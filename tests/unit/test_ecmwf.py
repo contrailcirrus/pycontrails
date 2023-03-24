@@ -325,7 +325,7 @@ def test_ERA5_paths(
 
     # check time
     era5pl = ERA5(
-        time=("2019-06-02 00:00:00, "),
+        time="2019-06-02 00:00:00, ",
         variables=["air_temperature"],
         pressure_levels=[300, 250],
         paths=met_ecmwf_pl_path,
@@ -385,7 +385,7 @@ def test_ERA5_dataset(met_ecmwf_pl_path: str, met_ecmwf_sl_path: str) -> None:
 
     # check time
     era5pl = ERA5(
-        time=("2019-06-02 00:00:00, "),
+        time="2019-06-02 00:00:00, ",
         variables=["air_temperature"],
         pressure_levels=[300, 250],
     )

@@ -75,7 +75,8 @@ def segment_length_ratio(
     seg_length: np.ndarray, seg_length_t: np.ndarray, continuous: np.ndarray
 ) -> np.ndarray:
     """
-    Calculates the ratio of contrail segment length before and after it is advected to the new location.
+    Calculates the ratio of contrail segment length before
+    and after it is advected to the new location.
 
     TODO: @roger - I don't quite understand this function
     TODO: currently only works for 1D np.ndarray
