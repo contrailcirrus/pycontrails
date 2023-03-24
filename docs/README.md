@@ -1,12 +1,14 @@
 # Documentation
 
-[Sphinx](https://www.sphinx-doc.org/en/master/) based documentation for the `pycontrails` Python module.
+The `pycontrails` package uses [Sphinx](https://www.sphinx-doc.org/en/master/) for documentation.
 
 ## Requirements
 
 - See [README.md](../README.md) for development setup instructions
 - [pandoc](https://pandoc.org/installing.html) - Used for interpreting notebooks
-- *For PDF Output*: Install a LaTeX distribution. If you are using a Mac, [MacTeX](https://www.tug.org/mactex/index.html) is the best option. Note that LaTeX is fairly large to install (~6GB).
+- *For PDF Output*: Install a LaTeX distribution.
+  If you are using a Mac, [MacTeX](https://www.tug.org/mactex/index.html) is the best option.
+  Note that LaTeX is fairly large to install (~6GB).
 
 ## Configuration
 
@@ -29,20 +31,25 @@ Resources:
 
 Numpy says
 
-```
-Use *italics*, **bold** and ``monospace`` if needed in any explanations (but not for variable names and doctest code or multi-line code). Variable, module, function, and class names should be written between single back-ticks (`numpy`).
+```rst
+Use *italics*, **bold** and ``monospace`` if needed in any explanations 
+(but not for variable names and doctest code or multi-line code). 
+Variable, module, function, and class names should be written between single back-ticks (`numpy`).
 ```
 
 - When you specify a type, it will automatically use the napolean aliases specified in `conf.py`. i.e.
 
 ```python
+"""
 Parameters
 ----------
 x : np.ndarray
     Description of parameter `x`.
+"""
 ```
 
-- When you specify a type outside of the Parameters, then you have to use the [sphinx cross-referencing syntax](https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#cross-referencing-python-objects) (but you don't need to include the `py:` in front
+- When you specify a type outside of the Parameters,
+  then you have to use the [sphinx cross-referencing syntax](https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#cross-referencing-python-objects)
 
 ```python
 """
@@ -55,7 +62,8 @@ and :class:`numpy.datetime64`       # YES
 
 ```
 
-- The *See Also* section is *not a list* and will automatically use the aliases specified in `conf.py`. All of the following work
+- The *See Also* section is *not a list* and will automatically use
+  the aliases specified in `conf.py`. All of the following work
 
 ```python
 """
@@ -139,6 +147,7 @@ To update the bibliography (`_static/pycontrails.bib`):
 
 - Install the [Zotero Better Bibtex extension](https://retorque.re/zotero-better-bibtex/installation/). Leave defaults during setup.
 - Right click on the `pycontrails` library -> Export Library
-- Export as *Better Bibtex*. You can optionally check *Keep Updated* if you want this file to update every time you make a change to the collection.
+- Export as *Better Bibtex*. You can optionally check *Keep Updated* if you want
+  this file to update every time you make a change to the collection.
 - Select the file `_static/pycontrails.bib` and press *Save* to overwrite the file.
 - Commit the updated `_static/pycontrails.bib`
