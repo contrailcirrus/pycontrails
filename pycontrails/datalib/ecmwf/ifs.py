@@ -33,7 +33,8 @@ class IFS(datalib.MetDataSource):
     ----------
     time : datalib.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
-        Input must be a single datetime-like or tuple of datetime-like (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
+        Input must be a single datetime-like or tuple of datetime-like
+        (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         If None, all time coordinates will be loaded.
     variables : datalib.VariableInput
@@ -45,9 +46,6 @@ class IFS(datalib.MetDataSource):
         Defaults to -1.
     paths : str | list[str] | pathlib.Path | list[pathlib.Path] | None, optional
         UNSUPPORTED FOR IFS
-        Path to files to load manually.
-        Can include glob patterns to load specific files.
-        See https://xarray.pydata.org/en/stable/generated/xarray.open_mfdataset.html#xarray-open-mfdataset
     forecast_path: str | pathlib.Path | None, optional
         Path to local forecast files.
         Defaults to None
@@ -114,10 +112,6 @@ class IFS(datalib.MetDataSource):
     def supported_pressure_levels(self) -> None:
         """IFS does not provide constant pressure levels and instead uses model levels.
 
-        The :attr:`pressure_levels` is used to specify surface level properties (pressure_level == [-1])
-        or above surface level (pressure_level is interpreted as pressure level bounds)
-        This property is currenty unused by this class.
-
         Returns
         -------
         list[int]
@@ -151,7 +145,8 @@ class IFS(datalib.MetDataSource):
             # np.datetime64 doesn't covert to list[datetime] unless its unit is us
             self.timesteps = ds["time"].values.astype("datetime64[us]").tolist()
 
-        # downselect hyam/hybm coefficients by the "lev" coordinate (this is a 1-indexed verison of nhym)
+        # downselect hyam/hybm coefficients by the "lev" coordinate
+        # (this is a 1-indexed verison of nhym)
         ds["hyam"] = ds["hyam"][dict(nhym=(ds["lev"] - 1).astype(int))]
         ds["hybm"] = ds["hybm"][dict(nhym=(ds["lev"] - 1).astype(int))]
 
@@ -161,7 +156,8 @@ class IFS(datalib.MetDataSource):
         ds["air_pressure"].attrs["long_name"] = "Air pressure"
 
         # calculate virtual temperature (t_virtual)
-        # the temperature at which dry air would have the same density as the moist air at a given pressure
+        # the temperature at which dry air would have the same density
+        # as the moist air at a given pressure
         ds["t_virtual"] = ds["t"] * (1 + ds["q"] * ((constants.R_v / constants.R_d) - 1))
         ds["t_virtual"].attrs["units"] = "K"
         ds["t_virtual"].attrs["long_name"] = "Virtual Temperature"

@@ -66,7 +66,6 @@ class GFSForecast(datalib.MetDataSource):
     paths : str | list[str] | pathlib.Path | list[pathlib.Path] | None, optional
         Path to files to load manually.
         Can include glob patterns to load specific files.
-        See https://xarray.pydata.org/en/stable/generated/xarray.open_mfdataset.html#xarray-open-mfdataset
         Defaults to None, which looks for files in the :attr:`cachestore` or GFS AWS bucket.
     grid : float, optional
         Specify latitude/longitude grid spacing in data.
@@ -88,20 +87,19 @@ class GFSForecast(datalib.MetDataSource):
     >>> from pycontrails.datalib.gfs import GFSForecast
 
     >>> # Store data files to local disk (default behavior)
-    >>> times = ("2022-03-22 00:00:00", "2022-03-22 04:00:00", )
+    >>> times = ("2022-03-22 00:00:00", "2022-03-22 03:00:00", )
     >>> gfs = GFSForecast(times, variables="air_temperature", pressure_levels=[300, 250])
     >>> gfs
     GFSForecast
-        Timesteps: ['2022-03-22 00', '2022-03-22 01', '2022-03-22 02', '2022-03-22 03', '2022-03-22 04']
+        Timesteps: ['2022-03-22 00', '2022-03-22 01', '2022-03-22 02', '2022-03-22 03']
         Variables: ['t']
         Pressure levels: [300, 250]
         Grid: 0.25
         Forecast time: 2022-03-22 00:00:00
-        Steps: [0, 1, 2, 3, 4]
+        Steps: [0, 1, 2, 3]
 
-
-    References
-    ----------
+    Notes
+    -----
     - `NOAA GFS <https://registry.opendata.aws/noaa-gfs-bdp-pds/>`_
     - `Documentation <https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast>`_
     - `Parameter sets <https://www.nco.ncep.noaa.gov/pmb/products/gfs/>`_
@@ -158,7 +156,7 @@ class GFSForecast(datalib.MetDataSource):
         self.grid = datalib.parse_grid(grid, [0.25, 0.5, 1])
 
         # note GFS allows unsigned requests (no credentials)
-        # see https://stackoverflow.com/questions/34865927/can-i-use-boto3-anonymously/34866092#34866092
+        # https://stackoverflow.com/questions/34865927/can-i-use-boto3-anonymously/34866092#34866092
         self.client = boto3.client(
             "s3", config=botocore.client.Config(signature_version=botocore.UNSIGNED)
         )
@@ -173,7 +171,7 @@ class GFSForecast(datalib.MetDataSource):
 
         # if no specific forecast is requested, set the forecast time using timesteps
         elif self.timesteps:
-            # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) to get forecast_time
+            # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) for forecast_time
             self.forecast_time = datalib.round_hour(self.timesteps[0], 6)
 
         # when no forecast_time or time input, forecast_time is defined in _open_and_cache
@@ -467,10 +465,12 @@ class GFSForecast(datalib.MetDataSource):
         t : datetime
             Timestep to download
 
-        References
-        ----------
-        - ``f000``: https://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2.0p25.f000.shtml
-        - ``f000 - f384``: https://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2.0p25.f003.shtml
+        Notes
+        -----
+        - ``f000``:
+          https://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2.0p25.f000.shtml
+        - ``f000 - f384``:
+          https://www.nco.ncep.noaa.gov/pmb/products/gfs/gfs.t00z.pgrb2.0p25.f003.shtml
         """
 
         if self.cachestore is None:
