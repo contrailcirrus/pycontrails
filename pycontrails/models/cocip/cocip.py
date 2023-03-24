@@ -20,7 +20,13 @@ from pycontrails.core.vector import GeoVectorDataset, VectorDataDict
 from pycontrails.datalib import ecmwf, gfs
 from pycontrails.models import sac, tau_cirrus
 from pycontrails.models.aircraft_performance import AircraftPerformance
-from pycontrails.models.cocip import contrail_properties, radiative_forcing, wake_vortex, wind_shear
+from pycontrails.models.cocip import (
+    contrail_properties,
+    radiative_forcing,
+    radiative_heating,
+    wake_vortex,
+    wind_shear,
+)
 from pycontrails.models.cocip.cocip_params import CocipFlightParams
 from pycontrails.models.cocip.output import flight_summary
 from pycontrails.models.emissions.emissions import Emissions
@@ -1851,7 +1857,7 @@ def calc_contrail_properties(
     diffuse_h = contrail_properties.horizontal_diffusivity(ds_dz, depth)
 
     if radiative_heating_effects:
-        heat_rate = contrail_properties.heating_rate(
+        heat_rate = radiative_heating.heating_rate(
             air_temperature=air_temperature,
             rhi=rhi,
             rho_air=rho_air,
@@ -1866,7 +1872,7 @@ def calc_contrail_properties(
         )
 
         cumul_differential_heat = contrail["cumul_differential_heat"]
-        d_heat_rate = contrail_properties.differential_heating_rate(
+        d_heat_rate = radiative_heating.differential_heating_rate(
             air_temperature=air_temperature,
             rhi=rhi,
             rho_air=rho_air,
@@ -1880,7 +1886,7 @@ def calc_contrail_properties(
             olr=olr,
         )
 
-        eff_heat_rate = contrail_properties.effective_heating_rate(
+        eff_heat_rate = radiative_heating.effective_heating_rate(
             d_heat_rate, cumul_differential_heat, dT_dz, depth
         )
     else:

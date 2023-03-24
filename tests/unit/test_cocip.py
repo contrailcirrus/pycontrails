@@ -15,7 +15,12 @@ from pycontrails import Aircraft, Flight, MetDataset
 from pycontrails.core.met import originates_from_ecmwf
 from pycontrails.models import humidity_scaling as hs
 from pycontrails.models.aircraft_performance import AircraftPerformance
-from pycontrails.models.cocip import Cocip, CocipFlightParams, contrail_properties
+from pycontrails.models.cocip import (
+    Cocip,
+    CocipFlightParams,
+    contrail_properties,
+    radiative_heating,
+)
 from pycontrails.models.cocip.output import grid_cirrus
 from pycontrails.models.humidity_scaling import (
     ExponentialBoostHumidityScaling,
@@ -984,7 +989,7 @@ def test_radiative_heating_effects():
 
     # Differential heating rate will always be zero if tau_contrail is zero
     tau_contrail = 0.0
-    d_heat_rate = contrail_properties.differential_heating_rate(
+    d_heat_rate = radiative_heating.differential_heating_rate(
         air_temperature,
         rhi,
         rho_air,
@@ -1001,7 +1006,7 @@ def test_radiative_heating_effects():
 
     # Test case -- heating rate - agreement with Fortran values
     tau_contrail = 0.150
-    heat_rate = contrail_properties.heating_rate(
+    heat_rate = radiative_heating.heating_rate(
         air_temperature,
         rhi,
         rho_air,
@@ -1018,7 +1023,7 @@ def test_radiative_heating_effects():
 
     # Test case -- differential heating rate - agreement with Fortran values
     tau_contrail = 0.150
-    d_heat_rate = contrail_properties.differential_heating_rate(
+    d_heat_rate = radiative_heating.differential_heating_rate(
         air_temperature,
         rhi,
         rho_air,
@@ -1034,7 +1039,7 @@ def test_radiative_heating_effects():
     np.testing.assert_allclose(d_heat_rate, -3.853027307117556e-06)
 
     cumul_rad_heat = -d_heat_rate * age_s  # Cumulative heat should be a positive value
-    eff_heat_rate = contrail_properties.effective_heating_rate(
+    eff_heat_rate = radiative_heating.effective_heating_rate(
         d_heat_rate, cumul_rad_heat, dT_dz, depth
     )
     np.testing.assert_allclose(eff_heat_rate, -1.6819834787264378e-07)
