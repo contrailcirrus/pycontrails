@@ -171,8 +171,9 @@ class Emissions(Model):
             raise AttributeError(
                 (
                     f"Fuel attribute on Flight ({self.source.fuel.fuel_name}) "
-                    f"is not the same as Emissions model parameter ({self.params['fuel'].fuel_name}). "
-                    "The `fuel` model parameter must be set on init to assemble the nvPM emissions profiles "
+                    "is not the same as Emissions model parameter "
+                    f"({self.params['fuel'].fuel_name}). The 'fuel' model parameter "
+                    "must be set on init to assemble the nvPM emissions profiles "
                     "for each engine type."
                 )
             )
@@ -224,7 +225,7 @@ class Emissions(Model):
         return self.source
 
     def _gaseous_emission_indices(self, engine_uid: str | None) -> None:
-        """Calculate EI's for nitrogen oxide (NOx), carbon monoxide (CO) and unburnt hydrocarbons (HC).
+        """Calculate EI's for nitrogen oxide (NOx), carbon monoxide (CO) and hydrocarbons (HC).
 
         This method attaches the following variables to the underlying :attr:`flight`.
             - nox_ei
@@ -296,8 +297,8 @@ class Emissions(Model):
             - co_ei
             - nc_ei
 
-        Assumes constant emission indices for nitrogen oxide, carbon monoxide and hydrocarbon for a given
-        aircraft-engine pair if data is not available in the ICAO EDB.
+        Assumes constant emission indices for nitrogen oxide, carbon monoxide and
+        hydrocarbon for a given aircraft-engine pair if data is not available in the ICAO EDB.
 
         - NOx EI = 15.14 g-NOx/kg-fuel (Table 1 of Lee et al., 2020)
         - CO EI = 3.61 g-CO/kg-fuel (Table 1 of Wilkerson et al., 2010),
@@ -337,12 +338,13 @@ class Emissions(Model):
 
         if (edb_nvpm := self.edb_engine_nvpm.get(engine_uid)) is not None:  # type: ignore[arg-type]
             nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_edb(edb_nvpm)
-        elif (edb_gaseous := self.edb_engine_gaseous.get(engine_uid)) is not None:  # type: ignore[arg-type]
+        elif (edb_gaseous := self.edb_engine_gaseous.get(engine_uid)) is not None:  # type: ignore[arg-type]  # noqa: E501
             nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_sac(edb_gaseous)
         else:
             if engine_uid is not None:
                 warnings.warn(
-                    f"Cannot find 'engine_uid' {engine_uid} in EDB. A constant emissions will be used."
+                    f"Cannot find 'engine_uid' {engine_uid} in EDB. "
+                    "A constant emissions will be used."
                 )
             nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_constant()
 
@@ -404,10 +406,10 @@ class Emissions(Model):
     def _nvpm_emission_indices_sac(
         self, edb_gaseous: EDBGaseous
     ) -> tuple[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]:
-        """Calculate emission indices for nvPM mass and number assuming the profile of single annular combustors.
+        """Calculate EIs for nvPM mass and number assuming the profile of single annular combustors.
 
-        nvPM EI_m calculated using the FOX and ImFOX methods, while the nvPM EI_n calculated using the Fractal
-        Aggregates (FA) model.
+        nvPM EI_m is calculated using the FOX and ImFOX methods, while the nvPM EI_n
+        is calculated using the Fractal Aggregates (FA) model.
 
         Parameters
         ----------

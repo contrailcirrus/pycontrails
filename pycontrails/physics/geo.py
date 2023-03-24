@@ -40,7 +40,7 @@ def haversine(lons0: ArrayLike, lats0: ArrayLike, lons1: ArrayLike, lats1: Array
 
     See Also
     --------
-    `sklearn.metrics.pairwise.haversine_distances <https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.haversine_distances.html>` :
+    `sklearn.metrics.pairwise.haversine_distances <https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.haversine_distances.html>` :  # noqa: E501
         Compute the Haversine distance
     `pyproj.Geod <https://pyproj4.github.io/pyproj/stable/api/geod.html>`_ :
         performs forward and inverse geodetic, or Great Circle, computations
@@ -359,7 +359,7 @@ def solar_direct_radiation(
 
 
 def solar_constant(theta_rad: ArrayLike) -> ArrayLike:
-    """Calculate the solar electromagnetic radiation per unit area (solar constant) from orbital position.
+    """Calculate the solar electromagnetic radiation per unit area from orbital position.
 
     On average, the extraterrestrial irradiance is 1367 W/m**2
     and varies by +- 3% as the Earth orbits the sun.
@@ -704,7 +704,10 @@ def advect_level(
     terminal_fall_speed: ArrayLike,
     dt: np.ndarray | np.timedelta64,
 ) -> ArrayLike:
-    r"""Calculate the pressure level of a particle after time `dt` caused by the vertical velocity and terminal fall speed.
+    r"""Calculate the pressure level of a particle after time ``dt``.
+
+    This function calculates the new pressure level of a particle as a result of
+    vertical advection caused by the vertical velocity and terminal fall speed.
 
     Parameters
     ----------
@@ -726,9 +729,8 @@ def advect_level(
     """
     # Convert dt to seconds value
     # Use the same dtype as level
-    dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(level.dtype)
+    dt_s = np.divide(dt, np.timedelta64(1, "s"), dtype=level.dtype)
 
     return (
-        level * 100 + (dt_s * (vertical_velocity + rho_air * terminal_fall_speed * constants.g))
-    ) / 100
+        level * 100.0 + (dt_s * (vertical_velocity + rho_air * terminal_fall_speed * constants.g))
+    ) / 100.0

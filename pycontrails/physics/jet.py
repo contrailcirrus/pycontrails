@@ -1,8 +1,8 @@
-"""
-Jet aircraft trajectory and performance parameters.
+"""Jet aircraft trajectory and performance parameters.
 
-Common functions to calculate jet aircraft trajectory and performance parameters, including fuel quantities, mass,
-thrust setting and propulsion efficiency.
+This module includes common functions to calculate jet aircraft trajectory
+and performance parameters, including fuel quantities, mass, thrust setting
+and propulsion efficiency.
 """
 
 from __future__ import annotations
@@ -32,7 +32,8 @@ def identify_phase_of_flight(rocd: np.ndarray, *, threshold_rocd: float = 100.0)
     rocd: np.ndarray
         Rate of climb and descent, [:math:`ft min^{-1}`]
     threshold_rocd: float
-        ROCD threshold to identify climb and descent, currently set to 100 ft/min, [:math:`ft min^{-1}`]
+        ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
+        Currently set to 100 ft/min.
 
     Returns
     -------
@@ -41,8 +42,9 @@ def identify_phase_of_flight(rocd: np.ndarray, *, threshold_rocd: float = 100.0)
 
     Notes
     -----
-    Flight data derived from ADS-B and radar sources could contain noise leading to small changes in altitude and ROCD.
-    Hence, an arbitrary `threshold_rocd` is specified to identify the different phases of flight.
+    Flight data derived from ADS-B and radar sources could contain noise leading
+    to small changes in altitude and ROCD. Hence, an arbitrary ``threshold_rocd``
+    is specified to identify the different phases of flight.
     """
     nan = np.isnan(rocd)
     climb = rocd > threshold_rocd
@@ -318,7 +320,7 @@ def initial_aircraft_mass(
     total_reserve_fuel: float,
     load_factor: float,
 ) -> float:
-    """Estimate the aircraft mass at the initial waypoint as a function of load factor and fuel requirements.
+    """Estimate initial aircraft mass as a function of load factor and fuel requirements.
 
     Parameters
     ----------

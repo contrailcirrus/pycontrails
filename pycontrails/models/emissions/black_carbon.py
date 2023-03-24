@@ -394,10 +394,10 @@ def geometric_mean_diameter_sac(
     delta_loss: float = 5.75,
     cruise: bool = True,
 ) -> npt.NDArray[np.float_]:
-    r"""
-    Calculate the black carbon (BC) geometric mean diameter (GMD) for singular annular combustor (SAC) engines.
+    r"""Calculate the BC GMD for singular annular combustor (SAC) engines.
 
-    The BC GMD is estimated using the non-dimensionalized engine thrust setting, the ratio of turbine inlet
+    The BC (black carbon) GMD (geometric mean diameter) is estimated using
+    the non-dimensionalized engine thrust setting, the ratio of turbine inlet
     to the compressor inlet temperature (``t4_t2``).
 
     Parameters

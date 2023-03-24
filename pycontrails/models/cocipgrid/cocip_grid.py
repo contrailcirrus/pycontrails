@@ -631,7 +631,7 @@ def run_interpolators(
 
     Modifies ``vector`` in place and returns it.
 
-    This function avoids overwritting existing variables on ``vector``.
+    This function avoids overwriting existing variables on ``vector``.
 
     Aim to confine all interpolation to this function
 

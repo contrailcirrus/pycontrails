@@ -141,7 +141,8 @@ class PCC(Model):
         the threshold relative humidity now change with pressure.
 
         This equation is described in Roeckner et al. 1996, Eq.57
-        THE ATMOSPHERIC GENERAL CIRCULATION MODEL ECHAM-4: MODEL DESCRIPTION AND SIMULATION OF PRESENT-DAY CLIMATE
+        THE ATMOSPHERIC GENERAL CIRCULATION MODEL ECHAM-4: MODEL DESCRIPTION AND
+        SIMULATION OF PRESENT-DAY CLIMATE
         """
         sp = self.surface["surface_air_pressure"].data.loc[dict(level=-1)]  # surface air pressure
 
@@ -297,7 +298,8 @@ class PCC(Model):
     ) -> xr.DataArray:
         r"""Apply Sundqvist scheme described in Ponater et al. (2002).
 
-        Contrails in a comprehensive global climate model: Parameterization and radiative forcing results
+        Contrails in a comprehensive global climate model: Parameterization and radiative
+        forcing results
 
         Parameters
         ----------

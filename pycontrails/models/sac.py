@@ -246,7 +246,7 @@ def T_sat_liquid(G: ArrayLike) -> ArrayLike:
     # This comment is pasted several places in `pycontrails` -- they should all be
     # addressed at the same time.
     log_ = np.log(G - 0.053)
-    return -46.46 - constants.absolute_zero + 9.43 * log_ + 0.72 * log_**2  # type: ignore[return-value]
+    return -46.46 - constants.absolute_zero + 9.43 * log_ + 0.72 * log_**2  # type: ignore[return-value]  # noqa: E501
 
 
 def _e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:

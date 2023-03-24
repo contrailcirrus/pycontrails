@@ -80,32 +80,40 @@ def co_hc_emissions_index_profile(
     ei_climb: float,
     ei_take_off: float,
 ) -> EmissionsProfileInterpolator:
-    """
-    Create the carbon monoxide (CO) and hydrocarbon (HC) emissions index (EI) profile for the given engine type.
+    """Create carbon monoxide (CO) and hydrocarbon (HC) emissions index (EI) profile.
 
     Parameters
     ----------
     ff_idle: float
-        ICAO EDB fuel mass flow rate at idle conditions (7% power), [:math:`kg s^{-1}`]
+        ICAO EDB fuel mass flow rate at idle conditions
+        (7% power), [:math:`kg s^{-1}`]
     ff_approach: float
-        ICAO EDB fuel mass flow rate at approach (30% power), [:math:`kg s^{-1}`]
+        ICAO EDB fuel mass flow rate at approach
+        (30% power), [:math:`kg s^{-1}`]
     ff_climb: float
-        ICAO EDB fuel mass flow rate at climb out (85% power), [:math:`kg s^{-1}`]
+        ICAO EDB fuel mass flow rate at climb out
+        (85% power), [:math:`kg s^{-1}`]
     ff_take_off: float
-        ICAO EDB fuel mass flow rate at take-off (100% power), [:math:`kg s^{-1}`]
+        ICAO EDB fuel mass flow rate at take-off
+        (100% power), [:math:`kg s^{-1}`]
     ei_idle: float
-        ICAO EDB CO or HC emissions index at idle conditions (7% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        ICAO EDB CO or HC emissions index at idle conditions
+        (7% power), [:math:`g_{pollutant}/kg_{fuel}`]
     ei_approach: float
-        ICAO EDB CO or HC emissions index at approach (30% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        ICAO EDB CO or HC emissions index at approach
+        (30% power), [:math:`g_{pollutant}/kg_{fuel}`]
     ei_climb: float
-        ICAO EDB CO or HC emissions index at climb out (85% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        ICAO EDB CO or HC emissions index at climb out
+        (85% power), [:math:`g_{pollutant}/kg_{fuel}`]
     ei_take_off: float
-        ICAO EDB CO or HC emissions index at take-off (100% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        ICAO EDB CO or HC emissions index at take-off
+        (100% power), [:math:`g_{pollutant}/kg_{fuel}`]
 
     Returns
     -------
     EmissionsProfileInterpolator
-        log of CO or HC emissions index versus the log of fuel mass flow rate for a given engine type
+        log of CO or HC emissions index versus the log of fuel mass
+        flow rate for a given engine type
     """
     fuel_flow_edb = np.array([ff_idle, ff_approach, ff_climb, ff_take_off], dtype=float)
     installation_correction_factor = np.array([1.100, 1.020, 1.013, 1.010])
@@ -126,7 +134,8 @@ def co_hc_emissions_index_profile(
         ei_co_low_power, 1e-3
     )  # Prevent zero/negative values, similar to line 115
 
-    # Permutation 1: Emissions profile when the bi-linear fit does not work (Figure 14 of DuBois & Paynter, 2006)
+    # Permutation 1: Emissions profile when the bi-linear fit does not work
+    # (Figure 14 of DuBois & Paynter, 2006)
     if ei_edb[1] < ei_edb[2]:
         ff_profile = np.insert(fuel_flow_edb, 0, ff_low_power)
         ei_profile = np.array([ei_co_low_power, ei_edb[0], ei_edb[1], ei_hi, ei_hi])
