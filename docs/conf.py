@@ -14,14 +14,8 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 #
 import datetime
 import pathlib
-import shutil
 
 import pycontrails
-
-# copy CHANGELOG.md from parent
-# links will be broken
-pwd = pathlib.Path(__file__).parent.absolute()
-shutil.copyfile(pwd / ".." / "CHANGELOG.md", pwd / "CHANGELOG.md")
 
 
 # -- Project information -----------------------------------------------------

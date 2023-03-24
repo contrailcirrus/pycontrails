@@ -11,7 +11,7 @@
 ## Configuration
 
 See [conf.py](source/conf.py) for all Sphinx configuration.
-The full list of Sphinx configuration options is in the [Sphinx Configuration Docs](https://www.sphinx-doc.org/en/master/usage/configuration.html)
+The full list of Sphinx configuration options is in the [Sphinx configuration docs](https://www.sphinx-doc.org/en/master/usage/configuration.html)
 
 ## Conventions
 
