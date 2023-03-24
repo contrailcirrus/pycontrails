@@ -527,12 +527,8 @@ def nvpm_number_ei_pct_reduction_due_to_saf(
 
     References
     ----------
-    - Teoh R., Schumann U., Voigt C., Schripp T., Shapiro M., Engberg Z., Molloy J., Koudis G., Stettler MEJ. Targeted
-        Use of Sustainable Aviation Fuel to Maximise Climate Benefits [In-Review], 2022. Environmental Science &
-        Technology.
-    - Brem, B.T., Durdina, L., Siegerist, F., Beyerle, P., Bruderer, K., Rindlisbacher, T., Rocci-Denis, S., Andac,
-        M.G., Zelina, J., Penanhoat, O. and Wang, J., 2015. Effects of fuel aromatic content on nonvolatile particulate
-        emissions of an in-production aircraft gas turbine. Environmental science & technology, 49(22), pp.13149-13157.
+    - :cite:`teohTargetedUseSustainable2022`
+    - :cite:`bremEffectsFuelAromatic2015`
     """
     a0 = -114.21
     a1 = 1.06
@@ -565,12 +561,8 @@ def nvpm_mass_ei_pct_reduction_due_to_saf(
 
     References
     ----------
-    - Brem, B.T., Durdina, L., Siegerist, F., Beyerle, P., Bruderer, K., Rindlisbacher, T., Rocci-Denis, S., Andac,
-        M.G., Zelina, J., Penanhoat, O. and Wang, J., 2015. Effects of fuel aromatic content on nonvolatile particulate
-        emissions of an in-production aircraft gas turbine. Environmental science & technology, 49(22), pp.13149-13157.
-    - Teoh R., Schumann U., Voigt C., Schripp T., Shapiro M., Engberg Z., Molloy J., Koudis G., Stettler MEJ. Targeted
-        Use of Sustainable Aviation Fuel to Maximise Climate Benefits [In-Review], 2022. Environmental Science &
-        Technology.
+    - :cite:`teohTargetedUseSustainable2022`
+    - :cite:`bremEffectsFuelAromatic2015`
     """
     a0 = -124.05
     a1 = 1.02

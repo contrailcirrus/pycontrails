@@ -385,9 +385,7 @@ class Emissions(Model):
 
         References
         ----------
-        - Teoh, R., Schumann, U., Gryspeerdt, E., Shapiro, M., Molloy, J., Koudis, G., Voigt, C. and Stettler, M.,
-            2022. Aviation contrail climate effects in the North Atlantic from 2016–2021. Atmospheric Chemistry and
-            Physics Discussions, pp.1-27.
+        - :cite:`teohTargetedUseSustainable2022`
         """
         nvpm_data_source = "ICAO EDB"
 
@@ -425,14 +423,9 @@ class Emissions(Model):
 
         References
         ----------
-        - Stettler, M.E., Boies, A.M., Petzold, A. and Barrett, S.R., 2013. Global civil aviation black carbon
-            emissions. Environmental science & technology, 47(18), pp.10397-10404.
-        - Abrahamson, J.P., Zelina, J., Andac, M.G. and Vander Wal, R.L., 2016. Predictive model development for
-            aviation black carbon mass emissions from alternative and conventional fuels at ground and cruise.
-            Environmental science & technology, 50(21), pp.12048-12055.
-        - Teoh, R., Schumann, U., Majumdar, A. and Stettler, M.E., 2020. Mitigating the climate forcing of aircraft
-            contrails by small-scale diversions and technology adoption. Environmental Science & Technology, 54(5),
-            pp.2941-2950.
+        - :cite:`stettlerGlobalCivilAviation2013`
+        - :cite:`abrahamsonPredictiveModelDevelopment2016`
+        - :cite:`teohTargetedUseSustainable2022`
         """
         nvpm_data_source = "FA Model"
 
