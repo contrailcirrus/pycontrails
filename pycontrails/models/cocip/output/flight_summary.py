@@ -30,20 +30,20 @@ def _get_total_fuel_consumption(fuel_flow: np.ndarray, time: np.ndarray) -> floa
 
 
 def _check_for_initial_contrails(sac: np.ndarray) -> bool:
-    """
-    Check if flight waypoints satisfy the Schmidt-Appleman Criterion and form (short-lived/persistent) contrails.
+    """Check if any flight waypoints satisfy the Schmidt-Appleman Criterion.
 
     Parameters
     ----------
     sac: np.ndarray
-        Schmidt-Appleman Criterion (1: satisfies sac, 0: does not satisfy sac, nan: outside met domain)
+        Schmidt-Appleman Criterion (1: satisfies sac, 0: does not satisfy sac,
+        nan: outside met domain)
 
     Returns
     -------
     bool
         Some or all waypoints in this flight forms contrails.
     """
-    return (sac == 1).sum() > 0
+    return (sac == 1).any()
 
 
 def _get_mean_spatiotemporal_value(contrail: pd.DataFrame, var_name: str) -> np.float64:
@@ -145,8 +145,8 @@ def flight_statistics(flight: Flight, contrail: pd.DataFrame | None) -> pd.Serie
         ),
         # Persistent contrail properties
         "Persistent contrails": has_persistent_contrails,
-        "First contrail wypt": contrail["time"].min() if has_persistent_contrails else "NaT",  # type: ignore
-        "Last contrail wypt": contrail["time"].max() if has_persistent_contrails else "NaT",  # type: ignore
+        "First contrail wypt": contrail["time"].min() if has_persistent_contrails else "NaT",  # type: ignore  # noqa: E501
+        "Last contrail wypt": contrail["time"].max() if has_persistent_contrails else "NaT",  # type: ignore  # noqa: E501
         "RHi initial, Mean": np.nanmean(flight["rhi_1"]) if has_persistent_contrails else 0,
         "RHi initial, Stdev": np.nanstd(flight["rhi_1"]) if has_persistent_contrails else 0,
         "RHi lifetime, Mean": (
@@ -219,7 +219,7 @@ def flight_statistics(flight: Flight, contrail: pd.DataFrame | None) -> pd.Serie
         "RF Net (W m-2)": (
             _get_mean_spatiotemporal_value(contrail, "rf_net") if has_persistent_contrails else 0
         ),
-        "Total contrail EF (J)": np.nansum(contrail["ef"]) if has_persistent_contrails else 0,  # type: ignore
+        "Total contrail EF (J)": np.nansum(contrail["ef"]) if has_persistent_contrails else 0,  # type: ignore  # noqa: E501
         "SDR mean (W m-2)": (
             _get_mean_spatiotemporal_value(contrail, "sdr") if has_persistent_contrails else 0
         ),

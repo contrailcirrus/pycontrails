@@ -20,13 +20,19 @@ def cirrus_summary_statistics(
 ) -> pd.Series:
     """Calculate cirrus summary statistics.
 
-    Calculates the (horizontal) gridded optical depth and fraction of cloud coverage arising from natural and
+    Calculates the (horizontal) gridded optical depth and fraction of cloud
+    coverage arising from natural and
     contrail cirrus, as observed from above (i.e. satellites).
 
 
     Calculates the summary statistics, such as the percentage of:
-    (1) total cirrus cover, (2) natural cirrus cover; (3) contrail cirrus cover; and (4) contrail cirrus cover under
-    clear sky conditions for each time slice. The contrail cirrus cover, (3), is defined as the total cirrus cover
+
+    (1) total cirrus cover
+    (2) natural cirrus cover
+    (3) contrail cirrus cover; and
+    (4) contrail cirrus cover under clear sky conditions for each time slice.
+
+    The contrail cirrus cover, (3), is defined as the total cirrus cover
     (contrails + natural cirrus) minus the natural cirrus cover.
 
     Parameters
@@ -97,53 +103,6 @@ def _get_gridded_natural_cirrus_cover_and_tau(
     return cc_natural, tau_natural
 
 
-# # TODO unused
-# def get_total_cirrus_coverage(tau_contrails_clear, tau_natural):
-#     tau_total = tau_contrails_clear + tau_natural
-#     cc_total = get_cirrus_coverage_from_tau(tau_total)
-
-#     return cc_total
-
-
-# # TODO unused
-# def get_contrail_cirrus_coverage(cc_total, cc_natural):
-#     cc_contrails = cc_total - cc_natural
-
-#     return cc_contrails
-
-
-# # TODO unused
-# def get_gridded_outputs_in_xr(
-#     cc_natural, cc_contrails_clear, tau_natural, tau_contrails_clear
-# ) -> xr.Dataset:
-#     lon_coords = tau_natural["longitude"].values
-#     lat_coords = tau_natural["latitude"].values
-#     time_slices = tau_natural["time"].values
-
-#     ds = xr.Dataset(
-#         data_vars=dict(
-#             cc_natural_cirrus=(["longitude", "latitude", "time"], cc_natural),
-#             cc_contrails_clear_sky=(["longitude", "latitude", "time"], cc_contrails_clear),
-#             tau_natural_cirrus=(["longitude", "latitude", "time"], tau_natural),
-#             tau_contrails_clear_sky=(["longitude", "latitude", "time"], tau_contrails_clear),
-#         ),
-#         coords=dict(longitude=lon_coords, latitude=lat_coords, time=time_slices),
-#     )
-
-#     # Assign attributes
-#     ds["cc_natural_cirrus"].attrs = {"units": " ", "long_name": "2D natural cirrus cover"}
-#     ds["cc_contrails_clear_sky"].attrs = {
-#         "units": " ",
-#         "long_name": "2D contrail cirrus cover, clear sky",
-#     }
-#     ds["tau_natural_cirrus"].attrs = {"units": " ", "long_name": "2D natural cirrus optical depth"}
-#     ds["tau_contrails_clear_sky"].attrs = {
-#         "units": " ",
-#         "long_name": "2D contrail cirrus optical depth, clear sky",
-#     }
-#     return ds
-
-
 def get_cirrus_coverage_from_tau(tau_cirrus: xr.DataArray, tau_threshold: float) -> xr.DataArray:
     """Calculate the 2D cirrus coverage for the given `tau_cirrus` as observed by satellites.
 
@@ -162,10 +121,11 @@ def _get_pct_cirrus_cover(
     pixel_area: xr.DataArray,
     is_in_airspace: xr.DataArray | None = None,
 ) -> pd.DataFrame:
-    """Calculate the percentage cirrus coverage in the given spatial domain from the 2D cirrus coverage.
+    """Calculate the percentage cirrus coverage from the 2D cirrus coverage.
 
-    Note that the global/regional cloud cover is calculated by summing the area of pixel cells that is
-    covered by cirrus and dividing it by the total horizontal area.
+    Note that the global/regional cloud cover is calculated by summing
+    the area of pixel cells that is covered by cirrus and dividing it
+    by the total horizontal area.
     """
     if is_in_airspace is None:
         is_in_airspace = xr.ones_like(pixel_area, dtype=bool)
@@ -338,8 +298,9 @@ def _initialize_main_grid_xr(
 ) -> xr.DataArray:
     """Initialize DataArray with specified coordinates.
 
-    Initialize an empty xr.DataArray with longitude and latitude coordinates that is provided by the maximum
-    cirrus coverage met variable. This "main grid" will be used to store the aggregated properties of the individual
+    Initialize an empty xr.DataArray with longitude and latitude coordinates
+    that is provided by the maximum cirrus coverage met variable. This
+    "main grid" will be used to store the aggregated properties of the individual
     contrail segments, such as the gridded contrail optical depth and radiative forcing.
     """
     lon_grid, lat_grid = np.meshgrid(lon_coords_met, lat_coords_met)
@@ -353,7 +314,7 @@ def _initialize_main_grid_xr(
 def _concatenate_segment_to_main_grid(
     da_vals_main_grid: xr.DataArray, da_vals_subgrid: xr.DataArray
 ) -> xr.DataArray:
-    """Add the values of the subgrid (contrail segment contribution to each pixel) to the main grid."""
+    """Add values of the subgrid (contrail segment contribution to each pixel) to the main grid."""
     vals_main_grid = da_vals_main_grid.values
     vals_subgrid = da_vals_subgrid.values
 
@@ -423,9 +384,11 @@ def _initialize_contrail_segment_subgrid(
 ) -> xr.DataArray:
     """Initialize a contrail segment subgrid.
 
-    Function initializes an empty xr.DataArray with a subset of longitude and latitude coordinates from the main
-    grid. The spatial domain of the subgrid is defined by the area that is covered by the contrail. Note that the
-    subgrid architecture is used to reduce the computational requirements.
+    Function initializes an empty xr.DataArray with a subset of
+    longitude and latitude coordinates from the main grid. The spatial
+    domain of the subgrid is defined by the area that is covered by the
+    contrail. Note that the subgrid architecture is used to reduce the
+    computational requirements.
     """
     # Longitude coordinates that are covered by the contrail segment
     lon_edges = np.array(
@@ -474,9 +437,11 @@ def _get_weights_to_subgrid_pixels(
 ) -> xr.DataArray:
     """Calculate weights for subgrid pixels.
 
-    Function calculates the weights (from the beginning of the contrail segment) to the nearest longitude and
-    latitude pixel in the subgrid. Note that weights with values that is out of range (w < 0 and w > 1) imply that
-    the contrail segment do not contribute to the pixel. The methodology is in Appendix A12 of Schumann (2012).
+    Function calculates the weights (from the beginning of the contrail segment)
+    to the nearest longitude and latitude pixel in the subgrid. Note that weights
+    with values that is out of range (w < 0 and w > 1) imply that the contrail
+    segment do not contribute to the pixel. The methodology is in Appendix A12
+    of Schumann (2012).
     """
     dx = units.longitude_distance_to_m(
         np.abs(contrail_head["longitude"] - contrail_tail["longitude"]),
@@ -549,7 +514,7 @@ def _get_subgrid_contrail_property(
     weights: xr.DataArray,
     concentration: xr.DataArray,
 ) -> xr.DataArray:
-    """Calculate the contrail segment contribution to each (longitude and latitude) pixel in the subgrid."""
+    """Calculate the contrail segment contribution to each pixel in the subgrid."""
     w_1 = weights.values
     w_2 = 1 - w_1
     conc = concentration.values
@@ -588,7 +553,10 @@ def get_max_cirrus_cover_and_tau(
 
 
 def _get_2d_cirrus_cover(cloud_cover: xr.DataArray) -> xr.DataArray:
-    """Calculate 2D cirrus cover effective for observers from above: cc_max(x,y,t) = max[cc(x,y,z,t)]."""
+    """Calculate 2D cirrus cover effective for observers from above.
+
+    cc_max(x,y,t) = max[cc(x,y,z,t)].
+    """
     cc_max_t = [
         _get_2d_cirrus_cover_time_slice(cloud_cover, tt) for tt in range(len(cloud_cover["time"]))
     ]
@@ -605,7 +573,7 @@ def _get_2d_cirrus_cover_time_slice(cloud_cover: xr.DataArray, time_int: int) ->
 def _boost_cirrus_cover_and_tau_resolution(
     cc_max: xr.DataArray, tau_cirrus_max: xr.DataArray, *, grid_res: float = 0.05
 ) -> tuple[xr.DataArray, xr.DataArray]:
-    """Increase resolution of the cirrus cover and optical depth based on approximation method by Schumann.
+    """Increase resolution of cirrus cover and optical depth via approximation method by Schumann.
 
     This is necessary because the existing spatial resolution is too coarse to resolve the
     contributions from relatively narrow contrails.
@@ -692,8 +660,9 @@ def _boost_cc_and_tau_res_t(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Scale the mean value of the boosted resolution to the original pixel mean.
 
-    The natural cirrus coverage and optical depth for the boosted resolution is distributed randomly in each
-    pixel. This ensures that the mean value in the boosted resolution is equal to the value of the original pixel.
+    The natural cirrus coverage and optical depth for the boosted resolution is
+    distributed randomly in each pixel. This ensures that the mean value in the
+    boosted resolution is equal to the value of the original pixel.
 
     References
     ----------
