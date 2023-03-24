@@ -191,12 +191,12 @@ class Model(ABC):
                     "'ConstantHumidityScaling', 'ExponentialBoostHumidityScaling', or "
                     "'ExponentialBoostLatitudeCorrectionHumidityScaling'. For example: \n"
                     ">>> from pycontrails.models import ConstantHumidityScaling\n"
-                    f">>> {self.__class__.__name__}(met=met, ..., humidity_scaling=ConstantHumidityScaling(rhi_adj=0.99))"
+                    f">>> {type(self).__name__}(met=met, ..., humidity_scaling=ConstantHumidityScaling(rhi_adj=0.99))"  # noqa: E501
                 )
 
     def __repr__(self) -> str:
         params = getattr(self, "params", {})
-        return f"{self.__class__.__name__} model\n\t" f"{self.long_name}\n\t" f"Params: {params}\n"
+        return f"{type(self).__name__} model\n\t" f"{self.long_name}\n\t" f"Params: {params}\n"
 
     @property
     @abstractmethod
@@ -310,7 +310,8 @@ class Model(ABC):
     def interp_kwargs(self) -> dict[str, Any]:
         """Shortcut to create interpolation arguments from :attr:`params`.
 
-        Creates the required dict format for ``RegularGridInterpolator`` attached to ``MetDataArray``.
+        Creates the required dict format for ``RegularGridInterpolator``
+        attached to ``MetDataArray``.
 
         Returns
         -------
@@ -343,7 +344,7 @@ class Model(ABC):
         return type_guard(
             self.met,
             MetDataset,
-            f"Meteorology is required for this model. Specify using {self.__class__.__name__}(met=...) ",
+            f"Meteorology is required for this model. Specify with {type(self).__name__}(met=...) ",
         )
 
     def require_source_type(self, type_: Type[_Source] | tuple[Type[_Source], ...]) -> _Source:

@@ -622,8 +622,8 @@ class GCPCacheStore(CacheStore):
     def put(self, data_path: str | pathlib.Path, cache_path: str | None = None) -> str:
         """Save data to the GCP cache store.
 
-        If :attr:`read_only` is *True*, this method will return the path to the local disk cache store
-        path.
+        If :attr:`read_only` is *True*, this method will return the path to the
+        local disk cache store path.
 
         Parameters
         ----------
@@ -648,7 +648,11 @@ class GCPCacheStore(CacheStore):
         Examples
         --------
         >>> from pycontrails import GCPCacheStore
-        >>> cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache", read_only=False)
+        >>> cache = GCPCacheStore(
+        ...     bucket="contrails-301217-unit-test",
+        ...     cache_dir="cache",
+        ...     read_only=False,
+        ... )
 
         >>> # put a file directly
         >>> cache.put("README.md", "test/file.md")
@@ -663,7 +667,8 @@ class GCPCacheStore(CacheStore):
                 f"GCP Cache Store is read only. File put in local DiskCacheStore path: {cache_path}"
             )
             raise RuntimeError(
-                f"GCP Cache Store {self.bucket}/{self.cache_dir} is read only. File put in local DiskCacheStore path: {cache_path}"
+                f"GCP Cache Store {self.bucket}/{self.cache_dir} is read only. "
+                "File put in local DiskCacheStore path: {cache_path}"
             )
 
         # get bucket and disk paths and blob
@@ -702,7 +707,11 @@ class GCPCacheStore(CacheStore):
         --------
         >>> import pathlib
         >>> from pycontrails import GCPCacheStore
-        >>> cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache", read_only=False)
+        >>> cache = GCPCacheStore(
+        ...     bucket="contrails-301217-unit-test",
+        ...     cache_dir="cache",
+        ...     read_only=False,
+        ... )
 
         >>> cache.put("README.md", "example/file.md")
         'example/file.md'
@@ -712,8 +721,8 @@ class GCPCacheStore(CacheStore):
         >>> pathlib.Path(path).is_file()
         True
 
-        >>> pathlib.Path(path).read_text()[21:70]
-        'Python library for contrail modeling and analysis'
+        >>> pathlib.Path(path).read_text()[17:69]
+        'Python library for modeling aviation climate impacts'
         """
         if cache_path.endswith("/"):
             raise ValueError("`cache_path` must not end with a /")

@@ -76,8 +76,10 @@ class MetBase(ABC, Generic[XArrayType]):
         )
 
     def _repr_html_(self) -> str:
-        data = getattr(self, "data", None)
-        return f"<b>{self.__class__.__name__}</b> with data:<br/ ><br/> {data._repr_html_() if data is not None else ''}"
+        try:
+            return f"<b>{type(self).__name__}</b> with data:<br/ ><br/> {self.data._repr_html_()}"
+        except AttributeError:
+            return f"<b>{type(self).__name__}</b> without data"
 
     def _validate_dim_contains_coords(self) -> None:
         """Check that data contains four temporal-spatial coordinates.
@@ -709,7 +711,8 @@ class MetDataset(MetBase):
 
         if override_keys:
             warnings.warn(
-                f"Overwriting data in keys `{override_keys}`. Use `.update(...)` to suppress warning."
+                f"Overwriting data in keys `{override_keys}`. "
+                "Use `.update(...)` to suppress warning."
             )
 
         self.data.__setitem__(key, value)
@@ -844,16 +847,12 @@ class MetDataset(MetBase):
             if met_key is None:
                 if raise_error:
                     if isinstance(variable, list):
-                        raise KeyError(
-                            f"Dataset does not contain one of variables `{[v.standard_name for v in variable]}`"
-                        )
-                    else:
-                        missing_key = (
-                            variable.standard_name
-                            if isinstance(variable, MetVariable)
-                            else variable
-                        )
-                        raise KeyError(f"Dataset does not contain variable `{missing_key}`")
+                        missing_key = [v.standard_name for v in variable]
+                        raise KeyError(f"Dataset does not contain one of variables `{missing_key}`")
+                    missing_key = (
+                        variable.standard_name if isinstance(variable, MetVariable) else variable
+                    )
+                    raise KeyError(f"Dataset does not contain variable `{missing_key}`")
 
                 return []
 
@@ -1216,7 +1215,7 @@ class MetDataArray(MetBase):
     >>> mda.interpolate(-11.4, 5.7, 234, np.datetime64("2021-08-01T13"), method='nearest')
     array([0.4188465])
 
-    >>> mda.data.sel(longitude=-11, latitude=6, level=240, time=np.datetime64("2021-08-01T12")).item()
+    >>> da.sel(longitude=-11, latitude=6, level=240, time=np.datetime64("2021-08-01T12")).item()
     0.41884649899766946
     """
 
@@ -1433,13 +1432,16 @@ class MetDataArray(MetBase):
         time : np.datetime64 | np.ndarray
             Time values to interpolate. Assumed to be 0 or 1 dimensional.
         method: str, optional
-            Additional keyword arguments to pass to :class:`scipy.interpolate.RegularGridInterpolator`.
+            Additional keyword arguments to pass to
+            :class:`scipy.interpolate.RegularGridInterpolator`.
             Defaults to "linear".
         bounds_error: bool, optional
-            Additional keyword arguments to pass to :class:`scipy.interpolate.RegularGridInterpolator`.
+            Additional keyword arguments to pass to
+            :class:`scipy.interpolate.RegularGridInterpolator`.
             Defaults to ``False``.
         fill_value: float | np.float64, optional
-            Additional keyword arguments to pass to :class:`scipy.interpolate.RegularGridInterpolator`.
+            Additional keyword arguments to pass to
+            :class:`scipy.interpolate.RegularGridInterpolator`.
             Set to None to extrapolate outside the boundary when ``method`` is ``nearest``.
             Defaults to ``np.nan``.
         localize: bool, optional
@@ -1477,8 +1479,9 @@ class MetDataArray(MetBase):
         >>> mda.interpolate(1, 2, 300, np.datetime64('2022-03-01T14:00'))
         array([241.91973877])
 
-        >>> mda.data.sel(longitude=1, latitude=2, level=300, time=np.datetime64('2022-03-01T14:00')).values
-        array(241.91974, dtype=float32)
+        >>> da = mda.data
+        >>> da.sel(longitude=1, latitude=2, level=300, time=np.datetime64('2022-03-01T14')).item()
+        241.91974
 
         >>> # Interpolation off grid
         >>> mda.interpolate(1.1, 2.1, 290, np.datetime64('2022-03-01 13:10'))
@@ -1667,9 +1670,9 @@ class MetDataArray(MetBase):
 
         Computed polygons always contain an exterior linear ring as defined by the
         `GeoJSON Polygon specification <https://www.rfc-editor.org/rfc/rfc7946.html#section-3.1.6>`.
-        Polygons may also contain interior linear rings (holes). This method does not support nesting
-        beyond the GeoJSON specification. See the :mod:`pycontrails.core.polygon` for additional
-        polygon support, including arbitrary nesting depth.
+        Polygons may also contain interior linear rings (holes). This method does not support
+        nesting beyond the GeoJSON specification. See the :mod:`pycontrails.core.polygon`
+        for additional polygon support, including arbitrary nesting depth.
 
         .. versionchanged:: 0.25.12
 
@@ -1957,11 +1960,11 @@ class MetDataArray(MetBase):
         See Also
         --------
         :meth:`to_polygons`
-        `skimage.measure.marching_cubes <https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.marching_cubes>`_
+        `skimage.measure.marching_cubes <https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.marching_cubes>`_  # noqa: E501
 
         Notes
         -----
-        Uses the `scikit-image Marching Cubes  <https://scikit-image.org/docs/dev/auto_examples/edges/plot_marching_cubes.html>`_
+        Uses the `scikit-image Marching Cubes  <https://scikit-image.org/docs/dev/auto_examples/edges/plot_marching_cubes.html>`_  # noqa: E501
         algorithm to reconstruct a surface from the point-cloud like arrays.
         """
         try:
@@ -2320,24 +2323,17 @@ def downselect(data: XArrayType, bbox: list[float]) -> XArrayType:
         If parameter `bbox` has wrong length.
     """
     if len(bbox) == 4:
-        west = bbox[0]
-        south = bbox[1]
+        west, south, east, north = bbox
         level_min = -np.inf
-        east = bbox[2]
-        north = bbox[3]
         level_max = np.inf
 
     elif len(bbox) == 6:
-        west = bbox[0]
-        south = bbox[1]
-        level_min = bbox[2]
-        east = bbox[3]
-        north = bbox[4]
-        level_max = bbox[5]
+        west, south, level_min, east, north, level_max = bbox
 
     else:
         raise ValueError(
-            f"bbox {bbox} is not length 4 [west, south, east, north] or length 6 [west, south, min-level, east, north, max-level]"
+            f"bbox {bbox} is not length 4 [west, south, east, north] "
+            "or length 6 [west, south, min-level, east, north, max-level]"
         )
 
     cond = (

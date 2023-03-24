@@ -82,14 +82,15 @@ class _PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpola
         expression ``out``::
 
             i0, i1, i2 = indices
-            out = self.values[(i0, i1, i2)] * (1 - norm_distances[0]) * (1 - norm_distances[1]) * (1 - norm_distances[2]) + \
-                self.values[(i0, i1, i2 + 1)] * (1 - norm_distances[0]) * (1 - norm_distances[1]) * norm_distances[2] + \
-                self.values[(i0, i1 + 1, i2)] * (1 - norm_distances[0]) * norm_distances[1] * (1 - norm_distances[2]) + \
-                self.values[(i0, i1 + 1, i2 + 1)] * (1 - norm_distances[0]) * norm_distances[1] * norm_distances[2] + \
-                self.values[(i0 + 1, i1, i2)] * norm_distances[0] * (1 - norm_distances[1]) * (1 - norm_distances[2]) + \
-                self.values[(i0 + 1, i1, i2 + 1)] * norm_distances[0] * (1 - norm_distances[1]) * norm_distances[2] + \
-                self.values[(i0 + 1, i1 + 1, i2)] * norm_distances[0] * norm_distances[1] * (1 - norm_distances[2]) + \
-                self.values[(i0 + 1, i1 + 1, i2 + 1)] * norm_distances[0] * norm_distances[1] * norm_distances[2]
+            nd0, nd1, nd2 = norm_distances
+            out = self.values[(i0, i1, i2)] * (1 - nd0) * (1 - nd1) * (1 - nd2) + \
+                self.values[(i0, i1, i2 + 1)] * (1 - nd0) * (1 - nd1) * nd2 + \
+                self.values[(i0, i1 + 1, i2)] * (1 - nd0) * nd1 * (1 - nd2) + \
+                self.values[(i0, i1 + 1, i2 + 1)] * (1 - nd0) * nd1 * nd2 + \
+                self.values[(i0 + 1, i1, i2)] * nd0 * (1 - nd1) * (1 - nd2) + \
+                self.values[(i0 + 1, i1, i2 + 1)] * nd0 * (1 - nd1) * nd2 + \
+                self.values[(i0 + 1, i1 + 1, i2)] * nd0 * nd1 * (1 - nd2) + \
+                self.values[(i0 + 1, i1 + 1, i2 + 1)] * nd0 * nd1 * nd2
 
         The scipy implementation is somewhat slower than this method for two reasons:
             - The shifted term ``1 - norm_distances`` is computed multiple times.

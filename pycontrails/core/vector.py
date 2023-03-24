@@ -530,12 +530,13 @@ class VectorDataset:
         return _repr
 
     def _repr_html_(self) -> str:
-        class_name = self.__class__.__name__
+        name = type(self).__name__
         n_attrs = len(self.attrs)
         n_keys = len(self.data)
         attrs = self._display_attrs()
+        size = self.size
 
-        title = f"<b>{class_name}</b> [{n_keys} keys x {self.size} length, {n_attrs} attributes]<br/ ><br/>"
+        title = f"<b>{name}</b> [{n_keys} keys x {size} length, {n_attrs} attributes]<br/ ><br/>"
 
         # matching pd.DataFrame styling
         header = '<tr style="border-bottom:1px solid silver"><th colspan="2">Attributes</th></tr>'
@@ -786,7 +787,7 @@ class VectorDataset:
             Boolean array with compatible shape.
         copy : bool, optional
             Copy data on filter. Defaults to True. See
-            `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_
+            `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_  # noqa: E501
             for insight into whether copy is appropriate.
 
         Returns
@@ -996,7 +997,7 @@ class VectorDataset:
             Number of splits.
         copy : bool, optional
             Passed into :meth:`filter`. Defaults to True. Recommend to keep as True
-            based on `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_.
+            based on `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_.  # noqa: E501
 
         Returns
         -------
@@ -1036,8 +1037,9 @@ class GeoVectorDataset(VectorDataset):
     data : dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
         Data dictionary or :class:`pandas.DataFrame` .
         Must include keys/columns ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``.
-        Keyword arguments for ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level`` will override ``data`` inputs.
-        Expects ``altitude`` in meters and ``time`` as a DatetimeLike (or array that can proccessed with :meth:`pd.to_datetime`).
+        Keyword arguments for ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``
+        override ``data`` inputs. Expects ``altitude`` in meters and ``time``
+        as a DatetimeLike (or array that can processed with :meth:`pd.to_datetime`).
         Additional waypoint-specific data can be included as additional keys/columns.
     longitude : np.ndarray, optional
         Longitude data.
@@ -1200,8 +1202,9 @@ class GeoVectorDataset(VectorDataset):
 
         Automatically calculates pressure level using :func:`units.m_to_pl` using ``altitude`` key.
 
-        Note that if ``level`` key exists in :attr:`data`, the data at the ``level`` key will be returned.
-        This allows an override of the default calculation of pressure level from altitude.
+        Note that if ``level`` key exists in :attr:`data`, the data at the ``level``
+        key will be returned. This allows an override of the default calculation
+        of pressure level from altitude.
 
         Returns
         -------
@@ -1219,8 +1222,9 @@ class GeoVectorDataset(VectorDataset):
 
         Automatically calculates altitude using :func:`units.pl_to_m` using ``level`` key.
 
-        Note that if ``altitude`` key exists in :attr:`data`, the data at the ``altitude`` key will be returned.
-        This allows an override of the default calculation of altitude from pressure level.
+        Note that if ``altitude`` key exists in :attr:`data`, the data at the ``altitude``
+        key will be returned. This allows an override of the default calculation of altitude
+        from pressure level.
 
         Returns
         -------

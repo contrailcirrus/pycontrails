@@ -165,7 +165,8 @@ def find_contours_to_depth(
 
     At a high level, this function proceeds as follows:
 
-    #. Determine all exterior contours at the given ``threshold`` (see :func:`calc_exterior_contours`).
+    #. Determine all exterior contours at the given ``threshold``
+       (see :func:`calc_exterior_contours`).
     #. For each exterior contour:
         #. Convert the contour to a mask
         #. Copy and modify the ``arr`` array by filling values outside of the mask with

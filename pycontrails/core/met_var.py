@@ -19,7 +19,7 @@ class MetVariable:
     - `ECMWF Parameter Database <https://apps.ecmwf.int/codes/grib/param-db>`_
     - `NCEP Grib v1 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/on388/table2.html>`
     - `WMO Codes Registry, Grib Edition 2 <https://codes.wmo.int/_grib2>`_
-    - `NCEP Grib v2 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-2.shtml>`
+    - `NCEP Grib v2 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-2.shtml>`  # noqa: E501
 
     Used for defining support parameters in a grib-like fashion.
     """
@@ -45,7 +45,7 @@ class MetVariable:
 
     #: WMO Grib v1 variable id, if defined.
     #: See `WMO Codes Registry, Grib Edition 1 <https://codes.wmo.int/_grib1>`_
-    #: and `CF Standard Names, version 77 <https://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html>`_
+    #: and `CF Standard Names, version 77 <https://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html>`_  # noqa: E501
     grib1_id: int | None = None
 
     #: WMO Grib 2 variable id, if defined.
@@ -187,7 +187,8 @@ RelativeHumidity = MetVariable(
     grib2_id=(0, 1, 1),
     amip="hur",
     description=(
-        "This parameter is the water vapour pressure as a percentage of the value at which the air becomes saturated liquid."
+        "This parameter is the water vapour pressure as a percentage of "
+        "the value at which the air becomes saturated liquid."
     ),
 )
 
@@ -237,8 +238,9 @@ EastwardWind = MetVariable(
     grib2_id=(0, 2, 2),
     amip="ua",
     description=(
-        '"Eastward" indicates a vector component which is positive when directed eastward (negative westward). '
-        "Wind is defined as a two-dimensional (horizontal) air velocity vector, with no vertical component."
+        '"Eastward" indicates a vector component which is positive '
+        "when directed eastward (negative westward). Wind is defined "
+        "as a two-dimensional (horizontal) air velocity vector, with no vertical component."
     ),
 )
 
@@ -253,8 +255,9 @@ NorthwardWind = MetVariable(
     grib2_id=(0, 2, 3),
     amip="va",
     description=(
-        '"Northward" indicates a vector component which is positive when directed northward (negative southward). '
-        "Wind is defined as a two-dimensional (horizontal) air velocity vector, with no vertical component."
+        '"Northward" indicates a vector component which is positive when '
+        "directed northward (negative southward). Wind is defined as a "
+        "two-dimensional (horizontal) air velocity vector, with no vertical component."
     ),
 )
 
@@ -269,11 +272,13 @@ VerticalVelocity = MetVariable(
     grib2_id=(0, 2, 8),
     amip="wap",
     description=(
-        'The Lagrangian tendency of air pressure, often called "omega", plays the role of '
-        "the upward component of air velocity when air pressure is being used as the vertical coordinate. "
-        "If the vertical air velocity is upwards, it is negative when expressed as a tendency of air pressure; "
-        "downwards is positive. Air pressure is the force per unit area which would be exerted when "
-        "the moving gas molecules of which the air is composed strike a theoretical surface of any orientation."
+        'The Lagrangian tendency of air pressure, often called "omega", plays '
+        "the role of the upward component of air velocity when air pressure "
+        "is being used as the vertical coordinate. If the vertical air velocity "
+        "is upwards, it is negative when expressed as a tendency of air pressure; "
+        "downwards is positive. Air pressure is the force per unit area which "
+        "would be exerted when the moving gas molecules of which the air is "
+        "composed strike a theoretical surface of any orientation."
     ),
 )
 
@@ -294,7 +299,9 @@ SurfacePressure = MetVariable(
     units="Pa",
     amip="ps",
     description=(
-        "This parameter is the pressure (force per unit area) of the atmosphere on the surface of land, sea and in-land water. "
-        "It is a measure of the weight of all the air in a column vertically above the area of the Earth's surface represented at a fixed point."
+        "This parameter is the pressure (force per unit area) of the atmosphere "
+        "on the surface of land, sea and in-land water. It is a measure of the "
+        "weight of all the air in a column vertically above the area of the "
+        "Earth's surface represented at a fixed point."
     ),
 )

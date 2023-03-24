@@ -725,11 +725,11 @@ class Flight(GeoVectorDataset):
         ----------
         freq : str, optional
             Resampling frequency, by default "1T"
-        fill_method : str, optional
-            Choose between `geodesic` and `linear`, by default `geodesic`. In `geodesic` mode, large
-            gaps between waypoints are filled with geodesic interpolation and small gaps are filled
-            with linear interpolation. In `linear` mode, all gaps are filled with linear
-            interpolation.
+        fill_method : {"geodesic", "linear"}, optional
+            Choose between ``"geodesic"`` and ``"linear"``, by default ``"geodesic"``.
+            In geodesic mode, large gaps between waypoints are filled with geodesic
+            interpolation and small gaps are filled with linear interpolation. In linear
+            mode, all gaps are filled with linear interpolation.
         geodesic_threshold : float, optional
             Threshold for geodesic interpolation, [:math:`m`].
             If the distance between consecutive waypoints is under this threshold,
@@ -739,8 +739,9 @@ class Flight(GeoVectorDataset):
             Defaults to :attr:`constants.nominal_rocd`.
         drop : bool, optional
             Drop any columns that are not resampled and filled.
-            Defaults to true, dropping all keys outside of "time", "latitude", "longitude" and "altitude".
-            If set to False, the extra keys will be kept but filled with `nan` or `None` values, depending on the data type.
+            Defaults to ``True``, dropping all keys outside of "time", "latitude",
+            "longitude" and "altitude". If set to False, the extra keys will be
+            kept but filled with ``nan`` or ``None`` values, depending on the data type.
 
         Returns
         -------
@@ -786,9 +787,9 @@ class Flight(GeoVectorDataset):
         11 2020-01-01 01:50:00  41.964286       0.0       0.0
         12 2020-01-01 02:00:00  50.000000       0.0       0.0
         """
-        methods = ["geodesic", "linear"]
+        methods = "geodesic", "linear"
         if fill_method not in methods:
-            raise ValueError(f'Unknown `fill_method`. Suppported  methods: {", ".join(methods)}')
+            raise ValueError(f'Unknown `fill_method`. Supported  methods: {", ".join(methods)}')
 
         # STEP 1: Prepare DataFrame on which we'll perform resampling
         df = self.to_dataframe()
@@ -1025,8 +1026,9 @@ class Flight(GeoVectorDataset):
             import traffic.core
         except ModuleNotFoundError as e:
             raise ModuleNotFoundError(
-                "This requires the `traffic` module, which can be installed using `pip install traffic`.\n\n"
-                + "See https://traffic-viz.github.io/installation.html for more information."
+                "This requires the 'traffic' module, which can be installed using "
+                "'pip install traffic'. See the installation documentation at "
+                "https://traffic-viz.github.io/installation.html for more information."
             ) from e
 
         return traffic.core.Flight(
@@ -1093,7 +1095,7 @@ class Flight(GeoVectorDataset):
         >>> fl.length_met("air_temperature", threshold=236)
         3587431.887...
 
-        >>> # Proportion (with respect to distance) of waypoints whose relative humidity exceeds 236K
+        >>> # Proportion (with respect to distance) of waypoints whose temperature exceeds 236K
         >>> fl.proportion_met("air_temperature", threshold=236)
         0.576076...
         """

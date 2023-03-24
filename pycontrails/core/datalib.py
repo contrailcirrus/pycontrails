@@ -34,19 +34,21 @@ DEFAULT_CHUNKS: dict[str, int] = {"time": 1}
 
 
 def parse_timesteps(time: TimeInput | None, freq: str = "1H") -> list[datetime]:
-    """Parse time input into set of timesteps.
+    """Parse time input into set of time steps.
 
-    If input time is length 2, this creates a range of equally spaced time points between [start, end] with interval `freq`
+    If input time is length 2, this creates a range of equally spaced time
+    points between ``[start, end]`` with interval ``freq``.
 
     Parameters
     ----------
     time : TimeInput | None
         Input datetime(s) specifying the time or time range of the data [start, end].
-        Either a single datetime-like or tuple of datetime-like with the first value the start of the daterange and second value the end of the time range.
+        Either a single datetime-like or tuple of datetime-like with the first value
+        the start of the date range and second value the end of the time range.
         Input values can be any type compatible with :meth:`pandas.to_datetime`.
     freq : str, optional
         Timestep interval in range.
-        See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
+        See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases  # noqa: E501
         for a list of frequency aliases.
         Defaults to "1H".
 
@@ -78,7 +80,8 @@ def parse_timesteps(time: TimeInput | None, freq: str = "1H") -> list[datetime]:
         timestamps = [pd.to_datetime(t) for t in time]
     except ValueError as e:
         raise ValueError(
-            f"Failed to parse all time inputs with error {e}. Time input must be compatible with pd.to_datetime()"
+            f"Failed to parse all time inputs with error {e}. Time input "
+            "must be compatible with 'pd.to_datetime()'"
         )
 
     # get date range that encompasses all whole hours
@@ -134,8 +137,10 @@ def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> l
     ----------
     variables : VariableInput
         Variable name, or sequence of variable names.
-        i.e. "air_temperature", ["air_temperature, relative_humidity"], [130], [AirTemperature], [[EastwardWind, NorthwardWind]]
-        If an element is a list of MetVariable, the first MetVariable that is supported will be chosen.
+        i.e. ``"air_temperature"``, ``["air_temperature, relative_humidity"]``,
+        ``[130]``, ``[AirTemperature]``, ``[[EastwardWind, NorthwardWind]]``
+        If an element is a list of MetVariable, the first MetVariable that is
+        supported will be chosen.
     supported : list[MetVariable]
         Supported MetVariable.
 
@@ -339,7 +344,10 @@ class MetDataSource(abc.ABC):
         str
             Unique hash for met instance (sha1)
         """
-        hashstr = f"{self.__class__.__name__}{self.timesteps}{self.variable_shortnames}{self.pressure_levels}"
+        hashstr = (
+            f"{type(self).__name__}{self.timesteps}"
+            f"{self.variable_shortnames}{self.pressure_levels}"
+        )
         return hashlib.sha1(bytes(hashstr, "utf-8")).hexdigest()
 
     @property

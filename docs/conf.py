@@ -17,7 +17,6 @@ import pathlib
 
 import pycontrails
 
-
 # -- Project information -----------------------------------------------------
 
 project = "pycontrails"
