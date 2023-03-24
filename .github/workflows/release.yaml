@@ -1,0 +1,116 @@
+name: Build and upload pycontrails to PyPI
+on:
+  release:
+    types: [published]
+
+env:
+  pyversion: '3.11'
+
+
+jobs:
+  run-unit-tests:
+    uses: ./.github/workflows/test.yml
+
+  update-version-to-release-tag:
+    needs: run-unit-tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      name: Install Python
+      with:
+        python-version: ${{ env.pyversion }}
+
+    - name: Bump the version in pyproject.toml
+      run: |
+        version=$(git describe --tags --abbrev=0)
+        python .github/workflows/bump_version.py $version
+    
+    - name: Commit the version bump
+      run: |
+        git config --local user.email "contrailcirrus-ci@contrails.org"
+        git config --local user.name "contrailcirrus-ci"
+        git add pyproject.toml
+        git commit -m "Bump version to $(git describe --tags --abbrev=0)"
+        git push
+
+    - name: Move the tag forward to the new commit
+      run: |
+        tag=$(git describe --tags --abbrev=0)
+        git tag -d $tag
+        git push origin :refs/tags/$tag
+        git tag $tag
+        git push origin $tag
+
+  build-dist:
+    needs: run-unit-tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.pyversion }}
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install build twine
+
+    - name: Build a binary wheel and a source tarball
+      run: python -m build
+
+    - name: Check the distribution
+      run: twine check --strict dist/*
+
+    - name: Upload the distribution
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist
+
+  test-dist:
+    needs: build-dist
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.pyversion }}
+
+    - name: Download the distribution
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist
+
+    - name: List the contents of the distribution
+      run: ls -lh dist
+
+    - name: Install the wheel
+      run: |
+        pip install --upgrade pip
+        pip install dist/pycontrails*.whl
+        python -c "import pycontrails; print(pycontrails.__version__)"
+  
+  publish-dist:
+    needs: test-dist
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download the distribution
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist
+
+    - name: Publish distribution 📦 to Test PyPI
+      uses: pypa/gh-action-pypi-publish@v1
+      with:
+        user: __token__
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+        verbose: true
