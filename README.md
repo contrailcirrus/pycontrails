@@ -27,6 +27,9 @@ Requires Python (3.9 or later)
 
 ```bash
 $ pip install pycontrails
+
+# install with all optional dependencies
+$ pip install "pycontrails[complete]"
 ```
 
 Install the latest development version directly from GitHub:

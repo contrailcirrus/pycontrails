@@ -44,7 +44,7 @@ tests/benchmark/cocip/outputs
 
 # docs
 docs/_build
-docs/api/
+docs/reference/api/
 docs/CHANGELOG.md
 
 # data

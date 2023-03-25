@@ -1,4 +1,4 @@
- 
+
 API Reference
 =============
 
@@ -216,7 +216,7 @@ Utilities
 .. BADA
 .. """"
 
-.. Requires `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`_ extension and data files obtained `BADA license <https://www.eurocontrol.int/model/bada>`_. 
+.. Requires `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`_ extension and data files obtained `BADA license <https://www.eurocontrol.int/model/bada>`_.
 
 
 .. .. autosummary::

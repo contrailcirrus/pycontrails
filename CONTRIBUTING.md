@@ -118,7 +118,11 @@ The documentation uses [sphinxcontrib-bibtex](https://sphinxcontrib-bibtex.readt
 
 All references should be cited through documentation and docstrings using the [`:cite:` directive](https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html#role-cite).
 
-Source bibtex references are stored in [docs/_static/pycontrails.bib](https://github.com/contrailcirrus/pycontrails/blob/main/docs/_static/pycontrails.bib).
+Bibliography references are managed in the [Zotero `pycontrails` library](https://www.zotero.org/groups/4730892/pycontrails/library).
+The [Zotero Better Bibtex extension](https://retorque.re/zotero-better-bibtex/installation/) automatically syncs this library
+to the [docs/_static/pycontrails.bib](https://github.com/contrailcirrus/pycontrails/blob/main/docs/_static/pycontrails.bib) Bibtex file.
+
+See the [Install/References](https://py.contrails.org/install#references) section of the docs for setup.
 
 #### Docstrings
 
@@ -148,6 +152,7 @@ Parameters
 x : np.ndarray
     Sphinx will automatically replace
     "np.ndarray" with the napolean type alias "numpy.ndarray"
+"""
 ```
 
 The **See Also** section is *not a list*. All of the following work:
@@ -173,4 +178,5 @@ and :func:`pandas.to_datetime`      # YES
 
 This is a :class:`np.datetime64`    # NO
 and :class:`numpy.datetime64`       # YES
+"""
 ```

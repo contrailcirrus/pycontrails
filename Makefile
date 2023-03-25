@@ -186,20 +186,23 @@ release: preversion
 DOCS_DIR = docs
 DOCS_BUILD_DIR = docs/_build
 
-docs-build:
+doc8:
+	doc8 docs
+
+docs-build: doc8
 	sphinx-build -b html $(DOCS_DIR) $(DOCS_BUILD_DIR)/html
 
 docs-clean:
 	rm -rf $(DOCS_BUILD_DIR)
-	rm -rf $(DOCS_DIR)/api/*
+	rm -rf $(DOCS_DIR)/reference/api/*
 
-docs-serve:
+docs-serve: doc8
 	sphinx-autobuild \
 		--re-ignore .*api\/.* \
 		--re-ignore *CHANGELOG.md \
 		-b html \
 		$(DOCS_DIR) $(DOCS_BUILD_DIR)/html
 
-docs-pdf:
+docs-pdf: doc8
 	sphinx-build -b latex $(DOCS_DIR) $(DOCS_BUILD_DIR)/latex
 	cd $(DOCS_BUILD_DIR)/latex && make

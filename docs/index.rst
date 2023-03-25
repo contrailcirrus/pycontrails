@@ -37,6 +37,7 @@ Contrail Modeling and Mitigation
    :caption: Reference
 
    api
+   contributing
    changelog
    references
    Github Discussions <https://github.com/contrailcirrus/pycontrails/discussions>

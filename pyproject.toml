@@ -48,6 +48,17 @@ Issues = "https://github.com/contrailcirrus/pycontrails/issues"
 Repository = "https://github.com/contrailcirrus/pycontrails"
 
 [project.optional-dependencies]
+# All non-development dependencies
+complete = [
+    "pycontrails[ecmwf]",
+    "pycontrails[gcp]",
+    "pycontrails[gfs]",
+    "pycontrails[jupyter]",
+    "pycontrails[vis]",
+    "pycontrails[zarr]",
+]
+
+# Development dependencies
 dev = [
     "black>=22",
     "black[jupyter]",
@@ -70,7 +81,9 @@ dev = [
     "wheel>=0.38",
 ]
 
+# Documentation / Sphinx dependencies
 docs = [
+    "doc8>=1.1",
     "myst-parser>=0.18",
     "nbsphinx>=0.8",
     "nbval",
@@ -81,6 +94,7 @@ docs = [
     "sphinx_copybutton>=0.5",
 ]
 
+# ECMWF datalib interfaces
 ecmwf = [
     "cdsapi>=0.4",
     "cfgrib>=0.9",
@@ -92,12 +106,14 @@ ecmwf = [
     "requests>=2.25",
 ]
 
+# Google Cloud Platform caching interface
 gcp = [
     "google-cloud-storage>=2.1",
     "platformdirs>=3.0",
     "tqdm>=4.61",
 ]
 
+# GFS datalib interfaces
 gfs = [
     "boto3>=1.20",
     "cfgrib>=0.9",
@@ -106,15 +122,18 @@ gfs = [
     "tqdm>=4.61",
 ]
 
+# Jupyter notebook and lab interface
 jupyter = [
     "ipywidgets>=7.6",
     "jupyterlab>=2.2",
 ]
 
+# Polyhedra contruction methods
 open3d = [
     "open3d>=0.14",
 ]
 
+# Polygon construction methods and plotting support 
 vis = [
     "matplotlib>=3.3",
     "scikit-learn>=0.23",
@@ -123,6 +142,7 @@ vis = [
     "shapely>=2.0",
 ]
 
+# Load data from remote Zarr stores
 zarr = [
     "fsspec>=2022.7.1",
     "zarr>=2.12",
@@ -141,6 +161,7 @@ exclude = ["docs*", "tests*"]
 "pycontrails" = ["py.typed"]
 "pycontrails.models.emissions" = ["static/*.csv"]
 
+# mypy static type checking
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]
 ignore_missing_imports = true
@@ -163,16 +184,19 @@ show_error_codes = true
 # strict_equality = true
 # # --strict end
 
+# black code formatting
 # https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
 [tool.black]
 line-length = 100
 preview = true
 
+# isort import formatting
 # https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#isort
 [tool.isort]
 profile = "black"
 line_length = 100
 
+# pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
 [tool.pytest.ini_options]
 doctest_optionflags = [
@@ -189,6 +213,7 @@ filterwarnings = [
 ]
 testpaths = ["tests/unit"]
 
+# docstring linter
 # https://www.pydocstyle.org/en/stable/usage.html#configuration-files
 [tool.pydocstyle]
 ignore = [
@@ -211,3 +236,9 @@ banned = [
     "GPL",
     "AGPL",
 ]
+
+# RST linter
+# https://github.com/pycqa/doc8
+[tool.doc8]
+max-line-length = 100
+ignore-path = ["docs/reference/api/*"]
