@@ -534,7 +534,7 @@ def solar_declination_angle(theta_rad: ArrayLike) -> ArrayLike:
 
     Notes
     -----
-    Tested against :cite:`usdepartmentofcommerceSolarCalculationDetails`
+    Tested against :cite:`noaaSolarCalculationDetails`
 
     See Also
     --------
@@ -606,7 +606,7 @@ def orbital_correction_for_solar_hour_angle(theta_rad: ArrayLike) -> ArrayLike:
 
     Notes
     -----
-    Tested against :cite:`usdepartmentofcommerceSolarCalculationDetails`
+    Tested against :cite:`noaaSolarCalculationDetails`
     """
     return (
         0.004297

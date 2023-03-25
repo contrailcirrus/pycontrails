@@ -595,7 +595,7 @@ def thrust_force(
 
     References
     ----------
-    - :cite:`eurocontolUSERMANUALBASE2010`
+    - :cite:`eurocontrolUSERMANUALBASE2010`
 
     Notes
     -----
