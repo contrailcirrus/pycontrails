@@ -90,7 +90,7 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
 
     References
     ----------
-    - :cite:`InternationalStandardAtmosphere2023`
+    - :cite:`wikipediacontributorsInternationalStandardAtmosphere2023`
 
     Notes
     -----
@@ -135,7 +135,7 @@ def m_to_pl(h: np.ndarray) -> np.ndarray:
 
     References
     ----------
-    - :cite:`BarometricFormula2023`
+    - :cite:`wikipediacontributorsBarometricFormula2023`
 
     Notes
     -----
@@ -189,7 +189,7 @@ def pl_to_m(pl: np.ndarray) -> np.ndarray:
 
     References
     ----------
-    - :cite:`BarometricFormula2023`
+    - :cite:`wikipediacontributorsBarometricFormula2023`
 
     Notes
     -----

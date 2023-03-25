@@ -19,7 +19,7 @@ g: float = 9.80665
 radius_earth: float = 6371229.0
 
 #: ISA height of the tropopause :math:`[m]`
-#: :cite:`InternationalStandardAtmosphere2023`
+#: :cite:`wikipediacontributorsInternationalStandardAtmosphere2023`
 h_tropopause: float = 11000.0
 
 # -------------
@@ -27,7 +27,7 @@ h_tropopause: float = 11000.0
 # -------------
 
 #: Surface pressure, international standard atmosphere :math:`[Pa]`
-#: :cite:`InternationalStandardAtmosphere2023`
+#: :cite:`wikipediacontributorsInternationalStandardAtmosphere2023`
 p_surface: float = 101325.0
 
 #: Isobaric heat capacity of dry air :math:`[J \ kg^{-1} \ K^{-1}]`
@@ -73,7 +73,7 @@ T_msl: float = 288.15
 c_msl: float = 340.294
 
 #: The rate at which the ISA ambient temperature falls with altitude :math:`[K \ m^{-1}]`
-#: :cite:`InternationalStandardAtmosphere2023`
+#: :cite:`wikipediacontributorsInternationalStandardAtmosphere2023`
 T_lapse_rate: float = -0.0065
 
 #: Average incident solar radiation, :math:`[W \ m^{-2}]`

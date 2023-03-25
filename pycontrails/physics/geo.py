@@ -428,7 +428,7 @@ def cosine_solar_zenith_angle(
 
     References
     ----------
-    - :cite:`SolarZenithAngle2022`
+    - :cite:`wikipediacontributorsSolarZenithAngle2022`
 
     See Also
     --------
