@@ -64,8 +64,8 @@ dev-pycontrails-bada:
 # QC, Test
 # -----------
 
-flake8: black-check
-	flake8 pycontrails tests
+ruff: black-check
+	ruff pycontrails tests
 
 black:
 	black pycontrails

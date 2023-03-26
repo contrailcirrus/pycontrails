@@ -19,10 +19,10 @@ class MetVariable:
     - `ECMWF Parameter Database <https://apps.ecmwf.int/codes/grib/param-db>`_
     - `NCEP Grib v1 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/on388/table2.html>`
     - `WMO Codes Registry, Grib Edition 2 <https://codes.wmo.int/_grib2>`_
-    - `NCEP Grib v2 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-2.shtml>`  # noqa: E501
+    - `NCEP Grib v2 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-2.shtml>`
 
     Used for defining support parameters in a grib-like fashion.
-    """
+    """  # noqa: E501
 
     #: Short variable name.
     #: Chosen for greatest consistency between data sources.

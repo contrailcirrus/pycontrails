@@ -48,7 +48,7 @@ def parse_timesteps(time: TimeInput | None, freq: str = "1H") -> list[datetime]:
         Input values can be any type compatible with :meth:`pandas.to_datetime`.
     freq : str, optional
         Timestep interval in range.
-        See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases  # noqa: E501
+        See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         for a list of frequency aliases.
         Defaults to "1H".
 
@@ -62,7 +62,7 @@ def parse_timesteps(time: TimeInput | None, freq: str = "1H") -> list[datetime]:
     ------
     ValueError
         Raises when the time has len > 2 or when time elements fail to be parsed with pd.to_datetime
-    """
+    """  # noqa: E501
 
     if time is None:
         return []

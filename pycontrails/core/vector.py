@@ -787,7 +787,7 @@ class VectorDataset:
             Boolean array with compatible shape.
         copy : bool, optional
             Copy data on filter. Defaults to True. See
-            `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_  # noqa: E501
+            `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_
             for insight into whether copy is appropriate.
 
         Returns
@@ -799,7 +799,7 @@ class VectorDataset:
         ------
         TypeError
             If ``mask`` is not a boolean array.
-        """
+        """  # noqa: E501
         self.data._validate_array(mask)
         if mask.dtype != bool:
             raise TypeError("Parameter `mask` must be a boolean array.")
@@ -997,7 +997,7 @@ class VectorDataset:
             Number of splits.
         copy : bool, optional
             Passed into :meth:`filter`. Defaults to True. Recommend to keep as True
-            based on `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_.  # noqa: E501
+            based on `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_.
 
         Returns
         -------
@@ -1007,7 +1007,7 @@ class VectorDataset:
         See Also
         --------
         :func:`numpy.array_split`
-        """
+        """  # noqa: E501
         full_index = np.arange(self.size)
         index_splits = np.array_split(full_index, n_splits)
         for index in index_splits:

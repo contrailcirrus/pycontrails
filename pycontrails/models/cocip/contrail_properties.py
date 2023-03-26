@@ -524,10 +524,10 @@ def contrail_edges(
 
     Returns
     -------
-    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]  # noqa: E501
+    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]
         (lon_edge_l, lat_edge_l, lon_edge_r, lat_edge_r), longitudes and latitudes
         at the left and right edges of the contrail, degrees
-    """
+    """  # noqa: E501
     dlon = units.m_to_longitude_distance(width * sin_a * 0.5, lat)
     dlat = units.m_to_latitude_distance(width * cos_a * 0.5)
 
@@ -561,7 +561,7 @@ def contrail_vertices(
 
     This is equivalent to running :meth:`contrail_edges` at each contrail waypoint
     and associating the next continuous waypoint with the previous.
-    This method is helpful when you want to treath each contrail waypoint indepedently.
+    This method is helpful when you want to treat each contrail waypoint independently.
 
     (lon_1, lat_1)                  x--------------------x   (lon_4, lat_4)
 
@@ -587,9 +587,9 @@ def contrail_vertices(
 
     Returns
     -------
-    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]  # noqa: E501
+    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]
         (lon_1, lat_1, lon_2, lat_2, lon_3, lat_3, lon_4, lat_4) degrees
-    """
+    """  # noqa: E501
     dlon_width = units.m_to_longitude_distance(width * sin_a * 0.5, lat)
     dlat_width = units.m_to_latitude_distance(width * cos_a * 0.5)
 

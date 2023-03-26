@@ -103,8 +103,8 @@ class GFSForecast(datalib.MetDataSource):
     - `NOAA GFS <https://registry.opendata.aws/noaa-gfs-bdp-pds/>`_
     - `Documentation <https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast>`_
     - `Parameter sets <https://www.nco.ncep.noaa.gov/pmb/products/gfs/>`_
-    - `GFS Documentation <https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs/documentation.php>`_  # noqa: E501
-    """
+    - `GFS Documentation <https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs/documentation.php>`_
+    """  # noqa: E501
 
     __slots__ = ("client", "grid", "cachestore", "show_progress", "forecast_time")
 

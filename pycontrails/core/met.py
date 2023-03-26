@@ -1963,13 +1963,13 @@ class MetDataArray(MetBase):
         See Also
         --------
         :meth:`to_polygons`
-        `skimage.measure.marching_cubes <https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.marching_cubes>`_  # noqa: E501
+        `skimage.measure.marching_cubes <https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.marching_cubes>`_
 
         Notes
         -----
-        Uses the `scikit-image Marching Cubes  <https://scikit-image.org/docs/dev/auto_examples/edges/plot_marching_cubes.html>`_  # noqa: E501
+        Uses the `scikit-image Marching Cubes  <https://scikit-image.org/docs/dev/auto_examples/edges/plot_marching_cubes.html>`_
         algorithm to reconstruct a surface from the point-cloud like arrays.
-        """
+        """  # noqa: E501
         try:
             from skimage import measure
         except ModuleNotFoundError as e:

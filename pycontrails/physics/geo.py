@@ -14,7 +14,7 @@ from pycontrails.utils.types import ArrayLike
 
 
 def haversine(lons0: ArrayLike, lats0: ArrayLike, lons1: ArrayLike, lats1: ArrayLike) -> ArrayLike:
-    r"""Calculate haversine distance between corresponding points in (lons0, lats0) and (lons1, lats1).
+    r"""Calculate haversine distance between points in (lons0, lats0) and (lons1, lats1).
 
     Handles coordinates crossing the antimeridian line (-180, 180).
 
@@ -40,10 +40,10 @@ def haversine(lons0: ArrayLike, lats0: ArrayLike, lons1: ArrayLike, lats1: Array
 
     See Also
     --------
-    `sklearn.metrics.pairwise.haversine_distances <https://scikit-learn.org/stable/modules/generated/sklearn.metrics.pairwise.haversine_distances.html>` :  # noqa: E501
+    :func:`sklearn.metrics.pairwise.haversine_distances`:
         Compute the Haversine distance
-    `pyproj.Geod <https://pyproj4.github.io/pyproj/stable/api/geod.html>`_ :
-        performs forward and inverse geodetic, or Great Circle, computations
+    :class:`pyproj.Geod`:
+        Performs forward and inverse geodetic, or Great Circle, computations
     """
     lats0_rad = units.degrees_to_radians(lats0)
     lats1_rad = units.degrees_to_radians(lats1)

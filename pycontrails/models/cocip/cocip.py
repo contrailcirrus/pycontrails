@@ -38,7 +38,8 @@ logger = logging.getLogger(__name__)
 class Cocip(Model):
     r"""Contrail Cirrus Prediction Model (CoCiP).
 
-    Published by Ulrich Schumann *et. al.* (`DLR Institute of Atmospheric Physics <https://www.dlr.de/pa/en/>`_)  # noqa: E501
+    Published by Ulrich Schumann *et. al.*
+    (`DLR Institute of Atmospheric Physics <https://www.dlr.de/pa/en/>`_)
     in :cite:`schumannContrailCirrusPrediction2012`, :cite:`schumannParametricRadiativeForcing2012`.
 
     Parameters
@@ -71,7 +72,8 @@ class Cocip(Model):
     - Solar direct radiation.
       The original algorithm uses ECMWF radiation variable `tisr` (top incident solar radiation)
       as solar direct radiation value.
-      This implementation calculates the theoretical solar direct radiation at any arbitrary point in the atmosphere.
+      This implementation calculates the theoretical solar direct radiation at
+      any arbitrary point in the atmosphere.
       See :func:`geo.solar_direct_radiation`.
     - Segment angle.
       The segment angle calculations for flights and contrail segments have been updated
@@ -79,7 +81,8 @@ class Cocip(Model):
       As the triangle approaches zero, the two calculations agree.
       See :func:`geo.segment_angle`.
     - Integration.
-      This implementation consistently uses left-Riemann sums in the time integration of contrail segments.
+      This implementation consistently uses left-Riemann sums
+      in the time integration of contrail segments.
     - Segment length ratio.
       Instead of taking a geometric mean between contrail segments before/after advection,
       a simple ratio is computed.
@@ -89,8 +92,9 @@ class Cocip(Model):
       the mean energy flux for the segment of interest.
       See :func:`contrail_properties.mean_energy_flux_per_m`.
 
-    This implementation is regression tested against results from :cite:`teohAviationContrailClimate2022`.
-    See `tests/regression/north-atlantic-study/validate.py`.
+    This implementation is regression tested against
+    results from :cite:`teohAviationContrailClimate2022`.
+    See `tests/benchmark/north-atlantic-study/validate.py`.
 
     NaN values may appear in model output. Specifically, `np.nan` values are used to indicate:
 
@@ -1319,9 +1323,9 @@ def _process_rad(rad: MetDataset, shift_radiation_time: np.timedelta64) -> MetDa
 
     Notes
     -----
-    - https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf  # noqa: E501
+    - https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
     - https://confluence.ecmwf.int/pages/viewpage.action?pageId=155337784
-    """
+    """  # noqa: E501
     logger.debug(f"Shifting radiation time dimension by {shift_radiation_time}")
     if not np.all(np.diff(rad.data["time"]) / 2 == -shift_radiation_time):
         warnings.warn(
