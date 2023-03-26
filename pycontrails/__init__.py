@@ -41,8 +41,7 @@ from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
 
 __version__ = metadata.version("pycontrails")
-__metadata__ = metadata.metadata("pycontrails").json
-__license__ = __metadata__["license"]
+__license__ = "Apache-2.0"
 __url__ = "https://py.contrails.org"
 
 log = logging.getLogger(__name__)
