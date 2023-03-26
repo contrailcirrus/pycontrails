@@ -13,6 +13,7 @@ Contrail Modeling and Mitigation
    :caption: Getting Started
 
    install
+   develop
    examples
 
 .. toctree::

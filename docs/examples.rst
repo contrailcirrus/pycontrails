@@ -2,6 +2,19 @@
 Notebook Examples
 =================
 
+Examples
+--------
+
+This ``/docs/examples`` directory contains a collection of
+`Jupyter Notebooks <https://jupyter.org/>`__  demonstrating core ``pycontrails`` use.
+Launch ``jupyter`` or ``jupyter lab`` to run these notebooks interactively.
+
+.. code:: bash
+
+   $ cd docs/examples
+   $ jupyter lab
+
+
 .. toctree::
    :maxdepth: 1
    :caption: Data Structures
@@ -25,15 +38,6 @@ Notebook Examples
 
    examples/ECMWF
 
-
-This ``/docs/examples`` directory contains a collection of
-`Jupyter Notebooks <https://jupyter.org/>`__  demonstrating core ``pycontrails`` use.
-Launch ``jupyter`` or ``jupyter lab`` to run these notebooks interactively.
-
-.. code:: bash
-
-   $ cd docs/examples
-   $ jupyter lab
 
 Data
 ----

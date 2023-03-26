@@ -1,16 +1,14 @@
 
-Install & Setup
-===============
-
-
 Install
--------
+=======
 
 Requires
-~~~~~~~~
+--------
 
 - Python (3.9 or later)
 
+Core
+----
 
 Install the latest release using ``pip``:
 
@@ -31,7 +29,7 @@ Install the latest development version directly from GitHub:
 
 
 Optional Dependencies
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 The ``pycontrails`` package uses optional dependencies for specific features:
 
@@ -59,14 +57,14 @@ for the latest optional dependencies.
 
 
 Extensions
-~~~~~~~~~~
+----------
 
 Some features of ``pycontrails`` are written as extensions that can be added manually:
 
 .. _bada-install:
 
 BADA
-""""
+~~~~
 
     This extension is private due to license restrictions
 
@@ -78,7 +76,7 @@ interface with `BADA <https://www.eurocontrol.int/model/bada>`__ aircraft perfor
     pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
 
 Cirium
-""""""
+~~~~~~
 
     This extension is private due to license restrictions
 
@@ -92,10 +90,9 @@ to a `Cirium <https://www.cirium.com/>`__ database of jet engines.
 .. _accf-install:
 
 ACCF
-""""
+~~~~
 
-``pycontrails`` includes an interface to the DLR / UMadrid
-`ACCF model <https://gmd.copernicus.org/preprints/gmd-2022-203/>`__
+Interface to the DLR / UMadrid `ACCF model <https://gmd.copernicus.org/preprints/gmd-2022-203/>`__
 using a forked version of the `climaccf repository <https://github.com/dlr-pa/climaccf>`__.
 
 .. code-block:: bash
