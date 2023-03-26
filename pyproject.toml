@@ -84,14 +84,15 @@ dev = [
 # Documentation / Sphinx dependencies
 docs = [
     "doc8>=1.1",
+    "furo>=2023.3",
     "myst-parser>=1.0",
     "nbsphinx>=0.8",
     "nbval",
     "sphinx>=4.2",
     "sphinx-autobuild>=0.7",
-    "sphinx-book-theme>=1.0.0",
     "sphinxcontrib-bibtex>=2.2",
     "sphinx_copybutton>=0.5",
+    "sphinxext.opengraph>=0.8",
 ]
 
 # ECMWF datalib interfaces

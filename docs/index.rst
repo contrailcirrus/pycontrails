@@ -1,8 +1,6 @@
 
-Contrail Modeling and Mitigation
-================================
-
-**Version**: |version|
+pycontrails
+===========
 
 *Python library for modeling aviation climate impacts.*
 

@@ -6,12 +6,8 @@ list see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
-# -- Path setup --------------------------------------------------------------
+from __future__ import annotations
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
 import datetime
 import pathlib
 
@@ -20,7 +16,7 @@ import pycontrails
 # -- Project information -----------------------------------------------------
 
 project = "pycontrails"
-copyright = f"{datetime.datetime.now().year}, Breakthrough Energy"
+copyright = f"2021-{datetime.datetime.now().year}, Breakthrough Energy"
 
 author = "Breakthrough Energy"
 version = pycontrails.__version__
@@ -55,6 +51,8 @@ extensions = [
     "myst_parser",
     # https://github.com/jbms/sphinx-immaterial/issues/38#issuecomment-1055785564
     "IPython.sphinxext.ipython_console_highlighting",
+    # https://github.com/wpilibsuite/sphinxext-opengraph
+    "sphinxext.opengraph",
 ]
 
 extlinks = {"issue": ("https://github.com/contrailcirrus/pycontrails/issues/%s", "issue %s")}
@@ -182,44 +180,66 @@ autodoc_default_options = {
 # use with :cite:`perez2011python` etc
 # See the References section of the README for instructions to add new references
 bibtex_bibfiles = ["_static/pycontrails.bib"]
-bibtex_default_style = "unsrt"
 bibtex_reference_style = "author_year"
+bibtex_default_style = "unsrt"
 
 nbsphinx_timeout = 600
 nbsphinx_execute = "never"
 
+# Allow headers to be linkable to level 3.
+myst_heading_anchors = 3
+
+# Disable myst translations
+myst_disable_syntax: list[str] = []
+
+# Optional MyST Syntaxes
+myst_enable_extensions: list[str] = []
+
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-pygments_style
+# https://pygments.org/styles/
+pygments_style = "monokai"
+
 # -- Options for HTML output -------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-html_theme = (  # https://sphinx-book-theme.readthedocs.io/en/latest/configure.html
-    "sphinx_book_theme"
-)
-html_title = ""
+# The theme to use for HTML and HTML Help pages.
+# See the documentation for a list of builtin themes.
+# https://github.com/pradyunsg/furo
+html_theme = "furo"
+html_title = f"{project} v{release}"
 
-html_context = {
-    "doc_path": "docs",
-}
+# Adds a "last updated on" to the bottom of each page
+# Set to None to disable
 html_last_updated_fmt = ""
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "repository_url": "https://github.com/contrailcirrus/pycontrails",
-    "repository_branch": "main",
-    "use_repository_button": True,
-    "use_fullscreen_button": False,
-    "use_issues_button": True,
-    "home_page_in_toc": False,
-    "use_edit_page_button": False,
-    "show_prev_next": False,
+    "source_repository": "https://github.com/contrailcirrus/pycontrails",
+    "source_branch": "main",
+    "source_directory": "docs/",
+    # "sidebar_hide_name": False,   # default
+    # "top_of_page_button": "edit", # default
+    # this adds a github icon to the footer. Ugly, but useful.
+    # See https://pradyunsg.me/furo/customisation/footer/#using-embedded-svgs
+    "footer_icons": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/contrailcirrus/pycontrails",
+            "html": """
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            """,
+            "class": "",
+        },
+    ],
 }
 
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "_static/img/logo.jpg"
+# html_logo = "_static/img/logo.jpg"
 html_favicon = "_static/img/favicon.png"
 
 
@@ -231,7 +251,3 @@ html_css_files = ["css/style.css"]
 # html_js_files = []
 
 html_sourcelink_suffix = ""
-
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-pygments_style
-# https://pygments.org/styles/
-pygments_style = "monokai"

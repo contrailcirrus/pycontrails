@@ -113,7 +113,7 @@ The full list of Sphinx configuration options is in the [Sphinx configuration do
 Tutorials should be written as isolated executable [Jupyter Notebooks](https://jupyter.org/).
 The [nbsphinx](https://nbsphinx.readthedocs.io/en/0.9.1/) extension includes notebooks in the static documentation.
 
-#### Citations
+#### Literature References
 
 The documentation uses [sphinxcontrib-bibtex](https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html) to include citations and a bibliography.
 
