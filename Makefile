@@ -126,15 +126,12 @@ test: ruff mypy pytest doctest black-check nbblack-check pydocstyle
 profile:
 	python -m cProfile -o $(script).prof $(script)
 
-
-
 # -----------
 # Release
 # -----------
 
 changelog:
 	git log $(shell git describe --tags --abbrev=0)..HEAD --pretty=format:'- (%h) %s' 
-
 
 preversion:
 	# make sure we're on the main branch
