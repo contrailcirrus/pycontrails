@@ -44,8 +44,7 @@ tests/benchmark/cocip/outputs
 
 # docs
 docs/_build
-docs/reference/api/
-docs/CHANGELOG.md
+docs/api/
 
 # data
 .ecmwf

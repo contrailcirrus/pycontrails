@@ -12,23 +12,8 @@ Contrail Modeling and Mitigation
    :maxdepth: 1
    :caption: Getting Started
 
-   getting-started/install
-
-.. toctree::
-   :titlesonly:
-   :maxdepth: 1
-   :caption: Tutorials
-
-   tutorials/data
-   tutorials/models
-   tutorials/datalib
-
-.. toctree::
-   :titlesonly:
-   :maxdepth: 1
-   :caption: Background
-
-   explanations/overview
+   install
+   examples
 
 .. toctree::
    :titlesonly:
@@ -36,15 +21,15 @@ Contrail Modeling and Mitigation
    :caption: Resources
 
    reference/api
-   reference/changelog
-   reference/references
+   reference/literature
    reference/contributing
-   Github Discussions <https://github.com/contrailcirrus/pycontrails/discussions>
+   reference/changelog
 
 .. toctree::
    :titlesonly:
    :maxdepth: 1
    :caption: Links
 
+   Github Discussions <https://github.com/contrailcirrus/pycontrails/discussions>
    Contrails Map <https://map.contrails.org>
    Contrails API <https://api.contrails.org>
