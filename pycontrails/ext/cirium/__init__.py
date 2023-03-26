@@ -9,5 +9,6 @@ try:
 
 except ImportError as e:
     raise ImportError(
-        "Failed to import `pycontrails-cirium` extension. Install with `pip install .[cirium]`"
+        "Failed to import `pycontrails-cirium` extension. Install with `pip install"
+        ' "pycontrails-cirium @ git+ssh://git@github.com/contrailcirrus/pycontrails-cirium.git"`'
     ) from e
