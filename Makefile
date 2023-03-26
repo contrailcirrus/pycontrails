@@ -17,16 +17,16 @@ help:
 # the latest open3d and accf packages often don't support the latest
 # versions of python
 pip-install:
-	pip install -e .[ecmwf,gcp,gfs,jupyter,vis,zarr]
+	
+	pip install -e ".[ecmwf,gcp,gfs,jupyter,vis,zarr]"
 
 	# these still must be installed manually for Python < 3.10
-	# -pip install -e .[open3d]
-	# -pip install -e .[accf]
+	# -pip install -e ".[open3d]"
 
 # development installation
 dev-install: pip-install
 
-	pip install -e .[dev,docs]
+	pip install -e ".[dev,docs]"
 
 	# install pre-commit
 	pre-commit install
