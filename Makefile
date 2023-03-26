@@ -194,7 +194,7 @@ docs-build: doc8
 
 docs-clean:
 	rm -rf $(DOCS_BUILD_DIR)
-	rm -rf $(DOCS_DIR)/reference/api/*
+	rm -rf $(DOCS_DIR)/api/*
 
 docs-serve: doc8
 	sphinx-autobuild \

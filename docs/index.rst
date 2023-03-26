@@ -20,10 +20,10 @@ Contrail Modeling and Mitigation
    :maxdepth: 1
    :caption: Resources
 
-   reference/api
-   reference/literature
-   reference/contributing
-   reference/changelog
+   api
+   literature
+   contributing
+   changelog
 
 .. toctree::
    :titlesonly:

@@ -110,7 +110,7 @@ CoCiP
 ACCF
 """"
 
-    This model is a this interface over the DLR / UMadrid `climaccf <https://github.com/dlr-pa/climaccf>`_ package.
+    This model is a this interface over the DLR / UMadrid `climaccf <https://github.com/dlr-pa/climaccf>`__ package.
     See :ref:`accf-install` for more information.
 
 .. autosummary::
@@ -222,7 +222,7 @@ Extensions
 BADA
 """"
 
-    Requires `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`_ extension and data files obtained through `BADA license <https://www.eurocontrol.int/model/bada>`_.
+    Requires `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`__ extension and data files obtained through `BADA license <https://www.eurocontrol.int/model/bada>`__.
     See :ref:`bada-install` for more information.
 
 .. autosummary::

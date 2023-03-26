@@ -242,9 +242,8 @@ banned = [
 [tool.doc8]
 max-line-length = 100
 ignore-path = [
-    "docs/reference/changelog.rst",
-    "docs/reference/contributing.rst",
-    "docs/reference/api/*",
-    "docs/reference/api/*",
+    "docs/changelog.rst",
+    "docs/contributing.rst",
+    "docs/api/*",
     "docs/_build/*"
 ]

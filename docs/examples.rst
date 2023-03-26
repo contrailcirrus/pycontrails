@@ -26,8 +26,8 @@ Notebook Examples
    examples/ECMWF
 
 
-This ``/docs/examples`` directory contains a collection of 
-`Jupyter Notebooks <https://jupyter.org/>`__  demonstrating core ``pycontrails`` use. 
+This ``/docs/examples`` directory contains a collection of
+`Jupyter Notebooks <https://jupyter.org/>`__  demonstrating core ``pycontrails`` use.
 Launch ``jupyter`` or ``jupyter lab`` to run these notebooks interactively.
 
 .. code:: bash
@@ -54,7 +54,7 @@ snippet below before interacting with other notebooks.
 
    from pycontrails.datalib.ecmwf import ERA5
 
-   time = ("2022-03-01 00:00:00", "2022-03-01 23:00:00") 
+   time = ("2022-03-01 00:00:00", "2022-03-01 23:00:00")
    pressure_levels = [350, 300, 250, 225, 200, 175, 150]
    met_variables = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]
    rad_variables = ["tsr", "ttr"]
@@ -122,15 +122,3 @@ file included here.
    # artificially clip at 38000 ft to ensure we stay within met bounds
    df["altitude"] = df["altitude"].clip(upper=11582.4)
    df.to_csv("flight.csv", index=False)
-
-Test Examples
--------------
-
-With the `nbval pytest plugin <https://github.com/computationalmodelling/nbval>`__ installed,
-these notebooks can be tested with ``nbtest`` recipe. 
-
-.. code:: bash
-
-   $ make nbtest
-
-This test first ensures that ERA5 data referenced above is cached locally.
