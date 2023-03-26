@@ -9,7 +9,6 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
 import datetime
-import pathlib
 
 import pycontrails
 
@@ -77,12 +76,14 @@ suppress_warnings = ["myst.header"]
 
 # Set up mapping for other projects' docs
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3/", None),
-    "pandas": ("https://pandas.pydata.org/pandas-docs/dev/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/dev/", None),
+    "pyproj": ("https://pyproj4.github.io/pyproj/stable/", None),
+    "python": ("https://docs.python.org/3/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-    "xarray": ("https://xarray.pydata.org/en/stable/", None),
     "skimage": ("https://scikit-image.org/docs/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
 }
 
@@ -120,7 +121,6 @@ napoleon_type_aliases = {
     "MetDataset": "~pycontrails.MetDataset",
     "MetDataArray": "~pycontrails.MetDataArray",
     "MetDataSource": "~pycontrails.MetDataSource",
-    "MetDataArray": "~pycontrails.MetDataArray",
     "Model": "~pycontrails.Model",
     "ModelParams": "~pycontrails.ModelParams",
     # pycontrails.models

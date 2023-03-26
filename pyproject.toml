@@ -261,3 +261,4 @@ ignore = ["E402"]
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
+"docs/conf.py" = ["E501"]
