@@ -118,6 +118,9 @@ doctest: ensure-era5-cached
 nbtest: ensure-era5-cached nbblack-check
 	pytest -W ignore --nbval-lax -p no:python --ignore-glob=*/ACCF.ipynb docs/examples
 
+nbclean: 
+	nb-clean clean -e -o docs/examples
+
 test: ruff mypy pytest doctest black-check nbblack-check pydocstyle
 
 profile:
