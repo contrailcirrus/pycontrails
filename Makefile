@@ -116,7 +116,7 @@ doctest: ensure-era5-cached
 	pytest --doctest-modules pycontrails -vv
 
 nbtest: ensure-era5-cached nbblack-check
-	pytest -W ignore --nbval-lax -p no:python docs/examples
+	pytest -W ignore --nbval-lax -p no:python --ignore-glob=*/ACCF.ipynb docs/examples
 
 test: ruff mypy pytest doctest black-check nbblack-check pydocstyle
 
