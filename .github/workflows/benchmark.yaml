@@ -61,7 +61,7 @@ jobs:
         mkdir -p ~/.ssh/ && ssh-keyscan github.com > ~/.ssh/known_hosts
         gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        pip install ".[bada]"
+        pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
 
     # download data
     - name: BADA files

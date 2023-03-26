@@ -37,7 +37,8 @@ try:
     from pycontrails.ext.bada import BADAGrid
 except ImportError as e:
     raise ImportError(
-        "CocipGrid requires BADA extension. Install with `pip install .[bada]`"
+        'CocipGrid requires BADA extension. Install with `pip install "pycontrails-bada @'
+        ' git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"`'
     ) from e
 
 if TYPE_CHECKING:
