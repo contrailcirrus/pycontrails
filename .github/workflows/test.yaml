@@ -103,7 +103,7 @@ jobs:
 
     - name: QC & Test
       run: |
-        make flake8
+        make ruff
         make mypy
         make black-check
         make pytest

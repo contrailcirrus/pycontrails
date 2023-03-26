@@ -249,10 +249,6 @@ ignore-path = [
     "docs/_build/*"
 ]
 
-# https://flake8.pycqa.org/en/latest/user/configuration.html
-# flake8 configs NOT yet supported in pyproject.toml
-# https://github.com/PyCQA/flake8/issues/234
-
 # Python linter
 # https://beta.ruff.rs/docs/
 [tool.ruff]

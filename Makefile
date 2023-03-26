@@ -117,7 +117,7 @@ doctest: ensure-era5-cached
 nbtest: ensure-era5-cached nbblack-check
 	pytest -W ignore --nbval-lax -p no:python docs/examples
 
-test: flake8 mypy pytest doctest black-check nbblack-check pydocstyle
+test: ruff mypy pytest doctest black-check nbblack-check pydocstyle
 
 profile:
 	python -m cProfile -o $(script).prof $(script)
