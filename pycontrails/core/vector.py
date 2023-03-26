@@ -235,7 +235,7 @@ def _empty_vector_dict(keys: Iterable[str]) -> VectorDataDict:
 
 
 class VectorDataset:
-    """A base class to hold 1D arrays of a consistent size.
+    """Base class to hold 1D arrays of consistent size.
 
     Parameters
     ----------
@@ -1017,7 +1017,7 @@ class VectorDataset:
 
 
 class GeoVectorDataset(VectorDataset):
-    """A base class to hold 1D geospatial arrays of a consistent size.
+    """Base class to hold 1D geospatial arrays of consistent size.
 
     GeoVectorDataset is required to have geospatial coordinate keys defined
     in :attr:`required_keys`.

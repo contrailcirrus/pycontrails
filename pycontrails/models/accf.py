@@ -99,14 +99,14 @@ class ACCF(Model):
     """Compute Algorithmic Climate Change Functions (ACCF)
     over a :class:`Flight` trajectory or :class:`MetDataset` grid.
 
-    This class is a wrapper over the DLR library [climaccf](https://github.com/dlr-pa/climaccf),
-    DOI: 10.5281/zenodo.6977272
+    This class is a wrapper over the DLR / UMadrid library
+    `climaccf <https://github.com/dlr-pa/climaccf>`__,
+    `DOI: 10.5281/zenodo.6977272 <https://doi.org/10.5281/zenodo.6977272>`__
 
     Parameters
     ----------
     met : MetDataset
         Dataset containing "air_temperature" and "specific_humidity" variables
-
 
     References
     ----------

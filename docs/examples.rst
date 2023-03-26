@@ -5,8 +5,9 @@ Notebook Examples
 Examples
 --------
 
-This ``/docs/examples`` directory contains a collection of
+The ``/docs/examples`` directory contains a collection of
 `Jupyter Notebooks <https://jupyter.org/>`__  demonstrating core ``pycontrails`` use.
+
 Launch ``jupyter`` or ``jupyter lab`` to run these notebooks interactively.
 
 .. code:: bash

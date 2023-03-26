@@ -15,6 +15,7 @@ Contrail Modeling and Mitigation
    install
    develop
    examples
+   tutorials
 
 .. toctree::
    :titlesonly:
