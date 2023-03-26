@@ -84,7 +84,7 @@ dev = [
 # Documentation / Sphinx dependencies
 docs = [
     "doc8>=1.1",
-    "myst-parser>=0.18",
+    "myst-parser>=1.0",
     "nbsphinx>=0.8",
     "nbval",
     "sphinx>=4.2",
@@ -241,4 +241,10 @@ banned = [
 # https://github.com/pycqa/doc8
 [tool.doc8]
 max-line-length = 100
-ignore-path = ["docs/reference/api/*"]
+ignore-path = [
+    "docs/reference/changelog.rst",
+    "docs/reference/contributing.rst",
+    "docs/reference/api/*",
+    "docs/reference/api/*",
+    "docs/_build/*"
+]

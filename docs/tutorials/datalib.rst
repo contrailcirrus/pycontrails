@@ -7,4 +7,4 @@ Data Interfaces
    :maxdepth: 1
    :caption: Notebooks
 
-   examples/ecmwf
+   notebooks/ecmwf

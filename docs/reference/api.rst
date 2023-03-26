@@ -107,19 +107,23 @@ CoCiP
     models.cocip.wind_shear
 
 
-.. Contrail Grid
-.. """""""""""""
+ACCF
+""""
 
-.. .. autosummary::
-..     :toctree: api/
+    This model is a this interface over the DLR / UMadrid `climaccf <https://github.com/dlr-pa/climaccf>`_ package.
+    See :ref:`accf-install` for more information.
 
-..     models.cocipgrid.CocipGrid
-..     models.cocipgrid.CocipGridParams
+.. autosummary::
+    :toctree: api/
+
+    models.accf.ACCF
+    models.accf.ACCFParams
+
 
 Aircraft Performance
 """"""""""""""""""""
 
-*In development. Currently used as a base class for the `BADA extension <#bada>`_*
+*In development. Currently used as a base class for the :ref:`BADA extension <bada-extension>`*
 
 .. autosummary::
     :toctree: api/
@@ -210,24 +214,26 @@ Utilities
     .. utils.synthetic_flight
 
 
-.. Extensions
-.. ----------
+Extensions
+----------
 
-.. BADA
-.. """"
+.. _bada-extension:
 
-.. Requires `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`_ extension and data files obtained `BADA license <https://www.eurocontrol.int/model/bada>`_.
+BADA
+""""
 
+    Requires `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`_ extension and data files obtained through `BADA license <https://www.eurocontrol.int/model/bada>`_.
+    See :ref:`bada-install` for more information.
 
-.. .. autosummary::
-..     :toctree: api/
+.. autosummary::
+    :toctree: api/
 
-..     ext.bada.bada_model
-..     ext.bada.bada3
-..     ext.bada.bada4
-..     ext.bada.BADAFlight
-..     ext.bada.BADAFlightParams
-..     ext.bada.BADAGrid
-..     ext.bada.BADAGridParams
-..     ext.bada.BADA3
-..     ext.bada.BADA4
+    ext.bada.bada_model
+    ext.bada.bada3
+    ext.bada.bada4
+    ext.bada.BADAFlight
+    ext.bada.BADAFlightParams
+    ext.bada.BADAGrid
+    ext.bada.BADAGridParams
+    ext.bada.BADA3
+    ext.bada.BADA4

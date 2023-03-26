@@ -1,14 +1,16 @@
 
-Installation
-============
+Install & Setup
+===============
 
-Requires
---------
-
-- Python (3.9 or later)
 
 Install
 -------
+
+Requires
+~~~~~~~~
+
+- Python (3.9 or later)
+
 
 Install the latest release using ``pip``:
 
@@ -49,17 +51,19 @@ The ``pycontrails`` package uses optional dependencies for specific features:
     $ pip install "pycontrails[zarr]"     # Load data from remote Zarr stores
 
     # These packages may not support the latest python version
-    # They are excluded from the "complete" set
+    # and are excluded from "complete"
     $ pip install "pycontrails[open3d]"   # Polyhedra contruction methods
 
-See ``[project.optional-dependencies]`` `pyproject.toml <https://github.com/contrailcirrus/pycontrails/blob/main/pyproject.toml>`_
+See ``[project.optional-dependencies]`` in `pyproject.toml <https://github.com/contrailcirrus/pycontrails/blob/main/pyproject.toml>`_
 for the latest optional dependencies.
 
 
 Extensions
 ~~~~~~~~~~
 
-``pycontrails`` includes extensions that can be added manually
+Some features of ``pycontrails`` are written as extensions that can be added manually:
+
+.. _bada-install:
 
 BADA
 """"
@@ -67,7 +71,7 @@ BADA
     This extension is private due to license restrictions
 
 `pycontrails-BADA <https://github.com/contrailcirrus/pycontrails-bada>`_ is an extension to
-interface with `BADA <https://www.eurocontrol.int/model/bada>`_ aircraft performance models.
+interface with `BADA <https://www.eurocontrol.int/model/bada>`_ aircraft performance data.
 
 .. code-block:: bash
 
@@ -79,11 +83,13 @@ Cirium
     This extension is private due to license restrictions
 
 `pycontrails-cirium <https://github.com/contrailcirrus/pycontrails-cirium>`_ is an extension
-to include a `Cirium <https://www.cirium.com/>`_ database of jet engines.
+to a `Cirium <https://www.cirium.com/>`_ database of jet engines.
 
 .. code-block:: bash
 
     pip install "pycontrails-cirium @ git+ssh://git@github.com/contrailcirrus/pycontrails-cirium.git"
+
+.. _accf-install:
 
 ACCF
 """"
@@ -91,8 +97,6 @@ ACCF
 ``pycontrails`` includes an interface to the DLR / UMadrid
 `ACCF model <https://gmd.copernicus.org/preprints/gmd-2022-203/>`_
 using a forked version of the `climaccf repository <https://github.com/dlr-pa/climaccf>`_.
-
-To run :ref:`pycontrails.models.accf` model, you must install the `climaccf` dependency:
 
 .. code-block:: bash
 
@@ -108,7 +112,7 @@ Requires
 - `git <https://git-scm.com/>`_
 - `Make <https://www.gnu.org/software/make/>`_. See `Makefile <https://github.com/contrailcirrus/pycontrails/blob/main/Makefile>`_ for a list of ``make`` commands.
 
-The documentation requires the additional dependencies:
+Developing documentation requires:
 
 - `pandoc <https://pandoc.org/installing.html>`_ for interpreting Jupyter notebooks
 - `LaTeX <https://www.latex-project.org/get/>`_ for pdf outputs.
@@ -140,8 +144,8 @@ Python, create a dedicated Anaconda environment:
     $ conda activate contrails
 
 
-Development Install
-~~~~~~~~~~~~~~~~~~~
+Install
+~~~~~~~
 
 After activating the virtual environment, clone the `pycontrails repository <https://github.com/contrailcirrus/pycontrails>`_:
 
@@ -211,8 +215,8 @@ Documentation
 Documentation is written in `reStructuredText <http://docutils.sourceforge.net/rst.html>`_
 and built with `Sphinx <https://www.sphinx-doc.org/en/master/>`_.
 
-Sphinx configuration is stored in `conf.py <https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py>`_.
-The full list of configuration options is in the `Sphinx configuration docs <https://www.sphinx-doc.org/en/master/usage/configuration.html>`_.
+Sphinx configuration is written in `docs/conf.py <https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py>`_.
+See `Sphinx configuration docs <https://www.sphinx-doc.org/en/master/usage/configuration.html>`_ for the full list of configuration options.
 
 Build HTML documentation:
 
@@ -234,7 +238,7 @@ Build manually with ``sphinx-build``:
 
     $ sphinx-build -b html docs docs/_build/html      # HTML output
 
-Sphinx caches builds between changes, which can lead to certain pages not updating.
+Sphinx caches builds between changes.
 To force the whole site to rebuild, use the options ``-aE``:
 
 .. code-block:: bash
@@ -248,7 +252,7 @@ for a list of all the possible output builders.
 PDF Output
 """"""""""
 
-    Building PDF output requires a `LaTeX distribution https://www.latex-project.org/get/`_.
+    Building PDF output requires a `LaTeX distribution <https://www.latex-project.org/get/>`_.
 
 Build pdf documentation:
 
