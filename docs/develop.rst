@@ -80,25 +80,25 @@ Run all code quality checks and unit tests:
 
     $ make test
 
-Lint the repository with ``flake8``:
+Lint the repository with `ruff <https://beta.ruff.rs/docs/>`__:
 
 .. code-block:: bash
 
-    $ make flake8
+    $ make ruff
 
-Autoformat the repository with ``black``:
+Autoformat the repository with `black <https://black.readthedocs.io/en/stable/>`__:
 
 .. code-block:: bash
 
     $ make black
 
-Run type checking with ``mypy``:
+Run type checking with `mypy <https://www.mypy-lang.org/>`__:
 
 .. code-block:: bash
 
     $ make mypy
 
-Run unit tests with ``pytest``:
+Run unit tests with `pytest <https://docs.pytest.org/en/7.2.x/>`__:
 
 .. code-block:: bash
 
