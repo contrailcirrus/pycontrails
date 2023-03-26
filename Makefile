@@ -34,6 +34,7 @@ dev-install: pip-install
 clean: docs-clean
 	rm -rf .mypy_cache \
 		   .pytest_cache \
+		   .ruff_cache \
 		   build \
 		   dist \
 		   pycontrails.egg-info \
