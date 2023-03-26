@@ -225,10 +225,11 @@ class Emissions(Model):
     def _gaseous_emission_indices(self, engine_uid: str | None) -> None:
         """Calculate EI's for nitrogen oxide (NOx), carbon monoxide (CO) and hydrocarbons (HC).
 
-        This method attaches the following variables to the underlying :attr:`flight`.
-            - nox_ei
-            - co_ei
-            - nc_ei
+        This method attaches the following variables to the underlying :attr:`flight`:
+
+        - `nox_ei`
+        - `co_ei`
+        - `hc_ei`
 
         Parameters
         ----------
@@ -245,10 +246,11 @@ class Emissions(Model):
     def _gaseous_emissions_ffm2(self, edb_gaseous: EDBGaseous) -> None:
         """Calculate gaseous emissions using the FFM2 methodology.
 
-        This method attaches the following variables to the underlying :attr:`flight`.
-            - nox_ei
-            - co_ei
-            - nc_ei
+        This method attaches the following variables to the underlying :attr:`flight`:
+
+        - `nox_ei`
+        - `co_ei`
+        - `hc_ei`
 
         Parameters
         ----------
@@ -290,10 +292,11 @@ class Emissions(Model):
     def _gaseous_emissions_constant(self) -> None:
         """Fill gaseous emissions data with default values.
 
-        This method attaches the following variables to the underlying :attr:`flight`.
-            - nox_ei
-            - co_ei
-            - nc_ei
+        This method attaches the following variables to the underlying :attr:`flight`:
+
+        - `nox_ei`
+        - `co_ei`
+        - `hc_ei`
 
         Assumes constant emission indices for nitrogen oxide, carbon monoxide and
         hydrocarbon for a given aircraft-engine pair if data is not available in the ICAO EDB.
