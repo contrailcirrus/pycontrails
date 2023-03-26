@@ -1,6 +1,28 @@
 
 # Changelog
 
+## v0.39.0
+
+#### Features
+
+- Add Apache-2 LICENSE and NOTICE files (#21)
+- Add [CONTRIBUTING](CONTRIBUTING.md) document
+- Update documentation website [py.contrails.org](https://py.contrails.org).
+  Includes `install` and `develop` guides, update citations
+  and many other small improvements (#19).
+- Initiate the [Github Discussion](https://github.com/contrailcirrus/pycontrails/discussions) forum (#22).
+
+#### Fixes
+
+- Fix erroneous docstrings in `emissions.py` (#25)
+
+#### Internals
+
+- Add Github action to push to `pypi` on tag (#3)
+- Replace `flake8` with `ruff` linter
+- Add `nb-clean` to pre-commit hooks for example notebooks
+- Add `doc8` rst linter and pre-commit hook
+
 ## v0.38.0
 
 #### Breaking changes
