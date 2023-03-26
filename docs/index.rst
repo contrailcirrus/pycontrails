@@ -32,6 +32,6 @@ Contrail Modeling and Mitigation
    :maxdepth: 1
    :caption: Links
 
-   Github Discussions <https://github.com/contrailcirrus/pycontrails/discussions>
+   Github <https://github.com/contrailcirrus/pycontrails>
    Contrails Map <https://map.contrails.org>
    Contrails API <https://api.contrails.org>
