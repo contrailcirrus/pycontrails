@@ -6,7 +6,7 @@
 #### Features
 
 - Add Apache-2 LICENSE and NOTICE files (#21)
-- Add [CONTRIBUTING](CONTRIBUTING.md) document
+- Add [CONTRIBUTING](https://github.com/contrailcirrus/pycontrails/blob/main/CONTRIBUTING.md) document
 - Update documentation website [py.contrails.org](https://py.contrails.org).
   Includes `install` and `develop` guides, update citations
   and many other small improvements (#19).

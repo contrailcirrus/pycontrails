@@ -22,7 +22,7 @@ For small changes, [fork and edit](https://docs.github.com/en/repositories/worki
 
 For larger changes:
 
-- Set up a [local development environment](https://py.contrails.org/install#develop).
+- Set up a [local development environment](https://py.contrails.org/develop.html).
   Make sure to install the `docs` optional dependencies:
 
 ```bash
@@ -53,7 +53,7 @@ For more involved changes, create a [Github Issue](https://github.com/contrailci
 
 Once you're ready to develop:
 
-- Set up a [local development environment](https://py.contrails.org/install#develop).
+- Set up a [local development environment](https://py.contrails.org/develop.html).
   Install the `dev` optional dependencies and [pre-commit hooks](https://pre-commit.com/):
 
 ```bash
@@ -89,7 +89,7 @@ This tools are run automically in a pre-comit hook.
 
 The project uses [pytest](https://docs.pytest.org/en/7.2.x/) to run unit tests.
 New code should include clear unit tests to test code implementation and output values.
-Include new tests in the [`/tests/unit/` directory](tests/unit).
+Include new tests in the [`/tests/unit/` directory](https://github.com/contrailcirrus/pycontrails/tree/main/tests/unit).
 
 The project uses [Github Actions](https://github.com/contrailcirrus/pycontrails/actions) to run code quality and unit tests on each pull request.
 Test locally before pushing using:
@@ -105,7 +105,7 @@ The [quick reStructuredText reference](https://docutils.sourceforge.io/docs/user
 
 Sphinx includes many additional [roles](https://www.sphinx-doc.org/en/master/usage/restructuredtext/roles.html), [directives](https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html), and [extensions](https://www.sphinx-doc.org/en/master/usage/extensions/index.html) to enhance the documentation.
 
-Sphinx configuration is stored in [conf.py](source/conf.py).
+Sphinx configuration is stored in [conf.py](https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py).
 The full list of Sphinx configuration options is in the [Sphinx configuration docs](https://www.sphinx-doc.org/en/master/usage/configuration.html).
 
 #### Tutorials
@@ -123,7 +123,7 @@ Bibliography references are managed in the [Zotero `pycontrails` library](https:
 The [Zotero Better Bibtex extension](https://retorque.re/zotero-better-bibtex/installation/) automatically syncs this library
 to the [docs/_static/pycontrails.bib](https://github.com/contrailcirrus/pycontrails/blob/main/docs/_static/pycontrails.bib) Bibtex file.
 
-See the [Install/References](https://py.contrails.org/install#references) section of the docs for setup.
+See the [Literature References](https://py.contrails.org/develop.html#references) section of the docs for setup.
 
 #### Docstrings
 
@@ -144,7 +144,7 @@ Use *italics*, **bold** and ``monospace`` if needed in any explanations
 Variable, module, function, and class names should be written between single back-ticks (`numpy`).
 ```
 
-When you specify a type in **Parameters** or **See Also**, Sphinx will automatically replace the text with the `napolean_type_aliases` specified in [conf.py](source/conf.py), e.g.
+When you specify a type in **Parameters** or **See Also**, Sphinx will automatically replace the text with the `napolean_type_aliases` specified in [conf.py](https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py), e.g.
 
 ```python
 """

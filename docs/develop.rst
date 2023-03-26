@@ -168,7 +168,7 @@ To build manually, run:
 References
 ~~~~~~~~~~
 
-Bibliography references managed in a `Zotero library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
+Literature references managed in a `Zotero library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
 
 To automatically sync this library with the
 `docs/_static/pycontrails.bib <https://github.com/contrailcirrus/pycontrails/blob/main/docs/_static/pycontrails.bib>`__ Bibtex file:
