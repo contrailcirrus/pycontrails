@@ -1,17 +1,21 @@
-name: Build and upload pycontrails to PyPI
+# Heavily copied from xarray
+# https://github.com/pydata/xarray/blob/main/.github/workflows/testpypi-release.yaml
+
+name: Build and upload pycontrails to Test PyPI
+
 on:
   release:
     types: [published]
-
-env:
-  pyversion: '3.11'
-
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   run-unit-tests:
     uses: ./.github/workflows/test.yml
+    secrets: inherit
 
-  update-version-to-release-tag:
+  build-dist:
     needs: run-unit-tests
     runs-on: ubuntu-latest
     steps:
@@ -20,40 +24,8 @@ jobs:
         fetch-depth: 0
 
     - uses: actions/setup-python@v4
-      name: Install Python
       with:
-        python-version: ${{ env.pyversion }}
-
-    - name: Bump the version in pyproject.toml
-      run: |
-        version=$(git describe --tags --abbrev=0)
-        python .github/workflows/bump_version.py $version
-    
-    - name: Commit the version bump
-      run: |
-        git config --local user.email "contrailcirrus-ci@contrails.org"
-        git config --local user.name "contrailcirrus-ci"
-        git add pyproject.toml
-        git commit -m "Bump version to $(git describe --tags --abbrev=0)"
-        git push
-
-    - name: Move the tag forward to the new commit
-      run: |
-        tag=$(git describe --tags --abbrev=0)
-        git tag -d $tag
-        git push origin :refs/tags/$tag
-        git tag $tag
-        git push origin $tag
-
-  build-dist:
-    needs: run-unit-tests
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-
-    - uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.pyversion }}
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
@@ -74,12 +46,18 @@ jobs:
 
   test-dist:
     needs: build-dist
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        pyversion: ['3.9', '3.10', '3.11']
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/setup-python@v4
       with:
-        python-version: ${{ env.pyversion }}
+        python-version: ${{ matrix.pyversion }}
 
     - name: Download the distribution
       uses: actions/download-artifact@v3
@@ -95,7 +73,7 @@ jobs:
         pip install --upgrade pip
         pip install dist/pycontrails*.whl
         python -c "import pycontrails; print(pycontrails.__version__)"
-  
+
   publish-dist:
     needs: test-dist
     runs-on: ubuntu-latest
@@ -108,7 +86,7 @@ jobs:
         path: dist
 
     - name: Publish distribution 📦 to Test PyPI
-      uses: pypa/gh-action-pypi-publish@v1
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
