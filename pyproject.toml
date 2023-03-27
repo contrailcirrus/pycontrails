@@ -88,6 +88,7 @@ docs = [
     "nb-clean>=2.4",
     "nbsphinx>=0.8",
     "nbval",
+    "pytest-check-links>=0.8.0",
     "sphinx>=4.2",
     "sphinx-autobuild>=0.7",
     "sphinxcontrib-bibtex>=2.2",

@@ -73,12 +73,6 @@ black:
 
 black-check:
 	black pycontrails --check
-
-nbblack:
-	black docs/examples/*.ipynb
-
-nbblack-check:
-	black docs/examples/*.ipynb --check
 	
 mypy:
 	mypy pycontrails
@@ -102,7 +96,7 @@ pytest-cov:
 pytest-integration:
 	pytest tests/integration
 
-# Common ERA5 data for nbtests and doctests
+# Common ERA5 data for nb-tests and doctests
 ensure-era5-cached:
 	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
 		time = "2022-03-01", "2022-03-01T23"; \
@@ -115,13 +109,7 @@ ensure-era5-cached:
 doctest: ensure-era5-cached
 	pytest --doctest-modules pycontrails -vv
 
-nbtest: ensure-era5-cached nbblack-check
-	pytest -W ignore --nbval-lax -p no:python --ignore-glob=*/ACCF.ipynb docs/examples
-
-nbclean: 
-	nb-clean clean -e -o docs/examples
-
-test: ruff mypy pytest doctest black-check nbblack-check pydocstyle
+test: ruff mypy black-check nb-black-check pydocstyle pytest doctest
 
 profile:
 	python -m cProfile -o $(script).prof $(script)
@@ -143,6 +131,27 @@ DOCS_BUILD_DIR = docs/_build
 
 doc8:
 	doc8 docs
+
+nb-black:
+	black docs/examples/*.ipynb
+
+nb-black-check:
+	black docs/examples/*.ipynb --check
+
+nb-test: ensure-era5-cached nb-black-check
+	pytest -W ignore --nbval-lax -p no:python --ignore-glob=*/ACCF.ipynb docs/examples
+
+nb-execute:
+	jupyter nbconvert --inplace \
+		--to notebook --execute docs/examples/[!ACCF]*.ipynb docs/tutorials/*.ipynb
+
+# Check for broken links in notebooks
+# https://github.com/jupyterlab/pytest-check-links
+nb-check-links:
+	python -m pytest --check-links \
+		--check-links-ignore "https://doi.org/10.1021/acs.est.9b05608" \
+		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
+		docs/examples docs/tutorials
 
 docs-build: doc8
 	sphinx-build -b html $(DOCS_DIR) $(DOCS_BUILD_DIR)/html
