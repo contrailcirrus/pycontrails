@@ -6,7 +6,7 @@
 |---------------|-------------------------------------------------------------------|
 | **Version**   | [![Pypi version](https://img.shields.io/pypi/v/pycontrails.svg)](https://pypi.python.org/pypi/pycontrails) [![Supported python versions](https://img.shields.io/pypi/pyversions/pycontrails.svg)](https://pypi.python.org/pypi/pycontrails) |
 | **Citation**  | TODO |
-| **Tests**     | [![Unit test](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yml) [![Docs](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yml) |
+| **Tests**     | [![Unit test](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yaml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yaml) [![Docs](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml) [![Release](https://github.com/contrailcirrus/pycontrails/actions/workflows/release.yaml/badge.svg)](https://github.com/contrailcirrus/pycontrails/actions/workflows/release.yaml)|
 | **License**   | [![Apache License 2.0](https://img.shields.io/pypi/l/pycontrails.svg)](LICENSE) |
 | **Community** | [![Github Discussions](https://img.shields.io/github/discussions/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/discussions) [![Github Issues](https://img.shields.io/github/issues/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/issues) [![Github PRs](https://img.shields.io/github/issues-pr/contrailcirrus/pycontrails)](https://github.com/contrailcirrus/pycontrails/pulls) |
 
@@ -35,7 +35,7 @@ $ pip install "pycontrails[complete]"
 Install the latest development version directly from GitHub:
 
 ```bash
-$ pip install git+https://github.com/contrailcirrus/pycontrails.git
+pip install git+https://github.com/contrailcirrus/pycontrails.git
 ```
 
 See more options in the [install documentation](https://py.contrails.org/install).
