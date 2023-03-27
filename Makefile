@@ -17,7 +17,7 @@ help:
 # the latest open3d and accf packages often don't support the latest
 # versions of python
 pip-install:
-	
+	pip install -U pip
 	pip install -e ".[ecmwf,gcp,gfs,jupyter,vis,zarr]"
 
 	# these still must be installed manually for Python < 3.10
