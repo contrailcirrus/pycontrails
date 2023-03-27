@@ -42,7 +42,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-Changelog = "https://py.contrails.org/CHANGELOG.html"
+Changelog = "https://py.contrails.org/changelog.html"
 Documentation = "https://py.contrails.org"
 Issues = "https://github.com/contrailcirrus/pycontrails/issues"
 Repository = "https://github.com/contrailcirrus/pycontrails"
