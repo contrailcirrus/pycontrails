@@ -62,10 +62,9 @@ jobs:
     # put bada files in the default location
     - name: BADA files
       run: |
-        cd ..
-        mkdir bada
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ github.workspace }}/bada/
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ github.workspace }}/bada/
+        mkdir ../bada
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ github.workspace }}/../bada/
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ github.workspace }}/../bada/
 
     # download ERA5 data from pre-cached data on GCP
     # this will get cached by the Github Action
