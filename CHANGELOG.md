@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.39.1
+
+#### Features
+
+- Use [setuptools_scm](https://github.com/pypa/setuptools_scm) to manage the `pycontrails` version.
+
 ## v0.39.0
 
 #### Features
