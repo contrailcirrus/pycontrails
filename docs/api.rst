@@ -123,7 +123,7 @@ ACCF
 Aircraft Performance
 """"""""""""""""""""
 
-*In development. Currently used as a base class for the :ref:`BADA extension <bada-extension>`*
+*In development*
 
 .. autosummary::
     :toctree: api/
@@ -223,7 +223,7 @@ BADA
 """"
 
     Requires `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`__ extension and data files obtained through `BADA license <https://www.eurocontrol.int/model/bada>`__.
-    See :ref:`bada-install` for more information.
+    See :ref:`BADA Extension <bada-install>` for more information.
 
 .. autosummary::
     :toctree: api/

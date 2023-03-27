@@ -1,6 +1,11 @@
 @import "theme.css";
 
 
+article table.autosummary {
+    margin-left: 0;
+}
+
+/* currently unused */
 .sidebar-logo {
     min-height: 8rem;
     border-radius: 100px;
