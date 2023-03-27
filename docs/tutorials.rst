@@ -2,16 +2,16 @@
 Tutorials
 =========
 
-The ``/docs/tutorials`` directory contains a collection of
-`Jupyter Notebooks <https://jupyter.org/>`__  walking through specific tutorials.
+The `/docs/tutorials <https://github.com/contrailcirrus/pycontrails/tree/main/docs/tutorials>`__
+directory contains a collection of `Jupyter Notebooks <https://jupyter.org/>`__
+walking through specific tutorials.
 
-Launch ``jupyter`` or ``jupyter lab`` to run these notebooks interactively.
+Launch ``jupyter lab`` to run these notebooks interactively:
 
 .. code:: bash
 
    $ cd docs/examples
    $ jupyter lab
-
 
 .. toctree::
    :maxdepth: 1
