@@ -11,6 +11,10 @@
         {
             "name": "Roger Teoh",
             "affiliation": "Imperial College London"
+        },
+        {
+            "name": "Tom Dean",
+            "affiliation": "Breakthrough Energy"
         }
     ],
     "license": "Apache-2.0",
