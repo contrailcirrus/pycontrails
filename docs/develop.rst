@@ -57,7 +57,7 @@ Install the development verison of ``pycontrails`` using ``make``:
 
     $ make dev-install
 
-Install dependencies manually using ``pip`` in editable mode:
+or install dependencies manually using ``pip`` in editable mode:
 
 .. code-block:: bash
 
@@ -67,14 +67,16 @@ Install dependencies manually using ``pip`` in editable mode:
     # install optional dependencies as above
     $ pip install -e ".[ecmwf,gfs]"
 
-    # make sure to add the pre-commit hooks if installing manually
+    # make sure to add pre-commit hooks if installing manually
     $ pre-commit install
 
 
 Test
 ----
 
-Run all code quality checks and unit tests:
+Run all code quality checks and unit tests.
+This is run in the `test workflow <https://github.com/contrailcirrus/pycontrails/blob/main/.github/workflows/test.yaml>`__,
+but should also be run locally before submitting PRs:
 
 .. code-block:: bash
 
@@ -104,6 +106,7 @@ Run unit tests with `pytest <https://docs.pytest.org/en/7.2.x/>`__:
 
     $ make pytest
 
+
 Documentation
 -------------
 
@@ -124,7 +127,7 @@ Build HTML documentation:
     # docs will be served at http://127.0.0.1:8000
     $ make docs-serve
 
-    # cleanup all built documentation
+    # clean up built documentation
     $ make docs-clean
 
 Build manually with ``sphinx-build``:
@@ -168,12 +171,12 @@ To build manually, run:
 References
 ~~~~~~~~~~
 
-Literature references managed in a `Zotero library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
+Literature references managed in the `pycontrails Zotero library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
 
 To automatically sync this library with the
 `docs/_static/pycontrails.bib <https://github.com/contrailcirrus/pycontrails/blob/main/docs/_static/pycontrails.bib>`__ Bibtex file:
 
-- Install `Zotero <https://www.zotero.org/>`__ and add the `pycontrails collection <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
+- Install `Zotero <https://www.zotero.org/>`__ and add the `pycontrails library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
 - Install the `Zotero Better Bibtex extension <https://retorque.re/zotero-better-bibtex/installation/>`__. Leave defaults during setup.
 - Right click on the **pycontrails** library and select *Export Library*
 - Export as *Better Bibtex*. You can optionally check *Keep Updated* if you want
@@ -189,6 +192,12 @@ Test
     .. code-block:: bash
 
         $ make ensure-era5-cached
+
+Run rst linter with `doc8 <https://doc8.readthedocs.io/en/latest/readme.html>`__:
+
+.. code-block:: bash
+
+    $ make pytest
 
 Run docstring example tests with `doctest <https://docs.python.org/3/library/doctest.html>`__:
 
