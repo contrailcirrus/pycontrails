@@ -5,12 +5,15 @@ name: Build and upload pycontrails to Test PyPI
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build-dist:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
     - uses: actions/setup-python@v4
       with:
@@ -75,7 +78,7 @@ jobs:
         path: dist
 
     - name: Publish distribution 📦 to Test PyPI
-      uses: pypa/gh-action-pypi-publish@v1
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
