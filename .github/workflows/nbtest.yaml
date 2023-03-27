@@ -17,7 +17,6 @@ on:
 # Global variables
 env:
   PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
-  BADA_CACHE_DIR: '${{ github.workspace }}/.cache/bada/'
 
 # set from https://github.com/google-github-actions/auth
 permissions:
@@ -61,16 +60,17 @@ jobs:
     - name: 'Set up Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v1'
 
+    # ERA5 data should be cached after the first run
+    # but this is here in case the cache is cleared
     - name: Add .cdsapirc file
       run: |
         gcloud secrets versions access latest --secret="ecmwf-cdsapi-key-file" > ~/.cdsapirc
     
     - name: BADA files
       run: |
-        mkdir -p ${{ env.BADA_CACHE_DIR }}
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ env.BADA_CACHE_DIR }}
-        ls -la ${{ env.BADA_CACHE_DIR }}
+        mkdir bada
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ github.workspace }}/bada/
+        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ github.workspace }}/bada/
 
     - name: Install pycontrails (dev)
       run: make dev-install
