@@ -93,9 +93,6 @@ pytest-cov:
 		--ignore=tests/unit/test_zarr.py \
 		tests/unit
 
-pytest-integration:
-	pytest tests/integration
-
 # Common ERA5 data for nb-tests and doctests
 ensure-era5-cached:
 	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
@@ -109,7 +106,7 @@ ensure-era5-cached:
 doctest: ensure-era5-cached
 	pytest --doctest-modules pycontrails -vv
 
-test: ruff mypy black-check nb-black-check pydocstyle pytest doctest
+test: ruff mypy black-check nb-black-check pydocstyle pytest doctest nb-test
 
 profile:
 	python -m cProfile -o $(script).prof $(script)
@@ -141,8 +138,11 @@ nb-black-check:
 nb-test: ensure-era5-cached nb-black-check
 	pytest -W ignore --nbval-lax -p no:python --ignore-glob=*/ACCF.ipynb docs/examples
 
-nb-execute:
+# execute notebooks for docs output
+# Note that nb-test will fail after running this locally
+nb-execute: nb-black-check
 	jupyter nbconvert --inplace \
+		--ClearMetadataPreprocessor.enabled=True \
 		--to notebook --execute docs/examples/[!ACCF]*.ipynb docs/tutorials/*.ipynb
 
 # Check for broken links in notebooks
