@@ -107,7 +107,7 @@ Run unit tests with `pytest <https://docs.pytest.org/en/7.2.x/>`__:
 Documentation
 -------------
 
-Documentation is written in `reStructuredText <http://docutils.sourceforge.net/rst.html>`__
+Documentation is written in `reStructuredText <https://docutils.sourceforge.io/rst.html>`__
 and built with `Sphinx <https://www.sphinx-doc.org/en/master/>`__.
 
 Sphinx configuration is written in `docs/conf.py <https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py>`__.

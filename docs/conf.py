@@ -197,7 +197,7 @@ myst_enable_extensions: list[str] = []
 
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-pygments_style
 # https://pygments.org/styles/
-pygments_style = "monokai"
+# pygments_style = "monokai"
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -241,7 +241,6 @@ html_theme_options = {
 # of the sidebar.
 # html_logo = "_static/img/logo.jpg"
 html_favicon = "_static/img/favicon.png"
-
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
