@@ -1,7 +1,7 @@
 # Heavily copied from xarray
 # https://github.com/pydata/xarray/blob/main/.github/workflows/testpypi-release.yaml
 
-name: Build and upload pycontrails to PyPI
+name: Release
 
 on:
   release:
