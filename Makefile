@@ -154,7 +154,8 @@ docs-clean:
 docs-serve: doc8
 	sphinx-autobuild \
 		--re-ignore .*api\/.* \
-		--re-ignore *CHANGELOG.md \
+		--re-ignore CHANGELOG.md \
+		--re-ignore _build\/.* \
 		-b html \
 		$(DOCS_DIR) $(DOCS_BUILD_DIR)/html
 

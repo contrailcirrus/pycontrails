@@ -68,7 +68,7 @@ BADA
 
     This extension is private due to license restrictions
 
-`pycontrails-BADA <https://github.com/contrailcirrus/pycontrails-bada>`__ is an extension to
+`pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`__ is an extension to
 interface with `BADA <https://www.eurocontrol.int/model/bada>`__ aircraft performance data.
 
 .. code-block:: bash
@@ -81,7 +81,7 @@ Cirium
     This extension is private due to license restrictions
 
 `pycontrails-cirium <https://github.com/contrailcirrus/pycontrails-cirium>`__ is an extension
-to a `Cirium <https://www.cirium.com/>`__ database of jet engines.
+to the `Cirium <https://www.cirium.com/>`__ database of jet engines.
 
 .. code-block:: bash
 
@@ -92,7 +92,7 @@ to a `Cirium <https://www.cirium.com/>`__ database of jet engines.
 ACCF
 ~~~~
 
-Interface to the DLR / UMadrid `ACCF model <https://gmd.copernicus.org/preprints/gmd-2022-203/>`__
+Interface to DLR / UMadrid `ACCF model <https://gmd.copernicus.org/preprints/gmd-2022-203/>`__
 using a forked version of the `climaccf repository <https://github.com/dlr-pa/climaccf>`__.
 
 .. code-block:: bash
