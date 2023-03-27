@@ -154,7 +154,11 @@ zarr = [
 [tool.setuptools]
 license-files = ["LICENSE", "NOTICE"]
 
+# Note that setuptools-scm changes some of the default behavior of setuptools
+# In particular, everything tracked by git is included in the source distribution (sdist)
+# We exclude the docs and tests directories from wheel distributions
 # https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
+# https://github.com/pypa/setuptools_scm#file-finders-hook-makes-most-of-manifestin-unnecessary
 [tool.setuptools.packages.find]
 exclude = ["docs*", "tests*"]
 
