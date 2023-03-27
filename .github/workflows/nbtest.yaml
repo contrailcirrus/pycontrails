@@ -49,8 +49,6 @@ jobs:
       id: cache-test
       uses: actions/cache@v3
       with:
-        # Note the caches are specific to branches, so we don't need to specify here
-        # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache
         key: pycontrails-cache
         path: |
           ${{ env.PYCONTRAILS_CACHE_DIR }}
