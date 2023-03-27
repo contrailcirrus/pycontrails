@@ -28,7 +28,6 @@ concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
 
-
 jobs:
   notebook-test:
     runs-on: ubuntu-latest
@@ -60,17 +59,19 @@ jobs:
     - name: 'Set up Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v1'
 
-    # ERA5 data should be cached after the first run
-    # but this is here in case the cache is cleared
-    - name: Add .cdsapirc file
-      run: |
-        gcloud secrets versions access latest --secret="ecmwf-cdsapi-key-file" > ~/.cdsapirc
-    
+    # put bada files in the default location
     - name: BADA files
       run: |
+        cd ..
         mkdir bada
         gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ github.workspace }}/bada/
         gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ github.workspace }}/bada/
+
+    # download ERA5 data from pre-cached data on GCP
+    # this will get cached by the Github Action
+    - name: pycontrails cache (ERA5 data)
+      run: |
+        gcloud storage cp -r gs://contrails-301217-unit-test/nb-test-cache/* ${{ env.PYCONTRAILS_CACHE_DIR }}/
 
     - name: Install pycontrails (dev)
       run: make dev-install
@@ -85,7 +86,3 @@ jobs:
     - name: Test notebooks
       run: |
         make nb-test
-
-    - name: Execute notebooks
-      run: |
-        make nb-execute
