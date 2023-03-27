@@ -3,9 +3,9 @@
 name: Benchmark tests
 
 on:
-  # run on tag push
-  push:
-    tags: [ "*" ]
+  # # run on tag push
+  # push:
+  #   tags: [ "*" ]
 
   # Allows run manually from the Actions tab
   workflow_dispatch:
