@@ -1,6 +1,13 @@
 
 # Changelog
 
+## v0.39.3
+
+#### Fixes
+
+- Update links in the [README](README.md).
+- Update the [release guide](RELEASE.md) to include a checklist of steps to follow when cutting a release.
+
 ## v0.39.2
 
 #### Fixes
