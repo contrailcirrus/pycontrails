@@ -1,0 +1,18 @@
+{
+    "creators": [
+        {
+            "name": "Marc Shapiro",
+            "affiliation": "Breakthrough Energy"
+        },
+        {
+            "name": "Zeb Engberg",
+            "affiliation": "Breakthrough Energy"
+        },
+        {
+            "name": "Roger Teoh",
+            "affiliation": "Imperial College London"
+        }
+    ],
+    "license": "Apache-2.0",
+    "title": "pycontrails: Python library for modeling aviation climate impacts"
+}
