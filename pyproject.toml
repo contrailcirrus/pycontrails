@@ -78,7 +78,6 @@ dev = [
     "pytest-cov>=2.11",
     "requests>=2.25",
     "ruff>=0.0.259",
-    "wheel>=0.38",
 ]
 
 # Documentation / Sphinx dependencies
