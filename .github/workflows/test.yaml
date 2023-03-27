@@ -8,7 +8,8 @@ name: Unit tests
 on:
   # run on push to main
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
   # run on all PRs
   pull_request:
