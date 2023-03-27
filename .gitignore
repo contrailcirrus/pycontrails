@@ -21,6 +21,7 @@ build
 sdist
 .eggs
 venv
+_version.py
 
 # test
 .mypy_cache

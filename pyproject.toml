@@ -1,11 +1,10 @@
 # https://setuptools.readthedocs.io/en/latest/
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "setuptools_scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pycontrails"
-version = "0.39.0"
 authors = [
     {name = "Breakthrough Energy", email = "py@contrails.org"},
 ]
@@ -40,6 +39,7 @@ dependencies = [
     "scipy>=1.9,<1.10",  # FIXME: To be fixed early 2023
     "xarray>=2022.3",
 ]
+dynamic = ["version"]
 
 [project.urls]
 Changelog = "https://py.contrails.org/CHANGELOG.html"
@@ -162,6 +162,10 @@ exclude = ["docs*", "tests*"]
 [tool.setuptools.package-data]
 "pycontrails" = ["py.typed"]
 "pycontrails.models.emissions" = ["static/*.csv"]
+
+# https://github.com/pypa/setuptools_scm/
+[tool.setuptools_scm]
+write_to = "pycontrails/_version.py"
 
 # mypy static type checking
 # https://mypy.readthedocs.io/en/stable/config_file.html
