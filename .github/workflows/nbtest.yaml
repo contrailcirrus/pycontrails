@@ -16,7 +16,7 @@ on:
 
 # Global variables
 env:
-  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
+  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache'
 
 # set from https://github.com/google-github-actions/auth
 permissions:
@@ -70,6 +70,7 @@ jobs:
     # this will get cached by the Github Action
     - name: pycontrails cache (ERA5 data)
       run: |
+        mkdir -p ${{ env.PYCONTRAILS_CACHE_DIR }}
         gcloud storage cp -r gs://contrails-301217-unit-test/nb-test-cache/* ${{ env.PYCONTRAILS_CACHE_DIR }}/
 
     - name: Install pycontrails (dev)
