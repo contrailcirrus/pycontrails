@@ -40,11 +40,7 @@ from pycontrails.core.met_var import MetVariable
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
 
-try:
-    __version__ = metadata.version("pycontrails")
-except metadata.PackageNotFoundError:
-    __version__ = "unknown"
-
+__version__ = metadata.version("pycontrails")
 __license__ = "Apache-2.0"
 __url__ = "https://py.contrails.org"
 
