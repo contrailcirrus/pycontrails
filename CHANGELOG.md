@@ -1,6 +1,13 @@
 
 # Changelog
 
+## v0.39.2
+
+#### Fixes
+
+- Fix links in documentation website.
+- Deploy build to [PyPI](https://pypi.org/project/pycontrails/) (in addition to Test PyPI) on release.
+
 ## v0.39.1
 
 #### Features

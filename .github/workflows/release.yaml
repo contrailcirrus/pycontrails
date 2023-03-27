@@ -1,14 +1,13 @@
 # Heavily copied from xarray
 # https://github.com/pydata/xarray/blob/main/.github/workflows/testpypi-release.yaml
 
-name: Build and upload pycontrails to Test PyPI
+name: Build and upload pycontrails to PyPI
 
 on:
   release:
     types: [published]
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   run-unit-tests:
@@ -90,5 +89,12 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        repository_url: https://test.pypi.org/legacy/
+        repository-url: https://test.pypi.org/legacy/
+        verbose: true
+
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
         verbose: true
