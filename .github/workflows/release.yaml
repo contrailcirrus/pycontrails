@@ -12,7 +12,7 @@ on:
 
 jobs:
   run-unit-tests:
-    uses: ./.github/workflows/test.yml
+    uses: ./.github/workflows/test.yaml
     secrets: inherit
 
   build-dist:
