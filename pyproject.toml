@@ -169,6 +169,7 @@ exclude = ["docs*", "tests*"]
 # https://github.com/pypa/setuptools_scm/
 [tool.setuptools_scm]
 write_to = "pycontrails/_version.py"
+local_scheme = "no-local-version"
 
 # mypy static type checking
 # https://mypy.readthedocs.io/en/stable/config_file.html
