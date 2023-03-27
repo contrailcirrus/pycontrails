@@ -110,6 +110,6 @@ jobs:
         make ruff
         make mypy
         make black-check
-        make pytest
         make pydocstyle
+        make pytest
 
