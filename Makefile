@@ -133,52 +133,6 @@ profile:
 changelog:
 	git log $(shell git describe --tags --abbrev=0)..HEAD --pretty=format:'- (%h) %s' 
 
-preversion:
-	# make sure we're on the main branch
-	[ `git rev-parse --abbrev-ref HEAD` = main ] || (printf "\n--> must be on the main branch\n\n" && exit 1)
-
-	# ensure nothing outstanding
-	git diff --exit-code || (printf "\n--> commit or stash outstanding changes\n" && exit 1)
-	git diff --cached --exit-code || (printf "\n--> commit or stash outstanding changes\n" && exit 1)
-
-bump: preversion
-	# usage: 
-	# 
-	# $ make bump version=0.12.5
-
-	# bump version
-	python -c 'import re, sys; \
-		f = open("pyproject.toml", "r"); \
-		p = r"version\s*=\s*\"(\d+)\.(\d+)\.(\d+)\""; \
-		txt = f.read(); \
-		m = re.search(p, txt); \
-		major, minor, patch = [int(v) for v in m.groups()]; \
-		target = "$(version)".split("."); \
-		tmajor, tminor, tpatch = [int(v) for v in target]; \
-		case1 = tmajor == major and tminor == minor and tpatch == patch + 1; \
-		case2 = tmajor == major and tminor == minor + 1 and tpatch == 0; \
-		case3 = tmajor == major + 1 and tminor == 0 and tpatch == 0; \
-		(case1 or case2 or case3) or sys.exit("Versions must be consecutive"); \
-        updated = txt.replace(m.group(), f"version = \"{tmajor}.{tminor}.{tpatch}\""); \
-		open("pyproject.toml", "w").write(updated)'
-
-	# re-install package to update package version
-	pip install -e .
-
-	# commit version
-	git add pyproject.toml
-	git commit -m "release($(version)): bump version"
-
-release: preversion
-
-	# fetch all tags
-	git fetch --tags
-	
-	# get version
-	version=`python -c 'import pycontrails; print(pycontrails.__version__);'`; \
-		git tag -a v$$version -m ""; \
-		git push origin; \
-		git push origin v$$version;
 
 # ----
 # Docs
