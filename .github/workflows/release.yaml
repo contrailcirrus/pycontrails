@@ -25,7 +25,7 @@ jobs:
       run: make main-test-status
 
   build-dist:
-    needs: check-main-status
+    needs: check-main-test-status
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
