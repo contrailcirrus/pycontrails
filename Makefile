@@ -153,8 +153,12 @@ nb-black:
 nb-black-check:
 	black docs/examples/*.ipynb --check
 
-nb-test: ensure-era5-cached nb-black-check nb-check-links
-	pytest --nbval-lax --ignore-glob=*/ACCF.ipynb docs/examples
+# nbval 0.10.0 uses --nbval-sanitize-with instead of --sanitize-with
+# There is a bug in nbval 0.10.0 which prevents us from using it
+# https://github.com/computationalmodelling/nbval/issues/194
+# nb-test: ensure-era5-cached nb-black-check nb-check-links
+nb-test:
+	pytest --nbval --ignore-glob=*/ACCF.ipynb docs/examples --sanitize-with docs/nb-test.cfg
 
 # execute notebooks for docs output
 # Note that nb-test will fail after running this locally
