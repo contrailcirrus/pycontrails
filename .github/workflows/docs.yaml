@@ -67,8 +67,7 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
 
-    # TODO: Execute notebooks for docs automatically
-    # Waiting for nb-test to stabilize
+    # TODO: Execute notebooks for docs
     # - name: Execute notebooks
     #   run: |
     #     make nb-execute

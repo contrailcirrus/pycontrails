@@ -93,19 +93,6 @@ pytest-cov:
 		--ignore=tests/unit/test_zarr.py \
 		tests/unit
 
-# Common ERA5 data for nb-tests and doctests
-ensure-era5-cached:
-	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
-		time = "2022-03-01", "2022-03-01T23"; \
-		lev = [300, 250, 200]; \
-		met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
-		rad_vars = ["tsr", "ttr"]; \
-		ERA5(time=time, variables=met_vars, pressure_levels=lev).download(); \
-		ERA5(time=time, variables=rad_vars).download()'
-
-doctest: ensure-era5-cached
-	pytest --doctest-modules pycontrails -vv
-
 test: ruff mypy black-check nb-black-check pydocstyle pytest doctest nb-test
 
 profile:
@@ -125,6 +112,32 @@ changelog:
 
 DOCS_DIR = docs
 DOCS_BUILD_DIR = docs/_build
+
+# Common ERA5 data for nb-tests and doctests
+ensure-era5-cached:
+	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
+		time = "2022-03-01", "2022-03-01T23"; \
+		lev = [300, 250, 200]; \
+		met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
+		rad_vars = ["tsr", "ttr"]; \
+		ERA5(time=time, variables=met_vars, pressure_levels=lev).download(); \
+		ERA5(time=time, variables=rad_vars).download()'
+
+cache-era5-gcp:
+	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
+		from pycontrails import DiskCacheStore; \
+		cache = DiskCacheStore(cache_dir=".doc-test-cache"); \
+		time = "2022-03-01", "2022-03-01T23"; \
+		lev = [300, 250, 200]; \
+		met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
+		rad_vars = ["tsr", "ttr"]; \
+		ERA5(time=time, variables=met_vars, pressure_levels=lev, cachestore=cache).download(); \
+		ERA5(time=time, variables=rad_vars, cachestore=cache).download()'
+
+	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
+
+doctest: ensure-era5-cached
+	pytest --doctest-modules pycontrails -vv
 
 doc8:
 	doc8 docs

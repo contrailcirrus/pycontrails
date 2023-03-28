@@ -1,6 +1,6 @@
 # Run notebook documentation tests from the ground up
 
-name: Notebook tests
+name: Doc / Notebook tests
 
 on:
   # run on push to main
@@ -16,7 +16,7 @@ on:
 
 # Global variables
 env:
-  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache'
+  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
 
 # set from https://github.com/google-github-actions/auth
 permissions:
@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  notebook-test:
+  doc-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -42,14 +42,6 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
         cache-dependency-path: pyproject.toml
-
-    - name: Cache pycontrails cache
-      id: cache-test
-      uses: actions/cache@v3
-      with:
-        key: pycontrails-cache
-        path: |
-          ${{ env.PYCONTRAILS_CACHE_DIR }}
 
     - name: 'Authenticate to Google Cloud'
       uses: 'google-github-actions/auth@v1'
@@ -67,11 +59,10 @@ jobs:
         gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ github.workspace }}/../bada/
 
     # download ERA5 data from pre-cached data on GCP
-    # this will get cached by the Github Action
     - name: pycontrails cache (ERA5 data)
       run: |
         mkdir -p ${{ env.PYCONTRAILS_CACHE_DIR }}
-        gcloud storage cp -r gs://contrails-301217-unit-test/nb-test-cache/* ${{ env.PYCONTRAILS_CACHE_DIR }}/
+        gcloud storage cp -r gs://contrails-301217-unit-test/doc-test-cache/* ${{ env.PYCONTRAILS_CACHE_DIR }}/
 
     - name: Install pycontrails (dev)
       run: make dev-install
@@ -86,3 +77,7 @@ jobs:
     - name: Test notebooks
       run: |
         make nb-test
+
+    # - name: Test docstrings
+    #   run: |
+    #     make doctest
