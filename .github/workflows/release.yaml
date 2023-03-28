@@ -15,8 +15,12 @@ jobs:
     uses: ./.github/workflows/test.yaml
     secrets: inherit
 
+  run-doc-tests:
+    uses: ./.github/workflows/doctest.yaml
+    secrets: inherit
+
   build-dist:
-    needs: run-unit-tests
+    needs: [run-unit-tests, run-doc-tests]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
