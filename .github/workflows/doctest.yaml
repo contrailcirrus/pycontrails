@@ -78,6 +78,6 @@ jobs:
       run: |
         make nb-test
 
-    # - name: Test docstrings
-    #   run: |
-    #     make doctest
+    - name: Test docstrings
+      run: |
+        make doctest
