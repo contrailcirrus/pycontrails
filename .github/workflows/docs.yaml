@@ -5,13 +5,11 @@
 # Currently hosted at https://py.contrails.org
 name: Docs
 
-# only build docs on release
+# only build docs on release tags
 on:
-  release:
-    types:
-      - published
-    branches:
-      - main
+  push:
+    tags:
+      - '*'
 
   # Allows run manually from the Actions tab
   workflow_dispatch:
