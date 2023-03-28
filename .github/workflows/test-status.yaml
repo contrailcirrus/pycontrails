@@ -1,0 +1,21 @@
+# Heavily copied from xarray
+# https://github.com/pydata/xarray/blob/main/.github/workflows/testpypi-release.yaml
+
+name: Test status
+
+on:
+  push:
+
+jobs:
+  check-main-test-status:
+    runs-on: ubuntu-latest
+    steps:
+    - name: OS Dependencies
+      run: sudo apt-get install -y curl jq
+
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Check main test status
+      run: make main-test-status
