@@ -106,11 +106,11 @@ changelog:
 	git log $(shell git describe --tags --abbrev=0)..HEAD --pretty=format:'- (%h) %s' 
 
 main-test-status:
-	curl -s https://api.github.com/repos/contrailcirrus/pycontrails/actions/workflows/test.yaml/runs \
-		| jq -e -r '.workflow_runs[0].head_branch == "main" and .workflow_runs[0].status == "completed" and .workflow_runs[0].conclusion == "success"'
+	curl -s https://api.github.com/repos/contrailcirrus/pycontrails/actions/workflows/test.yaml/runs?branch=main \
+		| jq -e -r '.workflow_runs[0].status == "completed" and .workflow_runs[0].conclusion == "success"'
 
-	curl -s https://api.github.com/repos/contrailcirrus/pycontrails/actions/workflows/doctest.yaml/runs \
-		| jq -e -r '.workflow_runs[0].head_branch == "main" and .workflow_runs[0].status == "completed" and .workflow_runs[0].conclusion == "success"'
+	curl -s https://api.github.com/repos/contrailcirrus/pycontrails/actions/workflows/doctest.yaml/runs?branch=main \
+		| jq -e -r '.workflow_runs[0].status == "completed" and .workflow_runs[0].conclusion == "success"'
 
 # ----
 # Docs
