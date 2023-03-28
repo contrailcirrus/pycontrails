@@ -35,7 +35,7 @@ dependencies = [
     "numpy>=1.22",
     "overrides>=6.1",
     "pandas>=1.4",
-    "pyproj>=3.0",
+    "pyproj>=3.5",
     "scipy>=1.9,<1.10",  # FIXME: To be fixed early 2023
     "xarray>=2022.3",
 ]
