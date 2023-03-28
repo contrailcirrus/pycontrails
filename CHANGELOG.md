@@ -1,6 +1,14 @@
 
 # Changelog
 
+## v0.39.4
+
+#### Internals
+
+- Add additional Zenodo metadata
+- Add [Doc / Notebook test Action](https://github.com/contrailcirrus/pycontrails/actions/workflows/doctest.yaml) to run notebook test (`make nb-test`) and doctests (`make doctest`) on pull requests.
+- Update [Docs Action](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml) to use python 3.11.
+
 ## v0.39.3
 
 #### Fixes

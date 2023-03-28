@@ -60,19 +60,6 @@ jobs:
     - name: 'Set up Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v1'
 
-    # put bada files in the default location
-    - name: BADA files
-      run: |
-        mkdir ../bada
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ github.workspace }}/../bada/
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ github.workspace }}/../bada/
-
-    # download ERA5 data from pre-cached data on GCP
-    - name: pycontrails cache (ERA5 data)
-      run: |
-        mkdir -p ${{ env.PYCONTRAILS_CACHE_DIR }}
-        gcloud storage cp -r gs://contrails-301217-unit-test/doc-test-cache/* ${{ env.PYCONTRAILS_CACHE_DIR }}/
-
     - name: Install pycontrails (dev)
       run: make dev-install
 
@@ -83,9 +70,10 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
 
-    - name: Execute notebooks
-      run: |
-        make nb-execute
+    # TODO: Execute notebooks for docs
+    # - name: Execute notebooks
+    #   run: |
+    #     make nb-execute
 
     - name: Build docs
       run: |
