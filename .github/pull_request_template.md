@@ -2,7 +2,7 @@ Closes #XX
 
 ## Changes
 
-> Description of changes in this PR. 
+> Description of changes in this PR.
 > Use `make changelog` for starter.
 > Should be copied and commit to `CHANGELOG.md`
 
@@ -17,7 +17,6 @@ Closes #XX
 ## Tests
 
 - [ ] QC test passes locally (`make test`)
-- [ ] Notebook test passes (`make nbtest`)
 - [ ] CI tests pass
 
 ## Reviewer
