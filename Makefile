@@ -156,11 +156,12 @@ nb-black:
 nb-black-check:
 	black docs/examples/*.ipynb --check
 
-nb-test: ensure-era5-cached nb-black-check
-	pytest -W ignore --nbval-lax -p no:python --ignore-glob=*/ACCF.ipynb docs/examples
+nb-test: ensure-era5-cached nb-black-check nb-check-links
+	pytest --nbval-lax --ignore-glob=*/ACCF.ipynb docs/examples
 
 # execute notebooks for docs output
 # Note that nb-test will fail after running this locally
+# TODO: this currently breaks the xarray notebook output styling somehow
 nb-execute: nb-black-check
 	jupyter nbconvert --inplace \
 		--ClearMetadataPreprocessor.enabled=True \

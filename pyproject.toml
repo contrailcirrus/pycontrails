@@ -87,7 +87,7 @@ docs = [
     "myst-parser>=1.0",
     "nb-clean>=2.4",
     "nbsphinx>=0.8",
-    "nbval",
+    "nbval>=0.9.6,!=0.10.0",
     "pytest-check-links>=0.8.0",
     "sphinx>=4.2",
     "sphinx-autobuild>=0.7",
@@ -221,6 +221,7 @@ filterwarnings = [
     "ignore:`np.bool8` is a deprecated alias:DeprecationWarning:skimage.util.dtype",
     "ignore:'cgi' is deprecated and slated:DeprecationWarning:google.cloud.storage.blob",
     "ignore:Engine 'cfgrib' loading failed:RuntimeWarning:xarray.backends.plugins",
+    "ignore:.*IPyNbFile:pytest.PytestRemovedIn8Warning:_pytest.nodes",
 ]
 testpaths = ["tests/unit"]
 
