@@ -1,6 +1,18 @@
 
 # Changelog
 
+## v0.39.5
+
+#### Fixes
+
+- Fix `docs/examples/CoCiP.ipynb` example demonstrating aircraft performance integration
+- Fix unit test caused by breaking change in [pyproj 3.5.0](https://github.com/pyproj4/pyproj/releases/tag/3.5.0)
+
+#### Internals
+
+- Add additional Zenodo metadata
+- Execute notebook examples in [Docs Action](https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml)
+
 ## v0.39.4
 
 #### Internals
