@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import pycontrails.datalib.ads_b.common as adsb
+from pycontrails.datalib.spire.separate_flights import identify_unique_flights
 
 WAYPOINTS_PREFIX = "F:/Spire/data-hi-res"
 COLUMNS_REQ = [
@@ -45,28 +45,6 @@ def load_waypoints(t_start: pd.Timestamp, t_end: pd.Timestamp, *, dt: int = "300
     df_waypoints = df_waypoints[df_waypoints["aircraft_type_icao"].isin(atyps)]
     df_waypoints.reset_index(inplace=True, drop=True)
     return df_waypoints
-
-
-def identify_unique_flights(df_flight_waypoints: pd.DataFrame):
-    # For each subset of waypoints with the same ICAO address, identify unique flights
-    df_flight_waypoints = adsb.downsample_waypoints(df_flight_waypoints, time_resolution=10, time_var="timestamp")
-    df_flight_waypoints = _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints)
-    flights = adsb.separate_unique_flights_from_waypoints(
-        df_flight_waypoints, columns=["tail_number", "aircraft_type_icao", "callsign"]
-    )
-
-    return
-
-
-def _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints: pd.DataFrame):
-    if np.any(df_flight_waypoints["collection_type"] == "satellite"):
-        is_missing = df_flight_waypoints["callsign"].isna() & (df_flight_waypoints["collection_type"] == "satellite")
-
-        if np.any(is_missing):
-            df_flight_waypoints["callsign"] = df_flight_waypoints["callsign"].fillna(method="ffill")
-            df_flight_waypoints["callsign"] = df_flight_waypoints["callsign"].fillna(method="bfill")
-
-    return df_flight_waypoints
 
 
 t_start = pd.to_datetime("2022-02-01 00:00:00")

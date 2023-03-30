@@ -41,7 +41,7 @@ def separate_unique_flights_from_waypoints(df_waypoints: pd.DataFrame, *, column
     df_waypoints: pd.DataFrame
         Unsorted waypoints of multiple flights
     columns: str
-        Metadata variables to check, by ascending order
+        Metadata variables to check, by order of priority
 
     Returns
     -------
