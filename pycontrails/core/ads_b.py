@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
 
@@ -46,7 +48,7 @@ def separate_unique_flights_from_waypoints(df_waypoints: pd.DataFrame, *, column
     Returns
     -------
     list[pd.DataFrame]
-        Set of flight waypoints with the same metadata.
+        List of DataFrames containing set of flight waypoints with the same metadata.
     """
     if np.any(~pd.Series(columns).isin(df_waypoints.columns)):
         raise KeyError(f"DataFrame does not contain all of the required columns listed in the inputs.")
