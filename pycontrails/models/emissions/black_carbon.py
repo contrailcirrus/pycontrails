@@ -500,9 +500,9 @@ def number_emissions_index_fractal_aggregates(
     return nvpm_ei_m / denom
 
 
-# ----------------------------------------------------------
+# -------------------------------------------------------------
 # Scale nvPM emissions indices due to sustainable aviation fuel
-# ----------------------------------------------------------
+# -------------------------------------------------------------
 
 
 def nvpm_number_ei_pct_reduction_due_to_saf(
