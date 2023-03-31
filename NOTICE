@@ -5,10 +5,10 @@ Attribution
 ===========
 
 
-Contrail Cirrus Prediction Model (CoCiP)
+Contrail Cirrus Prediction Tool (CoCiP)
 ----------------------------------------
 
-The Contrail Cirrus Prediction Model (CoCiP) originated at the DLR Institute of Atmospheric Physics.
+The Contrail Cirrus Prediction Tool (CoCiP) originated at the German Aerospace Center (DLR) Institute of Atmospheric Physics.
 It was developed by Ulrich Schumann, see Schumann, U. 2012. "A Contrail Cirrus Prediction Model." 
 Geoscientific Model Development 5 (3): 543–80. https://doi.org/10.5194/gmd-5-543-2012. 
 and related publications:
@@ -38,3 +38,6 @@ George Koudis, Christiane Voigt, and Marc E. J. Stettler. 2022.
 "Aviation Contrail Climate Effects in the North Atlantic from 2016 to 2021."
 Atmospheric Chemistry and Physics 22 (16): 10919–35. 
 https://doi.org/10.5194/acp-22-10919-2022.
+
+Further references can be found here:
+https://www.dlr.de/pa/en/PortalData/33/Resources/dokumente/cocip/Literatur_CoCiP_20200520.pdf
