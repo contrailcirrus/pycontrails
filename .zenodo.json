@@ -2,7 +2,8 @@
   "creators": [
     {
       "name": "Marc Shapiro",
-      "affiliation": "Breakthrough Energy"
+      "affiliation": "Breakthrough Energy",
+      "orcid": "0000-0003-0864-6394"
     },
     {
       "name": "Zeb Engberg",
@@ -10,6 +11,10 @@
     },
     {
       "name": "Roger Teoh",
+      "affiliation": "Imperial College London"
+    },
+    {
+      "name": "Marc Stettler",
       "affiliation": "Imperial College London"
     },
     {
