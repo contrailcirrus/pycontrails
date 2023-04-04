@@ -39,51 +39,70 @@ COLUMNS = {
 ATYPS_IN_BADA_3 = list(bada_3.synonym_dict.keys())
 
 
-def read_raw_ads_b_file(file_path: str) -> pd.DataFrame:
+def load_raw_ads_b_file(file_path: str) -> pd.DataFrame():
     """
-    Read and process raw Spire ADS-B data.
+    Load raw Spire ADS-B file saved as .parquet
 
     Parameters
     ----------
     file_path: str
-        File path to .parquet file for each time slice
+        File path of raw Spire ADS-B file for one time slice
 
     Returns
     -------
-    pd.DataFrame
-        Spire ADS-B waypoint data with erroneous data points removed.
+    pd.DataFrame()
+        Spire ADS-B waypoint data.
     """
     try:
         df_waypoints_t = pd.read_parquet(file_path, columns=list(COLUMNS.keys()))
     except FileNotFoundError:
         return pd.DataFrame(columns=list(COLUMNS.keys()))
 
-    #: (0) Ensure columns have the correct dtype
-    df_waypoints_t = df_waypoints_t.astype(COLUMNS)
-    df_waypoints_t["timestamp"] = pd.to_datetime(df_waypoints_t["timestamp"])
-    df_waypoints_t.sort_values(by=["timestamp"], ascending=True, inplace=True)
+    return df_waypoints_t
 
-    #: (1) Remove waypoints without altitude data
-    df_waypoints_t = df_waypoints_t[df_waypoints_t["altitude_baro"].notna()]
+
+def clean_raw_ads_b_file(df_waypoints: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove erroneous waypoints from raw Spire ADS-B data.
+
+    Parameters
+    ----------
+    df_waypoints: pd.DataFrame
+        Raw ADS-B waypoints read from .parquet file
+
+    Returns
+    -------
+    pd.DataFrame
+        Spire ADS-B waypoint data with erroneous data points removed.
+    """
+    #: (0) Remove waypoints without altitude data and "on_ground" indicator
+    df_waypoints = df_waypoints[df_waypoints["altitude_baro"].notna()]
+    df_waypoints = df_waypoints[df_waypoints["on_ground"].notna()]
+
+    #: (1) Ensure columns have the correct dtype
+    df_waypoints = df_waypoints.astype(COLUMNS)
+    df_waypoints["timestamp"] = pd.to_datetime(df_waypoints["timestamp"])
+    df_waypoints.sort_values(by=["timestamp"], ascending=True, inplace=True)
 
     #: (2) Remove waypoints without aircraft type and tail number metadata
     #: Satellites waypoints should contain these data
-    tn = df_waypoints_t["tail_number"].unique()
+    tn = df_waypoints["tail_number"].unique()
     tn = tn[(tn != "None") & (tn != "VARIOUS")]
-    df_waypoints_t = df_waypoints_t[df_waypoints_t["tail_number"].isin(tn)]
+    df_waypoints = df_waypoints[df_waypoints["tail_number"].isin(tn)]
 
-    atyps = df_waypoints_t["aircraft_type_icao"].unique()
+    atyps = df_waypoints["aircraft_type_icao"].unique()
     atyps = atyps[(atyps != "N/A") & (atyps != "None")]
-    df_waypoints_t = df_waypoints_t[df_waypoints_t["aircraft_type_icao"].isin(atyps)]
+    df_waypoints = df_waypoints[df_waypoints["aircraft_type_icao"].isin(atyps)]
 
     #: (3) Remove aircraft types not covered by BADA 3 (mainly helicopters)
-    df_waypoints_t = df_waypoints_t[df_waypoints_t["aircraft_type_icao"].isin(ATYPS_IN_BADA_3)]
+    df_waypoints = df_waypoints[df_waypoints["aircraft_type_icao"].isin(ATYPS_IN_BADA_3)]
 
     #: (4) Remove terrestrial waypoints without callsign
     #: Most of these waypoints are below 10,000 feet and from general aviation
-    is_erroneous = (df_waypoints_t["callsign"].isna()) & (df_waypoints_t["collection_type"] == "terrestrial")
-    df_waypoints_t = df_waypoints_t[~is_erroneous]
-    return df_waypoints_t.reset_index(inplace=True, drop=True)
+    is_erroneous = (df_waypoints["callsign"].isna()) & (df_waypoints["collection_type"] == "terrestrial")
+    df_waypoints = df_waypoints[~is_erroneous]
+    df_waypoints.reset_index(inplace=True, drop=True)
+    return df_waypoints
 
 
 # --------------------------------------
@@ -104,6 +123,7 @@ def identify_and_categorise_unique_flights(
 ) -> FlightTrajectories:
     # For each subset of waypoints with the same ICAO address, identify unique flights
     df_flight_waypoints = adsb.downsample_waypoints(df_flight_waypoints, time_resolution=10, time_var="timestamp")
+    df_flight_waypoints = df_flight_waypoints.astype({"on_ground": bool})
     df_flight_waypoints = _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints)
     flights = adsb.separate_unique_flights_from_waypoints(
         df_flight_waypoints, columns=["tail_number", "aircraft_type_icao", "callsign"]
