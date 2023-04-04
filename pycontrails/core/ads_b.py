@@ -83,13 +83,14 @@ def remove_noise_in_cruise_altitude(
     np.ndarray
         Barometric altitude with noise removed, [:math:`ft`]
     """
+    altitude_ft_corrected = np.copy(altitude_ft)
     d_alt_ft = np.diff(altitude_ft, prepend=np.nan)
     is_noise = (np.abs(d_alt_ft) <= noise_threshold_ft) & (altitude_ft > threshold_altitude_ft)
 
     # Round to the nearest flight level
     altitude_rounded = np.round(altitude_ft / 1000) * 1000
-    altitude_ft[is_noise] = altitude_rounded[is_noise]
-    return altitude_ft
+    altitude_ft_corrected[is_noise] = altitude_rounded[is_noise]
+    return altitude_ft_corrected
 
 
 def identify_phase_of_flight_detailed(
