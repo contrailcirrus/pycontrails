@@ -101,6 +101,12 @@ def clean_raw_ads_b_file(df_waypoints: pd.DataFrame) -> pd.DataFrame:
     #: Most of these waypoints are below 10,000 feet and from general aviation
     is_erroneous = (df_waypoints["callsign"] == "None") & (df_waypoints["collection_type"] == "terrestrial")
     df_waypoints = df_waypoints[~is_erroneous]
+
+    #: (5) Remove waypoints with erroneous "on_ground" indicator
+    # Thresholds assessed based on scatter plot (100 knots = 185 km/h)
+    is_erroneous = df_waypoints["on_ground"] & ((df_waypoints["speed"] > 100) | (df_waypoints["altitude_baro"] > 10000))
+    df_waypoints = df_waypoints[~is_erroneous]
+
     df_waypoints.reset_index(inplace=True, drop=True)
     return df_waypoints
 
@@ -153,9 +159,13 @@ def _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints: pd.DataF
         Waypoints with the same ICAO address, where the "callsign" is filled
     """
     if np.any(df_flight_waypoints["collection_type"] == "satellite"):
-        is_missing = df_flight_waypoints["callsign"].isna() & (df_flight_waypoints["collection_type"] == "satellite")
+        is_missing = (
+                (df_flight_waypoints["callsign"] == "None") &
+                (df_flight_waypoints["collection_type"] == "satellite")
+        )
 
         if np.any(is_missing):
+            df_flight_waypoints["callsign"][is_missing] = np.nan
             df_flight_waypoints["callsign"] = df_flight_waypoints["callsign"].fillna(method="ffill")
             df_flight_waypoints["callsign"] = df_flight_waypoints["callsign"].fillna(method="bfill")
 
@@ -246,18 +256,24 @@ def _separate_by_ground_indicator(
         if ~np.all(df_flight_2["on_ground"]) & (len(df_flight_2) > min_n_wypt):
             flights_checked.append(df_flight_2)
 
-        #: Check waypoints between i_cutoff_1 and i_cutoff_2, include if there are waypoints off the ground
-        #: If there are multiple flights "df_flight_3", it will be identified in "separate_by_multiple_cruise_phase".
+        # Check waypoints between i_cutoff_1 and i_cutoff_2
+        # Conditions: there must be more than `min_n_wypt`, some waypoints off the grund and > 10,000 feet.
+        # If there are multiple flights, then it will be dealt with in `separate_flights_multiple_cruise_phase`.
         df_flight_3 = df_flight_waypoints.iloc[i_cutoff_1:i_cutoff_2].copy()
+        is_unique_flight = (
+                ~np.all(df_flight_3["on_ground"]) &
+                (len(df_flight_3) > min_n_wypt) &
+                np.any(df_flight_3["altitude_baro"] > 10000)
+        )
 
-        if ~np.all(df_flight_3["on_ground"]) & (len(df_flight_3) > min_n_wypt):
+        if is_unique_flight:
             is_off_the_ground = ~df_flight_3["on_ground"].astype(bool)
             flights_checked.append(df_flight_3[is_off_the_ground].copy())
 
     return flights_checked
 
 
-def separate_flights_multiple_cruise_phase():
+def separate_flights_multiple_cruise_phase(flights: list[pd.DataFrame], ):
     return
 
 
