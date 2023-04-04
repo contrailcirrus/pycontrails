@@ -2,14 +2,93 @@ import dataclasses
 import pandas as pd
 import numpy as np
 import numpy.typing as npt
-
 import pycontrails.core.ads_b as adsb
+
 from pycontrails.core.flight import _dt_waypoints
 from pycontrails.ext.bada import BADA3
 
 bada_3 = BADA3()
 FLIGHT_MINIMUM_N_WYPTS = 5
 
+
+# --------------------------------------
+# Read and pre-process raw ADS-B files
+# --------------------------------------
+
+COLUMNS = {
+    "icao_address": str,
+    "timestamp": str,
+    "latitude": float,
+    "longitude": float,
+    "altitude_baro": float,
+    "heading": float,
+    "speed": float,
+    "on_ground": bool,
+    "callsign": str,
+    "tail_number": str,
+    "collection_type": str,
+    "aircraft_type_icao": str,
+    "aircraft_type_name": str,
+    "airline_iata": str,
+    "airline_name": str,
+    "departure_utc_offset": str,
+    "departure_scheduled_time": str,
+}
+
+
+ATYPS_IN_BADA_3 = list(bada_3.synonym_dict.keys())
+
+
+def read_raw_ads_b_file(file_path: str) -> pd.DataFrame:
+    """
+    Read and process raw Spire ADS-B data.
+
+    Parameters
+    ----------
+    file_path: str
+        File path to .parquet file for each time slice
+
+    Returns
+    -------
+    pd.DataFrame
+        Spire ADS-B waypoint data with erroneous data points removed.
+    """
+    try:
+        df_waypoints_t = pd.read_parquet(file_path, columns=list(COLUMNS.keys()))
+    except FileNotFoundError:
+        return pd.DataFrame(columns=list(COLUMNS.keys()))
+
+    #: (0) Ensure columns have the correct dtype
+    df_waypoints_t = df_waypoints_t.astype(COLUMNS)
+    df_waypoints_t["timestamp"] = pd.to_datetime(df_waypoints_t["timestamp"])
+    df_waypoints_t.sort_values(by=["timestamp"], ascending=True, inplace=True)
+
+    #: (1) Remove waypoints without altitude data
+    df_waypoints_t = df_waypoints_t[df_waypoints_t["altitude_baro"].notna()]
+
+    #: (2) Remove waypoints without aircraft type and tail number metadata
+    #: Satellites waypoints should contain these data
+    tn = df_waypoints_t["tail_number"].unique()
+    tn = tn[(tn != "None") & (tn != "VARIOUS")]
+    df_waypoints_t = df_waypoints_t[df_waypoints_t["tail_number"].isin(tn)]
+
+    atyps = df_waypoints_t["aircraft_type_icao"].unique()
+    atyps = atyps[(atyps != "N/A") & (atyps != "None")]
+    df_waypoints_t = df_waypoints_t[df_waypoints_t["aircraft_type_icao"].isin(atyps)]
+
+    #: (3) Remove aircraft types not covered by BADA 3 (mainly helicopters)
+    df_waypoints_t = df_waypoints_t[df_waypoints_t["aircraft_type_icao"].isin(ATYPS_IN_BADA_3)]
+
+    #: (4) Remove terrestrial waypoints without callsign
+    #: Most of these waypoints are below 10,000 feet and from general aviation
+    is_erroneous = (df_waypoints_t["callsign"].isna()) & (df_waypoints_t["collection_type"] == "terrestrial")
+    df_waypoints_t = df_waypoints_t[~is_erroneous]
+    return df_waypoints_t.reset_index(inplace=True, drop=True)
+
+
+# --------------------------------------
+# Separate and validate unique fight trajectories
+# --------------------------------------
 
 @dataclasses.dataclass
 class FlightTrajectories:
