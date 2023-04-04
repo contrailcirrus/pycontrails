@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import dataclasses
 import pandas as pd
 import numpy as np
+import pycontrails.physics.jet as jet
 
 # TODO: Interpolate between waypoints with dt < threshold
 # TODO: Find nearest airport
@@ -88,3 +90,56 @@ def remove_noise_in_cruise_altitude(
     altitude_rounded = np.round(altitude_ft / 1000) * 1000
     altitude_ft[is_noise] = altitude_rounded[is_noise]
     return altitude_ft
+
+
+def identify_phase_of_flight_detailed(
+        altitude_ft: np.ndarray,
+        dt: np.ndarray, *,
+        threshold_rocd: float = 250.0,
+        min_cruise_alt_ft: float = 20000
+) -> FlightPhaseDetailed:
+    """ Identify the phase of flight (climb, cruise, descent, level flight) for each waypoint.
+
+    Parameters
+    ----------
+    altitude_ft: np.ndarray
+        Altitude of each waypoint, [:math:`ft`]
+    dt: np.ndarray
+        Time difference between waypoints, [:math:`s`].
+    threshold_rocd: float
+        ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
+        Currently set to 250 ft/min.
+    min_cruise_alt_ft: float
+        Minimum threshold altitude for cruise, [:math:`ft`]
+        This is specific for each aircraft type, and can be approximated as 50% of the altitude ceiling.
+
+    Returns
+    -------
+    FlightPhaseDetailed
+        Booleans marking if the waypoints are at cruise, climb, descent, or level flight
+
+    Notes
+    -----
+    This function is more detailed when compared to `jet.identify_phase_of_flight`:
+    - There is an additional flight phase "level-flight", where the aircraft is holding at lower altitudes, and
+    - The cruise phase of flight only occurs above a certain threshold altitude.
+    """
+    rocd = jet.rate_of_climb_descent(dt, altitude_ft)
+
+    nan = np.isnan(rocd)
+    cruise = (rocd < threshold_rocd) & (rocd > -threshold_rocd) & (altitude_ft > min_cruise_alt_ft)
+    climb = ~cruise & (rocd > 0)
+    descent = ~cruise & (rocd < 0)
+    level_flight = ~(nan | cruise | climb | descent)
+    return FlightPhaseDetailed(cruise=cruise, climb=climb, descent=descent, level_flight=level_flight, nan=nan)
+
+
+@dataclasses.dataclass
+class FlightPhaseDetailed:
+    """Container for boolean arrays describing detailed phase of the flight.
+    """
+    cruise: np.ndarray
+    climb: np.ndarray
+    descent: np.ndarray
+    level_flight: np.ndarray
+    nan: np.ndarray
