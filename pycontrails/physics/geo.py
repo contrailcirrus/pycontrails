@@ -133,6 +133,61 @@ def azimuth_to_direction(
     return sin_a, cos_a
 
 
+def azimuth(
+    lons0: np.ndarray,
+    lats0: np.ndarray,
+    lons1: np.ndarray,
+    lats1: np.ndarray,
+) -> np.ndarray:
+    """Calculate angle relative to true north (*azimuth*) between a sequence of of segments.
+
+    Parameters
+    ----------
+    lons0 : np.ndarray
+        Longitude values of initial endpoints.
+    lats0 : np.ndarray
+        Latitude values of initial endpoints.
+    lons1 : np.ndarray
+        Longitude values of terminal endpoints.
+    lats1 : np.ndarray
+        Latitude values of terminal endpoints.
+
+    Returns
+    -------
+    np.ndarray
+        Azimuth values, relative to true north
+
+    References
+    ----------
+    Source: https://en.wikipedia.org/wiki/Azimuth#In_geodesy
+
+    See Also
+    --------
+    :func:`longitudinal_angle`
+    """
+    # add direction of travel
+    lons0 = units.degrees_to_radians(lons0)
+    lons1 = units.degrees_to_radians(lons1)
+    lats0 = units.degrees_to_radians(lats0)
+    lats1 = units.degrees_to_radians(lats1)
+    d_lon = lons1 - lons0
+
+    num = np.sin(d_lon)
+    denom = np.cos(lats0) * np.tan(lats1) - np.sin(lats0) * np.cos(d_lon)
+    tan_a = num / denom
+
+    # returns outputs on [-pi/2, pi/2] range
+    alpha = units.radians_to_degrees(np.arctan(tan_a))
+
+    # reverse angle when final lon is smaller than initial lon
+    alpha[d_lon < 0] = alpha[d_lon < 0] + 180
+
+    # reset to [0, 360)
+    alpha[alpha < 0] = alpha[alpha < 0] + 360
+
+    return alpha
+
+
 def longitudinal_angle(
     lons0: np.ndarray,
     lats0: np.ndarray,
