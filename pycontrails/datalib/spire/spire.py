@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from pycontrails.datalib.spire.separate_flights import identify_unique_flights
+from pycontrails.datalib.spire.separate_flights import identify_and_categorise_unique_flights
 
 WAYPOINTS_PREFIX = "F:/Spire/data-hi-res"
 COLUMNS_REQ = [
@@ -43,7 +43,16 @@ def load_waypoints(t_start: pd.Timestamp, t_end: pd.Timestamp, *, dt: int = "300
     atyps = df_waypoints["aircraft_type_icao"].unique()
     atyps = atyps[(atyps != "N/A") & (atyps != "None")]
     df_waypoints = df_waypoints[df_waypoints["aircraft_type_icao"].isin(atyps)]
+
+    # Remove terrestrial waypoints without callsign
+
+
     df_waypoints.reset_index(inplace=True, drop=True)
+
+
+
+    # TODO: Assert "on_ground" is bool?
+    # TODO: Remove aircraft types not covered by BADA 3
     return df_waypoints
 
 
@@ -54,7 +63,11 @@ df_wypts = load_waypoints(t_start, t_end)
 
 # Separate flights by ICAO address
 flts_icao_address = list(df_wypts.groupby("icao_address"))
-df_flt_wypts = flts_icao_address[101][1]
+# df_flt_wypts = flts_icao_address[101][1]
+# TODO: UNIT TEST!
+df_flt_wypts = flts_icao_address[1020][1]
+len(df_flt_wypts)
+test = identify_and_categorise_unique_flights(df_flt_wypts, t_cut_off=df_wypts["timestamp"].max())
 print(" ")
 
 
