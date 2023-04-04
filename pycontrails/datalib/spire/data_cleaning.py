@@ -99,7 +99,7 @@ def clean_raw_ads_b_file(df_waypoints: pd.DataFrame) -> pd.DataFrame:
 
     #: (4) Remove terrestrial waypoints without callsign
     #: Most of these waypoints are below 10,000 feet and from general aviation
-    is_erroneous = (df_waypoints["callsign"].isna()) & (df_waypoints["collection_type"] == "terrestrial")
+    is_erroneous = (df_waypoints["callsign"] == "None") & (df_waypoints["collection_type"] == "terrestrial")
     df_waypoints = df_waypoints[~is_erroneous]
     df_waypoints.reset_index(inplace=True, drop=True)
     return df_waypoints
@@ -128,9 +128,8 @@ def identify_and_categorise_unique_flights(
     flights = adsb.separate_unique_flights_from_waypoints(
         df_flight_waypoints, columns=["tail_number", "aircraft_type_icao", "callsign"]
     )
-    # TODO: Smooth altitude
+    flights = clean_flight_altitude(flights)
     flights = _separate_by_ground_indicator(flights)
-    print(" ")
     # TODO: Check segment length, dt, multiple cruise phase
     # TODO: diverted flights?
     flight_trajectories = categorise_flight_trajectories(flights, t_cut_off)
@@ -163,7 +162,44 @@ def _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints: pd.DataF
     return df_flight_waypoints
 
 
-# TODO: Why 6000 feet?
+def clean_flight_altitude(flights: list[pd.DataFrame]) -> list[pd.DataFrame]:
+    """
+    Clean erroneous and noisy altitude.
+
+    Parameters
+    ----------
+    flights: list[pd.DataFrame]
+        List of DataFrames containing waypoints from unique flights.
+
+    Returns
+    -------
+    list[pd.DataFrame]
+        List of DataFrames containing waypoints with cleaned altitude data.
+
+    Notes
+    -----
+    (1) Removes waypoints with erroneous altitude, i.e., altitude above service ceiling of aircraft type, and
+    (2) Remove noise in cruise altitude, where flights oscillate between 25 ft due to noise in ADS-B telemetry
+    """
+    flights_checked = list()
+
+    for df_flight_waypoints in flights:
+        #: (1) Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
+        altitude_ceiling_ft = bada_3.ptf_param_dict[df_flight_waypoints["aircraft_type_icao"].iloc[0]].max_altitude_ft
+        is_above_ceiling = df_flight_waypoints["altitude_baro"] > altitude_ceiling_ft
+        df_flight_waypoints = df_flight_waypoints[~is_above_ceiling].copy()
+
+        #: (2) Remove noise in cruise altitude
+        df_flight_waypoints["altitude_baro"] = adsb.remove_noise_in_cruise_altitude(
+            df_flight_waypoints["altitude_baro"].values
+        )
+
+        flights_checked.append(df_flight_waypoints.copy())
+
+    return flights_checked
+
+
+# TODO: 6000 feet -> This can be improved by taking the ground elevation
 def _separate_by_ground_indicator(
         flights: list[pd.DataFrame], *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
 ) -> list[pd.DataFrame]:
