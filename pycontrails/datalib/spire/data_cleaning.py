@@ -134,10 +134,11 @@ def identify_and_categorise_unique_flights(
     flights = adsb.separate_unique_flights_from_waypoints(
         df_flight_waypoints, columns=["tail_number", "aircraft_type_icao", "callsign"]
     )
+    # TODO: ^ Add minimum number of waypoints?
     flights = clean_flight_altitude(flights)
-    flights = _separate_by_ground_indicator(flights)
-    # TODO: Check segment length, dt, multiple cruise phase
-    # TODO: diverted flights?
+    flights = separate_flights_with_ground_indicator(flights)
+    flights = separate_flights_with_multiple_cruise_phase(flights)
+    # TODO: Check segment length, dt,
     flight_trajectories = categorise_flight_trajectories(flights, t_cut_off)
     return flight_trajectories
 
@@ -210,11 +211,11 @@ def clean_flight_altitude(flights: list[pd.DataFrame]) -> list[pd.DataFrame]:
 
 
 # TODO: 6000 feet -> This can be improved by taking the ground elevation
-def _separate_by_ground_indicator(
+def separate_flights_with_ground_indicator(
         flights: list[pd.DataFrame], *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
 ) -> list[pd.DataFrame]:
     """
-    Identify and separate unique flights using the ground indicator.
+    Identify and separate unique flights using the `on_ground` indicator.
 
     Parameters
     ----------
@@ -273,8 +274,69 @@ def _separate_by_ground_indicator(
     return flights_checked
 
 
-def separate_flights_multiple_cruise_phase(flights: list[pd.DataFrame], ):
-    return
+def separate_flights_with_multiple_cruise_phase(
+        flights: list[pd.DataFrame], *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
+) -> list[pd.DataFrame]:
+    """
+    Identify and separate flights with multiple cruise phases.
+
+    Parameters
+    ----------
+    flights: list[pd.DataFrame]
+        List of DataFrames containing waypoints from unique flights.
+    min_n_wypt: int
+        Minimum number of waypoints required for flight to be included
+
+    Returns
+    -------
+    list[pd.DataFrame]
+        List of DataFrames containing waypoints from unique flights.
+    """
+    flights_checked = list()
+
+    for df_flight_waypoints in flights:
+        df_flight_waypoints.reset_index(inplace=True, drop=True)
+
+        # Minimum cruise altitude
+        altitude_ceiling_ft = bada_3.ptf_param_dict[df_flight_waypoints["aircraft_type_icao"].iloc[0]].max_altitude_ft
+        min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
+
+        # Calculate flight phase
+        dt_sec = np.diff(df_flight_waypoints["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(1, "s")
+        flight_phase: adsb.FlightPhaseDetailed = adsb.identify_phase_of_flight_detailed(
+            df_flight_waypoints["altitude_baro"].values, dt_sec,
+            threshold_rocd=250, min_cruise_alt_ft=min_cruise_altitude_ft
+        )
+
+        # Skip trajectory if no cruise phase is identified
+        if np.all(~flight_phase.cruise):
+            flights_checked.append(df_flight_waypoints)
+            continue
+
+        # Check trajectory for multiple cruise phases and/or flight diversion
+        trajectory_check: adsb.TrajectoryCheck = adsb.identify_multiple_cruise_phases_and_diversion(
+            flight_phase, df_flight_waypoints["longitude"].values,
+            df_flight_waypoints["latitude"].values, df_flight_waypoints["altitude_baro"].values,
+            dt_sec, ground_indicator=df_flight_waypoints["on_ground"].values
+        )
+
+        # Skip trajectory if there is only one cruise phase.
+        if (trajectory_check.multiple_cruise_phase is False) | trajectory_check.flight_diversion:
+            flights_checked.append(df_flight_waypoints)
+            continue
+
+        # Separate flights with multiple cruise phases
+        i_cut = trajectory_check.i_cutoff
+        df_flight_1 = df_flight_waypoints.iloc[:i_cut].copy()
+        df_flight_2 = df_flight_waypoints.iloc[i_cut:].copy()
+
+        if len(df_flight_1) > min_n_wypt:
+            flights_checked.append(df_flight_1)
+
+        if len(df_flight_2) > min_n_wypt:
+            flights_checked.append(df_flight_2)
+
+    return flights_checked
 
 
 def categorise_flight_trajectories(
