@@ -1,6 +1,21 @@
 
 # Changelog
 
+## v0.40.0 (unreleased)
+
+#### Features
+
+- Add `geo.azimuth` and `geo.segment_azimuth` functions to calculate the azimuth
+  between coordinates.
+  Azimuth is the angle between coordinates relative to true north on the range [0, 360].
+
+#### Fixes
+
+#### Internals
+
+- Clean up `geo` module docstrings.
+- Add Wikipedia reference for [Azimuth](https://en.wikipedia.org/wiki/Azimuth).
+
 ## v0.39.5
 
 #### Fixes
