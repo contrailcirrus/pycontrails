@@ -7,7 +7,12 @@ import numpy
 import setuptools
 from Cython.Build import cythonize
 
-setuptools.setup(
-    ext_modules=cythonize("pycontrails/core/rgi_cython.pyx"),
+rgi_ext = setuptools.Extension(
+    "pycontrails.core.rgi_cython",
+    ["pycontrails/core/rgi_cython.pyx"],
+    language="c",
     include_dirs=[numpy.get_include()],
 )
+
+
+setuptools.setup(ext_modules=cythonize([rgi_ext]))
