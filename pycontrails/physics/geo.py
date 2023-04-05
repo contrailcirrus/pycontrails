@@ -178,7 +178,7 @@ def azimuth(
     alpha = units.radians_to_degrees(np.arctan2(num, denom))
 
     # return on [0, 360)
-    return alpha % 360
+    return alpha % 360.0
 
 
 def segment_azimuth(longitude: np.ndarray, latitude: np.ndarray) -> np.ndarray:
@@ -755,7 +755,7 @@ def advect_longitude(
     distance_m = u_wind * dt_s
 
     new_longitude = longitude + units.m_to_longitude_distance(distance_m, latitude)
-    return (new_longitude + 180) % 360 - 180  # wrap antimeridian
+    return (new_longitude + 180.0) % 360.0 - 180.0  # wrap antimeridian
 
 
 def advect_latitude(
