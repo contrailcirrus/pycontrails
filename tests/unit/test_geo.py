@@ -28,7 +28,7 @@ def geod() -> pyproj.Geod:
     return pyproj.Geod(a=constants.radius_earth)
 
 
-def test_haversine(geod, rand_geo_data):
+def test_haversine(geod: pyproj.Geod, rand_geo_data: dict[str, np.ndarray]):
     """Check that `geo.segment_haversine` agrees with `pyproj` implementation."""
     lons = rand_geo_data["lons"]
     lats = rand_geo_data["lats"]
@@ -51,7 +51,7 @@ def test_haversine(geod, rand_geo_data):
     assert np.round(d_meridian, 6) == 11077.577787
 
 
-def test_forward_azimuth(geod, rand_geo_data):
+def test_forward_azimuth(geod: pyproj.Geod, rand_geo_data: dict[str, np.ndarray]):
     """Check that `geo.forward_azimuth` agrees with `pyproj` implementation."""
     # pyproj also returns "back azimuth", which is ignored
     pyproj_lons, pyproj_lats, _ = geod.fwd(**rand_geo_data)
@@ -250,3 +250,33 @@ def test_solar_calculations() -> None:
     sha = geo.solar_hour_angle(longitude, time, theta_rad)
     sha[sha < -180] = sha[sha < -180] + 360
     np.testing.assert_allclose(sha, noaa_sha, atol=3e-1)
+
+
+def test_azimuth(geod: pyproj.Geod, rand_geo_data: dict[str, np.ndarray]):
+    """Check that `geo.azimuth` agrees with `pyproj` implementation."""
+
+    longitude = rand_geo_data["lons"]
+    latitude = rand_geo_data["lats"]
+
+    azimuth = geo.segment_azimuth(longitude, latitude)
+    assert np.isnan(azimuth[-1])
+
+    angle, _, _ = geod.inv(
+        lons1=longitude[:-1],
+        lats1=latitude[:-1],
+        lons2=longitude[1:],
+        lats2=latitude[1:],
+    )
+
+    # reset output [0, 360)
+    angle = angle % 360
+    np.testing.assert_array_almost_equal(azimuth[:-1], angle, decimal=10)
+
+    # this should be 90 degrees off from the logitudinal angle
+    # so sin(azimuth) == cos(a), cos(azimuth) == sin(a)
+    sin_azimuth = np.sin(np.deg2rad(azimuth))
+    cos_azimuth = np.cos(np.deg2rad(azimuth))
+    sin_a, cos_a = geo.segment_angle(longitude, latitude)
+
+    np.testing.assert_array_almost_equal(sin_azimuth, cos_a, decimal=10)
+    np.testing.assert_array_almost_equal(cos_azimuth, sin_a, decimal=10)

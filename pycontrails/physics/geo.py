@@ -93,7 +93,7 @@ def segment_haversine(longitude: np.ndarray, latitude: np.ndarray) -> np.ndarray
 
 
 def azimuth_to_direction(
-    azimuth: np.ndarray, latitude: np.ndarray
+    azimuth_: np.ndarray, latitude: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     r"""Calculate rectangular direction from spherical azimuth.
 
@@ -105,7 +105,7 @@ def azimuth_to_direction(
 
     Parameters
     ----------
-    azimuth : np.ndarray
+    azimuth_ : np.ndarray
         Angle measured clockwise from true north, [:math:`\deg`]
     latitude : np.ndarray
         Latitude value of the point, [:math:`\deg`]
@@ -116,17 +116,17 @@ def azimuth_to_direction(
         A tuple of sine and cosine values.
     """
     cos_lat = np.cos(units.degrees_to_radians(latitude))
-    tan_az = np.tan(units.degrees_to_radians(azimuth))
+    tan_az = np.tan(units.degrees_to_radians(azimuth_))
 
     num = cos_lat
     denom = tan_az
     mag = np.sqrt(num**2 + denom**2)
 
     # For azimuth in [0, 90) and (270, 360], sin_a positive
-    sign_sin_a = np.where((azimuth - 90.0) % 360.0 - 180.0 >= 0.0, 1.0, -1.0)
+    sign_sin_a = np.where((azimuth_ - 90.0) % 360.0 - 180.0 >= 0.0, 1.0, -1.0)
 
     # For azimuth in [0, 180), cos_a positive
-    sign_cos_a = np.where(azimuth % 360.0 - 180.0 <= 0.0, 1.0, -1.0)
+    sign_cos_a = np.where(azimuth_ % 360.0 - 180.0 <= 0.0, 1.0, -1.0)
 
     sin_a = sign_sin_a * np.abs(num) / mag
     cos_a = sign_cos_a * np.abs(denom) / mag
@@ -139,33 +139,32 @@ def azimuth(
     lons1: np.ndarray,
     lats1: np.ndarray,
 ) -> np.ndarray:
-    """Calculate angle relative to true north (*azimuth*) between a sequence of of segments.
+    r"""Calculate angle relative to true north for set of coordinates.
 
     Parameters
     ----------
     lons0 : np.ndarray
-        Longitude values of initial endpoints.
+        Longitude values of initial endpoints, [:math:`\deg`].
     lats0 : np.ndarray
-        Latitude values of initial endpoints.
+        Latitude values of initial endpoints, [:math:`\deg`].
     lons1 : np.ndarray
-        Longitude values of terminal endpoints.
+        Longitude values of terminal endpoints, [:math:`\deg`].
     lats1 : np.ndarray
-        Latitude values of terminal endpoints.
+        Latitude values of terminal endpoints, [:math:`\deg`].
+
+    References
+    ----------
+    - :cite:`wikipediacontributorsAzimuth2023`
 
     Returns
     -------
     np.ndarray
-        Azimuth values, relative to true north
-
-    References
-    ----------
-    Source: https://en.wikipedia.org/wiki/Azimuth#In_geodesy
+        Azimuth relative to true north (:math:`0\deg`), [:math:`\deg`]
 
     See Also
     --------
     :func:`longitudinal_angle`
     """
-    # add direction of travel
     lons0 = units.degrees_to_radians(lons0)
     lons1 = units.degrees_to_radians(lons1)
     lats0 = units.degrees_to_radians(lats0)
@@ -174,18 +173,51 @@ def azimuth(
 
     num = np.sin(d_lon)
     denom = np.cos(lats0) * np.tan(lats1) - np.sin(lats0) * np.cos(d_lon)
-    tan_a = num / denom
 
-    # returns outputs on [-pi/2, pi/2] range
-    alpha = units.radians_to_degrees(np.arctan(tan_a))
+    # outputs on [-180, 180] range
+    alpha = units.radians_to_degrees(np.arctan2(num, denom))
 
-    # reverse angle when final lon is smaller than initial lon
-    alpha[d_lon < 0] = alpha[d_lon < 0] + 180
+    # return on [0, 360)
+    return alpha % 360
 
-    # reset to [0, 360)
-    alpha[alpha < 0] = alpha[alpha < 0] + 360
 
-    return alpha
+def segment_azimuth(longitude: np.ndarray, latitude: np.ndarray) -> np.ndarray:
+    r"""Calculate the angle between coordinate segments and true north.
+
+    `np.nan` is added to the final value so the length of the output is the same as the inputs.
+
+    Parameters
+    ----------
+    longitude : np.ndarray
+        Longitude values, [:math:`\deg`]
+    latitude : np.ndarray
+        Latitude values, [:math:`\deg`]
+
+    Returns
+    -------
+    np.ndarray
+        Azimuth relative to true north (:math:`0\deg`), [:math:`\deg`]
+        Final entry of each array is set to `np.nan`.
+
+    References
+    ----------
+    - :cite:`wikipediacontributorsAzimuth2023`
+
+    See Also
+    --------
+    :func:`azimuth`
+    """
+    dtype = np.result_type(longitude, latitude, np.float32)
+    az = np.empty(longitude.size, dtype=dtype)
+
+    lons0 = longitude[:-1]
+    lons1 = longitude[1:]
+    lats0 = latitude[:-1]
+    lats1 = latitude[1:]
+
+    az[:-1] = azimuth(lons0, lats0, lons1, lats1)
+    az[-1] = np.nan
+    return az
 
 
 def longitudinal_angle(
@@ -194,18 +226,22 @@ def longitudinal_angle(
     lons1: np.ndarray,
     lats1: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Calculate angle with longitudinal axis for sequence of segments.
+    r"""Calculate angle with longitudinal axis for sequence of segments.
 
     Parameters
     ----------
     lons0 : np.ndarray
-        Longitude values of initial endpoints.
+        Longitude values of initial endpoints, [:math:`\deg`].
     lats0 : np.ndarray
-        Latitude values of initial endpoints.
+        Latitude values of initial endpoints, [:math:`\deg`].
     lons1 : np.ndarray
-        Longitude values of terminal endpoints.
+        Longitude values of terminal endpoints, [:math:`\deg`].
     lats1 : np.ndarray
-        Latitude values of terminal endpoints.
+        Latitude values of terminal endpoints, [:math:`\deg`].
+
+    References
+    ----------
+    - :cite:`wikipediacontributorsAzimuth2023`
 
     Returns
     -------
@@ -231,29 +267,40 @@ def longitudinal_angle(
 
 
 def segment_angle(longitude: np.ndarray, latitude: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Calculate sin(a) and cos(a) for the angle `a` between each segment and the longitudinal axis.
+    r"""Calculate the angle between coordinate segments and the longitudinal axis.
 
-    ::
+    `np.nan` is added to the final value so the length of the output is the same as the inputs.
 
-                (lon_2, lat_2)  X
-                               /|
-                              / |
-                             /  |
-                            /   |
-                           /    |
-                          /     |
-                         /      |
-        (lon_1, lat_1)  X -------> longitude (x-axis)
+    Parameters
+    ----------
+    longitude : np.ndarray
+        Longitude values, [:math:`\deg`]
+    latitude : np.ndarray
+        Latitude values, [:math:`\deg`]
 
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
-        sin(a), cos(a), where `a` is the angle between the segment and the longitudinal axis
-        Final entry of each array is set to nan
+        sin(a), cos(a), where ``a`` is the angle between the segment and the longitudinal axis.
+        Final entry of each array is set to `np.nan`.
 
     References
     ----------
-    Source: https://en.wikipedia.org/wiki/Azimuth#In_geodesy
+    - :cite:`wikipediacontributorsAzimuth2023`
+
+    Notes
+    -----
+    ::
+
+            (lon_2, lat_2)  X
+                           /|
+                          / |
+                         /  |
+                        /   |
+                       /    |
+                      /     |
+                     /      |
+    (lon_1, lat_1)  X -------> longitude (x-axis)
 
     See Also
     --------
@@ -275,12 +322,12 @@ def segment_angle(longitude: np.ndarray, latitude: np.ndarray) -> tuple[np.ndarr
 
 
 def segment_length(longitude: np.ndarray, latitude: np.ndarray, altitude: np.ndarray) -> np.ndarray:
-    r"""Calculate the segment length between waypoints (in m) by assuming a great circle distance.
+    r"""Calculate the segment length between coordinates by assuming a great circle distance.
 
     Requires coordinates to be in EPSG:4326.
-    np.nan is added to the final value so the length of the output is the same as the inputs.
-
     Lengths are calculated using both horizontal and vertical displacement of segments.
+
+    `np.nan` is added to the final value so the length of the output is the same as the inputs.
 
     Parameters
     ----------
@@ -294,7 +341,8 @@ def segment_length(longitude: np.ndarray, latitude: np.ndarray, altitude: np.nda
     Returns
     -------
     np.ndarray
-        Array of distances in [:math:`m`] between waypoints
+        Array of distances in [:math:`m`] between coordinates.
+        Final entry of each array is set to `np.nan`.
 
     See Also
     --------
