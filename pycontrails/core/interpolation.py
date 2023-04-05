@@ -20,32 +20,6 @@ from pycontrails.core import rgi_cython  # type: ignore[attr-defined]
 logger = logging.getLogger(__name__)
 
 
-def _is_const_diff(a: npt.NDArray[np.float_], rtol: float = 1e-4) -> bool:
-    """Determine if an array of coordinates has a constant difference.
-
-    Parameters
-    ----------
-    a : npt.NDArray[np.float_]
-        Array of floating point values.
-    rtol : float
-        Relative tolerance for agreement. Passed into :func:`np.allclose`.
-
-    Returns
-    -------
-    bool
-        ``True`` if the array has a constant difference, ``False`` otherwise.
-
-    Raises
-    ------
-    ValueError
-        If ``a`` has fewer than two elements.
-    """
-    try:
-        return np.allclose(np.diff(a), a[1] - a[0], rtol=rtol)
-    except IndexError as e:
-        raise ValueError("The array must have at least two elements") from e
-
-
 class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolator):
     """Support for performant interpolation over a regular grid.
 
@@ -68,7 +42,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     Parameters
     ----------
-    points : tuple[npt.NDArray[np.float_], ...]
+    points : tuple[npt.NDArray[np.float64], ...]
         Coordinates of the grid points.
     values : npt.NDArray[np.float_]
         Grid values. The shape of this array must be compatible with the
@@ -83,7 +57,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     def __init__(
         self,
-        points: tuple[npt.NDArray[np.float_], ...],
+        points: tuple[npt.NDArray[np.float64], ...],
         values: npt.NDArray[np.float_],
         method: str,
         bounds_error: bool,
@@ -96,25 +70,22 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         self.fill_value = fill_value
 
     def _prepare_xi_simple(
-        self, xi: npt.NDArray[np.float_]
+        self, xi: npt.NDArray[np.float64]
     ) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.bool_] | None]:
-        """Run looser more efficient version of :meth:`_prepare_xi`.
+        """Run looser version of :meth:`_prepare_xi`.
 
-        In particular, this method does not automatically promote ``xi`` to
-        ``np.float64``.
+        Parameters
+        ----------
+        xi : npt.NDArray[np.float64]
+            Points at which to interpolate.
+
+        Returns
+        -------
+        nans : npt.NDArray[np.bool_]
+            A 1-dimensional Boolean array indicating which points contain NaNs.
+        out_of_bounds : npt.NDArray[np.bool_] | None
+            A 1-dimensional Boolean array indicating which points are out of bounds.
         """
-        if xi.ndim != 2:
-            raise ValueError("xi must be 2D")
-
-        if xi.dtype not in (np.float32, np.float64):
-            raise ValueError("xi must be float32 or float64")
-
-        if xi.shape[1] != len(self.grid):
-            raise ValueError(
-                f"The requested sample points xi have dimension {xi.shape[1]} but this "
-                f"PycontrailsRegularGridInterpolator has dimension {len(self.grid)}"
-            )
-
         nans = np.any(np.isnan(xi), axis=1)
 
         if self.bounds_error:
@@ -130,77 +101,32 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         return nans, out_of_bounds
 
     def __call__(
-        self, xi: npt.NDArray[np.float_], method: str | None = None
+        self, xi: npt.NDArray[np.float64], method: str | None = None
     ) -> npt.NDArray[np.float_]:
         """Evaluate the interpolator at the given points."""
 
-        method = self.method if method is None else method
-        if method == "linear":
-            nans, out_of_bounds = self._prepare_xi_simple(xi)
-            indices, norm_distances = self._find_indices(xi.T)
-            out = self._evaluate_linear(indices, norm_distances)
+        method = method or self.method
+        if method != "linear":
+            return super().__call__(xi, method)
 
-            if out_of_bounds is not None and self.fill_value is not None:
-                out[out_of_bounds] = self.fill_value
+        nans, out_of_bounds = self._prepare_xi_simple(xi)
+        indices, norm_distances = self._find_indices(xi.T)
+        out = self._evaluate_linear(indices, norm_distances)
 
-            # f(nan) = nan, if any
-            if np.any(nans):
-                out[nans] = np.nan
+        # f(xi < x[0]) = f(xi > x[-1]) = fill_value, if given
+        if out_of_bounds is not None and self.fill_value is not None:
+            out[out_of_bounds] = self.fill_value
 
-            return out
+        # f(nan) = nan, if any
+        if np.any(nans):
+            out[nans] = np.nan
 
-        return super().__call__(xi, method)
-
-    def _find_indices(
-        self, xi: npt.NDArray[np.float_]
-    ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.float_]]:
-        indices = np.empty_like(xi, dtype=np.int_, order="C")
-        norm_distances = np.empty_like(xi, order="C")
-
-        for i, (x, grid) in enumerate(zip(xi, self.grid, strict=True)):
-            # The grid is degenerate
-            if grid.size == 1:
-                indices[i] = 0
-                norm_distances[i] = 0.0
-                continue
-
-            # Here the grid is monotonically increasing with a constant step
-            if _is_const_diff(grid):
-                g0 = grid[0]
-                g1 = grid[1]
-
-                # One implementation -- this one is a hair slower
-                np.floor_divide(x - g0, g1 - g0, out=indices[i], casting="unsafe")
-                np.clip(indices[i], 0, len(grid) - 2, out=indices[i])
-                norm_distances[i] = (x - g0) / (g1 - g0) - indices[i]
-
-                # Another implementation -- this one is a hair faster, but suffers
-                # from some numerical instability with roundoff error
-                # out1 = indices[i]
-                # out2 = norm_distances[i]
-                # np.divmod(x - g0, g1 - g0, out=(out1, out2), casting="unsafe")
-                # norm_distances[i] /= g1 - g0  # normalize remainder to [0, 1)
-
-                continue
-
-            # Otherwise, use the slower searchsorted method
-            indice = np.searchsorted(grid, x) - 1
-            np.clip(indice, 0, len(grid) - 2, out=indice)
-            indices[i] = indice
-
-            grid_indice = grid[indice]
-            denom = grid[indice + 1] - grid_indice
-            out = norm_distances[i]
-            where = denom != 0
-            np.divide(x - grid_indice, denom, out=out, where=where)
-            norm_distances[i][~where] = 0.0
-
-        return indices, norm_distances
+        return out
 
     def _evaluate_linear(
         self,
-        indices: npt.NDArray[np.int_],
-        norm_distances: npt.NDArray[np.float_],
+        indices: npt.NDArray[np.int64],
+        norm_distances: npt.NDArray[np.float64],
     ) -> npt.NDArray[np.float_]:
         """Evaluate the interpolator using linear interpolation.
 
@@ -253,7 +179,6 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         ndim, n_points = indices.shape
         out = np.empty(n_points, dtype=self.values.dtype)
-        # FIXME! Typeguard dtype for fused type specialization
 
         if ndim == 4:
             return rgi_cython.evaluate_linear_4d(
@@ -292,9 +217,9 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
 
 def _floatize_time(
-    time: npt.NDArray[np.datetime64], offset: np.datetime64, dtype: np.dtype
-) -> npt.NDArray[np.float_]:
-    """Convert an array of ``np.datetime64`` to an array of ``float``.
+    time: npt.NDArray[np.datetime64], offset: np.datetime64
+) -> npt.NDArray[np.float64]:
+    """Convert an array of ``np.datetime64`` to an array of ``float64``.
 
     In calls to :class:`scipy.interpolate.RegularGridInterpolator`, it's critical
     that every coordinate be of same type. This creates complications: spatial
@@ -332,7 +257,7 @@ def _floatize_time(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Time values converted to ``dtype``.
 
     Raises
@@ -340,15 +265,12 @@ def _floatize_time(
     ValueError
         If ``dtype`` is not one of ``np.float32`` or ``np.float64``.
     """
-    if dtype not in ("float32", "float64", np.float32, np.float64):
-        raise ValueError(f"dtype {dtype} not supported")
-
     delta = time - offset
 
     # Note: using a pattern like delta // np.timedelta64(1, "ms") does not maintain nans
-    quotient = delta / np.timedelta64(1, "ms")
-    floored = np.floor(quotient)
-    return floored.astype(dtype)
+    out = delta / np.timedelta64(1, "ms")
+    np.floor(out, out=out)
+    return out
 
 
 def _localize(da: xr.DataArray, coords: dict[str, np.ndarray]) -> xr.DataArray:
@@ -527,17 +449,15 @@ def interp(
         da = _localize(da, coords)
 
     # Using da.coords.variables is slightly more performant than da["longitude"].values
-    x = da.coords.variables["longitude"].values
-    y = da.coords.variables["latitude"].values
-    z = da.coords.variables["level"].values
+    x = da.coords.variables["longitude"].values.astype(np.float64, copy=False)
+    y = da.coords.variables["latitude"].values.astype(np.float64, copy=False)
+    z = da.coords.variables["level"].values.astype(np.float64, copy=False)
     t = da.coords.variables["time"].values
 
-    # Convert t to float
+    # Convert t and time to float64
     offset = t[0]
-    # Use dtype of spatial coordinates to determine dtype of time
-    dtype = np.result_type(x, y, z, longitude, latitude, level)
-    t = _floatize_time(t, offset, dtype)
-    time_float = _floatize_time(time, offset, dtype)
+    t = _floatize_time(t, offset)
+    time_float = _floatize_time(time, offset)
 
     # Remove any "single level" (level = -1) dimension
     # We're making all sort of assumptions about the ordering of the da dimensions
@@ -555,8 +475,7 @@ def interp(
         points = x, y, z, t
         xi_tup = longitude, latitude, level, time_float
 
-    xi = np.column_stack(xi_tup)
-    nans = np.any(np.isnan(xi), axis=1)
+    xi = np.stack(xi_tup, axis=1, dtype=np.float64)
 
     interp_ = PycontrailsRegularGridInterpolator(
         points=points,
@@ -567,12 +486,9 @@ def interp(
     )
 
     if indices or return_indices:
-        out, out_indices = _interpolation_with_indices(interp_, xi, nans, localize, indices)
+        out, out_indices = _interpolation_with_indices(interp_, xi, localize, indices)
     else:
-        result = interp_(xi[~nans])
-        out = np.empty(longitude.size, dtype=result.dtype)
-        out[nans] = np.nan
-        out[~nans] = result
+        out = interp_(xi)
 
     if return_indices:
         return out, out_indices
@@ -580,9 +496,8 @@ def interp(
 
 
 def _interpolation_with_indices(
-    interp: scipy.interpolate.RegularGridInterpolator,
-    xi: npt.NDArray[np.float_],
-    nans: npt.NDArray[np.bool_],
+    interp: PycontrailsRegularGridInterpolator,
+    xi: npt.NDArray[np.float64],
     localize: bool,
     indices: tuple | None,
 ) -> tuple[npt.NDArray[np.float_], tuple]:
@@ -614,6 +529,7 @@ def _interpolation_with_indices(
         result[indices[2]] = interp.fill_value
 
     # f(nan) = nan, if any
+    nans = np.any(np.isnan(xi), axis=1)
     if np.any(nans):
         result[nans] = np.nan
 

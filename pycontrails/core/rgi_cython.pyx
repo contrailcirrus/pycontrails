@@ -18,14 +18,7 @@ cimport cython
 np.import_array()
 
 
-# Create several type aliases
-# Each of the evaluate_linear_... functions will be specialized for both float and double
-# In other words, we'll get four specialized functions.
 # See https://cython.readthedocs.io/en/latest/src/userguide/fusedtypes.html
-ctypedef fused floating_distances:
-    float
-    double
-
 ctypedef fused floating_values:
     float
     double
@@ -38,13 +31,13 @@ ctypedef fused floating_values:
 def evaluate_linear_4d(
     const floating_values[:, :, :, :] values,
     const long[:, :] indices,
-    const floating_distances[:, :] norm_distances,
+    const double[:, :] norm_distances,
     floating_values[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[1]
         long i0, i1, i2, i3, p
-        floating_distances y0, y1, y2, y3
+        double y0, y1, y2, y3
 
     for p in range(n_points):
         i0 = indices[0, p]
@@ -87,13 +80,13 @@ def evaluate_linear_4d(
 def evaluate_linear_3d(
     const floating_values[:, :, :] values,
     const long[:, :] indices,
-    const floating_distances[:, :] norm_distances,
+    const double[:, :] norm_distances,
     floating_values[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[1]
         long i0, i1, i2, p
-        floating_distances y0, y1, y2
+        double y0, y1, y2
 
     for p in range(n_points):
         i0 = indices[0, p]
@@ -125,13 +118,13 @@ def evaluate_linear_3d(
 def evaluate_linear_2d(
     const floating_values[:, :] values,
     const long[:, :] indices,
-    const floating_distances[:, :] norm_distances,
+    const double[:, :] norm_distances,
     floating_values[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[1]
         long i0, i1, p
-        floating_distances y0, y1
+        double y0, y1
 
     for p in range(n_points):
         i0 = indices[0, p]
@@ -158,13 +151,13 @@ def evaluate_linear_2d(
 def evaluate_linear_1d(
     const floating_values[:] values,
     const long[:] indices,
-    const floating_distances[:] norm_distances,
+    const double[:] norm_distances,
     floating_values[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[0]
         long i0, p
-        floating_distances y0
+        double y0
 
     for p in range(n_points):
         i0 = indices[p]
