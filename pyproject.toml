@@ -153,6 +153,7 @@ zarr = [
 # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 [tool.setuptools]
 license-files = ["LICENSE", "NOTICE"]
+include-package-data = false
 
 # Note that setuptools-scm changes some of the default behavior of setuptools
 # In particular, everything tracked by git is included in the source distribution (sdist)
