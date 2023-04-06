@@ -1469,9 +1469,8 @@ class GeoVectorDataset(VectorDataset):
                231.65126, 231.93065, 232.03345, 231.65955], dtype=float32)
 
         >>> fl.intersect_met(met['air_temperature'], method='linear')
-        array([225.77794546, 225.1390854 , 226.23122163, 226.31832011,
-               225.56102452, 225.81192332, 226.03193091, 226.220562  ,
-               226.03770453, 225.63226519])
+        array([225.77794, 225.13908, 226.23122, 226.31831, 225.56102, 225.81192,
+               226.03194, 226.22057, 226.0377 , 225.63226], dtype=float32)
 
         >>> # Interpolate and attach to `Flight` instance
         >>> for key in met:
@@ -1479,18 +1478,18 @@ class GeoVectorDataset(VectorDataset):
 
         >>> # Show the final three columns of the dataframe
         >>> fl.dataframe.iloc[:, -3:].head()
-            time  air_temperature  specific_humidity
-        0 2022-03-01 00:00:00       225.777945           0.000132
-        1 2022-03-01 00:13:20       225.139085           0.000132
-        2 2022-03-01 00:26:40       226.231222           0.000107
-        3 2022-03-01 00:40:00       226.318320           0.000171
-        4 2022-03-01 00:53:20       225.561025           0.000109
+                         time  air_temperature  specific_humidity
+        0 2022-03-01 00:00:00       225.777939           0.000132
+        1 2022-03-01 00:13:20       225.139084           0.000132
+        2 2022-03-01 00:26:40       226.231216           0.000107
+        3 2022-03-01 00:40:00       226.318314           0.000171
+        4 2022-03-01 00:53:20       225.561020           0.000109
+
         """
         # Override use_indices in certain situations
         if use_indices:
             # Often the single_level data we use has time shifted
-            # Don't allow it for now.
-            # FIXME: We could do something smarter here!
+            # Don't allow it for now. We could do something smarter here!
             if mda.is_single_level:
                 use_indices = False
 
