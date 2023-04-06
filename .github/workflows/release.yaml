@@ -9,6 +9,8 @@ on:
       - published
     branches:
       - main
+  
+  workflow_dispatch:
 
 jobs:
   check-main-test-status:
@@ -104,6 +106,7 @@ jobs:
 
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      if: github.ref == 'refs/heads/main' && github.event_name == 'release'
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
