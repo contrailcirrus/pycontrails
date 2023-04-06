@@ -14,9 +14,6 @@ from pycontrails.core import interpolation as interp_mod
 def mda(met_pcc_pl: MetDataset):
     """Return a MetDataArray for interpolation."""
     assert isinstance(met_pcc_pl, MetDataset)
-    met_pcc_pl.data["longitude"] = met_pcc_pl.data["longitude"].astype("float32")
-    met_pcc_pl.data["latitude"] = met_pcc_pl.data["latitude"].astype("float32")
-    met_pcc_pl.data["level"] = met_pcc_pl.data["level"].astype("float32")
     return met_pcc_pl["air_temperature"]
 
 
@@ -74,7 +71,7 @@ def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, locali
 
     # Exactly 1 singleton dimension
     assert 1 in mda.shape
-    assert sum(d == 1 for d in mda.shape) == 1
+    assert mda.shape.count(1) == 1
 
     coords = {
         "longitude": np.array([1]),
@@ -106,7 +103,7 @@ def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, locali
 def test_interpolation_single_level(mda: MetDataArray, localize: bool):
     """Confirm interpolation works with single level (level = -1) DataArray."""
     # Convert mda to a DataArray with a single level
-    mda.data = mda.data.isel(level=[0]).assign_coords(level=[-1])
+    mda.data = mda.data.isel(level=[0]).assign_coords(level=[-1.0])
     np.testing.assert_array_equal(mda.data.level, [-1])
     assert mda.shape == (15, 8, 1, 2)
 
@@ -181,16 +178,15 @@ def test_interpolation_time_resolution(mda: MetDataArray, localize: bool):
     with pytest.raises(ValueError, match=match):
         mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=localize)
 
-    # If time is really close to the endpoint of the time dimension, our rounding
-    # convention will allow it to be in bounds.
+    # If time is identical with the endpoint of the time dimension,
+    # it should be in bounds.
     time = np.datetime64("2019-05-31T06:00:00")
-    time += np.timedelta64(500, "us")
 
     out = mda.interpolate(longitude, latitude, level, time, bounds_error=False, localize=localize)
     assert np.isfinite(out)
 
-    # ms resolution is out of bounds
-    time += np.timedelta64(1, "ms")
+    # Increasing it by 1 us makes it out of bounds
+    time += np.timedelta64(1, "us")
     out = mda.interpolate(longitude, latitude, level, time, bounds_error=False, localize=localize)
     assert np.isnan(out)
 
@@ -202,7 +198,13 @@ def test_regular_4d_grid_interpolator(mda: MetDataArray, dtype: str):
     y = mda.data["latitude"].values
     z = mda.data["level"].values
     t = mda.data["time"].values
-    t = interp_mod._floatize_time(t, t[0], dtype)
+    t = interp_mod._floatize_time(t, t[0])
+    assert x.dtype == np.float64
+    assert y.dtype == np.float64
+    assert z.dtype == np.float64
+    assert t.dtype == np.float64
+
+    mda.data = mda.data.astype(dtype)
 
     points = x, y, z, t
     values = mda.values
@@ -262,8 +264,8 @@ def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: boo
 
     # Run interpolation through scipy RGI
     # First "floatize" time (this is done automatically in interp_mod.interp)
-    t_float = interp_mod._floatize_time(t, t[0], np.float64)
-    t0 = interp_mod._floatize_time(t0, t[0], np.float64)
+    t_float = interp_mod._floatize_time(t, t[0])
+    t0 = interp_mod._floatize_time(t0, t[0])
 
     points = x, y, z, t_float
     values = da.values
@@ -280,7 +282,7 @@ def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: boo
 
 @pytest.mark.parametrize("method", ["nearest", "slinear", "cubic", "quintic"])
 def test_scipy19_interpolation_methods(mda: MetDataArray, method: str):
-    """Confirm ``PycontrailsRegularGridInterpolator`` can handle methods introduced in scipy1.0."""
+    """Confirm ``PycontrailsRegularGridInterpolator`` can handle methods introduced in scipy 1.9."""
     da = mda.data
     assert da.shape == (15, 8, 3, 2)
     assert da.size == 720
@@ -299,7 +301,7 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str):
     # Run interpolation through pycontrails interface
     kwargs = {"method": method, "bounds_error": True, "fill_value": np.nan, "localize": True}
     if method in ["cubic", "quintic"]:
-        with pytest.raises(ValueError, match=r"requires at least  \d points per dimension"):
+        with pytest.raises(ValueError, match="The number of derivatives at boundaries does not"):
             interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
         return
 
@@ -317,14 +319,14 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str):
 
     # Pin the RMSE (out of curiosity)
     rmse = (np.mean((out1 - out2) ** 2)) ** 0.5
-    assert rmse == pytest.approx(2.9081914836171467, rel=1e-10)
+    assert rmse == pytest.approx(3.3319390877860893, rel=1e-10)
 
 
 @pytest.fixture
 def arbitrary_coords():
-    longitude = np.array([-55, -43, -55, -21, -17, -18])
-    latitude = np.array([12, 17, -8, -44, 22, 23])
-    level = np.array([227, 228, 231, 233, 231, 230])
+    longitude = np.array([-55, -43, -55, -21, -17, -18], dtype=np.float32)
+    latitude = np.array([12, 17, -8, -44, 22, 23], dtype=np.float32)
+    level = np.array([227, 228, 231, 233, 231, 230], dtype=np.float32)
     time = np.array(
         [
             np.datetime64("2019-05-31T05:30"),
@@ -338,14 +340,17 @@ def arbitrary_coords():
     return longitude, latitude, level, time
 
 
-def test_indices_distinct_vars(met_pcc_pl: MetDataset, arbitrary_coords: tuple[np.ndarray]):
+def test_indices_distinct_vars(
+    met_pcc_pl: MetDataset,
+    arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+):
     """Check that indices are consistent when interpolating over distinct variables."""
 
-    assert set(met_pcc_pl.data.data_vars) == {
+    assert list(met_pcc_pl) == [
         "air_temperature",
         "specific_humidity",
         "specific_cloud_ice_water_content",
-    }
+    ]
 
     out1, indices1 = interp_mod.interp(
         *arbitrary_coords,
@@ -357,7 +362,6 @@ def test_indices_distinct_vars(met_pcc_pl: MetDataset, arbitrary_coords: tuple[n
         return_indices=True,
     )
     assert np.all(np.isfinite(out1))
-    assert len(indices1) == 3
 
     out2, indices2 = interp_mod.interp(
         *arbitrary_coords,
@@ -369,20 +373,30 @@ def test_indices_distinct_vars(met_pcc_pl: MetDataset, arbitrary_coords: tuple[n
         return_indices=True,
     )
     assert np.all(np.isfinite(out2))
-    assert len(indices2) == 3
 
-    for idx1, idx2 in zip(indices1, indices2):
-        np.testing.assert_array_equal(idx1, idx2)
+    np.testing.assert_array_equal(indices1.xi_indices, indices2.xi_indices)
+    np.testing.assert_array_equal(indices1.norm_distances, indices2.norm_distances)
+    assert indices1.nans is None
+    assert indices2.nans is None
+    assert indices1.out_of_bounds is None
+    assert indices2.out_of_bounds is None
 
 
 @pytest.mark.parametrize(
     "var", ["air_temperature", "specific_humidity", "specific_cloud_ice_water_content"]
 )
-def test_indices_same_var(met_pcc_pl: MetDataset, arbitrary_coords: tuple[np.ndarray], var: str):
+def test_indices_same_var(
+    met_pcc_pl: MetDataset,
+    arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+    var: str,
+):
     """Check that interpolation with and without indices gives the same result."""
+
+    da = met_pcc_pl[var].data
+
     out1, indices = interp_mod.interp(
         *arbitrary_coords,
-        met_pcc_pl[var].data,
+        da,
         method="linear",
         bounds_error=True,
         fill_value=np.nan,
@@ -393,7 +407,7 @@ def test_indices_same_var(met_pcc_pl: MetDataset, arbitrary_coords: tuple[np.nda
     # Expect this to be faster because indices are already computed
     out2 = interp_mod.interp(
         *arbitrary_coords,
-        met_pcc_pl[var].data,
+        da,
         method="linear",
         bounds_error=True,
         fill_value=np.nan,
@@ -408,10 +422,76 @@ def test_indices_same_var(met_pcc_pl: MetDataset, arbitrary_coords: tuple[np.nda
 @pytest.mark.parametrize("idx", range(5))
 def test_interpolation_propogate_nan(mda: MetDataArray, bounds_error: bool, idx: int):
     """Ensure nan values propagate through interpolation."""
+
     longitude = np.arange(5, dtype=float)
     latitude = np.arange(5, 10, dtype=float)
     level = np.linspace(225, 250, 5)
     time = np.r_[[np.datetime64("2019-05-31T05:20")] * 3, [np.datetime64("2019-05-31T05:36")] * 2]
     latitude[idx] = np.nan
+
+    if bounds_error:
+        match = "One of the requested xi is out of bounds in dimension 1"
+        with pytest.raises(ValueError, match=match):
+            mda.interpolate(longitude, latitude, level, time, bounds_error=bounds_error)
+        return
+
     out = mda.interpolate(longitude, latitude, level, time, bounds_error=bounds_error)
     assert np.flatnonzero(np.isnan(out)).item() == idx
+
+
+@pytest.mark.parametrize("replace_value", [np.nan, 224])
+@pytest.mark.parametrize("fill_value", [np.nan, 0.0, None, 55.0])
+def test_fill_value(
+    mda: MetDataArray,
+    arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+    replace_value: float | np.float64,
+    fill_value: float | np.float64 | None,
+):
+    """Check implementation with nonstandard fill_value."""
+
+    da = mda.data
+    assert np.isnan(replace_value) or replace_value < da.level.min()
+    arbitrary_coords[2][3] = replace_value
+
+    with pytest.raises(ValueError, match="One of the requested xi is out of bounds in dimension 2"):
+        interp_mod.interp(
+            *arbitrary_coords,
+            da,
+            method="linear",
+            bounds_error=True,
+            fill_value=fill_value,
+            localize=False,
+        )
+
+    out1, indices = interp_mod.interp(
+        *arbitrary_coords,
+        da,
+        method="linear",
+        bounds_error=False,
+        fill_value=fill_value,
+        localize=False,
+        return_indices=True,
+    )
+
+    out2 = interp_mod.interp(
+        *arbitrary_coords,
+        da,
+        method="linear",
+        bounds_error=False,
+        fill_value=fill_value,
+        localize=False,
+        indices=indices,
+    )
+
+    np.testing.assert_array_equal(out1, out2)
+    if np.isnan(replace_value):
+        assert np.isnan(out1[3])
+        return
+    if fill_value is None:
+        assert out1[3] == pytest.approx(214.0025, abs=1e-4)
+        return
+    if np.isnan(fill_value):
+        assert np.isnan(out1[3])
+        return
+    assert np.isfinite(out1[3])
+    assert out1[3] == fill_value
