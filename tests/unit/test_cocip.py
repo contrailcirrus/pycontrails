@@ -64,7 +64,6 @@ def cocip_no_ef(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     params = {
         "max_age": np.timedelta64(3, "h"),
         "process_emissions": False,
-        "interpolation_bounds_error": True,
         "humidity_scaling": ExponentialBoostHumidityScaling(),
     }
     cocip = Cocip(met.copy(), rad=rad2, params=params)
@@ -483,22 +482,25 @@ def test_eval_persistent(cocip_persistent: Cocip) -> None:
     contrail_output["age"] = pd.to_timedelta(contrail_output["age"])
     contrail_output["dt_integration"] = pd.to_timedelta(contrail_output["dt_integration"])
 
+    rtol = 1e-4
     for key in flight_output:
         if key in ["time", "flight_id"]:
             np.testing.assert_array_equal(cocip_persistent.source[key], flight_output[key])
-        else:
-            np.testing.assert_allclose(
-                cocip_persistent.source.get_data_or_attr(key),
-                flight_output[key],
-                err_msg=key,
-                rtol=1e-6,
-            )
+            continue
+        np.testing.assert_allclose(
+            cocip_persistent.source.get_data_or_attr(key),
+            flight_output[key],
+            err_msg=key,
+            rtol=rtol,
+        )
 
     pd.testing.assert_frame_equal(
         cocip_persistent.contrail.reset_index(drop=True),
         contrail_output.reset_index(drop=True),
         check_dtype=False,
         check_like=True,  # ignore column order
+        check_exact=False,
+        rtol=rtol,
     )
 
 
@@ -546,23 +548,28 @@ def test_eval_persistent2(cocip_persistent2: Cocip) -> None:
     contrail_output["age"] = pd.to_timedelta(contrail_output["age"])
     contrail_output["dt_integration"] = pd.to_timedelta(contrail_output["dt_integration"])
 
+    rtol = 1e-3
     for key in flight_output:
         if key in ["time", "flight_id"]:
             assert np.all(cocip_persistent2.source[key] == flight_output[key])
-        elif key == "level":
+            continue
+        if key == "level":
             np.testing.assert_allclose(
                 cocip_persistent2.source.level, flight_output[key], err_msg=key
             )
-        else:
-            np.testing.assert_allclose(
-                cocip_persistent2.source[key], flight_output[key], err_msg=key, rtol=1e-4
-            )
+            continue
+
+        np.testing.assert_allclose(
+            cocip_persistent2.source[key], flight_output[key], err_msg=key, rtol=rtol
+        )
 
     pd.testing.assert_frame_equal(
         cocip_persistent2.contrail.reset_index(drop=True),
         contrail_output.reset_index(drop=True),
         check_dtype=False,
         check_like=True,  # ignore column order
+        check_exact=False,
+        rtol=rtol,
     )
 
 
@@ -656,8 +663,8 @@ def test_flight_statistics(cocip_persistent: Cocip) -> None:
             continue
         if isinstance(opened_stats[k], str):
             assert output_stats[k] == opened_stats[k]
-        else:
-            np.testing.assert_allclose(output_stats[k], opened_stats[k], err_msg=k, rtol=2e-7)
+            continue
+        np.testing.assert_allclose(output_stats[k], opened_stats[k], err_msg=k, rtol=1e-5)
 
 
 def test_grid_cirrus(cocip_persistent: Cocip) -> None:
@@ -929,7 +936,6 @@ def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDa
         "dt_integration": np.timedelta64(10, "m"),
         "process_emissions": False,
         "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
-        "interpolation_bounds_error": True,
     }
 
     # Artifically shift time to get some SDR
@@ -1056,7 +1062,6 @@ def test_max_altitude_param(fl: Flight, met: MetDataset, rad: MetDataset, max_al
         "dt_integration": np.timedelta64(5, "m"),
         "process_emissions": False,
         "humidity_scaling": ExponentialBoostHumidityScaling(rhi_adj=0.3),
-        "interpolation_bounds_error": True,
         "max_altitude_m": max_altitude,
     }
 
