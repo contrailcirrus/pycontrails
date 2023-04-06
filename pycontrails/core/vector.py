@@ -9,11 +9,12 @@ import warnings
 from typing import Any, Dict, Generator, Iterable, Iterator, Sequence, Type, TypeVar, overload
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import pyproj
 from overrides import overrides
 
-from pycontrails.core import coordinates
+from pycontrails.core import coordinates, interpolation
 from pycontrails.core import met as met_module
 from pycontrails.physics import units
 from pycontrails.utils import json as json_module
@@ -1084,11 +1085,11 @@ class GeoVectorDataset(VectorDataset):
     def __init__(
         self,
         data: dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None = None,
-        longitude: np.ndarray | None = None,
-        latitude: np.ndarray | None = None,
-        altitude: np.ndarray | None = None,
-        level: np.ndarray | None = None,
-        time: np.ndarray | None = None,
+        longitude: npt.ArrayLike | None = None,
+        latitude: npt.ArrayLike | None = None,
+        altitude: npt.ArrayLike | None = None,
+        level: npt.ArrayLike | None = None,
+        time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
         **attrs_kwargs: Any,
@@ -1161,11 +1162,14 @@ class GeoVectorDataset(VectorDataset):
             self.update(time=time.astype("datetime64[ns]"))
 
         # Ensure spatial coordinates are float32 or float64
-        for coord in ["longitude", "latitude", "altitude", "level", "altitude_ft"]:
-            if coord in self:
+        float_dtype = (np.float32, np.float64)
+        for coord in ("longitude", "latitude", "altitude", "level", "altitude_ft"):
+            try:
                 arr = self[coord]
-                if arr.dtype not in [np.float32, np.float64]:
-                    self.update({coord: arr.astype(np.float64)})
+            except KeyError:
+                continue
+            if arr.dtype not in float_dtype:
+                self.update({coord: arr.astype(np.float64)})
 
         # set CRS to "EPSG:4326" by default
         if "crs" not in self.attrs:
@@ -1491,7 +1495,7 @@ class GeoVectorDataset(VectorDataset):
                 use_indices = False
 
             # Cannot both override some coordinate AND pass indices.
-            elif any(c is not None for c in [longitude, latitude, level, time]):
+            elif any(c is not None for c in (longitude, latitude, level, time)):
                 # Should we warn?! Or is this "convenience"?
                 use_indices = False
 
@@ -1500,25 +1504,25 @@ class GeoVectorDataset(VectorDataset):
         level = level if level is not None else self.level
         time = time if time is not None else self["time"]
 
-        if use_indices:
-            indices = self._get_indices()
-            has_indices = indices is not None
-            out, indices = mda.interpolate(
-                longitude,
-                latitude,
-                level,
-                time,
-                indices=indices,
-                return_indices=True,
-                **interp_kwargs,
-            )
-            if not has_indices:
-                self._put_indices(indices)
-            return out
+        if not use_indices:
+            return mda.interpolate(longitude, latitude, level, time, **interp_kwargs)
 
-        return mda.interpolate(longitude, latitude, level, time, **interp_kwargs)
+        indices = self._get_indices()
+        already_has_indices = indices is not None
+        out, indices = mda.interpolate(
+            longitude,
+            latitude,
+            level,
+            time,
+            indices=indices,
+            return_indices=True,
+            **interp_kwargs,
+        )
+        if not already_has_indices:
+            self._put_indices(indices)
+        return out
 
-    def _put_indices(self, indices: tuple) -> None:
+    def _put_indices(self, indices: interpolation.RGIArtifacts) -> None:
         """Set entries of ``indices`` onto underlying :attr:`data.
 
         Each entry of ``indices`` are unpacked assuming certain conventions
@@ -1532,14 +1536,14 @@ class GeoVectorDataset(VectorDataset):
 
         Parameters
         ----------
-        indices
-            Output of :meth:`scipy.interpolate.RegularGridInterpolator._find_indices`
+        indices : interpolation.RGIArtifacts
+            The indices to store.
         """
-        (
-            (indices_x, indices_y, indices_z, indices_t),
-            (distances_x, distances_y, distances_z, distances_t),
-            out_of_bounds,
-        ) = indices
+        indices_x, indices_y, indices_z, indices_t = indices.xi_indices
+        distances_x, distances_y, distances_z, distances_t = indices.norm_distances
+        out_of_bounds = indices.out_of_bounds
+        nans = indices.nans
+
         self["_indices_x"] = indices_x
         self["_indices_y"] = indices_y
         self["_indices_z"] = indices_z
@@ -1548,9 +1552,13 @@ class GeoVectorDataset(VectorDataset):
         self["_distances_y"] = distances_y
         self["_distances_z"] = distances_z
         self["_distances_t"] = distances_t
-        self["_out_of_bounds"] = out_of_bounds
 
-    def _get_indices(self, is_single_level: bool = False) -> tuple | None:
+        if out_of_bounds is not None:
+            self["_out_of_bounds"] = out_of_bounds
+        if nans is not None:
+            self["_nans"] = nans
+
+    def _get_indices(self) -> interpolation.RGIArtifacts | None:
         """Get entries from call to :meth:`_put_indices`.
 
         .. versionadded:: 0.26.0
@@ -1573,24 +1581,20 @@ class GeoVectorDataset(VectorDataset):
             distances_y = self["_distances_y"]
             distances_z = self["_distances_z"]
             distances_t = self["_distances_t"]
-            out_of_bounds = self["_out_of_bounds"]
         except KeyError:
             return None
 
-        if is_single_level:
-            # We never actually enter here
-            # Single level interpoltion with indices is not supported
-            indices = [indices_x, indices_y, indices_t]
-            distances = [distances_x, distances_y, distances_t]
-        else:
-            indices = [indices_x, indices_y, indices_z, indices_t]
-            distances = [distances_x, distances_y, distances_z, distances_t]
+        indices = np.stack([indices_x, indices_y, indices_z, indices_t], axis=1)
+        distances = np.stack([distances_x, distances_y, distances_z, distances_t], axis=1)
 
-        return indices, distances, out_of_bounds
+        out_of_bounds = self.get("_out_of_bounds", None)
+        nans = self.get("_nans", None)
+
+        return interpolation.RGIArtifacts(indices, distances, out_of_bounds, nans)
 
     def _invalidate_indices(self) -> None:
         """Remove any cached indices from :attr:`data."""
-        for key in [
+        for key in (
             "_indices_x",
             "_indices_y",
             "_indices_z",
@@ -1600,7 +1604,8 @@ class GeoVectorDataset(VectorDataset):
             "_distances_z",
             "_distances_t",
             "_out_of_bounds",
-        ]:
+            "_nans",
+        ):
             self.data.pop(key, None)
 
     @overload
