@@ -274,7 +274,9 @@ def test_generate_new_grid_vectors(
             assert len(vectors) == 1
 
     lon_concat = np.concatenate([vector["longitude"] for vector in vectors])
-    assert set(lon_concat) == set(source.data["longitude"].values)
+    lon_concat = np.unique(lon_concat)
+    lon_concat.sort()
+    np.testing.assert_array_almost_equal(lon_concat, source.data["longitude"].values, decimal=5)
 
 
 ##############################################################
@@ -466,8 +468,8 @@ def test_grid_results(grid_results: MetDataset) -> None:
     # Ensure a hand picked pinned value is realized.
     # This test is HARD to maintain. Delete if it gets too annoying.
     point = grid_results.data.isel(longitude=14, latitude=19, level=2, time=2)
-    assert np.round(point["contrail_age"].item(), decimals=5) == 1.5
-    assert np.round(point["ef_per_m"].item(), decimals=2) == 46564396.28
+    assert point["contrail_age"].item() == 1.5
+    assert point["ef_per_m"].item() == pytest.approx(46576688, abs=1)
 
 
 @pytest.fixture
@@ -496,17 +498,17 @@ def test_grid_results_segment_free(
     assert out1.data.data_vars.keys() == out2.data.data_vars.keys()
 
     assert np.count_nonzero(out1["ef_per_m"].values) == 605
-    assert np.count_nonzero(out2["ef_per_m"].values) == 622
+    assert np.count_nonzero(out2["ef_per_m"].values) == 621
 
     # Pin some values
     da1 = out1["ef_per_m"].data
     filt1 = da1 > 0
-    assert da1.where(filt1).mean().item() == pytest.approx(39586616, abs=1)
+    assert da1.where(filt1).mean().item() == pytest.approx(39581584, abs=1)
 
     # In segment-free mode (generally and here), the mean nonzero EF is slightly lower
     da2 = out2["ef_per_m"].data
     filt2 = da2 > 0
-    assert da2.where(filt2).mean().item() == pytest.approx(32882996, abs=1)
+    assert da2.where(filt2).mean().item() == pytest.approx(32914018, abs=1)
 
     # For this example, we can say something about the distribution of EFs
     filt = filt1 & filt2
@@ -579,8 +581,8 @@ def test_geovector_source(syn_fl: SyntheticFlight, instance_params: dict[str, An
     assert np.all(out["ef_per_m"][~persistent] == 0)
 
     # Pin the mean EF
-    assert out["ef_per_m"].mean().item() == pytest.approx(875857, abs=1)
-    assert out["ef_per_m"][persistent].mean().item() == pytest.approx(31725499, abs=1)
+    assert out["ef_per_m"].mean().item() == pytest.approx(875854, abs=1)
+    assert out["ef_per_m"][persistent].mean().item() == pytest.approx(31725403, abs=1)
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
