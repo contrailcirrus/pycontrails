@@ -27,6 +27,7 @@ from typing import (
 )
 
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from overrides import overrides
 
@@ -46,6 +47,8 @@ if TYPE_CHECKING:
 XArrayType = TypeVar("XArrayType", xr.Dataset, xr.DataArray)
 MetDataType = TypeVar("MetDataType", "MetDataset", "MetDataArray")
 DatasetType = TypeVar("DatasetType", xr.Dataset, "MetDataset")
+
+COORD_DTYPE = np.float64
 
 
 class MetBase(ABC, Generic[XArrayType]):
@@ -104,31 +107,38 @@ class MetBase(ABC, Generic[XArrayType]):
             If longitude values are not contained in the interval [-180, 180].
         """
         longitude = self.variables["longitude"].values
+        if longitude.dtype != COORD_DTYPE:
+            raise ValueError(
+                "Longitude values must be of type float64. "
+                "Initiate with 'copy=True' to convert to float64. "
+                "Initiate with 'validate=False' to skip validation."
+            )
 
         if self.is_wrapped:
             # Relax verification if the longitude has already been processed and wrapped
-            if longitude[-1] > 360:
+            if longitude[-1] > 360.0:
                 raise ValueError(
                     "Longitude contains values > 360. Shift to WGS84 with "
                     "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
                 )
-            if longitude[0] < -360:
+            if longitude[0] < -360.0:
                 raise ValueError(
                     "Longitude contains values < -360. Shift to WGS84 with "
                     "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
                 )
-        else:
-            # Strict!
-            if longitude[-1] > 180:
-                raise ValueError(
-                    "Longitude contains values > 180. Shift to WGS84 with "
-                    "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
-                )
-            if longitude[0] < -180:
-                raise ValueError(
-                    "Longitude contains values < -180. Shift to WGS84 with "
-                    "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
-                )
+            return
+
+        # Strict!
+        if longitude[-1] > 180.0:
+            raise ValueError(
+                "Longitude contains values > 180. Shift to WGS84 with "
+                "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
+            )
+        if longitude[0] < -180.0:
+            raise ValueError(
+                "Longitude contains values < -180. Shift to WGS84 with "
+                "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
+            )
 
     def _validate_latitude(self) -> None:
         """Check latitude bounds.
@@ -141,12 +151,19 @@ class MetBase(ABC, Generic[XArrayType]):
             If latitude values are not contained in the interval [-90, 90].
         """
         latitude = self.variables["latitude"].values
-        if latitude[0] < -90:
+        if latitude.dtype != COORD_DTYPE:
+            raise ValueError(
+                "Latitude values must be of type float64. "
+                "Initiate with 'copy=True' to convert to float64. "
+                "Initiate with 'validate=False' to skip validation."
+            )
+
+        if latitude[0] < -90.0:
             raise ValueError(
                 "Latitude contains values < -90 . "
                 "Latitude values must be contained in the interval [-90, 90]."
             )
-        if latitude[-1] > 90:
+        if latitude[-1] > 90.0:
             raise ValueError(
                 "Latitude contains values > 90 . "
                 "Latitude values must be contained in the interval [-90, 90]."
@@ -163,27 +180,32 @@ class MetBase(ABC, Generic[XArrayType]):
         if not np.all(np.diff(self.variables["time"]) > np.timedelta64(0, "ns")):
             raise ValueError("Coordinate `time` not sorted. Initiate with `copy=True`.")
         for coord in self.dim_order[:3]:  # exclude time, the 4th dimension
-            if not np.all(np.diff(self.variables[coord]) > 0):
+            if not np.all(np.diff(self.variables[coord]) > 0.0):
                 raise ValueError(f"Coordinate '{coord}' not sorted. Initiate with 'copy=True'.")
 
     def _validate_transpose(self) -> None:
-        """Check that data is transposed according to self.dim_order.
+        """Check that data is transposed according to :attr:`dim_order`."""
 
-        NOTE: Calling xr.transpose only tranposes the data on the underlying `xrDataArrays`, not
-        on the full `xr.Dataset`.
+        dims_tuple = tuple(self.dim_order)
 
-        See: http://xarray.pydata.org/en/stable/generated/xarray.Dataset.transpose.html
-        """
+        def _check_da(da: xr.DataArray, key: str | None = None) -> None:
+            if da.dims != dims_tuple:
+                if key is not None:
+                    msg = (
+                        "Data dimension not transposed on variable '{key}'. Initiate with"
+                        " `copy=True`."
+                    )
+                else:
+                    msg = "Data dimension not transposed. Initiate with `copy=True`."
+                raise ValueError(msg)
 
-        def _check_da(da: xr.DataArray) -> None:
-            if da.dims != tuple(self.dim_order):
-                raise ValueError("Data dimensions not tranposed. Initiate with `copy=True`.")
+        data = self.data
+        if isinstance(data, xr.DataArray):
+            _check_da(data)
+            return
 
-        if isinstance(self.data, xr.Dataset):
-            for key in self.data:
-                _check_da(self.data[key])
-        else:
-            _check_da(self.data)
+        for key, da in self.data.data_vars.items():
+            _check_da(da, key)
 
     def _validate_dims(self) -> None:
         """Apply all validators."""
@@ -204,6 +226,13 @@ class MetBase(ABC, Generic[XArrayType]):
 
         Set "level" to -1 to signify surface level.
 
+        .. versionchanged:: 0.40.0
+
+            All coordinate data (longitude, latitude, level) are promoted to ``float64``.
+            Auxiliary coordinates (altitude and air_pressure) are now cast to the same
+            dtype as the underlying grid data.
+
+
         Parameters
         ----------
         wrap_longitude : bool
@@ -216,15 +245,14 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         self._validate_dim_contains_coords()
 
-        # Ensure spatial coordinates have type float32 or float64
-        # If not, convert to float32
-        for coord in ["longitude", "latitude", "level"]:
+        # Ensure spatial coordinates all have dtype COORD_DTYPE
+        for coord in ("longitude", "latitude", "level"):
             arr = self.variables[coord].values
-            if arr.dtype not in (np.float32, np.float64):
-                self.data[coord] = arr.astype(np.float32)
+            if arr.dtype != COORD_DTYPE:
+                self.data[coord] = arr.astype(COORD_DTYPE)
 
         # Ensure time is np.datetime64[ns]
-        self.data["time"] = self.data["time"].astype("datetime64[ns]")
+        self.data["time"] = self.data["time"].astype("datetime64[ns]", copy=False)
 
         # sortby to ensure each coordinate has ascending order
         self.data = self.data.sortby(self.dim_order, ascending=True)
@@ -236,7 +264,7 @@ class MetBase(ABC, Generic[XArrayType]):
 
             # This longitude shifting can give rise to precision errors with float32
             # Only shift if necessary
-            if np.any(lon >= 180) or np.any(lon < -180):
+            if np.any(lon >= 180.0) or np.any(lon < -180.0):
                 self.data = shift_longitude(self.data)
             else:
                 self.data = self.data.sortby("longitude", ascending=True)
@@ -256,29 +284,47 @@ class MetBase(ABC, Generic[XArrayType]):
         if self.is_single_level:
             # add level attributes to reflect surface level
             self.data["level"].attrs.update(units="", long_name="Single Level")
+            return
 
         # pressure level data
+        level = self.variables["level"].values
+
+        # add pressure level attributes
+        self.data["level"].attrs.update(units="hPa", long_name="Pressure", positive="down")
+
+        # add altitude and air_pressure
+
+        # XXX: use the dtype of the data to determine the precision of these coordinates
+        # There are two competing conventions here:
+        # - coordinate data should be float64
+        # - gridded data is typically float32
+        # - air_pressure and altitude often play both roles
+        # It is more important for air_pressure and altitude to be grid-aligned than to be
+        # coordinate-aligned, so we use the dtype of the data to determine the precision of
+        # these coordinates
+        if isinstance(self.data, xr.Dataset):
+            dtype = np.result_type(*self.data.data_vars.values(), np.float32)
         else:
-            level = self.variables["level"].values
+            dtype = self.data.dtype
 
-            # add pressure level attributes
-            self.data["level"].attrs.update(units="hPa", long_name="Pressure", positive="down")
+        level = level.astype(dtype)
+        air_pressure = level * 100.0
+        altitude = units.pl_to_m(level)
+        self.data = self.data.assign_coords({"air_pressure": ("level", air_pressure)})
+        self.data = self.data.assign_coords({"altitude": ("level", altitude)})
 
-            # add altitude and air_pressure
-            self.data = self.data.assign_coords({"air_pressure": ("level", level * 100)})
-            self.data = self.data.assign_coords({"altitude": ("level", units.pl_to_m(level))})
-            # add air_pressure units and long name attributes
-            self.data.coords["air_pressure"].attrs.update(
-                standard_name=AirPressure.standard_name,
-                long_name=AirPressure.long_name,
-                units=AirPressure.units,
-            )
-            # add altitude units and long name attributes
-            self.data.coords["altitude"].attrs.update(
-                standard_name=Altitude.standard_name,
-                long_name=Altitude.long_name,
-                units=Altitude.units,
-            )
+        # add air_pressure units and long name attributes
+        self.data.coords["air_pressure"].attrs.update(
+            standard_name=AirPressure.standard_name,
+            long_name=AirPressure.long_name,
+            units=AirPressure.units,
+        )
+        # add altitude units and long name attributes
+        self.data.coords["altitude"].attrs.update(
+            standard_name=Altitude.standard_name,
+            long_name=Altitude.long_name,
+            units=Altitude.units,
+        )
 
     @property
     def hash(self) -> str:
@@ -364,11 +410,11 @@ class MetBase(ABC, Generic[XArrayType]):
         >>> era5 = ERA5(times, variables, levels)
         >>> mds = era5.open_metdataset(xr_kwargs=dict(parallel=False))
         >>> mds.variables["level"].values  # faster access than mds.data["level"]
-        array([200., 300.], dtype=float32)
+        array([200., 300.])
 
         >>> mda = mds["air_temperature"]
         >>> mda.variables["level"].values  # faster access than mda.data["level"]
-        array([200., 300.], dtype=float32)
+        array([200., 300.])
         """
         if isinstance(self.data, xr.Dataset):
             return self.data.variables  # type: ignore[return-value]
@@ -579,7 +625,6 @@ class MetDataset(MetBase):
     """
 
     data: xr.Dataset
-    _data_arrays: dict[str, MetDataArray]
 
     def __init__(
         self,
@@ -947,8 +992,9 @@ class MetDataset(MetBase):
             time                [2022-03-01 00:00:00, 2022-03-01 01:00:00]
             longitude           [-180.0, 179.75]
             latitude            [-90.0, 90.0]
-            altitude            [10362.8466796875, 11783.9384765625]
+            altitude            [10362.848672411146, 11783.938524404566]
             crs                 EPSG:4326
+
         """
         coords_keys = [str(key) for key in self.data.dims]  # str not in Hashable
         coords_vals = [self.variables[key].values for key in coords_keys]
@@ -970,20 +1016,20 @@ class MetDataset(MetBase):
     @classmethod
     def from_coords(
         cls,
-        longitude: np.ndarray | list[float] | float,
-        latitude: np.ndarray | list[float] | float,
-        level: np.ndarray | list[float] | float,
-        time: np.ndarray | list[np.datetime64] | np.datetime64,
+        longitude: npt.ArrayLike | float,
+        latitude: npt.ArrayLike | float,
+        level: npt.ArrayLike | float,
+        time: npt.ArrayLike | np.datetime64,
     ) -> MetDataset:
         """Create a :class:`MetDataset` containing a coordinate skeleton from coordinate arrays.
 
         Parameters
         ----------
-        longitude, latitude : np.ndarray | list[float] | float
+        longitude, latitude : npt.ArrayLike | float
             Horizontal coordinates, in [:math:`degrees`]
-        level : np.ndarray | list[float] | float
+        level : npt.ArrayLike | float
             Vertical coordinate, in [:math:`hPa`]
-        time: np.ndarray | list[np.datetime64] | np.datetime64,
+        time: npt.ArrayLike | np.datetime64,
             Temporal coordinates, in [:math:`UTC`]. Will be sorted.
 
         Returns
@@ -1004,12 +1050,12 @@ class MetDataset(MetBase):
         <xarray.Dataset>
         Dimensions:       (longitude: 20, latitude: 20, level: 2, time: 1)
         Coordinates:
-        * longitude     (longitude) float64 0.0 0.5 1.0 1.5 2.0 ... 8.0 8.5 9.0 9.5
-        * latitude      (latitude) float64 0.0 0.5 1.0 1.5 2.0 ... 7.5 8.0 8.5 9.0 9.5
-        * level         (level) float64 250.0 300.0
-        * time          (time) datetime64[ns] 2019-01-01
-            air_pressure  (level) float64 2.5e+04 3e+04
-            altitude      (level) float64 1.036e+04 9.164e+03
+          * longitude     (longitude) float64 0.0 0.5 1.0 1.5 2.0 ... 8.0 8.5 9.0 9.5
+          * latitude      (latitude) float64 0.0 0.5 1.0 1.5 2.0 ... 7.5 8.0 8.5 9.0 9.5
+          * level         (level) float64 250.0 300.0
+          * time          (time) datetime64[ns] 2019-01-01
+            air_pressure  (level) float32 2.5e+04 3e+04
+            altitude      (level) float32 1.036e+04 9.164e+03
         Data variables:
             *empty*
 
@@ -1027,12 +1073,12 @@ class MetDataset(MetBase):
         <xarray.Dataset>
         Dimensions:       (longitude: 20, latitude: 20, level: 2, time: 1)
         Coordinates:
-        * longitude     (longitude) float64 0.0 0.5 1.0 1.5 2.0 ... 8.0 8.5 9.0 9.5
-        * latitude      (latitude) float64 0.0 0.5 1.0 1.5 2.0 ... 7.5 8.0 8.5 9.0 9.5
-        * level         (level) float64 250.0 300.0
-        * time          (time) datetime64[ns] 2019-01-01
-            air_pressure  (level) float64 2.5e+04 3e+04
-            altitude      (level) float64 1.036e+04 9.164e+03
+          * longitude     (longitude) float64 0.0 0.5 1.0 1.5 2.0 ... 8.0 8.5 9.0 9.5
+          * latitude      (latitude) float64 0.0 0.5 1.0 1.5 2.0 ... 7.5 8.0 8.5 9.0 9.5
+          * level         (level) float64 250.0 300.0
+          * time          (time) datetime64[ns] 2019-01-01
+            air_pressure  (level) float32 2.5e+04 3e+04
+            altitude      (level) float32 1.036e+04 9.164e+03
         Data variables:
             temperature   (longitude, latitude, level, time) float64 234.5 ... 234.5
             humidity      (longitude, latitude, level, time) float64 0.5 0.5 ... 0.5 0.5
@@ -1069,10 +1115,9 @@ class MetDataset(MetBase):
 
             # Check dtypes
             if key == "time":
-                val = val.astype("datetime64[ns]")
+                val = val.astype("datetime64[ns]", copy=False)
             else:
-                if val.dtype not in (np.float32, np.float64):
-                    val = val.astype(np.float64)
+                val = val.astype(COORD_DTYPE, copy=False)
 
             coords[key] = val
 
@@ -1334,51 +1379,51 @@ class MetDataArray(MetBase):
     @overload
     def interpolate(
         self,
-        longitude: float | np.ndarray,
-        latitude: float | np.ndarray,
-        level: float | np.ndarray,
-        time: np.datetime64 | np.ndarray,
+        longitude: float | npt.NDArray[np.float_],
+        latitude: float | npt.NDArray[np.float_],
+        level: float | npt.NDArray[np.float_],
+        time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = ...,
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        indices: tuple | None = ...,
+        indices: interpolation.RGIArtifacts | None = None,
         return_indices: Literal[False] = ...,
-    ) -> np.ndarray:
+    ) -> npt.NDArray[np.float_]:
         ...
 
     @overload
     def interpolate(
         self,
-        longitude: float | np.ndarray,
-        latitude: float | np.ndarray,
-        level: float | np.ndarray,
-        time: np.datetime64 | np.ndarray,
+        longitude: float | npt.NDArray[np.float_],
+        latitude: float | npt.NDArray[np.float_],
+        level: float | npt.NDArray[np.float_],
+        time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = ...,
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        indices: tuple | None = ...,
+        indices: interpolation.RGIArtifacts | None = None,
         return_indices: Literal[True],
-    ) -> tuple[np.ndarray, tuple]:
+    ) -> tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]:
         ...
 
     def interpolate(
         self,
-        longitude: float | np.ndarray,
-        latitude: float | np.ndarray,
-        level: float | np.ndarray,
-        time: np.datetime64 | np.ndarray,
+        longitude: float | npt.NDArray[np.float_],
+        latitude: float | npt.NDArray[np.float_],
+        level: float | npt.NDArray[np.float_],
+        time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = "linear",
         bounds_error: bool = False,
         fill_value: float | np.float64 | None = np.nan,
         localize: bool = False,
-        indices: tuple | None = None,
+        indices: interpolation.RGIArtifacts | None = None,
         return_indices: bool = False,
-    ) -> np.ndarray | tuple[np.ndarray, tuple]:
+    ) -> npt.NDArray[np.float_] | tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]:
         """Interpolate values over underlying DataArray.
 
         Zero dimensional coordinates are reshaped to 1D arrays.
@@ -1405,13 +1450,13 @@ class MetDataArray(MetBase):
 
         Parameters
         ----------
-        longitude : float | np.ndarray
+        longitude : float | npt.NDArray[np.float_]
             Longitude values to interpolate. Assumed to be 0 or 1 dimensional.
-        latitude : float | np.ndarray
+        latitude : float | npt.NDArray[np.float_]
             Latitude values to interpolate. Assumed to be 0 or 1 dimensional.
-        level : float | np.ndarray
+        level : float | npt.NDArray[np.float_]
             Level values to interpolate. Assumed to be 0 or 1 dimensional.
-        time : np.datetime64 | np.ndarray
+        time : np.datetime64 | npt.NDArray[np.datetime64]
             Time values to interpolate. Assumed to be 0 or 1 dimensional.
         method: str, optional
             Additional keyword arguments to pass to
@@ -1459,7 +1504,7 @@ class MetDataArray(MetBase):
 
         >>> # Interpolation at a grid point agrees with value
         >>> mda.interpolate(1, 2, 300, np.datetime64('2022-03-01T14:00'))
-        array([241.91973877])
+        array([241.91974], dtype=float32)
 
         >>> da = mda.data
         >>> da.sel(longitude=1, latitude=2, level=300, time=np.datetime64('2022-03-01T14')).item()
@@ -1467,7 +1512,7 @@ class MetDataArray(MetBase):
 
         >>> # Interpolation off grid
         >>> mda.interpolate(1.1, 2.1, 290, np.datetime64('2022-03-01 13:10'))
-        array([239.83794...])
+        array([239.83794], dtype=float32)
 
         >>> # Interpolate along path
         >>> longitude = np.linspace(1, 2, 10)
@@ -1475,9 +1520,8 @@ class MetDataArray(MetBase):
         >>> level = np.linspace(200, 300, 10)
         >>> time = pd.date_range("2022-03-01T14", periods=10, freq="5T")
         >>> mda.interpolate(longitude, latitude, level, time)
-        array([220.44348145, 223.08901154, 225.74338832, 228.41642041,
-               231.10858915, 233.54857683, 235.71505031, 237.86479084,
-               239.99275046, 242.10792542])
+        array([220.44348, 223.089  , 225.7434 , 228.41643, 231.10858, 233.54858,
+               235.71506, 237.86479, 239.99275, 242.10793], dtype=float32)
         """
         # Load if necessary
         if not self.in_memory:
@@ -1487,16 +1531,6 @@ class MetDataArray(MetBase):
         # Convert all inputs to 1d arrays
         # Not validating against ndim >= 2
         longitude, latitude, level, time = np.atleast_1d(longitude, latitude, level, time)
-
-        # Convert all inputs to numpy array with dtype float32 or float64
-        if longitude.dtype not in [np.float32, np.float64]:
-            longitude = longitude.astype(np.float64)
-        if latitude.dtype not in [np.float32, np.float64]:
-            latitude = latitude.astype(np.float64)
-        if level.dtype not in [np.float32, np.float64]:
-            level = level.astype(np.float64)
-        if time.dtype != "datetime64[ns]":
-            time = time.astype("datetime64[ns]")
 
         # Pass off to the interp function, which does all the heavy lifting
         return interpolation.interp(
@@ -2093,7 +2127,7 @@ class MetDataArray(MetBase):
 
 def _is_wrapped(longitude: np.ndarray) -> bool:
     """Check if ``longitude`` covers ``[-180, 180]``."""
-    return longitude[0] <= -180 and longitude[-1] >= 180
+    return longitude[0] <= -180.0 and longitude[-1] >= 180.0
 
 
 def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
@@ -2177,8 +2211,6 @@ def _wrap_longitude(data: XArrayType) -> XArrayType:
     ValueError
         If longitude values are already wrapped.
     """
-    # NOTE: We use the keepdims=True flag in order to keep a consistent dtype here
-    # (Otherwise, float32 gets converted to float64)
     if isinstance(data, xr.Dataset):
         lon = data.variables["longitude"].values
     else:
@@ -2191,21 +2223,21 @@ def _wrap_longitude(data: XArrayType) -> XArrayType:
     lon1 = lon[-1]
 
     # Try to prevent something stupid
-    if lon1 - lon0 < 330:
+    if lon1 - lon0 < 330.0:
         warnings.warn("Wrapping longitude will create a large spatial gap of more than 30 degrees.")
 
     objs = [data]
-    if lon0 > -180:  # if the lowest longitude is not low enough, duplicate highest
-        dup1 = data.sel(longitude=[lon1]).assign_coords(longitude=[lon1 - 360])
+    if lon0 > -180.0:  # if the lowest longitude is not low enough, duplicate highest
+        dup1 = data.sel(longitude=[lon1]).assign_coords(longitude=[lon1 - 360.0])
         objs.insert(0, dup1)
-    if lon1 < 180:  # if the highest longitude is not highest enough, duplicate lowest
-        dup0 = data.sel(longitude=[lon0]).assign_coords(longitude=[lon0 + 360])
+    if lon1 < 180.0:  # if the highest longitude is not highest enough, duplicate lowest
+        dup0 = data.sel(longitude=[lon0]).assign_coords(longitude=[lon0 + 360.0])
         objs.append(dup0)
 
     # Because we explicitly raise a ValueError if longitude already wrapped,
     # we know that len(objs) > 1, so the concatenation here is nontrivial
     wrapped = xr.concat(objs, dim="longitude")
-    wrapped["longitude"] = wrapped["longitude"].astype(lon.dtype)
+    wrapped["longitude"] = wrapped["longitude"].astype(lon.dtype, copy=False)
 
     # If there is only one longitude chunk in parameter data, increment
     # data.chunks can be None, using getattr for extra safety
@@ -2390,7 +2422,7 @@ def originates_from_ecmwf(met: MetDataset | MetDataArray) -> bool:
     - :class:`HRES`
 
     """
-    return met.attrs.get("met_source") in ["ERA5", "HRES"] or "ecmwf" in met.attrs.get(
+    return met.attrs.get("met_source") in ("ERA5", "HRES") or "ecmwf" in met.attrs.get(
         "history", ""
     )
 
