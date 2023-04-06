@@ -552,7 +552,7 @@ def test_issr_source_grid_different_resolution(met_issr: MetDataset, in_bounds: 
     if in_bounds:
         out = model.eval(source, interpolation_bounds_error=True)
         assert np.all(np.isfinite(out.data))
+        return
 
-    else:
-        with pytest.raises(ValueError, match="A value in x_new is below the interpolation range"):
-            model.eval(source, interpolation_bounds_error=True)
+    with pytest.raises(ValueError, match="221"):
+        model.eval(source, interpolation_bounds_error=True)

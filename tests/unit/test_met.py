@@ -234,7 +234,7 @@ def test_shift_longitude(zero_like_da: xr.DataArray) -> None:
 @pytest.fixture
 def zero_like_da() -> xr.DataArray:
     return xr.DataArray(
-        data=0,
+        data=0.0,
         dims=["longitude", "latitude", "level", "time"],
         coords={
             "longitude": np.arange(-180, 180, 1.0),
@@ -277,7 +277,7 @@ def island_binary(zero_like_da: xr.DataArray) -> MetDataArray:
 
     da = zero_like_da
     island = (np.abs(da["latitude"]) < 5) & (np.abs(da["longitude"]) < 5)
-    da = xr.where(island, 1, da)
+    da = xr.where(island, 1.0, da)
     return MetDataArray(da)
 
 
