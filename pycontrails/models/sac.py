@@ -201,7 +201,7 @@ def slope_mixing_line(
         Slope of the mixing line in a temperature-humidity diagram, [:math:`Pa \ K^{-1}`]
     """
     c_pm = thermo.c_pm(specific_humidity)  # Often taken as 1004 (= constants.c_pd)
-    return (ei_h2o * c_pm * air_pressure) / (constants.epsilon * q_fuel * (1 - engine_efficiency))
+    return (ei_h2o * c_pm * air_pressure) / (constants.epsilon * q_fuel * (1.0 - engine_efficiency))
 
 
 def T_sat_liquid(G: ArrayLike) -> ArrayLike:

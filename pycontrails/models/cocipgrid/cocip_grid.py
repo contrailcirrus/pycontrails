@@ -129,6 +129,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
                 "Parameter 'radiative_heating_effects' is not yet implemented in CocipGrid"
             )
 
+        self._target_dtype = np.result_type(*self.met.data.values())
+
     @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
         ...
@@ -448,6 +450,9 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
 
                 # Convert the 4D grid to a vector
                 vector = source_slice.to_vector()
+                vector.update(longitude=vector["longitude"].astype(self._target_dtype, copy=False))
+                vector.update(latitude=vector["latitude"].astype(self._target_dtype, copy=False))
+                vector.update(level=vector["level"].astype(self._target_dtype, copy=False))
                 vector["index"] = source_time.size * np.arange(vector.size) + filt_start_idx + idx
 
                 # Split into chunks
