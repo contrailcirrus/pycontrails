@@ -11,15 +11,15 @@ scipy 1.10 in several ways:
 """
 
 import numpy as np
-cimport numpy as np
-cimport cython
 
+cimport cython
+cimport numpy as np
 
 np.import_array()
 
 
 # See https://cython.readthedocs.io/en/latest/src/userguide/fusedtypes.html
-ctypedef fused floating_values:
+ctypedef fused floating:
     float
     double
 
@@ -29,10 +29,10 @@ ctypedef fused floating_values:
 @cython.initializedcheck(False)
 @cython.nonecheck(False)
 def evaluate_linear_4d(
-    const floating_values[:, :, :, :] values,
+    const floating[:, :, :, :] values,
     const long[:, :] indices,
     const double[:, :] norm_distances,
-    floating_values[:] out,
+    floating[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[1]
@@ -78,10 +78,10 @@ def evaluate_linear_4d(
 @cython.initializedcheck(False)
 @cython.nonecheck(False)
 def evaluate_linear_3d(
-    const floating_values[:, :, :] values,
+    const floating[:, :, :] values,
     const long[:, :] indices,
     const double[:, :] norm_distances,
-    floating_values[:] out,
+    floating[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[1]
@@ -116,10 +116,10 @@ def evaluate_linear_3d(
 @cython.initializedcheck(False)
 @cython.nonecheck(False)
 def evaluate_linear_2d(
-    const floating_values[:, :] values,
+    const floating[:, :] values,
     const long[:, :] indices,
     const double[:, :] norm_distances,
-    floating_values[:] out,
+    floating[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[1]
@@ -149,10 +149,10 @@ def evaluate_linear_2d(
 @cython.initializedcheck(False)
 @cython.nonecheck(False)
 def evaluate_linear_1d(
-    const floating_values[:] values,
+    const floating[:] values,
     const long[:] indices,
     const double[:] norm_distances,
-    floating_values[:] out,
+    floating[:] out,
 ) -> np.ndarray:
     cdef:
         long n_points = indices.shape[0]
