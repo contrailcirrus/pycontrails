@@ -45,9 +45,9 @@ jobs:
         CIBW_ARCHS_MACOS: x86_64 arm64
         # Completely isolate tests to prevent cibuildwheel from importing the
         # source instead of the wheel. This happens when tests/__init__.py is read.
-        # CIBW_BEFORE_TEST: cp -r {project}/tests /tmp/tests
+        CIBW_BEFORE_TEST: mkdir /tmp/isolated && cp -r {project}/tests /tmp/isolated && cp {project}/README.md {project}/.gitignore {project}/pyproject.toml /tmp/isolated && ls -la /tmp/isolated
         CIBW_TEST_EXTRAS: "complete,dev"
-        CIBW_TEST_COMMAND: rm -r {project}/pycontrails && python -m pytest {project}/tests/unit
+        CIBW_TEST_COMMAND: cd /tmp/isolated && python -m pytest tests/unit
 
     - uses: actions/upload-artifact@v3
       with:
