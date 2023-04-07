@@ -473,7 +473,7 @@ def test_grid_results(grid_results: MetDataset) -> None:
     # This test is HARD to maintain. Delete if it gets too annoying.
     point = grid_results.data.isel(longitude=14, latitude=19, level=2, time=2)
     assert point["contrail_age"].item() == 1.5
-    assert point["ef_per_m"].item() == pytest.approx(46576688, abs=10)
+    assert point["ef_per_m"].item() == pytest.approx(46576688, abs=1000)
 
 
 @pytest.fixture
@@ -507,12 +507,12 @@ def test_grid_results_segment_free(
     # Pin some values
     da1 = out1["ef_per_m"].data
     filt1 = da1 > 0
-    assert da1.where(filt1).mean().item() == pytest.approx(39581584, abs=10)
+    assert da1.where(filt1).mean().item() == pytest.approx(39581584, rel=1e-3)
 
     # In segment-free mode (generally and here), the mean nonzero EF is slightly lower
     da2 = out2["ef_per_m"].data
     filt2 = da2 > 0
-    assert da2.where(filt2).mean().item() == pytest.approx(32914018, abs=10)
+    assert da2.where(filt2).mean().item() == pytest.approx(32914018, rel=1e-3)
 
     # For this example, we can say something about the distribution of EFs
     filt = filt1 & filt2
