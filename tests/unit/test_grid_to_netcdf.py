@@ -7,8 +7,12 @@ import numpy as np
 import pytest
 import xarray as xr
 
+try:
+    from pycontrails.models.cocipgrid import CocipGrid
+except ImportError:
+    pytest.skip("CocipGrid not available", allow_module_level=True)
+
 from pycontrails import MetDataset
-from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 from pycontrails.models.issr import ISSR
 from pycontrails.models.pcr import PCR

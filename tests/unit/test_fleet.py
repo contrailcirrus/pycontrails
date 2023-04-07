@@ -5,7 +5,11 @@ import pytest
 
 from pycontrails import Flight
 from pycontrails.core.fleet import Fleet
-from pycontrails.utils.synthetic_flight import SyntheticFlight
+
+try:
+    from pycontrails.utils.synthetic_flight import SyntheticFlight
+except ImportError:
+    pytest.skip("SyntheticFlight not available", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")
