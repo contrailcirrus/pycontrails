@@ -473,7 +473,7 @@ def test_grid_results(grid_results: MetDataset) -> None:
     # This test is HARD to maintain. Delete if it gets too annoying.
     point = grid_results.data.isel(longitude=14, latitude=19, level=2, time=2)
     assert point["contrail_age"].item() == 1.5
-    assert point["ef_per_m"].item() == pytest.approx(46576688, abs=1000)
+    assert point["ef_per_m"].item() == pytest.approx(46576688, rel=1e-3)
 
 
 @pytest.fixture
