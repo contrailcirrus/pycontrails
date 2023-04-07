@@ -57,6 +57,7 @@ class TestDiskCacheStore:
         disk_path = "".join(random.choice(["x", "y"]) for _ in range(20))
         assert not _cache.exists(disk_path)
 
+    @pytest.mark.skipif(not pathlib.Path("README.md").is_file(), reason="No README.md")
     def test_cache_size(self) -> None:
         _cache = DiskCacheStore(cache_dir=f"{DISK_CACHE_DIR}/test", allow_clear=True)
         _cache.clear()
@@ -100,6 +101,7 @@ class TestDiskCacheStore:
         _cache.clear()
         assert not _cache.exists("path.nc")
 
+    @pytest.mark.skipif(not pathlib.Path("README.md").is_file(), reason="No README.md")
     def test_put_get(self) -> None:
         _cache = DiskCacheStore(cache_dir=f"{DISK_CACHE_DIR}/test", allow_clear=True)
         _cache.clear()
@@ -123,6 +125,7 @@ class TestDiskCacheStore:
         # clean up
         _cache.clear()
 
+    @pytest.mark.skipif(not pathlib.Path("README.md").is_file(), reason="No README.md")
     def test_put_multiple(self) -> None:
         _cache = DiskCacheStore(cache_dir=f"{DISK_CACHE_DIR}/test", allow_clear=True)
         _cache.clear()
