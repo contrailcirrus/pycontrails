@@ -1,13 +1,36 @@
 
 # Changelog
 
+## v0.40.0 (unreleased)
+
+Support scipy 1.10 and improve interpolation performance.
+
+#### Features
+
+- Improve interpolation performance by cythonizing linear interpolation. This extends the approach taken in [scipy 1.10](https://github.com/scipy/scipy/pull/17291). The pycontrails [cython routines](pycontrails/core/rgi_cython.pyx) allow for both float64 and float32 grids via cython fused types (the current scipy implementation assumes float64). In addition, interpolation up to dimension 4 is supported (the scipy implementation supports dimension 1 and 2).
+- Officially support [scipy 1.10](https://scipy.github.io/devdocs/release/1.10.0-notes.html).
+
+#### Breaking changes
+
+- Change `MetDataset` and `MetDataArray` conventions: underlying dimension coordinates are automatically promoted to float64.
+- Change how datetime arrays are converted to floating values for interpolation. The new approach introduces small differences compared with the previous implementation. These differences are significant enough to see relative differences in CoCiP predictions on the order of 1e-4.
+
+#### Fixes
+
+- Unit tests no longer raise errors when the `pycontrails-bada` package is not installed. Instead, some tests are skipped.
+
+#### Internals
+
+- Make the `interpolation` module more aligned with [scipy 1.10 enhancements](https://docs.scipy.org/doc/scipy/release.1.10.0.html#scipy-interpolate-improvements) to the `RegularGridInterpolator`. In particular, grid coordinates now must be float64.
+- Use [cibuildwheel](https://cibuildwheel.readthedocs.io/en/stable/) to build wheels for Linux, macOS (arm64 and x86_64), and Windows on [release](.github/workflows/release.yaml) in Github Actions. Allow this workflow to be triggered manually to test the release process without actually publishing to PyPI.
+- Simplify interpolation with pre-computed indices (invoked with the model parameter `interpolation_use_indices`) via a `RGIArtifacts` interface.
+- Slight performance enhancements to the `met` module.
+
 ## v0.39.6
 
 #### Features
 
-- Add `geo.azimuth` and `geo.segment_azimuth` functions to calculate the azimuth
-  between coordinates.
-  Azimuth is the angle between coordinates relative to true north on the range [0, 360].
+- Add `geo.azimuth` and `geo.segment_azimuth` functions to calculate the azimuth between coordinates. Azimuth is the angle between coordinates relative to true north on the interval `[0, 360)`.
 
 #### Fixes
 
