@@ -93,7 +93,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             A 1-dimensional Boolean array indicating which points are out of bounds.
             If ``bounds_error`` is ``True``, this will be ``None``, indicating that
             no points are out of bounds. (This is the same convention as
-            :meth:`scipy.interpolate.RegularGridInterpolator._prepare_xi`)
+            :meth:`scipy.interpolate.RegularGridInterpolator._prepare_xi`). If
+            every point is in bounds, this is set to ``None``.
         """
         nans = np.any(np.isnan(xi), axis=1)
         if not np.any(nans):
@@ -109,6 +110,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             return nans, None
 
         out_of_bounds = self._find_out_of_bounds(xi.T)
+        if not np.any(out_of_bounds):
+            out_of_bounds = None
         return nans, out_of_bounds
 
     def __call__(
