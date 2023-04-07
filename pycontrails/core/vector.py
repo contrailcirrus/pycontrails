@@ -1583,8 +1583,8 @@ class GeoVectorDataset(VectorDataset):
         except KeyError:
             return None
 
-        indices = np.stack([indices_x, indices_y, indices_z, indices_t], axis=1)
-        distances = np.stack([distances_x, distances_y, distances_z, distances_t], axis=1)
+        indices = np.asarray([indices_x, indices_y, indices_z, indices_t])
+        distances = np.asarray([distances_x, distances_y, distances_z, distances_t])
 
         out_of_bounds = self.get("_out_of_bounds", None)
         nans = self.get("_nans", None)
