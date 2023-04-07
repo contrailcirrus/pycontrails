@@ -389,7 +389,12 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
         b2 = kwargs["rhi_b2"]
         b3 = kwargs["rhi_b3"]
 
+        # Use the dtype of specific_humidity to determine the precision of the
+        # the calculation. If working with gridded data here, latitude will have
+        # float64 precision.
         latitude = kwargs["latitude"]
+        if latitude.dtype != specific_humidity.dtype:
+            latitude = latitude.astype(specific_humidity.dtype)
         lat_abs = np.abs(latitude)
 
         # Compute uncorrected RHi
