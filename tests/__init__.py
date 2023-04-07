@@ -16,13 +16,12 @@ BADA_ROOT = pathlib.Path(os.getenv("BADA_CACHE_DIR", default_bada_root))
 BADA3_PATH = BADA_ROOT / "bada3"
 BADA4_PATH = BADA_ROOT / "bada4"
 
-_all_bada_paths = [BADA3_PATH, BADA4_PATH]
-BADA_AVAILABLE = all(path.exists() for path in _all_bada_paths)
+BADA_AVAILABLE = BADA3_PATH.exists() and BADA4_PATH.exists()
 
 
 try:
     import open3d
-
-    OPEN3D_AVAILABLE = True
 except ModuleNotFoundError:
     OPEN3D_AVAILABLE = False
+else:
+    OPEN3D_AVAILABLE = True

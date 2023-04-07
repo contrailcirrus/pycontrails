@@ -368,7 +368,9 @@ def flight_fake() -> Flight:
 
 @pytest.fixture
 def bada_model() -> AircraftPerformance:
-    from pycontrails.ext.bada import BADAFlight
+    """Construct generic BADAFlight model."""
+
+    BADAFlight = pytest.importorskip("pycontrails.ext.bada").BADAFlight
 
     if not BADA_AVAILABLE:
         raise RuntimeError("BADA data files unavailable")

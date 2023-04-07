@@ -10,11 +10,19 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+try:
+    from pycontrails.utils.synthetic_flight import SAMPLE_AIRCRAFT_TYPES, SyntheticFlight
+except ImportError:
+    synthetic_flight_unavailable = True
+    SAMPLE_AIRCRAFT_TYPES = []
+else:
+    synthetic_flight_unavailable = False
+
+
 from pycontrails import Flight, MetDataset
 from pycontrails.utils import types
 from pycontrails.utils.iteration import chunk_list
 from pycontrails.utils.json import NumpyEncoder
-from pycontrails.utils.synthetic_flight import SAMPLE_AIRCRAFT_TYPES, SyntheticFlight
 from pycontrails.utils.temp import remove_tempfile, temp_file, temp_filename
 from pycontrails.utils.types import type_guard
 from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
@@ -91,6 +99,7 @@ def test_numpy_encoder() -> None:
     assert loaded_dict["date_range"] == date_range.to_numpy().tolist()
 
 
+@pytest.mark.skipif(synthetic_flight_unavailable, reason="synthetic_flight unavailable")
 def test_synthetic_flight(met_cocip1: MetDataset) -> None:
     """Test SyntheticFlight class."""
     # synthetic flights
@@ -127,6 +136,7 @@ def test_synthetic_flight(met_cocip1: MetDataset) -> None:
     assert isinstance(fl, Flight)
 
 
+@pytest.mark.skipif(synthetic_flight_unavailable, reason="synthetic_flight unavailable")
 @pytest.mark.skipif(not BADA_AVAILABLE, reason="No BADA or EDB Files")
 @pytest.mark.parametrize("aircraft_type", SAMPLE_AIRCRAFT_TYPES)
 def test_synthetic_flight_bada(aircraft_type: str) -> None:

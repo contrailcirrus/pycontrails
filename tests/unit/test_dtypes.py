@@ -10,7 +10,6 @@ from pycontrails import Flight, GeoVectorDataset, MetDataset
 from pycontrails.core.met import MetDataArray
 from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import Cocip
-from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 from pycontrails.models.issr import ISSR
 from pycontrails.models.sac import SAC
@@ -194,6 +193,8 @@ def test_cocip(
 @pytest.mark.parametrize("bada_priority", [3, 4])
 def test_cocip_grid(met_cocip1: MetDataset, rad_cocip1: MetDataset, bada_priority: int):
     """Confirm `CocipGrid` maintains float32 precision."""
+    CocipGrid = pytest.importorskip("pycontrails.models.cocipgrid").CocipGrid
+
     # Keep max_age small to avoid blowing out of bounds
     # And keep dt_integration small to make the evolution interesting
     params = {
