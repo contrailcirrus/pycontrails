@@ -16,17 +16,19 @@ from pycontrails.core import cache
 # see if GCP credentials exist
 try:
     storage.Client()
-    gcp_credentials = True
 except Exception:
     gcp_credentials = False
+else:
+    gcp_credentials = True
 
 try:
     import requests
 
-    r = requests.get("https://gitlab.com")
-    offline = False
+    r = requests.get("https://github.com")
 except Exception:
     offline = True
+else:
+    offline = False
 
 ############
 # Disk Cache Store
@@ -98,7 +100,6 @@ class TestDiskCacheStore:
         _cache.clear()
         assert not _cache.exists("path.nc")
 
-    @pytest.mark.skipif(not pathlib.Path("README.md").is_file(), reason="No README.md file")
     def test_put_get(self) -> None:
         _cache = DiskCacheStore(cache_dir=f"{DISK_CACHE_DIR}/test", allow_clear=True)
         _cache.clear()
@@ -122,7 +123,6 @@ class TestDiskCacheStore:
         # clean up
         _cache.clear()
 
-    @pytest.mark.skipif(not pathlib.Path("README.md").is_file(), reason="No README.md file")
     def test_put_multiple(self) -> None:
         _cache = DiskCacheStore(cache_dir=f"{DISK_CACHE_DIR}/test", allow_clear=True)
         _cache.clear()
@@ -209,7 +209,6 @@ class TestGCPCacheStore:
             and f"{CACHE_DIR}" in _cache._disk_cache.cache_dir
         )
 
-    @pytest.mark.skipif(not pathlib.Path("README.md").is_file(), reason="No README.md file")
     def test_cache_size(self) -> None:
         _cache = GCPCacheStore(
             bucket=BUCKET, cache_dir=f"{CACHE_DIR}/", allow_clear=True, read_only=False
