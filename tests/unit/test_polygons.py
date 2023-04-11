@@ -152,8 +152,8 @@ def test_find_contours_to_depth_2_with_min_area_to_iterate(barr):
     n_grandchildren1 = sum(c.n_children for c in nc1)
     n_grandchildren2 = sum(c.n_children for c in nc2)
 
-    assert n_grandchildren1 == 36
-    assert n_grandchildren2 == 41
+    assert n_grandchildren1 == 27
+    assert n_grandchildren2 == 31
 
 
 @pytest.mark.parametrize("altitude", [None, 10001.2])

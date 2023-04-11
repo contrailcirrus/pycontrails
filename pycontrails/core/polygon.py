@@ -126,7 +126,12 @@ def calc_exterior_contours(
     list[npt.NDArray[np.float_]]
         List of exterior contours.
     """
-    kwargs = {"level": threshold, "positive_orientation": positive_orientation}
+    fully_connected = "low" if positive_orientation == "high" else "high"
+    kwargs = {
+        "level": threshold,
+        "positive_orientation": positive_orientation,
+        "fully_connected": fully_connected,
+    }
     contours = measure.find_contours(arr, **kwargs)
 
     # The snippet below is a little faster (~1.5x) than using draw.polygon2mask
@@ -284,6 +289,8 @@ def clean_contours(
     """
     lr_list = []
     for contour in contours:
+        if len(contour) <= 3:
+            continue
         lr = shapely.LinearRing(contour)
         if not lr.is_valid:
             continue

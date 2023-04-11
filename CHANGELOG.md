@@ -11,6 +11,8 @@
 
 #### Fixes
 
+- Fix edge case in polygon algorithm by utilizing the `fully_connected` parameter in `measure.find_contours`. This update leads to slight changes in interior contours in some cases.
+
 #### Internals
 
 - Clean up `geo` module docstrings.
