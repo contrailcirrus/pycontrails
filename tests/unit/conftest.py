@@ -37,8 +37,8 @@ def get_static_path(filename: str | pathlib.Path) -> pathlib.Path:
     -------
     pathlib.Path
     """
-    parent = pathlib.Path(__file__).parent.absolute()
-    return pathlib.Path(parent, "static", filename)
+    parent = pathlib.Path(__file__).parent
+    return parent / "static" / filename
 
 
 @pytest.fixture(scope="session")

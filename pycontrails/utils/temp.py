@@ -6,7 +6,7 @@ import tempfile
 from contextlib import contextmanager
 from typing import Generator
 
-LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def temp_filename() -> str:
@@ -33,14 +33,14 @@ def remove_tempfile(temp_filename: str) -> None:
     try:
         os.unlink(temp_filename)
     except OSError as e:
-        LOG.debug(f"Failed to delete temp files with error: {e}")
+        logger.warning("Failed to delete temp file %s with error %s", temp_filename, e)
 
 
 @contextmanager
 def temp_file() -> Generator[str, None, None]:
     """Get context manager for temp file creation and cleanup."""
+    filename = temp_filename()
     try:
-        filename = temp_filename()
         yield filename
     finally:
         remove_tempfile(filename)

@@ -482,7 +482,7 @@ class HRES(ECMWFAPI):
         Notes
         -----
         Brief overview of `MARS request syntax
-        https://confluence.ecmwf.int/display/WEBAPI/Brief+MARS+request+syntax>`_
+        <https://confluence.ecmwf.int/display/WEBAPI/Brief+MARS+request+syntax>`_
         """
 
         if forecast_time is None:
@@ -516,17 +516,15 @@ class HRES(ECMWFAPI):
 
         if request_format == "dict":
             return request
-        else:
-            levelist = (
-                f",\n\tlevelist={request['levelist']}" if self.pressure_levels != [-1] else ""
-            )
-            return (
-                f"{request_type},\n\tclass={request['class']},\n\tstream={request['stream']},"
-                f"\n\texpver={request['expver']},\n\tdate={request['date']},"
-                f"\n\ttime={request['time']},\n\ttype={request['type']},"
-                f"\n\tparam={request['param']},\n\tstep={request['step']},"
-                f"\n\tgrid={request['grid']},\n\tlevtype={request['levtype']}{levelist}"
-            )
+
+        levelist = f",\n\tlevelist={request['levelist']}" if self.pressure_levels != [-1] else ""
+        return (
+            f"{request_type},\n\tclass={request['class']},\n\tstream={request['stream']},"
+            f"\n\texpver={request['expver']},\n\tdate={request['date']},"
+            f"\n\ttime={request['time']},\n\ttype={request['type']},"
+            f"\n\tparam={request['param']},\n\tstep={request['step']},"
+            f"\n\tgrid={request['grid']},\n\tlevtype={request['levtype']}{levelist}"
+        )
 
     @overrides
     def create_cachepath(self, t: datetime) -> str:
@@ -540,10 +538,10 @@ class HRES(ECMWFAPI):
         step = self.step_offset + self.timesteps.index(t)
 
         # single level or pressure level
-        suffix = (
-            f"hres{'sl' if self.pressure_levels == [-1] else 'pl'}"
-            f"{self.grid}{self.stream}{self.field_type}"
-        )
+        if self.pressure_levels == [-1]:
+            suffix = f"hressl{self.grid}{self.stream}{self.field_type}"
+        else:
+            suffix = f"hrespl{self.grid}{self.stream}{self.field_type}"
 
         # return cache path
         return self.cachestore.path(f"{datestr}-{step}-{suffix}.nc")
