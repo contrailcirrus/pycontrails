@@ -142,7 +142,10 @@ def test_ERA5_cachestore(met_ecmwf_pl_path: str, override_cache: DiskCacheStore)
     override_cache.clear()
 
     era5 = ERA5(
-        time=datetime(2000, 1, 1), variables="vo", pressure_levels=200, cachestore=override_cache
+        time=datetime(2000, 1, 1),
+        variables="vo",
+        pressure_levels=200,
+        cachestore=override_cache,
     )
     cachepath = era5.create_cachepath(datetime(2000, 1, 1))
     assert "20000101-00-era5pl0.25reanalysis.nc" in cachepath
@@ -159,7 +162,8 @@ def test_ERA5_cachestore(met_ecmwf_pl_path: str, override_cache: DiskCacheStore)
         paths=met_ecmwf_pl_path,
         cachestore=override_cache,
     )
-    _ = era5.open_metdataset()
+    mds = era5.open_metdataset()
+    assert isinstance(mds, MetDataset)
     assert override_cache.size > 0
     override_cache.clear()
 
@@ -172,7 +176,8 @@ def test_ERA5_cachestore(met_ecmwf_pl_path: str, override_cache: DiskCacheStore)
         paths=met_ecmwf_pl_path,
         cachestore=None,
     )
-    _ = era5.open_metdataset()
+    mds = era5.open_metdataset()
+    assert isinstance(mds, MetDataset)
     assert override_cache.size == 0
 
 
@@ -266,16 +271,18 @@ def test_ERA5_hash() -> None:
     assert era5.hash != era52.hash
 
 
-def test_ERA5_paths(
-    met_ecmwf_pl_path: str, met_ecmwf_sl_path: str, override_cache: DiskCacheStore
+def test_ERA5_paths_with_time(
+    met_ecmwf_pl_path: str,
+    met_ecmwf_sl_path: str,
+    override_cache: DiskCacheStore,
 ) -> None:
-    """Test ERA5 paths input."""
+    """Test ERA5 paths input with time."""
 
-    times = datetime(2019, 5, 31, 5, 0, 0)
+    time = datetime(2019, 5, 31, 5, 0, 0)
 
     # these should both work without warning
     era5pl = ERA5(
-        time=times,
+        time=time,
         variables=["air_temperature"],
         pressure_levels=[300, 250],
         paths=met_ecmwf_pl_path,
@@ -285,7 +292,7 @@ def test_ERA5_paths(
     assert metpl.data.attrs["pycontrails_version"] == "0.34.0"
 
     era5sl = ERA5(
-        time=times,
+        time=time,
         variables=["surface_air_pressure"],
         paths=met_ecmwf_sl_path,
         cachestore=override_cache,
@@ -296,7 +303,13 @@ def test_ERA5_paths(
     # these files should be getting cached by default
     assert override_cache.size > 0
 
-    # allow time to be None
+
+def test_ERA5_paths_without_time(
+    met_ecmwf_pl_path: str,
+    override_cache: DiskCacheStore,
+) -> None:
+    """Test ERA5 paths input with time=None."""
+
     era5pl = ERA5(
         time=None,
         variables=["air_temperature"],
@@ -321,9 +334,13 @@ def test_ERA5_paths(
     metpl = era5pl.open_metdataset()
     assert override_cache.size == 0
 
-    # make sure there is sanity checking
 
-    # check time
+def test_ERA5_paths_with_error(
+    met_ecmwf_pl_path: str,
+    override_cache: DiskCacheStore,
+) -> None:
+    """Test ERA5 issues errors with paths input."""
+
     era5pl = ERA5(
         time="2019-06-02 00:00:00, ",
         variables=["air_temperature"],
@@ -332,29 +349,31 @@ def test_ERA5_paths(
         cachestore=override_cache,
     )
     with pytest.raises(KeyError, match="2019-06-02T00:00:00"):
-        metpl = era5pl.open_metdataset()
+        era5pl.open_metdataset()
+
+    time = datetime(2019, 5, 31, 5, 0, 0)
 
     # check variables
     era5pl = ERA5(
-        time=times,
+        time=time,
         variables=["z"],
         pressure_levels=[300, 250],
         paths=met_ecmwf_pl_path,
         cachestore=override_cache,
     )
     with pytest.raises(KeyError, match="z"):
-        metpl = era5pl.open_metdataset()
+        era5pl.open_metdataset()
 
     # check pressure levels
     era5pl = ERA5(
-        time=times,
+        time=time,
         variables=["air_temperature"],
         pressure_levels=[400, 300, 250],
         paths=met_ecmwf_pl_path,
         cachestore=override_cache,
     )
     with pytest.raises(KeyError, match="400"):
-        metpl = era5pl.open_metdataset()
+        era5pl.open_metdataset()
 
 
 def test_ERA5_dataset(met_ecmwf_pl_path: str, met_ecmwf_sl_path: str) -> None:
