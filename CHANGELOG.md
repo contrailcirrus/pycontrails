@@ -1,7 +1,7 @@
 
 # Changelog
 
-## v0.40.0 (unreleased)
+## v0.39.6
 
 #### Features
 
@@ -12,6 +12,9 @@
 #### Fixes
 
 - Fix edge case in polygon algorithm by utilizing the `fully_connected` parameter in `measure.find_contours`. This update leads to slight changes in interior contours in some cases.
+- Fix hard-coded POSIX path in `conftest.py` for windows compatibility.
+- Address `PermissionError` raised by `shutil.copy` when the destination file is open in another thread. The copy is skipped and a warning is logged.
+- Fix some unit tests in `test_vector.py` and `test_ecmwf.py` for windows compatibility. There are still a few tests that fail on windows (unrelated to changes in this release) that will be fixed in v0.40.0.
 
 #### Internals
 
