@@ -1,9 +1,10 @@
 import dataclasses
-import pandas as pd
+
 import numpy as np
 import numpy.typing as npt
-import pycontrails.core.ads_b as adsb
+import pandas as pd
 
+import pycontrails.core.ads_b as adsb
 from pycontrails.core.flight import _dt_waypoints
 from pycontrails.ext.bada import BADA3
 
@@ -99,12 +100,16 @@ def clean_raw_ads_b_file(df_waypoints: pd.DataFrame) -> pd.DataFrame:
 
     #: (4) Remove terrestrial waypoints without callsign
     #: Most of these waypoints are below 10,000 feet and from general aviation
-    is_erroneous = (df_waypoints["callsign"] == "None") & (df_waypoints["collection_type"] == "terrestrial")
+    is_erroneous = (df_waypoints["callsign"] == "None") & (
+        df_waypoints["collection_type"] == "terrestrial"
+    )
     df_waypoints = df_waypoints[~is_erroneous]
 
     #: (5) Remove waypoints with erroneous "on_ground" indicator
     # Thresholds assessed based on scatter plot (100 knots = 185 km/h)
-    is_erroneous = df_waypoints["on_ground"] & ((df_waypoints["speed"] > 100) | (df_waypoints["altitude_baro"] > 10000))
+    is_erroneous = df_waypoints["on_ground"] & (
+        (df_waypoints["speed"] > 100) | (df_waypoints["altitude_baro"] > 10000)
+    )
     df_waypoints = df_waypoints[~is_erroneous]
 
     df_waypoints.reset_index(inplace=True, drop=True)
@@ -115,20 +120,23 @@ def clean_raw_ads_b_file(df_waypoints: pd.DataFrame) -> pd.DataFrame:
 # Separate and validate unique fight trajectories
 # --------------------------------------
 
+
 @dataclasses.dataclass
 class FlightTrajectories:
-    """Container to categorise unique flight trajectories.
-    """
+    """Container to categorise unique flight trajectories."""
+
     validated: list[pd.DataFrame]
     deferred: list[pd.DataFrame]
     rejected: list[pd.DataFrame]
 
 
 def identify_and_categorise_unique_flights(
-        df_flight_waypoints: pd.DataFrame, t_cut_off: pd.Timestamp
+    df_flight_waypoints: pd.DataFrame, t_cut_off: pd.Timestamp
 ) -> FlightTrajectories:
     # For each subset of waypoints with the same ICAO address, identify unique flights
-    df_flight_waypoints = adsb.downsample_waypoints(df_flight_waypoints, time_resolution=10, time_var="timestamp")
+    df_flight_waypoints = adsb.downsample_waypoints(
+        df_flight_waypoints, time_resolution=10, time_var="timestamp"
+    )
     df_flight_waypoints = df_flight_waypoints.astype({"on_ground": bool})
     df_flight_waypoints = _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints)
     flights = adsb.separate_unique_flights_from_waypoints(
@@ -143,7 +151,9 @@ def identify_and_categorise_unique_flights(
     return flight_trajectories
 
 
-def _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints: pd.DataFrame) -> pd.DataFrame:
+def _fill_missing_callsign_for_satellite_waypoints(
+    df_flight_waypoints: pd.DataFrame,
+) -> pd.DataFrame:
     """
     Backward and forward filling of missing callsigns.
 
@@ -160,9 +170,8 @@ def _fill_missing_callsign_for_satellite_waypoints(df_flight_waypoints: pd.DataF
         Waypoints with the same ICAO address, where the "callsign" is filled
     """
     if np.any(df_flight_waypoints["collection_type"] == "satellite"):
-        is_missing = (
-                (df_flight_waypoints["callsign"] == "None") &
-                (df_flight_waypoints["collection_type"] == "satellite")
+        is_missing = (df_flight_waypoints["callsign"] == "None") & (
+            df_flight_waypoints["collection_type"] == "satellite"
         )
 
         if np.any(is_missing):
@@ -196,7 +205,9 @@ def clean_flight_altitude(flights: list[pd.DataFrame]) -> list[pd.DataFrame]:
 
     for df_flight_waypoints in flights:
         #: (1) Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-        altitude_ceiling_ft = bada_3.ptf_param_dict[df_flight_waypoints["aircraft_type_icao"].iloc[0]].max_altitude_ft
+        altitude_ceiling_ft = bada_3.ptf_param_dict[
+            df_flight_waypoints["aircraft_type_icao"].iloc[0]
+        ].max_altitude_ft
         is_above_ceiling = df_flight_waypoints["altitude_baro"] > altitude_ceiling_ft
         df_flight_waypoints = df_flight_waypoints[~is_above_ceiling].copy()
 
@@ -212,7 +223,7 @@ def clean_flight_altitude(flights: list[pd.DataFrame]) -> list[pd.DataFrame]:
 
 # TODO: 6000 feet -> This can be improved by taking the ground elevation
 def separate_flights_with_ground_indicator(
-        flights: list[pd.DataFrame], *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
+    flights: list[pd.DataFrame], *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
 ) -> list[pd.DataFrame]:
     """
     Identify and separate unique flights using the `on_ground` indicator.
@@ -237,7 +248,9 @@ def separate_flights_with_ground_indicator(
 
     for df_flight_waypoints in flights:
         df_flight_waypoints.reset_index(inplace=True, drop=True)
-        is_on_ground = df_flight_waypoints["on_ground"] & (df_flight_waypoints["altitude_baro"] < 6000)
+        is_on_ground = df_flight_waypoints["on_ground"] & (
+            df_flight_waypoints["altitude_baro"] < 6000
+        )
 
         # Continue to next flight if all recorded waypoints are not on the ground
         if np.all(~is_on_ground):
@@ -262,9 +275,9 @@ def separate_flights_with_ground_indicator(
         # If there are multiple flights, then it will be dealt with in `separate_flights_multiple_cruise_phase`.
         df_flight_3 = df_flight_waypoints.iloc[i_cutoff_1:i_cutoff_2].copy()
         is_unique_flight = (
-                ~np.all(df_flight_3["on_ground"]) &
-                (len(df_flight_3) > min_n_wypt) &
-                np.any(df_flight_3["altitude_baro"] > 10000)
+            ~np.all(df_flight_3["on_ground"])
+            & (len(df_flight_3) > min_n_wypt)
+            & np.any(df_flight_3["altitude_baro"] > 10000)
         )
 
         if is_unique_flight:
@@ -275,7 +288,7 @@ def separate_flights_with_ground_indicator(
 
 
 def separate_flights_with_multiple_cruise_phase(
-        flights: list[pd.DataFrame], *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
+    flights: list[pd.DataFrame], *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
 ) -> list[pd.DataFrame]:
     """
     Identify and separate flights with multiple cruise phases.
@@ -298,14 +311,20 @@ def separate_flights_with_multiple_cruise_phase(
         df_flight_waypoints.reset_index(inplace=True, drop=True)
 
         # Minimum cruise altitude
-        altitude_ceiling_ft = bada_3.ptf_param_dict[df_flight_waypoints["aircraft_type_icao"].iloc[0]].max_altitude_ft
+        altitude_ceiling_ft = bada_3.ptf_param_dict[
+            df_flight_waypoints["aircraft_type_icao"].iloc[0]
+        ].max_altitude_ft
         min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
         # Calculate flight phase
-        dt_sec = np.diff(df_flight_waypoints["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(1, "s")
+        dt_sec = np.diff(
+            df_flight_waypoints["timestamp"].values, append=np.datetime64("NaT")
+        ) / np.timedelta64(1, "s")
         flight_phase: adsb.FlightPhaseDetailed = adsb.identify_phase_of_flight_detailed(
-            df_flight_waypoints["altitude_baro"].values, dt_sec,
-            threshold_rocd=250, min_cruise_alt_ft=min_cruise_altitude_ft
+            df_flight_waypoints["altitude_baro"].values,
+            dt_sec,
+            threshold_rocd=250,
+            min_cruise_alt_ft=min_cruise_altitude_ft,
         )
 
         # Skip trajectory if no cruise phase is identified
@@ -315,9 +334,12 @@ def separate_flights_with_multiple_cruise_phase(
 
         # Check trajectory for multiple cruise phases and/or flight diversion
         trajectory_check: adsb.TrajectoryCheck = adsb.identify_multiple_cruise_phases_and_diversion(
-            flight_phase, df_flight_waypoints["longitude"].values,
-            df_flight_waypoints["latitude"].values, df_flight_waypoints["altitude_baro"].values,
-            dt_sec, ground_indicator=df_flight_waypoints["on_ground"].values
+            flight_phase,
+            df_flight_waypoints["longitude"].values,
+            df_flight_waypoints["latitude"].values,
+            df_flight_waypoints["altitude_baro"].values,
+            dt_sec,
+            ground_indicator=df_flight_waypoints["on_ground"].values,
         )
 
         # Skip trajectory if there is only one cruise phase.
@@ -340,7 +362,7 @@ def separate_flights_with_multiple_cruise_phase(
 
 
 def categorise_flight_trajectories(
-        flights: list[pd.DataFrame], t_cut_off: pd.Timestamp
+    flights: list[pd.DataFrame], t_cut_off: pd.Timestamp
 ) -> FlightTrajectories:
     """
     Categorise unique flight trajectories (validated, deferred, rejected).
@@ -373,7 +395,12 @@ def categorise_flight_trajectories(
 
         if status["reject"]:
             rejected.append(df_flight_waypoints.copy())
-        elif status["n_waypoints"] & status["cruise_phase"] & status["no_altitude_anomaly"] & status["complete"]:
+        elif (
+            status["n_waypoints"]
+            & status["cruise_phase"]
+            & status["no_altitude_anomaly"]
+            & status["complete"]
+        ):
             validated.append(df_flight_waypoints.copy())
         else:
             deferred.append(df_flight_waypoints.copy())
@@ -382,7 +409,10 @@ def categorise_flight_trajectories(
 
 
 def validate_flight_trajectory(
-        df_flight_waypoints: pd.DataFrame, t_cut_off: pd.Timestamp, *, min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS
+    df_flight_waypoints: pd.DataFrame,
+    t_cut_off: pd.Timestamp,
+    *,
+    min_n_wypt: int = FLIGHT_MINIMUM_N_WYPTS,
 ) -> dict[str, bool]:
     """
     Ensure that the subset of waypoints only contains one unique flight.
@@ -421,26 +451,31 @@ def validate_flight_trajectory(
         raise KeyError("DataFrame do not contain longitude and/or latitude column.")
 
     # Minimum cruise altitude
-    altitude_ceiling_ft = bada_3.ptf_param_dict[df_flight_waypoints["aircraft_type_icao"].iloc[0]].max_altitude_ft
+    altitude_ceiling_ft = bada_3.ptf_param_dict[
+        df_flight_waypoints["aircraft_type_icao"].iloc[0]
+    ].max_altitude_ft
     min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
     # Flight duration
     dt_sec = _dt_waypoints(df_flight_waypoints["timestamp"].values)
     flight_duration_s = np.nansum(dt_sec)
-    is_short_haul = (flight_duration_s < 3600)
+    is_short_haul = flight_duration_s < 3600
 
     # Flight phase
     flight_phase: adsb.FlightPhaseDetailed = adsb.identify_phase_of_flight_detailed(
-        df_flight_waypoints["altitude_baro"].values, dt_sec,
-        threshold_rocd=250, min_cruise_alt_ft=min_cruise_altitude_ft
+        df_flight_waypoints["altitude_baro"].values,
+        dt_sec,
+        threshold_rocd=250,
+        min_cruise_alt_ft=min_cruise_altitude_ft,
     )
 
     # Validate flight trajectory
     validity[0] = len(df_flight_waypoints) > min_n_wypt
     validity[1] = np.any(flight_phase.cruise)
     validity[2] = no_altitude_anomaly_during_cruise(
-        df_flight_waypoints["altitude_baro"].values, flight_phase.cruise,
-        min_cruise_alt_ft=min_cruise_altitude_ft
+        df_flight_waypoints["altitude_baro"].values,
+        flight_phase.cruise,
+        min_cruise_alt_ft=min_cruise_altitude_ft,
     )
 
     # Relax constraint for short-haul flights
@@ -452,28 +487,34 @@ def validate_flight_trajectory(
     wypt_final = df_flight_waypoints.iloc[-1]
     dt = (t_cut_off - wypt_final["timestamp"]) / np.timedelta64(1, "h")
 
-    if np.all(validity[:3]):    # If first three conditions are valid
+    if np.all(validity[:3]):  # If first three conditions are valid
         is_descent = np.any(flight_phase.descent[-5:]) | np.any(flight_phase.level_flight[-5:])
-        complete_1 = wypt_final["on_ground"] & (wypt_final["altitude_baro"] < 6000) & (wypt_final["speed"] < 150)
+        complete_1 = (
+            wypt_final["on_ground"]
+            & (wypt_final["altitude_baro"] < 6000)
+            & (wypt_final["speed"] < 150)
+        )
         complete_2 = (wypt_final["altitude_baro"] < 10000) & is_descent & (dt > 2)
         complete_3 = dt > 12
-        validity[3] = (complete_1 | complete_2 | complete_3)
+        validity[3] = complete_1 | complete_2 | complete_3
 
     return {
         "n_waypoints": validity[0],
         "cruise_phase": validity[1],
         "no_altitude_anomaly": validity[2],
         "complete": validity[3],
-        "reject": (np.all(~validity) & (dt > 24))
-     }
+        "reject": np.all(~validity) & (dt > 24),
+    }
+
 
 # TODO: Check this function
 
 
 def no_altitude_anomaly_during_cruise(
-        altitude_ft: npt.NDArray[np.float_],
-        flight_phase_cruise: npt.NDArray[np.bool_], *,
-        min_cruise_alt_ft: float
+    altitude_ft: npt.NDArray[np.float_],
+    flight_phase_cruise: npt.NDArray[np.bool_],
+    *,
+    min_cruise_alt_ft: float,
 ) -> bool:
     """
     Check for altitude anomaly during cruise phase of flight.
@@ -505,5 +546,3 @@ def no_altitude_anomaly_during_cruise(
     i_cruise_end = min(np.max(np.argwhere(flight_phase_cruise)), len(flight_phase_cruise))
     altitude_at_cruise = altitude_ft[i_cruise_start:i_cruise_end]
     return np.all(altitude_at_cruise >= min_cruise_alt_ft)
-
-
