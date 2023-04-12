@@ -79,7 +79,8 @@ def override_cache() -> DiskCacheStore:
     -------
     DiskCacheStore
     """
-    return DiskCacheStore(cache_dir=pathlib.Path(f"{DISK_CACHE_DIR}/test/"), allow_clear=True)
+    cache_dir = pathlib.Path(DISK_CACHE_DIR) / "test"
+    return DiskCacheStore(cache_dir=cache_dir, allow_clear=True)
 
 
 @pytest.fixture(scope="session")
