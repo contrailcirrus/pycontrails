@@ -7,133 +7,182 @@ Sources:
 - https://ourairports.com/data/
 - https://github.com/davidmegginson/ourairports-data
 
-As of 30-March-2023, the global airport database contains:
-    - small_airport     39327
-    - heliport          19039
-    - closed            10107
-    - medium_airport     4753
-    - seaplane_base      1133
-    - large_airport       463
-    - balloonport          45
+As of 2023 March 30, the global airport database contains:
+
+- small_airport     39327
+- heliport          19039
+- closed            10107
+- medium_airport     4753
+- seaplane_base      1133
+- large_airport       463
+- balloonport          45
+
+References
+----------
+
 """
 from __future__ import annotations
 
-import pandas as pd
 import numpy as np
-from pycontrails.physics.units import ft_to_m
-from pycontrails.physics.geo import haversine
+import pandas as pd
 
-#: Default path
-airport_database_path: str = "https://github.com/contrailcirrus/ourairports-data/raw/main/airports.csv"
+from pycontrails.core import cache
+from pycontrails.physics import geo, units
+
+#: `Our Airports <https://ourairports.com/>`_ data source file.
+#: Fork of the `ourairports-data repository <https://github.com/davidmegginson/ourairports-data>`_.
+OURAIRPORTS_DATABASE_URL = (
+    "https://github.com/contrailcirrus/ourairports-data/raw/main/airports.csv"
+)
 
 
-def global_airport_database(*, return_as_dataframe: bool = True) -> pd.DataFrame() | dict:
+def _download_ourairports_csv() -> pd.DataFrame:
+    """Download CSV file from fork of ourairports-data github."""
+    return pd.read_csv(
+        OURAIRPORTS_DATABASE_URL,
+        usecols=[
+            "type",
+            "name",
+            "latitude_deg",
+            "longitude_deg",
+            "elevation_ft",
+            "iso_country",
+            "iso_region",
+            "municipality",
+            "scheduled_service",
+            "gps_code",
+            "iata_code",
+        ],
+    )
+
+
+def global_airport_database(
+    cachestore: cache.CacheStore | None = None, update_cache: bool = False
+) -> pd.DataFrame:
     """
-    Load and process global airport database
+    Load and process global airport database from `Our Airports <https://ourairports.com/>`_.
 
     Parameters
     ----------
-    return_as_dataframe: bool
-        Return database as DataFrame, or dictionary if set to false
+    cachestore : cache.CacheStore | None, optional
+        Cache store for airport database.
+        Defaults to :class:`cache.DiskCacheStore`.
+    update_cache : bool, optional
+        Force update to cached airports database.
 
     Returns
     -------
-    pd.DataFrame() | dict
-        Processed global airport database
+    pd.DataFrame
+        Processed global airport database.
+
+    References
+    ----------
+    - :cite:`megginsonOpendataDownloadsOurAirports2023`
     """
-    df_airports = pd.read_csv(
-        airport_database_path,
-        usecols=[
-            "type", "name", "latitude_deg", "longitude_deg", "elevation_ft", "iso_country",
-            "iso_region", "municipality", "scheduled_service", "gps_code", "iata_code"
-        ]
-    )
+    cachestore = cachestore or cache.DiskCacheStore()
+
+    cache_key = "ourairports-data_airports.csv"
+    if cachestore.exists(cache_key) and not update_cache:
+        airports = pd.read_csv(cachestore.path(cache_key))
+    else:
+        airports = _download_ourairports_csv()
+        airports.to_csv(cachestore.path(cache_key), index=False)
 
     #: Format dataset by renaming columns & filling nan values
-    df_airports.rename(
+    airports.rename(
         columns={"latitude_deg": "latitude", "longitude_deg": "longitude", "gps_code": "icao_code"},
-        inplace=True
+        inplace=True,
     )
-    df_airports["elevation_ft"].fillna(0, inplace=True)
+    airports["elevation_ft"].fillna(0, inplace=True)
 
     # Keep specific airport types used by commercial aviation
-    is_subset = df_airports["type"].isin(
+    select_airport_types = airports["type"].isin(
         ["large_airport", "medium_airport", "small_airport", "heliport"]
     )
-    df_airports = df_airports[is_subset].copy()
 
     # Keep airports with valid ICAO codes
-    is_subset = (df_airports["icao_code"].str.len() == 4) & (df_airports["icao_code"].str.isalpha())
-    df_airports = df_airports[is_subset].copy()
+    select_icao_codes = (airports["icao_code"].str.len() == 4) & (
+        airports["icao_code"].str.isalpha()
+    )
+
+    # filter airports
+    airports = airports.loc[select_airport_types & select_icao_codes]
 
     # Format dataset
-    df_airports["elevation_m"] = ft_to_m(df_airports["elevation_ft"].values)
-    df_airports.sort_values(by=["icao_code"], ascending=True, inplace=True)
-    df_airports.reset_index(inplace=True, drop=True)
+    airports["elevation_m"] = units.ft_to_m(airports["elevation_ft"].to_numpy())
+    airports.sort_values(by=["icao_code"], ascending=True, inplace=True)
 
-    if return_as_dataframe:
-        return df_airports
-
-    return df_airports.to_dict()
+    return airports.reset_index(drop=True)
 
 
-df_airports = global_airport_database(return_as_dataframe=True)
-
-
-def find_nearest_airport(longitude: float, latitude: float, altitude: float, *, bbox_size: float = 2) -> str:
-    """
-    Find airport nearest to the provided waypoint.
+def find_nearest_airport(
+    airports: pd.DataFrame,
+    longitude: float,
+    latitude: float,
+    altitude: float,
+    *,
+    bbox: float = 2.0,
+) -> str | None:
+    r"""
+    Find airport nearest to the waypoints.
 
     Parameters
     ----------
+    airports: pd.DataFrame
+        Airport database in the format returned from :func:`global_airport_database`.
     longitude: float
         Waypoint longitude, [:math:`\deg`]
     latitude: float
         Waypoint latitude, [:math:`\deg`]
     altitude: float
         Waypoint altitude, [:math:`m`]
-    bbox_size: float
-        Search airports within spatial bounding box of ± `bbox_size` from the waypoint, [:math:`\deg`]
+    bbox: float
+        Search airports within spatial bounding box of ± `bbox` from the waypoint, [:math:`\deg`]
+        Defaults to :math:`2\deg`
 
     Returns
     -------
     str
-        ICAO code of nearest airport
+        ICAO code of nearest airport.
+        Returns None if no airport is found within ``bbox``.
 
     Notes
     -----
-    Function will first search for large airports around the waypoint vicinity. If none is found, it will
-    then search for medium and small airports around the waypoint vicinity. The waypoint must be below
-    10,000 feet is constrained to increase the probability of identifying the correct airport.
+    Function will first search for large airports around the waypoint vicinity.
+    If none is found, it will search for medium and small airports
+    around the waypoint vicinity.
+
+    The waypoint must be below 10,000 feet to increase the
+    probability of identifying the correct airport.
     """
     if altitude > 3000:
         raise ValueError(
             f"Altitude ({altitude} m) is too high (> 3000 m) to identify nearest airport."
         )
 
-    is_near_waypoint = (
-        df_airports["longitude"].between((longitude - bbox_size), (longitude + bbox_size)) &
-        df_airports["latitude"].between((latitude - bbox_size), (latitude + bbox_size))
-    )
+    is_near_waypoint = airports["longitude"].between(
+        (longitude - bbox), (longitude + bbox)
+    ) & airports["latitude"].between((latitude - bbox), (latitude + bbox))
 
-    #: Find the nearest airport
+    # Find the nearest airport from largest to smallest airport type
     search_priority = ["large_airport", "medium_airport", "small_airport"]
 
     for airport_type in search_priority:
-        is_airport_type = df_airports["type"] == airport_type
-        df_nearest_airports = df_airports[is_near_waypoint & is_airport_type].copy()
+        is_airport_type = airports["type"] == airport_type
+        nearest_airports = airports.loc[is_near_waypoint & is_airport_type]
 
-        if len(df_nearest_airports) == 1:
-            return df_nearest_airports["icao_code"].values[0]
+        if len(nearest_airports) == 1:
+            return nearest_airports["icao_code"].values[0]
 
-        elif len(df_nearest_airports) > 1:
-            dist_wypt_to_airports = distance_to_airports(
-                longitude, df_nearest_airports["longitude"].values,
-                latitude, df_nearest_airports["latitude"].values,
-                altitude, df_nearest_airports["elevation_m"].values
+        elif len(nearest_airports) > 1:
+            distance = distance_to_airports(
+                nearest_airports,
+                longitude,
+                latitude,
+                altitude,
             )
-            i_nearest = np.argmin(dist_wypt_to_airports)
-            return df_nearest_airports["icao_code"].values[i_nearest]
+            i_nearest = np.argmin(distance)
+            return nearest_airports["icao_code"].values[i_nearest]
 
         else:
             continue
@@ -142,30 +191,24 @@ def find_nearest_airport(longitude: float, latitude: float, altitude: float, *, 
 
 
 def distance_to_airports(
-        longitude: float,
-        longitude_airports: np.ndarray,
-        latitude: float,
-        latitude_airports: np.ndarray,
-        altitude: float,
-        elevation_airports: np.ndarray,
+    airports: pd.DataFrame,
+    longitude: float,
+    latitude: float,
+    altitude: float,
 ) -> np.ndarray:
-    """
+    r"""
     Calculate the 3D distance from the waypoint to the provided airports.
 
     Parameters
     ----------
-    longitude: float
+    airports : pd.DataFrame
+        Airport database in the format returned from :func:`global_airport_database`.
+    longitude : float
         Waypoint longitude, [:math:`\deg`]
-    longitude_airports: np.ndarray
-        Longitude of airports, [:math:`\deg`]
-    latitude: float
+    latitude : float
         Waypoint latitude, [:math:`\deg`]
-    latitude_airports: np.ndarray
-        Latitude of airports, [:math:`\deg`]
-    altitude: float
+    altitude : float
         Waypoint altitude, [:math:`m`]
-    elevation_airports: np.ndarray
-        Elevation of airports, [:math:`m`]
 
     Returns
     -------
@@ -176,8 +219,11 @@ def distance_to_airports(
     --------
     :func:`geo.haversine`
     """
-    dist_horizontal = haversine(
-        np.array([longitude]), np.array([latitude]), longitude_airports, latitude_airports
+    dist_horizontal = geo.haversine(
+        np.full(airports["longitude"].shape, longitude),
+        np.full(airports["latitude"].shape, latitude),
+        airports["longitude"].to_numpy(),
+        airports["latitude"].to_numpy(),
     )
-    dist_vertical = np.abs(altitude, elevation_airports)
+    dist_vertical = altitude - airports["elevation_m"].to_numpy()
     return (dist_horizontal**2 + dist_vertical**2) ** 0.5
