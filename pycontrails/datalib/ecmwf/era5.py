@@ -147,7 +147,7 @@ class ERA5(ECMWFAPI):
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
 
-        product_types = ["reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread"]
+        product_types = ("reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread")
         if product_type not in product_types:
             raise ValueError(
                 f"Unknown product_type {product_type}. "
@@ -167,7 +167,7 @@ class ERA5(ECMWFAPI):
         )
 
         # process inputs
-        if product_type in ["ensemble_mean", "ensemble_spread", "ensemble_members"]:
+        if "ensemble" in product_type:
             # If using a nonstandard product and default timestep_freq, override default
             if timestep_freq == "1H":
                 timestep_freq = "3H"
@@ -189,8 +189,8 @@ class ERA5(ECMWFAPI):
         self.variables = datalib.parse_variables(variables, self.supported_variables)
 
         # ensemble_mean, etc - time is only available on the 0, 3, 6, etc
-        if product_type in ["ensemble_mean", "ensemble_spread", "ensemble_members"]:
-            if set([t.hour for t in self.timesteps]) - set([0, 3, 6, 9, 12, 15, 18, 21]):
+        if "ensemble" in product_type:
+            if {t.hour for t in self.timesteps} - {0, 3, 6, 9, 12, 15, 18, 21}:
                 raise NotImplementedError("Ensemble products only support every three hours")
 
     def __repr__(self) -> str:
@@ -320,9 +320,10 @@ class ERA5(ECMWFAPI):
         datestr = t.strftime("%Y%m%d-%H")
 
         # set date/time for file
-        suffix = (
-            f"era5{'sl' if self.pressure_levels == [-1] else 'pl'}{self.grid}{self.product_type}"
-        )
+        if self.pressure_levels == [-1]:
+            suffix = f"era5sl{self.grid}{self.product_type}"
+        else:
+            suffix = f"era5pl{self.grid}{self.product_type}"
 
         # return cache path
         return self.cachestore.path(f"{datestr}-{suffix}.nc")
@@ -332,8 +333,7 @@ class ERA5(ECMWFAPI):
         download_times: dict[datetime, list[datetime]] = {}
         for t in times:
             unique_day = datetime(t.year, t.month, t.day)
-            if unique_day not in download_times:
-                download_times[unique_day] = []
+            download_times.setdefault(unique_day, [])
 
             download_times[unique_day].append(t)
 
@@ -356,13 +356,11 @@ class ERA5(ECMWFAPI):
             xr.save_mfdataset(datasets, xarray_temp_filenames)
 
             # put each hourly file into cache
-            self.cachestore.put_multiple(
-                xarray_temp_filenames,
-                [
-                    self.create_cachepath(datetime.utcfromtimestamp(tg.tolist() / 1e9))
-                    for tg in time_group
-                ],
-            )
+            cache_path = [
+                self.create_cachepath(datetime.utcfromtimestamp(tg.tolist() / 1e9))
+                for tg in time_group
+            ]
+            self.cachestore.put_multiple(xarray_temp_filenames, cache_path)
 
     @overrides
     def open_metdataset(
@@ -398,8 +396,7 @@ class ERA5(ECMWFAPI):
 
             # TODO: corner case
             # If any files are already cached, they will not have the version attached
-            if "pycontrails_version" not in ds.attrs:
-                ds.attrs["pycontrails_version"] = pycontrails.__version__
+            ds.attrs.setdefault("pycontrails_version", pycontrails.__version__)
 
         # run the same ECMWF-specific processing on the dataset
         mds = self._process_dataset(ds, **kwargs)
@@ -413,11 +410,11 @@ class ERA5(ECMWFAPI):
         else:
             dt_accumulation = 60 * 60
 
-        for key in [
+        for key in (
             TOAIncidentSolarRadiation.standard_name,
             TopNetSolarRadiation.standard_name,
             TopNetThermalRadiation.standard_name,
-        ]:
+        ):
             if key in mds.data:
                 rad_accumulated_to_average(mds, key, dt_accumulation)
 
