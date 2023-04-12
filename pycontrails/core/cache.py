@@ -10,7 +10,7 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Sequence
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 from overrides import overrides
 
@@ -221,7 +221,7 @@ class DiskCacheStore(CacheStore):
     def size(self) -> float:
         disk_path = pathlib.Path(self.cache_dir)
         size = sum(f.stat().st_size for f in disk_path.glob("**/*") if f.is_file())
-        log.debug(f"Disk cache size {size} bytes")
+        logger.debug("Disk cache size %s bytes", size)
         return size / 1e6
 
     @overrides
@@ -289,8 +289,15 @@ class DiskCacheStore(CacheStore):
         disk_path = self.path(str(cache_path))
 
         # copy to disk cache
-        log.debug(f"Disk cache put {data_path} to {disk_path} in disk cache")
-        shutil.copy(data_path, disk_path)
+        logger.debug("Disk cache put %s to %s in disk cache", data_path, cache_path)
+        try:
+            shutil.copyfile(data_path, disk_path)
+        except PermissionError:
+            logger.warning(
+                "Permission error copying %s to %s. The destination file may already be open.",
+                data_path,
+                disk_path,
+            )
 
         return cache_path
 
@@ -361,13 +368,13 @@ class DiskCacheStore(CacheStore):
         disk_path = pathlib.Path(self.path(cache_path))
 
         if disk_path.is_file():
-            log.debug("Remove file at path %s", disk_path)
+            logger.debug("Remove file at path %s", disk_path)
             disk_path.unlink()
 
         # Assume anything else is a directory
         elif disk_path.exists():
             # rm directory recursively
-            log.debug("Remove directory at path %s", disk_path)
+            logger.debug("Remove directory at path %s", disk_path)
             shutil.rmtree(disk_path, ignore_errors=True)
 
         else:
@@ -563,7 +570,7 @@ class GCPCacheStore(CacheStore):
         # get list of blobs below this path
         blobs = self._bucket.list_blobs(prefix=self.cache_dir)
         size = sum(b.size for b in blobs)
-        log.debug(f"GCP cache size {size} bytes")
+        logger.debug("GCP cache size %s bytes", size)
         return size / 1e6
 
     @overrides
@@ -663,7 +670,7 @@ class GCPCacheStore(CacheStore):
 
         # read only
         if self.read_only:
-            log.debug(
+            logger.debug(
                 f"GCP Cache Store is read only. File put in local DiskCacheStore path: {cache_path}"
             )
             raise RuntimeError(
@@ -676,7 +683,7 @@ class GCPCacheStore(CacheStore):
         disk_path = self._disk_cache.path(cache_path)
         blob = self._bucket.blob(bucket_path)
 
-        log.debug(f"GCP Cache put {disk_path} to {bucket_path}")
+        logger.debug("GCP Cache put %s to %s", disk_path, bucket_path)
 
         if self.show_progress:  # upload with pbar
             _upload_with_progress(blob, disk_path, self.timeout, chunk_size=self.chunk_size)
@@ -739,7 +746,7 @@ class GCPCacheStore(CacheStore):
         if not blob.exists():
             raise ValueError(f"No object exists in cache at path {bucket_path}")
 
-        log.debug(f"GCP Cache GET from {bucket_path}")
+        logger.debug("GCP Cache GET from %s", bucket_path)
 
         if self.show_progress:
             _download_with_progress(
@@ -794,7 +801,7 @@ class GCPCacheStore(CacheStore):
 
         # get full path to clear
         bucket_path = self.path(cache_path)
-        log.debug(f"Clearing GCP cache at path {str(bucket_path)}")
+        logger.debug("Clearing GCP cache at path %s", bucket_path)
 
         # clear disk mirror
         self.clear_disk()
