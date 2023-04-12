@@ -685,36 +685,35 @@ class HRES(ECMWFAPI):
         if self.timesteps and self.cachestore and not self.list_timesteps_not_cached(**xr_kwargs):
             LOG.debug("All timesteps already in cache store")
             disk_cachepaths = [self.cachestore.get(f) for f in self._cachepaths]
-            ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
+            return self.open_dataset(disk_cachepaths, **xr_kwargs)
 
-        else:
-            # set default parameters for loading grib files
-            xr_kwargs.setdefault("engine", "cfgrib")
-            xr_kwargs.setdefault("combine", "nested")
-            xr_kwargs.setdefault("concat_dim", "step")
-            xr_kwargs.setdefault("parallel", False)
-            ds = self.open_dataset(self.paths, **xr_kwargs)
+        # set default parameters for loading grib files
+        xr_kwargs.setdefault("engine", "cfgrib")
+        xr_kwargs.setdefault("combine", "nested")
+        xr_kwargs.setdefault("concat_dim", "step")
+        xr_kwargs.setdefault("parallel", False)
+        ds = self.open_dataset(self.paths, **xr_kwargs)
 
-            # set forecast time if its not already defined
-            if not getattr(self, "forecast_time", None):
-                self.forecast_time = ds["time"].values.astype("datetime64[s]").tolist()
+        # set forecast time if its not already defined
+        if not getattr(self, "forecast_time", None):
+            self.forecast_time = ds["time"].values.astype("datetime64[s]").tolist()
 
-            # check that forecast_time is correct if defined
-            # note the "time" coordinate here is the HRES forecast_time
-            elif self.forecast_time != ds["time"].values.astype("datetime64[s]").tolist():
-                raise ValueError(
-                    f"HRES.forecast_time {self.forecast_time} is not the same forecast time listed"
-                    " in file"
-                )
+        # check that forecast_time is correct if defined
+        # note the "time" coordinate here is the HRES forecast_time
+        elif self.forecast_time != ds["time"].values.astype("datetime64[s]").tolist():
+            raise ValueError(
+                f"HRES.forecast_time {self.forecast_time} is not the same forecast time listed"
+                " in file"
+            )
 
-            ds = self._preprocess_hres_dataset(ds)
+        ds = self._preprocess_hres_dataset(ds)
 
-            # set timesteps if not defined
-            # note that "time" is now the actual timestep coordinates
-            if not self.timesteps:
-                self.timesteps = ds["time"].values.astype("datetime64[s]").tolist()
+        # set timesteps if not defined
+        # note that "time" is now the actual timestep coordinates
+        if not self.timesteps:
+            self.timesteps = ds["time"].values.astype("datetime64[s]").tolist()
 
-            self.cache_dataset(ds)
+        self.cache_dataset(ds)
 
         return ds
 

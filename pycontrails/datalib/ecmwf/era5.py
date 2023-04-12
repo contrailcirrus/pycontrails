@@ -443,11 +443,11 @@ class ERA5(ECMWFAPI):
         if self.timesteps and self.cachestore and not self.list_timesteps_not_cached(**xr_kwargs):
             LOG.debug("All timesteps already in cache store")
             disk_cachepaths = [self.cachestore.get(f) for f in self._cachepaths]
-            ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
-        else:
-            ds = self.open_dataset(self.paths, **xr_kwargs)
-            ds = self._preprocess_era5_dataset(ds)
-            self.cache_dataset(ds)
+            return self.open_dataset(disk_cachepaths, **xr_kwargs)
+
+        ds = self.open_dataset(self.paths, **xr_kwargs)
+        ds = self._preprocess_era5_dataset(ds)
+        self.cache_dataset(ds)
 
         return ds
 
