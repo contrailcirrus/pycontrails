@@ -149,6 +149,11 @@ class Flight(GeoVectorDataset):
         Raises if ``data`` input does not contain at least ``time``, ``latitude``, ``longitude``,
         (``altitude`` or ``level``).
 
+    Notes
+    -----
+    The `Traffic <https://traffic-viz.github.io/index.html>`_ library provided inspiration
+    for this class.
+    See :class:`traffic.core.Flight` for additional utilities.
 
     Examples
     --------
@@ -840,7 +845,7 @@ class Flight(GeoVectorDataset):
         # STEP 5: Resample flight to freq
         df = df.resample(freq).first()
 
-        # STEP 6: Linearly interprolate small horizontal gaps and account
+        # STEP 6: Linearly interpolate small horizontal gaps and account
         # for previous longitude shift.
         keys = ["latitude", "longitude"]
         df.loc[:, keys] = df.loc[:, keys].interpolate(method="linear")

@@ -85,6 +85,7 @@ intersphinx_mapping = {
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
+    "traffic": ("https://traffic-viz.github.io/", None),
 }
 
 # Display todos by setting to True
