@@ -1,8 +1,7 @@
 import pandas as pd
-import numpy as np
-import pycontrails.datalib.spire.data_cleaning as spire
-
 from tqdm import tqdm
+
+import pycontrails.datalib.spire.data_cleaning as spire
 
 WAYPOINTS_PREFIX = "F:/Spire/data-hi-res"
 
@@ -31,7 +30,9 @@ flts_icao_address = list(df_waypoints.groupby("icao_address"))
 
 df_flt_wypts = flts_icao_address[1020][1]
 len(df_flt_wypts)
-test = spire.identify_and_categorise_unique_flights(df_flt_wypts, t_cut_off=df_waypoints["timestamp"].max())
+test = spire.identify_and_categorise_unique_flights(
+    df_flt_wypts, t_cut_off=df_waypoints["timestamp"].max()
+)
 print(" ")
 
 # TODO: UNIT TEST!
