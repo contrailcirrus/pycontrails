@@ -152,9 +152,9 @@ def test_vector_dict_like(random_path: VectorDataset) -> None:
     assert vds.get("d", None) is None
 
     # set
-    d = np.empty_like(vds["a"])
+    d = np.random.random(vds["a"].size)
     vds["d"] = d
-    assert np.all(vds.data["d"] == d)
+    assert vds.data["d"] is d
     with pytest.raises(ValueError, match="sizes"):
         vds["e"] = np.empty(5)
 
@@ -164,9 +164,9 @@ def test_vector_dict_like(random_path: VectorDataset) -> None:
 
     # update
     vds.update({"d": d})
-    assert np.all(vds.data["d"] == d)
+    assert vds.data["d"] is d
     vds.update(e=d)
-    assert np.all(vds.data["e"] == d)
+    assert vds.data["e"] is d
     # (`kwargs`` overwrites `other``)
     vds.update({"d": np.zeros_like(d)}, e=np.ones_like(d), d=np.ones_like(d))
     assert np.all(vds.data["d"] == 1)
@@ -179,9 +179,11 @@ def test_vector_dict_like(random_path: VectorDataset) -> None:
 
     # setdefault
     out = vds.setdefault("d", d)
-    assert np.all(vds.data["d"] == 1) and np.all(out == 1)
+    assert np.all(vds.data["d"] == 1)
+    assert vds.data["d"] is out
     out = vds.setdefault("f", d)
-    assert np.all(vds.data["f"] == d) and np.all(out == d)
+    assert np.all(vds.data["f"] == d)
+    assert vds.data["f"] is out
 
     with pytest.raises(ValueError, match="sizes"):
         out = vds.setdefault("g", np.empty(5))
@@ -193,8 +195,7 @@ def test_vector_dict_like(random_path: VectorDataset) -> None:
     # out = vds["g"] = None
 
     # iter
-    for key in vds:
-        assert key in vds.data
+    assert list(vds) == list(vds.data)
 
 
 def test_vector_attrs(random_path: VectorDataset) -> None:
