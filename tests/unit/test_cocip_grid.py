@@ -483,6 +483,7 @@ def grid_results_segment_free(
     return grid_results, gc.eval(source)
 
 
+@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 def test_grid_results_segment_free(
     grid_results_segment_free: tuple[MetDataset, MetDataset],
 ) -> None:
