@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import dataclasses
-import pandas as pd
+
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
+
 import pycontrails.physics.jet as jet
-from pycontrails.physics.units import ft_to_m
 from pycontrails.physics.geo import segment_length
+from pycontrails.physics.units import ft_to_m
 
 # TODO: Interpolate between waypoints with dt < threshold
 # TODO: Find nearest airport
 
 
 def downsample_waypoints(
-        df_flight_waypoints: pd.DataFrame, *, time_resolution: int = 10, time_var: str = "timestamp"
+    df_flight_waypoints: pd.DataFrame, *, time_resolution: int = 10, time_var: str = "timestamp"
 ) -> pd.DataFrame:
     """
     Downsample flight waypoints to a specified time resolution
@@ -39,7 +41,9 @@ def downsample_waypoints(
     return df_resampled
 
 
-def separate_unique_flights_from_waypoints(df_waypoints: pd.DataFrame, *, columns: list) -> list[pd.DataFrame]:
+def separate_unique_flights_from_waypoints(
+    df_waypoints: pd.DataFrame, *, columns: list
+) -> list[pd.DataFrame]:
     """
     Separate unique flights from the waypoints, so each subset has the same metadata.
 
@@ -56,16 +60,16 @@ def separate_unique_flights_from_waypoints(df_waypoints: pd.DataFrame, *, column
         List of DataFrames containing set of flight waypoints with the same metadata.
     """
     if np.any(~pd.Series(columns).isin(df_waypoints.columns)):
-        raise KeyError(f"DataFrame does not contain all of the required columns listed in the inputs.")
+        raise KeyError(
+            "DataFrame does not contain all of the required columns listed in the inputs."
+        )
 
     flights = list(df_waypoints.groupby(columns))
     return [flight[1] for flight in flights]
 
 
 def remove_noise_in_cruise_altitude(
-        altitude_ft: np.ndarray, *,
-        noise_threshold_ft: float = 25,
-        threshold_altitude_ft: float = 10000
+    altitude_ft: np.ndarray, *, noise_threshold_ft: float = 25, threshold_altitude_ft: float = 10000
 ) -> np.ndarray:
     """
     Remove noise in cruise altitude by rounding up/down to the nearest flight level.
@@ -98,8 +102,8 @@ def remove_noise_in_cruise_altitude(
 
 @dataclasses.dataclass
 class FlightPhaseDetailed:
-    """Container for boolean arrays describing detailed phase of the flight.
-    """
+    """Container for boolean arrays describing detailed phase of the flight."""
+
     cruise: np.ndarray
     climb: np.ndarray
     descent: np.ndarray
@@ -108,10 +112,11 @@ class FlightPhaseDetailed:
 
 
 def identify_phase_of_flight_detailed(
-        altitude_ft: np.ndarray,
-        dt: np.ndarray, *,
-        threshold_rocd: float = 250.0,
-        min_cruise_alt_ft: float = 20000
+    altitude_ft: np.ndarray,
+    dt: np.ndarray,
+    *,
+    threshold_rocd: float = 250.0,
+    min_cruise_alt_ft: float = 20000,
 ) -> FlightPhaseDetailed:
     """
     Identify the phase of flight (climb, cruise, descent, level flight) for each waypoint.
@@ -147,7 +152,9 @@ def identify_phase_of_flight_detailed(
     climb = ~cruise & (rocd > 0)
     descent = ~cruise & (rocd < 0)
     level_flight = ~(nan | cruise | climb | descent)
-    return FlightPhaseDetailed(cruise=cruise, climb=climb, descent=descent, level_flight=level_flight, nan=nan)
+    return FlightPhaseDetailed(
+        cruise=cruise, climb=climb, descent=descent, level_flight=level_flight, nan=nan
+    )
 
 
 @dataclasses.dataclass
@@ -155,18 +162,20 @@ class TrajectoryCheck:
     """Container to check if trajectory contains multiple cruise phase and/or diversion, and
     a cut-off point where the second flight begins.
     """
+
     multiple_cruise_phase: bool
     flight_diversion: bool
     i_cutoff: float
 
 
 def identify_multiple_cruise_phases_and_diversion(
-        flight_phase: FlightPhaseDetailed,
-        longitude: npt.NDArray[np.float_],
-        latitude: npt.NDArray[np.float_],
-        altitude_ft: npt.NDArray[np.float_],
-        dt: npt.NDArray[np.float_], *,
-        ground_indicator: npt.NDArray[np.bool_] | None = None
+    flight_phase: FlightPhaseDetailed,
+    longitude: npt.NDArray[np.float_],
+    latitude: npt.NDArray[np.float_],
+    altitude_ft: npt.NDArray[np.float_],
+    dt: npt.NDArray[np.float_],
+    *,
+    ground_indicator: npt.NDArray[np.bool_] | None = None,
 ) -> TrajectoryCheck:
     """
     Identify trajectory with multiple cruise phases and/or flight diversion, and provide cut-off point.
@@ -216,7 +225,9 @@ def identify_multiple_cruise_phases_and_diversion(
     # Return if no cruise phase of flight is identified.
     if np.all(~flight_phase.cruise):
         return TrajectoryCheck(
-            multiple_cruise_phase=multiple_cruise_phase, flight_diversion=flight_diversion, i_cutoff=i_cutoff
+            multiple_cruise_phase=multiple_cruise_phase,
+            flight_diversion=flight_diversion,
+            i_cutoff=i_cutoff,
         )
 
     # Index of first and final cruise waypoint
@@ -225,7 +236,7 @@ def identify_multiple_cruise_phases_and_diversion(
 
     # There should not be any waypoints with low altitudes between the start and end of the cruise phase
     should_be_cruise = np.zeros(len(flight_phase.cruise), dtype=bool)
-    should_be_cruise[i_cruise_start: i_cruise_end] = True
+    should_be_cruise[i_cruise_start:i_cruise_end] = True
     is_low_altitude = altitude_ft < 10000
     is_dt_large = dt > (15 * 60)
     multiple_cruise_phase = np.any((should_be_cruise & is_low_altitude & is_dt_large))
@@ -240,7 +251,10 @@ def identify_multiple_cruise_phases_and_diversion(
         # Calculate segment length
         seg_length = segment_length(longitude, latitude, ft_to_m(altitude_ft))
         altitude_min = np.min(altitude_ft[should_be_cruise & is_low_altitude])
-        i_lowest_altitude = np.argwhere(should_be_cruise & is_low_altitude & (altitude_ft == altitude_min))[0][0] + 1
+        i_lowest_altitude = (
+            np.argwhere(should_be_cruise & is_low_altitude & (altitude_ft == altitude_min))[0][0]
+            + 1
+        )
 
         # Check for flight diversion
         condition_1 = np.any(altitude_ft[should_be_cruise] < 10000)
@@ -259,5 +273,7 @@ def identify_multiple_cruise_phases_and_diversion(
             multiple_cruise_phase = False
 
     return TrajectoryCheck(
-            multiple_cruise_phase=multiple_cruise_phase, flight_diversion=flight_diversion, i_cutoff=i_cutoff
-        )
+        multiple_cruise_phase=multiple_cruise_phase,
+        flight_diversion=flight_diversion,
+        i_cutoff=i_cutoff,
+    )

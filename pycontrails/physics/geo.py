@@ -32,11 +32,12 @@ def haversine(lons0: ArrayLike, lats0: ArrayLike, lons1: ArrayLike, lats1: Array
 
     Notes
     -----
-    This formula does not take into account the non-spheroidal (ellipsoidal) shape of the Earth
+    This formula does not take into account the non-spheroidal (ellipsoidal) shape of the Earth.
+    Originally referenced from https://andrew.hedges.name/experiments/haversine/.
 
     References
     ----------
-    Source: https://andrew.hedges.name/experiments/haversine/
+    - :cite:`CalculateDistanceBearing`
 
     See Also
     --------
