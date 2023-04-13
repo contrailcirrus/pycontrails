@@ -373,7 +373,7 @@ def bada_model() -> AircraftPerformance:
     BADAFlight = pytest.importorskip("pycontrails.ext.bada").BADAFlight
 
     if not BADA_AVAILABLE:
-        raise RuntimeError("BADA data files unavailable")
+        pytest.skip("BADA data not available")
 
     params = {
         "bada3_path": BADA3_PATH,
