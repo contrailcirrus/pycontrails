@@ -227,32 +227,48 @@ def test_ISSR_flight_high_altitude(met_era5_fake: MetDataset, flight_fake: Fligh
     assert ~np.isnan(fl["issr"][~low_level_waypoints]).all()
 
 
-def test_ISSR_flight_outside_met(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
-    """Test ISSR model with flight data outside bounds of met data."""
-    # modifying fixture
+@pytest.mark.parametrize("interpolation_use_indices", [True, False])
+def test_ISSR_flight_outside_met(
+    met_era5_fake: MetDataset, flight_fake: Flight, interpolation_use_indices: bool
+) -> None:
+    """Test ISSR model with flight data outside bounds of met data.
+
+    The flight trajectory leaves the met domain in two places:
+
+    - the initial flight waypoints are at low altitude (below the max pressure level in met)
+    - the later flight waypoints have times beyond the max time in met
+    """
+
+    # Alter the flight time
     fl = flight_fake.copy()
     with pytest.warns(UserWarning, match="Overwriting data in key `time`."):
         fl["time"] += pd.Timedelta("1H")
 
-    with pytest.raises(ValueError, match="One of the requested xi is out of bounds"):
-        _ = ISSR(met_era5_fake, interpolation_bounds_error=True).eval(source=fl)
+    model = ISSR(met_era5_fake, interpolation_use_indices=interpolation_use_indices)
 
-    fl = ISSR(met_era5_fake).eval(source=fl)
+    with pytest.raises(ValueError, match="One of the requested xi is out of bounds in dimension 2"):
+        model.eval(source=fl, interpolation_bounds_error=True)
 
-    # waypoints above highest-altitude level in era5 get filled with NaN
+    # Evaluate the model
+    fl = model.eval(source=fl, interpolation_bounds_error=False)
     assert isinstance(fl, Flight)
-    waypoints_beyond_met_era5_fake = (
-        fl["time"].astype(int) > met_era5_fake.data["time"].max().item()
-    )
-    assert np.isnan(fl["issr"][waypoints_beyond_met_era5_fake]).all()
+    issr = fl["issr"]
+    assert issr.dtype == np.float64
 
-    # any remaining NaN are caused by low altitude waypoints
-    remaining_nan = np.isnan(fl["issr"][~waypoints_beyond_met_era5_fake])
-    low_level_waypoints = (
-        fl["altitude"][~waypoints_beyond_met_era5_fake]
-        < met_era5_fake.data["altitude"].min().item()
-    )
-    assert np.all(remaining_nan == low_level_waypoints)
+    # Waypoints with timestamp beyond the max time are nan-filled
+    late_waypoints = fl["time"] > met_era5_fake["time"].values[-1]
+    assert np.sum(late_waypoints) == 130
+    assert np.isnan(issr[late_waypoints]).all()
+
+    # Waypoints with low altitude are also nan-filled
+    low_waypoints = fl.altitude < met_era5_fake["altitude"].values.min()
+    assert np.sum(low_waypoints) == 257
+    assert np.isnan(fl["issr"][late_waypoints]).all()
+
+    # Anything remaining is non-nan
+    remaining = ~late_waypoints & ~low_waypoints
+    assert np.sum(remaining) == 113
+    assert np.all(np.isfinite(issr[remaining]))
 
 
 def test_ISSR_flight_span_antimeridian(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
