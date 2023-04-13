@@ -473,27 +473,6 @@ class MetBase(ABC, Generic[XArrayType]):
 
         return filenames
 
-    @classmethod
-    def _load(self, hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Dataset:
-        """Load xarray data from hash.
-
-        Parameters
-        ----------
-        hash : str
-            Description
-        cachestore : CacheStore
-            Description
-        chunks : dict[str, int]
-            Description
-
-        Returns
-        -------
-        xr.Dataset
-            Description
-        """
-        disk_path = cachestore.get(f"{hash}*.nc")
-        return xr.open_mfdataset(disk_path, chunks=chunks)
-
     def __len__(self) -> int:
         return self.data.__len__()
 
@@ -882,7 +861,7 @@ class MetDataset(MetBase):
 
     @classmethod
     def load(
-        self,
+        cls,
         hash: str,
         cachestore: CacheStore | None = None,
         chunks: dict[str, int] | None = None,
@@ -906,8 +885,8 @@ class MetDataset(MetBase):
         """
         cachestore = cachestore or DiskCacheStore()
         chunks = chunks or {}
-        data = self._load(hash, cachestore, chunks)
-        return MetDataset(data)
+        data = _load(hash, cachestore, chunks)
+        return cls(data)
 
     def wrap_longitude(self) -> MetDataset:
         """Wrap longitude coordinates.
@@ -1572,7 +1551,7 @@ class MetDataArray(MetBase):
 
     @classmethod
     def load(
-        self,
+        cls,
         hash: str,
         cachestore: CacheStore | None = None,
         chunks: dict[str, int] | None = None,
@@ -1596,8 +1575,8 @@ class MetDataArray(MetBase):
         """
         cachestore = cachestore or DiskCacheStore()
         chunks = chunks or {}
-        data = self._load(hash, cachestore, chunks)
-        return MetDataArray(data[list(data.data_vars)[0]])
+        data = _load(hash, cachestore, chunks)
+        return cls(data[list(data.data_vars)[0]])
 
     @property
     def proportion(self) -> float:
@@ -2414,3 +2393,24 @@ def originates_from_ecmwf(met: MetDataset | MetDataArray) -> bool:
     return met.attrs.get("met_source") in ["ERA5", "HRES"] or "ecmwf" in met.attrs.get(
         "history", ""
     )
+
+
+def _load(hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Dataset:
+    """Load xarray data from hash.
+
+    Parameters
+    ----------
+    hash : str
+        Description
+    cachestore : CacheStore
+        Description
+    chunks : dict[str, int]
+        Description
+
+    Returns
+    -------
+    xr.Dataset
+        Description
+    """
+    disk_path = cachestore.get(f"{hash}*.nc")
+    return xr.open_mfdataset(disk_path, chunks=chunks)
