@@ -87,9 +87,10 @@ jobs:
     - name: Install pycontrails (dev)
       run: |
         pip install -U pip wheel
-        pip install .[dev,docs,ecmwf,gcp,gfs,jupyter,vis,zarr] --verbose
+        pip install -e .[dev,docs,ecmwf,gcp,gfs,jupyter,vis,zarr] --verbose
 
     - name: Install pycontrails-bada extension
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         mkdir -p ~/.ssh/ && ssh-keyscan github.com > ~/.ssh/known_hosts
         gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
