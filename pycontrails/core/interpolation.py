@@ -478,25 +478,15 @@ def interp(
     t = da.coords.variables["time"].values
     offset = t[0]
     t = _floatize_time(t, offset)
-    time_float = _floatize_time(time, offset)
 
-    # Remove any "single level" (level = -1) dimension
-    # We're making all sort of assumptions about the ordering of the da dimensions
-    # here. We could be more rigorous if needed.
-    points: tuple[np.ndarray, ...]
-    xi_tup: tuple[np.ndarray, ...]
-    if z.size == 1 and z.item() == -1:
-        # NOTE: It's much faster to call da.values.squeeze() than da.squeeze().values
-        # NOTE: If the level axis is unknown, use: da.get_axis_num("level")
+    single_level = z.size == 1 and z.item() == -1
+    points: tuple[npt.NDArray[np.float_], ...]
+    if single_level:
         values = da.values.squeeze(axis=2)
         points = x, y, t
-        xi_tup = longitude, latitude, time_float
     else:
         values = da.values
         points = x, y, z, t
-        xi_tup = longitude, latitude, level, time_float
-
-    xi = np.stack(xi_tup, axis=1, dtype=np.float64)
 
     interp_ = PycontrailsRegularGridInterpolator(
         points=points,
@@ -506,26 +496,67 @@ def interp(
         fill_value=fill_value,
     )
 
-    if indices or return_indices:
-        out, indices = _interpolation_with_indices(interp_, xi, localize, indices)
+    if indices is None:
+        xi = _buildxi(longitude, latitude, level, time, offset, single_level)
         if return_indices:
+            out, indices = _interpolation_with_indices(interp_, xi, localize, None)
             return out, indices
-        return out
-    return interp_(xi)
+        return interp_(xi)
+
+    out, indices = _interpolation_with_indices(interp_, None, localize, indices)
+    if return_indices:
+        return out, indices
+    return out
+
+
+def _buildxi(
+    longitude: npt.NDArray[np.float_],
+    latitude: npt.NDArray[np.float_],
+    level: npt.NDArray[np.float_],
+    time: npt.NDArray[np.datetime64],
+    offset: np.datetime64,
+    single_level: bool,
+) -> npt.NDArray[np.float64]:
+    """Build the input array for interpolation.
+
+    The implementation below achieves the same result as the following::
+
+        np.stack([longitude, latitude, level, time_float], axis=1])
+
+    This implementation is slightly faster than the above.
+    """
+
+    time_float = _floatize_time(time, offset)
+
+    if single_level:
+        ndim = 3
+    else:
+        ndim = 4
+
+    xi = np.empty((longitude.size, ndim), dtype=np.float64)
+
+    xi[:, 0] = longitude
+    xi[:, 1] = latitude
+    if not single_level:
+        xi[:, 2] = level
+    xi[:, -1] = time_float
+
+    return xi
 
 
 def _interpolation_with_indices(
     interp: PycontrailsRegularGridInterpolator,
-    xi: npt.NDArray[np.float64],
+    xi: npt.NDArray[np.float64] | None,
     localize: bool,
     indices: RGIArtifacts | None,
 ) -> tuple[npt.NDArray[np.float_], RGIArtifacts]:
     if interp.method != "linear":
-        raise ValueError("Parameter indices only supported for 'method=linear'")
+        raise ValueError("Parameter 'indices' is only supported for 'method=linear'")
     if localize:
-        raise ValueError("Parameter indices only supported for 'localize=False'")
+        raise ValueError("Parameter 'indices' is only supported for 'localize=False'")
 
     if indices is None:
+        assert xi is not None, "xi must be provided if indices is None"
         nans, out_of_bounds = interp._prepare_xi_simple(xi)
         xi_indices, norm_distances = interp._find_indices(xi.T)
         indices = RGIArtifacts(xi_indices, norm_distances, nans, out_of_bounds)
