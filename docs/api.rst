@@ -187,6 +187,7 @@ Core
 .. autosummary::
     :toctree: api/
 
+    core.airports
     core.cache
     core.coordinates
     core.datalib
