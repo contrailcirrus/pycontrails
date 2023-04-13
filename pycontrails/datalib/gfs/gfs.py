@@ -120,6 +120,8 @@ class GFSForecast(datalib.MetDataSource):
     #: Base time of the previous GFS forecast based on input times
     forecast_time: datetime
 
+    __marker = object()
+
     def __init__(
         self,
         time: datalib.TimeInput | None,
@@ -128,7 +130,7 @@ class GFSForecast(datalib.MetDataSource):
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float = 0.25,
         forecast_time: DatetimeLike | None = None,
-        cachestore: cache.CacheStore | None = None,
+        cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         show_progress: bool = False,
     ):
         try:
@@ -142,7 +144,9 @@ class GFSForecast(datalib.MetDataSource):
 
         # inputs
         self.paths = paths
-        self.cachestore = cachestore or cache.DiskCacheStore()
+        if cachestore is self.__marker:
+            cachestore = cache.DiskCacheStore()
+        self.cachestore = cachestore
         self.show_progress = show_progress
 
         if time is None and paths is None:

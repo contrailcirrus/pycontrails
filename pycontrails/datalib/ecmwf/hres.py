@@ -226,6 +226,8 @@ class HRES(ECMWFAPI):
     #: Forecast run time, either specified or assigned by the closest previous forecast run
     forecast_time: datetime
 
+    __marker = object()
+
     def __init__(
         self,
         time: datalib.TimeInput | None,
@@ -237,7 +239,7 @@ class HRES(ECMWFAPI):
         stream: str = "oper",
         field_type: str = "fc",
         forecast_time: DatetimeLike | None = None,
-        cachestore: cache.CacheStore | None = None,
+        cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
     ) -> None:
         try:
             from ecmwfapi import ECMWFService
@@ -252,7 +254,9 @@ class HRES(ECMWFAPI):
         # from CDS. We could do the same here.
         self.server = ECMWFService("mars")
         self.paths = paths
-        self.cachestore = cachestore or cache.DiskCacheStore()
+        if cachestore is self.__marker:
+            cachestore = cache.DiskCacheStore()
+        self.cachestore = cachestore
 
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
