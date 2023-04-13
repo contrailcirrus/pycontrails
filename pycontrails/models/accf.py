@@ -96,8 +96,7 @@ class ACCFParams(ModelParams):
 
 
 class ACCF(Model):
-    """Compute Algorithmic Climate Change Functions (ACCF)
-    over a :class:`Flight` trajectory or :class:`MetDataset` grid.
+    """Compute Algorithmic Climate Change Functions (ACCF).
 
     This class is a wrapper over the DLR / UMadrid library
     `climaccf <https://github.com/dlr-pa/climaccf>`__,

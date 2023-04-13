@@ -82,7 +82,7 @@ jobs:
         mkdir -p ${{ env.BADA_CACHE_DIR }}
         gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
         gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ env.BADA_CACHE_DIR }}
-        ls -la ${{ env.BADA_CACHE_DIR }}
+        ls -l ${{ env.BADA_CACHE_DIR }}
 
     - name: Install pycontrails (dev)
       run: make dev-install
