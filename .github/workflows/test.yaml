@@ -95,9 +95,7 @@ jobs:
         mkdir -p ~/.ssh/ && ssh-keyscan github.com > ~/.ssh/known_hosts
         gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          echo "GIT_SSH_COMMAND=ssh -v -i ~/.ssh/id_rsa" >> $GITHUB_ENV
-        fi
+        export GIT_SSH_COMMAND="ssh -v -i ~/.ssh/id_rsa"
         pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git" --verbose
 
     - name: Show environment
