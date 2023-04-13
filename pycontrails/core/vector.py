@@ -1541,7 +1541,6 @@ class GeoVectorDataset(VectorDataset):
         indices_x, indices_y, indices_z, indices_t = indices.xi_indices
         distances_x, distances_y, distances_z, distances_t = indices.norm_distances
         out_of_bounds = indices.out_of_bounds
-        nans = indices.nans
 
         self["_indices_x"] = indices_x
         self["_indices_y"] = indices_y
@@ -1554,8 +1553,6 @@ class GeoVectorDataset(VectorDataset):
 
         if out_of_bounds is not None:
             self["_out_of_bounds"] = out_of_bounds
-        if nans is not None:
-            self["_nans"] = nans
 
     def _get_indices(self) -> interpolation.RGIArtifacts | None:
         """Get entries from call to :meth:`_put_indices`.
@@ -1587,9 +1584,8 @@ class GeoVectorDataset(VectorDataset):
         distances = np.asarray([distances_x, distances_y, distances_z, distances_t])
 
         out_of_bounds = self.get("_out_of_bounds", None)
-        nans = self.get("_nans", None)
 
-        return interpolation.RGIArtifacts(indices, distances, out_of_bounds, nans)
+        return interpolation.RGIArtifacts(indices, distances, out_of_bounds)
 
     def _invalidate_indices(self) -> None:
         """Remove any cached indices from :attr:`data."""
@@ -1603,7 +1599,6 @@ class GeoVectorDataset(VectorDataset):
             "_distances_z",
             "_distances_t",
             "_out_of_bounds",
-            "_nans",
         ):
             self.data.pop(key, None)
 
