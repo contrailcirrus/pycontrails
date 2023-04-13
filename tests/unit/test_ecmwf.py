@@ -165,10 +165,9 @@ def test_ERA5_cachestore(met_ecmwf_pl_path: str, override_cache: DiskCacheStore)
     mds = era5.open_metdataset()
     assert isinstance(mds, MetDataset)
     assert override_cache.size > 0
-    override_cache.clear()
 
-    # cache set to None
-    assert override_cache.size == 0
+    # allow cache to be None
+    pre_init_size = DiskCacheStore().size
     era5 = ERA5(
         time=times,
         variables=variables,
@@ -178,7 +177,8 @@ def test_ERA5_cachestore(met_ecmwf_pl_path: str, override_cache: DiskCacheStore)
     )
     mds = era5.open_metdataset()
     assert isinstance(mds, MetDataset)
-    assert override_cache.size == 0
+    post_init_size = DiskCacheStore().size
+    assert pre_init_size == post_init_size
 
 
 def test_ERA5_pressure_levels(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> None:
@@ -321,9 +321,9 @@ def test_ERA5_paths_without_time(
     ds = xr.open_dataset(met_ecmwf_pl_path)  # open manually for comparison
     assert era5pl.timesteps and len(era5pl.timesteps) == len(ds["time"])
     assert (metpl.data["time"].values == ds["time"].values).all()
-    override_cache.clear()
 
     # allow cache to be None
+    pre_init_size = DiskCacheStore().size
     era5pl = ERA5(
         time=None,
         variables=["air_temperature"],
@@ -332,7 +332,8 @@ def test_ERA5_paths_without_time(
         cachestore=None,
     )
     metpl = era5pl.open_metdataset()
-    assert override_cache.size == 0
+    post_init_size = DiskCacheStore().size
+    assert pre_init_size == post_init_size
 
 
 def test_ERA5_paths_with_error(
