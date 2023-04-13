@@ -10,6 +10,7 @@ scipy 1.10 in several ways:
   implementation is only for double arrays.
 """
 
+from libc.math cimport NAN
 import numpy as np
 
 cimport cython
@@ -44,6 +45,10 @@ def evaluate_linear_4d(
         i1 = indices[1, p]
         i2 = indices[2, p]
         i3 = indices[3, p]
+
+        if i0 < 0 or i1 < 0 or i2 < 0 or i3 < 0:
+            out[p] = NAN
+            continue
 
         y0 = norm_distances[0, p]
         y1 = norm_distances[1, p]
@@ -93,6 +98,10 @@ def evaluate_linear_3d(
         i1 = indices[1, p]
         i2 = indices[2, p]
 
+        if i0 < 0 or i1 < 0 or i2 < 0:
+            out[p] = NAN
+            continue
+
         y0 = norm_distances[0, p]
         y1 = norm_distances[1, p]
         y2 = norm_distances[2, p]
@@ -130,6 +139,10 @@ def evaluate_linear_2d(
         i0 = indices[0, p]
         i1 = indices[1, p]
 
+        if i0 < 0 or i1 < 0:
+            out[p] = NAN
+            continue
+
         y0 = norm_distances[0, p]
         y1 = norm_distances[1, p]
 
@@ -161,6 +174,10 @@ def evaluate_linear_1d(
 
     for p in range(n_points):
         i0 = indices[p]
+        if i0 < 0:
+            out[p] = NAN
+            continue
+
         y0 = norm_distances[p]
         out[p] = values[i0] * (1 - y0) + values[i0+1] * y0
 
