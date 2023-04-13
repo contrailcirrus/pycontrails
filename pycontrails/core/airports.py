@@ -1,26 +1,5 @@
-"""Global airport database.
+"""Airport data support."""
 
-This module includes the function to read and process the global airport database,
-which includes the coordinates and metadata for 74867 unique airports.
-
-Sources:
-- https://ourairports.com/data/
-- https://github.com/davidmegginson/ourairports-data
-
-As of 2023 March 30, the global airport database contains:
-
-- small_airport     39327
-- heliport          19039
-- closed            10107
-- medium_airport     4753
-- seaplane_base      1133
-- large_airport       463
-- balloonport          45
-
-References
-----------
-
-"""
 from __future__ import annotations
 
 import numpy as np
@@ -29,9 +8,9 @@ import pandas as pd
 from pycontrails.core import cache
 from pycontrails.physics import geo, units
 
-#: `Our Airports <https://ourairports.com/>`_ data source file.
+#: URL for `Our Airports <https://ourairports.com/>`_ database.
 #: Fork of the `ourairports-data repository <https://github.com/davidmegginson/ourairports-data>`_.
-OURAIRPORTS_DATABASE_URL = (
+OURAIRPORTS_DATABASE_URL: str = (
     "https://github.com/contrailcirrus/ourairports-data/raw/main/airports.csv"
 )
 
@@ -62,6 +41,8 @@ def global_airport_database(
     """
     Load and process global airport database from `Our Airports <https://ourairports.com/>`_.
 
+    The database includes coordinates and metadata for 74867 unique airports.
+
     Parameters
     ----------
     cachestore : cache.CacheStore | None, optional
@@ -74,6 +55,24 @@ def global_airport_database(
     -------
     pd.DataFrame
         Processed global airport database.
+
+        Global airport database.
+
+    Notes
+    -----
+    As of 2023 March 30, the global airport database contains:
+
+    .. csv-table::
+       :header: "Airport Type", "Number"
+       :widths: 70, 30
+
+        "small_airport",    39327
+        "heliport",         19039
+        "closed",           10107
+        "medium_airport",   4753
+        "seaplane_base",    1133
+        "large_airport",    463
+        "balloonport",      45
 
     References
     ----------
@@ -187,7 +186,7 @@ def find_nearest_airport(
         else:
             continue
 
-    return "N/A"
+    return None
 
 
 def distance_to_airports(

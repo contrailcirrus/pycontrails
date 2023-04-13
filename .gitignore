@@ -50,6 +50,7 @@ tests/benchmark/cocip/outputs
 .doc-test-cache
 docs/_build
 docs/api/
+docs/examples/airports
 
 # data
 .ecmwf
