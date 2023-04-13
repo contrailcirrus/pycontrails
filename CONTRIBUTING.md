@@ -132,7 +132,6 @@ Wherever possible, we adhere to the [NumPy docstring conventions](https://numpyd
 The following links are good references for writing *numpy* docstrings:
 
 - [numpydoc docstring guide](https://numpydoc.readthedocs.io/en/latest/format.html)
-- [napolean example numpy docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html)
 - [pandas docstring guide](https://pandas.pydata.org/docs/development/contributing_docstring.html)
 - [scipy docstring guideline](https://docs.scipy.org/doc//scipy/dev/contributor/rendering_documentation.html#documentation-guidelines)
 
