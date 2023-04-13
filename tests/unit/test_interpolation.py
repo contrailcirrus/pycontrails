@@ -376,8 +376,6 @@ def test_indices_distinct_vars(
 
     np.testing.assert_array_equal(indices1.xi_indices, indices2.xi_indices)
     np.testing.assert_array_equal(indices1.norm_distances, indices2.norm_distances)
-    assert indices1.nans is None
-    assert indices2.nans is None
     assert indices1.out_of_bounds is None
     assert indices2.out_of_bounds is None
 
@@ -420,17 +418,30 @@ def test_indices_same_var(
 
 @pytest.mark.parametrize("bounds_error", [False, True])
 @pytest.mark.parametrize("idx", range(5))
-def test_interpolation_propogate_nan(mda: MetDataArray, bounds_error: bool, idx: int):
+@pytest.mark.parametrize("coord", ["longitude", "latitude", "level", "time"])
+def test_interpolation_propagate_nan(mda: MetDataArray, bounds_error: bool, idx: int, coord: str):
     """Ensure nan values propagate through interpolation."""
 
     longitude = np.arange(5, dtype=float)
     latitude = np.arange(5, 10, dtype=float)
     level = np.linspace(225, 250, 5)
     time = np.r_[[np.datetime64("2019-05-31T05:20")] * 3, [np.datetime64("2019-05-31T05:36")] * 2]
-    latitude[idx] = np.nan
+
+    if coord == "longitude":
+        longitude[idx] = np.nan
+        dim = 0
+    elif coord == "latitude":
+        latitude[idx] = np.nan
+        dim = 1
+    elif coord == "level":
+        level[idx] = np.nan
+        dim = 2
+    elif coord == "time":
+        time[idx] = np.datetime64("NaT")
+        dim = 3
 
     if bounds_error:
-        match = "One of the requested xi is out of bounds in dimension 1"
+        match = f"One of the requested xi is out of bounds in dimension {dim}"
         with pytest.raises(ValueError, match=match):
             mda.interpolate(longitude, latitude, level, time, bounds_error=bounds_error)
         return
