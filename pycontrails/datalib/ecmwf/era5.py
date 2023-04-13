@@ -128,6 +128,8 @@ class ERA5(ECMWFAPI):
     #: Handle to CDSAPI client
     cds: cdsapi.Client
 
+    __marker = object()
+
     def __init__(
         self,
         time: datalib.TimeInput | None,
@@ -137,11 +139,13 @@ class ERA5(ECMWFAPI):
         timestep_freq: str = "1H",
         product_type: str = "reanalysis",
         grid: float = 0.25,
-        cachestore: cache.CacheStore | None = None,
+        cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
     ):
         # inputs
         self.product_type = product_type
-        self.cachestore = cachestore or cache.DiskCacheStore()
+        if cachestore is self.__marker:
+            cachestore = cache.DiskCacheStore()
+        self.cachestore = cachestore
         self.paths = paths
 
         if time is None and paths is None:
