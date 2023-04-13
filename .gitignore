@@ -24,6 +24,7 @@ venv
 _version.py
 rgi_cython.c
 rgi_cython*.so
+rgi_cython*.pyd
 
 # test
 .mypy_cache
