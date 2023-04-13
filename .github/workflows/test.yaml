@@ -85,7 +85,9 @@ jobs:
         ls -l ${{ env.BADA_CACHE_DIR }}
 
     - name: Install pycontrails (dev)
-      run: make dev-install
+      run: |
+        pip install -U pip wheel
+        pip install .[dev,docs,ecmwf,gcp,gfs,jupyter,vis,zarr] --verbose
 
     - name: Install pycontrails-bada extension
       run: |
@@ -97,19 +99,16 @@ jobs:
     - name: Show environment
       run: |
         pwd
-        ls -la
-        which python
+        ls -l
         python --version
-        which mypy
         mypy --version
         python -m pip list
         python -m pip check
 
     - name: QC & Test
       run: |
-        make ruff
-        make mypy
-        make black-check
-        make pydocstyle
-        make pytest
-
+        black pycontrails --check
+        ruff pycontrails tests
+        mypy pycontrails
+        pydocstyle pycontrails --verbose
+        pytest tests/unit
