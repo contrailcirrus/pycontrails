@@ -15,11 +15,13 @@
 - Fix hard-coded POSIX path in `conftest.py` for windows compatibility.
 - Address `PermissionError` raised by `shutil.copy` when the destination file is open in another thread. The copy is skipped and a warning is logged.
 - Fix some unit tests in `test_vector.py` and `test_ecmwf.py` for windows compatibility. There are still a few tests that fail on windows (unrelated to changes in this release) that will be fixed in v0.40.0.
+- Allow `cachestore=None` to skip caching in `ERA5`, `HRES`, and `GFS` interfaces. Previously a default `DiskCacheStore` was created even when `cachestore=None`. By default, caching is still enabled.
 
 #### Internals
 
 - Clean up `geo` module docstrings.
 - Add Wikipedia reference for [Azimuth](https://en.wikipedia.org/wiki/Azimuth).
+- Convert `MetBase._load` to from a class method to a function.
 
 ## v0.39.5
 
