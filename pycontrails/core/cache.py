@@ -220,7 +220,7 @@ class DiskCacheStore(CacheStore):
     @overrides
     def size(self) -> float:
         disk_path = pathlib.Path(self.cache_dir)
-        size = sum(f.stat().st_size for f in disk_path.glob("**/*") if f.is_file())
+        size = sum(f.stat().st_size for f in disk_path.rglob("*") if f.is_file())
         logger.debug("Disk cache size %s bytes", size)
         return size / 1e6
 
