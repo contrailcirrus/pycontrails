@@ -30,7 +30,7 @@ class AircraftPerformance(Model):
 
     @abc.abstractmethod
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
-        ...
+        """Evaluate the aircraft performance model."""
 
 
 class AircraftPerformanceGrid(Model):
@@ -52,7 +52,7 @@ class AircraftPerformanceGrid(Model):
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
     ) -> GeoVectorDataset | MetDataset:
-        ...
+        """Evaluate the aircraft performance model."""
 
 
 @dataclasses.dataclass

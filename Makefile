@@ -81,7 +81,7 @@ pytest:
 	pytest tests/unit
 
 pydocstyle:
-	pydocstyle pycontrails --match='[^_deprecated].*.py' --verbose
+	pydocstyle pycontrails --verbose
 
 pytest-cov:
 	pytest \
