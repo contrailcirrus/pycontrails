@@ -15,6 +15,7 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.core import cache
+from pycontrails.core.fleet import Fleet
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.utils.types import DatetimeLike
 
@@ -33,7 +34,7 @@ NETCDF_ENGINE: str = "netcdf4"
 DEFAULT_CHUNKS: dict[str, int] = {"time": 1}
 
 
-def parse_timesteps(time: TimeInput | None, freq: str = "1H") -> list[datetime]:
+def parse_timesteps(time: TimeInput | None, freq: str | None = "1H") -> list[datetime]:
     """Parse time input into set of time steps.
 
     If input time is length 2, this creates a range of equally spaced time
@@ -46,10 +47,11 @@ def parse_timesteps(time: TimeInput | None, freq: str = "1H") -> list[datetime]:
         Either a single datetime-like or tuple of datetime-like with the first value
         the start of the date range and second value the end of the time range.
         Input values can be any type compatible with :meth:`pandas.to_datetime`.
-    freq : str, optional
+    freq : str | None, optional
         Timestep interval in range.
         See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         for a list of frequency aliases.
+        If None, returns input `time` as a list.
         Defaults to "1H".
 
     Returns
@@ -84,8 +86,11 @@ def parse_timesteps(time: TimeInput | None, freq: str = "1H") -> list[datetime]:
             "must be compatible with 'pd.to_datetime()'"
         )
 
-    # get date range that encompasses all whole hours
-    daterange = pd.date_range(timestamps[0].floor(freq), timestamps[1].ceil(freq), freq=freq)
+    if freq is None:
+        daterange = pd.DatetimeIndex([timestamps[0], timestamps[1]])
+    else:
+        # get date range that encompasses all whole hours
+        daterange = pd.date_range(timestamps[0].floor(freq), timestamps[1].ceil(freq), freq=freq)
 
     # return list of datetimes
     return daterange.to_pydatetime().tolist()
@@ -652,3 +657,58 @@ class MetDataSource(abc.ABC):
         xr_kwargs.setdefault("chunks", DEFAULT_CHUNKS)
         xr_kwargs.setdefault("parallel", True)
         return xr.open_mfdataset(disk_paths, **xr_kwargs)
+
+
+class FlightDataSource(abc.ABC):
+    """Abstract class for wrapping ADS-B flight data sources."""
+
+    __slots__ = "messages"
+
+    #: ADS-B messages formatted as :class:`pandas.DataFrame`
+    #: Input ADS-B messages are *not* copied
+    messages: pd.DataFrame
+
+    @abc.abstractmethod
+    def __init__(
+        self,
+        time: TimeInput | None,
+        messages: pd.DataFrame,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def load_fleet(self, **kwargs: Any) -> Fleet:
+        """Open :class:`Fleet` (list of :class:`Flight`) from data source.
+
+        This method should parse, validate, and separate individual
+        flights from data source and return a :class:`Fleet` class.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Keyword arguments passed through directly into :class:`Fleet` constructor.
+
+        Returns
+        -------
+        Fleet
+            List of loaded flights
+        """
+
+    # @abc.abstractmethod
+    # def load_flight(self, icao_address: str, **kwargs: Any) -> Flight:
+    #     """Open :class:`Flight` from data source by ICAO address of transponder.
+
+    #     This method should parse and validate single trajectory
+    #     and return a :class:`Flight` class.
+
+    #     Parameters
+    #     ----------
+    #     **kwargs : Any
+    #         Keyword arguments passed through directly into :class:`Flight` constructor.
+
+    #     Returns
+    #     -------
+    #     Flight
+    #         Parsed flight
+    #     """

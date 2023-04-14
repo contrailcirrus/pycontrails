@@ -83,6 +83,12 @@ def test_parse_timesteps() -> None:
         datetime(2019, 5, 31, 9),
     ]
 
+    # set freq to None to get back input as a list
+    ts = datalib.parse_timesteps("2019-05-31T00:29:00", freq=None)
+    assert ts == [datetime(2019, 5, 31, 0, 29), datetime(2019, 5, 31, 0, 29)]
+    ts = datalib.parse_timesteps(("2019-05-31T00:29:00", "2019-05-31T01:40:00"), freq=None)
+    assert ts == [datetime(2019, 5, 31, 0, 29), datetime(2019, 5, 31, 1, 40)]
+
 
 def test_parse_pressure_levels() -> None:
     """Test pressure level parsing."""
