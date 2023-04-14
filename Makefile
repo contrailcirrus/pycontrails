@@ -172,6 +172,7 @@ nb-execute: nb-black-check
 nb-check-links:
 	python -m pytest --check-links \
 		--check-links-ignore "https://doi.org/10.1021/acs.est.9b05608" \
+		--check-links-ignore "https://pubs.acs.org/doi/10.1021/acs.est.2c05781" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		docs/examples docs/tutorials
 
