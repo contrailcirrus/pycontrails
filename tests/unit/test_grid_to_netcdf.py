@@ -1,7 +1,6 @@
 """Ensure gridded output can be written to disk."""
 
 import pathlib
-import tempfile
 
 import numpy as np
 import pytest
