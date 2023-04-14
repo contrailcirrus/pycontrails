@@ -90,13 +90,13 @@ jobs:
         pip install -e .[dev,docs,ecmwf,gcp,gfs,jupyter,vis,zarr] --verbose
 
     - name: Install pycontrails-bada extension
-      # if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         mkdir -p ~/.ssh/ && ssh-keyscan github.com > ~/.ssh/known_hosts
         gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        export GIT_SSH_COMMAND="ssh -v -i ~/.ssh/id_rsa"
         pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git" --verbose
+      env:
+        GIT_SSH_COMMAND: "ssh -v -i ~/.ssh/id_rsa"
 
     - name: Show environment
       run: |
