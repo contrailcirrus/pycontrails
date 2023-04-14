@@ -1616,8 +1616,7 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
 
     if not _is_segment_free_mode(vector):
         head_tail_dt_s = vector["segment_length"] / true_airspeed
-        head_tail_dt_ns = (head_tail_dt_s * 1_000_000_000.0).astype(np.int64)
-        head_tail_dt = head_tail_dt_ns.astype("timedelta64[ns]")
+        head_tail_dt = (head_tail_dt_s * 1_000_000_000.0).astype("timedelta64[ns]")
         vector["head_tail_dt"] = head_tail_dt
 
     params["bada_model"] = vector.attrs["bada_model"]
