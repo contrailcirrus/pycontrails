@@ -488,7 +488,7 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         """Mutate `vector` by adding additional keys."""
         # Add time
         vector["formation_time"] = vector["time"]
-        vector["age"] = np.full(vector.size, np.timedelta64(0, "s"))
+        vector["age"] = np.full(vector.size, np.timedelta64(0, "ns"))
 
         # Precompute
         vector["air_pressure"] = vector.air_pressure
