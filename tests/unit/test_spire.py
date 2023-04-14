@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
 import pandas as pd
-import pycontrails.core.ads_b as adsb
+
 import pycontrails.datalib.spire.data_cleaning as spire
+from pycontrails.core import adsb
+
 from .conftest import get_static_path
 
 
@@ -22,7 +23,9 @@ def test_separate_unique_flights_using_metadata():
     difference in flight metadata.
     """
     df_icao_address = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    df_icao_address = adsb.downsample_waypoints(df_icao_address, time_resolution=10, time_var="timestamp")
+    df_icao_address = adsb.downsample_waypoints(
+        df_icao_address, time_resolution=10, time_var="timestamp"
+    )
     df_icao_address = df_icao_address.astype({"on_ground": bool})
     df_icao_address = spire._fill_missing_callsign_for_satellite_waypoints(df_icao_address)
 
@@ -30,7 +33,7 @@ def test_separate_unique_flights_using_metadata():
     flights = adsb.separate_unique_flights_from_waypoints(
         df_test_1, columns=["tail_number", "aircraft_type_icao", "callsign"]
     )
-    assert len(flights) == 4        # Identified four unique flights
+    assert len(flights) == 4  # Identified four unique flights
 
 
 def test_separate_unique_flights_using_ground_indicator():
@@ -38,7 +41,9 @@ def test_separate_unique_flights_using_ground_indicator():
     ground indicator.
     """
     df_icao_address = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    df_icao_address = adsb.downsample_waypoints(df_icao_address, time_resolution=10, time_var="timestamp")
+    df_icao_address = adsb.downsample_waypoints(
+        df_icao_address, time_resolution=10, time_var="timestamp"
+    )
     df_icao_address = df_icao_address.astype({"on_ground": bool})
     df_icao_address = spire._fill_missing_callsign_for_satellite_waypoints(df_icao_address)
 
@@ -55,14 +60,15 @@ def test_separate_unique_flights_using_ground_indicator():
     assert len(flights) == 1
 
     flights = spire.separate_flights_with_ground_indicator(flights)
-    assert len(flights) == 2        # Identified two unique flights
+    assert len(flights) == 2  # Identified two unique flights
 
 
 def test_separate_unique_flights_with_multiple_cruise_phase():
-    """Test algorithms to identify and separate unique flight trajectories with multiple cruise phases.
-    """
+    """Test algorithms to identify and separate unique flight trajectories with multiple cruise phases."""
     df_icao_address = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    df_icao_address = adsb.downsample_waypoints(df_icao_address, time_resolution=10, time_var="timestamp")
+    df_icao_address = adsb.downsample_waypoints(
+        df_icao_address, time_resolution=10, time_var="timestamp"
+    )
     df_icao_address = df_icao_address.astype({"on_ground": bool})
     df_icao_address = spire._fill_missing_callsign_for_satellite_waypoints(df_icao_address)
 
@@ -77,15 +83,21 @@ def test_separate_unique_flights_with_multiple_cruise_phase():
     df_test_3 = df_test_3[keep_rows].copy()
 
     # Calculate flight phase
-    dt_sec = np.diff(df_test_3["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(1, "s")
+    dt_sec = np.diff(df_test_3["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(
+        1, "s"
+    )
     flight_phase: adsb.FlightPhaseDetailed = adsb.identify_phase_of_flight_detailed(
         df_test_3["altitude_baro"].values, dt_sec, threshold_rocd=250, min_cruise_alt_ft=20000
     )
 
     # Identify multiple cruise phase
     trajectory_check: adsb.TrajectoryCheck = adsb.identify_multiple_cruise_phases_and_diversion(
-        flight_phase, df_test_3["longitude"].values, df_test_3["latitude"].values,
-        df_test_3["altitude_baro"].values, dt_sec, ground_indicator=df_test_3["on_ground"].values
+        flight_phase,
+        df_test_3["longitude"].values,
+        df_test_3["latitude"].values,
+        df_test_3["altitude_baro"].values,
+        dt_sec,
+        ground_indicator=df_test_3["on_ground"].values,
     )
     assert trajectory_check.multiple_cruise_phase
 
@@ -100,10 +112,11 @@ def test_separate_unique_flights_with_multiple_cruise_phase():
 
 
 def test_identify_flight_diversion():
-    """Test algorithms to identify flight diversion, and no separation is done.
-    """
+    """Test algorithms to identify flight diversion, and no separation is done."""
     df_icao_address = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    df_icao_address = adsb.downsample_waypoints(df_icao_address, time_resolution=10, time_var="timestamp")
+    df_icao_address = adsb.downsample_waypoints(
+        df_icao_address, time_resolution=10, time_var="timestamp"
+    )
     df_icao_address = df_icao_address.astype({"on_ground": bool})
     df_icao_address = spire._fill_missing_callsign_for_satellite_waypoints(df_icao_address)
 
@@ -117,15 +130,21 @@ def test_identify_flight_diversion():
     df_test_4["altitude_baro"] = altitude_ft_adjusted
 
     # Calculate flight phase
-    dt_sec = np.diff(df_test_4["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(1, "s")
+    dt_sec = np.diff(df_test_4["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(
+        1, "s"
+    )
     flight_phase: adsb.FlightPhaseDetailed = adsb.identify_phase_of_flight_detailed(
         df_test_4["altitude_baro"].values, dt_sec, threshold_rocd=250, min_cruise_alt_ft=20000
     )
 
     # Identify multiple cruise phase
     trajectory_check: adsb.TrajectoryCheck = adsb.identify_multiple_cruise_phases_and_diversion(
-        flight_phase, df_test_4["longitude"].values, df_test_4["latitude"].values,
-        df_test_4["altitude_baro"].values, dt_sec, ground_indicator=df_test_4["on_ground"].values
+        flight_phase,
+        df_test_4["longitude"].values,
+        df_test_4["latitude"].values,
+        df_test_4["altitude_baro"].values,
+        dt_sec,
+        ground_indicator=df_test_4["on_ground"].values,
     )
     assert trajectory_check.multiple_cruise_phase is False
     assert trajectory_check.flight_diversion

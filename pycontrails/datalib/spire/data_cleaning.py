@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-import pycontrails.core.ads_b as adsb
+from pycontrails.core import adsb
 from pycontrails.core.flight import _dt_waypoints
 from pycontrails.ext.bada import BADA3
 
