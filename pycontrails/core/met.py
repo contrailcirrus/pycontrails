@@ -1229,7 +1229,7 @@ class MetDataArray(MetBase):
     ...     "longitude": np.arange(-20, 20),
     ...     "latitude": np.arange(-30, 30),
     ...     "level": [220, 240, 260, 280],
-    ...     "time": [np.datetime64("2021-08-01T12"), np.datetime64("2021-08-01T16")]
+    ...     "time": [np.datetime64("2021-08-01T12", "ns"), np.datetime64("2021-08-01T16", "ns")]
     ...     }
     >>> da = xr.DataArray(rng.random((40, 60, 4, 2)), dims=coords.keys(), coords=coords)
 
