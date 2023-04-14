@@ -94,9 +94,9 @@ class FlightPhase:
 class Flight(GeoVectorDataset):
     """A single flight trajectory.
 
-    Expect latitude-longitude CRS in WGS 84.
+    Expect latitude-longitude coordinates in WGS 84.
     Expect altitude in [:math:`m`].
-    Expect level in [:math:`hPa`].
+    Expect pressure level (`level`) in [:math:`hPa`].
 
     Use the attribute :attr:`attrs["crs"]` to specify coordinate reference system
     using `PROJ <https://proj.org/>`_ or `EPSG <https://epsg.org/home.html>`_ syntax.
@@ -151,9 +151,10 @@ class Flight(GeoVectorDataset):
 
     Notes
     -----
-    The `Traffic <https://traffic-viz.github.io/index.html>`_ library provided inspiration
-    for this class.
-    See :class:`traffic.core.Flight` for additional utilities.
+    The `Traffic <https://traffic-viz.github.io/index.html>`_ library has many helpful
+    flight processing utilities.
+
+    See :class:`traffic.core.Flight` for more information.
 
     Examples
     --------
