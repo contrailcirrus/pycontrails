@@ -494,7 +494,7 @@ class Emissions(Model):
     def _total_pollutant_emissions(self) -> None:
         # Required variables
         # FIXME: These two variables are already calculated in BADA models
-        dt_sec = flight._dt_waypoints(self.source["time"], dtype=self.source.altitude_ft.dtype)
+        dt_sec = flight.segment_duration(self.source["time"], dtype=self.source.altitude_ft.dtype)
         fuel_burn = jet.fuel_burn(self.source.get_data_or_attr("fuel_flow"), dt_sec)
 
         # TODO: these currently overwrite values and will throw warnings
