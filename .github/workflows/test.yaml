@@ -89,26 +89,22 @@ jobs:
         pip install -U pip wheel
         pip install -e .[dev,docs,ecmwf,gcp,gfs,jupyter,vis,zarr] --verbose
 
-    - name: Install pycontrails-bada extension - windows
+    - name: Install pycontrails-bada - windows
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
-        $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
-        mkdir -p ~/.ssh/
-        ssh-keyscan github.com > ~/.ssh/known_hosts
-        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ls -l ~/.ssh
-        pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git" --verbose
+        mkdir -p $HOME/.ssh/
+        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" --out-file="$HOME/.ssh/id_rsa"
+        pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
       env:
-        GIT_SSH_COMMAND: "ssh -v"
+        GIT_SSH_COMMAND: "ssh -v -o StrictHostKeyChecking=no"
 
-    - name: Install pycontrails-bada extension - linux
+    - name: Install pycontrails-bada - linux
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        mkdir -p ~/.ssh/
-        ssh-keyscan github.com > ~/.ssh/known_hosts
-        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
+        mkdir -p $HOME/.ssh/
+        ssh-keyscan github.com > $HOME/.ssh/known_hosts
+        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > $HOME/.ssh/id_rsa
+        chmod 600 $HOME/.ssh/id_rsa
         pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
 
     - name: Show environment
