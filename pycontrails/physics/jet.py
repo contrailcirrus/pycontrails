@@ -12,7 +12,7 @@ import logging
 import numpy as np
 import numpy.typing as npt
 
-from pycontrails.core.flight import FlightPhase
+from pycontrails.core.flight import FLIGHT_PHASE, _dt_waypoints
 from pycontrails.physics import constants, units
 from pycontrails.utils.types import ArrayScalarLike
 
@@ -24,33 +24,60 @@ logger = logging.getLogger(__name__)
 # -------------------
 
 
-def identify_phase_of_flight(rocd: np.ndarray, *, threshold_rocd: float = 100.0) -> FlightPhase:
+def identify_phase_of_flight(
+    time: np.ndarray,
+    altitude_ft: np.ndarray,
+    *,
+    threshold_rocd: float = 250.0,
+    min_cruise_alt_ft: float = 20000,
+) -> np.ndarray:
     """Identify the phase of flight (climb, cruise, descent) for each waypoint.
 
     Parameters
     ----------
-    rocd: np.ndarray
-        Rate of climb and descent, [:math:`ft min^{-1}`]
+    time: np.ndarray
+        Waypoint time
+    altitude_ft: np.ndarray
+        Altitude, [:math:`ft`]
     threshold_rocd: float
         ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
-        Currently set to 100 ft/min.
+        Currently set to 250 ft/min.
+    min_cruise_alt_ft: float
+        Minimum threshold altitude for cruise, [:math:`ft`]
+        This is specific for each aircraft type,
+        and can be approximated as 50% of the altitude ceiling.
 
     Returns
     -------
-    FlightPhase
-        Booleans marking if the waypoints are at cruise, climb, or descent
+    np.ndarray
+        Array of values enumerating the flight phase.
+        See :attr:`FLIGHT_PHASE` dictionary for enumeration.
 
     Notes
     -----
     Flight data derived from ADS-B and radar sources could contain noise leading
     to small changes in altitude and ROCD. Hence, an arbitrary ``threshold_rocd``
     is specified to identify the different phases of flight.
+
+    The flight phase "level-flight" is when an aircraft is holding at lower altitudes.
+    The cruise phase of flight only occurs above a certain threshold altitude.
     """
+    dt = _dt_waypoints(time)
+    rocd = rate_of_climb_descent(dt, altitude_ft)
+
     nan = np.isnan(rocd)
-    climb = rocd > threshold_rocd
-    descent = rocd < -threshold_rocd
-    cruise = ~(nan | climb | descent)
-    return FlightPhase(cruise=cruise, climb=climb, descent=descent, nan=nan)
+    cruise = (rocd < threshold_rocd) & (rocd > -threshold_rocd) & (altitude_ft > min_cruise_alt_ft)
+    climb = ~cruise & (rocd > 0)
+    descent = ~cruise & (rocd < 0)
+    level_flight = ~(nan | cruise | climb | descent)
+
+    phase = np.full(rocd.shape, np.nan)
+    phase[cruise] = FLIGHT_PHASE["cruise"]
+    phase[climb] = FLIGHT_PHASE["climb"]
+    phase[descent] = FLIGHT_PHASE["descent"]
+    phase[level_flight] = FLIGHT_PHASE["level_flight"]
+
+    return phase
 
 
 def rate_of_climb_descent(

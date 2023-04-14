@@ -25,6 +25,15 @@ if TYPE_CHECKING:
     import matplotlib
     import traffic
 
+#: Flight phase enumeration
+FLIGHT_PHASE: dict[str, int | float] = {
+    "nan": np.nan,
+    "climb": 1,
+    "cruise": 0,
+    "descent": -1,
+    "level_flight": -2,
+}
+
 
 @dataclasses.dataclass
 class Aircraft:
@@ -50,45 +59,6 @@ class Aircraft:
 
     #: Maximum altitude, [:math:`m`]
     max_altitude: float | None = None
-
-
-@dataclasses.dataclass
-class FlightPhase:
-    """Container for boolean arrays describing phase of the flight.
-
-    Each array is expected to have the same shape. Arrays should be pairwise disjoint and cover
-    each waypoint (for each waypoint, exactly one of the four arrays should be True.)
-
-    .. todo::
-
-        Refactor to include this data as property in :class:`Flight` with enum for FlightPhase
-    """
-
-    cruise: np.ndarray
-    climb: np.ndarray
-    descent: np.ndarray
-    nan: np.ndarray
-
-    @classmethod
-    def all_cruise(cls, size: int) -> FlightPhase:
-        """Generate `FlightPhase` instance in which all waypoints are at cruise.
-
-        Parameters
-        ----------
-        size : int
-            Number of waypoints
-
-        Returns
-        -------
-        FlightPhase
-            All waypoints are given a cruise state..
-        """
-        return cls(
-            cruise=np.ones(size).astype(bool),
-            climb=np.zeros(size).astype(bool),
-            descent=np.zeros(size).astype(bool),
-            nan=np.zeros(size).astype(bool),
-        )
 
 
 class Flight(GeoVectorDataset):
