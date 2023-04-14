@@ -414,7 +414,7 @@ class Flight(GeoVectorDataset):
             Returns an array with dtype specified by``dtype``
         """
 
-        return _dt_waypoints(self.data["time"], dtype=dtype)
+        return segment_duration(self.data["time"], dtype=dtype)
 
     def segment_length(self) -> np.ndarray:
         """Compute spherical distance between flight waypoints.
@@ -1362,10 +1362,12 @@ def _verify_altitude(altitude: np.ndarray, nominal_rocd: float, freq: np.timedel
         )
 
 
-def _dt_waypoints(
+def segment_duration(
     time: npt.NDArray[np.datetime64], dtype: np.dtype = np.dtype(np.float32)
 ) -> npt.NDArray[np.float_]:
     """Calculate the time difference between waypoints.
+
+    ``np.nan`` appended so the length of the output is the same as number of waypoints.
 
     Parameters
     ----------
@@ -1379,7 +1381,7 @@ def _dt_waypoints(
     -------
     np.ndarray
         Time difference between waypoints, [:math:`s`].
-        This returns an array with dtype specified by``dtype``
+        This returns an array with dtype specified by``dtype``.
     """
     out = np.empty_like(time, dtype=dtype)
     out[-1] = np.nan

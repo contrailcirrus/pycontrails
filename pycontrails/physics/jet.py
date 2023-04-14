@@ -12,7 +12,7 @@ import logging
 import numpy as np
 import numpy.typing as npt
 
-from pycontrails.core.flight import FLIGHT_PHASE, _dt_waypoints
+from pycontrails.core import flight
 from pycontrails.physics import constants, units
 from pycontrails.utils.types import ArrayScalarLike
 
@@ -25,20 +25,17 @@ logger = logging.getLogger(__name__)
 
 
 def identify_phase_of_flight(
-    time: np.ndarray,
-    altitude_ft: np.ndarray,
+    rocd: npt.NDArray[np.float_],
     *,
     threshold_rocd: float = 250.0,
     min_cruise_alt_ft: float = 20000,
-) -> np.ndarray:
+) -> npt.NDArray[np.float_]:
     """Identify the phase of flight (climb, cruise, descent) for each waypoint.
 
     Parameters
     ----------
-    time: np.ndarray
-        Waypoint time
-    altitude_ft: np.ndarray
-        Altitude, [:math:`ft`]
+    rocd: pt.NDArray[np.float_]
+        Rate of climb and descent, [:math:`ft min^{-1}`]
     threshold_rocd: float
         ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
         Currently set to 250 ft/min.
@@ -49,9 +46,9 @@ def identify_phase_of_flight(
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Array of values enumerating the flight phase.
-        See :attr:`FLIGHT_PHASE` dictionary for enumeration.
+        See :attr:`flight.FLIGHT_PHASE` dictionary for enumeration.
 
     Notes
     -----
@@ -61,10 +58,11 @@ def identify_phase_of_flight(
 
     The flight phase "level-flight" is when an aircraft is holding at lower altitudes.
     The cruise phase of flight only occurs above a certain threshold altitude.
-    """
-    dt = _dt_waypoints(time)
-    rocd = rate_of_climb_descent(dt, altitude_ft)
 
+    See Also
+    --------
+    :func:`rate_of_climb_descent`
+    """
     nan = np.isnan(rocd)
     cruise = (rocd < threshold_rocd) & (rocd > -threshold_rocd) & (altitude_ft > min_cruise_alt_ft)
     climb = ~cruise & (rocd > 0)
@@ -72,24 +70,24 @@ def identify_phase_of_flight(
     level_flight = ~(nan | cruise | climb | descent)
 
     phase = np.full(rocd.shape, np.nan)
-    phase[cruise] = FLIGHT_PHASE["cruise"]
-    phase[climb] = FLIGHT_PHASE["climb"]
-    phase[descent] = FLIGHT_PHASE["descent"]
-    phase[level_flight] = FLIGHT_PHASE["level_flight"]
+    phase[cruise] = flight.FLIGHT_PHASE["cruise"]
+    phase[climb] = flight.FLIGHT_PHASE["climb"]
+    phase[descent] = flight.FLIGHT_PHASE["descent"]
+    phase[level_flight] = flight.FLIGHT_PHASE["level_flight"]
 
     return phase
 
 
 def rate_of_climb_descent(
-    dt: npt.NDArray[np.float_], altitude_ft: npt.NDArray[np.float_]
+    segment_duration: npt.NDArray[np.float_], altitude_ft: npt.NDArray[np.float_]
 ) -> npt.NDArray[np.float_]:
     """Calculate the rate of climb and descent (ROCD).
 
     Parameters
     ----------
-    dt: npt.NDArray[np.float_]
+    segment_duration: npt.NDArray[np.float_]
         Time difference between waypoints, [:math:`s`].
-        Expected to have numeric `dtype`, not `"timedelta64".
+        Expected to have numeric `dtype`, not `"timedelta64"`.
     altitude_ft: npt.NDArray[np.float_]
         Altitude of each waypoint, [:math:`ft`]
 
@@ -97,8 +95,12 @@ def rate_of_climb_descent(
     -------
     npt.NDArray[np.float_]
         Rate of climb and descent, [:math:`ft min^{-1}`]
+
+    See Also
+    --------
+    :func:`flight.segment_duration`
     """
-    dt_min = dt / 60.0
+    dt_min = segment_duration / 60.0
 
     out = np.empty_like(altitude_ft)
     out[:-1] = np.diff(altitude_ft) / dt_min[:-1]
@@ -209,14 +211,14 @@ def overall_propulsion_efficiency(
 # -------------------
 
 
-def fuel_burn(fuel_flow: np.ndarray, dt: np.ndarray) -> np.ndarray:
+def fuel_burn(fuel_flow: np.ndarray, segment_duration: np.ndarray) -> np.ndarray:
     """Calculate the fuel consumption at each waypoint.
 
     Parameters
     ----------
     fuel_flow: np.ndarray
         Fuel mass flow rate, [:math:`kg s^{-1}`]
-    dt: np.ndarray
+    segment_duration: np.ndarray
         Time difference between waypoints, [:math:`s`]
 
     Returns
@@ -224,7 +226,7 @@ def fuel_burn(fuel_flow: np.ndarray, dt: np.ndarray) -> np.ndarray:
     np.ndarray
         Fuel consumption at each waypoint, [:math:`kg`]
     """
-    return fuel_flow * dt
+    return fuel_flow * segment_duration
 
 
 def equivalent_fuel_flow_rate_at_sea_level(

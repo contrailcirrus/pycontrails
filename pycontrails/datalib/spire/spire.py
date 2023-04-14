@@ -7,9 +7,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from pycontrails.core import datalib
+from pycontrails.core import datalib, flight
 from pycontrails.core.fleet import Fleet
-from pycontrails.core.flight import Flight
 from pycontrails.physics import jet
 
 MESSAGE_FIELDS = {
@@ -604,7 +603,7 @@ def validate_flight_trajectory(
     min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
     # Flight duration
-    dt_sec = _dt_waypoints(df_flight_waypoints["timestamp"].values)
+    dt_sec = flight.segment_duration(df_flight_waypoints["timestamp"].values)
     flight_duration_s = np.nansum(dt_sec)
     is_short_haul = flight_duration_s < 3600
 
