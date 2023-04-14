@@ -182,6 +182,7 @@ autodoc_default_options = {
 bibtex_bibfiles = ["_static/pycontrails.bib"]
 bibtex_reference_style = "author_year"
 bibtex_default_style = "unsrt"
+bibtex_cite_id = "cite-{key}"
 
 nbsphinx_timeout = 600
 nbsphinx_execute = "never"
