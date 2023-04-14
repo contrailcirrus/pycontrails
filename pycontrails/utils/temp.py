@@ -18,6 +18,10 @@ def temp_filename() -> str:
     -------
     str
         Temp filename
+
+    See Also
+    --------
+    temp_file : Context manager for temp file creation and cleanup
     """
     return os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
 

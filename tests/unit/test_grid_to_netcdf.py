@@ -17,6 +17,7 @@ from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 from pycontrails.models.issr import ISSR
 from pycontrails.models.pcr import PCR
 from pycontrails.models.sac import SAC
+from pycontrails.utils import temp
 from tests import BADA3_PATH
 
 
@@ -47,7 +48,9 @@ def test_model_output_to_netcdf(met_cocip1: MetDataset, rad_cocip1: MetDataset, 
     source = MetDataset.from_coords(**coords)
     out = instance.eval(source)
 
-    with tempfile.NamedTemporaryFile() as tmp_obj:
+    with temp.temp_file() as temp_file:
+        path = pathlib.Path(temp_file)
+
         da = out.data
         if isinstance(instance, CocipGrid):
             da = da["ef_per_m"]
@@ -60,9 +63,12 @@ def test_model_output_to_netcdf(met_cocip1: MetDataset, rad_cocip1: MetDataset, 
 
         assert isinstance(da, xr.DataArray)
         assert isinstance(da, xr.DataArray)
-        assert pathlib.Path(tmp_obj.name).stat().st_size == 0
+        assert not path.is_file()
 
-        da.to_netcdf(tmp_obj.name)
-        assert pathlib.Path(tmp_obj.name).stat().st_size > 10000
+        da.to_netcdf(temp_file)
+        assert path.is_file()
+        assert path.stat().st_size > 10000
 
-        assert da.attrs == xr.open_dataarray(tmp_obj.name).attrs
+        assert da.attrs == xr.open_dataarray(temp_file).attrs
+
+    assert not path.is_file()
