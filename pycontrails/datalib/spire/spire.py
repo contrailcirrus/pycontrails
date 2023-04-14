@@ -9,7 +9,6 @@ import pandas as pd
 
 from pycontrails.core import datalib, flight
 from pycontrails.core.fleet import Fleet
-from pycontrails.physics import jet
 
 MESSAGE_FIELDS = {
     "icao_address": str,
@@ -298,9 +297,12 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
     # min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
     # Calculate flight phase
-    flight_phase = jet.identify_phase_of_flight(
-        messages["timestamp"].to_numpy(),
-        messages["altitude_baro"].to_numpy(),
+    altitude_ft = messages["altitude_baro"].to_numpy()
+    segment_duration = flight.segment_duration(messages["timestamp"].to_numpy())
+    rocd = flight.rate_of_climb_descent(segment_duration, altitude_ft)
+    flight_phase = flight.identify_phase(
+        rocd,
+        altitude_ft,
         threshold_rocd=250,
         # min_cruise_alt_ft=min_cruise_altitude_ft,
     )
