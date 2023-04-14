@@ -56,6 +56,18 @@ See ``[project.optional-dependencies]`` in `pyproject.toml <https://github.com/c
 for the latest optional dependencies.
 
 
+Pre-built wheels
+-----------------
+
+Wheels for common platforms are available on `PyPI <https://pypi.org/project/pycontrails/>`__. Currently, wheels are available for:
+
+- Linux (x86_64)
+- macOS (x86_64 and arm64)
+- Windows (x86_64)
+
+It's possible to build the wheels from source using `Cython <https://cython.org/>`__ and a C compiler with the usual ``pip install`` process. The source distribution on PyPI includes the C files, so it's not necessary to have Cython installed to build from source.
+
+
 Extensions
 ----------
 
