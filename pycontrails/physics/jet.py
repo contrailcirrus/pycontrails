@@ -12,7 +12,6 @@ import logging
 import numpy as np
 import numpy.typing as npt
 
-from pycontrails.core import flight
 from pycontrails.physics import constants, units
 from pycontrails.utils.types import ArrayScalarLike
 
@@ -22,91 +21,6 @@ logger = logging.getLogger(__name__)
 # -------------------
 # Aircraft performance
 # -------------------
-
-
-def identify_phase_of_flight(
-    rocd: npt.NDArray[np.float_],
-    *,
-    threshold_rocd: float = 250.0,
-    min_cruise_alt_ft: float = 20000,
-) -> npt.NDArray[np.float_]:
-    """Identify the phase of flight (climb, cruise, descent) for each waypoint.
-
-    Parameters
-    ----------
-    rocd: pt.NDArray[np.float_]
-        Rate of climb and descent, [:math:`ft min^{-1}`]
-    threshold_rocd: float
-        ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
-        Currently set to 250 ft/min.
-    min_cruise_alt_ft: float
-        Minimum threshold altitude for cruise, [:math:`ft`]
-        This is specific for each aircraft type,
-        and can be approximated as 50% of the altitude ceiling.
-
-    Returns
-    -------
-    npt.NDArray[np.float_]
-        Array of values enumerating the flight phase.
-        See :attr:`flight.FLIGHT_PHASE` dictionary for enumeration.
-
-    Notes
-    -----
-    Flight data derived from ADS-B and radar sources could contain noise leading
-    to small changes in altitude and ROCD. Hence, an arbitrary ``threshold_rocd``
-    is specified to identify the different phases of flight.
-
-    The flight phase "level-flight" is when an aircraft is holding at lower altitudes.
-    The cruise phase of flight only occurs above a certain threshold altitude.
-
-    See Also
-    --------
-    :func:`rate_of_climb_descent`
-    """
-    nan = np.isnan(rocd)
-    cruise = (rocd < threshold_rocd) & (rocd > -threshold_rocd) & (altitude_ft > min_cruise_alt_ft)
-    climb = ~cruise & (rocd > 0)
-    descent = ~cruise & (rocd < 0)
-    level_flight = ~(nan | cruise | climb | descent)
-
-    phase = np.full(rocd.shape, np.nan)
-    phase[cruise] = flight.FLIGHT_PHASE["cruise"]
-    phase[climb] = flight.FLIGHT_PHASE["climb"]
-    phase[descent] = flight.FLIGHT_PHASE["descent"]
-    phase[level_flight] = flight.FLIGHT_PHASE["level_flight"]
-
-    return phase
-
-
-def rate_of_climb_descent(
-    segment_duration: npt.NDArray[np.float_], altitude_ft: npt.NDArray[np.float_]
-) -> npt.NDArray[np.float_]:
-    """Calculate the rate of climb and descent (ROCD).
-
-    Parameters
-    ----------
-    segment_duration: npt.NDArray[np.float_]
-        Time difference between waypoints, [:math:`s`].
-        Expected to have numeric `dtype`, not `"timedelta64"`.
-    altitude_ft: npt.NDArray[np.float_]
-        Altitude of each waypoint, [:math:`ft`]
-
-    Returns
-    -------
-    npt.NDArray[np.float_]
-        Rate of climb and descent, [:math:`ft min^{-1}`]
-
-    See Also
-    --------
-    :func:`flight.segment_duration`
-    """
-    dt_min = segment_duration / 60.0
-
-    out = np.empty_like(altitude_ft)
-    out[:-1] = np.diff(altitude_ft) / dt_min[:-1]
-    out[-1] = np.nan
-
-    return out
 
 
 def clip_mach_number(
