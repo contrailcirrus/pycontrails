@@ -44,7 +44,7 @@ jobs:
         CIBW_SKIP: '*-win32 *-manylinux_i686 *-musllinux*'
         CIBW_BUILD_VERBOSITY: 3
         CIBW_ARCHS_MACOS: x86_64 arm64
-        CIBW_TEST_SKIP: '*-macosx_arm64 *-win_amd64'
+        CIBW_TEST_SKIP: '*-macosx_arm64'
         # Completely isolate tests to prevent cibuildwheel from importing the
         # source instead of the wheel. This happens when tests/__init__.py is read.
         CIBW_TEST_EXTRAS: "complete,dev"
@@ -72,8 +72,8 @@ jobs:
       with:
         path: dist/*.tar.gz
 
-  upload_pypi:
-    needs: [build_wheels, build_sdist, check-main-test-status]
+  upload_pypi_test:
+    needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/download-artifact@v3
@@ -89,6 +89,15 @@ jobs:
         repository-url: https://test.pypi.org/legacy/
         verbose: true
         verify-metadata: true
+
+  upload_pypi:
+    needs: [build_wheels, build_sdist, check-main-test-status]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: artifact
+        path: dist
 
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
