@@ -297,13 +297,14 @@ class CocipTimeHandlingMixin:
         """
 
         # Only support met with hourly timestamps
-        remainder = self.met.variables["time"] - self.met.variables["time"].astype("datetime64[h]")
+        time = self.met.variables["time"].values
+        remainder = time - time.astype("datetime64[h]")
         if np.any(remainder.astype(float)):
             raise NotImplementedError("Only support met data with hourly time coordinates.")
 
         request = start, start + self.params["met_slice_dt"]
         buffer = np.timedelta64(0, "h"), np.timedelta64(0, "h")
-        met_sl = coordinates.slice_domain(self.met.variables["time"].values, request, buffer)
+        met_sl = coordinates.slice_domain(time, request, buffer)
         rad_sl = coordinates.slice_domain(self.rad.variables["time"].values, request, buffer)
 
         logger.debug("Update met slices. Start: %s, Stop: %s", met_sl.start, met_sl.stop)
