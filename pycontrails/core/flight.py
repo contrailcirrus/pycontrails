@@ -648,6 +648,56 @@ class Flight(GeoVectorDataset):
         """
         return units.tas_to_mach_number(true_airspeed, air_temperature)
 
+    def segment_rocd(self) -> npt.NDArray[np.float_]:
+        """Calculate the rate of climb and descent (ROCD).
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            Rate of climb and descent over segment, [:math:`ft min^{-1}`]
+
+        See Also
+        --------
+        :func:`segment_rocd`
+        """
+        return segment_rocd(self.segment_duration(), self.altitude_ft)
+
+    def segment_phase(
+        self,
+        threshold_rocd: float = 250.0,
+        min_cruise_altitude_ft: float = 20000,
+    ) -> npt.NDArray[np.float_]:
+        """Identify the phase of flight (climb, cruise, descent) for each segment.
+
+        Parameters
+        ----------
+        threshold_rocd : float, optional
+            ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
+            Currently set to 250 ft/min.
+        min_cruise_altitude_ft : float, optional
+            Minimum altitude for cruise, [:math:`ft`]
+            This is specific for each aircraft type,
+            and can be approximated as 50% of the altitude ceiling.
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            Array of values enumerating the flight phase.
+            See :attr:`flight.FLIGHT_PHASE` dictionary for enumeration.
+
+        See Also
+        --------
+        :attr:`FLIGHT_PHASE`
+        :func:`segment_phase`
+        :func:`segment_rocd`
+        """
+        return segment_phase(
+            self.segment_rocd(),
+            self.altitude_ft,
+            threshold_rocd=threshold_rocd,
+            min_cruise_altitude_ft=min_cruise_altitude_ft,
+        )
+
     # ------------
     # Filter/Resample
     # ------------
@@ -1389,25 +1439,25 @@ def segment_duration(
     return out
 
 
-def identify_phase(
+def segment_phase(
     rocd: npt.NDArray[np.float_],
     altitude_ft: np.ndarray,
     *,
     threshold_rocd: float = 250.0,
-    min_cruise_alt_ft: float = 20000,
+    min_cruise_altitude_ft: float = 20000,
 ) -> npt.NDArray[np.float_]:
-    """Identify the phase of flight (climb, cruise, descent) for each waypoint.
+    """Identify the phase of flight (climb, cruise, descent) for each segment.
 
     Parameters
     ----------
     rocd: pt.NDArray[np.float_]
-        Rate of climb and descent, [:math:`ft min^{-1}`]
+        Rate of climb and descent across segment, [:math:`ft min^{-1}`]
     altitude_ft: np.ndarray
         Altitude, [:math:`ft`]
     threshold_rocd: float
         ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
         Currently set to 250 ft/min.
-    min_cruise_alt_ft: float
+    min_cruise_altitude_ft: float
         Minimum threshold altitude for cruise, [:math:`ft`]
         This is specific for each aircraft type,
         and can be approximated as 50% of the altitude ceiling.
@@ -1429,10 +1479,13 @@ def identify_phase(
 
     See Also
     --------
-    :func:`rate_of_climb_descent`
+    :attr:`FLIGHT_PHASE`
+    :func:`segment_rocd`
     """
     nan = np.isnan(rocd)
-    cruise = (rocd < threshold_rocd) & (rocd > -threshold_rocd) & (altitude_ft > min_cruise_alt_ft)
+    cruise = (
+        (rocd < threshold_rocd) & (rocd > -threshold_rocd) & (altitude_ft > min_cruise_altitude_ft)
+    )
     climb = ~cruise & (rocd > 0)
     descent = ~cruise & (rocd < 0)
     level_flight = ~(nan | cruise | climb | descent)
@@ -1446,7 +1499,7 @@ def identify_phase(
     return phase
 
 
-def rate_of_climb_descent(
+def segment_rocd(
     segment_duration: npt.NDArray[np.float_], altitude_ft: npt.NDArray[np.float_]
 ) -> npt.NDArray[np.float_]:
     """Calculate the rate of climb and descent (ROCD).
@@ -1462,11 +1515,11 @@ def rate_of_climb_descent(
     Returns
     -------
     npt.NDArray[np.float_]
-        Rate of climb and descent, [:math:`ft min^{-1}`]
+        Rate of climb and descent over segment, [:math:`ft min^{-1}`]
 
     See Also
     --------
-    :func:`flight.segment_duration`
+    :func:`segment_duration`
     """
     dt_min = segment_duration / 60.0
 
