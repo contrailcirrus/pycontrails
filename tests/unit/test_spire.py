@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from pycontrails.datalib.spire import data_cleaning
-from pycontrails.physics import jet
 
 from .conftest import get_static_path
 
@@ -86,8 +85,8 @@ def test_separate_unique_flights_with_multiple_cruise_phase():
     dt_sec = np.diff(df_test_3["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(
         1, "s"
     )
-    flight_phase: data_cleaning.FlightPhaseDetailed = jet.identify_phase_of_flight_detailed(
-        df_test_3["altitude_baro"].values, dt_sec, threshold_rocd=250, min_cruise_alt_ft=20000
+    flight_phase: data_cleaning.FlightPhaseDetailed = flight.segment_phase(
+        df_test_3["altitude_baro"].values, dt_sec, threshold_rocd=250, min_cruise_altitude_ft=20000
     )
 
     # Identify multiple cruise phase
@@ -135,8 +134,8 @@ def test_identify_flight_diversion():
     dt_sec = np.diff(df_test_4["timestamp"].values, append=np.datetime64("NaT")) / np.timedelta64(
         1, "s"
     )
-    flight_phase: data_cleaning.FlightPhaseDetailed = jet.identify_phase_of_flight_detailed(
-        df_test_4["altitude_baro"].values, dt_sec, threshold_rocd=250, min_cruise_alt_ft=20000
+    flight_phase: data_cleaning.FlightPhaseDetailed = flight.segment_phase(
+        df_test_4["altitude_baro"].values, dt_sec, threshold_rocd=250, min_cruise_altitude_ft=20000
     )
 
     # Identify multiple cruise phase
