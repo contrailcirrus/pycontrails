@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import pathlib
 import warnings
 from contextlib import ExitStack
@@ -40,13 +41,16 @@ class ERA5(ECMWFAPI):
     `Copernicus Data Portal <https://cds.climate.copernicus.eu/cdsapp#!/home>`_
     and local credentials.
 
-    Local credentials can be specified in a ``~/.cdsapirc`` file
+    API credentials can be stored in a ``~/.cdsapirc`` file
     or as ``CDSAPI_URL`` and ``CDSAPI_KEY`` environment variables.
-
 
         export CDSAPI_URL=...
         export CDSAPI_KEY=...
 
+    Credentials can also be provided directly ``url`` and ``key`` keyword args.
+
+    See `cdsapi <https://github.com/ecmwf/cdsapi>`_ documentation
+    for more information.
 
     Parameters
     ----------
@@ -80,6 +84,10 @@ class ERA5(ECMWFAPI):
         Cache data store for staging ECMWF ERA5 files.
         Defaults to :class:`cache.DiskCacheStore`.
         If None, cache is turned off.
+    url : str
+        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ url
+    key : str
+        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ key
 
     Notes
     -----
@@ -92,7 +100,6 @@ class ERA5(ECMWFAPI):
 
     Local ``paths`` are loaded using :func:`xarray.open_mfdataset`.
     Pass ``xr_kwargs`` inputs to :meth:`open_metdataset` to customize file loading.
-
 
     Examples
     --------
@@ -120,13 +127,21 @@ class ERA5(ECMWFAPI):
     __slots__ = (
         "product_type",
         "cds",
+        "url",
+        "key",
     )
 
     #: Product type, one of "reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread"
     product_type: str
 
-    #: Handle to CDSAPI client
+    #: Handle to ``cdsapi.Client``
     cds: cdsapi.Client
+
+    #: User provided ``cdsapi.Client`` url
+    url: str | None
+
+    #: User provided ``cdsapi.Client`` url
+    key: str | None
 
     __marker = object()
 
@@ -140,6 +155,8 @@ class ERA5(ECMWFAPI):
         product_type: str = "reanalysis",
         grid: float = 0.25,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
+        url: str | None = None,
+        key: str | None = None,
     ):
         # inputs
         self.product_type = product_type
@@ -147,6 +164,8 @@ class ERA5(ECMWFAPI):
             cachestore = cache.DiskCacheStore()
         self.cachestore = cachestore
         self.paths = paths
+        self.url = url or os.environ.get("CDSAPI_URL", None)
+        self.key = key or os.environ.get("CDSAPI_KEY", None)
 
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
@@ -504,7 +523,7 @@ class ERA5(ECMWFAPI):
                     ) from e
 
                 try:
-                    self.cds = cdsapi.Client()
+                    self.cds = cdsapi.Client(url=self.url, key=self.key)
                 # cdsapi throws base-level Exception
                 except Exception as err:
                     raise CDSCredentialsNotFound from err

@@ -102,7 +102,9 @@ def get_forecast_filename(
 class HRES(ECMWFAPI):
     """Class to support HRES data access, download, and organization.
 
-    Requires account with ECMWF and API key set in local ``~/.ecmwfapirc`` file:
+    Requires account with ECMWF and API key.
+
+    API credentials set in local ``~/.ecmwfapirc`` file:
 
     .. code:: json
 
@@ -112,7 +114,9 @@ class HRES(ECMWFAPI):
             "key": "<key>"
         }
 
-    See `ECMWF Web API <https://www.ecmwf.int/en/computing/software/ecmwf-web-api>`_ documentation
+    Credentials can also be provided directly ``url`` ``key``, and ``email`` keyword args.
+
+    See `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ documentation
     for more information.
 
     Parameters
@@ -154,7 +158,12 @@ class HRES(ECMWFAPI):
         Cache data store for staging data files.
         Defaults to :class:`cache.DiskCacheStore`.
         If None, cache is turned off.
-
+    url : str
+        Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ url
+    key : str
+        Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ key
+    email : str
+        Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ email
 
     Notes
     -----
@@ -211,7 +220,7 @@ class HRES(ECMWFAPI):
     ... )
     """
 
-    __slots__ = ("server", "stream", "field_type", "forecast_time")
+    __slots__ = ("server", "stream", "field_type", "forecast_time", "url", "key", "email")
 
     #: stream type, "oper" = atmospheric model/HRES, "enfo" = ensemble forecast.
     stream: str
@@ -225,6 +234,15 @@ class HRES(ECMWFAPI):
 
     #: Forecast run time, either specified or assigned by the closest previous forecast run
     forecast_time: datetime
+
+    #: User provided ``ECMWFService`` url
+    url: str | None
+
+    #: User provided ``ECMWFService`` key
+    key: str | None
+
+    #: User provided ``ECMWFService`` email
+    email: str | None
 
     __marker = object()
 
@@ -240,6 +258,9 @@ class HRES(ECMWFAPI):
         field_type: str = "fc",
         forecast_time: DatetimeLike | None = None,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
+        url: str | None = None,
+        key: str | None = None,
+        email: str | None = None,
     ) -> None:
         try:
             from ecmwfapi import ECMWFService
@@ -252,7 +273,10 @@ class HRES(ECMWFAPI):
         # constants
         # ERA5 now delays creating the server attribute until it is needed to download
         # from CDS. We could do the same here.
-        self.server = ECMWFService("mars")
+        self.url = url
+        self.key = key
+        self.email = email
+        self.server = ECMWFService("mars", url=self.url, key=self.key, email=self.email)
         self.paths = paths
         if cachestore is self.__marker:
             cachestore = cache.DiskCacheStore()
