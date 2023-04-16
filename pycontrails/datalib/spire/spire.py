@@ -360,7 +360,7 @@ def _clean_flight_altitude(
     return mdf
 
 
-def _separate_by_on_ground(messages: pd.DataFrame) -> pd.DataFrame:
+def _separate_by_on_ground(messages: pd.DataFrame) -> pd.Series:
     """Separate individual flights by "on_ground" column.
 
     Parameters
@@ -403,7 +403,7 @@ def _separate_by_on_ground(messages: pd.DataFrame) -> pd.DataFrame:
     return flight_id
 
 
-def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
+def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
     """
     Separate flights by multiple cruise phases.
 
