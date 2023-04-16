@@ -1,6 +1,13 @@
 
 # Changelog
 
+## v0.40.1
+
+#### Fixes
+
+- Use [oldest-supported-numpy](https://pypi.org/project/oldest-supported-numpy/) for building pycontrails wheels. This allows pycontrails to be compatible with environments that use old versions of numpy. The [pycontrails v0.40.0 wheels](https://pypi.org/project/pycontrails/0.40.0/#files) are not compatible with numpy 1.22.
+- Fix a unit test (`test_dtypes.py::test_issr_sac_grid_output`) that occasionally hangs.
+
 ## v0.40.0
 
 Support scipy 1.10, improve interpolation performance, and fix many windows issues.
