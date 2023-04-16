@@ -12,6 +12,7 @@ import logging
 import numpy as np
 import numpy.typing as npt
 
+from pycontrails.core import flight
 from pycontrails.physics import constants, units
 from pycontrails.utils.types import ArrayScalarLike
 
@@ -177,7 +178,7 @@ def equivalent_fuel_flow_rate_at_sea_level(
 
 
 def reserve_fuel_requirements(
-    rocd: np.ndarray, fuel_flow: np.ndarray, fuel_burn: np.ndarray
+    rocd: np.ndarray, altitude_ft: np.ndarray, fuel_flow: np.ndarray, fuel_burn: np.ndarray
 ) -> float:
     r"""
     Estimate reserve fuel requirements.
@@ -186,6 +187,8 @@ def reserve_fuel_requirements(
     ----------
     rocd: np.ndarray
         Rate of climb and descent, [:math:`ft \ min^{-1}`]
+    altitude_ft: np.ndarray
+        Altitude, [:math:`ft`]
     fuel_flow: np.ndarray
         Fuel mass flow rate, [:math:`kg \ s^{-1}`].
     fuel_burn: np.ndarray
@@ -212,13 +215,15 @@ def reserve_fuel_requirements(
 
     See Also
     --------
-    :func:`identify_phase_of_flight`
+    :func:`flight.segment_phase`
     :func:`fuel_burn`
     """
-    phase_of_flight = identify_phase_of_flight(rocd)
+    segment_phase = flight.segment_phase(rocd, altitude_ft)
 
     # In case flight does not have cruise phase
-    is_climb_cruise = phase_of_flight.climb | phase_of_flight.cruise
+    is_climb_cruise = (segment_phase == flight.FLIGHT_PHASE["climb"]) | (
+        segment_phase == flight.FLIGHT_PHASE["cruise"]
+    )
 
     # If there are no climb and cruise phase, take the mean
     if not np.all(is_climb_cruise):
