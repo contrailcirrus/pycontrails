@@ -91,6 +91,7 @@ jobs:
         verify-metadata: true
 
   upload_pypi:
+    if: ${{ github.event_name == 'release' }}
     needs: [build_wheels, build_sdist, check-main-test-status]
     runs-on: ubuntu-latest
     steps:
@@ -101,7 +102,6 @@ jobs:
 
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      if: ${{ github.event_name == 'release' }}
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
