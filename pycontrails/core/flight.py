@@ -1435,7 +1435,8 @@ def filter_altitude(
     """
     Filter noisy altitude on a single flight.
 
-    .. todo:: To be replaced with filter from scipy
+    .. todo::
+        To be replaced with filter from scipy
 
     Parameters
     ----------
