@@ -14,22 +14,8 @@ from pycontrails.physics import geo, units
 
 logger = logging.getLogger(__name__)
 
-#: Max airport elevation, [:math:`ft`]
-#: See `Daocheng_Yading_Airport <https://en.wikipedia.org/wiki/Daocheng_Yading_Airport>`_
-MAX_AIRPORT_ELEVATION = 15_000
-
-#: Min estimated cruise altitude, [:math:`ft`]
-MIN_CRUISE_ALTITUDE = 20_000
-
-#: Short haul duration cutoff, [:math:`s`]
-SHORT_HAUL_DURATION = 3600
-
 #: Minimum messages to identify a single flight trajectory
 TRAJECTORY_MINIMUM_MESSAGES = 10
-
-#: Set maximum speed compatible with "on_ground" indicator, [:math:`mph`]
-#: Thresholds assessed based on scatter plot (150 knots = 278 km/h)
-MAX_ON_GROUND_SPEED = 150
 
 #: Data types of parsed message fields
 #: "timestamp" is excluded as its parsed by :func:`pandas.to_datetime`
@@ -135,11 +121,10 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
        and aircraft types "N/A", "GNDT", "GRND", "ZZZZ"
     #. If pycontrails.ext.bada installed:
         a. Remove aircraft types not covered by BADA 3 (primarily helicopters)
-        b. Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
     #. Remove terrestrial messages without callsign.
        Most of these messages are below 10,000 feet and from general aviation.
     #. Remove messages when "on_ground" indicator is True, but
-       speed > :attr:`MAX_ON_GROUND_SPEED` knots or altitude > :attr:`MAX_AIRPORT_ELEVATION` ft
+       speed > :attr:`flight.MAX_ON_GROUND_SPEED` knots or altitude > :attr:`flight.MAX_AIRPORT_ELEVATION` ft
     #. Drop duplicates by "icao_address" and "timestamp"
     """
     _n_messages = len(messages)
@@ -173,26 +158,6 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
     )
     mdf = mdf.loc[~filt]
 
-    # Use BADA 3 to support filtering
-    try:
-        from pycontrails.ext.bada import BADA3
-
-        bada3 = BADA3()
-
-        # Try remove aircraft types not covered by BADA 3 (mainly helicopters)
-        atyps = list(bada3.synonym_dict.keys())
-        mdf = mdf.loc[mdf["aircraft_type_icao"].isin(atyps)]
-
-        # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-        altitude_ceiling_ft = bada3.ptf_param_dict[
-            mdf["aircraft_type_icao"].iloc[0]
-        ].max_altitude_ft
-        is_above_ceiling = mdf["altitude_baro"] > altitude_ceiling_ft
-        mdf = mdf.loc[~is_above_ceiling]
-
-    except (ImportError, FileNotFoundError):
-        pass
-
     # Remove terrestrial waypoints without callsign
     # Most of these waypoints are below 10,000 feet and from general aviation
     filt = (mdf["callsign"].isna()) & (mdf["collection_type"] == "terrestrial")
@@ -209,7 +174,8 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
 
     # Remove messages with erroneous "on_ground" indicator
     filt = mdf["on_ground"] & (
-        (mdf["speed"] > MAX_ON_GROUND_SPEED) | (mdf["altitude_baro"] > MAX_AIRPORT_ELEVATION)
+        (mdf["speed"] > flight.MAX_ON_GROUND_SPEED)
+        | (mdf["altitude_baro"] > flight.MAX_AIRPORT_ELEVATION)
     )
     mdf = mdf[~filt]
 
@@ -249,7 +215,7 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
     ----------
     messages : pd.DataFrame
         Cleaned ADS-B messages,
-        as output from :func:`cleanup`
+        as output from :func:`clean`
 
     Returns
     -------
@@ -270,7 +236,7 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
 
     See Also
     --------
-    :func:`cleanup`
+    :func:`clean`
     :class:`Spire`
     :func:`_separate_on_ground`
     :func:`_separate_by_cruise_phase`
@@ -299,6 +265,10 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
             logger.debug(f"Message {idx} group too small to create flight ids")
             continue
 
+        # TODO: this altitude cleanup does not persist back into messages
+        # this should get moved into flight module
+        gp = clean_flight_altitude(gp)
+
         # separate flights by "on_ground" column
         gp["flight_id"] = _separate_by_on_ground(gp)
 
@@ -318,6 +288,71 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
     # flights = separate_flights_with_multiple_cruise_phase(flights)
 
     # flights = clean_flight_altitude(flights)
+
+
+def clean_flight_altitude(
+    messages: pd.DataFrame,
+    *,
+    noise_threshold_ft: float = 25,
+    threshold_altitude_ft: float | None = None,
+) -> pd.DataFrame:
+    """
+    Clean erroneous and noisy altitude on a single flight.
+
+    Parameters
+    ----------
+    messages: pd.DataFrame
+        ADS-B messages from a single flight trajectory.
+    noise_threshold_ft: float
+        Altitude difference threshold to identify noise, [:math:`ft`]
+        Barometric altitude from ADS-B telemetry is reported at increments of 25 ft.
+    threshold_altitude_ft: float
+        Altitude will be checked and corrected above this threshold, [:math:`ft`]
+        Currently set to :attr:`flight.MAX_AIRPORT_ELEVATION` ft.
+
+    Returns
+    -------
+    pd.DataFrame
+        ADS-B messages with filtered altitude.
+
+    Notes
+    -----
+    #. If pycontrails.ext.bada installed,
+       remove erroneous altitude, i.e., altitude above operating limit of aircraft type
+    #. Remove noise in cruise altitude where flights oscillate
+       between 25 ft due to noise in ADS-B telemetry
+    """
+    threshold_altitude_ft = threshold_altitude_ft or flight.MAX_AIRPORT_ELEVATION
+
+    mdf = messages.copy()
+
+    # Use BADA 3 to support filtering
+    try:
+        from pycontrails.ext.bada import BADA3
+
+        bada3 = BADA3()
+
+        # Try remove aircraft types not covered by BADA 3 (mainly helicopters)
+        atyps = list(bada3.synonym_dict.keys())
+        mdf = mdf.loc[mdf["aircraft_type_icao"].isin(atyps)]
+
+        # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
+        altitude_ceiling_ft = bada3.ptf_param_dict[
+            mdf["aircraft_type_icao"].iloc[0]
+        ].max_altitude_ft
+        is_above_ceiling = mdf["altitude_baro"] > altitude_ceiling_ft
+        mdf = mdf.loc[~is_above_ceiling]
+
+    except (ImportError, FileNotFoundError):
+        pass
+
+    # Remove noise in cruise altitude by rounding up/down to the nearest flight level.
+    altitude_ft = mdf["altitude_baro"].to_numpy()
+    d_alt_ft = np.diff(altitude_ft, prepend=np.nan)
+    is_noise = (np.abs(d_alt_ft) <= noise_threshold_ft) & (altitude_ft > threshold_altitude_ft)
+    mdf.loc[is_noise, "altitude_baro"] = np.round(altitude_ft[is_noise] / 1000) * 1000
+
+    return mdf
 
 
 def _separate_by_on_ground(messages: pd.DataFrame) -> pd.DataFrame:
@@ -347,7 +382,9 @@ def _separate_by_on_ground(messages: pd.DataFrame) -> pd.DataFrame:
 
     # make sure aircraft is actually on ground
     # TODO: use DEM for ground position?
-    is_on_ground = messages["on_ground"] & (messages["altitude_baro"] < MAX_AIRPORT_ELEVATION)
+    is_on_ground = messages["on_ground"] & (
+        messages["altitude_baro"] < flight.MAX_AIRPORT_ELEVATION
+    )
 
     # find end of flight indexes using "on_ground"
     end_of_flight = (~is_on_ground).astype(int).diff(periods=-1) == -1
@@ -386,7 +423,7 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
     #. Altitudes fall below the minimum cruise altitude.
        If pycontrails.ext.bada is installed, this value is set to half
        the BADA3 altitude ceiling of the aircraft.
-       If not, this value is set to :attr:`MIN_CRUISE_ALTITUDE`.
+       If not, this value is set to :attr:`flight.MIN_CRUISE_ALTITUDE`.
     #. There is a time difference > 15 minutes between messages.
 
     If multiple flights are identified,
@@ -397,7 +434,7 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
     A diversion is identified when all five conditions below are satisfied:
 
     #. Altitude in any messages between
-       the start and end of cruise is < :attr:`MAX_AIRPORT_ELEVATION` ft
+       the start and end of cruise is < :attr:`flight.MAX_AIRPORT_ELEVATION` ft
     #. Time difference between messages that should be
        at cruise must be < 15 minutes (continuous telemetry)
     #. Segment length between messages that should be
@@ -430,7 +467,7 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
         min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
     except (ImportError, FileNotFoundError):
-        min_cruise_altitude_ft = MIN_CRUISE_ALTITUDE
+        min_cruise_altitude_ft = flight.MIN_CRUISE_ALTITUDE
 
     # Calculate flight phase
     altitude_ft = messages["altitude_baro"].to_numpy()
@@ -484,7 +521,7 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
         ground_indicator = messages["on_ground"].to_numpy()
 
         # Check for flight diversion
-        condition_1 = np.any(altitude_ft[within_cruise] < MAX_AIRPORT_ELEVATION)
+        condition_1 = np.any(altitude_ft[within_cruise] < flight.MAX_AIRPORT_ELEVATION)
         condition_2 = np.all(segment_duration[within_cruise] < (15 * 60))
         condition_3 = np.all(segment_length[within_cruise] > 500)
         condition_4 = np.nansum(segment_duration[i_lowest_altitude:]) < (2 * 60 * 60)
@@ -590,9 +627,9 @@ def is_valid_trajectory(
     #. Trajectory must contain a `cruise` phase as defined by :func:`flight.segment_phase`
     #. Trajectory must not go below the minimum cruising altitude throughout the cruise phase.
     #. A trajectory must be "complete", defined when one of these conditions are satisfied:
-        - Final message is on the ground, altitude < :attr:`MAX_AIRPORT_ELEVATION` feet
-          and speed < :attr:`MAX_ON_GROUND_SPEED` knots
-        - Final message is < :attr:`MAX_AIRPORT_ELEVATION` feet, in descent,
+        - Final message is on the ground, altitude < :attr:`flight.MAX_AIRPORT_ELEVATION` feet
+          and speed < :attr:`flight.MAX_ON_GROUND_SPEED` knots
+        - Final message is < :attr:`flight.MAX_AIRPORT_ELEVATION` feet, in descent,
           and > 2 h have passed since `final_time_available`.
         - At least 12 h have passed since `final_time_available`
           (remaining trajectory might not be recorded).
@@ -613,11 +650,11 @@ def is_valid_trajectory(
         min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
     except (ImportError, FileNotFoundError):
-        min_cruise_altitude_ft = MIN_CRUISE_ALTITUDE
+        min_cruise_altitude_ft = flight.MIN_CRUISE_ALTITUDE
 
     # Flight duration
     segment_duration = flight.segment_duration(messages["timestamp"].values)
-    is_short_haul = np.nansum(segment_duration) < SHORT_HAUL_DURATION
+    is_short_haul = np.nansum(segment_duration) < flight.SHORT_HAUL_DURATION
 
     # Flight phase
     altitude_ft = messages["altitude_baro"].to_numpy()
@@ -655,8 +692,8 @@ def is_valid_trajectory(
     final_message = messages.iloc[-1]
     complete_1 = (
         final_message["on_ground"]
-        & (final_message["altitude_baro"] < MAX_AIRPORT_ELEVATION)
-        & (final_message["speed"] < MAX_ON_GROUND_SPEED)
+        & (final_message["altitude_baro"] < flight.MAX_AIRPORT_ELEVATION)
+        & (final_message["speed"] < flight.MAX_ON_GROUND_SPEED)
     )
 
     # Second option is the flight is in descent and 2 hours of data are available after
@@ -668,7 +705,7 @@ def is_valid_trajectory(
             1, "h"
         )
         complete_2 = (
-            (final_message["altitude_baro"] < MAX_AIRPORT_ELEVATION)
+            (final_message["altitude_baro"] < flight.MAX_AIRPORT_ELEVATION)
             & is_descent
             & (elapsed_time_hrs > 2)
         )
@@ -683,115 +720,3 @@ def is_valid_trajectory(
     is_complete = complete_1 | complete_2 | complete_3
 
     return has_enough_messages and has_cruise_phase and has_no_anomalous_phase and is_complete
-
-
-# def categorise_flight_trajectories(
-#     flights: list[pd.DataFrame], t_cut_off: pd.Timestamp
-# ) -> FlightTrajectories:
-#     """
-#     Categorise unique flight trajectories (validated, deferred, rejected).
-
-#     Parameters
-#     ----------
-#     flights: list[pd.DataFrame]
-#         List of DataFrames containing waypoints from unique flights.
-#     t_cut_off: pd.Timestamp
-#         Time of the final recorded waypoint that is provided by the full set of waypoints in the raw ADS-B file
-
-#     Returns
-#     -------
-#     FlightTrajectories
-#         Validated, deferred, and rejected flight trajectories.
-
-#     Notes
-#     -----
-#     Flights are categorised as
-#         (1) Validated: Identified flight trajectory passes all the validation test,
-#         (2) Deferred: The remaining trajectory could be in the next file,
-#         (3) Rejected: Identified flight trajectory contains anomalies and fails the validation test
-#     """
-#     validated = list()
-#     deferred = list()
-#     rejected = list()
-
-#     for messages in flights:
-#         status = is_valid_trajectory(messages, final_time_available=t_cut_off)
-
-#         if status["reject"]:
-#             rejected.append(messages.copy())
-#         elif (
-#             status["n_waypoints"]
-#             & status["cruise_phase"]
-#             & status["no_altitude_anomaly"]
-#             & status["complete"]
-#         ):
-#             validated.append(messages.copy())
-#         else:
-#             deferred.append(messages.copy())
-
-#     return FlightTrajectories(validated=validated, deferred=deferred, rejected=rejected)
-
-
-# # TODO: Check this function
-
-
-## TODO: Compare with resample_and_fill and create a method in `flight` module
-#
-# def downsample_waypoints(
-#     messages: pd.DataFrame, *, time_resolution: int = 10, time_var: str = "timestamp"
-# ) -> pd.DataFrame:
-#     """
-#     Downsample flight waypoints to a specified time resolution
-
-#     Parameters
-#     ----------
-#     messages: pd.DataFrame
-#         Raw flight waypoints and metadata
-#     time_resolution: int
-#         Downsampled time resolution, [:math:`s`]
-#     time_var: str
-#         Time variable in the "messages" DataFrame
-
-#     Returns
-#     -------
-#     pd.DataFrame
-#         Downsampled flight waypoints
-#     """
-#     messages.index = messages[time_var]
-#     df_resampled = messages.resample(f"{time_resolution}s").first()
-#     df_resampled = df_resampled[df_resampled["longitude"].notna()].copy()
-#     df_resampled.reset_index(inplace=True, drop=True)
-#     return df_resampled
-
-## TODO: Create a method in `flight` module
-#
-# def remove_noise_in_cruise_altitude(
-#     altitude_ft: np.ndarray, *, noise_threshold_ft: float = 25, threshold_altitude_ft: float = 10000
-# ) -> np.ndarray:
-#     """
-#     Remove noise in cruise altitude by rounding up/down to the nearest flight level.
-
-#     Parameters
-#     ----------
-#     altitude_ft: np.ndarray
-#         Barometric altitude, [:math:`ft`]
-#     noise_threshold_ft: float
-#         Altitude difference threshold to identify noise, [:math:`ft`]
-#         Barometric altitude from ADS-B telemetry is reported at increments of 25 feet.
-#     threshold_altitude_ft: float
-#         Altitude will be checked and corrected above this threshold, [:math:`ft`]
-#         Currently set to 10,000 feet.
-
-#     Returns
-#     -------
-#     np.ndarray
-#         Barometric altitude with noise removed, [:math:`ft`]
-#     """
-#     altitude_ft_corrected = np.copy(altitude_ft)
-#     d_alt_ft = np.diff(altitude_ft, prepend=np.nan)
-#     is_noise = (np.abs(d_alt_ft) <= noise_threshold_ft) & (altitude_ft > threshold_altitude_ft)
-
-#     # Round to the nearest flight level
-#     altitude_rounded = np.round(altitude_ft / 1000) * 1000
-#     altitude_ft_corrected[is_noise] = altitude_rounded[is_noise]
-#     return altitude_ft_corrected

@@ -5,16 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from pycontrails.datalib.spire import data_cleaning
-
 from .conftest import get_static_path
-
-
-def test_noise_removal_cruise_altitude():
-    """Check that noise in cruise altitude is removed."""
-    altitude_ft = np.array([40000, 39975, 40000, 40000, 39975, 40000, 40000, 40025, 40025, 40000])
-    altitude_ft_cleaned = data_cleaning.remove_noise_in_cruise_altitude(np.copy(altitude_ft))
-    np.testing.assert_array_equal(altitude_ft_cleaned, 40000)
 
 
 def test_separate_unique_flights_using_metadata():

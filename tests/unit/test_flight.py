@@ -13,6 +13,7 @@ import pytest
 from pyproj import Geod
 
 from pycontrails import Aircraft, Flight, GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
+from pycontrails.core import flight
 from pycontrails.models.issr import ISSR
 from pycontrails.physics import constants, units
 
@@ -646,7 +647,7 @@ def test_downselect_met(fl: Flight, met_issr: MetDataset) -> None:
 
 @pytest.mark.parametrize("freq", ["10S", "1T", "10T"])
 @pytest.mark.parametrize("shift", [-180, 0])
-def test_interpolation_edge_cases(shift: int, freq: str):
+def test_interpolation_edge_cases(shift: int, freq: str) -> None:
     """Test interpolation adjustments for antimeridian crossing.
 
     This test probes both the core logic of `resample_and_fill` as well as
@@ -680,7 +681,7 @@ def test_interpolation_edge_cases(shift: int, freq: str):
 
 @pytest.mark.parametrize("direction", ["east", "west"])
 @pytest.mark.parametrize("cross_anti", [True, False])
-def test_antimeridian_long_cross(direction: str, cross_anti: bool):
+def test_antimeridian_long_cross(direction: str, cross_anti: bool) -> None:
     """Test interpolation adjustments for antimeridian crossing.
 
     This test uses longitude values spanning at least three quadarants AND
@@ -846,4 +847,19 @@ def test_flight_duplicated_times(flight_fake: Flight) -> None:
     pd.testing.assert_series_equal(fl.dataframe.iloc[2], flight_fake.dataframe.iloc[2])
     pd.testing.assert_series_equal(
         fl.dataframe.iloc[3], flight_fake.dataframe.iloc[4], check_names=False
+    )
+
+
+def test_filter_altitude() -> None:
+    """Check that noise in cruise altitude is removed."""
+
+    altitude_ft = np.array([40000, 39975, 40000, 40000, 39975, 40000, 40000, 40025, 40025, 40000])
+    altitude_cleaned = flight.filter_altitude(units.ft_to_m(altitude_ft))
+    np.testing.assert_array_equal(units.m_to_ft(altitude_cleaned), 40000.0)
+
+    # does not filter under threshold
+    altitude_ft = np.array([12000, 12025, 12000, 40000, 39975, 40000])
+    altitude_cleaned = flight.filter_altitude(units.ft_to_m(altitude_ft))
+    np.testing.assert_array_equal(
+        units.m_to_ft(altitude_cleaned), [12000, 12025, 12000, 40000, 40000, 40000]
     )
