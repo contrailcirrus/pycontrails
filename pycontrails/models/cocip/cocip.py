@@ -165,6 +165,10 @@ class Cocip(Model):
 
     References
     ----------
+    - :cite:`schumannDeterminationContrailsSatellite1990`
+    - :cite:`schumannContrailCirrusPrediction2010`
+    - :cite:`voigtInsituObservationsYoung2010`
+    - :cite:`schumannPotentialReduceClimate2011a`
     - :cite:`schumannContrailCirrusPrediction2012`
     - :cite:`schumannParametricRadiativeForcing2012`
     - :cite:`schumannContrailsVisibleAviation2012`
