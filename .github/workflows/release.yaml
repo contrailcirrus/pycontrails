@@ -50,7 +50,7 @@ jobs:
         CIBW_TEST_EXTRAS: "complete,dev"
         CIBW_TEST_COMMAND: >
           mv {project}/pycontrails {project}/pycontrails-bak &&
-          python -m pytest {project}/tests &&
+          python -m pytest {project}/tests -vv &&
           mv {project}/pycontrails-bak {project}/pycontrails
 
     - uses: actions/upload-artifact@v3
