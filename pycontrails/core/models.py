@@ -147,12 +147,13 @@ class Model(ABC):
     #: Require meteorology is not None on __init__()
     met_required: bool = False
 
-    #: Required meteorology variables
-    #: Each element in the list is a MetVariable or a list[MetVariable].
-    #: If a list[MetVariable], only one variable in the list is required by input :attr:`met`.
+    #: Required meteorology pressure level variables.
+    #: Each element in the list is a :class:`MetVariable` or a ``tuple[MetVariable]``.
+    #: If element is a ``tuple[MetVariable]``, the variable depends on the data source.
+    #: Only one variable in the tuple is required.
     met_variables: tuple[MetVariable | tuple[MetVariable, ...], ...]
 
-    #: Minimal set of required parameters if processing already complete on met input.
+    #: Set of required parameters if processing already complete on ``met`` input.
     processed_met_variables: tuple[MetVariable, ...]
 
     #: Optional meteorology variables

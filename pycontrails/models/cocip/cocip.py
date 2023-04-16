@@ -45,9 +45,11 @@ class Cocip(Model):
     Parameters
     ----------
     met : MetDataset
-        Dataset containing  :attr:`met_variables` variables.
+        Pressure level dataset containing :attr:`met_variables` variables.
+        See *Notes* for variable names by data source.
     rad : MetDataset
-        Radiation dataset
+        Single level dataset containing top of atmosphere radiation fluxes.
+        See *Notes* for variable names by data source.
     params : dict[str, Any], optional
         Override Cocip model parameters with dictionary.
         See :class:`CocipFlightParams` for model parameters.
@@ -57,6 +59,59 @@ class Cocip(Model):
 
     Notes
     -----
+    **Inputs**
+
+    The required meteorology variables depend on the data source (e.g. ECMWF, GFS).
+
+    See :attr:`met_variables` and :attr:`rad_variables` for the list of required variables
+    to the ``met`` and ``rad`` inputs, respectively.
+    When an item in one of these arrays is a tuple, variable keys depend on data source.
+
+    The current list of required variables (labelled by ``"standard_name"``):
+
+    .. list-table:: Variable keys for pressure level data
+        :header-rows: 1
+
+        * - Parameter
+          - ECMWF
+          - GFS
+        * - Air Temperature
+          - ``air_temperature``
+          - ``air_temperature``
+        * - Specific Humidity
+          - ``specific_humidity``
+          - ``specific_humidity``
+        * - Eastward wind
+          - ``eastward_wind``
+          - ``eastward_wind``
+        * - Northward wind
+          - ``northward_wind``
+          - ``northward_wind``
+        * - Vertical velocity
+          - ``lagrangian_tendency_of_air_pressure``
+          - ``lagrangian_tendency_of_air_pressure``
+        * - Ice water content
+          - ``specific_cloud_ice_water_content``
+          - ``ice_water_mixing_ratio``
+        * - Geopotential
+          - ``geopotential``
+          - ``geopotential_height``
+
+    .. list-table:: Variable keys for single-level radiation data
+        :header-rows: 1
+
+        * - Parameter
+          - ECMWF
+          - GFS
+        * - Top solar radiation
+          - ``top_net_solar_radiation``
+          - ``toa_upward_shortwave_flux``
+        * - Top thermal radiation
+          - ``top_net_thermal_radiation``
+          - ``toa_upward_longwave_flux``
+
+    **Modifications**
+
     This implementation differs from original CoCiP (Fortran) implementation in a few places:
 
     - This model uses aircraft performance and emissions models to calculate nvPM, fuel flow,
@@ -95,6 +150,8 @@ class Cocip(Model):
     This implementation is regression tested against
     results from :cite:`teohAviationContrailClimate2022`.
     See `tests/benchmark/north-atlantic-study/validate.py`.
+
+    **Outputs**
 
     NaN values may appear in model output. Specifically, `np.nan` values are used to indicate:
 
@@ -154,15 +211,16 @@ class Cocip(Model):
         (met_var.Geopotential, met_var.GeopotentialHeight),
     )
 
-    #: Required radiation (single level) variables for model
+    #: Required single-level top of atmosphere radiation variables.
+    #: Variable keys depend on data source (e.g. ECMWF, GFS).
     rad_variables = (
         (ecmwf.TopNetSolarRadiation, gfs.TOAUpwardShortwaveRadiation),
         (ecmwf.TopNetThermalRadiation, gfs.TOAUpwardLongwaveRadiation),
     )
 
-    #: Minimal set of met variables needed to run the model after preprocessing
-    #: The intention here is that geopotential and sciwc are unnecessary after
-    #: tau cirrus has already been calculated.
+    #: Minimal set of met variables needed to run the model after pre-processing.
+    #: The intention here is that ``geopotential`` and ``ciwc`` are unnecessary after
+    #: ``tau_cirrus`` has already been calculated.
     processed_met_variables = (
         met_var.AirTemperature,
         met_var.SpecificHumidity,
