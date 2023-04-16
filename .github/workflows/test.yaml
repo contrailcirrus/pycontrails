@@ -126,4 +126,4 @@ jobs:
         ruff pycontrails tests
         mypy pycontrails
         pydocstyle pycontrails --verbose
-        pytest tests/unit
+        pytest tests/unit -vv
