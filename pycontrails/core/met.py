@@ -94,7 +94,14 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         for dim in self.dim_order:
             if dim not in self.data.dims:
-                raise ValueError(f"Meteorology data must contain dimension '{dim}'")
+                if dim == "level":
+                    raise ValueError(
+                        f"Meteorology data must contain dimension '{dim}'. "
+                        "For single level data, set 'level' coordinate to constant -1 "
+                        "using `ds = ds.expand_dims({'level': [-1]})`"
+                    )
+                else:
+                    raise ValueError(f"Meteorology data must contain dimension '{dim}'.")
 
     def _validate_longitude(self) -> None:
         """Check longitude bounds.
@@ -220,11 +227,12 @@ class MetBase(ABC, Generic[XArrayType]):
     def _preprocess_dims(self, wrap_longitude: bool) -> None:
         """Confirm DataArray or Dataset include required dimension in a consistent format.
 
-        Expects DataArray or Dataset to contain dimensions "latitude", "longitude", "time",
-        and "level" (in hPa/mbar). Adds additional coordinate variables ``air_pressure``
-        and ``altitude`` coordinates mapped to "level" dimension if "level" > 0.
+        Expects DataArray or Dataset to contain dimensions ``latitude`, ``longitude``, ``time``,
+        and ``level`` (in hPa/mbar).
+        Adds additional coordinate variables ``air_pressure`` and ``altitude`` coordinates
+        mapped to "level" dimension if "level" > 0.
 
-        Set "level" to -1 to signify surface level.
+        Set ``level`` to -1 to signify single level.
 
         .. versionchanged:: 0.40.0
 
@@ -280,7 +288,7 @@ class MetBase(ABC, Generic[XArrayType]):
         dim_order = self.dim_order + [d for d in self.data.dims if d not in self.dim_order]
         self.data = self.data.transpose(*dim_order)
 
-        # surface level data
+        # single level data
         if self.is_single_level:
             # add level attributes to reflect surface level
             self.data["level"].attrs.update(units="", long_name="Single Level")
