@@ -74,7 +74,12 @@ def test_unit_conversion():
 @pytest.mark.parametrize("model_class", [ISSR, SAC])
 @pytest.mark.parametrize("method", ["linear", "nearest"])
 def test_issr_sac_grid_output(met_issr: MetDataset, model_class: type, method: str):
-    """Confirm ISSR and SAC gridded output is float32 when met input is float32."""
+    """Confirm ISSR and SAC gridded output is float32 when met input is float32.
+
+    Something in dask threading is causing this test to occasionally hang. As a
+    workaround, we load the met data into memory before passing it to the model.
+    """
+    met_issr.data.load()
 
     assert all(v == "float32" for v in met_issr.data.dtypes.values())
 
