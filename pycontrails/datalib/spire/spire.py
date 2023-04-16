@@ -267,7 +267,7 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
 
         # TODO: this altitude cleanup does not persist back into messages
         # this should get moved into flight module
-        gp = clean_flight_altitude(gp)
+        gp = _clean_flight_altitude(gp)
 
         # separate flights by "on_ground" column
         gp["flight_id"] = _separate_by_on_ground(gp)
@@ -281,16 +281,8 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
 
     return flight_id
 
-    # # TODO: Check segment length, dt,
-    # flight_trajectories = categorise_flight_trajectories(flights, t_cut_off)
-    # return flight_trajectories
 
-    # flights = separate_flights_with_multiple_cruise_phase(flights)
-
-    # flights = clean_flight_altitude(flights)
-
-
-def clean_flight_altitude(
+def _clean_flight_altitude(
     messages: pd.DataFrame,
     *,
     noise_threshold_ft: float = 25,
@@ -321,6 +313,10 @@ def clean_flight_altitude(
        remove erroneous altitude, i.e., altitude above operating limit of aircraft type
     #. Remove noise in cruise altitude where flights oscillate
        between 25 ft due to noise in ADS-B telemetry
+
+    See Also
+    --------
+    :func:`flight.filter_altitude`
     """
     threshold_altitude_ft = threshold_altitude_ft or flight.MAX_AIRPORT_ELEVATION
 
@@ -720,3 +716,50 @@ def is_valid_trajectory(
     is_complete = complete_1 | complete_2 | complete_3
 
     return has_enough_messages and has_cruise_phase and has_no_anomalous_phase and is_complete
+
+
+def _downsample_flight(
+    messages: pd.DataFrame,
+    *,
+    time_resolution: str | pd.DateOffset | pd.Timedelta = "10s",
+) -> pd.DataFrame:
+    """
+    Downsample ADS-B messages to a specified time resolution.
+
+    .. warning::
+        This function is not used.
+        Use :meth:`flight.Flight.resample_and_fill` after creating `Flight`
+        instead.
+
+    .. note::
+        This function does not interpolate when upsampling.
+        Nan values will be dropped.
+
+    Parameters
+    ----------
+    messages: pd.DataFrame
+        ADS-B messages from a single flight trajectory.
+    time_resolution: str | pd.DateOffset | pd.Timedelta
+        Downsampled time resolution.
+        Any input compatible with :meth:`pandas.DataFrame.resample`.
+        Defaults to "10s" (10 seconds).
+
+    Returns
+    -------
+    pd.DataFrame
+        Downsampled ADS-B messages for a single flight trajectory.
+
+    See Also
+    --------
+    :meth:`pandas.DataFrame.resample`
+    :meth:`flight.Flight.resample_and_fill`
+    """
+    mdf = messages.copy()
+    mdf.set_index("timestamp", inplace=True, drop=False)
+    resampled = mdf.resample(time_resolution).first()
+
+    # remove rows that do not align with a previous time
+    resampled = resampled.loc[resampled["longitude"].notna()]
+
+    # reset original index and return
+    return resampled.reset_index(drop=True)
