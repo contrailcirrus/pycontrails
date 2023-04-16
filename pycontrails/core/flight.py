@@ -34,6 +34,20 @@ FLIGHT_PHASE: dict[str, int | float] = {
     "level_flight": -2,
 }
 
+#: Max airport elevation, [:math:`ft`]
+#: See `Daocheng_Yading_Airport <https://en.wikipedia.org/wiki/Daocheng_Yading_Airport>`_
+MAX_AIRPORT_ELEVATION = 15_000
+
+#: Min estimated cruise altitude, [:math:`ft`]
+MIN_CRUISE_ALTITUDE = 20_000
+
+#: Short haul duration cutoff, [:math:`s`]
+SHORT_HAUL_DURATION = 3600
+
+#: Set maximum speed compatible with "on_ground" indicator, [:math:`mph`]
+#: Thresholds assessed based on scatter plot (150 knots = 278 km/h)
+MAX_ON_GROUND_SPEED = 150
+
 
 @dataclasses.dataclass
 class Aircraft:
@@ -1410,6 +1424,49 @@ def _verify_altitude(altitude: np.ndarray, nominal_rocd: float, freq: np.timedel
         warnings.warn(
             f"Found nan values altitude after ({nominal_rocd} m/s) after altitude interpolation"
         )
+
+
+def filter_altitude(
+    altitude: npt.NDArray[np.datetime64],
+    *,
+    noise_threshold_ft: float = 25,
+    threshold_altitude_ft: float | None = None,
+) -> npt.NDArray[np.datetime64]:
+    """
+    Filter noisy altitude on a single flight.
+
+    .. todo:: To be replaced with filter from scipy
+
+    Parameters
+    ----------
+    altitude: npt.NDArray[np.datetime64]
+        Altitude signal
+    noise_threshold_ft: float
+        Altitude difference threshold to identify noise, [:math:`ft`]
+        Barometric altitude from ADS-B telemetry is reported at increments of 25 ft.
+    threshold_altitude_ft: float
+        Altitude will be checked and corrected above this threshold, [:math:`ft`]
+        Currently set to :attr:`flight.MAX_AIRPORT_ELEVATION` ft.
+
+    Returns
+    -------
+    npt.NDArray[np.datetime64]
+        Filtered altitude
+
+    Notes
+    -----
+    Currently removes noise in cruise altitude where flights oscillate
+    between 25 ft due to noise in ADS-B telemetry.
+    """
+    threshold_altitude_ft = threshold_altitude_ft or MAX_AIRPORT_ELEVATION
+
+    # Remove noise in cruise altitude by rounding up/down to the nearest flight level.
+    altitude_ft = units.m_to_ft(altitude)
+    d_alt_ft = np.diff(altitude_ft, prepend=np.nan)
+    is_noise = (np.abs(d_alt_ft) <= noise_threshold_ft) & (altitude_ft > threshold_altitude_ft)
+    altitude_ft[is_noise] = np.round(altitude_ft[is_noise] / 1000) * 1000
+
+    return units.ft_to_m(altitude_ft)
 
 
 def segment_duration(
