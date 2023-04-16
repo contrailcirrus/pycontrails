@@ -137,6 +137,9 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
     # Remove waypoints without data in "icao_address", "aircraft_type_icao",
     # "altitude_baro", "on_ground", "tail_number"
     non_null_cols = [
+        "timestamp",
+        "longitude",
+        "latitude",
         "altitude_baro",
         "on_ground",
         "icao_address",
@@ -257,6 +260,8 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
             "aircraft_type_icao",
             "callsign",
             "timestamp",
+            "longitude",
+            "latitude",
             "altitude_baro",
             "on_ground",
         ]
@@ -328,19 +333,22 @@ def _clean_flight_altitude(
         from pycontrails.ext.bada import BADA3
 
         bada3 = BADA3()
+        aircraft_type_icao = (
+            mdf["aircraft_type_icao"].iloc[0]
+            if len(mdf["aircraft_type_icao"]) > 1
+            else mdf["aircraft_type_icao"]
+        )
 
         # Try remove aircraft types not covered by BADA 3 (mainly helicopters)
         atyps = list(bada3.synonym_dict.keys())
         mdf = mdf.loc[mdf["aircraft_type_icao"].isin(atyps)]
 
         # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-        altitude_ceiling_ft = bada3.ptf_param_dict[
-            mdf["aircraft_type_icao"].iloc[0]
-        ].max_altitude_ft
+        altitude_ceiling_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
         is_above_ceiling = mdf["altitude_baro"] > altitude_ceiling_ft
         mdf = mdf.loc[~is_above_ceiling]
 
-    except (ImportError, FileNotFoundError):
+    except (ImportError, FileNotFoundError, KeyError):
         pass
 
     # Remove noise in cruise altitude by rounding up/down to the nearest flight level.
@@ -443,7 +451,7 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
 
     # Set default flight id
     if "flight_id" in messages:
-        flight_id = messages["flight_id"]
+        flight_id = messages["flight_id"].copy()
     else:
         flight_id = pd.Series(
             data=generate_flight_id(messages["timestamp"].iloc[0], messages["callsign"].iloc[0]),
@@ -456,14 +464,17 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> list[pd.DataFrame]:
         from pycontrails.ext.bada import BADA3
 
         bada3 = BADA3()
+        aircraft_type_icao = (
+            messages["aircraft_type_icao"].iloc[0]
+            if len(messages["aircraft_type_icao"]) > 1
+            else messages["aircraft_type_icao"]
+        )
 
         # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-        altitude_ceiling_ft = bada3.ptf_param_dict[
-            messages["aircraft_type_icao"].iloc[0]
-        ].max_altitude_ft
+        altitude_ceiling_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
         min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
-    except (ImportError, FileNotFoundError):
+    except (ImportError, FileNotFoundError, KeyError):
         min_cruise_altitude_ft = flight.MIN_CRUISE_ALTITUDE
 
     # Calculate flight phase
@@ -639,14 +650,17 @@ def is_valid_trajectory(
         from pycontrails.ext.bada import BADA3
 
         bada3 = BADA3()
+        aircraft_type_icao = (
+            messages["aircraft_type_icao"].iloc[0]
+            if len(messages["aircraft_type_icao"]) > 1
+            else messages["aircraft_type_icao"]
+        )
 
         # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-        altitude_ceiling_ft = bada3.ptf_param_dict[
-            messages["aircraft_type_icao"].iloc[0]
-        ].max_altitude_ft
+        altitude_ceiling_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
         min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
 
-    except (ImportError, FileNotFoundError):
+    except (ImportError, FileNotFoundError, KeyError):
         min_cruise_altitude_ft = flight.MIN_CRUISE_ALTITUDE
 
     # Flight duration
