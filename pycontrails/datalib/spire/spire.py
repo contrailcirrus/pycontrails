@@ -124,7 +124,8 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
     #. Remove terrestrial messages without callsign.
        Most of these messages are below 10,000 feet and from general aviation.
     #. Remove messages when "on_ground" indicator is True, but
-       speed > :attr:`flight.MAX_ON_GROUND_SPEED` knots or altitude > :attr:`flight.MAX_AIRPORT_ELEVATION` ft
+       speed > :attr:`flight.MAX_ON_GROUND_SPEED` knots
+       or altitude > :attr:`flight.MAX_AIRPORT_ELEVATION` ft
     #. Drop duplicates by "icao_address" and "timestamp"
     """
     _n_messages = len(messages)
