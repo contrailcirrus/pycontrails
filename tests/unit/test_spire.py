@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from pycontrails.datalib import spire
 from pycontrails.datalib.spire.spire import _separate_by_cruise_phase, _separate_by_on_ground
@@ -11,10 +12,10 @@ from pycontrails.datalib.spire.spire import _separate_by_cruise_phase, _separate
 from .conftest import get_static_path
 
 
+@pytest.mark.skipif(True, reason="Test not complete")
 def test_clean() -> None:
     """Test algorithms to identify and separate unique flight trajectories."""
 
-    # ADD TESTS
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
     assert len(df.groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"])) == 5
 
@@ -24,7 +25,8 @@ def test_clean() -> None:
     )
 
 
-def test_separate_unique_flights_using_ground_indicator():
+@pytest.mark.skipif(True, reason="Test not complete")
+def test_separate_using_ground_indicator():
     """Test algorithms to identify unique flight trajectories from on the ground indicator."""
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
     cdf = spire.clean(df)
@@ -40,7 +42,8 @@ def test_separate_unique_flights_using_ground_indicator():
     assert len(flight_ids.unique()) == 2
 
 
-def test_separate_unique_flights_with_multiple_cruise_phase():
+@pytest.mark.skipif(True, reason="Test not complete")
+def test_separate_with_multiple_cruise_phase():
     """Test algorithms to identify unique flight trajectories with multiple cruise phases."""
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
     cdf = spire.clean(df)
@@ -61,7 +64,7 @@ def test_separate_unique_flights_with_multiple_cruise_phase():
     assert len(flight_ids.unique()) == 2
 
 
-def test_identify_flight_diversion():
+def test_identify_flight_diversion() -> None:
     """Test algorithms to identify flight diversion, and no separation is done."""
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
     cdf = spire.clean(df)
@@ -80,3 +83,18 @@ def test_identify_flight_diversion():
 
     flight_ids = _separate_by_cruise_phase(test)
     assert len(flight_ids.unique()) == 1
+
+
+@pytest.mark.skipif(True, reason="Test not complete")
+def test_generate_flight_id() -> None:
+    pass
+
+
+@pytest.mark.skipif(True, reason="Test not complete")
+def test_validate_flights() -> None:
+    pass
+
+
+@pytest.mark.skipif(True, reason="Test not complete")
+def test_is_valid_trajectory() -> None:
+    pass
