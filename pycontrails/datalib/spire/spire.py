@@ -116,11 +116,9 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
 
     #. Remove messages without data in "icao_address", "aircraft_type_icao",
        "altitude_baro", "on_ground", "tail_number"
-    #. Ensure columns have the dtype as specified in :attr:`FIELDS`
+    #. Ensure columns have the dtype as specified in :attr:`MESSAGE_DTYPES`
     #. Remove messages with tail number "VARIOUS"
        and aircraft types "N/A", "GNDT", "GRND", "ZZZZ"
-    #. If pycontrails.ext.bada installed:
-        a. Remove aircraft types not covered by BADA 3 (primarily helicopters)
     #. Remove terrestrial messages without callsign.
        Most of these messages are below 10,000 feet and from general aviation.
     #. Remove messages when "on_ground" indicator is True, but
