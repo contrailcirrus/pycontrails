@@ -80,6 +80,49 @@ def rate_of_climb_descent(
     return out
 
 
+def acceleration(true_airspeed: np.ndarray, dt: np.ndarray) -> np.ndarray:
+    """
+    Calculate the acceleration/deceleration at each waypoint.
+
+    Parameters
+    ----------
+    true_airspeed : np.ndarray
+        True airspeed, [:math:`m \ s^{-1}`]
+    dt : np.ndarray
+        Time between waypoints, [:math:`s`]
+
+    Returns
+    -------
+    np.ndarray
+        Acceleration, [:math:`m \ s^{-2}`]
+    """
+    dv_dt = np.empty_like(true_airspeed)
+    dv_dt[:-1] = np.diff(true_airspeed) / dt[:-1]
+    dv_dt[-1] = 0.0
+    np.nan_to_num(dv_dt, copy=False)
+    return dv_dt
+
+
+def climb_descent_angle(true_airspeed: np.ndarray, rocd_ms: np.ndarray) -> np.ndarray:
+    """
+    Calculate angle between the horizontal plane and the actual flight path
+
+    Parameters
+    ----------
+    true_airspeed : np.ndarray
+        True airspeed, [:math:`m \ s^{-1}`]
+    rocd_ms : np.ndarray
+        Rate of climb/descent, [:math:`m \ s^{-1}`]
+
+    Returns
+    -------
+    np.ndarray
+        Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
+    """
+    sin_theta = rocd_ms / true_airspeed
+    return units.radians_to_degrees(np.arcsin(sin_theta))
+
+
 def clip_mach_number(
     true_airspeed: np.ndarray,
     air_temperature: np.ndarray,
@@ -561,8 +604,50 @@ def turbine_inlet_temperature(
     return (afr * constants.c_pd * T_comb_inlet + q_fuel) / (constants.c_p_combustion * (1 + afr))
 
 
+def air_to_fuel_ratio(
+    thrust_setting: ArrayScalarLike,
+    *,
+    cruise: bool = False,
+    T_compressor_inlet: None | ArrayScalarLike = None,
+) -> ArrayScalarLike:
+    """Calculate air-to-fuel ratio from thrust setting.
+
+    Parameters
+    ----------
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+    cruise : bool
+        Estimate thrust setting for cruise conditions. Defaults to False.
+    T_compressor_inlet : None | ArrayScalarLike
+        Compressor inlet temperature, [:math:`K`]
+        Required if ``cruise`` is True.
+        Defaults to None
+
+    Returns
+    -------
+    ArrayScalarLike
+        Air-to-fuel ratio, unitless
+
+    References
+    ----------
+    - :cite:`cumpstyJetPropulsion2015`
+    - AFR equation from :cite:`stettlerGlobalCivilAviation2013`
+    - Scaling factor to cruise from Eq. (30) of :cite:`duboisFuelFlowMethod22006`
+
+    """
+    afr = (0.0121 * thrust_setting + 0.008) ** (-1)
+
+    if not cruise:
+        return afr
+
+    if T_compressor_inlet is None:
+        raise ValueError("`T_compressor_inlet` is required when `cruise` is True")
+
+    return afr * (T_compressor_inlet / constants.T_msl)
+
+
 # --------------------------------------
-# Engine thrust force and thrust settings
+# Forces acting on aircraft
 # --------------------------------------
 
 
@@ -611,16 +696,18 @@ def thrust_force(
     dh_dt[-1] = 0.0
     np.nan_to_num(dh_dt, copy=False)
 
-    dv_dt = np.empty_like(true_airspeed)
-    dv_dt[:-1] = np.diff(true_airspeed) / dt[:-1]
-    dv_dt[-1] = 0.0
-    np.nan_to_num(dv_dt, copy=False)
+    dv_dt = acceleration(true_airspeed, dt)
 
     return (
         F_drag
         + (aircraft_mass * constants.g * dh_dt + aircraft_mass * true_airspeed * dv_dt)
         / true_airspeed
     )
+
+
+# --------------------------------------
+# Engine thrust settings
+# --------------------------------------
 
 
 def thrust_setting_nd(
@@ -679,48 +766,6 @@ def thrust_setting_nd(
     afr = air_to_fuel_ratio(thrust_setting, cruise=cruise, T_compressor_inlet=T_compressor_inlet)
     T_turbine_inlet = turbine_inlet_temperature(afr, T_combustor_inlet, q_fuel)
     return T_turbine_inlet / T_compressor_inlet
-
-
-def air_to_fuel_ratio(
-    thrust_setting: ArrayScalarLike,
-    *,
-    cruise: bool = False,
-    T_compressor_inlet: None | ArrayScalarLike = None,
-) -> ArrayScalarLike:
-    """Calculate air-to-fuel ratio from thrust setting.
-
-    Parameters
-    ----------
-    thrust_setting : ArrayScalarLike
-        Engine thrust setting, unitless
-    cruise : bool
-        Estimate thrust setting for cruise conditions. Defaults to False.
-    T_compressor_inlet : None | ArrayScalarLike
-        Compressor inlet temperature, [:math:`K`]
-        Required if ``cruise`` is True.
-        Defaults to None
-
-    Returns
-    -------
-    ArrayScalarLike
-        Air-to-fuel ratio, unitless
-
-    References
-    ----------
-    - :cite:`cumpstyJetPropulsion2015`
-    - AFR equation from :cite:`stettlerGlobalCivilAviation2013`
-    - Scaling factor to cruise from Eq. (30) of :cite:`duboisFuelFlowMethod22006`
-
-    """
-    afr = (0.0121 * thrust_setting + 0.008) ** (-1)
-
-    if not cruise:
-        return afr
-
-    if T_compressor_inlet is None:
-        raise ValueError("`T_compressor_inlet` is required when `cruise` is True")
-
-    return afr * (T_compressor_inlet / constants.T_msl)
 
 
 # -------------------
