@@ -1,16 +1,24 @@
 from __future__ import annotations
 
-import pandas as pd
+import pathlib
 import numpy as np
 import numpy.typing as npt
+from typing import Mapping
 from pycontrails.core import flight
 from pycontrails.physics import constants, jet, units
+from pycontrails.models.ps_model.aircraft_params import AircraftEngineParams, get_aircraft_engine_params
+
+_path_to_static = pathlib.Path(__file__).parent / "static"
 
 
-class PSModel:
+class PollSchumannModel:
+    aircraft_engine_params: Mapping[str, AircraftEngineParams]
+    default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230424.csv"
+
     def __init__(self):
-        self.aircraft_params = None
-        # TODO: Load aircraft parameters
+        # Set class variable with engine parameters if not yet loaded
+        if not hasattr(self, "aircraft_engine_params"):
+            type(self).aircraft_engine_params = get_aircraft_engine_params(default_path)
 
     def calculate_aircraft_performance(
             self,
