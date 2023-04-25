@@ -777,14 +777,16 @@ class VectorDataset:
         data = {key: self[key] for key in keys}
         return VectorDataset(data=data, attrs=self.attrs, copy=copy)
 
-    def filter(self: VectorDatasetType, mask: np.ndarray, copy: bool = True) -> VectorDatasetType:
+    def filter(
+        self: VectorDatasetType, mask: npt.NDArray[np.bool_], copy: bool = True
+    ) -> VectorDatasetType:
         """Filter :attr:`data` according to a boolean array ``mask``.
 
         Entries corresponding to ``mask == True`` are kept.
 
         Parameters
         ----------
-        mask : np.ndarray
+        mask : npt.NDArray[np.bool_]
             Boolean array with compatible shape.
         copy : bool, optional
             Copy data on filter. Defaults to True. See
