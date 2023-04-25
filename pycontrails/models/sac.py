@@ -139,11 +139,11 @@ class SAC(Model):
         sac_ = sac(rh, rh_crit_sac)
 
         # Attaching some intermediate artifacts onto the source
-        self.source["G"] = G  # type: ignore[assignment]
-        self.source["T_sat_liquid"] = T_sat_liquid_  # type: ignore[assignment]
-        self.source["rh"] = rh  # type: ignore[assignment]
-        self.source["rh_critical_sac"] = rh_crit_sac  # type: ignore[assignment]
-        self.source["sac"] = sac_  # type: ignore[assignment]
+        self.source["G"] = G
+        self.source["T_sat_liquid"] = T_sat_liquid_
+        self.source["rh"] = rh
+        self.source["rh_critical_sac"] = rh_crit_sac
+        self.source["sac"] = sac_
 
         # Tag output with additional attrs when source is MetDataset
         if isinstance(self.source, MetDataset):

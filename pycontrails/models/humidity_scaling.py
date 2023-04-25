@@ -149,7 +149,7 @@ class HumidityScaling(Model):
         kwargs = {k: self.get_source_param(k) for k in self.scaler_specific_keys}
 
         q, rhi = self.scale(q, T, p, **kwargs)
-        self.source.update(specific_humidity=q, rhi=rhi)  # type: ignore[arg-type]
+        self.source.update(specific_humidity=q, rhi=rhi)
 
         return self.source
 

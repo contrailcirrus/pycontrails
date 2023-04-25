@@ -97,7 +97,7 @@ class PCR(Model):
         sac_model.eval(self.source)
 
         pcr_ = _pcr_from_issr_and_sac(self.source.data["issr"], self.source.data["sac"])
-        self.source["pcr"] = pcr_  # type: ignore[assignment]
+        self.source["pcr"] = pcr_
         # Tag output with additional attrs when source is MetDataset
         if isinstance(self.source, MetDataset):
             attrs = {**self.source["issr"].attrs, **self.source["sac"].attrs}

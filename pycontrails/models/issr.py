@@ -136,7 +136,7 @@ class ISSR(Model):
             rhi=self.source.data.get("rhi", None),  # if rhi already known, pass it in
             rhi_threshold=self.params["rhi_threshold"],
         )
-        self.source["issr"] = issr_  # type: ignore[assignment]
+        self.source["issr"] = issr_
 
         # Tag output with additional attrs when source is MetDataset
         if isinstance(self.source, MetDataset):
