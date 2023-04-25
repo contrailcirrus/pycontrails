@@ -112,7 +112,7 @@ def wind_shear(
     Returns
     -------
     ArrayScalarLike
-       Total wind shear, [:math:`m \ s^{-1}`]
+       Total wind shear, [:math:`s^{-1}`]
     """
     du_dz = (u_wind_top - u_wind_btm) / dz
     dv_dz = (v_wind_top - v_wind_btm) / dz
