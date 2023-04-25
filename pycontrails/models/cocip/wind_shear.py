@@ -78,7 +78,7 @@ def wind_shear_normal(
     Returns
     -------
     ArrayScalarLike
-       Wind shear normal to axis, [:math:`m \ s^{-1}`]
+       Wind shear normal to axis, [:math:`s^{-1}`]
     """
     du_dz = (u_wind_top - u_wind_btm) / dz
     dv_dz = (v_wind_top - v_wind_btm) / dz
