@@ -87,8 +87,7 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
         "aircraft_type_icao",
         "tail_number",
     ]
-    filt = mdf[non_null_cols].isna().any(axis=1)
-    mdf = mdf.loc[~filt]
+    mdf = mdf.dropna(subset=non_null_cols)
 
     # Ensure columns have the correct dtype
     mdf = mdf.astype(MESSAGE_DTYPES)
@@ -98,10 +97,10 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
 
     # Remove messages with tail number set to VARIOUS
     # or aircraft type set to "N/A", "GNDT", "GRND", "ZZZZ"
-    filt = (mdf["tail_number"] == "VARIOUS") & (
+    filt = (mdf["tail_number"] == "VARIOUS") | (
         mdf["aircraft_type_icao"].isin(["N/A", "GNDT", "GRND", "ZZZZ"])
     )
-    mdf = mdf.loc[~filt]
+    mdf = mdf[~filt]
 
     # Remove terrestrial waypoints without callsign
     # Most of these waypoints are below 10,000 feet and from general aviation
@@ -111,10 +110,15 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
     # Fill missing callsigns for satellite records
     callsigns_missing = (mdf["collection_type"] == "satellite") & (mdf["callsign"].isna())
     mdf.loc[callsigns_missing, "callsign"] = None  # reset values to be None
-    for icao_address, gp in mdf.loc[
-        mdf["icao_address"].isin(mdf.loc[callsigns_missing, "icao_address"].unique()),
+
+    callsigns_missing_unique = mdf.loc[callsigns_missing, "icao_address"].unique()
+
+    rows_with_any_missing_callsigns = mdf.loc[
+        mdf["icao_address"].isin(callsigns_missing_unique),
         ["icao_address", "callsign", "collection_type"],
-    ].groupby("icao_address", sort=False):
+    ]
+
+    for _, gp in rows_with_any_missing_callsigns.groupby("icao_address", sort=False):
         mdf.loc[gp.index, "callsign"] = gp["callsign"].fillna(method="ffill").fillna(method="bfill")
 
     # Remove messages with erroneous "on_ground" indicator
@@ -125,7 +129,7 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
     mdf = mdf[~filt]
 
     # Drop duplicates by icao_address and timestamp
-    mdf.drop_duplicates(subset=["icao_address", "timestamp"], inplace=True)
+    mdf = mdf.drop_duplicates(subset=["icao_address", "timestamp"])
 
     logger.debug(f"{len(mdf) / _n_messages:.2f} messages remain after Spire ADS-B cleanup")
 
@@ -220,7 +224,7 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
         gp["flight_id"] = _separate_by_on_ground(gp)
 
         # further separate flights by cruise phase analysis
-        for fid, fl in gp.groupby("flight_id"):
+        for _, fl in gp.groupby("flight_id"):
             gp.loc[fl.index, "flight_id"] = _separate_by_cruise_phase(fl)
 
         # save flight ids
@@ -256,7 +260,7 @@ def _clean_flight_altitude(
 
     Notes
     -----
-    #. If pycontrails.ext.bada installed,
+    #. If ``pycontrails.ext.bada`` installed,
        remove erroneous altitude, i.e., altitude above operating limit of aircraft type
     #. Remove noise in cruise altitude where flights oscillate
        between 25 ft due to noise in ADS-B telemetry
@@ -281,8 +285,7 @@ def _clean_flight_altitude(
         )
 
         # Try remove aircraft types not covered by BADA 3 (mainly helicopters)
-        atyps = list(bada3.synonym_dict.keys())
-        mdf = mdf.loc[mdf["aircraft_type_icao"].isin(atyps)]
+        mdf = mdf.loc[mdf["aircraft_type_icao"].isin(bada3.synonym_dict)]
 
         # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
         altitude_ceiling_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
@@ -296,7 +299,7 @@ def _clean_flight_altitude(
     altitude_ft = mdf["altitude_baro"].to_numpy()
     d_alt_ft = np.diff(altitude_ft, prepend=np.nan)
     is_noise = (np.abs(d_alt_ft) <= noise_threshold_ft) & (altitude_ft > threshold_altitude_ft)
-    mdf.loc[is_noise, "altitude_baro"] = np.round(altitude_ft[is_noise] / 1000) * 1000
+    mdf.loc[is_noise, "altitude_baro"] = np.round(altitude_ft[is_noise], -3)
 
     return mdf
 
@@ -317,9 +320,9 @@ def _separate_by_on_ground(messages: pd.DataFrame) -> pd.Series:
         Flight ids for the same index as `messages`
     """
     # Set default flight id
-    if "flight_id" in messages:
+    try:
         flight_id = messages["flight_id"]
-    else:
+    except KeyError:
         flight_id = pd.Series(
             data=None,
             dtype=object,
@@ -391,9 +394,9 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
     """
 
     # Set default flight id
-    if "flight_id" in messages:
+    try:
         flight_id = messages["flight_id"].copy()
-    else:
+    except KeyError:
         flight_id = pd.Series(
             data=generate_flight_id(messages["timestamp"].iloc[0], messages["callsign"].iloc[0]),
             dtype=object,
@@ -459,21 +462,17 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
 
         # get the index of the minimum altitude when potentially diverted
         altitude_min_diverted = np.min(altitude_ft[potentially_diverted])
-        i_lowest_altitude = (
-            np.argwhere(within_cruise & is_low_altitude & (altitude_ft == altitude_min_diverted))[
-                0
-            ][0]
-            + 1
-        )
+        mask = within_cruise & is_low_altitude & (altitude_ft == altitude_min_diverted)
+        i_lowest_altitude = np.flatnonzero(mask)[0] + 1
 
         # get reference to "on_ground"
         ground_indicator = messages["on_ground"].to_numpy()
 
         # Check for flight diversion
         condition_1 = np.any(altitude_ft[within_cruise] < flight.MAX_AIRPORT_ELEVATION)
-        condition_2 = np.all(segment_duration[within_cruise] < (15 * 60))
-        condition_3 = np.all(segment_length[within_cruise] > 500)
-        condition_4 = np.nansum(segment_duration[i_lowest_altitude:]) < (2 * 60 * 60)
+        condition_2 = np.all(segment_duration[within_cruise] < (15.0 * 60.0))
+        condition_3 = np.all(segment_length[within_cruise] > 500.0)
+        condition_4 = np.nansum(segment_duration[i_lowest_altitude:]) < (2.0 * 60.0 * 60.0)
         condition_5 = np.all(~ground_indicator[within_cruise])
 
         flight_diversion = condition_1 & condition_2 & condition_3 & condition_4 & condition_5
@@ -526,7 +525,7 @@ def validate_flights(messages: pd.DataFrame) -> pd.Series:
         index=messages.index,
     )
 
-    for idx, gp in messages[
+    for _, gp in messages[
         [
             "flight_id",
             "aircraft_type_icao",
@@ -614,7 +613,7 @@ def is_valid_trajectory(
     segment_phase = flight.segment_phase(
         segment_rocd,
         altitude_ft,
-        threshold_rocd=250,
+        threshold_rocd=250.0,
         min_cruise_altitude_ft=min_cruise_altitude_ft,
     )
 
@@ -659,11 +658,11 @@ def is_valid_trajectory(
         complete_2 = (
             (final_message["altitude_baro"] < flight.MAX_AIRPORT_ELEVATION)
             & is_descent
-            & (elapsed_time_hrs > 2)
+            & (elapsed_time_hrs > 2.0)
         )
 
         # Third option is 12 hours of data are available after
-        complete_3 = elapsed_time_hrs > 12
+        complete_3 = elapsed_time_hrs > 12.0
     else:
         complete_2 = False
         complete_3 = False
