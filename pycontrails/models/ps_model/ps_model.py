@@ -134,7 +134,7 @@ def fluid_dynamic_viscosity(air_temperature: npt.NDArray[np.float_]) -> npt.NDAr
 
 
 # -------------------------------
-# Aircraft performance parameters
+# Lift and drag coefficients
 # -------------------------------
 
 
@@ -380,3 +380,232 @@ def airframe_drag_coefficient(
     """
     k = 1 / (np.pi * wing_aspect_ratio * e_ls)
     return c_drag_0 + (k * c_lift**2) + c_drag_w
+
+
+# -------------------
+# Engine parameters
+# -------------------
+
+
+def thrust_force(
+        aircraft_mass: npt.NDArray[np.float_],
+        c_l: npt.NDArray[np.float_],
+        c_d: npt.NDArray[np.float_],
+        dv_dt: npt.NDArray[np.float_],
+        theta: npt.NDArray[np.float_]
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate thrust force summed over all engines.
+
+    Parameters
+    ----------
+    aircraft_mass : npt.NDArray[np.float_]
+        Aircraft mass at each waypoint, [:math:`kg`]
+    c_l : npt.NDArray[np.float_]
+        Lift coefficient
+    c_d : npt.NDArray[np.float_]
+        Total airframe drag coefficient
+    dv_dt : npt.NDArray[np.float_]
+        Acceleration/deceleration at each waypoint, [:math:`m \ s^{-2}`]
+    theta : npt.NDArray[np.float_]
+        Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Thrust force summed over all engines, [:math:`N`]
+
+    Notes
+    -----
+    - The lift-to-drag ratio is calculated using `c_l` and `c_d`,
+    - The first term (mg * cos(theta) * (D/L)) represents the drag force,
+    - The second term (mg * sin(theta)) represents the aircraft weight acting on the flight direction,
+    - The third term (m * a) represents the force required to accelerate/decelerate the aircraft.
+
+    References
+    ----------
+    - Refer to Eq. (95) of Poll & Schumann (2021).
+    - Poll, D.I.A. and Schumann, U., 2021. An estimation method for the fuel burn and other performance characteristics
+        of civil transport aircraft during cruise: part 2, determining the aircraft’s characteristic parameters. The
+        Aeronautical Journal, 125(1284), pp.296-340.
+    """
+    theta = units.degrees_to_radians(theta)
+    f_thrust = (
+            (aircraft_mass * constants.g * np.cos(theta) * (c_l / c_d))
+            + (aircraft_mass * constants.g * np.sin(theta))
+            + aircraft_mass * dv_dt
+    )
+    return np.where(f_thrust < 0, 0, f_thrust)
+
+
+def engine_thrust_coefficient(
+        f_thrust: npt.NDArray[np.float_],
+        mach_num: npt.NDArray[np.float_],
+        air_pressure: npt.NDArray[np.float_],
+        wing_surface_area: float
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate engine thrust coefficient.
+
+    Parameters
+    ----------
+    f_thrust : npt.NDArray[np.float_]
+        Thrust force summed over all engines, [:math:`N`]
+    mach_num : npt.NDArray[np.float_]
+        Mach number at each waypoint
+    air_pressure : npt.NDArray[np.float_]
+        Ambient pressure, [:math:`Pa`]
+    wing_surface_area : npt.NDArray[np.float_]
+        Aircraft wing surface area, [:math:`m^2`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Engine thrust coefficient (c_t)
+    """
+    return f_thrust / (0.5 * constants.kappa * air_pressure * mach_num**2 * wing_surface_area)
+
+
+def overall_propulsion_efficiency(
+        mach_num: npt.NDArray[np.float_],
+        c_t: npt.NDArray[np.float_],
+        atyp_param: AircraftEngineParams
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate overall propulsion efficiency
+
+    Parameters
+    ----------
+    mach_num : npt.NDArray[np.float_]
+        Mach number at each waypoint
+    c_t : npt.NDArray[np.float_]
+        Engine thrust coefficient
+    atyp_param : AircraftEngineParams
+        Extracted aircraft and engine parameters.
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Overall propulsion efficiency
+    """
+    # TODO: To include sigma and theta in documentations, awaiting Ian response
+    # Calculate thrust coefficient at maximum overall propulsion efficiency: (c_t)_eta_b
+    m_over_m_des = mach_num / atyp_param.m_des
+    h_2 = ((1 + 0.55 * mach_num) * (m_over_m_des**2)) / (1 + 0.55 * atyp_param.m_des)
+    c_t_eta_b = h_2 * atyp_param.c_t_des
+
+    # Calculate eta/eta_b, where eta_b is the maximum overall propulsion efficiency for a given Mach number
+    sigma = np.where(
+        mach_num < 0.4,
+        1.3 * (0.4 - mach_num),
+        0
+    )
+    theta = 0.43
+    c_t_over_c_t_eta_b = c_t / c_t_eta_b
+    eta_over_eta_b_low = (
+            10 * (1 + 0.8 * (sigma - theta) - 0.6027 * sigma * theta) * c_t_over_c_t_eta_b
+            + 33.3333 * (-1 - 0.97 * (sigma - theta) + 0.8281 * sigma * theta) * (c_t_over_c_t_eta_b**2)
+            + 37.037 * (1 + (sigma - theta) - 0.9163 * sigma * theta) * (c_t_over_c_t_eta_b**3)
+    )
+    eta_over_eta_b_hi = (
+        (1 + (sigma - theta) - sigma * theta)
+        + (4 * sigma * theta - 2 * (sigma - theta)) * c_t_over_c_t_eta_b
+        + ((sigma - theta) - 6 * sigma * theta) * (c_t_over_c_t_eta_b**2)
+        + 4 * sigma * theta * (c_t_over_c_t_eta_b**3)
+        - sigma * theta * (c_t_over_c_t_eta_b**4)
+    )
+
+    eta_over_eta_b = np.where(
+        c_t_over_c_t_eta_b < 0.3,
+        eta_over_eta_b_low,
+        eta_over_eta_b_hi
+    )
+    eta_b = max_overall_propulsion_efficiency(mach_num, atyp_param.m_des, atyp_param.eta_1, atyp_param.eta_2)
+    return eta_over_eta_b * eta_b
+
+
+def max_overall_propulsion_efficiency(
+        mach_num: npt.NDArray[np.float_], mach_num_des: float, eta_1: float, eta_2: float
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate maximum overall propulsion efficiency that can be achieved for a given Mach number.
+
+    Parameters
+    ----------
+    mach_num : npt.NDArray[np.float_]
+        Mach number at each waypoint
+    mach_num_des : float
+        Design optimum Mach number where the fuel mass flow rate is at a minimum.
+    eta_1 : float
+        Multiplier for maximum overall propulsion efficiency model, varies by aircraft type
+    eta_2 : float
+        Exponent for maximum overall propulsion efficiency model, varies by aircraft type
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Maximum overall propulsion efficiency that can be achieved for a given Mach number
+
+    References
+    ----------
+    - Refer to Eq. (35) of Poll & Schumann (2021).
+    - Poll, D.I.A. and Schumann, U., 2021. An estimation method for the fuel burn and other performance characteristics
+        of civil transport aircraft during cruise: part 2, determining the aircraft’s characteristic parameters. The
+        Aeronautical Journal, 125(1284), pp.296-340.
+    """
+    h_1 = (mach_num / mach_num_des)**eta_2      # Coefficient h_1 coded explicitly, so it can be varied in the future
+    return h_1 * eta_1 * mach_num_des**eta_2
+
+
+# -------------------
+# Fuel consumption
+# -------------------
+
+
+def fuel_mass_flow_rate(
+        altitude_ft: npt.NDArray[np.float_],
+        air_pressure: npt.NDArray[np.float_],
+        air_temperature: npt.NDArray[np.float_],
+        mach_num: npt.NDArray[np.float_],
+        c_t: npt.NDArray[np.float_],
+        eta: npt.NDArray[np.float_],
+        wing_surface_area: float,
+        ff_idle_sls: float,
+        q_fuel: float
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate fuel mass flow rate.
+
+    Parameters
+    ----------
+    altitude_ft : npt.NDArray[np.float_]
+        Waypoint altitude, [:math: `ft`]
+    air_pressure : npt.NDArray[np.float_]
+        Ambient pressure, [:math:`Pa`]
+    air_temperature : npt.NDArray[np.float_]
+        Ambient temperature at each waypoint, [:math:`K`]
+    mach_num : npt.NDArray[np.float_]
+        Mach number at each waypoint
+    c_t : npt.NDArray[np.float_]
+        Engine thrust coefficient
+    eta : npt.NDArray[np.float_]
+        Overall propulsion efficiency
+    wing_surface_area : float
+        Aircraft wing surface area, [:math:`m^2`]
+    ff_idle_sls : float
+        Fuel flow under engine idle and sea level static conditions, summed over all engines, [:math:`kg s^{-1}`]
+    q_fuel : float
+        Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Fuel mass flow rate, [:math:`kg s^{-1}`]
+    """
+    fuel_flow = (
+            0.7 * (c_t * mach_num**3 / eta)
+            * (constants.kappa * constants.R_d * air_temperature)**0.5
+            * air_pressure * wing_surface_area / q_fuel
+    )
+    min_fuel_flow = ff_idle_sls * (1 - 0.178 * (altitude_ft / 10000) + 0.0085 * ((altitude_ft / 10000)**2))
+    return np.where(fuel_flow < min_fuel_flow, min_fuel_flow, fuel_flow)

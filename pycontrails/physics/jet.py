@@ -94,7 +94,7 @@ def acceleration(true_airspeed: np.ndarray, dt: np.ndarray) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        Acceleration, [:math:`m \ s^{-2}`]
+        Acceleration/deceleration, [:math:`m \ s^{-2}`]
     """
     dv_dt = np.empty_like(true_airspeed)
     dv_dt[:-1] = np.diff(true_airspeed) / dt[:-1]
