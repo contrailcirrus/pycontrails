@@ -183,7 +183,7 @@ def lift_coefficient(
 
 def skin_friction_coefficient(rn: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     """
-    Calculate skin friction coefficient.
+    Calculate aircraft skin friction coefficient.
 
     Parameters
     ----------
@@ -266,13 +266,13 @@ def oswald_efficiency_factor(
         atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
     """
     numer = np.where(atyp_param.winglets, 1.075, 1)
-    k_1 = _lift_dependent_drag_factor(c_drag_0, atyp_param.cos_sweep)
+    k_1 = _non_vortex_lift_dependent_drag_factor(c_drag_0, atyp_param.cos_sweep)
     return numer / ((1 + 0.03 + atyp_param.delta_2) + (k_1 * np.pi * atyp_param.wing_aspect_ratio))
 
 
-def _lift_dependent_drag_factor(c_drag_0: npt.NDArray[np.float_], cos_sweep: float) -> npt.NDArray[np.float_]:
+def _non_vortex_lift_dependent_drag_factor(c_drag_0: npt.NDArray[np.float_], cos_sweep: float) -> npt.NDArray[np.float_]:
     """
-    Calculate miscellaneous lift-dependent drag factor
+    Calculate non-vortex lift-dependent drag factor
 
     Parameters
     ----------
@@ -322,14 +322,8 @@ def wave_drag_coefficient(
     -----
     The wave drag coefficient captures all the drag resulting from compressibility, the development of significant
     regions of supersonic flow at the wing surface, and the formation of shock waves.
-
-    References
-    ----------
-    - Refer to Eq. (X) of Poll & Schumann (2021).
-    - Poll & Schumann (2022). PART 3
     """
-    # TODO: Complete documentation
-    m_cc = atyp_param.wing_constant - 0.1 * (c_lift / atyp_param.cos_sweep**2)
+    m_cc = atyp_param.wing_constant - 0.10 * (c_lift / atyp_param.cos_sweep**2)
     x = mach_num * atyp_param.cos_sweep / m_cc
 
     if x < atyp_param.j_2:
@@ -340,7 +334,7 @@ def wave_drag_coefficient(
     if x < atyp_param.x_ref:
         return c_d_w
     else:
-        return c_d_w + 70 * (x - atyp_param.x_ref**4)
+        return c_d_w + atyp_param.j_3 * (x - atyp_param.x_ref**4)
 
 
 def airframe_drag_coefficient(
@@ -378,8 +372,30 @@ def airframe_drag_coefficient(
         transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
         atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
     """
-    k = 1 / (np.pi * wing_aspect_ratio * e_ls)
+    k = _low_speed_lift_dependent_drag_factor(e_ls, wing_aspect_ratio)
     return c_drag_0 + (k * c_lift**2) + c_drag_w
+
+
+def _low_speed_lift_dependent_drag_factor(
+        e_ls: npt.NDArray[np.float_],
+        wing_aspect_ratio: float
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate low-speed lift-dependent drag factor.
+
+    Parameters
+    ----------
+    e_ls : npt.NDArray[np.float_]
+        Oswald efficiency factor
+    wing_aspect_ratio : float
+        Wing aspect ratio
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Low-speed lift-dependent drag factor, K term used to calculate the total airframe drag coefficient.
+    """
+    return 1 / (np.pi * wing_aspect_ratio * e_ls)
 
 
 # -------------------
@@ -488,31 +504,30 @@ def overall_propulsion_efficiency(
     npt.NDArray[np.float_]
         Overall propulsion efficiency
     """
-    # TODO: To include sigma and theta in documentations, awaiting Ian response
     # Calculate thrust coefficient at maximum overall propulsion efficiency: (c_t)_eta_b
     m_over_m_des = mach_num / atyp_param.m_des
     h_2 = ((1 + 0.55 * mach_num) * (m_over_m_des**2)) / (1 + 0.55 * atyp_param.m_des)
     c_t_eta_b = h_2 * atyp_param.c_t_des
 
-    # Calculate eta/eta_b, where eta_b is the maximum overall propulsion efficiency for a given Mach number
+    # Approximate eta/eta_b by using a fourth-order polynomial
+    # eta_b is the maximum overall propulsion efficiency for a given Mach number
     sigma = np.where(
         mach_num < 0.4,
         1.3 * (0.4 - mach_num),
         0
     )
-    theta = 0.43
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
     eta_over_eta_b_low = (
-            10 * (1 + 0.8 * (sigma - theta) - 0.6027 * sigma * theta) * c_t_over_c_t_eta_b
-            + 33.3333 * (-1 - 0.97 * (sigma - theta) + 0.8281 * sigma * theta) * (c_t_over_c_t_eta_b**2)
-            + 37.037 * (1 + (sigma - theta) - 0.9163 * sigma * theta) * (c_t_over_c_t_eta_b**3)
+            10 * (1 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b
+            + 33.3333 * (-1 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43) * (c_t_over_c_t_eta_b**2)
+            + 37.037 * (1 + (sigma - 0.43) - 0.9163 * sigma * 0.43) * (c_t_over_c_t_eta_b**3)
     )
     eta_over_eta_b_hi = (
-        (1 + (sigma - theta) - sigma * theta)
-        + (4 * sigma * theta - 2 * (sigma - theta)) * c_t_over_c_t_eta_b
-        + ((sigma - theta) - 6 * sigma * theta) * (c_t_over_c_t_eta_b**2)
-        + 4 * sigma * theta * (c_t_over_c_t_eta_b**3)
-        - sigma * theta * (c_t_over_c_t_eta_b**4)
+        (1 + (sigma - 0.43) - sigma * 0.43)
+        + (4 * sigma * 0.43 - 2 * (sigma - 0.43)) * c_t_over_c_t_eta_b
+        + ((sigma - 0.43) - 6 * sigma * 0.43) * (c_t_over_c_t_eta_b**2)
+        + 4 * sigma * 0.43 * (c_t_over_c_t_eta_b**3)
+        - sigma * 0.43 * (c_t_over_c_t_eta_b**4)
     )
 
     eta_over_eta_b = np.where(
