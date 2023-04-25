@@ -605,7 +605,7 @@ def is_valid_trajectory(
 
     # Flight duration
     segment_duration = flight.segment_duration(messages["timestamp"].to_numpy())
-    is_short_haul = np.nansum(segment_duration) < flight.SHORT_HAUL_DURATION
+    is_short_haul = np.nansum(segment_duration).item() < flight.SHORT_HAUL_DURATION
 
     # Flight phase
     altitude_ft = messages["altitude_baro"].to_numpy()
@@ -627,12 +627,12 @@ def is_valid_trajectory(
 
     # Validate flight trajectory
     has_enough_messages = len(messages) > minimum_messages
-    has_cruise_phase = np.any(segment_phase == flight.FlightPhase.CRUISE)
-    has_no_anomalous_phase = np.any(anomalous_phase)
+    has_cruise_phase = np.any(segment_phase == flight.FlightPhase.CRUISE).item()
+    has_no_anomalous_phase = np.any(anomalous_phase).item()
 
     # Relax constraint for short-haul flights
     if is_short_haul and (not has_cruise_phase) and (not has_no_anomalous_phase):
-        has_cruise_phase = np.any(segment_phase == flight.FlightPhase.LEVEL_FLIGHT)
+        has_cruise_phase = np.any(segment_phase == flight.FlightPhase.LEVEL_FLIGHT).item()
         has_no_anomalous_phase = True
 
     if not (has_enough_messages and has_cruise_phase and has_no_anomalous_phase):
