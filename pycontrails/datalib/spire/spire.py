@@ -489,7 +489,7 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
     )
 
     # get cruise phase
-    cruise = segment_phase == flight.FLIGHT_PHASE["cruise"]
+    cruise = segment_phase == flight.FlightPhase.CRUISE
 
     # fill between the first and last cruise phase indicator
     # this represents the flight phase after takeoff climb and before descent to landing
@@ -664,7 +664,7 @@ def is_valid_trajectory(
         min_cruise_altitude_ft = flight.MIN_CRUISE_ALTITUDE
 
     # Flight duration
-    segment_duration = flight.segment_duration(messages["timestamp"].values)
+    segment_duration = flight.segment_duration(messages["timestamp"].to_numpy())
     is_short_haul = np.nansum(segment_duration) < flight.SHORT_HAUL_DURATION
 
     # Flight phase
@@ -680,19 +680,19 @@ def is_valid_trajectory(
     # Find any anomalous messages with low altitudes between
     # the start and end of the cruise phase
     # See `_separate_by_cruise_phase` for more comments on logic
-    cruise = segment_phase == flight.FLIGHT_PHASE["cruise"]
+    cruise = segment_phase == flight.FlightPhase.CRUISE
     within_cruise = np.bitwise_xor.accumulate(cruise) | cruise
     is_low_altitude = altitude_ft < min_cruise_altitude_ft
     anomalous_phase = within_cruise & is_low_altitude
 
     # Validate flight trajectory
     has_enough_messages = len(messages) > minimum_messages
-    has_cruise_phase = np.any(segment_phase == flight.FLIGHT_PHASE["cruise"]).astype(bool)
-    has_no_anomalous_phase = np.any(anomalous_phase).astype(bool)
+    has_cruise_phase = np.any(segment_phase == flight.FlightPhase.CRUISE)
+    has_no_anomalous_phase = np.any(anomalous_phase)
 
     # Relax constraint for short-haul flights
     if is_short_haul and (not has_cruise_phase) and (not has_no_anomalous_phase):
-        has_cruise_phase = np.any(segment_phase == flight.FLIGHT_PHASE["level_flight"])
+        has_cruise_phase = np.any(segment_phase == flight.FlightPhase.LEVEL_FLIGHT)
         has_no_anomalous_phase = True
 
     if not (has_enough_messages and has_cruise_phase and has_no_anomalous_phase):
@@ -709,8 +709,8 @@ def is_valid_trajectory(
 
     # Second option is the flight is in descent and 2 hours of data are available after
     if final_time_available:
-        is_descent = np.any(segment_phase[-5:] == flight.FLIGHT_PHASE["descent"]) | np.any(
-            segment_phase[-5:] == flight.FLIGHT_PHASE["level_flight"]
+        is_descent = np.any(segment_phase[-5:] == flight.FlightPhase.DESCENT) | np.any(
+            segment_phase[-5:] == flight.FlightPhase.LEVEL_FLIGHT
         )
         elapsed_time_hrs = (final_time_available - final_message["timestamp"]) / np.timedelta64(
             1, "h"

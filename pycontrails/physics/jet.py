@@ -221,8 +221,8 @@ def reserve_fuel_requirements(
     segment_phase = flight.segment_phase(rocd, altitude_ft)
 
     # In case flight does not have cruise phase
-    is_climb_cruise = (segment_phase == flight.FLIGHT_PHASE["climb"]) | (
-        segment_phase == flight.FLIGHT_PHASE["cruise"]
+    is_climb_cruise = (segment_phase == flight.FlightPhase.CLIMB) | (
+        segment_phase == flight.FlightPhase.CRUISE
     )
 
     # If there are no climb and cruise phase, take the mean
