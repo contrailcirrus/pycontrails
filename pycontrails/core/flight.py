@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import logging
 import warnings
 from typing import TYPE_CHECKING, Any
@@ -25,14 +26,16 @@ if TYPE_CHECKING:
     import matplotlib
     import traffic
 
-#: Flight phase enumeration
-FLIGHT_PHASE: dict[str, int | float] = {
-    "nan": np.nan,
-    "climb": 1,
-    "cruise": 0,
-    "descent": -1,
-    "level_flight": -2,
-}
+
+class FlightPhase(enum.IntEnum):
+    """Flight phase enumeration."""
+
+    CLIMB = enum.auto()
+    CRUISE = enum.auto()
+    DESCENT = enum.auto()
+    LEVEL_FLIGHT = enum.auto()
+    NAN = enum.auto()
+
 
 #: Max airport elevation, [:math:`ft`]
 #: See `Daocheng_Yading_Airport <https://en.wikipedia.org/wiki/Daocheng_Yading_Airport>`_
@@ -679,8 +682,8 @@ class Flight(GeoVectorDataset):
     def segment_phase(
         self,
         threshold_rocd: float = 250.0,
-        min_cruise_altitude_ft: float = 20000,
-    ) -> npt.NDArray[np.float_]:
+        min_cruise_altitude_ft: float = 20000.0,
+    ) -> npt.NDArray[np.uint8]:
         """Identify the phase of flight (climb, cruise, descent) for each segment.
 
         Parameters
@@ -692,16 +695,17 @@ class Flight(GeoVectorDataset):
             Minimum altitude for cruise, [:math:`ft`]
             This is specific for each aircraft type,
             and can be approximated as 50% of the altitude ceiling.
+            Defaults to 20000 ft.
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.uint8]
             Array of values enumerating the flight phase.
-            See :attr:`flight.FLIGHT_PHASE` dictionary for enumeration.
+            See :attr:`flight.FlightPhase` for enumeration.
 
         See Also
         --------
-        :attr:`FLIGHT_PHASE`
+        :attr:`FlightPhase`
         :func:`segment_phase`
         :func:`segment_rocd`
         """
@@ -1503,7 +1507,7 @@ def segment_phase(
     *,
     threshold_rocd: float = 250.0,
     min_cruise_altitude_ft: float = 20000,
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.uint8]:
     """Identify the phase of flight (climb, cruise, descent) for each segment.
 
     Parameters
@@ -1522,9 +1526,9 @@ def segment_phase(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.uint8]
         Array of values enumerating the flight phase.
-        See :attr:`flight.FLIGHT_PHASE` dictionary for enumeration.
+        See :attr:`flight.FlightPhase` for enumeration.
 
     Notes
     -----
@@ -1537,7 +1541,7 @@ def segment_phase(
 
     See Also
     --------
-    :attr:`FLIGHT_PHASE`
+    :attr:`FlightPhase`
     :func:`segment_rocd`
     """
     nan = np.isnan(rocd)
@@ -1548,11 +1552,12 @@ def segment_phase(
     descent = ~cruise & (rocd < 0)
     level_flight = ~(nan | cruise | climb | descent)
 
-    phase = np.full(rocd.shape, np.nan)
-    phase[cruise] = FLIGHT_PHASE["cruise"]
-    phase[climb] = FLIGHT_PHASE["climb"]
-    phase[descent] = FLIGHT_PHASE["descent"]
-    phase[level_flight] = FLIGHT_PHASE["level_flight"]
+    phase = np.empty(rocd.shape, dtype=np.uint8)
+    phase[cruise] = FlightPhase.CRUISE
+    phase[climb] = FlightPhase.CLIMB
+    phase[descent] = FlightPhase.DESCENT
+    phase[level_flight] = FlightPhase.LEVEL_FLIGHT
+    phase[nan] = FlightPhase.NAN
 
     return phase
 
