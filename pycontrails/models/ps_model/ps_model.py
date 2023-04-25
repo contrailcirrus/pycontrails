@@ -9,7 +9,7 @@ from pycontrails.physics import constants, jet, units
 from pycontrails.models.ps_model.aircraft_params import AircraftEngineParams, get_aircraft_engine_params
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
-default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230424.csv"
+default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
 
 
 class PollSchumannModel:
