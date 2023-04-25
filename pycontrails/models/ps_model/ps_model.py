@@ -1,24 +1,79 @@
 from __future__ import annotations
 
 import pathlib
+import dataclasses
 import numpy as np
 import numpy.typing as npt
-from typing import Mapping
+from typing import Mapping, Any
+
+from pycontrails.core.models import Model, ModelParams
 from pycontrails.core import flight
+from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.physics import constants, jet, units
+from pycontrails.models.aircraft_performance import AircraftPerformanceData
 from pycontrails.models.ps_model.aircraft_params import AircraftEngineParams, get_aircraft_engine_params
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
-default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
 
 
-class PollSchumannModel:
+@dataclasses.dataclass
+class PSModelParams(ModelParams):
+    """:class:`Emissions` model parameters."""
+
+    #: Default paths
+    aircraft_database_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
+
+    #: Fuel type
+    fuel: Fuel = dataclasses.field(default_factory=JetA)
+
+
+class PSModel(Model):
+    name = "PS Model"
+    long_name = "Poll-Schumann Aircraft Performance Model"
+    default_params = PSModelParams
+
     aircraft_engine_params: Mapping[str, AircraftEngineParams]
 
-    def __init__(self):
+    def __init__(
+            self,
+            params: dict[str, Any] | None = None,
+            **params_kwargs: Any,
+    ) -> None:
+        super().__init__(params, **params_kwargs)
+
         # Set class variable with engine parameters if not yet loaded
         if not hasattr(self, "aircraft_engine_params"):
-            type(self).aircraft_engine_params = get_aircraft_engine_params(default_path)
+            type(self).aircraft_engine_params = get_aircraft_engine_params(self.params["aircraft_database_path"])
+
+    def check_aircraft_type_availability(
+        self, aircraft_type_icao: str, raise_error: bool = True
+    ) -> bool:
+        """Check if aircraft type designator is available in BADA database.
+
+        Parameters
+        ----------
+        aircraft_type_icao : str
+            ICAO aircraft type designator
+        raise_error : bool, optional
+            Optional flag for raising an error, by default True.
+
+        Returns
+        -------
+        bool
+            Aircraft found in BADA database.
+
+        Raises
+        ------
+        KeyError
+            raises KeyError if the aircraft type is not covered by database
+        """
+        if aircraft_type_icao in self.aircraft_engine_params:
+            return True
+        if raise_error:
+            raise KeyError(
+                f"Aircraft type {aircraft_type_icao} not covered by the PS model."
+            )
+        return False
 
     def calculate_aircraft_performance(
             self,
@@ -29,14 +84,38 @@ class PollSchumannModel:
             time: npt.NDArray[np.datetime64],
             true_airspeed: npt.NDArray[np.float_] | float | None,
             aircraft_mass: npt.NDArray[np.float_] | float | None,
-    ):
+            q_fuel: float
+    ) -> AircraftPerformanceData:
+        """
+        Calculate aircraft performance parameters
+
+        Parameters
+        ----------
+        aircraft_type_icao : str
+            ICAO aircraft type designator
+        air_temperature : npt.NDArray[np.float_]
+            Ambient temperature at each waypoint, [:math:`K`]
+        altitude_ft : npt.NDArray[np.float_]
+            Waypoint altitude, [:math: `ft`]
+        time : npt.NDArray[np.datetime64]
+            Waypoint time in ``np.datetime64`` format.
+        true_airspeed : npt.NDArray[np.float_]
+            True airspeed at each waypoint, [:math:`m \ s^{-1}`]
+        aircraft_mass : npt.NDArray[np.float_]
+            Aircraft mass at each waypoint, [:math:`kg`]
+        q_fuel: float
+            Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`]
+
+        Returns
+        -------
+        AircraftPerformanceData
+        """
         atyp_param = self.aircraft_engine_params[aircraft_type_icao]
 
         # Atmospheric quantities
-        altitude_m = units.ft_to_m(altitude_ft)
-        pressure_pa = units.ft_to_pl(altitude_ft) * 100
+        air_pressure = units.ft_to_pl(altitude_ft) * 100
         mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)
-        rn = reynolds_number(atyp_param.wing_surface_area, mach_num, air_temperature, pressure_pa)
+        rn = reynolds_number(atyp_param.wing_surface_area, mach_num, air_temperature, air_pressure)
 
         # Trajectory parameters
         dt_sec = flight._dt_waypoints(time, dtype=altitude_ft.dtype)
@@ -46,15 +125,33 @@ class PollSchumannModel:
         theta = jet.climb_descent_angle(true_airspeed, rocd_ms)
 
         # Aircraft performance parameters
-        c_lift = lift_coefficient(atyp_param.wing_surface_area, aircraft_mass, pressure_pa, mach_num, theta)
+        c_lift = lift_coefficient(atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_num, theta)
         c_f = skin_friction_coefficient(rn)
         c_drag_0 = zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
         e_ls = oswald_efficiency_factor(c_drag_0, atyp_param)
         c_drag_w = wave_drag_coefficient(mach_num, c_lift, atyp_param)
         c_drag = airframe_drag_coefficient(c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio)
 
-        # TODO: Calculate engine parameters
-        # TODO: Calculate fuel consumption
+        # Engine parameters and fuel consumption
+        f_thrust = thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, theta)
+        c_t = engine_thrust_coefficient(f_thrust, mach_num, air_pressure, atyp_param.wing_surface_area)
+        eta = overall_propulsion_efficiency(mach_num, c_t, atyp_param)
+        fuel_flow = fuel_mass_flow_rate(
+            altitude_ft, air_pressure, air_temperature, mach_num, c_t, eta,
+            atyp_param.wing_surface_area, atyp_param.ff_idle_sls, q_fuel
+        )
+        fuel_burn = jet.fuel_burn(fuel_flow, dt_sec)
+        return AircraftPerformanceData(
+            fuel_flow=fuel_flow,
+            aircraft_mass=aircraft_mass,
+            true_airspeed=true_airspeed,
+            thrust=f_thrust,
+            fuel_burn=fuel_burn,
+            engine_efficiency=eta,
+            rocd=rocd,
+        )
+
+    def simulate_fuel_and_performance(self):
         return
 
 
