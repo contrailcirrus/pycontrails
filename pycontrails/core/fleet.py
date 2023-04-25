@@ -22,12 +22,12 @@ class Fleet(Flight):
 
     def __init__(
         self,
-        data: dict[str, np.ndarray] | None = None,
-        longitude: np.ndarray | None = None,
-        latitude: np.ndarray | None = None,
-        altitude: np.ndarray | None = None,
-        level: np.ndarray | None = None,
-        time: np.ndarray | None = None,
+        data: dict[str, npt.ArrayLike] | None = None,
+        longitude: npt.ArrayLike | None = None,
+        latitude: npt.ArrayLike | None = None,
+        altitude: npt.ArrayLike | None = None,
+        level: npt.ArrayLike | None = None,
+        time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | None = None,
         copy: bool = True,
         fuel: Fuel | None = None,
@@ -60,12 +60,12 @@ class Fleet(Flight):
 
         self.final_waypoints = self.calc_final_waypoints()
 
-    def calc_final_waypoints(self) -> np.ndarray:
+    def calc_final_waypoints(self) -> npt.NDArray[np.bool_]:
         """Validate data and calculate the final waypoint of each flight.
 
         Returns
         -------
-        np.ndarray
+        npt.NDArray[np.bool_]
             A boolean array in which True values correspond to final waypoint of each flight.
 
         Raises
@@ -291,7 +291,7 @@ class Fleet(Flight):
             self[key] = v_wind
 
         # Calculate TAS on each flight individually
-        def calc_tas(fl: Flight) -> np.ndarray:
+        def calc_tas(fl: Flight) -> npt.NDArray[np.float_]:
             u_wind = fl.get("__u_wind", None)
             v_wind = fl.get("__v_wind", None)
 
@@ -314,7 +314,7 @@ class Fleet(Flight):
         return np.concatenate(tas)
 
     @overrides
-    def segment_groundspeed(self, *args: Any, **kwargs: Any) -> np.ndarray:
+    def segment_groundspeed(self, *args: Any, **kwargs: Any) -> npt.NDArray[np.float_]:
         # Implement if we have a usecase for this.
         # Because the super() method uses a smoothing pattern, it will not reliably
         # work on Fleet.
@@ -327,15 +327,15 @@ class Fleet(Flight):
         raise NotImplementedError
 
     @overrides
-    def segment_length(self) -> np.ndarray:
+    def segment_length(self) -> npt.NDArray[np.float_]:
         return np.where(self.final_waypoints, np.nan, super().segment_length())
 
     @overrides
-    def segment_azimuth(self) -> np.ndarray:
+    def segment_azimuth(self) -> npt.NDArray[np.float_]:
         return np.where(self.final_waypoints, np.nan, super().segment_azimuth())
 
     @overrides
-    def segment_angle(self) -> tuple[np.ndarray, np.ndarray]:
+    def segment_angle(self) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
         sin_a, cos_a = super().segment_angle()
         sin_a[self.final_waypoints] = np.nan
         cos_a[self.final_waypoints] = np.nan

@@ -97,7 +97,7 @@ class VectorDataDict(Dict[str, np.ndarray]):
         for arr in self.values():
             self._validate_array(arr)
 
-    def __setitem__(self, k: str, v: np.ndarray) -> None:
+    def __setitem__(self, k: str, v: npt.ArrayLike) -> None:
         """Set new key-value pair to instance and warn when overwriting existing key.
 
         This method casts ``v`` to a ``np.ndarray`` and ensures that the array size is
@@ -131,7 +131,7 @@ class VectorDataDict(Dict[str, np.ndarray]):
         if not len(self):
             del self._size
 
-    def setdefault(self, k: str, default: np.ndarray | None = None) -> np.ndarray:
+    def setdefault(self, k: str, default: npt.ArrayLike | None = None) -> np.ndarray:
         """Thin wrapper around ``dict.setdefault``.
 
         The main purpose of overriding is to run :meth:`_validate_array()` on set.
@@ -140,7 +140,7 @@ class VectorDataDict(Dict[str, np.ndarray]):
         ----------
         k : str
             Key
-        default : np.ndarray, optional
+        default : npt.ArrayLike, optional
             Default value for key ``k``
 
         Returns
@@ -156,10 +156,10 @@ class VectorDataDict(Dict[str, np.ndarray]):
             default = np.array([])
 
         self[k] = default
-        return default
+        return self[k]
 
     def update(  # type: ignore[override]
-        self, other: dict[str, np.ndarray] | None = None, **kwargs: np.ndarray
+        self, other: dict[str, npt.ArrayLike] | None = None, **kwargs: npt.ArrayLike
     ) -> None:
         """Update values without warning if overwriting.
 
@@ -168,24 +168,24 @@ class VectorDataDict(Dict[str, np.ndarray]):
 
         Parameters
         ----------
-        other : dict[str, np.ndarray] | None, optional
+        other : dict[str, npt.ArrayLike] | None, optional
             Fields to update as dict
-        **kwargs : np.ndarray
+        **kwargs : npt.ArrayLike
             Fields to update as kwargs
         """
         other = other or {}
-        other = {k: np.asarray(v) for k, v in other.items()}
-        for arr in other.values():
+        other_arrs = {k: np.asarray(v) for k, v in other.items()}
+        for arr in other_arrs.values():
             self._validate_array(arr)
 
-        super().update(other)
+        super().update(other_arrs)
 
         # validate any kwarg arrays
-        kwargs = {k: np.asarray(v) for k, v in kwargs.items()}
-        for arr in kwargs.values():
+        kwargs_arr = {k: np.asarray(v) for k, v in kwargs.items()}
+        for arr in kwargs_arr.values():
             self._validate_array(arr)
 
-        super().update(kwargs)
+        super().update(kwargs_arr)
 
     def _validate_array(self, arr: np.ndarray) -> None:
         """Ensure that `arr` is compatible with instance.
@@ -240,7 +240,7 @@ class VectorDataset:
 
     Parameters
     ----------
-    data : dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
+    data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
         Initial data, by default None
     attrs : dict[str, Any] | AttrDict, optional
         Dictionary of attributes, by default None
@@ -265,7 +265,11 @@ class VectorDataset:
 
     def __init__(
         self,
-        data: dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None = None,
+        data: dict[str, npt.ArrayLike]
+        | pd.DataFrame
+        | VectorDataDict
+        | VectorDataset
+        | None = None,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
         **attrs_kwargs: Any,
@@ -368,14 +372,14 @@ class VectorDataset:
         """
         return self.data.get(key, default_value)
 
-    def __setitem__(self, key: str, values: np.ndarray) -> None:
+    def __setitem__(self, key: str, values: npt.ArrayLike) -> None:
         """Set values at key `key` on :attr:`data`.
 
         Parameters
         ----------
         key : str
             Key name in :attr:`data`
-        values : np.ndarray
+        values : npt.ArrayLike
             Values to set to :attr:`data`. Array size must be compatible with existing data.
         """
         self.data[key] = values
@@ -416,27 +420,29 @@ class VectorDataset:
         return key in self.data
 
     def update(
-        self, other: VectorDataDict | dict[str, np.ndarray] | None = None, **kwargs: np.ndarray
+        self,
+        other: dict[str, npt.ArrayLike] | None = None,
+        **kwargs: npt.ArrayLike,
     ) -> None:
         """Update values in  :attr:`data` dict without warning if overwriting.
 
         Parameters
         ----------
-        other : VectorDataDict | dict[str, np.ndarray] | None, optional
+        other : dict[str, npt.ArrayLike] | None, optional
             Fields to update as dict
-        **kwargs : np.ndarray
+        **kwargs : npt.ArrayLike
             Fields to update as kwargs
         """
         self.data.update(other, **kwargs)
 
-    def setdefault(self, key: str, default: np.ndarray | None = None) -> np.ndarray:
+    def setdefault(self, key: str, default: npt.ArrayLike | None = None) -> np.ndarray:
         """Shortcut to :attr:`data.setdefault`.
 
         Parameters
         ----------
         key : str
             Key in :attr:`data` dict.
-        default : np.ndarray, optional
+        default : npt.ArrayLike, optional
             Values to use as default, if key is not defined
 
         Returns
@@ -1037,26 +1043,26 @@ class GeoVectorDataset(VectorDataset):
 
     Parameters
     ----------
-    data : dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
+    data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
         Data dictionary or :class:`pandas.DataFrame` .
         Must include keys/columns ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``.
         Keyword arguments for ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``
         override ``data`` inputs. Expects ``altitude`` in meters and ``time``
         as a DatetimeLike (or array that can processed with :meth:`pd.to_datetime`).
         Additional waypoint-specific data can be included as additional keys/columns.
-    longitude : np.ndarray, optional
+    longitude : npt.ArrayLike, optional
         Longitude data.
         Defaults to None.
-    latitude : np.ndarray, optional
+    latitude : npt.ArrayLike, optional
         Latitude data.
         Defaults to None.
-    altitude : np.ndarray, optional
+    altitude : npt.ArrayLike, optional
         Altitude data, [:math:`m`].
         Defaults to None.
-    level : np.ndarray, optional
+    level : npt.ArrayLike, optional
         Level data, [:math:`hPa`].
         Defaults to None.
-    time : np.ndarray, optional
+    time : npt.ArrayLike, optional
         Time data.
         Expects an array of DatetimeLike values,
         or array that can proccessed with :meth:`pd.to_datetime`.
@@ -1086,7 +1092,11 @@ class GeoVectorDataset(VectorDataset):
 
     def __init__(
         self,
-        data: dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None = None,
+        data: dict[str, npt.ArrayLike]
+        | pd.DataFrame
+        | VectorDataDict
+        | VectorDataset
+        | None = None,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,
@@ -1203,7 +1213,7 @@ class GeoVectorDataset(VectorDataset):
         return attrs
 
     @property
-    def level(self) -> np.ndarray:
+    def level(self) -> npt.NDArray[np.float_]:
         """Get pressure ``level`` values for points.
 
         Automatically calculates pressure level using :func:`units.m_to_pl` using ``altitude`` key.
@@ -1214,7 +1224,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        np.ndarray
+        npt.NDArray[np.float_]
             Point pressure level values, [:math:`hPa`]
         """
         try:
@@ -1223,7 +1233,7 @@ class GeoVectorDataset(VectorDataset):
             return units.m_to_pl(self.altitude)
 
     @property
-    def altitude(self) -> np.ndarray:
+    def altitude(self) -> npt.NDArray[np.float_]:
         """Get altitude.
 
         Automatically calculates altitude using :func:`units.pl_to_m` using ``level`` key.
@@ -1234,7 +1244,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        np.ndarray
+        npt.NDArray[np.float_]
             Altitude, [:math:`m`]
         """
         try:
@@ -1248,12 +1258,12 @@ class GeoVectorDataset(VectorDataset):
             return units.ft_to_m(self["altitude_ft"])
 
     @property
-    def air_pressure(self) -> np.ndarray:
+    def air_pressure(self) -> npt.NDArray[np.float_]:
         """Get ``air_pressure`` values for points.
 
         Returns
         -------
-        np.ndarray
+        npt.NDArray[np.float_]
             Point air pressure values, [:math:`Pa`]
         """
         try:
@@ -1262,12 +1272,12 @@ class GeoVectorDataset(VectorDataset):
             return 100 * self.level
 
     @property
-    def altitude_ft(self) -> np.ndarray:
+    def altitude_ft(self) -> npt.NDArray[np.float_]:
         """Get altitude in feet.
 
         Returns
         -------
-        np.ndarray
+        npt.NDArray[np.float_]
             Altitude, [:math:`ft`]
         """
         try:
@@ -1370,7 +1380,7 @@ class GeoVectorDataset(VectorDataset):
 
     def coords_intersect_met(
         self, met: met_module.MetDataset | met_module.MetDataArray
-    ) -> np.ndarray:
+    ) -> npt.NDArray[np.bool_]:
         """Return boolean mask of data inside the bounding box defined by ``met``.
 
         Parameters
@@ -1380,7 +1390,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        np.ndarray
+        npt.NDArray[np.bool_]
             True if point is inside the bounding box defined by ``met``.
         """
 
@@ -1407,26 +1417,26 @@ class GeoVectorDataset(VectorDataset):
         self,
         mda: met_module.MetDataArray,
         *,
-        longitude: np.ndarray | None = None,
-        latitude: np.ndarray | None = None,
-        level: np.ndarray | None = None,
-        time: np.ndarray | None = None,
+        longitude: npt.NDArray[np.float_] | None = None,
+        latitude: npt.NDArray[np.float_] | None = None,
+        level: npt.NDArray[np.float_] | None = None,
+        time: npt.NDArray[np.datetime64] | None = None,
         use_indices: bool = False,
         **interp_kwargs: Any,
-    ) -> np.ndarray:
+    ) -> npt.NDArray[np.float_]:
         """Intersect waypoints with MetDataArray.
 
         Parameters
         ----------
         mda : MetDataArray
             MetDataArray containing a meteorological variable at spatio-temporal coordinates.
-        longitude : np.ndarray, optional
+        longitude : npt.NDArray[np.float_], optional
             Override existing coordinates for met interpolation
-        latitude : np.ndarray, optional
+        latitude : npt.NDArray[np.float_], optional
             Override existing coordinates for met interpolation
-        level : np.ndarray, optional
+        level : npt.NDArray[np.float_], optional
             Override existing coordinates for met interpolation
-        time : np.ndarray, optional
+        time : npt.NDArray[np.datetime64], optional
             Override existing coordinates for met interpolation
         use_indices : bool, optional
             Experimental.
@@ -1439,7 +1449,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        np.ndarray
+        npt.NDArray[np.float_]
             Interpolated values
 
         Examples
