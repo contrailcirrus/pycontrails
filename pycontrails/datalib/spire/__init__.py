@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pycontrails.datalib.spire.spire import (
-    Spire,
     clean,
     generate_flight_id,
     identify_flights,
@@ -12,7 +11,6 @@ from pycontrails.datalib.spire.spire import (
 )
 
 __all__ = [
-    "Spire",
     "clean",
     "generate_flight_id",
     "identify_flights",
