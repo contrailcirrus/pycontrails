@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from pycontrails.core import datalib, flight
-from pycontrails.core.fleet import Fleet
+from pycontrails.core import flight
 from pycontrails.physics import geo, units
 
 logger = logging.getLogger(__name__)
@@ -37,61 +35,6 @@ MESSAGE_DTYPES = {
     "departure_utc_offset": str,
     "departure_scheduled_time": str,
 }
-
-
-class Spire(datalib.FlightDataSource):
-    """Class to process `Spire ADS-B <https://spire.com/aviation/>`_ data.
-
-    Parameters
-    ----------
-    time : datalib.TimeInput | None
-        The time range for data retrieval, either a single datetime or (start, end) datetime range.
-        Input must be datetime-like or tuple of datetime-like
-        (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
-        specifying the (start, end) of the date range, inclusive.
-        If None, all timestamps will be loaded from messages.
-    messages: pd.DataFrame
-        Raw ADS-B messages from Spire ADS-B stream
-        formatted as a :class:`pandas.DataFrame`.
-
-    Notes
-    -----
-    See `Spire Aviation API docs
-    <https://aviation-docs.spire.com/api/tracking-stream/introduction>`_
-    for reference documentation.
-
-    Input ADS-B messages are *not* copied, so be sure to
-    pass in a copy of messages (e.g. ``messages.copy()``)
-    to preserve original dataframe.
-    """
-
-    def __init__(
-        self,
-        time: datalib.TimeInput | None,
-        messages: pd.DataFrame,
-        **kwargs: Any,
-    ) -> None:
-        # save a copy of current index
-        messages["_index"] = messages.index
-
-        # ensure that timestamp column is a datetime
-        messages["timestamp"] = pd.to_datetime(messages["timestamp"])
-
-        if time is not None:
-            time_bounds = datalib.parse_timesteps(time, freq=None)
-            within_time_bounds = (messages["timestamp"] >= time_bounds[0]) & (
-                messages["timestamp"] <= time_bounds[1]
-            )
-            messages = messages.loc[within_time_bounds].reset_index(drop=True)
-
-        # sort message by time
-        messages.sort_values(by=["timestamp"], ascending=True, inplace=True)
-
-        # run cleanup function
-        self.messages = clean(messages)
-
-    def load_fleet(self) -> Fleet:
-        pass
 
 
 def clean(messages: pd.DataFrame) -> pd.DataFrame:
