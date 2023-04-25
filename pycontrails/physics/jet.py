@@ -25,19 +25,19 @@ logger = logging.getLogger(__name__)
 
 
 def clip_mach_number(
-    true_airspeed: np.ndarray,
-    air_temperature: np.ndarray,
+    true_airspeed: npt.NDArray[np.float_],
+    air_temperature: npt.NDArray[np.float_],
     max_mach_number: float,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     r"""Compute the Mach number from the true airspeed and ambient temperature.
 
     This method clips the computed Mach number to the value of `max_mach_number`.
 
     Parameters
     ----------
-    true_airspeed : np.ndarray
+    true_airspeed : npt.NDArray[np.float_]
         Array of true airspeed, [:math:`m \ s^{-1}`]
-    air_temperature : np.ndarray
+    air_temperature : npt.NDArray[np.float_]
         Array of ambient temperature, [:math: `K`]
     max_mach_number : float
         Maximum mach number associated to aircraft, [:math: `Ma`]. If no clipping
@@ -45,7 +45,7 @@ def clip_mach_number(
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray] :
+    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]] :
         Pair of true airspeed and Mach number arrays. Both are corrected so that
         the Mach numbers are clipped at `max_mach_number`.
     """
@@ -68,13 +68,13 @@ def clip_mach_number(
 
 
 def overall_propulsion_efficiency(
-    true_airspeed: np.ndarray,
-    F_thrust: np.ndarray,
-    fuel_flow: np.ndarray,
+    true_airspeed: npt.NDArray[np.float_],
+    F_thrust: npt.NDArray[np.float_],
+    fuel_flow: npt.NDArray[np.float_],
     q_fuel: float,
-    is_descent: np.ndarray | None,
+    is_descent: npt.NDArray[np.bool_] | None,
     threshold: float = 0.5,
-) -> np.ndarray:
+) -> npt.NDArray[np.float_]:
     r"""Calculate the overall propulsion efficiency (OPE).
 
     Negative OPE values can occur during the descent phase and is clipped to a
@@ -83,22 +83,22 @@ def overall_propulsion_efficiency(
 
     Parameters
     ----------
-    true_airspeed: np.ndarray
+    true_airspeed: npt.NDArray[np.float_]
         True airspeed for each waypoint, [:math:`m s^{-1}`].
-    F_thrust: np.ndarray
+    F_thrust: npt.NDArray[np.float_]
         Thrust force provided by the engine, [:math:`N`].
-    fuel_flow: np.ndarray
+    fuel_flow: npt.NDArray[np.float_]
         Fuel mass flow rate, [:math:`kg s^{-1}`].
     q_fuel : float
         Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
-    is_descent : np.ndarray | None
+    is_descent : npt.NDArray[np.float_] | None
         Boolean array that indicates if a waypoint is in a descent phase.
     threshold : float
         Upper bound for realistic engine efficiency.
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Overall propulsion efficiency (OPE)
 
     References
@@ -126,19 +126,21 @@ def overall_propulsion_efficiency(
 # -------------------
 
 
-def fuel_burn(fuel_flow: np.ndarray, segment_duration: np.ndarray) -> np.ndarray:
+def fuel_burn(
+    fuel_flow: npt.NDArray[np.float_], segment_duration: npt.NDArray[np.float_]
+) -> npt.NDArray[np.float_]:
     """Calculate the fuel consumption at each waypoint.
 
     Parameters
     ----------
-    fuel_flow: np.ndarray
+    fuel_flow: npt.NDArray[np.float_]
         Fuel mass flow rate, [:math:`kg s^{-1}`]
-    segment_duration: np.ndarray
+    segment_duration: npt.NDArray[np.float_]
         Time difference between waypoints, [:math:`s`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Fuel consumption at each waypoint, [:math:`kg`]
     """
     return fuel_flow * segment_duration
@@ -178,25 +180,28 @@ def equivalent_fuel_flow_rate_at_sea_level(
 
 
 def reserve_fuel_requirements(
-    rocd: np.ndarray, altitude_ft: np.ndarray, fuel_flow: np.ndarray, fuel_burn: np.ndarray
+    rocd: npt.NDArray[np.float_],
+    altitude_ft: npt.NDArray[np.float_],
+    fuel_flow: npt.NDArray[np.float_],
+    fuel_burn: npt.NDArray[np.float_],
 ) -> float:
     r"""
     Estimate reserve fuel requirements.
 
     Parameters
     ----------
-    rocd: np.ndarray
+    rocd: npt.NDArray[np.float_]
         Rate of climb and descent, [:math:`ft \ min^{-1}`]
-    altitude_ft: np.ndarray
+    altitude_ft: npt.NDArray[np.float_]
         Altitude, [:math:`ft`]
-    fuel_flow: np.ndarray
+    fuel_flow: npt.NDArray[np.float_]
         Fuel mass flow rate, [:math:`kg \ s^{-1}`].
-    fuel_burn: np.ndarray
+    fuel_burn: npt.NDArray[np.float_]
         Fuel consumption for each waypoint, [:math:`kg`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Reserve fuel requirements, [:math:`kg`]
 
     References
@@ -243,17 +248,17 @@ def reserve_fuel_requirements(
 # -------------------
 
 
-def aircraft_weight(aircraft_mass: np.ndarray) -> np.ndarray:
+def aircraft_weight(aircraft_mass: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     """Calculate the aircraft weight at each waypoint.
 
     Parameters
     ----------
-    aircraft_mass : np.ndarray
+    aircraft_mass : npt.NDArray[np.float_]
         Aircraft mass, [:math:`kg`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Aircraft weight, [:math:`N`]
     """
     return aircraft_mass * constants.g
@@ -332,7 +337,7 @@ def update_aircraft_mass(
         Aircraft maximum take-off weight, [:math:`kg`].
     max_payload: float
         Aircraft maximum payload, [:math:`kg`]
-    fuel_burn: np.ndarray
+    fuel_burn: npt.NDArray[np.float_]
         Fuel consumption for each waypoint, [:math:`kg`]
     total_reserve_fuel: float
         Total reserve fuel requirements, [:math:`kg`]
@@ -515,30 +520,30 @@ def turbine_inlet_temperature(
 
 
 def thrust_force(
-    altitude: np.ndarray,
-    true_airspeed: np.ndarray,
-    dt: np.ndarray,
-    aircraft_mass: np.ndarray,
-    F_drag: np.ndarray,
-) -> np.ndarray:
+    altitude: npt.NDArray[np.float_],
+    true_airspeed: npt.NDArray[np.float_],
+    dt: npt.NDArray[np.float_],
+    aircraft_mass: npt.NDArray[np.float_],
+    F_drag: npt.NDArray[np.float_],
+) -> npt.NDArray[np.float_]:
     r"""Calculate the thrust force at each waypoint.
 
     Parameters
     ----------
-    altitude : np.ndarray
+    altitude : npt.NDArray[np.float_]
         Waypoint altitude, [:math:`m`]
-    true_airspeed : np.ndarray
+    true_airspeed : npt.NDArray[np.float_]
         True airspeed, [:math:`m \ s^{-1}`]
-    dt : np.ndarray
+    dt : npt.NDArray[np.float_]
         Time between waypoints, [:math:`s`]
-    aircraft_mass : np.ndarray
+    aircraft_mass : npt.NDArray[np.float_]
         Aircraft mass, [:math:`kg`]
-    F_drag : np.ndarray
+    F_drag : npt.NDArray[np.float_]
         Draft force, [:math:`N`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Thrust force, [:math:`N`]
 
     References
@@ -676,49 +681,49 @@ def air_to_fuel_ratio(
 # -------------------
 
 
-def temperature_ratio(T: np.ndarray) -> np.ndarray:
+def temperature_ratio(T: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     """Calculate the ratio of ambient temperature relative to the temperature at mean sea level.
 
     Parameters
     ----------
-    T : np.ndarray
+    T : npt.NDArray[np.float_]
         Air temperature, [:math:`K`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Ratio of the temperature to the temperature at mean sea-level (MSL).
     """
     return T / constants.T_msl
 
 
-def pressure_ratio(p: np.ndarray) -> np.ndarray:
+def pressure_ratio(p: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     """Calculate the ratio of ambient pressure relative to the surface pressure.
 
     Parameters
     ----------
-    p : np.ndarray
+    p : npt.NDArray[np.float_]
         Air pressure, [:math:`Pa`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Ratio of the pressure altitude to the surface pressure.
     """
     return p / constants.p_surface
 
 
-def density_ratio(rho: np.ndarray) -> np.ndarray:
+def density_ratio(rho: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     r"""Calculate the ratio of air density relative to the air density at mean-sea-level.
 
     Parameters
     ----------
-    rho : np.ndarray
+    rho : npt.NDArray[np.float_]
         Air density, [:math:`kg \ m^{3}`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Ratio of the density to the air density at mean sea-level (MSL).
     """
     return rho / constants.rho_msl
