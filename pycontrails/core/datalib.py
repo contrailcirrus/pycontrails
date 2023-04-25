@@ -15,7 +15,6 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.core import cache
-from pycontrails.core.fleet import Fleet
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.utils.types import DatetimeLike
 
@@ -657,58 +656,3 @@ class MetDataSource(abc.ABC):
         xr_kwargs.setdefault("chunks", DEFAULT_CHUNKS)
         xr_kwargs.setdefault("parallel", True)
         return xr.open_mfdataset(disk_paths, **xr_kwargs)
-
-
-class FlightDataSource(abc.ABC):
-    """Abstract class for wrapping ADS-B flight data sources."""
-
-    __slots__ = "messages"
-
-    #: ADS-B messages formatted as :class:`pandas.DataFrame`
-    #: Input ADS-B messages are *not* copied
-    messages: pd.DataFrame
-
-    @abc.abstractmethod
-    def __init__(
-        self,
-        time: TimeInput | None,
-        messages: pd.DataFrame,
-        **kwargs: Any,
-    ) -> None:
-        ...
-
-    @abc.abstractmethod
-    def load_fleet(self, **kwargs: Any) -> Fleet:
-        """Open :class:`Fleet` (list of :class:`Flight`) from data source.
-
-        This method should parse, validate, and separate individual
-        flights from data source and return a :class:`Fleet` class.
-
-        Parameters
-        ----------
-        **kwargs : Any
-            Keyword arguments passed through directly into :class:`Fleet` constructor.
-
-        Returns
-        -------
-        Fleet
-            List of loaded flights
-        """
-
-    # @abc.abstractmethod
-    # def load_flight(self, icao_address: str, **kwargs: Any) -> Flight:
-    #     """Open :class:`Flight` from data source by ICAO address of transponder.
-
-    #     This method should parse and validate single trajectory
-    #     and return a :class:`Flight` class.
-
-    #     Parameters
-    #     ----------
-    #     **kwargs : Any
-    #         Keyword arguments passed through directly into :class:`Flight` constructor.
-
-    #     Returns
-    #     -------
-    #     Flight
-    #         Parsed flight
-    #     """
