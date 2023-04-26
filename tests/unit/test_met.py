@@ -562,7 +562,13 @@ def test_polygon_sparse_binary(
     mda = MetDataArray(mda.data.isel(time=[time]))
     level = nonzero_coord["level"]
 
-    geojson = mda.to_polygon_feature(level=level, min_area=0.0, iso_value=0.5, epsilon=0.0)
+    geojson = mda.to_polygon_feature(
+        level=level,
+        min_area=0.0,
+        iso_value=0.5,
+        epsilon=0.0,
+        precision=6,
+    )
     assert geojson["type"] == "Feature"
     assert geojson["geometry"]["type"] == "MultiPolygon"
     coords = geojson["geometry"]["coordinates"]

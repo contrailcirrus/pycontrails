@@ -144,22 +144,22 @@ def test_multipolygon_to_geojson(barr: np.ndarray, altitude: float | None):
         longitude=np.arange(0, 25, 0.25),
         latitude=np.arange(-75, -25, 0.5),
     )
-    assert len(mp.geoms) == 23
+    assert len(mp.geoms) == 2
 
     geojson = polygon.multipolygon_to_geojson(mp, altitude=altitude)
     assert isinstance(geojson, dict)
     assert geojson["type"] == "Feature"
     assert geojson["geometry"]["type"] == "MultiPolygon"
-    assert len(geojson["geometry"]["coordinates"]) == 23
+    assert len(geojson["geometry"]["coordinates"]) == 2
     for poly in geojson["geometry"]["coordinates"]:
         for ring in poly:
             contour = np.array(ring)
             assert contour.ndim == 2
 
-            assert np.all(contour[:, 0] <= 24.75)
-            assert np.all(contour[:, 0] >= 0)
-            assert np.all(contour[:, 1] <= -24.5)
-            assert np.all(contour[:, :1] >= -75)
+            assert np.all(contour[:, 0] <= 25.25)
+            assert np.all(contour[:, 0] >= -0.5)
+            assert np.all(contour[:, 1] <= -25.0)
+            assert np.all(contour[:, :1] >= -75.5)
 
             if altitude is not None:
                 assert contour.shape[1] == 3

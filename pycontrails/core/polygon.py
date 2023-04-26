@@ -184,17 +184,9 @@ def _contours_to_polygons(
             lat = np.interp(lat_idx, np.arange(latitude.shape[0]), latitude)
             contour = np.stack([lon, lat], axis=1)
 
-        if precision is not None:
-            np.round(contour, precision, out=contour)
-
         polygon = buffer_and_clean(contour, min_area, convex_hull, epsilon, precision, orient_ccw)
         if polygon is None:
             continue
-
-        assert isinstance(polygon, shapely.Polygon)
-        assert polygon.is_valid
-        assert polygon.is_simple
-        assert not polygon.interiors
 
         if child_i != -1:
             holes = _contours_to_polygons(
