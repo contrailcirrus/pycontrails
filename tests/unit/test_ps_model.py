@@ -1,0 +1,138 @@
+"""Test PS model."""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+import pycontrails.models.ps_model.ps_model as ps
+from pycontrails.physics.units import ft_to_pl
+
+
+def test_aircraft_type_coverage():
+    ps_model = ps.PSModel()
+
+    # There are currently 53 aircraft types supported by the PS model
+    assert len(ps_model.aircraft_engine_params) == 53
+
+    # Test PS model coverage: commonly used aircraft types
+    aircraft_types = ["A320", "A332", "A359", "A388", "B737", "B763", "B77L", "B789"]
+
+    for atyp in aircraft_types:
+        assert atyp in ps_model.aircraft_engine_params
+
+    # Test unsupported aircraft types
+    aircraft_types = ["A339", "A35K", "AT76", "B38X", "B78X", "BCS3", "E75L"]
+
+    for atyp in aircraft_types:
+        with pytest.raises(KeyError, match=f"Aircraft type {atyp} not covered by the PS model."):
+            ps_model.check_aircraft_type_availability(atyp)
+
+
+def test_ps_model():
+    aircraft_type_icao = "A320"
+    mach_number = np.array([0.753, 0.753])
+    air_temperature = np.array([220.79, 216.65])
+    altitude_ft = np.array([34000, 41450])
+    air_pressure = ft_to_pl(altitude_ft) * 100
+    aircraft_mass = np.array([58800, 58800])
+    climb_angle = np.array([0.0, 0.0])
+    dv_dt = np.array([0.0, 0.0])
+
+    # Extract aircraft properties for aircraft type
+    ps_model = ps.PSModel()
+    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+
+    # Test Reynolds Number
+    rn = ps.reynolds_number(atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure)
+    np.testing.assert_array_almost_equal(rn / 1e7, np.array([6.777, 4.863]), decimal=2)
+
+    # Test skin friction coefficient
+    c_f = ps.skin_friction_coefficient(rn)
+    np.testing.assert_array_almost_equal(c_f, np.array([2.15e-3, 2.26e-3]), decimal=2)
+
+    # Test lift coefficient
+    c_lift = ps.lift_coefficient(
+        atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, climb_angle
+    )
+    np.testing.assert_array_almost_equal(c_lift, np.array([0.475, 0.679]), decimal=2)
+
+    # Test zero-lift drag coefficient
+    c_drag_0 = ps.zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
+    np.testing.assert_array_almost_equal(c_drag_0, np.array([0.0181, 0.0189]), decimal=2)
+
+    # Test Oswald efficiency factor
+    e_ls = ps.oswald_efficiency_factor(c_drag_0, atyp_param)
+    np.testing.assert_array_almost_equal(e_ls, np.array([0.7805, 0.7740]), decimal=2)
+
+    # Test wave drag coefficient
+    c_drag_w = ps.wave_drag_coefficient(mach_number, c_lift, atyp_param)
+    np.testing.assert_array_almost_equal(c_drag_w, np.array([0.00074, 0.00129]), decimal=5)
+
+    # Test airframe drag coefficient
+    c_drag = ps.airframe_drag_coefficient(c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio)
+    np.testing.assert_array_almost_equal(c_drag, np.array([0.0285, 0.0402]), decimal=4)
+
+    # Test thrust force
+    f_thrust = ps.thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, climb_angle)
+    np.testing.assert_array_almost_equal(f_thrust / 1e4, np.array([3.4638, 3.4156]), decimal=2)
+
+    # Test thrust force at climb/descent
+    theta_climb = np.array([2.5, 2.5])
+    theta_descent = np.array([-2.5, -2.5])
+    f_thrust_climb = ps.thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, theta_climb)
+    f_thrust_descent = ps.thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, theta_descent)
+    np.testing.assert_array_less(f_thrust, f_thrust_climb)
+    np.testing.assert_array_less(f_thrust_descent, f_thrust)
+    np.testing.assert_array_less(f_thrust_descent, f_thrust_climb)
+
+    # Test thrust coefficient
+    # This should be the same as the drag coefficient as the aircraft is at level flight with no acceleration
+    c_t = ps.engine_thrust_coefficient(f_thrust, mach_number, air_pressure, atyp_param.wing_surface_area)
+    np.testing.assert_array_almost_equal(c_t, np.array([0.0285, 0.0402]), decimal=4)
+
+    # Test overall propulsion efficiency
+    engine_efficiency = ps.overall_propulsion_efficiency(mach_number, c_t, atyp_param)
+    np.testing.assert_array_almost_equal(engine_efficiency, np.array([0.315, 0.316]), decimal=3)
+
+    # Test fuel mass flow rate
+    fuel_flow = ps.fuel_mass_flow_rate(
+        altitude_ft, air_pressure, air_temperature, mach_number, c_t, engine_efficiency,
+        atyp_param.wing_surface_area, atyp_param.ff_idle_sls, q_fuel=43e6
+    )
+    np.testing.assert_array_almost_equal(fuel_flow, np.array([0.574, 0.559]), decimal=3)
+
+
+def test_normalised_aircraft_performance_curves():
+    """
+    For a given Mach number, there is a pair of overall propulsion efficiency (ETA) and thrust coefficient (c_t) at
+    which the ETA is at its maximum. A plot of `eta_over_eta_b` over `c_t_over_c_t_eta_b` should be an inverse
+    U-shape and the global maximum of `eta_over_eta_b` should occur where `c_t_over_c_t_eta_b` is equal to 1.
+    """
+    aircraft_type_icao = "A320"
+    f_thrust = np.arange(10000, 60000, 500)
+    mach_num = np.ones_like(f_thrust) * 0.750
+    altitude_ft = np.ones_like(f_thrust) * 40000
+    air_pressure = ft_to_pl(altitude_ft) * 100
+
+    # Extract aircraft properties for aircraft type
+    ps_model = ps.PSModel()
+    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+    mach_num_design_opt = atyp_param.m_des
+
+    # Derived coefficients
+    c_t = ps.engine_thrust_coefficient(f_thrust, mach_num, air_pressure, atyp_param.wing_surface_area)
+    c_t_eta_b = ps.max_thrust_coefficient(mach_num, atyp_param.m_des, atyp_param.c_t_des)
+    c_t_over_c_t_eta_b = c_t / c_t_eta_b
+
+    eta = ps.overall_propulsion_efficiency(mach_num, c_t, atyp_param)
+    eta_b = ps.max_overall_propulsion_efficiency(
+        mach_num_design_opt, mach_num_design_opt, atyp_param.eta_1, atyp_param.eta_2
+    )
+    eta_over_eta_b = eta / eta_b
+
+    i_max = np.argmax(eta_over_eta_b)
+
+    # Global maximum of `eta_over_eta_b` should occur where `c_t_over_c_t_eta_b` is equal to 1
+    assert (c_t_over_c_t_eta_b[i_max] > 0.99) and (c_t_over_c_t_eta_b[i_max] < 1.01)

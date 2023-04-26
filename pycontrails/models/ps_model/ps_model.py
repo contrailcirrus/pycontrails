@@ -1,3 +1,19 @@
+"""Simulate aircraft performance using Poll-Schumann (PS) model.
+
+References
+----------
+Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
+    transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general atmosphere.
+    Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
+
+Poll & Schumann (2021a). An estimation method for the fuel burn and other performance characteristics of civil
+    transport aircraft during cruise: Part 2, determining the aircraft’s characteristic parameters. Aero. J.,
+    125(1284), 257-295, doi: 10.1017/aer.2020.124.
+
+Poll & Schumann (2022). An estimation method for the fuel burn and other performance characteristics of civil
+    transport aircraft. Part 3 Generalisation to cover climb, descent and holding. Aero. J., submitted.
+"""
+
 from __future__ import annotations
 
 import pathlib
@@ -15,10 +31,14 @@ from pycontrails.models.ps_model.aircraft_params import AircraftEngineParams, ge
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
 
+default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
+
+
+# TODO: To link up PSModelParams in review
 
 @dataclasses.dataclass
 class PSModelParams(ModelParams):
-    """:class:`Emissions` model parameters."""
+    """:class:`PSModel` model parameters."""
 
     #: Default paths
     aircraft_database_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
@@ -27,7 +47,7 @@ class PSModelParams(ModelParams):
     fuel: Fuel = dataclasses.field(default_factory=JetA)
 
 
-class PSModel(Model):
+class PSModel:
     name = "PS Model"
     long_name = "Poll-Schumann Aircraft Performance Model"
     default_params = PSModelParams
@@ -36,14 +56,11 @@ class PSModel(Model):
 
     def __init__(
             self,
-            params: dict[str, Any] | None = None,
-            **params_kwargs: Any,
     ) -> None:
-        super().__init__(params, **params_kwargs)
 
         # Set class variable with engine parameters if not yet loaded
         if not hasattr(self, "aircraft_engine_params"):
-            type(self).aircraft_engine_params = get_aircraft_engine_params(self.params["aircraft_database_path"])
+            type(self).aircraft_engine_params = get_aircraft_engine_params(default_path)
 
     def check_aircraft_type_availability(
         self, aircraft_type_icao: str, raise_error: bool = True
@@ -423,15 +440,17 @@ def wave_drag_coefficient(
     m_cc = atyp_param.wing_constant - 0.10 * (c_lift / atyp_param.cos_sweep**2)
     x = mach_num * atyp_param.cos_sweep / m_cc
 
-    if x < atyp_param.j_2:
-        return np.zeros_like(mach_num)
+    c_d_w = np.where(
+        x < atyp_param.j_2,
+        0,
+        atyp_param.cos_sweep ** 3 * atyp_param.j_1 * (x - atyp_param.j_2) ** 2
+    )
 
-    c_d_w = atyp_param.cos_sweep**3 * atyp_param.j_1 * (x - atyp_param.j_2)**2
-
-    if x < atyp_param.x_ref:
-        return c_d_w
-    else:
-        return c_d_w + atyp_param.j_3 * (x - atyp_param.x_ref**4)
+    return np.where(
+        x < atyp_param.x_ref,
+        c_d_w,
+        c_d_w + atyp_param.j_3 * (x - atyp_param.x_ref)**4
+    )
 
 
 def airframe_drag_coefficient(
@@ -544,7 +563,7 @@ def thrust_force(
     """
     theta = units.degrees_to_radians(theta)
     f_thrust = (
-            (aircraft_mass * constants.g * np.cos(theta) * (c_l / c_d))
+            (aircraft_mass * constants.g * np.cos(theta) * (c_d / c_l))
             + (aircraft_mass * constants.g * np.sin(theta))
             + aircraft_mass * dv_dt
     )
@@ -601,50 +620,106 @@ def overall_propulsion_efficiency(
     npt.NDArray[np.float_]
         Overall propulsion efficiency
     """
-    # Calculate thrust coefficient at maximum overall propulsion efficiency: (c_t)_eta_b
-    m_over_m_des = mach_num / atyp_param.m_des
-    h_2 = ((1 + 0.55 * mach_num) * (m_over_m_des**2)) / (1 + 0.55 * atyp_param.m_des)
-    c_t_eta_b = h_2 * atyp_param.c_t_des
-
-    # Approximate eta/eta_b by using a fourth-order polynomial
-    # eta_b is the maximum overall propulsion efficiency for a given Mach number
-    sigma = np.where(
-        mach_num < 0.4,
-        1.3 * (0.4 - mach_num),
-        0
-    )
-    c_t_over_c_t_eta_b = c_t / c_t_eta_b
-    eta_over_eta_b_low = (
-            10 * (1 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b
-            + 33.3333 * (-1 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43) * (c_t_over_c_t_eta_b**2)
-            + 37.037 * (1 + (sigma - 0.43) - 0.9163 * sigma * 0.43) * (c_t_over_c_t_eta_b**3)
-    )
-    eta_over_eta_b_hi = (
-        (1 + (sigma - 0.43) - sigma * 0.43)
-        + (4 * sigma * 0.43 - 2 * (sigma - 0.43)) * c_t_over_c_t_eta_b
-        + ((sigma - 0.43) - 6 * sigma * 0.43) * (c_t_over_c_t_eta_b**2)
-        + 4 * sigma * 0.43 * (c_t_over_c_t_eta_b**3)
-        - sigma * 0.43 * (c_t_over_c_t_eta_b**4)
-    )
-
-    eta_over_eta_b = np.where(
-        c_t_over_c_t_eta_b < 0.3,
-        eta_over_eta_b_low,
-        eta_over_eta_b_hi
+    eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(
+        mach_num, c_t, atyp_param.m_des, atyp_param.c_t_des
     )
     eta_b = max_overall_propulsion_efficiency(mach_num, atyp_param.m_des, atyp_param.eta_1, atyp_param.eta_2)
     return eta_over_eta_b * eta_b
 
 
+def propulsion_efficiency_over_max_propulsion_efficiency(
+        mach_num: npt.NDArray[np.float_],
+        c_t: npt.NDArray[np.float_],
+        m_des: float,
+        c_t_des: float,
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate ratio of overall propulsion efficiency (OPE) to maximum OPE that can be attained for a given Mach number.
+
+    Parameters
+    ----------
+    mach_num : npt.NDArray[np.float_]
+        Mach number at each waypoint.
+    c_t : npt.NDArray[np.float_]
+        Engine thrust coefficient.
+    m_des: float
+        Design optimum Mach number where the fuel mass flow rate is at a minimum.
+    c_t_des: float
+        Design optimum engine thrust coefficient where the fuel mass flow rate is at a minimum.
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Ratio of OPE to maximum OPE, eta/eta_b
+
+    Notes
+    -----
+    - eta/eta_b is approximated using a fourth-order polynomial
+    - eta_b is the maximum overall propulsion efficiency for a given Mach number
+    """
+    c_t_eta_b = max_thrust_coefficient(mach_num, m_des, c_t_des)
+    c_t_over_c_t_eta_b = c_t / c_t_eta_b
+
+    sigma = np.where(
+        mach_num < 0.4,
+        1.3 * (0.4 - mach_num),
+        0
+    )
+
+    eta_over_eta_b_low = (
+            10 * (1 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b
+            + 33.3333 * (-1 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 2)
+            + 37.037 * (1 + (sigma - 0.43) - 0.9163 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 3)
+    )
+    eta_over_eta_b_hi = (
+            (1 + (sigma - 0.43) - sigma * 0.43)
+            + (4 * sigma * 0.43 - 2 * (sigma - 0.43)) * c_t_over_c_t_eta_b
+            + ((sigma - 0.43) - 6 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 2)
+            + 4 * sigma * 0.43 * (c_t_over_c_t_eta_b ** 3)
+            - sigma * 0.43 * (c_t_over_c_t_eta_b ** 4)
+    )
+    return np.where(
+        c_t_over_c_t_eta_b < 0.3,
+        eta_over_eta_b_low,
+        eta_over_eta_b_hi
+    )
+
+
+def max_thrust_coefficient(mach_num: npt.NDArray[np.float_], m_des: float, c_t_des: float):
+    """
+    Calculate thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
+
+    Parameters
+    ----------
+    mach_num : npt.NDArray[np.float_]
+        Mach number at each waypoint.
+    m_des: float
+        Design optimum Mach number where the fuel mass flow rate is at a minimum.
+    c_t_des: float
+        Design optimum engine thrust coefficient where the fuel mass flow rate is at a minimum.
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number, (c_t)_eta_b
+    """
+    m_over_m_des = mach_num / m_des
+    h_2 = ((1 + 0.55 * mach_num) * (m_over_m_des ** 2)) / (1 + 0.55 * m_des)
+    return h_2 * c_t_des
+
+
 def max_overall_propulsion_efficiency(
-        mach_num: npt.NDArray[np.float_], mach_num_des: float, eta_1: float, eta_2: float
+        mach_num: npt.NDArray[np.float_] | float,
+        mach_num_des: float,
+        eta_1: float,
+        eta_2: float
 ) -> npt.NDArray[np.float_]:
     """
     Calculate maximum overall propulsion efficiency that can be achieved for a given Mach number.
 
     Parameters
     ----------
-    mach_num : npt.NDArray[np.float_]
+    mach_num : npt.NDArray[np.float_] | float
         Mach number at each waypoint
     mach_num_des : float
         Design optimum Mach number where the fuel mass flow rate is at a minimum.
@@ -667,6 +742,9 @@ def max_overall_propulsion_efficiency(
     """
     h_1 = (mach_num / mach_num_des)**eta_2      # Coefficient h_1 coded explicitly, so it can be varied in the future
     return h_1 * eta_1 * mach_num_des**eta_2
+
+
+
 
 
 # -------------------
