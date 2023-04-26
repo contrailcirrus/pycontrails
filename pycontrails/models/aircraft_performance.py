@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import numpy as np
+import numpy.typing as npt
 from typing import Any, overload
 
 from pycontrails.core.flight import Flight
@@ -58,3 +60,35 @@ class AircraftPerformanceGrid(Model):
 @dataclasses.dataclass
 class AircraftPerformanceParams(ModelParams):
     """Parameters for :class:`AircraftPerformance`."""
+
+
+@dataclasses.dataclass
+class AircraftPerformanceData:
+    """Store the aircraft performance metrics calculated from BADA.
+
+    Parameters
+    ----------
+    fuel_flow : npt.NDArray[DTYPE]
+        Fuel mass flow rate for each waypoint, [:math:`kg s^{-1}`]
+    aircraft_mass : npt.NDArray[DTYPE]
+        Aircraft mass for each waypoint, [:math:`kg`]
+    true_airspeed : npt.NDArray[DTYPE]
+        True airspeed at each waypoint, [:math: `m s^{-1}`]
+    fuel_burn: npt.NDArray[DTYPE]
+        Fuel consumption for each waypoint, [:math:`kg`]. Set to an array of
+        all nan values if it cannot be computed (ie, working with gridpoints).
+    thrust: npt.NDArray[DTYPE]
+        Thrust force, [:math:`N`]
+    engine_efficiency: npt.NDArray[DTYPE]
+        Overall propulsion efficiency for each waypoint
+    rocd : npt.NDArray[DTYPE]
+        Rate of climb and descent, [:math:`ft min^{-1}`]
+    """
+
+    fuel_flow: npt.NDArray[np.float_]
+    aircraft_mass: npt.NDArray[np.float_]
+    true_airspeed: npt.NDArray[np.float_]
+    fuel_burn: npt.NDArray[np.float_]
+    thrust: npt.NDArray[np.float_]
+    engine_efficiency: npt.NDArray[np.float_]
+    rocd: npt.NDArray[np.float_]

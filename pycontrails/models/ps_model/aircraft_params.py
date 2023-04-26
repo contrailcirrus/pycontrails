@@ -69,7 +69,7 @@ class AircraftEngineParams:
         self.delta_2: float = df_aircraft_engine["delta_2"]
         self.cos_sweep: float = df_aircraft_engine["cos_sweep"]
         self.psi_0: float = df_aircraft_engine["psi_0"]
-        self.x_ref: float = df_aircraft_engine["X_o"]
+        self.x_ref: float = df_aircraft_engine["Xo"]
         self.j_1: float = df_aircraft_engine["j_1"]
         self.j_2: float = df_aircraft_engine["j_2"]
         self.j_3: float = 70        # Constant for all aircraft-engine types for now, but may vary in the future
