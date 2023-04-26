@@ -17,6 +17,8 @@ Poll & Schumann (2022). An estimation method for the fuel burn and other perform
 from __future__ import annotations
 
 import pathlib
+import warnings
+import typing
 import dataclasses
 import numpy as np
 import numpy.typing as npt
@@ -34,6 +36,7 @@ _path_to_static = pathlib.Path(__file__).parent / "static"
 default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
 
 
+# TODO: Clipping function to constrain fuel flow estimates to realistic values
 # TODO: To link up PSModelParams in review
 
 @dataclasses.dataclass
@@ -91,6 +94,92 @@ class PSModel:
                 f"Aircraft type {aircraft_type_icao} not covered by the PS model."
             )
         return False
+
+    def simulate_fuel_and_performance(
+            self,
+            *,
+            aircraft_type_icao: str,
+            altitude_ft: npt.NDArray[np.float_],
+            time: npt.NDArray[np.datetime64],
+            true_airspeed: npt.NDArray[np.float_],
+            air_temperature: npt.NDArray[np.float_],
+            q_fuel: float,
+            correct_fuel_flow: bool,
+            load_factor: None | float = None,
+            n_iter: int = 5,
+            aircraft_mass: npt.NDArray[np.float_] | float | None,
+            oew: float | None = None,
+            mtow: float | None = None,
+            max_payload: float | None = None
+    ) -> AircraftPerformanceData:
+        # TODO: Documentation (Load factor = 0.7)
+
+        if aircraft_mass is not None:
+            warnings.warn(
+                "Parameter 'aircraft_mass' provided to 'BADA.simulate_fuel_and_performance' "
+                f"is not None. Skipping {n_iter} iterations and only calculating aircraft "
+                "performance once."
+            )
+
+            return self.calculate_aircraft_performance(
+                aircraft_type_icao=aircraft_type_icao,
+                air_temperature=air_temperature,
+                altitude_ft=altitude_ft,
+                time=time,
+                true_airspeed=true_airspeed,
+                aircraft_mass=aircraft_mass,
+                q_fuel=q_fuel,
+            )
+
+        # Get coefficients/parameters for the specific aircraft type
+        aircraft_params = self.aircraft_engine_params[aircraft_type_icao]
+
+        # Assume reference mass is equal to 70% of the take-off mass (Ian Poll)
+        ref_mass = aircraft_params.amass_mtow * 0.7
+
+        # Variable `aircraft_mass` will change dynamically after each iteration
+        if load_factor is not None:
+            aircraft_mass = np.ones_like(altitude_ft) * aircraft_params.amass_mtow
+        else:
+            aircraft_mass = np.ones_like(altitude_ft) * ref_mass
+
+        if oew is None:
+            oew = aircraft_params.amass_oew
+        if mtow is None:
+            mtow = aircraft_params.amass_mtow
+        if max_payload is None:
+            max_payload = aircraft_params.amass_mpl
+
+        for _ in range(n_iter):
+            aircraft_performance = self.calculate_aircraft_performance(
+                aircraft_type_icao=aircraft_type_icao,
+                air_temperature=air_temperature,
+                altitude_ft=altitude_ft,
+                time=time,
+                true_airspeed=true_airspeed,
+                aircraft_mass=aircraft_mass,
+                q_fuel=q_fuel
+            )
+
+            tot_reserve_fuel = jet.reserve_fuel_requirements(
+                aircraft_performance.rocd,
+                aircraft_performance.fuel_flow,
+                aircraft_performance.fuel_burn
+            )
+
+            aircraft_mass = jet.update_aircraft_mass(
+                operating_empty_weight=oew,
+                ref_mass=ref_mass,
+                max_takeoff_weight=mtow,
+                max_payload=max_payload,
+                fuel_burn=aircraft_performance.fuel_burn,
+                total_reserve_fuel=float(tot_reserve_fuel),
+                load_factor=load_factor
+            )
+
+        # Update aircraft mass to the latest fuel consumption estimate
+        aircraft_performance.aircraft_mass = typing.cast(np.ndarray, aircraft_mass)
+        return aircraft_performance
 
     def calculate_aircraft_performance(
             self,
@@ -167,9 +256,6 @@ class PSModel:
             engine_efficiency=eta,
             rocd=rocd,
         )
-
-    def simulate_fuel_and_performance(self):
-        return
 
 
 # ----------------------

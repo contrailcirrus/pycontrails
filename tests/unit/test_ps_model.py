@@ -5,9 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 import pycontrails.models.ps_model.ps_model as ps
-from pycontrails.physics.units import ft_to_pl
+from pycontrails.core import Flight
+from pycontrails.physics.units import ft_to_pl, knots_to_m_per_s, m_to_T_isa
+
+from .conftest import get_static_path
 
 
 def test_aircraft_type_coverage():
@@ -31,6 +33,9 @@ def test_aircraft_type_coverage():
 
 
 def test_ps_model():
+    """
+    Test intermediate variables and model outputs to be consistent with outputs from Ian Poll.
+    """
     aircraft_type_icao = "A320"
     mach_number = np.array([0.753, 0.753])
     air_temperature = np.array([220.79, 216.65])
@@ -136,3 +141,26 @@ def test_normalised_aircraft_performance_curves():
 
     # Global maximum of `eta_over_eta_b` should occur where `c_t_over_c_t_eta_b` is equal to 1
     assert (c_t_over_c_t_eta_b[i_max] > 0.99) and (c_t_over_c_t_eta_b[i_max] < 1.01)
+
+
+def test_total_fuel_burn():
+    df_flight = pd.read_csv(get_static_path("flight.csv"))
+    flight = Flight(df_flight.iloc[:100])
+
+    # add parameters
+    flight.attrs.update({"flight_id": "1", "aircraft_type": "A320"})
+
+    # Aircraft performance model
+    ps_model = ps.PSModel()
+    aircraft_performance = ps_model.simulate_fuel_and_performance(
+        aircraft_type_icao=flight.attrs["aircraft_type"],
+        altitude_ft=flight.altitude_ft,
+        time=flight["time"],
+        true_airspeed=knots_to_m_per_s(flight["speed"]),
+        air_temperature=m_to_T_isa(flight["altitude"]),
+        q_fuel=43.2e6,
+        correct_fuel_flow=False,
+        aircraft_mass=None
+    )
+
+
