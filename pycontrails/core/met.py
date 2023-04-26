@@ -1688,6 +1688,7 @@ class MetDataArray(MetBase):
         interiors: bool = True,
         convex_hull: bool = False,
         include_altitude: bool = False,
+        properties: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Create GeoJSON Feature artifact from spatial array on a single level and time slice.
 
@@ -1757,6 +1758,8 @@ class MetDataArray(MetBase):
             If True, include the array altitude [:math:`m`] as a z-coordinate in the
             `GeoJSON output <https://www.rfc-editor.org/rfc/rfc7946#section-3.1.1>`.
             False by default.
+        properties : dict, optional
+            Additional properties to include in the GeoJSON output. By default, None.
 
         Returns
         -------
@@ -1824,6 +1827,10 @@ class MetDataArray(MetBase):
         # We'll get a nice error message if dependencies are not installed
         import pycontrails.core.polygon as polygon
 
+        # Convert to nested lists of coordinates for GeoJSON representation
+        longitude: npt.NDArray[np.float_] = self.variables["longitude"].values
+        latitude: npt.NDArray[np.float_] = self.variables["latitude"].values
+
         mp = polygon.find_multipolygon(
             arr,
             threshold=iso_value,
@@ -1831,28 +1838,29 @@ class MetDataArray(MetBase):
             epsilon=epsilon,
             interiors=interiors,
             convex_hull=convex_hull,
+            longitude=longitude,
+            latitude=latitude,
+            precision=precision,
         )
 
-        # Convert to nested lists of coordinates for GeoJSON representation
-        longitude: npt.NDArray[np.float_] = self.variables["longitude"].values
-        latitude: npt.NDArray[np.float_] = self.variables["latitude"].values
+        return polygon.multipolygon_to_geojson(mp, altitude, properties)
 
-        args = longitude, latitude, altitude, precision
-        mp_coords = [polygon.polygon_to_lon_lat(p, *args) for p in mp.geoms]
-
-        return {
-            "type": "Feature",
-            "properties": {},
-            "geometry": {"type": "MultiPolygon", "coordinates": mp_coords},
-        }
-
-    def to_polygon_feature_collection(self, **kwargs: Any) -> dict[str, Any]:
+    def to_polygon_feature_collection(
+        self,
+        time: np.datetime64 | datetime | None = None,
+        fill_value: float = 0.0,
+        iso_value: float | None = None,
+        min_area: float = 0.0,
+        epsilon: float = 0.0,
+        precision: int | None = None,
+        interiors: bool = True,
+        convex_hull: bool = False,
+        include_altitude: bool = False,
+        properties: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Create GeoJSON FeatureCollection artifact from spatial array at time slice.
 
-        Parameters
-        ----------
-        **kwargs : Any
-            Passed into :meth:`to_polygon_feature`.
+        See the :meth:`to_polygon_feature` method for a description of the parameters.
 
         Returns
         -------
@@ -1860,13 +1868,26 @@ class MetDataArray(MetBase):
             Python representation of GeoJSON FeatureCollection. This dictionary is
             comprised of individual GeoJON Features, one per :attr:`self.data["level"]`.
         """
+        base_properties = properties or {}
         features = []
         for level in self.data["level"]:
-            feature = self.to_polygon_feature(level=level, **kwargs)
-            # Add some level metadata
-            feature["properties"]["level"] = level.item()
-            to_update = {f"level_{k}": v for k, v in self.data["level"].attrs.items()}
-            feature["properties"].update(to_update)
+            properties = base_properties.copy()
+            properties.update(level=level.item())
+            properties.update({f"level_{k}": v for k, v in self.data["level"].attrs.items()})
+
+            feature = self.to_polygon_feature(
+                level=level,
+                time=time,
+                fill_value=fill_value,
+                iso_value=iso_value,
+                min_area=min_area,
+                epsilon=epsilon,
+                precision=precision,
+                interiors=interiors,
+                convex_hull=convex_hull,
+                include_altitude=include_altitude,
+                properties=properties,
+            )
             features.append(feature)
 
         return {
@@ -2299,6 +2320,8 @@ def _extract_2d_arr_and_altitude(
         altitude = da["altitude"].values.item()  # item not implemented on dask arrays
     except KeyError:
         altitude = None
+    else:
+        altitude = round(altitude)
 
     return arr, altitude
 

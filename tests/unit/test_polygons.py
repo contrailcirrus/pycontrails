@@ -132,8 +132,8 @@ def test_find_multipolygons_with_interiors(arr_name: str, request: pytest.Fixtur
 
 
 @pytest.mark.parametrize("altitude", [None, 10001.2])
-def test_contour_to_lon_lat(barr: np.ndarray, altitude: float | None):
-    """Test the `contour_to_lon_lat` function."""
+def test_multipolygon_to_geojson(barr: np.ndarray, altitude: float | None):
+    """Test the `multipolygon_to_geojson` function."""
     sl = slice(1, -1)
     mp = polygon.find_multipolygon(
         barr[sl, sl],
@@ -141,16 +141,18 @@ def test_contour_to_lon_lat(barr: np.ndarray, altitude: float | None):
         min_area=0,
         epsilon=0.1,
         convex_hull=False,
+        longitude=np.arange(0, 25, 0.25),
+        latitude=np.arange(-75, -25, 0.5),
     )
-    longitude = np.arange(0, 25, 0.25)
-    latitude = np.arange(-75, -25, 0.5)
-    assert barr.shape == (longitude.size + 2, latitude.size + 2)
-
-    # Pin the length
     assert len(mp.geoms) == 23
-    for poly in mp.geoms:
-        coords = polygon.polygon_to_lon_lat(poly, longitude, latitude, altitude, precision=2)
-        for ring in coords:
+
+    geojson = polygon.multipolygon_to_geojson(mp, altitude=altitude)
+    assert isinstance(geojson, dict)
+    assert geojson["type"] == "Feature"
+    assert geojson["geometry"]["type"] == "MultiPolygon"
+    assert len(geojson["geometry"]["coordinates"]) == 23
+    for poly in geojson["geometry"]["coordinates"]:
+        for ring in poly:
             contour = np.array(ring)
             assert contour.ndim == 2
 

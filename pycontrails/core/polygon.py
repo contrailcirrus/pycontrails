@@ -9,6 +9,7 @@ See Also
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -30,6 +31,7 @@ def buffer_and_clean(
     min_area: float,
     convex_hull: bool,
     epsilon: float,
+    precision: int | None,
     orient_ccw: bool = True,
 ) -> shapely.Polygon | None:
     """Buffer and clean a contour.
@@ -46,6 +48,8 @@ def buffer_and_clean(
         Whether to take the convex hull of the buffered contour.
     epsilon : float
         Epsilon value for polygon simplification. If 0, no simplification is performed.
+    precision : int | None
+        Precision of the output polygon. If None, no rounding is performed.
     orient_ccw : bool, optional
         Whether to orient the polygon counter-clockwise. If False, orient clockwise.
 
@@ -73,7 +77,6 @@ def buffer_and_clean(
         if not polygon.is_valid:
             polygon = polygon.buffer(0.1, quad_segs=1)
 
-    assert isinstance(polygon, shapely.Polygon)
     assert polygon.is_valid
 
     # Remove all interior rings
@@ -90,7 +93,39 @@ def buffer_and_clean(
     if epsilon:
         polygon = _buffer_simplify_iterate(polygon, epsilon)
 
+    if precision is not None:
+        while precision < 10:
+            out = _round_polygon(polygon, precision)
+            if out.is_valid:
+                return out
+            precision += 1
+
+        warnings.warn("Could not round polygon to a valid geometry.")
+
     return polygon
+
+
+def _round_polygon(polygon: shapely.Polygon, precision: int) -> shapely.Polygon:
+    """Round the coordinates of a polygon.
+
+    Parameters
+    ----------
+    polygon : shapely.Polygon
+        Polygon to round.
+    precision : int
+        Precision to use when rounding.
+
+    Returns
+    -------
+    shapely.Polygon
+        Polygon with rounded coordinates.
+    """
+    if polygon.is_empty:
+        return polygon
+
+    exterior = np.round(np.asarray(polygon.exterior.coords), precision)
+    interiors = [np.round(np.asarray(i.coords), precision) for i in polygon.interiors]
+    return shapely.Polygon(exterior, interiors)
 
 
 def _contours_to_polygons(
@@ -99,6 +134,9 @@ def _contours_to_polygons(
     min_area: float,
     convex_hull: bool,
     epsilon: float,
+    longitude: npt.NDArray[np.float_] | None,
+    latitude: npt.NDArray[np.float_] | None,
+    precision: int | None,
     i: int = 0,
 ) -> list[shapely.Polygon]:
     """Parse the outputs of :func:`cv2.findContours` per the GeoJSON spec.
@@ -115,6 +153,12 @@ def _contours_to_polygons(
         Whether to take the convex hull of each polygon.
     epsilon : float
         Epsilon value to use when simplifying the polygons.
+    longitude : npt.NDArray[np.float_] | None
+        Longitude values for the grid.
+    latitude : npt.NDArray[np.float_] | None
+        Latitude values for the grid.
+    precision : int | None
+        Precision to use when rounding the coordinates.
     i : int, optional
         The index of the contour to start with. Defaults to 0.
 
@@ -131,8 +175,19 @@ def _contours_to_polygons(
 
         contour = contours[i][:, 0, ::-1]
         i = hierarchy[i, 0]
+        if longitude is not None and latitude is not None:
+            lon_idx = contour[:, 0]
+            lat_idx = contour[:, 1]
 
-        polygon = buffer_and_clean(contour, min_area, convex_hull, epsilon, orient_ccw)
+            # Calculate interpolated longitude and latitude values and recreate contour
+            lon = np.interp(lon_idx, np.arange(longitude.shape[0]), longitude)
+            lat = np.interp(lat_idx, np.arange(latitude.shape[0]), latitude)
+            contour = np.stack([lon, lat], axis=1)
+
+        if precision is not None:
+            np.round(contour, precision, out=contour)
+
+        polygon = buffer_and_clean(contour, min_area, convex_hull, epsilon, precision, orient_ccw)
         if polygon is None:
             continue
 
@@ -148,6 +203,9 @@ def _contours_to_polygons(
                 min_area=min_area,
                 convex_hull=False,
                 epsilon=epsilon,
+                longitude=longitude,
+                latitude=latitude,
+                precision=precision,
                 i=child_i,
             )
 
@@ -169,6 +227,9 @@ def find_multipolygon(
     epsilon: float,
     interiors: bool = True,
     convex_hull: bool = False,
+    longitude: npt.NDArray[np.float_] | None = None,
+    latitude: npt.NDArray[np.float_] | None = None,
+    precision: int | None = None,
 ) -> shapely.MultiPolygon:
     """Compute a multipolygon from a 2d array.
 
@@ -189,12 +250,25 @@ def find_multipolygon(
         Whether to include interior polygons.
     convex_hull : bool
         Experimental. Whether to take the convex hull of each polygon.
+    longitude, latitude : npt.NDArray[np.float_], optional
+        If provided, the coordinates values corresponding to the dimensions of `arr`.
+        The contour coordinates will be converted to longitude-latitude values by indexing
+        into this array. Defaults to None.
+    precision : int, optional
+        If provided, the precision to use when rounding the coordinates. Defaults to None.
 
     Returns
     -------
     shapely.MultiPolygon
         A multipolygon of the contours.
     """
+    if arr.ndim != 2:
+        raise ValueError("Array must be 2d")
+    assert (longitude is None) == (latitude is None)
+    if longitude is not None:
+        assert latitude is not None
+        assert arr.shape == (*longitude.shape, *latitude.shape)
+
     arr_bin = np.empty(arr.shape, dtype=np.uint8)
     np.greater_equal(arr, threshold, out=arr_bin)
 
@@ -206,7 +280,16 @@ def find_multipolygon(
     assert len(hierarchy) == 1
     hierarchy = hierarchy[0]
 
-    polygons = _contours_to_polygons(contours, hierarchy, min_area, convex_hull, epsilon)
+    polygons = _contours_to_polygons(
+        contours,
+        hierarchy,
+        min_area,
+        convex_hull,
+        epsilon,
+        longitude,
+        latitude,
+        precision,
+    )
     return _make_valid_multipolygon(polygons, convex_hull)
 
 
@@ -269,7 +352,7 @@ def _buffer_simplify_iterate(polygon: shapely.Polygon, epsilon: float) -> shapel
         distance = epsilon * i / 10
 
         # Taking the buffer can change the orientation of the contour
-        out = polygon.buffer(distance, join_style="mitre", quad_segs=2)
+        out = polygon.buffer(distance, quad_segs=1)
         if out.exterior.is_ccw != is_ccw:
             out = shapely.Polygon(out.exterior.coords[::-1])
 
@@ -338,97 +421,46 @@ def _make_valid_multipolygon(
     return mp
 
 
-def polygon_to_lon_lat(
-    polygon: shapely.Polygon,
-    longitude: npt.NDArray[np.float_],
-    latitude: npt.NDArray[np.float_],
+def multipolygon_to_geojson(
+    multipolygon: shapely.MultiPolygon,
     altitude: float | None,
-    precision: int | None,
-) -> list[list[list[float]]]:
-    """Convert polygon longitude-latitude coordinates.
-
-    This function assumes ``polygon`` was created from an array of shape
-    ``(longitude.size, latitude.size)``.
-
-    .. versionchanged:: 0.25.12
-
-        Previous implementation assumed indexes were integers or half-integers.
-        This is the case for binary arrays, but not for continuous arrays.
-        The new implementation performs the linear interpolation necessary for
-        continuous arrays.
-
-    .. versionchanged:: 0.32.1
-
-        Add ``precision`` parameter. Ensure that the returned contour is not
-        degenerate after rounding.
+    properties: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Convert a shapely multipolygon to a GeoJSON feature.
 
     Parameters
     ----------
-    polygon : shapely.Polygon
-        Contour to convert to longitude-latitude coordinates.
-    longitude : npt.NDArray[np.float_]
-        One dimensional array of longitude values.
-    latitude : npt.NDArray[np.float_]
-        One dimensional array of latitude values.
-    altitude : float | None, optional
-        Altitude value to use for the output. If not provided, the z-coordinate
-        is not included in the output. Default is None.
-    precision : int, optional
-        Number of decimal places to round the longitude and latitude values to.
-        If None, no rounding is performed. If after rounding, the polygon
-        becomes degenerate, the rounding is increased by one decimal place.
+    multipolygon : shapely.MultiPolygon
+        Multipolygon to convert.
+    altitude : float or None
+        Altitude of the multipolygon. If provided, the multipolygon coordinates
+        will be given a z-coordinate.
+    properties : dict[str, Any], optional
+        Properties to add to the GeoJSON feature.
 
     Returns
     -------
-    list[list[list[float]]]
-        Ragged contour array of longitude, latitude values converted from the
-        input polygon. The first element of the returned list corresponds to
-        the exterior contour, and the remaining elements correspond to the
-        interior contours. Each contour is a list of vertices, which is itself
-        a list of longitude, latitude, and altitude values.
+    dict[str, Any]
+        GeoJSON feature with geometry type "MultiPolygon".
     """
-    rings = polygon.exterior, *polygon.interiors
-    args = longitude, latitude, altitude, precision
-    return [_ring_to_lon_lat(ring, *args) for ring in rings]
+    coordinates = []
+    for polygon in multipolygon.geoms:
+        poly_coords = []
+        rings = polygon.exterior, *polygon.interiors
+        for ring in rings:
+            if altitude is None:
+                coords = np.asarray(ring.coords)
+            else:
+                shape = len(ring.coords), 3
+                coords = np.empty(shape)
+                coords[:, :2] = ring.coords
+                coords[:, 2] = altitude
 
+            poly_coords.append(coords.tolist())
+        coordinates.append(poly_coords)
 
-def _ring_to_lon_lat(
-    ring: shapely.LinearRing,
-    longitude: npt.NDArray[np.float_],
-    latitude: npt.NDArray[np.float_],
-    altitude: float | None,
-    precision: int | None,
-) -> list[list[float]]:
-    contour = np.asarray(ring.coords)
-
-    # Account for padding
-    lon_idx = contour[:, 0]
-    lat_idx = contour[:, 1]
-
-    # Calculate interpolated longitude and latitude values
-    lon = np.interp(lon_idx, np.arange(longitude.shape[0]), longitude)
-    lat = np.interp(lat_idx, np.arange(latitude.shape[0]), latitude)
-
-    # Round to some precision
-    if precision is not None:
-        while precision < 10:
-            rounded_lon = np.round(lon, precision)
-            rounded_lat = np.round(lat, precision)
-            lr = shapely.LinearRing(np.stack([rounded_lon, rounded_lat], axis=1))
-            if lr.is_valid:
-                lon = rounded_lon
-                lat = rounded_lat
-                break
-            precision += 1
-        else:
-            raise RuntimeError("Could not round contour to valid LinearRing.")
-
-    # Include altitude in output if provided
-    if altitude is None:
-        arrays = [lon, lat]
-    else:
-        alt = np.full_like(lon, altitude).round(1)
-        arrays = [lon, lat, alt]
-
-    stacked = np.stack(arrays, axis=1)
-    return stacked.tolist()
+    return {
+        "type": "Feature",
+        "properties": properties or {},
+        "geometry": {"type": "MultiPolygon", "coordinates": coordinates},
+    }
