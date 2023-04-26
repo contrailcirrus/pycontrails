@@ -1816,9 +1816,6 @@ class MetDataArray(MetBase):
 
         np.nan_to_num(arr, copy=False, nan=fill_value)
 
-        # Pad along axes to ensure polygons are closed
-        arr = np.pad(arr, pad_width=1, constant_values=fill_value)
-
         # default iso_value
         if iso_value is None:
             iso_value = (np.max(arr) + np.min(arr)) / 2

@@ -134,8 +134,9 @@ def test_find_multipolygons_with_interiors(arr_name: str, request: pytest.Fixtur
 @pytest.mark.parametrize("altitude", [None, 10001.2])
 def test_contour_to_lon_lat(barr: np.ndarray, altitude: float | None):
     """Test the `contour_to_lon_lat` function."""
+    sl = slice(1, -1)
     mp = polygon.find_multipolygon(
-        barr,
+        barr[sl, sl],
         threshold=0.5,
         min_area=0,
         epsilon=0.1,
