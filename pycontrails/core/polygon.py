@@ -347,8 +347,8 @@ def polygon_to_lon_lat(
 ) -> list[list[list[float]]]:
     """Convert polygon longitude-latitude coordinates.
 
-    This function assumes ``polygon`` was created from a padded array of shape
-    ``(longitude.size + 2, latitude.size + 2)``.
+    This function assumes ``polygon`` was created from an array of shape
+    ``(longitude.size, latitude.size)``.
 
     .. versionchanged:: 0.25.12
 
@@ -402,8 +402,8 @@ def _ring_to_lon_lat(
     contour = np.asarray(ring.coords)
 
     # Account for padding
-    lon_idx = contour[:, 0] - 1
-    lat_idx = contour[:, 1] - 1
+    lon_idx = contour[:, 0]
+    lat_idx = contour[:, 1]
 
     # Calculate interpolated longitude and latitude values
     lon = np.interp(lon_idx, np.arange(longitude.shape[0]), longitude)
