@@ -403,7 +403,7 @@ def _make_valid_multipolygon(
         mp = shapely.MultiPolygon([shapely.geometry.polygon.orient(p, sign=1) for p in mp.geoms])
 
         if convex_hull:
-            mp = shapely.MultiPolygon([_take_convex_hull(p.exterior) for p in mp.geoms])
+            mp = shapely.MultiPolygon([_take_convex_hull(p) for p in mp.geoms])
 
     warnings.warn(
         f"Could not make multipolygon valid after {n_attempts} attempts. "
