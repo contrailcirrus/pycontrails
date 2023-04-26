@@ -267,7 +267,7 @@ def sparse_binary(zero_like_da: xr.DataArray, request: Any) -> tuple[MetDataArra
     lat = request.param["lat"]
     level = request.param["level"]
     point = (da["latitude"] == lat) & (da["longitude"] == lon) & (da["level"] == level)
-    da = xr.where(point, 1, da)
+    da = xr.where(point, 1.0, da)
     return MetDataArray(da), request.param
 
 
@@ -618,7 +618,8 @@ def test_polygon_island_binary(island_slice: MetDataArray) -> None:
             assert component in [-4.5, -4, 4, 4.5]
 
 
-def test_nested_polygons(zero_like_da: xr.DataArray) -> None:
+@pytest.mark.parametrize("interiors", (True, False))
+def test_nested_polygons(zero_like_da: xr.DataArray, interiors: bool) -> None:
     """This test shows that we *dont* currently support deeply nested polygons.
 
     To update once we support this feature.
@@ -638,12 +639,17 @@ def test_nested_polygons(zero_like_da: xr.DataArray) -> None:
     da = xr.where((island5), 1, da)
 
     mda = MetDataArray(da.isel(level=[0], time=[0]))
-    geojson = mda.to_polygon_feature(iso_value=0.5)
+    geojson = mda.to_polygon_feature(iso_value=0.5, interiors=interiors)
 
     # contains 1 Polygon with 1 nested polygon
     coords = geojson["geometry"]["coordinates"]
     assert isinstance(coords, list)
-    assert len(coords) == 1 and len(coords[0]) == 2
+
+    if interiors:
+        assert len(coords) == 3
+    else:
+        assert len(coords) == 1
+        assert len(coords[0]) == 1
 
 
 def test_polygons_with_holes():
@@ -683,26 +689,20 @@ def test_polygons_with_holes():
     assert len(polys) == 4
 
     lens = [len(p) for p in polys]
-    assert lens == [1, 1, 2, 3]
+    assert lens == [3, 2, 1, 1]
 
-    # Pin some values from polygon 3
-    outer, inner1, inner2 = polys[3]
-    assert len(outer) == 21
-    assert len(inner1) == 9  # octagon
-    assert len(inner2) == 5  # diamond
+    # Pin some values from polygon 0
+    outer, inner1, inner2 = polys[0]
+    assert len(outer) == 12
+    assert len(inner1) == 5  # octagon
+    assert len(inner2) == 9  # diamond
 
 
 @pytest.mark.parametrize("iso_value", [0, 0.001, 0.5, 0.9, 1])
 def test_polygon_iso_value(island_slice: MetDataArray, iso_value: float) -> None:
     geojson = island_slice.to_polygon_feature(iso_value=iso_value, epsilon=0.1)
     coords = geojson["geometry"]["coordinates"]
-
-    if iso_value == 1:
-        assert coords == []
-    elif iso_value == 0.9:
-        assert len(coords[0][0]) == 5
-    else:
-        assert len(coords[0][0]) == 9
+    assert len(coords[0][0]) == 9
 
 
 @pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")

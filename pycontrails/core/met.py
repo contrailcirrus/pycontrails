@@ -1683,10 +1683,9 @@ class MetDataArray(MetBase):
         fill_value: float = 0.0,
         iso_value: float | None = None,
         min_area: float = 0.0,
-        min_area_to_iterate: float = 0.0,
         epsilon: float = 0.0,
         precision: int | None = None,
-        depth: int = 2,
+        interiors: bool = True,
         convex_hull: bool = False,
         include_altitude: bool = False,
     ) -> dict[str, Any]:
@@ -1717,6 +1716,10 @@ class MetDataArray(MetBase):
 
             Change default value of ``epsilon`` from 0.15 to 0.
 
+        .. versionchanged:: 0.41.0
+
+            Convert continuous fields to binary fields before computing polygons.
+
         Parameters
         ----------
         level : float, optional
@@ -1733,28 +1736,19 @@ class MetDataArray(MetBase):
         iso_value : float, optional
             Value in field to create iso-surface.
             Defaults to the average of the min and max value of the array. (This is the
-            same convention as used by ``skimage``.) Used for the ``level`` parameter
-            in :func:`skimage.measure.find_contours`.
+            same convention as used by ``skimage``.)
         min_area : float, optional
             Minimum area of each polygon. Polygons with area less than ``min_area`` are
             not included in the output. The unit of this parameter is intrinsic to the
             underlying array: an individual "grid cell" has unit 1. Set to 0 to omit any
             polygon filtering based on a minimal area conditional. By default, 0.0.
-        min_area_to_iterate : float, optional
-            Minimum area of exterior polygon to search for interior rings. Polygons with
-            area less than ``min_area_to_iterate`` are not searched for interior rings.
-            The same unit convention as ``min_area`` applies. Set to 0 to omit any polygon
-            filtering based on a minimal area conditional. By default, 0.0.
-            A reasonable value for this parameter is 10x the ``min_area`` parameter.
         epsilon : float, optional
             Control the extent to which the polygon is simplified. A value of 0 does not alter
             the geometry of the polygon. Values in the interval [0, 0.2] are reasonable.
         precision : int, optional
             Number of decimal places to round coordinates to. If None, no rounding is performed.
-        depth : int, optional
-            Number of levels of nesting to include in the output. By default, 2, meaning that
-            the exterior and interior rings are both included. Set to 1 to include only the
-            exterior ring. Must be 1 or 2.
+        interiors : bool, optional
+            If True, include interior linear rings (holes) in the output. True by default.
         convex_hull : bool, optional
             EXPERIMENTAL. If True, compute the convex hull of each polygon. Only implemented
             for depth=1. False by default. A warning is issued if the underlying algorithm
@@ -1772,8 +1766,7 @@ class MetDataArray(MetBase):
         See Also
         --------
         :meth:`to_polyhedra`
-        :func:`skimage.measure.find_contours`
-        :func:`pycontrails.core.polygons.find_contours_to_depth`
+        :func:`pycontrails.core.polygons.find_multipolygons`
 
         Examples
         --------
@@ -1785,16 +1778,18 @@ class MetDataArray(MetBase):
         (1440, 721, 1, 1)
 
         >>> pprint(mda.to_polygon_feature(iso_value=239.5, precision=2, epsilon=0.2))
-        {'geometry': {'coordinates': [[[[43.66, -33.5],
-                                        [43.5, -33.29],
-                                        [43.44, -33.75],
-                                        [43.5, -34.1],
-                                        [43.67, -33.75],
-                                        [43.66, -33.5]]],
-                                      [[[167.83, -22.5],
-                                        [167.75, -22.31],
-                                        [167.66, -22.5],
-                                        [167.83, -22.5]]]],
+        {'geometry': {'coordinates': [[[[167.88, -22.5],
+                                        [167.75, -22.38],
+                                        [167.62, -22.5],
+                                        [167.75, -22.62],
+                                        [167.88, -22.5]]],
+                                      [[[43.38, -33.5],
+                                        [43.38, -34.0],
+                                        [43.5, -34.12],
+                                        [43.62, -34.0],
+                                        [43.62, -33.5],
+                                        [43.5, -33.38],
+                                        [43.38, -33.5]]]],
                       'type': 'MultiPolygon'},
          'properties': {},
          'type': 'Feature'}
@@ -1806,12 +1801,8 @@ class MetDataArray(MetBase):
                 f"The fill_value {fill_value} expected to be less than the iso_value {iso_value}"
             )
 
-        if depth not in (1, 2):
-            raise ValueError(
-                f"Invalid depth value {depth}. Must be 1 or 2. See docstring for details."
-            )
-        if convex_hull and depth != 1:
-            raise ValueError(f"Set depth=1 to use the 'convex_hull' parameter. Found depth={depth}")
+        if convex_hull and interiors:
+            raise ValueError("Set 'interiors=False' to use the 'convex_hull' parameter.")
 
         arr, altitude = _extract_2d_arr_and_altitude(self, level, time)
         if not include_altitude:
@@ -1830,38 +1821,32 @@ class MetDataArray(MetBase):
 
         # default iso_value
         if iso_value is None:
-            iso_value = (np.nanmax(arr) + np.nanmin(arr)) / 2
+            iso_value = (np.max(arr) + np.min(arr)) / 2
             warnings.warn(f"The 'iso_value' parameter was not specified. Using value: {iso_value}")
 
         # We'll get a nice error message if dependencies are not installed
         import pycontrails.core.polygon as polygon
 
-        nc = polygon.find_contours_to_depth(
+        mp = polygon.find_multipolygon(
             arr,
             threshold=iso_value,
             min_area=min_area,
-            min_area_to_iterate=min_area_to_iterate,
             epsilon=epsilon,
-            depth=depth,
+            interiors=interiors,
             convex_hull=convex_hull,
         )
 
         # Convert to nested lists of coordinates for GeoJSON representation
-        longitude = self.variables["longitude"].values
-        latitude = self.variables["latitude"].values
+        longitude: npt.NDArray[np.float_] = self.variables["longitude"].values
+        latitude: npt.NDArray[np.float_] = self.variables["latitude"].values
 
-        multipolygons: list[list[list[list[float]]]] = []
-        for exterior_poly in nc:
-            poly = [
-                polygon.contour_to_lon_lat(p.contour, longitude, latitude, altitude, precision)
-                for p in [exterior_poly, *exterior_poly]
-            ]
-            multipolygons.append(poly)
+        args = longitude, latitude, altitude, precision
+        mp_coords = [polygon.polygon_to_lon_lat(p, *args) for p in mp.geoms]
 
         return {
             "type": "Feature",
             "properties": {},
-            "geometry": {"type": "MultiPolygon", "coordinates": multipolygons},
+            "geometry": {"type": "MultiPolygon", "coordinates": mp_coords},
         }
 
     def to_polygon_feature_collection(self, **kwargs: Any) -> dict[str, Any]:

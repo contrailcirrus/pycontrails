@@ -9,327 +9,227 @@ See Also
 from __future__ import annotations
 
 import warnings
-from typing import Iterator
 
 import numpy as np
 import numpy.typing as npt
 
 try:
+    import cv2
     import shapely
+    import shapely.geometry
     import shapely.validation
-    from skimage import draw, measure
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
-        "This module requires the 'scikit-image' and 'shapely' packages. "
+        "This module requires the 'opencv-python' and 'shapely' packages. "
         "These can be installed with 'pip install pycontrails[vis]'."
     ) from exc
 
 
-class NestedContours:
-    """A data structure for storing nested contours.
-
-    This data structure is not intended to be instantiated directly. Rather, the
-    :func:`find_contours_to_depth` returns an instance.
-
-    There is no validation to ensure child contours are actually nested. It is up
-    to the caller (ie, :func:`find_contours_to_depth`) to provide this.
-
-    Parameters
-    ----------
-    contour : npt.NDArray[np.float_] | None
-        Contour to store at the given node. If None, this is a top level contour.
-        None by default.
-    """
-
-    def __init__(self, contour: npt.NDArray[np.float_] | None = None):
-        if contour is not None:
-            self.contour = contour
-        self._children: list[NestedContours] = []
-
-    def __iter__(self) -> Iterator[NestedContours]:
-        return iter(self._children)
-
-    def add(self, child: NestedContours) -> None:
-        """Add a child contour to this instance.
-
-        Parameters
-        ----------
-        child : NestedContours
-            Child contour to add.
-        """
-        self._children.append(child)
-
-    @property
-    def n_children(self) -> int:
-        """Get the number of children."""
-        return len(self._children)
-
-    @property
-    def n_vertices(self) -> int:
-        """Get the number of vertices in :attr:`contour`."""
-        return len(getattr(self, "contour", []))
-
-    def __repr__(self) -> str:
-        if hasattr(self, "contour"):
-            out = f"Contour with {self.n_vertices:3} vertices and {self.n_children} children"
-        else:
-            out = f"Top level NestedContours instance with {self.n_children} children"
-
-        for c in self:
-            out += "\n" + "\n".join(["  " + line for line in repr(c).split("\n")])
-        return out
-
-
-def calc_exterior_contours(
-    arr: npt.NDArray[np.float_],
-    threshold: float,
+def buffer_and_clean(
+    contour: npt.NDArray[np.float_],
     min_area: float,
-    epsilon: float,
     convex_hull: bool,
-    positive_orientation: str,
-) -> list[npt.NDArray[np.float_]]:
-    """Calculate exterior contours of the padded array ``arr``.
-
-    This function removes degenerate contours (contours with fewer than 3 vertices) and
-    contours that are not closed.
-
-    This function proceeds as follows:
-
-    #. Determine all contours at the given ``threshold``.
-    #. Convert each contour to a mask and take the union of all masks.
-    #. Fill any array values inside the mask lower than the ``threshold`` with some nominal large
-       value (such as ``np.inf`` or ``np.max(arr)``). This ensures every value inside the mask
-       is above the ``threshold``, and every value outside the mask is below the ``threshold``.
-    #. Recalculate all contours of the modified array. This will now contain only contours
-       exterior contours of the original array.
-    #. Return "clean" contours. See :func:`clean_contours` for details.
+    epsilon: float,
+    orient_ccw: bool = True,
+) -> shapely.Polygon | None:
+    """Buffer and clean a contour.
 
     Parameters
     ----------
-    arr : npt.NDArray[np.float_]
-        Padded array. Assumed to have dtype ``float``, to be padded with some constant value
-        below ``threshold``, and not to contain any nan values. These assumptions are *NOT*
-        checked.
-    threshold : float
-        Threshold value for contour creation.
-    min_area: float | None
-        Minimum area of a contour to be considered. Passed into :func:`clean_contours`.
-    epsilon : float
-        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
+    contour : npt.NDArray[np.float_]
+        Contour to buffer and clean. A 2d array of shape (n, 2) where n is the number
+        of vertices in the contour.
+    min_area : float
+        Minimum area of the polygon. If the area of the buffered contour is less than
+        this, return None.
     convex_hull : bool
-        Passed into :func:`clean_contours`.
-    positive_orientation: {"high", "low"}
-        Passed into :func:`skimage.measure.find_contours`
+        Whether to take the convex hull of the buffered contour.
+    epsilon : float
+        Epsilon value for polygon simplification. If 0, no simplification is performed.
+    orient_ccw : bool, optional
+        Whether to orient the polygon counter-clockwise. If False, orient clockwise.
 
     Returns
     -------
-    list[npt.NDArray[np.float_]]
-        List of exterior contours.
+    shapely.Polygon | None
+        Buffered and cleaned polygon. If the area of the buffered contour is less than
+        ``min_area``, return None.
     """
-    fully_connected = "low" if positive_orientation == "high" else "high"
-    kwargs = {
-        "level": threshold,
-        "positive_orientation": positive_orientation,
-        "fully_connected": fully_connected,
-    }
-    contours = measure.find_contours(arr, **kwargs)
+    if len(contour) == 1:
+        base = shapely.Point(contour)
+    elif len(contour) < 4:
+        base = shapely.LineString(contour)
+    else:
+        base = shapely.LinearRing(contour)
 
-    # The snippet below is a little faster (~1.5x) than using draw.polygon2mask
-    # Under the hood, draw.polygon2mask does the exact same thing as here
-    mask = np.zeros(arr.shape, dtype=bool)
-    for c in contours:
-        rr, cc = draw.polygon(*c.T, shape=arr.shape)
-        mask[rr, cc] = True
+    if orient_ccw:
+        polygon = base.buffer(0.5, quad_segs=1)
+    else:
+        # Only buffer the interiors if necessary
+        try:
+            polygon = shapely.Polygon(base)
+        except shapely.errors.TopologicalError:
+            return None
+        if not polygon.is_valid:
+            polygon = polygon.buffer(0.1, quad_segs=1)
 
-    marr = arr.copy()
-    # I've gone back and forth on the "correct" fill value here
-    # It is somewhat important for continuous data because measure.find_contours
-    # does an interpolation under the hood, and this value *might* play a role there
-    # np.max(arr) seems safer than np.inf, and is compatible with integer dtype
-    marr[mask & (arr <= threshold)] = np.max(arr)
+    assert isinstance(polygon, shapely.Polygon)
+    assert polygon.is_valid
 
-    # After setting interior points to some high value, when we recalculate
-    # contours we are left with just exterior contours
-    contours = measure.find_contours(marr, **kwargs)
+    # Remove all interior rings
+    if polygon.interiors:
+        polygon = shapely.Polygon(polygon.exterior)
 
-    return clean_contours(contours, min_area, epsilon, convex_hull)
+    if polygon.area < min_area:
+        return None
+
+    if orient_ccw != polygon.exterior.is_ccw:
+        polygon = polygon.reverse()
+    if convex_hull:
+        polygon = _take_convex_hull(polygon)
+    if epsilon:
+        polygon = _buffer_simplify_iterate(polygon, epsilon)
+
+    return polygon
 
 
-def find_contours_to_depth(
+def _contours_to_polygons(
+    contours: tuple[npt.NDArray[np.float_], ...],
+    hierarchy: npt.NDArray[np.int_],
+    min_area: float,
+    convex_hull: bool,
+    epsilon: float,
+    i: int = 0,
+) -> list[shapely.Polygon]:
+    """Parse the outputs of :func:`cv2.findContours` per the GeoJSON spec.
+
+    Parameters
+    ----------
+    contours : tuple[npt.NDArray[np.float_], ...]
+        The contours output from :func:`cv2.findContours`.
+    hierarchy : npt.NDArray[np.int_]
+        The hierarchy output from :func:`cv2.findContours`.
+    min_area : float
+        Minimum area of a polygon to be included in the output.
+    convex_hull : bool
+        Whether to take the convex hull of each polygon.
+    epsilon : float
+        Epsilon value to use when simplifying the polygons.
+    i : int, optional
+        The index of the contour to start with. Defaults to 0.
+
+    Returns
+    -------
+    list[shapely.Polygon]
+        A list of polygons. Polygons with a parent-child relationship are merged into
+        a single polygon.
+    """
+    out = []
+    while i != -1:
+        child_i, parent_i = hierarchy[i, 2:]
+        orient_ccw = parent_i == -1
+
+        contour = contours[i][:, 0, ::-1]
+        i = hierarchy[i, 0]
+
+        polygon = buffer_and_clean(contour, min_area, convex_hull, epsilon, orient_ccw)
+        if polygon is None:
+            continue
+
+        assert isinstance(polygon, shapely.Polygon)
+        assert polygon.is_valid
+        assert polygon.is_simple
+        assert not polygon.interiors
+
+        if child_i != -1:
+            holes = _contours_to_polygons(
+                contours,
+                hierarchy,
+                min_area=min_area,
+                convex_hull=False,
+                epsilon=epsilon,
+                i=child_i,
+            )
+
+            candidate = shapely.Polygon(polygon.exterior, [h.exterior for h in holes])
+            # If the candidate isn't valid, ignore all the holes
+            # This can happen if there are many holes and the buffer operation
+            # causes the holes to overlap
+            if candidate.is_valid:
+                polygon = candidate
+
+        out.append(polygon)
+    return out
+
+
+def find_multipolygon(
     arr: npt.NDArray[np.float_],
     threshold: float,
     min_area: float,
-    min_area_to_iterate: float,
     epsilon: float,
-    depth: int,
+    interiors: bool = True,
     convex_hull: bool = False,
-    positive_orientation: str = "high",
-    root: NestedContours | None = None,
-) -> NestedContours:
-    """Find nested contours up to a given depth via DFS.
-
-    At a high level, this function proceeds as follows:
-
-    #. Determine all exterior contours at the given ``threshold``
-       (see :func:`calc_exterior_contours`).
-    #. For each exterior contour:
-        #. Convert the contour to a mask
-        #. Copy and modify the ``arr`` array by filling values outside of the mask with
-           some nominal large value
-        #. Negate both the modified array and the threshold value.
-        #. Recurse by calling this function with these new parameters.
+) -> shapely.MultiPolygon:
+    """Compute a multipolygon from a 2d array.
 
     Parameters
     ----------
     arr : npt.NDArray[np.float_]
-        Padded array. Assumed to have dtype ``float``, to be padded with some constant value
-        below ``threshold``, and not to contain any nan values. These assumptions are *NOT*
-        checked.
+        Array to convert to a multipolygon. The array will be converted to a binary
+        array by comparing each element to `threshold`. This binary array is then
+        passed into :func:`cv2.findContours` to find the contours.
     threshold : float
-        Threshold value for contour creation.
+        Threshold to use when converting `arr` to a binary array.
     min_area : float
-        Minimum area of a contour to be considered. See :func:`clean_contours` for details.
-    min_area_to_iterate : float
-        Minimum area of a contour to be considered when recursing.
+        Minimum area of a polygon to be included in the output.
     epsilon : float
-        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
-    depth : int
-        Depth to which to recurse. For GeoJSON Polygons, this should be 2 in order to
-        generate Polygons with exterior contours and interior contours.
-    convex_hull : bool, optional
-        Passed into :func:`clean_contours`. Default is False.
-    positive_orientation : {"high", "low"}
-        Passed into :func:`skimage.measure.find_contours`. By default, "high", meaning
-        top level exterior contours always have counter-clockwise orientation. This
-        value of this parameter alternates between "high" and "low" in successive recursive
-        calls to this function.
-    root : NestedContours | None, optional
-        Root node to use. If None, a new root node is created. Used for recursion and
-        not intended for direct use. Default is None.
-
-    Returns
-    -------
-    NestedContours
-        Root node of the contour tree.
-    """
-    if depth == 0:
-        if root is None:
-            raise ValueError("Parameter root must be non-None if depth is zero.")
-        return root
-
-    root = root or NestedContours()
-    contours = calc_exterior_contours(
-        arr, threshold, min_area, epsilon, convex_hull, positive_orientation
-    )
-    for c in contours:
-        child = NestedContours(c)
-
-        # When depth == 1, we are at the bottom of the recursion
-        if depth == 1:
-            root.add(child)
-            continue
-
-        # If the area is too small, don't recurse
-        if shapely.Polygon(c).area < min_area_to_iterate:
-            root.add(child)
-            continue
-
-        # Fill points outside exterior contours with high values
-        marr = np.full_like(arr, np.max(arr))
-        rr, cc = draw.polygon(*c.T, shape=arr.shape)
-        marr[rr, cc] = arr[rr, cc]  # keep the same interior arr values
-
-        # And the important part: recurse on the negative
-        child = find_contours_to_depth(
-            arr=-marr,
-            threshold=-threshold,
-            min_area=min_area,
-            min_area_to_iterate=min_area_to_iterate,
-            epsilon=epsilon,
-            depth=depth - 1,
-            positive_orientation="low" if positive_orientation == "high" else "high",
-            root=child,
-        )
-        root.add(child)
-
-    return root
-
-
-def clean_contours(
-    contours: list[npt.NDArray[np.float_]],
-    min_area: float,
-    epsilon: float,
-    convex_hull: bool,
-) -> list[npt.NDArray[np.float_]]:
-    """Remove degenerate contours, contours that are not closed, and contours with negligible area.
-
-    This function also calls :func:`shapely.simplify` to simplify the contours.
-
-    .. versionchanged:: 0.38.0
-
-        Apply a smaller buffer when simplifying contours. This allows for changes
-        to the underlying polygon topology. Previously, any contour topology was
-        preserved when simplifying.
-
-    Parameters
-    ----------
-    contours : list[npt.NDArray[np.float_]]
-        List of contours to clean.
-    min_area : float
-        Minimum area for a contour to be kept. If 0, this filter is not applied.
-    epsilon : float
-        Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
+        Epsilon value to use when simplifying the polygons. Passed into shapely's
+        :meth:`shapely.geometry.Polygon.simplify` method.
+    interiors : bool
+        Whether to include interior polygons.
     convex_hull : bool
-        If True, use the convex hull of the contour as the simplified contour.
+        Experimental. Whether to take the convex hull of each polygon.
 
     Returns
     -------
-    list[npt.NDArray[np.float_]]
-        Cleaned list of contours.
+    shapely.MultiPolygon
+        A multipolygon of the contours.
     """
-    lr_list = []
-    for contour in contours:
-        if len(contour) <= 3:
-            continue
-        lr = shapely.LinearRing(contour)
-        if not lr.is_valid:
-            continue
-        if shapely.Polygon(lr).area < min_area:
-            continue
-        if convex_hull:
-            lr = _take_convex_hull(lr).exterior
-        if epsilon:
-            lr = _buffer_simplify_iterate(lr, epsilon)
+    arr_bin = np.empty(arr.shape, dtype=np.uint8)
+    np.greater_equal(arr, threshold, out=arr_bin)
 
-        lr_list.append(lr)
+    mode = cv2.RETR_CCOMP if interiors else cv2.RETR_EXTERNAL
+    contours, hierarchy = cv2.findContours(arr_bin, mode, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return shapely.MultiPolygon()
 
-    # After simplifying, the polygons may not longer be disjoint.
-    mp = shapely.MultiPolygon([shapely.Polygon(lr) for lr in lr_list])
-    mp = _make_multipolygon_valid(mp, convex_hull)
+    assert len(hierarchy) == 1
+    hierarchy = hierarchy[0]
 
-    return [np.asarray(p.exterior.coords) for p in mp.geoms]
+    polygons = _contours_to_polygons(contours, hierarchy, min_area, convex_hull, epsilon)
+    return _make_valid_multipolygon(polygons, convex_hull)
 
 
-def _take_convex_hull(lr: shapely.LinearRing) -> shapely.Polygon:
+def _take_convex_hull(polygon: shapely.Polygon) -> shapely.Polygon:
     """Take the convex hull of a linear ring and preserve the orientation.
 
     Parameters
     ----------
-    lr : shapely.LinearRing
+    polygon : shapely.Polygon
         Linear ring to take the convex hull of.
 
     Returns
     -------
-    shapely.LinearRing
+    shapely.Polygon
         Convex hull of the input.
     """
-    convex_hull = lr.convex_hull
-    if lr.is_ccw == convex_hull.exterior.is_ccw:
+    convex_hull = polygon.convex_hull
+    if polygon.exterior.is_ccw == convex_hull.exterior.is_ccw:
         return convex_hull
-    return shapely.Polygon(convex_hull.exterior.coords[::-1])
+    return shapely.Polygon(convex_hull.exterior.reverse())
 
 
-def _buffer_simplify_iterate(linear_ring: shapely.LinearRing, epsilon: float) -> shapely.LinearRing:
+def _buffer_simplify_iterate(polygon: shapely.Polygon, epsilon: float) -> shapely.Polygon:
     """Simplify a linear ring by iterating over a larger buffer.
 
     This function calls :func:`shapely.buffer` and :func:`shapely.simplify`
@@ -342,7 +242,7 @@ def _buffer_simplify_iterate(linear_ring: shapely.LinearRing, epsilon: float) ->
 
     Parameters
     ----------
-    linear_ring : shapely.LinearRing
+    polygon : shapely.Polygon
         Linear ring to simplify.
     epsilon : float
         Passed as ``tolerance`` parameter into :func:`shapely.simplify`.
@@ -354,14 +254,14 @@ def _buffer_simplify_iterate(linear_ring: shapely.LinearRing, epsilon: float) ->
     """
     # Try to simplify without a buffer first
     # This seems to be computationally faster
-    out = linear_ring.simplify(epsilon, preserve_topology=False)
+    out = polygon.simplify(epsilon, preserve_topology=False)
     if out.is_simple and out.is_valid:
         return out
 
     # Applying a naive linear_ring.buffer(0) can destroy the polygon completely
     # https://stackoverflow.com/a/20873812
 
-    is_ccw = linear_ring.is_ccw
+    is_ccw = polygon.exterior.is_ccw
 
     # Values here are somewhat ad hoc: These seem to allow the algorithm to
     # terminate and are not too computationally expensive
@@ -369,9 +269,9 @@ def _buffer_simplify_iterate(linear_ring: shapely.LinearRing, epsilon: float) ->
         distance = epsilon * i / 10
 
         # Taking the buffer can change the orientation of the contour
-        out = linear_ring.buffer(distance, join_style="mitre", quad_segs=2).exterior
-        if out.is_ccw != is_ccw:
-            out = shapely.LineString(out.coords[::-1])
+        out = polygon.buffer(distance, join_style="mitre", quad_segs=2)
+        if out.exterior.is_ccw != is_ccw:
+            out = shapely.Polygon(out.exterior.coords[::-1])
 
         out = out.simplify(epsilon, preserve_topology=False)
         if out.is_simple and out.is_valid:
@@ -380,10 +280,12 @@ def _buffer_simplify_iterate(linear_ring: shapely.LinearRing, epsilon: float) ->
     warnings.warn(
         f"Could not simplify contour with epsilon {epsilon}. Try passing a smaller epsilon."
     )
-    return linear_ring.simplify(epsilon, preserve_topology=True)
+    return polygon.simplify(epsilon, preserve_topology=True)
 
 
-def _make_multipolygon_valid(mp: shapely.MultiPolygon, convex_hull: bool) -> shapely.MultiPolygon:
+def _make_valid_multipolygon(
+    polygons: list[shapely.Polygon], convex_hull: bool
+) -> shapely.MultiPolygon:
     """Make a multipolygon valid.
 
     This function attempts to make a multipolygon valid by iteratively
@@ -392,12 +294,15 @@ def _make_multipolygon_valid(mp: shapely.MultiPolygon, convex_hull: bool) -> sha
     invalid after 5 attempts, a warning is raised and the last
     multipolygon is returned.
 
+    This function is needed because simplifying a contour can change the
+    geometry of it, which can cause non-disjoint polygons to be created.
+
     .. versionadded:: 0.38.0
 
     Parameters
     ----------
-    mp : shapely.MultiPolygon
-        Multipolygon to make valid.
+    polygons : list[shapely.Polygon]
+        List of polygons to combine into a multipolygon.
     convex_hull : bool
         If True, take the convex hull of merged polygons.
 
@@ -406,15 +311,12 @@ def _make_multipolygon_valid(mp: shapely.MultiPolygon, convex_hull: bool) -> sha
     shapely.MultiPolygon
         Valid multipolygon.
     """
+    mp = shapely.MultiPolygon(polygons)
     if mp.is_empty:
         return mp
 
-    # Get orientation of the first polygon. We assume that all polygons
-    # share this orientation.
-    is_ccw = mp.geoms[0].exterior.is_ccw
-
-    n_attemps = 5
-    for _ in range(n_attemps):
+    n_attempts = 5
+    for _ in range(n_attempts):
         if mp.is_valid:
             return mp
 
@@ -422,32 +324,30 @@ def _make_multipolygon_valid(mp: shapely.MultiPolygon, convex_hull: bool) -> sha
         if isinstance(mp, shapely.Polygon):
             mp = shapely.MultiPolygon([mp])
 
-        # Make sure the orientation of the polygons is consistent
-        # There is a shapely.geometry.polygon.orient function, but it doesn't look any better
-        if mp.geoms[0].exterior.is_ccw != is_ccw:
-            mp = shapely.MultiPolygon([shapely.Polygon(p.exterior.coords[::-1]) for p in mp.geoms])
+        # Fix the orientation of the polygons
+        mp = shapely.MultiPolygon([shapely.geometry.polygon.orient(p, sign=1) for p in mp.geoms])
 
         if convex_hull:
             mp = shapely.MultiPolygon([_take_convex_hull(p.exterior) for p in mp.geoms])
 
     warnings.warn(
-        f"Could not make multipolygon valid after {n_attemps} attempts. "
+        f"Could not make multipolygon valid after {n_attempts} attempts. "
         "According to shapely, the multipolygon is invalid because: "
         f"{shapely.validation.explain_validity(mp)}"
     )
     return mp
 
 
-def contour_to_lon_lat(
-    contour: npt.NDArray[np.float_],
+def polygon_to_lon_lat(
+    polygon: shapely.Polygon,
     longitude: npt.NDArray[np.float_],
     latitude: npt.NDArray[np.float_],
     altitude: float | None,
     precision: int | None,
-) -> list[list[float]]:
-    """Convert contour longitude-latitude coordinates.
+) -> list[list[list[float]]]:
+    """Convert polygon longitude-latitude coordinates.
 
-    This function assumes ``contour`` was created from a padded array of shape
+    This function assumes ``polygon`` was created from a padded array of shape
     ``(longitude.size + 2, latitude.size + 2)``.
 
     .. versionchanged:: 0.25.12
@@ -455,7 +355,7 @@ def contour_to_lon_lat(
         Previous implementation assumed indexes were integers or half-integers.
         This is the case for binary arrays, but not for continuous arrays.
         The new implementation performs the linear interpolation necessary for
-        continuous arrays. See :func:`skimage.measure.find_contours`.
+        continuous arrays.
 
     .. versionchanged:: 0.32.1
 
@@ -464,8 +364,8 @@ def contour_to_lon_lat(
 
     Parameters
     ----------
-    contour : npt.NDArray[np.float_]
-        Contour array of shape ``(n, 2)``.
+    polygon : shapely.Polygon
+        Contour to convert to longitude-latitude coordinates.
     longitude : npt.NDArray[np.float_]
         One dimensional array of longitude values.
     latitude : npt.NDArray[np.float_]
@@ -480,13 +380,27 @@ def contour_to_lon_lat(
 
     Returns
     -------
-    list[list[float]]
-        Contour array of longitude, latitude values with shape ``(n, 2)`` converted
-        to a list of lists. The vertices of the returned contours are rounded to some
-        hard-coded precision to reduce the size of the corresponding JSON output.
-        If ``altitude`` is provided, the returned list of lists will have shape
-        ``(n, 3)`` (each vertex includes a z-coordinate).
+    list[list[list[float]]]
+        Ragged contour array of longitude, latitude values converted from the
+        input polygon. The first element of the returned list corresponds to
+        the exterior contour, and the remaining elements correspond to the
+        interior contours. Each contour is a list of vertices, which is itself
+        a list of longitude, latitude, and altitude values.
     """
+    rings = polygon.exterior, *polygon.interiors
+    args = longitude, latitude, altitude, precision
+    return [_ring_to_lon_lat(ring, *args) for ring in rings]
+
+
+def _ring_to_lon_lat(
+    ring: shapely.LinearRing,
+    longitude: npt.NDArray[np.float_],
+    latitude: npt.NDArray[np.float_],
+    altitude: float | None,
+    precision: int | None,
+) -> list[list[float]]:
+    contour = np.asarray(ring.coords)
+
     # Account for padding
     lon_idx = contour[:, 0] - 1
     lat_idx = contour[:, 1] - 1
