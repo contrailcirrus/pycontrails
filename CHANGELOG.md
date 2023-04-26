@@ -1,6 +1,17 @@
 
 # Changelog
 
+## 0.41.0
+
+#### Features
+
+- Rewrite the `polygon` module to use `opencv` instead of `scikit-image` for finding contours. This change improves the algorithm runtime and fixes some previous unstable behavior in finding nested contours. For any introduction to the methodlogy, see the [OpenCV contour tutorial](https://docs.opencv.org/master/d4/d73/tutorial_py_contours_begin.html).
+
+#### Breaking changes
+
+- Completely rewrite the `polygon` module. Replace the "main" public function `polygon.find_contours_to_depth` with `polygon.find_multipolygon`. Return `shapely` objects when convenient to do so.
+- Remove parameters `min_area_to_iterate` and `depth` in the `MetDataArray.to_polygon_feature` method. The `depth` parameter has been replaced by the boolean `interiors` parameter.
+
 ## v0.40.1
 
 #### Fixes
