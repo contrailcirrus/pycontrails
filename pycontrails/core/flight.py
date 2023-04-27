@@ -39,17 +39,17 @@ class FlightPhase(enum.IntEnum):
 
 #: Max airport elevation, [:math:`ft`]
 #: See `Daocheng_Yading_Airport <https://en.wikipedia.org/wiki/Daocheng_Yading_Airport>`_
-MAX_AIRPORT_ELEVATION = 15_000
+MAX_AIRPORT_ELEVATION = 15_000.0
 
 #: Min estimated cruise altitude, [:math:`ft`]
-MIN_CRUISE_ALTITUDE = 20_000
+MIN_CRUISE_ALTITUDE = 20_000.0
 
 #: Short haul duration cutoff, [:math:`s`]
-SHORT_HAUL_DURATION = 3600
+SHORT_HAUL_DURATION = 3600.0
 
 #: Set maximum speed compatible with "on_ground" indicator, [:math:`mph`]
 #: Thresholds assessed based on scatter plot (150 knots = 278 km/h)
-MAX_ON_GROUND_SPEED = 150
+MAX_ON_GROUND_SPEED = 150.0
 
 
 @dataclasses.dataclass
@@ -1301,9 +1301,7 @@ def _sg_filter(
 ) -> npt.NDArray[np.float_]:
     """Apply Savitzky-Golay filter to smooth out noise in the time-series data.
 
-    Used to smooth true airspeed & fuel flow.
-
-    TODO: move to a more centralized location in the codebase if used again
+    Used to smooth true airspeed, fuel flow, and altitude.
 
     Parameters
     ----------
