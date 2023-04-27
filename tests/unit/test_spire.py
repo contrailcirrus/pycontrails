@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from pycontrails.datalib import spire
-from pycontrails.datalib.spire.spire import _separate_by_cruise_phase, _separate_by_on_ground
+from pycontrails.datalib.spire.spire import (
+    _clean_trajectory_altitude,
+    _separate_by_cruise_phase,
+    _separate_by_on_ground,
+)
 
 from .conftest import get_static_path
 
 
-@pytest.mark.skipif(True, reason="Test not complete")
 def test_clean() -> None:
     """Test algorithms to identify and separate unique flight trajectories."""
 
@@ -25,7 +26,6 @@ def test_clean() -> None:
     )
 
 
-@pytest.mark.skipif(True, reason="Test not complete")
 def test_separate_using_ground_indicator():
     """Test algorithms to identify unique flight trajectories from on the ground indicator."""
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
@@ -41,8 +41,21 @@ def test_separate_using_ground_indicator():
     flight_ids = _separate_by_on_ground(test)
     assert len(flight_ids.unique()) == 2
 
+    # Should handle slightly noisy "on_ground" signal
+    # (there is already a single "on_ground" outlier near the end in the dataset)
+    test.loc[2131:2132, "on_ground"] = False
+    test.loc[4500:4502, "on_ground"] = True
 
-@pytest.mark.skipif(True, reason="Test not complete")
+    flight_ids = _separate_by_on_ground(test)
+    assert len(flight_ids.unique()) == 2
+
+    # This filter is not very robust - even 3 "on_ground" entries will trigger a new trajectory
+    test.loc[2131:2132, "on_ground"] = False
+
+    flight_ids = _separate_by_on_ground(test)
+    assert len(flight_ids.unique()) == 3
+
+
 def test_separate_with_multiple_cruise_phase():
     """Test algorithms to identify unique flight trajectories with multiple cruise phases."""
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
@@ -51,11 +64,10 @@ def test_separate_with_multiple_cruise_phase():
     # Construct erroneous messages consisting of two unique flights with the same callsign
     test = cdf.loc[cdf["callsign"].isin(["BAW506", "BAW507"])]
     test["callsign"] = "killer-whale-2"
-    test.reset_index(drop=True, inplace=True)
-    keep_rows = np.full(test.shape, fill_value=True)
-    keep_rows[635:750] = False
-    test = test.loc[keep_rows]
-    test.drop_duplicates(subset=["timestamp", "icao_address"], inplace=True)
+
+    # In `spire.identify_flights`, we need to clean up individual trajectory
+    # altitudes before _separate_by_cruise_phase method works
+    test = _clean_trajectory_altitude(test)
 
     # Unable to identify unique flights because metadata is the same
     assert len(test.groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"])) == 1
@@ -83,18 +95,3 @@ def test_identify_flight_diversion() -> None:
 
     flight_ids = _separate_by_cruise_phase(test)
     assert len(flight_ids.unique()) == 1
-
-
-@pytest.mark.skipif(True, reason="Test not complete")
-def test_generate_flight_id() -> None:
-    pass
-
-
-@pytest.mark.skipif(True, reason="Test not complete")
-def test_validate_flights() -> None:
-    pass
-
-
-@pytest.mark.skipif(True, reason="Test not complete")
-def test_is_valid_trajectory() -> None:
-    pass

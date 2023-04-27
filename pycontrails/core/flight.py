@@ -1437,47 +1437,79 @@ def _verify_altitude(
 
 
 def filter_altitude(
-    altitude: npt.NDArray[np.datetime64],
-    *,
-    noise_threshold_ft: float = 25,
-    threshold_altitude_ft: float | None = None,
-) -> npt.NDArray[np.datetime64]:
+    altitude: npt.NDArray[np.float_], *, kernel_size: int = 17
+) -> npt.NDArray[np.float_]:
     """
     Filter noisy altitude on a single flight.
 
+    Currently runs altitude through a median filter using :func:`scipy.signal.medfilt`
+    with ``kernel_size``, then a Savitzky-Golay filter to filter noise.
+
     .. todo::
-        To be replaced with filter from scipy
+
+        This method assumes that the time interval between altitude points
+        (:func:`segment_duration`) is moderately small (e.g. minutes).
+        This filter may not work as well when waypoints are close (seconds) or
+        farther apart in time (e.g. 30 minutes).
+
+        The optimal altitude filter is a work in a progress
+        and may change in the future.
 
     Parameters
     ----------
-    altitude: npt.NDArray[np.datetime64]
+    altitude : npt.NDArray[np.float_]
         Altitude signal
-    noise_threshold_ft: float
-        Altitude difference threshold to identify noise, [:math:`ft`]
-        Barometric altitude from ADS-B telemetry is reported at increments of 25 ft.
-    threshold_altitude_ft: float
-        Altitude will be checked and corrected above this threshold, [:math:`ft`]
-        Currently set to :attr:`flight.MAX_AIRPORT_ELEVATION` ft.
+    kernel_size : int, optional
+        Passed directly to :func:`scipy.signal.medfilt`, by default 11.
+        Passed also to :func:`scipy.signal.medfilt`
 
     Returns
     -------
-    npt.NDArray[np.datetime64]
+    npt.NDArray[np.float_]
         Filtered altitude
 
     Notes
     -----
-    Currently removes noise in cruise altitude where flights oscillate
-    between 25 ft due to noise in ADS-B telemetry.
+    Algorithm is derived from :meth:`traffic.core.flight.Flight.filter`.
+
+    The `traffic <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`_
+    algorithm also computes thresholds on sliding windows and replaces unacceptable values with NaNs.
+
+    Errors may raised if the ``kernel_size`` is too large.
+
+    See Also
+    --------
+    :meth:`traffic.core.flight.Flight.filter`
+    :func:`scipy.signal.medfilt`
     """
-    threshold_altitude_ft = threshold_altitude_ft or MAX_AIRPORT_ELEVATION
+    if not len(altitude):
+        raise ValueError("Altitude must have non-zero length to filter")
 
-    # Remove noise in cruise altitude by rounding up/down to the nearest flight level.
-    altitude_ft = units.m_to_ft(altitude)
-    d_alt_ft = np.diff(altitude_ft, prepend=np.nan)
-    is_noise = (np.abs(d_alt_ft) <= noise_threshold_ft) & (altitude_ft > threshold_altitude_ft)
-    altitude_ft[is_noise] = np.round(altitude_ft[is_noise] / 1000) * 1000
+    # The kernel_size must be less than or equal to the number of data points available.
+    kernel_size = min(kernel_size, altitude.size)
 
-    return units.ft_to_m(altitude_ft)
+    # The kernel_size must be odd.
+    if (kernel_size % 2) == 0:
+        kernel_size -= 1
+
+    # Apply a median filter above a certain threshold
+    altitude_filt = scipy.signal.medfilt(altitude, kernel_size=kernel_size)
+
+    # TODO: I think this makes sense because it smooths the climb/descent phases
+    altitude_filt = _sg_filter(altitude_filt, window_length=kernel_size)
+
+    # TODO: The right way to do this is with a low pass filter at
+    # a reasonable rocd threshold ~300-500 ft/min, e.g.
+    # sos = scipy.signal.butter(4, 250, 'low', output='sos')
+    # return scipy.signal.sosfilt(sos, altitude_filt1)
+    #
+    # Remove noise manually
+    # only remove above max airport elevation
+    d_alt_ft = np.diff(altitude_filt, append=np.nan)
+    is_noise = (np.abs(d_alt_ft) <= 25) & (altitude_filt > MAX_AIRPORT_ELEVATION)
+    altitude_filt[is_noise] = np.round(altitude_filt[is_noise], -3)
+
+    return altitude_filt
 
 
 def segment_duration(
@@ -1512,23 +1544,25 @@ def segment_phase(
     altitude_ft: npt.NDArray[np.float_],
     *,
     threshold_rocd: float = 250.0,
-    min_cruise_altitude_ft: float = 20000.0,
+    min_cruise_altitude_ft: float = MIN_CRUISE_ALTITUDE,
 ) -> npt.NDArray[np.uint8]:
     """Identify the phase of flight (climb, cruise, descent) for each segment.
 
     Parameters
     ----------
     rocd: pt.NDArray[np.float_]
-        Rate of climb and descent across segment, [:math:`ft min^{-1}`]
+        Rate of climb and descent across segment, [:math:`ft min^{-1}`].
+        See output from :func:`segment_rocd`.
     altitude_ft: npt.NDArray[np.float_]
         Altitude, [:math:`ft`]
-    threshold_rocd: float
+    threshold_rocd: float, optional
         ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
-        Currently set to 250 ft/min.
-    min_cruise_altitude_ft: float
+        Defaults to 250 ft/min.
+    min_cruise_altitude_ft: float, optional
         Minimum threshold altitude for cruise, [:math:`ft`]
         This is specific for each aircraft type,
         and can be approximated as 50% of the altitude ceiling.
+        Defaults to :attr:`MIN_CRUISE_ALTITUDE`.
 
     Returns
     -------
@@ -1578,6 +1612,7 @@ def segment_rocd(
     segment_duration: npt.NDArray[np.float_]
         Time difference between waypoints, [:math:`s`].
         Expected to have numeric `dtype`, not `"timedelta64"`.
+        See output from :func:`segment_duration`.
     altitude_ft: npt.NDArray[np.float_]
         Altitude of each waypoint, [:math:`ft`]
 
