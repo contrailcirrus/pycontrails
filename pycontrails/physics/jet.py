@@ -54,8 +54,8 @@ def clip_mach_number(
     is_unrealistic = mach_num > max_mach_number
     if np.any(is_unrealistic):
         msg = (
-            f"Unrealistic Mach numbers found. Discovered {np.sum(is_unrealistic)} "
-            f"/ {is_unrealistic.size} values exceeding this, the largest of which "
+            f"Unrealistic Mach numbers found. Discovered {np.sum(is_unrealistic)} / "
+            f"{is_unrealistic.size} values exceeding this, the largest of which "
             f"is {np.nanmax(mach_num)}. These are all clipped at {max_mach_number}."
         )
         logger.debug(msg)
