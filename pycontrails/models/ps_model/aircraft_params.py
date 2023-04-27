@@ -38,23 +38,27 @@ class AircraftEngineParams:
     -------------------------------------
     (15) ff_idle_sls        Fuel mass flow rate under engine idle and sea level static conditions, summed over
                             all engines, [:math:`kg s^{-1}`]
-    (16) m_des              Design optimum Mach number where the fuel mass flow rate is at a minimum.
-    (17) c_t_des            Design optimum engine thrust coefficient where the fuel mass flow rate is at a minimum.
-    (18) eta_1              Multiplier for maximum overall propulsion efficiency model
-    (19) eta_2              Exponent for maximum overall propulsion efficiency model
+    (16) ff_max_sls         Fuel mass flow rate at take-off and sea level static conditions, summed over
+                            all engines, [:math:`kg s^{-1}`]
+    (17) f_00               Maximum thrust force that can be supplied by the engine at sea level static conditions,
+                            summed over all engines, [:math:`N`].
+    (18) m_des              Design optimum Mach number where the fuel mass flow rate is at a minimum.
+    (19) c_t_des            Design optimum engine thrust coefficient where the fuel mass flow rate is at a minimum.
+    (20) eta_1              Multiplier for maximum overall propulsion efficiency model
+    (21) eta_2              Exponent for maximum overall propulsion efficiency model
 
     -------------------------------------
     OPERATIONAL PARAMETERS
     -------------------------------------
-    (20) amass_mtow         Aircraft maximum take-off weight, [:math:`kg`]
-    (21) amass_mlw          Aircraft maximum landing weight, [:math:`kg`]
-    (22) amass_mzfw         Aircraft maximum zero fuel weight, [:math:`kg`]
-    (23) amass_oew          Aircraft operating empty weight, [:math:`kg`]
-    (24) amass_mpl          Aircraft maximum payload, [:math:`kg`]
-    (25) max_altitude_ft    Maximum altitude, [:math:`ft`]
-    (26) max_mach_num       Maximum operational Mach number
-    (27) wingspan           Aircraft wingspan, [:math:`m`]
-    (28) fuselage_width     Aircraft fuselage width, [:math:`m`]
+    (22) amass_mtow         Aircraft maximum take-off weight, [:math:`kg`]
+    (23) amass_mlw          Aircraft maximum landing weight, [:math:`kg`]
+    (24) amass_mzfw         Aircraft maximum zero fuel weight, [:math:`kg`]
+    (25) amass_oew          Aircraft operating empty weight, [:math:`kg`]
+    (26) amass_mpl          Aircraft maximum payload, [:math:`kg`]
+    (27) max_altitude_ft    Maximum altitude, [:math:`ft`]
+    (28) max_mach_num       Maximum operational Mach number
+    (29) wingspan           Aircraft wingspan, [:math:`m`]
+    (30) fuselage_width     Aircraft fuselage width, [:math:`m`]
     """
     def __init__(self, df_aircraft_engine: pd.Series) -> None:
         self.manufacturer: str = df_aircraft_engine["Manufacturer"]
@@ -75,7 +79,9 @@ class AircraftEngineParams:
         self.j_3: float = 70        # Constant for all aircraft-engine types for now, but may vary in the future
 
         # Engine parameters
-        self.ff_idle_sls: float = df_aircraft_engine["nominal((mf)FI)SLS (kg/s)"]
+        self.ff_idle_sls: float = df_aircraft_engine["(mf)idle SLS (kg/s)"]
+        self.ff_max_sls: float = df_aircraft_engine["(mf)max T/O SLS (kg/s)"]
+        self.f_00: float = df_aircraft_engine["nominal (F00)ISA (kn)"] * 1000
         self.m_des: float = df_aircraft_engine["(M) des"]
         self.c_t_des: float = df_aircraft_engine["(CT)des"]
         self.eta_1: float = df_aircraft_engine["eta_1"]

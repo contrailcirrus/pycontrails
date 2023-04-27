@@ -249,31 +249,86 @@ def equivalent_fuel_flow_rate_at_sea_level(
     delta_amb: npt.NDArray[np.float_],
     mach_num: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
-    r"""Convert fuel mass flow rate at cruise conditions to equivalent flow rate at sea level.
+    r"""Convert fuel mass flow rate at cruise conditions to equivalent fuel flow rate at sea level.
 
     Refer to Eq. (40) in :cite:`duboisFuelFlowMethod22006`.
 
     Parameters
     ----------
     fuel_flow_cruise : npt.NDArray[np.float_]
-        Fuel mass flow rate per engine, [:math:`kg s^{-1}`]
+        Fuel mass flow rate, [:math:`kg s^{-1}`]
     theta_amb : npt.NDArray[np.float_]
         Ratio of the ambient temperature to the temperature at mean sea-level.
     delta_amb : npt.NDArray[np.float_]
         Ratio of the pressure altitude to the surface pressure.
     mach_num : npt.NDArray[np.float_]
-        Mach number, [:math: `Ma`]
+        Mach number
 
     Returns
     -------
     npt.NDArray[np.float_]
-        Estimate of fuel flow per engine at sea level, [:math:`kg \ s^{-1}`].
+        Estimate of fuel mass flow rate at sea level, [:math:`kg \ s^{-1}`]
 
     References
     ----------
     - :cite:`duboisFuelFlowMethod22006`
     """
     return fuel_flow_cruise * (theta_amb**3.8 / delta_amb) * np.exp(0.2 * mach_num**2)
+
+
+def equivalent_fuel_flow_rate_at_cruise(
+    fuel_flow_sls: npt.NDArray[np.float_],
+    theta_amb: npt.NDArray[np.float_],
+    delta_amb: npt.NDArray[np.float_],
+    mach_num: npt.NDArray[np.float_],
+) -> npt.NDArray[np.float_]:
+    r"""Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
+
+    Refer to Eq. (40) in :cite:`duboisFuelFlowMethod22006`.
+
+    Parameters
+    ----------
+    fuel_flow_sls : npt.NDArray[np.float_]
+        Fuel mass flow rate, [:math:`kg s^{-1}`]
+    theta_amb : npt.NDArray[np.float_]
+        Ratio of the ambient temperature to the temperature at mean sea-level.
+    delta_amb : npt.NDArray[np.float_]
+        Ratio of the pressure altitude to the surface pressure.
+    mach_num : npt.NDArray[np.float_]
+        Mach number
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Estimate of fuel mass flow rate at sea level, [:math:`kg \ s^{-1}`]
+
+    References
+    ----------
+    - :cite:`duboisFuelFlowMethod22006`
+    """
+    return fuel_flow_sls / ((theta_amb**3.8 / delta_amb) * np.exp(0.2 * mach_num**2))
+
+
+def minimum_fuel_flow_rate_at_cruise(
+        fuel_flow_idle_sls: float,
+        altitude_ft: npt.NDArray[np.float_]
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate minimum fuel mass flow rate at cruise conditions
+
+    Parameters
+    ----------
+    fuel_flow_idle_sls : float
+        Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
+    altitude_ft : npt.NDArray[np.float_]
+        Waypoint altitude, [:math: `ft`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Minimum fuel mass flow rate at cruise conditions, [:math:`kg \ s^{-1}`]
+    """
+    return fuel_flow_idle_sls * (1 - 0.178 * (altitude_ft / 10000) + 0.0085 * ((altitude_ft / 10000)**2))
 
 
 def reserve_fuel_requirements(
