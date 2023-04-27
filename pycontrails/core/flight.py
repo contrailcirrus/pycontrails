@@ -1472,8 +1472,10 @@ def filter_altitude(
     -----
     Algorithm is derived from :meth:`traffic.core.flight.Flight.filter`.
 
-    The `traffic <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`_
-    algorithm also computes thresholds on sliding windows and replaces unacceptable values with NaNs.
+    The `traffic
+    <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`_
+    algorithm also computes thresholds on sliding windows
+    and replaces unacceptable values with NaNs.
 
     Errors may raised if the ``kernel_size`` is too large.
 
@@ -1481,7 +1483,7 @@ def filter_altitude(
     --------
     :meth:`traffic.core.flight.Flight.filter`
     :func:`scipy.signal.medfilt`
-    """
+    """  # noqa: E501
     if not len(altitude):
         raise ValueError("Altitude must have non-zero length to filter")
 
