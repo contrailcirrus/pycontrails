@@ -1696,7 +1696,7 @@ class MetDataArray(MetBase):
         `GeoJSON Polygon specification <https://www.rfc-editor.org/rfc/rfc7946.html#section-3.1.6>`.
         Polygons may also contain interior linear rings (holes). This method does not support
         nesting beyond the GeoJSON specification. See the :mod:`pycontrails.core.polygon`
-        for additional polygon support, including arbitrary nesting depth.
+        for additional polygon support.
 
         .. versionchanged:: 0.25.12
 
@@ -1720,6 +1720,8 @@ class MetDataArray(MetBase):
         .. versionchanged:: 0.41.0
 
             Convert continuous fields to binary fields before computing polygons.
+            The parameters ``max_area`` and ``epsilon`` are now expressed in terms of
+            longitude/latitude units instead of pixels.
 
         Parameters
         ----------
@@ -1740,12 +1742,13 @@ class MetDataArray(MetBase):
             same convention as used by ``skimage``.)
         min_area : float, optional
             Minimum area of each polygon. Polygons with area less than ``min_area`` are
-            not included in the output. The unit of this parameter is intrinsic to the
-            underlying array: an individual "grid cell" has unit 1. Set to 0 to omit any
-            polygon filtering based on a minimal area conditional. By default, 0.0.
+            not included in the output. The unit of this parameter is in longitude/latitude
+            degrees squared. Set to 0 to omit any polygon filtering based on a minimal area
+            conditional. By default, 0.0.
         epsilon : float, optional
             Control the extent to which the polygon is simplified. A value of 0 does not alter
-            the geometry of the polygon. Values in the interval [0, 0.2] are reasonable.
+            the geometry of the polygon. The unit of this parameter is in longitude/latitude
+            degrees. By default, 0.0.
         precision : int, optional
             Number of decimal places to round coordinates to. If None, no rounding is performed.
         interiors : bool, optional
@@ -1780,30 +1783,22 @@ class MetDataArray(MetBase):
         >>> mda.shape
         (1440, 721, 1, 1)
 
-        >>> pprint(mda.to_polygon_feature(iso_value=239.5, precision=2, epsilon=0.2))
-        {'geometry': {'coordinates': [[[[168.25, -22.5],
-                                        [167.75, -22.0],
-                                        [167.25, -22.5],
-                                        [167.75, -23.0],
-                                        [168.25, -22.5]]],
-                                      [[[43.0, -33.5],
-                                        [43.0, -34.0],
-                                        [43.5, -34.5],
-                                        [44.0, -34.0],
-                                        [44.0, -33.5],
-                                        [43.5, -33.0],
-                                        [43.0, -33.5]]]],
+        >>> pprint(mda.to_polygon_feature(iso_value=239.5, precision=2, epsilon=0.1))
+        {'geometry': {'coordinates': [[[[167.88, -22.5],
+                                        [167.75, -22.38],
+                                        [167.62, -22.5],
+                                        [167.75, -22.62],
+                                        [167.88, -22.5]]],
+                                      [[[43.38, -33.5],
+                                        [43.5, -34.12],
+                                        [43.62, -33.5],
+                                        [43.5, -33.38],
+                                        [43.38, -33.5]]]],
                       'type': 'MultiPolygon'},
          'properties': {},
          'type': 'Feature'}
 
         """
-        # Not completely sure if this is necessary ...
-        if iso_value is not None and fill_value > iso_value:
-            warnings.warn(
-                f"The fill_value {fill_value} expected to be less than the iso_value {iso_value}"
-            )
-
         if convex_hull and interiors:
             raise ValueError("Set 'interiors=False' to use the 'convex_hull' parameter.")
 

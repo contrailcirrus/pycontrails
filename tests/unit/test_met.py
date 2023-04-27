@@ -1070,6 +1070,7 @@ def test_met_ensure_vars(met_ecmwf_pl_path: str) -> None:
     assert variables == ["r", "t"]
 
 
+@pytest.mark.filterwarnings("ignore:Longitude is not evenly spaced")
 def test_include_altitude(met_ecmwf_pl_path: str):
     """Check `to_polygon_feature` with `include_altitude=True`."""
     ds = xr.open_dataset(met_ecmwf_pl_path)
@@ -1084,6 +1085,7 @@ def test_include_altitude(met_ecmwf_pl_path: str):
                 assert coord[2] == 11037.0
 
 
+@pytest.mark.filterwarnings("ignore:Longitude is not evenly spaced")
 def test_include_altitude_raises(met_ecmwf_sl_path: str):
     """Check `to_polygon_feature` raises a ValueError when `include_altitude=True` and SL data."""
     ds = xr.open_dataset(met_ecmwf_sl_path)
@@ -1099,6 +1101,7 @@ def test_include_altitude_raises(met_ecmwf_sl_path: str):
                 assert len(coord) == 2
 
 
+@pytest.mark.filterwarnings("ignore:Longitude is not evenly spaced")
 def test_to_polygon_feature_collection(met_ecmwf_pl_path: str):
     """Confirm that `to_polygon_feature_collection` works."""
     ds = xr.open_dataset(met_ecmwf_pl_path)

@@ -131,6 +131,7 @@ def test_find_multipolygons_with_interiors(arr_name: str, request: pytest.Fixtur
     assert interior_found
 
 
+@pytest.mark.filterwarnings("ignore:Longitude and latitude are not evenly spaced")
 @pytest.mark.parametrize("altitude", [None, 10001.2])
 def test_multipolygon_to_geojson(barr: np.ndarray, altitude: float | None):
     """Test the `multipolygon_to_geojson` function."""
@@ -144,13 +145,13 @@ def test_multipolygon_to_geojson(barr: np.ndarray, altitude: float | None):
         longitude=np.arange(0, 25, 0.25),
         latitude=np.arange(-75, -25, 0.5),
     )
-    assert len(mp.geoms) == 2
+    assert len(mp.geoms) == 23
 
     geojson = polygon.multipolygon_to_geojson(mp, altitude=altitude)
     assert isinstance(geojson, dict)
     assert geojson["type"] == "Feature"
     assert geojson["geometry"]["type"] == "MultiPolygon"
-    assert len(geojson["geometry"]["coordinates"]) == 2
+    assert len(geojson["geometry"]["coordinates"]) == 23
     for poly in geojson["geometry"]["coordinates"]:
         for ring in poly:
             contour = np.array(ring)

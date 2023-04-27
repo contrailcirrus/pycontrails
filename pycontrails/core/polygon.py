@@ -32,7 +32,8 @@ def buffer_and_clean(
     convex_hull: bool,
     epsilon: float,
     precision: int | None,
-    orient_ccw: bool = True,
+    buffer: float,
+    is_exterior: bool,
 ) -> shapely.Polygon | None:
     """Buffer and clean a contour.
 
@@ -50,8 +51,11 @@ def buffer_and_clean(
         Epsilon value for polygon simplification. If 0, no simplification is performed.
     precision : int | None
         Precision of the output polygon. If None, no rounding is performed.
-    orient_ccw : bool, optional
-        Whether to orient the polygon counter-clockwise. If False, orient clockwise.
+    buffer : float
+        Buffer distance.
+    is_exterior : bool, optional
+        Whether the contour is an exterior contour. If True, the contour is buffered
+        with a larger buffer distance. The polygon orientation is CCW iff this is True.
 
     Returns
     -------
@@ -66,8 +70,12 @@ def buffer_and_clean(
     else:
         base = shapely.LinearRing(contour)
 
-    if orient_ccw:
-        polygon = base.buffer(0.5, quad_segs=1)
+    if is_exterior:
+        # The contours computed by openCV go directly over array points
+        # with value 1. With marching squares, we expect the contours to
+        # be the midpoint between the 0-1 boundary. Apply a small buffer
+        # to the exterior contours to account for this.
+        polygon = base.buffer(buffer, quad_segs=1)
     else:
         # Only buffer the interiors if necessary
         try:
@@ -75,7 +83,7 @@ def buffer_and_clean(
         except shapely.errors.TopologicalError:
             return None
         if not polygon.is_valid:
-            polygon = polygon.buffer(0.1, quad_segs=1)
+            polygon = polygon.buffer(buffer / 10, quad_segs=1)
 
     assert polygon.is_valid
 
@@ -86,7 +94,8 @@ def buffer_and_clean(
     if polygon.area < min_area:
         return None
 
-    if orient_ccw != polygon.exterior.is_ccw:
+    # Exterior polygons should have CCW orientation
+    if is_exterior != polygon.exterior.is_ccw:
         polygon = polygon.reverse()
     if convex_hull:
         polygon = _take_convex_hull(polygon)
@@ -137,9 +146,10 @@ def _contours_to_polygons(
     longitude: npt.NDArray[np.float_] | None,
     latitude: npt.NDArray[np.float_] | None,
     precision: int | None,
+    buffer: float,
     i: int = 0,
 ) -> list[shapely.Polygon]:
-    """Parse the outputs of :func:`cv2.findContours` per the GeoJSON spec.
+    """Convert the outputs of :func:`cv2.findContours` to :class:`shapely.Polygon`.
 
     Parameters
     ----------
@@ -159,6 +169,8 @@ def _contours_to_polygons(
         Latitude values for the grid.
     precision : int | None
         Precision to use when rounding the coordinates.
+    buffer : float
+        Buffer to apply to the contours when converting to polygons.
     i : int, optional
         The index of the contour to start with. Defaults to 0.
 
@@ -171,7 +183,7 @@ def _contours_to_polygons(
     out = []
     while i != -1:
         child_i, parent_i = hierarchy[i, 2:]
-        orient_ccw = parent_i == -1
+        is_exterior = parent_i == -1
 
         contour = contours[i][:, 0, ::-1]
         i = hierarchy[i, 0]
@@ -184,7 +196,15 @@ def _contours_to_polygons(
             lat = np.interp(lat_idx, np.arange(latitude.shape[0]), latitude)
             contour = np.stack([lon, lat], axis=1)
 
-        polygon = buffer_and_clean(contour, min_area, convex_hull, epsilon, precision, orient_ccw)
+        polygon = buffer_and_clean(
+            contour,
+            min_area,
+            convex_hull,
+            epsilon,
+            precision,
+            buffer,
+            is_exterior,
+        )
         if polygon is None:
             continue
 
@@ -198,10 +218,12 @@ def _contours_to_polygons(
                 longitude=longitude,
                 latitude=latitude,
                 precision=precision,
+                buffer=buffer,
                 i=child_i,
             )
 
             candidate = shapely.Polygon(polygon.exterior, [h.exterior for h in holes])
+            # Abundance of caution: check if the candidate is valid
             # If the candidate isn't valid, ignore all the holes
             # This can happen if there are many holes and the buffer operation
             # causes the holes to overlap
@@ -210,6 +232,26 @@ def _contours_to_polygons(
 
         out.append(polygon)
     return out
+
+
+def determine_buffer(longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np.float_]) -> float:
+    """Determine the proper buffer size to use when converting to polygons."""
+    try:
+        d_lon = longitude[1] - longitude[0]
+        d_lat = latitude[1] - latitude[0]
+    except IndexError as e:
+        raise ValueError("Longitude and latitude must each have at least 2 elements.") from e
+
+    if d_lon != d_lat:
+        warnings.warn(
+            "Longitude and latitude are not evenly spaced. Buffer size may be inaccurate."
+        )
+    if not np.all(np.diff(longitude) == d_lon):
+        warnings.warn("Longitude is not evenly spaced. Buffer size may be inaccurate.")
+    if not np.all(np.diff(latitude) == d_lat):
+        warnings.warn("Latitude is not evenly spaced. Buffer size may be inaccurate.")
+
+    return min(d_lon, d_lat) / 2
 
 
 def find_multipolygon(
@@ -260,6 +302,9 @@ def find_multipolygon(
     if longitude is not None:
         assert latitude is not None
         assert arr.shape == (*longitude.shape, *latitude.shape)
+        buffer = determine_buffer(longitude, latitude)
+    else:
+        buffer = 0.5
 
     arr_bin = np.empty(arr.shape, dtype=np.uint8)
     np.greater_equal(arr, threshold, out=arr_bin)
@@ -281,6 +326,7 @@ def find_multipolygon(
         longitude,
         latitude,
         precision,
+        buffer,
     )
     return _make_valid_multipolygon(polygons, convex_hull)
 
@@ -330,6 +376,12 @@ def _buffer_simplify_iterate(polygon: shapely.Polygon, epsilon: float) -> shapel
     # Try to simplify without a buffer first
     # This seems to be computationally faster
     out = polygon.simplify(epsilon, preserve_topology=False)
+
+    # In some rare situations, calling simplify actually gives a MultiPolygon.
+    # In this case, take the polygon with the largest area
+    if isinstance(out, shapely.MultiPolygon):
+        out = max(out.geoms, key=lambda x: x.area)
+
     if out.is_simple and out.is_valid:
         return out
 
