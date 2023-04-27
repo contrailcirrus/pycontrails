@@ -1,7 +1,29 @@
 
 # Changelog
 
-## 0.41.0
+## v0.42.0
+
+Phase 1 of the Spire datalib, which contains functions to identify unique flight trajectories from the raw Spire ADS-B data.
+
+#### Features
+
+- Add a `pycontrails.core.airport` module to read and process the global airport database, which can be used to identify the nearest airport to a given coordinate.
+- Add a `pycontrails.datalib.spire.clean` function to remove and address erroneous waypoints in the raw Spire ADS-B data.
+- Add a `pycontrails.datalib.spire.filter_altitude` function to remove noise in cruise altitude.
+- Add a `pycontrails.datalib.spire.identify_flights` function to identify unique flight trajectories from ADS-B messages.
+- Add a `pycontrails.datalib.spire.validate_trajectory` function to check the validity of the identified trajectories from ADS-B messages.
+- Add a `FlightPhase` integer `Enum` in the `flight` module. This includes a new `level_flight` flight phase.
+
+#### Internals
+
+- Add unit tests providing examples to identify unique flights.
+- Rename `flight._dt_waypoints` -> `flight.segment_duration`.
+- Move `jet.rate_of_climb_descent` -> `flight.segment_rocd`.
+- Move `jet.identify_phase_of_flight` -> `flight.segment_phase`.
+- Update `FlightPhase` to be a dictionary enumeration of flight phases.
+- Add references to [`traffic` library](https://traffic-viz.github.io/).
+
+## v0.41.0
 
 Improve polygon algorithms.
 
