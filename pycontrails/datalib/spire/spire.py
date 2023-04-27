@@ -218,7 +218,7 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
 
         # TODO: this altitude cleanup does not persist back into messages
         # this should get moved into flight module
-        gp = _clean_flight_altitude(gp)
+        gp = _clean_trajectory_altitude(gp)
 
         # separate flights by "on_ground" column
         gp["flight_id"] = _separate_by_on_ground(gp)
@@ -233,25 +233,16 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
     return flight_id
 
 
-def _clean_flight_altitude(
-    messages: pd.DataFrame,
-    *,
-    noise_threshold_ft: float = 25,
-    threshold_altitude_ft: float | None = None,
-) -> pd.DataFrame:
+def _clean_trajectory_altitude(messages: pd.DataFrame) -> pd.DataFrame:
     """
     Clean erroneous and noisy altitude on a single flight.
+
+    TODO: move this to Flight
 
     Parameters
     ----------
     messages: pd.DataFrame
         ADS-B messages from a single flight trajectory.
-    noise_threshold_ft: float
-        Altitude difference threshold to identify noise, [:math:`ft`]
-        Barometric altitude from ADS-B telemetry is reported at increments of 25 ft.
-    threshold_altitude_ft: float
-        Altitude will be checked and corrected above this threshold, [:math:`ft`]
-        Currently set to :attr:`flight.MAX_AIRPORT_ELEVATION` ft.
 
     Returns
     -------
@@ -262,15 +253,13 @@ def _clean_flight_altitude(
     -----
     #. If ``pycontrails.ext.bada`` installed,
        remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-    #. Remove noise in cruise altitude where flights oscillate
-       between 25 ft due to noise in ADS-B telemetry
+    #. Filter altitude signal to remove noise and
+       snap cruise altitudes to 1000 ft intervals
 
     See Also
     --------
     :func:`flight.filter_altitude`
     """
-    threshold_altitude_ft = threshold_altitude_ft or flight.MAX_AIRPORT_ELEVATION
-
     mdf = messages.copy()
 
     # Use BADA 3 to support filtering
@@ -288,24 +277,41 @@ def _clean_flight_altitude(
         mdf = mdf.loc[mdf["aircraft_type_icao"].isin(bada3.synonym_dict)]
 
         # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-        altitude_ceiling_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
-        is_above_ceiling = mdf["altitude_baro"] > altitude_ceiling_ft
+        bada_max_altitude_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
+        is_above_ceiling = mdf["altitude_baro"] > bada_max_altitude_ft
         mdf = mdf.loc[~is_above_ceiling]
 
-    except (ImportError, FileNotFoundError, KeyError):
-        pass
+        # Set the min cruise altitude to 0.5 * "max_altitude_ft"
+        min_cruise_altitude_ft = 0.5 * bada_max_altitude_ft
 
-    # Remove noise in cruise altitude by rounding up/down to the nearest flight level.
+    except (ImportError, FileNotFoundError, KeyError):
+        min_cruise_altitude_ft = flight.MIN_CRUISE_ALTITUDE
+
+    # Filter altitude signal
+    # See https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter
+    mdf["altitude_baro"] = flight.filter_altitude(mdf["altitude_baro"].to_numpy())
+
+    # Snap altitudes in cruise to the nearest flight level.
+    # Requires segment phase
     altitude_ft = mdf["altitude_baro"].to_numpy()
-    d_alt_ft = np.diff(altitude_ft, prepend=np.nan)
-    is_noise = (np.abs(d_alt_ft) <= noise_threshold_ft) & (altitude_ft > threshold_altitude_ft)
-    mdf.loc[is_noise, "altitude_baro"] = np.round(altitude_ft[is_noise], -3)
+    segment_duration = flight.segment_duration(mdf["timestamp"].to_numpy())
+    segment_rocd = flight.segment_rocd(segment_duration, altitude_ft)
+    segment_phase = flight.segment_phase(
+        segment_rocd,
+        altitude_ft,
+        min_cruise_altitude_ft=min_cruise_altitude_ft,
+    )
+    is_cruise = segment_phase == flight.FlightPhase.CRUISE
+    mdf.loc[is_cruise, "altitude_baro"] = np.round(altitude_ft[is_cruise], -3)
 
     return mdf
 
 
 def _separate_by_on_ground(messages: pd.DataFrame) -> pd.Series:
     """Separate individual flights by "on_ground" column.
+
+    The input ``messages`` are expected to grouped by "icao_address", "tail_number",
+    "aircraft_type_icao", "callsign".
 
     Parameters
     ----------
@@ -335,6 +341,9 @@ def _separate_by_on_ground(messages: pd.DataFrame) -> pd.Series:
         messages["altitude_baro"] < flight.MAX_AIRPORT_ELEVATION
     )
 
+    # filter this signal so that it removes isolated 1-2 wide variations
+    is_on_ground = is_on_ground.rolling(window=5).mean().bfill() > 0.5
+
     # find end of flight indexes using "on_ground"
     end_of_flight = (~is_on_ground).astype(int).diff(periods=-1) == -1
 
@@ -350,6 +359,12 @@ def _separate_by_on_ground(messages: pd.DataFrame) -> pd.Series:
 def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
     """
     Separate flights by multiple cruise phases.
+
+    The input ``messages`` are expected to grouped by "icao_address", "tail_number",
+    "aircraft_type_icao", "callsign".
+
+    Its strongly encouraged to run :func:`flight.filter_altitude(...)` over the messages
+    before passing into this function.
 
     Parameters
     ----------
@@ -367,6 +382,7 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
     -----
     Flights with multiple cruise phases are identified by evaluating the
     messages between the start and end of the cruise phase.
+
     For these messages that should be at cruise, multiple cruise phases are identified when:
 
     #. Altitudes fall below the minimum cruise altitude.
@@ -414,9 +430,9 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
             else messages["aircraft_type_icao"]
         )
 
-        # Remove erroneous altitude, i.e., altitude above operating limit of aircraft type
-        altitude_ceiling_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
-        min_cruise_altitude_ft = 0.5 * altitude_ceiling_ft
+        # Set the min cruise altitude to 0.5 * "max_altitude_ft"
+        bada_max_altitude_ft = bada3.ptf_param_dict[aircraft_type_icao].max_altitude_ft
+        min_cruise_altitude_ft = 0.5 * bada_max_altitude_ft
 
     except (ImportError, FileNotFoundError, KeyError):
         min_cruise_altitude_ft = flight.MIN_CRUISE_ALTITUDE
@@ -437,6 +453,9 @@ def _separate_by_cruise_phase(messages: pd.DataFrame) -> pd.Series:
 
     # fill between the first and last cruise phase indicator
     # this represents the flight phase after takeoff climb and before descent to landing
+    # Index of first and final cruise waypoint
+    # i_cruise_start = np.min(np.argwhere(flight_phase.cruise))
+    # i_cruise_end = min(np.max(np.argwhere(flight_phase.cruise)), len(flight_phase.cruise))
     within_cruise = np.bitwise_xor.accumulate(cruise) | cruise
 
     # There should not be any waypoints with low altitudes between

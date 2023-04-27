@@ -854,12 +854,50 @@ def test_filter_altitude() -> None:
     """Check that noise in cruise altitude is removed."""
 
     altitude_ft = np.array([40000, 39975, 40000, 40000, 39975, 40000, 40000, 40025, 40025, 40000])
-    altitude_cleaned = flight.filter_altitude(units.ft_to_m(altitude_ft))
-    np.testing.assert_array_equal(units.m_to_ft(altitude_cleaned), 40000.0)
+    altitude_cleaned = flight.filter_altitude(altitude_ft)
+    np.testing.assert_array_equal(altitude_cleaned[0:2], 39975.0)
+    np.testing.assert_array_equal(altitude_cleaned[2:], 40000.0)
 
-    # does not filter under threshold
-    altitude_ft = np.array([12000, 12025, 12000, 40000, 39975, 40000])
-    altitude_cleaned = flight.filter_altitude(units.ft_to_m(altitude_ft))
-    np.testing.assert_array_equal(
-        units.m_to_ft(altitude_cleaned), [12000, 12025, 12000, 40000, 40000, 40000]
+    altitude_cleaned = flight.filter_altitude(altitude_ft, kernel_size=3)
+    np.testing.assert_array_equal(altitude_cleaned[0:1], 39975.0)
+    np.testing.assert_array_equal(altitude_cleaned[1:7], 40000.0)
+    np.testing.assert_array_equal(altitude_cleaned[7:8], 40025.0)
+
+
+# Compare with OpenAP implementation
+try:
+    from openap import FlightPhase
+
+    OPENAP_AVAILABLE = True
+except ImportError:
+    OPENAP_AVAILABLE = False
+
+
+@pytest.mark.skipif(not OPENAP_AVAILABLE, reason="OpenAP not installed")
+def test_compare_segment_phase() -> None:
+    """Compare flight phase algorithm with OpenAP.
+
+    See https://github.com/junzis/openap/blob/master/test/test_phase.py
+    """
+    df = pd.read_csv(
+        "https://raw.githubusercontent.com/junzis/openap/master/test/data/flight_phlab.csv"
     )
+
+    ts0 = df["ts"].values
+    ts0 = ts0 - ts0[0]
+    alt0 = df["alt"].values
+    spd0 = df["spd"].values
+    roc0 = df["roc"].values
+
+    ts = np.arange(0, ts0[-1], 1)
+    alt = np.interp(ts, ts0, alt0)
+    spd = np.interp(ts, ts0, spd0)
+    roc = np.interp(ts, ts0, roc0)
+
+    fp = FlightPhase()
+    fp.set_trajectory(ts, alt, spd, roc)
+    labels = fp.phaselabel()
+
+    assert labels
+
+    Flight(data=df.rename({"alt": "altitude", "lat": "latitude", "lon": "longitude"}))
