@@ -24,7 +24,7 @@ else:
 try:
     import requests
 
-    r = requests.get("https://github.com")
+    r = requests.get("https://github.com", timeout=10)
 except Exception:
     offline = True
 else:

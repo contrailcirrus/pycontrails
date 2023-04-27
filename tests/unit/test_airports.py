@@ -11,7 +11,7 @@ from pycontrails.core import airports
 try:
     import requests
 
-    r = requests.head("https://github.com")
+    r = requests.head("https://github.com", timeout=10)
 except Exception:
     offline = True
 else:
