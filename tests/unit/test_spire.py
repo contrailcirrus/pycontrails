@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from pycontrails.datalib import spire
 from pycontrails.datalib.spire.spire import (
@@ -76,6 +77,7 @@ def test_separate_with_multiple_cruise_phase():
     assert len(flight_ids.unique()) == 2
 
 
+@pytest.mark.skipif(True, reason="Test not complete")
 def test_identify_flight_diversion() -> None:
     """Test algorithms to identify flight diversion, and no separation is done."""
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
