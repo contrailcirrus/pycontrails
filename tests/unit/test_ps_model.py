@@ -103,8 +103,13 @@ def test_ps_model():
 
     # Test fuel mass flow rate
     fuel_flow = ps.fuel_mass_flow_rate(
-        altitude_ft, air_pressure, air_temperature, mach_number, c_t, engine_efficiency,
-        atyp_param.wing_surface_area, atyp_param.ff_idle_sls, q_fuel=43e6
+        air_pressure, air_temperature, mach_number, c_t, engine_efficiency,
+        atyp_param.wing_surface_area, q_fuel=43e6
+    )
+
+    fuel_flow = ps.correct_fuel_flow(
+        fuel_flow, altitude_ft, air_temperature, air_pressure, mach_number,
+        atyp_param.ff_idle_sls, atyp_param.ff_max_sls
     )
     np.testing.assert_array_almost_equal(fuel_flow, np.array([0.574, 0.559]), decimal=3)
 
@@ -164,3 +169,4 @@ def test_total_fuel_burn():
     )
 
 
+# TODO: Unit test fuel clipping

@@ -33,10 +33,9 @@ from pycontrails.models.ps_model.aircraft_params import AircraftEngineParams, ge
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
 
-default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
+default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230427.csv"
 
 
-# TODO: Clipping function to constrain fuel flow estimates to realistic values
 # TODO: To link up PSModelParams in review
 
 @dataclasses.dataclass
@@ -243,8 +242,12 @@ class PSModel:
         c_t = engine_thrust_coefficient(f_thrust, mach_num, air_pressure, atyp_param.wing_surface_area)
         eta = overall_propulsion_efficiency(mach_num, c_t, atyp_param)
         fuel_flow = fuel_mass_flow_rate(
-            altitude_ft, air_pressure, air_temperature, mach_num, c_t, eta,
-            atyp_param.wing_surface_area, atyp_param.ff_idle_sls, q_fuel
+            air_pressure, air_temperature, mach_num, c_t, eta,
+            atyp_param.wing_surface_area, q_fuel
+        )
+        fuel_flow = correct_fuel_flow(
+            fuel_flow, altitude_ft, air_temperature, air_pressure, mach_num,
+            atyp_param.ff_idle_sls, atyp_param.ff_max_sls
         )
         fuel_burn = jet.fuel_burn(fuel_flow, dt_sec)
         return AircraftPerformanceData(
@@ -839,14 +842,12 @@ def max_overall_propulsion_efficiency(
 
 
 def fuel_mass_flow_rate(
-        altitude_ft: npt.NDArray[np.float_],
         air_pressure: npt.NDArray[np.float_],
         air_temperature: npt.NDArray[np.float_],
         mach_num: npt.NDArray[np.float_],
         c_t: npt.NDArray[np.float_],
         eta: npt.NDArray[np.float_],
         wing_surface_area: float,
-        ff_idle_sls: float,
         q_fuel: float
 ) -> npt.NDArray[np.float_]:
     """
@@ -854,8 +855,6 @@ def fuel_mass_flow_rate(
 
     Parameters
     ----------
-    altitude_ft : npt.NDArray[np.float_]
-        Waypoint altitude, [:math: `ft`]
     air_pressure : npt.NDArray[np.float_]
         Ambient pressure, [:math:`Pa`]
     air_temperature : npt.NDArray[np.float_]
@@ -868,8 +867,6 @@ def fuel_mass_flow_rate(
         Overall propulsion efficiency
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
-    ff_idle_sls : float
-        Fuel flow under engine idle and sea level static conditions, summed over all engines, [:math:`kg s^{-1}`]
     q_fuel : float
         Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`]
 
@@ -878,10 +875,53 @@ def fuel_mass_flow_rate(
     npt.NDArray[np.float_]
         Fuel mass flow rate, [:math:`kg s^{-1}`]
     """
-    fuel_flow = (
+    return (
             0.7 * (c_t * mach_num**3 / eta)
             * (constants.kappa * constants.R_d * air_temperature)**0.5
             * air_pressure * wing_surface_area / q_fuel
     )
-    min_fuel_flow = ff_idle_sls * (1 - 0.178 * (altitude_ft / 10000) + 0.0085 * ((altitude_ft / 10000)**2))
-    return np.where(fuel_flow < min_fuel_flow, min_fuel_flow, fuel_flow)
+
+
+def correct_fuel_flow(
+        fuel_flow: npt.NDArray[np.float_],
+        altitude_ft: npt.NDArray[np.float_],
+        air_temperature: npt.NDArray[np.float_],
+        air_pressure: npt.NDArray[np.float_],
+        mach_number: npt.NDArray[np.float_],
+        fuel_flow_idle_sls: float,
+        fuel_flow_max_sls: float,
+) -> npt.NDArray[np.float_]:
+    """
+    Correct fuel mass flow rate to ensure that they are within operational limits.
+
+    Parameters
+    ----------
+    fuel_flow : npt.NDArray[np.float_]
+        Fuel mass flow rate, [:math:`kg s^{-1}`]
+    altitude_ft : npt.NDArray[np.float_]
+        Waypoint altitude, [:math: `ft`]
+    air_temperature : npt.NDArray[np.float_]
+        Ambient temperature at each waypoint, [:math:`K`]
+    air_pressure : npt.NDArray[np.float_]
+        Ambient pressure, [:math:`Pa`]
+    mach_number : npt.NDArray[np.float_]
+        Mach number
+    fuel_flow_idle_sls : float
+        Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
+    fuel_flow_max_sls : float
+        Fuel mass flow rate at take-off and sea level static conditions, [:math:`kg \ s^{-1}`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Corrected fuel mass flow rate, [:math:`kg \ s^{-1}`]
+    """
+    min_fuel_flow = jet.minimum_fuel_flow_rate_at_cruise(fuel_flow_idle_sls, altitude_ft)
+    max_fuel_flow = jet.equivalent_fuel_flow_rate_at_cruise(
+        np.ones_like(fuel_flow) * fuel_flow_max_sls,
+        (air_temperature / constants.T_msl),
+        (air_pressure / constants.p_surface),
+        mach_number
+    )
+    return np.clip(fuel_flow, min_fuel_flow, max_fuel_flow)
+
