@@ -850,18 +850,18 @@ def test_flight_duplicated_times(flight_fake: Flight) -> None:
     )
 
 
-def test_filter_altitude() -> None:
+@pytest.mark.parametrize("kernel_size", [3, 5, 7, 9, 11, 13, 15, 17])
+def test_filter_altitude(kernel_size: int) -> None:
     """Check that noise in cruise altitude is removed."""
 
     altitude_ft = np.array([40000, 39975, 40000, 40000, 39975, 40000, 40000, 40025, 40025, 40000])
-    altitude_cleaned = flight.filter_altitude(altitude_ft)
-    np.testing.assert_array_equal(altitude_cleaned[0:2], 39975.0)
-    np.testing.assert_array_equal(altitude_cleaned[2:], 40000.0)
+    altitude_cleaned = flight.filter_altitude(altitude_ft, kernel_size=kernel_size)
+    assert altitude_cleaned.size == altitude_ft.size
 
-    altitude_cleaned = flight.filter_altitude(altitude_ft, kernel_size=3)
-    np.testing.assert_array_equal(altitude_cleaned[0:1], 39975.0)
-    np.testing.assert_array_equal(altitude_cleaned[1:7], 40000.0)
-    np.testing.assert_array_equal(altitude_cleaned[7:8], 40025.0)
+    np.testing.assert_array_equal(altitude_cleaned[:-1], 40000.0)
+
+    # Final waypoint has altitude 40002 +/- 2 ft
+    assert altitude_cleaned[-1] == pytest.approx(40002, abs=2.5)
 
 
 # Compare with OpenAP implementation
