@@ -1508,7 +1508,7 @@ def filter_altitude(
     # Remove noise manually
     # only remove above max airport elevation
     d_alt_ft = np.diff(altitude_filt, append=np.nan)
-    is_noise = (np.abs(d_alt_ft) <= 25) & (altitude_filt > MAX_AIRPORT_ELEVATION)
+    is_noise = (np.abs(d_alt_ft) <= 25.0) & (altitude_filt > MAX_AIRPORT_ELEVATION)
     altitude_filt[is_noise] = np.round(altitude_filt[is_noise], -3)
 
     return altitude_filt
