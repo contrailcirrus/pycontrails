@@ -74,7 +74,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         self.bounds_error = bounds_error
         self.fill_value = fill_value
 
-    def _prepare_xi_simple(self, xi: npt.NDArray[np.float64]) -> npt.NDArray[np.bool_] | None:
+    def _prepare_xi_simple(self, xi: npt.NDArray[np.float64]) -> npt.NDArray[np.bool_]:
         """Run looser version of :meth:`_prepare_xi`.
 
         Parameters
@@ -84,12 +84,9 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         Returns
         -------
-        npt.NDArray[np.bool_] | None
+        npt.NDArray[np.bool_]
             A 1-dimensional Boolean array indicating which points are out of bounds.
-            If ``bounds_error`` is ``True``, this will be ``None``, indicating that
-            no points are out of bounds. (This is the same convention as
-            :meth:`scipy.interpolate.RegularGridInterpolator._prepare_xi`). If
-            every point is in bounds, this is set to ``None``.
+            If ``bounds_error`` is ``True``, this will be all ``False``.
         """
 
         if self.bounds_error:
@@ -99,12 +96,9 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
                 if not (np.all(p >= g0) and np.all(p <= g1)):
                     raise ValueError(f"One of the requested xi is out of bounds in dimension {i}")
 
-            return None
+            return np.zeros(xi.shape[0], dtype=bool)
 
-        out_of_bounds = self._find_out_of_bounds(xi.T)
-        if not np.any(out_of_bounds):
-            return None
-        return out_of_bounds
+        return self._find_out_of_bounds(xi.T)
 
     def __call__(
         self, xi: npt.NDArray[np.float64], method: str | None = None
@@ -137,7 +131,9 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         return self._set_out_of_bounds(out, out_of_bounds)
 
     def _set_out_of_bounds(
-        self, out: npt.NDArray[np.float_], out_of_bounds: npt.NDArray[np.bool_] | None
+        self,
+        out: npt.NDArray[np.float_],
+        out_of_bounds: npt.NDArray[np.bool_],
     ) -> npt.NDArray[np.float_]:
         """Set out-of-bounds values to the fill value.
 
@@ -145,7 +141,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         ----------
         out : npt.NDArray[np.float_]
             Values from interpolation. This is modified in-place.
-        out_of_bounds : npt.NDArray[np.bool_] | None
+        out_of_bounds : npt.NDArray[np.bool_]
             A 1-dimensional Boolean array indicating which points are out of bounds.
 
         Returns
@@ -153,7 +149,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         out : npt.NDArray[np.float_]
             A reference to the ``out`` array.
         """
-        if out_of_bounds is not None and self.fill_value is not None:
+        if self.fill_value is not None and np.any(out_of_bounds):
             out[out_of_bounds] = self.fill_value
 
         return out
@@ -557,7 +553,7 @@ class RGIArtifacts:
 
     xi_indices: npt.NDArray[np.int64]
     norm_distances: npt.NDArray[np.float64]
-    out_of_bounds: npt.NDArray[np.bool_] | None
+    out_of_bounds: npt.NDArray[np.bool_]
 
 
 # ------------------------------------------------------------------------------

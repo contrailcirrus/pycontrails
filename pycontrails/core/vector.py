@@ -1562,9 +1562,7 @@ class GeoVectorDataset(VectorDataset):
         self["_distances_y"] = distances_y
         self["_distances_z"] = distances_z
         self["_distances_t"] = distances_t
-
-        if out_of_bounds is not None:
-            self["_out_of_bounds"] = out_of_bounds
+        self["_out_of_bounds"] = out_of_bounds
 
     def _get_indices(self) -> interpolation.RGIArtifacts | None:
         """Get entries from call to :meth:`_put_indices`.
@@ -1589,13 +1587,12 @@ class GeoVectorDataset(VectorDataset):
             distances_y = self["_distances_y"]
             distances_z = self["_distances_z"]
             distances_t = self["_distances_t"]
+            out_of_bounds = self["_out_of_bounds"]
         except KeyError:
             return None
 
         indices = np.asarray([indices_x, indices_y, indices_z, indices_t])
         distances = np.asarray([distances_x, distances_y, distances_z, distances_t])
-
-        out_of_bounds = self.get("_out_of_bounds", None)
 
         return interpolation.RGIArtifacts(indices, distances, out_of_bounds)
 

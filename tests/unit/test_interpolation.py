@@ -376,8 +376,8 @@ def test_indices_distinct_vars(
 
     np.testing.assert_array_equal(indices1.xi_indices, indices2.xi_indices)
     np.testing.assert_array_equal(indices1.norm_distances, indices2.norm_distances)
-    assert indices1.out_of_bounds is None
-    assert indices2.out_of_bounds is None
+    assert not np.any(indices1.out_of_bounds)
+    assert not np.any(indices2.out_of_bounds)
 
 
 @pytest.mark.parametrize(

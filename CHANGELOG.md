@@ -6,6 +6,7 @@
 ### Fixes
 
 - Fix a unit test (`test_dtypes.py::test_issr_sac_grid_output`) that occasionally hangs.
+- Fix issue encountered in `Cocip.eval` when concatenating contrails with inconsistent values for `_out_of_bounds`. This is only relevant when running the model with the experimental parameter `interpolation_use_indices=True`.
 
 ## v0.42.0
 
