@@ -12,13 +12,13 @@ import pytest
 import xarray as xr
 
 from pycontrails import Aircraft, DiskCacheStore, Flight, MetDataArray, MetDataset
-from pycontrails.core import cache as cache_module
+from pycontrails.core import cache, met, met_var
 from pycontrails.datalib.ecmwf import ERA5
 from pycontrails.models.aircraft_performance import AircraftPerformance
 from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
 
 # find default cache dir for testing
-DISK_CACHE_DIR = cache_module._get_user_cache_dir()
+DISK_CACHE_DIR = cache._get_user_cache_dir()
 
 ################################
 # Fixtures in "static" directory
@@ -179,27 +179,21 @@ def met_ecmwf_sl_path() -> str:
 
 
 @pytest.fixture(scope="session")
-def met_issr(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> MetDataset:
+def met_issr(met_ecmwf_pl_path: str) -> MetDataset:
     """ISSR output as MetDataset.
+
+    As of pycontrails v0.42.0, there is an issue with dask threading causing
+    the test `tests/unit/test_dtypes::test_issr_sac_grid_output[linear-ISSR]`
+    to hang. As a workaround, we open without dask parallelism.
 
     Returns
     -------
     MetDataset
     """
-    times = (datetime(2019, 5, 31, 5, 0, 0), datetime(2019, 5, 31, 6, 0, 0))
-    pl_variables = ["air_temperature", "specific_humidity"]
-    pressure_levels = [300, 250, 225]
-
-    # load
-    era5 = ERA5(
-        time=times,
-        variables=pl_variables,
-        pressure_levels=pressure_levels,
-        paths=met_ecmwf_pl_path,
-        cachestore=override_cache,
-    )
-    met = era5.open_metdataset(xr_kwargs={"parallel": False})
-    return met
+    ds = xr.open_dataset(met_ecmwf_pl_path)
+    ds = met.standardize_variables(ds, (met_var.AirTemperature, met_var.SpecificHumidity))
+    ds.attrs["met_source"] = "ERA5"
+    return MetDataset(ds)
 
 
 @pytest.fixture
@@ -336,7 +330,7 @@ def flight_cocip2() -> Flight:
 
 
 @pytest.fixture(scope="session")
-def flight_meridian() -> pd.DataFrame:
+def flight_meridian() -> Flight:
     """Test flight that crosses the meridian.
 
     Returns

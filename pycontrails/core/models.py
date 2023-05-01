@@ -566,6 +566,10 @@ class Model(ABC):
             try:
                 # This case is when self.source is a subgrid of self.met
                 # The call to .sel will raise a KeyError if this is not the case
+
+                # XXX: Sometimes this hangs when using dask!
+                # This issue is somewhat similar to
+                # https://github.com/pydata/xarray/issues/4406
                 self.source[met_key] = da.sel(self.source.coords)
 
             except KeyError:

@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.42.1 (unreleased)
+
+### Fixes
+
+- Fix a unit test (`test_dtypes.py::test_issr_sac_grid_output`) that occasionally hangs.
+
 ## v0.42.0
 
 Phase 1 of the Spire datalib, which contains functions to identify unique flight trajectories from the raw Spire ADS-B data.
@@ -46,7 +52,6 @@ Improve polygon algorithms.
 #### Fixes
 
 - Use [oldest-supported-numpy](https://pypi.org/project/oldest-supported-numpy/) for building pycontrails wheels. This allows pycontrails to be compatible with environments that use old versions of numpy. The [pycontrails v0.40.0 wheels](https://pypi.org/project/pycontrails/0.40.0/#files) are not compatible with numpy 1.22.
-- Fix a unit test (`test_dtypes.py::test_issr_sac_grid_output`) that occasionally hangs.
 
 ## v0.40.0
 
