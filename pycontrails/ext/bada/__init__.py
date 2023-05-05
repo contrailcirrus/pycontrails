@@ -20,6 +20,12 @@ try:
         BADAParams,
     )
 
+except ImportError as e:
+    raise ImportError(
+        'Failed to import `pycontrails-bada` extension. Install with `pip install "pycontrails-bada'
+        ' @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"`'
+    ) from e
+else:
     __all__ = [
         "BADA",
         "BADA3",
@@ -33,9 +39,3 @@ try:
         "bada4",
         "bada_model",
     ]
-
-except ImportError as e:
-    raise ImportError(
-        'Failed to import `pycontrails-bada` extension. Install with `pip install "pycontrails-bada'
-        ' @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"`'
-    ) from e
