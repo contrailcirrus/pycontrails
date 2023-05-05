@@ -10,8 +10,8 @@ import numpy as np
 from scipy import stats
 from scipy.stats.distributions import rv_frozen
 
+from pycontrails.models.cocip import cocip_params
 from pycontrails.models.cocip.cocip_params import CocipParams
-from pycontrails.models.humidity_scaling import ExponentialBoostHumidityScaling
 
 logger = logging.getLogger(__name__)
 
@@ -50,16 +50,21 @@ class habit_dirichlet(rv_frozen):
             Sampled habit weight distribution with the same shape
             as :attr:`CocipParams().habit_distributions`
         """
-        if args or ("size" in kwds and kwds["size"] is not None and kwds["size"] > 1):
+        if args or (kwds.get("size") is not None and kwds["size"] > 1):
             raise ValueError("habit_dirichlet distribution only supports creating one rv at a time")
 
-        default_distributions = CocipParams().habit_distributions
-        alpha_i = [0.5 + self.C * G_i for G_i in default_distributions]
-        distr = [stats.dirichlet(a) for a in alpha_i]
+        default_distributions = cocip_params._habit_distributions()
+        alpha_i = 0.5 + self.C * default_distributions
+
+        # In the first distribution, we assume all ice particles are spheres
+        # There is no way to quantify the uncertainty in this assumption
+        # Consequently, we leave the first distribution in default_distributions
+        # alone, and only perturb the rest
+        distr_list = [stats.dirichlet(a) for a in alpha_i[1:]]
 
         habit_weights = default_distributions.copy()
-        for i in range(1, habit_weights.shape[0]):
-            habit_weights[i] = distr[i].rvs(**kwds)
+        for i, distr in enumerate(distr_list, start=1):
+            habit_weights[i] = distr.rvs(**kwds)
 
         return habit_weights
 
@@ -105,23 +110,6 @@ class CocipUncertaintyParams(CocipParams):
 
     #: Reseed the random generator defined in ``__post_init__``
     seed: int | None = None
-
-    # This might need fixing!
-    # Whenever we overhaul / redo an uncertainty analysis, we may need to change
-    # how it interacts with a humidity scaler
-    humidity_scaling: ExponentialBoostHumidityScaling = ExponentialBoostHumidityScaling()
-
-    #: Parameters for specific humidity and RHi enhancement
-    #: This assumes Cocip.Params.humidity_scaling is an
-    #: :class:`ExponentialBoostHumidityScaling`` instance.
-    rhi_adj_uncertainty: rv_frozen | None = stats.norm(
-        loc=ExponentialBoostHumidityScaling.default_params.rhi_adj, scale=0.1
-    )
-    rhi_boost_exponent_uncertainty: rv_frozen = stats.triang(
-        loc=1.0,
-        c=ExponentialBoostHumidityScaling.default_params.rhi_boost_exponent - 1.0,
-        scale=1.0,
-    )
 
     #: Schumann takes ``wind_shear_enhancement_exponent`` = 0.5 and discusses the case of 0 and 2/3
     #: as possibilities.
@@ -172,7 +160,7 @@ class CocipUncertaintyParams(CocipParams):
     #: where :math:`\text{G}_{i}` is the approximate habit weight distributions
     #: defined in :attr:`CocipParams().habit_distributions`.
     #: Higher values of :math:`\text{C}` correspond to higher confidence in initial estimates.
-    habit_distributions_uncertainty: rv_frozen | None = habit_dirichlet(C=96)
+    habit_distributions_uncertainty: rv_frozen | None = habit_dirichlet(C=96.0)
 
     def __post_init__(self) -> None:
         """Override values of model parameters according to ranges."""
