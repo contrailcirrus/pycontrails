@@ -18,6 +18,7 @@ Closes #XX
 
 - [ ] QC test passes locally (`make test`)
 - [ ] CI tests pass
+- [ ] Benchmark tests pass (Run [manually from action](https://github.com/contrailcirrus/pycontrails/actions/workflows/benchmark.yaml) on branch)
 
 ## Reviewer
 
