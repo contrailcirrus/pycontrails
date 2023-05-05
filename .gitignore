@@ -44,6 +44,8 @@ tests/benchmark/north-atlantic-study/outputs
 tests/benchmark/cocip-fortran/outputs
 tests/benchmark/cocip/inputs
 tests/benchmark/cocip/outputs
+tests/benchmark/cocip/**/*.pq
+tests/benchmark/cocip/**/*.csv
 *.log
 
 # docs
