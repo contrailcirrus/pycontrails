@@ -8,11 +8,45 @@ from __future__ import annotations
 import dataclasses
 
 import numpy as np
+import numpy.typing as npt
 
 from pycontrails.core.models import ModelParams
 from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.humidity_scaling import HumidityScaling
+
+
+def _radius_threshold_um() -> npt.NDArray[np.float32]:
+    return np.array([5.0, 9.5, 23.0, 190.0, 310.0], dtype=np.float32)
+
+
+def _habit_distributions() -> npt.NDArray[np.float32]:
+    return np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.7, 0.0],
+            [0.0, 0.3, 0.0, 0.0, 0.3, 0.0, 0.4, 0.0],
+            [0.0, 0.5, 0.0, 0.0, 0.15, 0.35, 0.0, 0.0],
+            [0.0, 0.45, 0.45, 0.1, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.03, 0.97, 0.0, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+
+
+def _habits() -> npt.NDArray[np.str_]:
+    return np.array(
+        [
+            "Sphere",
+            "Solid column",
+            "Hollow column",
+            "Rough aggregate",
+            "Rosette-6",
+            "Plate",
+            "Droxtal",
+            "Myhre",
+        ]
+    )
 
 
 @dataclasses.dataclass
@@ -147,45 +181,18 @@ class CocipParams(ModelParams):
     #: Radius threshold for regime bins, [:math:`\mu m`]
     #: This is the row index label for ``habit_distributions``.
     #: See Table 2 in :cite:`schumannEffectiveRadiusIce2011`.
-    radius_threshold_um: np.ndarray = dataclasses.field(
-        default_factory=lambda: np.array([5.0, 9.5, 23.0, 190.0, 310.0], dtype=np.float32)
-    )
+    radius_threshold_um: np.ndarray = dataclasses.field(default_factory=_radius_threshold_um)
 
     #: Particle habit (shape) types.
     #: This is the column index label for ``habit_distributions``.
     #: See Table 2 in :cite:`schumannEffectiveRadiusIce2011`.
-    habits: np.ndarray = dataclasses.field(
-        default_factory=lambda: np.array(
-            [
-                "Sphere",
-                "Solid column",
-                "Hollow column",
-                "Rough aggregate",
-                "Rosette-6",
-                "Plate",
-                "Droxtal",
-                "Myhre",
-            ]
-        )
-    )
+    habits: np.ndarray = dataclasses.field(default_factory=_habits)
 
     #: Mix of ice particle habits in each radius regime.
     #: Rows indexes are ``radius_threshold_um`` elements.
     #: Columns indexes are ``habits`` particle habit type.
     #: See Table 2 from :cite:`schumannEffectiveRadiusIce2011`.
-    habit_distributions: np.ndarray = dataclasses.field(
-        default_factory=lambda: np.array(
-            [
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.7, 0.0],
-                [0.0, 0.3, 0.0, 0.0, 0.3, 0.0, 0.4, 0.0],
-                [0.0, 0.5, 0.0, 0.0, 0.15, 0.35, 0.0, 0.0],
-                [0.0, 0.45, 0.45, 0.1, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.03, 0.97, 0.0, 0.0, 0.0],
-            ],
-            dtype=np.float32,
-        )
-    )
+    habit_distributions: np.ndarray = dataclasses.field(default_factory=_habit_distributions)
 
     #: Scale shortwave radiative forcing.
     #: Primarily used to support uncertainty estimation.
