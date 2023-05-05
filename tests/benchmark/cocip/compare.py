@@ -42,7 +42,7 @@ for fid, df in fleet.groupby("flight_id"):
     # test all number types
     for col in df.select_dtypes(include=np.number):
         np.testing.assert_allclose(
-            df_prev[col].to_numpy(), df[col].to_numpy(), rtol=FLIGHT_TOLERANCE
+            df_prev[col].to_numpy(), df[col].to_numpy(), rtol=FLIGHT_TOLERANCE, err_msg=col
         )
 
 LOG.info(f"Successfully compared {len(fleet)} flight rows")
@@ -50,7 +50,6 @@ LOG.info(f"Successfully compared {len(fleet)} flight rows")
 # -------------------
 # Contrail comparison
 # -------------------
-
 
 contrail = benchmark.parse_contrail_results(cocip.contrail)
 
