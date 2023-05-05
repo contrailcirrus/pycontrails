@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import functools
+import pathlib
 import warnings
 from typing import Any, NoReturn, overload
 
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from overrides import overrides
 
@@ -560,3 +563,136 @@ class HumidityScalingByLevel(HumidityScaling):
         q = specific_humidity / rhi_adj
         rhi = thermo.rhi(q, air_temperature, air_pressure)
         return q, rhi
+
+
+@functools.cache
+def _load_iagos_quantiles() -> npt.NDArray[np.float64]:
+    path = pathlib.Path(__file__).parent / "quantiles" / "iagos_quantiles.npy"
+    return np.load(path, allow_pickle=False)
+
+
+@functools.cache
+def _load_era5_ensemble_quantiles() -> npt.NDArray[np.float64]:
+    path = pathlib.Path(__file__).parent / "quantiles" / "era5_ensemble_quantiles.npy"
+    return np.load(path, allow_pickle=False)
+
+
+def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], replica: int) -> npt.NDArray[np.float64]:
+    """Map ERA5-derived RHi to it's corresponding IAGOS quantile via histogram matching.
+
+    This matching is performed on a **single** ERA5 ensemble member (ie, replica).
+
+    Parameters
+    ----------
+    era5_rhi : npt.NDArray[np.float_]
+        ERA5-derived RHi values for the given ensemble member (ie, replica).
+    replica : int
+        The ERA5 ensemble member to use. Must be in the range [0, 10).
+
+    Returns
+    -------
+    npt.NDArray[np.float64]
+        The IAGOS quantiles corresponding to the ERA5-derived RHi values.
+    """
+
+    era5_quantiles = _load_era5_ensemble_quantiles()  # shape (801, 10)
+    iagos_quantiles = _load_iagos_quantiles()  # shape (801,)
+
+    era5_quantiles = era5_quantiles[:, replica]  # shape (801,)
+
+    return np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
+
+
+def recalibrate_rhi(era5_rhi_all_replicas: npt.NDArray[np.float_], replica: int):
+    """Recalibrate ERA5-derived RHi values to IAGOS quantiles.
+
+    This recalibration requires values for **all** ERA5 ensemble members (ie, replicas).
+
+    Parameters
+    ----------
+    era5_rhi_all_replicas : npt.NDArray[np.float_]
+        ERA5-derived RHi values for all ensemble members. This array should have shape (n, 10).
+    replica : int
+        The ERA5 ensemble member to use. Must be in the range [0, 10).
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        The recalibrated RHi values. This is an array of shape (n,).
+    """
+
+    n_replicas = 10
+    assert era5_rhi_all_replicas.shape[1] == n_replicas
+
+    recalibrated_rhi = quantile_rhi_map(era5_rhi_all_replicas[:, replica], replica)
+
+    # Calculate the mean recalibrated RHi over all ensemble members
+    ensemble_mean_rhi = recalibrated_rhi
+    for r in range(n_replicas):
+        if r == replica:
+            continue
+        ensemble_mean_rhi += quantile_rhi_map(era5_rhi_all_replicas[:, r], r)
+
+    ensemble_mean_rhi /= n_replicas
+
+    eckel_a = -0.005213832567192828
+    eckel_c = 2.7859172756970354
+
+    out = (ensemble_mean_rhi - eckel_a) + eckel_c * (recalibrated_rhi - ensemble_mean_rhi)
+    return out.astype(era5_rhi_all_replicas.dtype)
+
+
+@dataclasses.dataclass
+class HistogramMatchingParams(ModelParams):
+    """Parameters for :class:`HistogramMatching`."""
+
+    mode: str = "era5_ensembles"
+
+    replica: int = 0
+
+
+class HistogramMatching(HumidityScaling):
+    """Scale humidity by histogram matching to IAGOS RHi quantiles."""
+
+    formula = "histogram_matching"
+    long_name = "Histogram Matching"
+    name = "histogram_matching"
+
+    @overrides
+    def scale(
+        self,
+        specific_humidity: ArrayLike,
+        air_temperature: ArrayLike,
+        air_pressure: ArrayLike,
+        **kwargs: Any,
+    ) -> tuple[ArrayLike, ArrayLike]:
+        rhi = thermo.rhi(specific_humidity, air_temperature, air_pressure)
+        return specific_humidity, rhi
+
+
+class HistogramMatchingWithEckel(HumidityScaling):
+    """Scale humidity by histogram matching to IAGOS RHi quantiles.
+
+    This method also applies the Eckel correction to the recalibrated RHi values.
+
+    References
+    ----------
+    - :cite:`eckelCorrectionRadiativeTransfer2017`
+    """
+
+    @overrides
+    def scale(
+        self,
+        specific_humidity: ArrayLike,
+        air_temperature: ArrayLike,
+        air_pressure: ArrayLike,
+        **kwargs: Any,
+    ) -> tuple[ArrayLike, ArrayLike]:
+        thermo.rhi(specific_humidity, air_temperature, air_pressure)
+
+        era5_rhi_all_replicas = kwargs["era5_rhi_all_replicas"]
+        replica = kwargs["replica"]
+
+        recalibrated_rhi = recalibrate_rhi(era5_rhi_all_replicas, replica)
+
+        return specific_humidity, recalibrated_rhi
