@@ -12,10 +12,6 @@ import benchmark
 import numpy as np
 import pandas as pd
 
-# relative tolerances for comparison
-FLIGHT_TOLERANCE = 1e-6
-CONTRAIL_TOLERANCE = 1e-3
-
 # logging set up in benchmark.py
 LOG = logging.getLogger("pycontrails")
 
@@ -42,7 +38,10 @@ for fid, df in fleet.groupby("flight_id"):
     # test all number types
     for col in df.select_dtypes(include=np.number):
         np.testing.assert_allclose(
-            df_prev[col].to_numpy(), df[col].to_numpy(), rtol=FLIGHT_TOLERANCE, err_msg=col
+            df_prev[col].to_numpy(),
+            df[col].to_numpy(),
+            rtol=benchmark.FLIGHT_TOLERANCE,
+            err_msg=f"Column: {col}",
         )
 
 LOG.info(f"Successfully compared {len(fleet)} flight rows")
@@ -62,7 +61,10 @@ for fid, df in contrail.groupby("flight_id"):
     # test all number types
     for col in df.select_dtypes(include=np.number):
         np.testing.assert_allclose(
-            df_prev[col].to_numpy(), df[col].to_numpy(), rtol=CONTRAIL_TOLERANCE
+            df_prev[col].to_numpy(),
+            df[col].to_numpy(),
+            rtol=benchmark.CONTRAIL_TOLERANCE,
+            err_msg=f"Column: {col}",
         )
 
 LOG.info(f"Successfully compared {len(contrail)} contrail rows")

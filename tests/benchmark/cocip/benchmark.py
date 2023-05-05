@@ -33,6 +33,10 @@ OUTPUT_PATH = pathlib.Path("outputs")
 FLIGHT_METADATA_FILE = "flight-metadata.pq"
 FLIGHT_WAYPOINT_FILE = "flight-waypoints.pq"
 
+# relative tolerances for comparison
+FLIGHT_TOLERANCE = 1e-6
+CONTRAIL_TOLERANCE = 1e-3
+
 # ----
 # Load Flights
 # ----
