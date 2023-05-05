@@ -77,6 +77,7 @@ def load_flights() -> list[Flight]:
             "engine_name": df_flights_metadata.loc[flt_id]["engine_type_edb"],
             "engine_uid": df_flights_metadata.loc[flt_id]["engine_uid"],
             "load_factor": df_flights_metadata.loc[flt_id]["assumed_load_factor"],
+            # "wingspan": # TODO: Add wingspan to metadata
         }
 
         # Create flight object
