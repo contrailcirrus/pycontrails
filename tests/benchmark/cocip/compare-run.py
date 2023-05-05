@@ -2,7 +2,7 @@
 Compare benchmark test outputs with previous outputs.
 
 ```
-$ python compare.py
+$ python compare-run.py
 ```
 """
 
