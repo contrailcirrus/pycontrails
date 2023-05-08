@@ -22,7 +22,7 @@ from pycontrails.utils.types import ArrayLike
 
 
 def _rhi_over_q(air_temperature: ArrayLike, air_pressure: ArrayLike) -> ArrayLike:
-    """Compute the quotient RHi / q."""
+    """Compute the quotient ``RHi / q``."""
     return air_pressure * (constants.R_v / constants.R_d) / thermo.e_sat_ice(air_temperature)
 
 
@@ -143,6 +143,7 @@ class HumidityScaling(Model):
                 "being applied more than once."
             )
 
+        p: np.ndarray | xr.DataArray
         if isinstance(self.source, GeoVectorDataset):
             p = self.source.setdefault("air_pressure", self.source.air_pressure)
         else:
@@ -605,7 +606,9 @@ def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArr
     return np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
 
 
-def recalibrate_rhi(era5_rhi_all_members: npt.NDArray[np.float_], member: int):
+def recalibrate_rhi(
+    era5_rhi_all_members: npt.NDArray[np.float_], member: int
+) -> npt.NDArray[np.float_]:
     """Recalibrate ERA5-derived RHi values to IAGOS quantiles.
 
     This recalibration requires values for **all** ERA5 ensemble members.
@@ -631,7 +634,7 @@ def recalibrate_rhi(era5_rhi_all_members: npt.NDArray[np.float_], member: int):
 
     # Perform histogram matching on all other ensemble members
     # Add up the results into a single 'ensemble_mean_rhi' array
-    ensemble_mean_rhi = 0.0
+    ensemble_mean_rhi: npt.NDArray[np.float64] = 0.0
     for r in range(n_members):
         if r == member:
             ensemble_mean_rhi += recalibrated_rhi
@@ -717,7 +720,21 @@ class HistogramMatchingWithEckel(HumidityScaling):
 
         self.ensemble_specific_humidity: list[MetDataArray] = ensemble_specific_humidity
 
+    @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
+        ...
+
+    @overload
+    def eval(self, source: MetDataset, **params: Any) -> NoReturn:
+        ...
+
+    @overload
+    def eval(self, source: None = ..., **params: Any) -> NoReturn:
+        ...
+
+    def eval(
+        self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
+    ) -> GeoVectorDataset | MetDataset:
         """Scale specific humidity by histogram matching to IAGOS RHi quantiles.
 
         This method assumes ``source`` is equipped with the following variables:
@@ -727,9 +744,8 @@ class HistogramMatchingWithEckel(HumidityScaling):
         """
 
         self.update_params(params)
-        assert source is not None
         self.set_source(source)
-        self.require_source_type(GeoVectorDataset)
+        self.source = self.require_source_type(GeoVectorDataset)
 
         if "rhi" in self.source:
             warnings.warn(
@@ -743,7 +759,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         # This matches patterns used in other humidity scaling methods
         # The remaining values are interpolated from the ERA5 ensemble members
         q = self.source.data["specific_humidity"]
-        q2d = np.empty((len(source), self.n_members), dtype=q.dtype)
+        q2d = np.empty((len(self.source), self.n_members), dtype=q.dtype)
 
         for member, mda in enumerate(self.ensemble_specific_humidity):
             if member == self.member:
