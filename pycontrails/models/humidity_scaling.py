@@ -1,4 +1,4 @@
-"""Support for humidity scaling methodologies on ERA5 data."""
+"""Support for humidity scaling methodologies."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import numpy.typing as npt
 import xarray as xr
 from overrides import overrides
 
-from pycontrails.core.met import MetDataset
+from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import constants, thermo, units
@@ -144,11 +144,12 @@ class HumidityScaling(Model):
             )
 
         if isinstance(self.source, GeoVectorDataset):
-            self.source.setdefault("air_pressure", self.source.air_pressure)
+            p = self.source.setdefault("air_pressure", self.source.air_pressure)
+        else:
+            p = self.source.data["air_pressure"]
 
         q = self.source.data["specific_humidity"]
         T = self.source.data["air_temperature"]
-        p = self.source.data["air_pressure"]
         kwargs = {k: self.get_source_param(k) for k in self.scaler_specific_keys}
 
         q, rhi = self.scale(q, T, p, **kwargs)
@@ -267,7 +268,7 @@ class ExponentialBoostHumidityScaling(HumidityScaling):
         rhi /= rhi_adj
 
         # Find ISSRs
-        is_issr = rhi >= 1
+        is_issr = rhi >= 1.0
 
         # Apply boosting to ISSRs
         if isinstance(rhi, xr.DataArray):
@@ -443,7 +444,7 @@ def _calc_rhi_max(air_temperature: ArrayLike) -> ArrayLike:
         p_ice = thermo.e_sat_ice(air_temperature)
         p_liq = thermo.e_sat_liquid(air_temperature)
         return xr.where(
-            air_temperature < 235,
+            air_temperature < 235.0,
             1.67 + (1.45 - 1.67) * (air_temperature - 190.0) / (235.0 - 190.0),
             p_liq / p_ice,
         )
@@ -556,7 +557,7 @@ class HumidityScalingByLevel(HumidityScaling):
                 "attribute 'mid_troposphere_threshold'."
             )
 
-        level = air_pressure / 100
+        level = air_pressure / 100.0
         fp = [rhi_adj_stratosphere, rhi_adj_mid_troposphere]
         rhi_adj = np.interp(level, xp=xp, fp=fp)
 
@@ -568,25 +569,27 @@ class HumidityScalingByLevel(HumidityScaling):
 @functools.cache
 def _load_iagos_quantiles() -> npt.NDArray[np.float64]:
     path = pathlib.Path(__file__).parent / "quantiles" / "iagos_quantiles.npy"
-    return np.load(path, allow_pickle=False)
+    # FIXME: Recompute to avoid the divide by 100.0 here
+    return np.load(path, allow_pickle=False) / 100.0
 
 
 @functools.cache
 def _load_era5_ensemble_quantiles() -> npt.NDArray[np.float64]:
     path = pathlib.Path(__file__).parent / "quantiles" / "era5_ensemble_quantiles.npy"
-    return np.load(path, allow_pickle=False)
+    # FIXME: Recompute to avoid the divide by 100.0 here
+    return np.load(path, allow_pickle=False) / 100.0
 
 
-def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], replica: int) -> npt.NDArray[np.float64]:
+def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArray[np.float64]:
     """Map ERA5-derived RHi to it's corresponding IAGOS quantile via histogram matching.
 
-    This matching is performed on a **single** ERA5 ensemble member (ie, replica).
+    This matching is performed on a **single** ERA5 ensemble member.
 
     Parameters
     ----------
     era5_rhi : npt.NDArray[np.float_]
-        ERA5-derived RHi values for the given ensemble member (ie, replica).
-    replica : int
+        ERA5-derived RHi values for the given ensemble member.
+    member : int
         The ERA5 ensemble member to use. Must be in the range [0, 10).
 
     Returns
@@ -596,23 +599,22 @@ def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], replica: int) -> npt.NDAr
     """
 
     era5_quantiles = _load_era5_ensemble_quantiles()  # shape (801, 10)
+    era5_quantiles = era5_quantiles[:, member]  # shape (801,)
     iagos_quantiles = _load_iagos_quantiles()  # shape (801,)
-
-    era5_quantiles = era5_quantiles[:, replica]  # shape (801,)
 
     return np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
 
 
-def recalibrate_rhi(era5_rhi_all_replicas: npt.NDArray[np.float_], replica: int):
+def recalibrate_rhi(era5_rhi_all_members: npt.NDArray[np.float_], member: int):
     """Recalibrate ERA5-derived RHi values to IAGOS quantiles.
 
-    This recalibration requires values for **all** ERA5 ensemble members (ie, replicas).
+    This recalibration requires values for **all** ERA5 ensemble members.
 
     Parameters
     ----------
-    era5_rhi_all_replicas : npt.NDArray[np.float_]
+    era5_rhi_all_members : npt.NDArray[np.float_]
         ERA5-derived RHi values for all ensemble members. This array should have shape (n, 10).
-    replica : int
+    member : int
         The ERA5 ensemble member to use. Must be in the range [0, 10).
 
     Returns
@@ -621,65 +623,142 @@ def recalibrate_rhi(era5_rhi_all_replicas: npt.NDArray[np.float_], replica: int)
         The recalibrated RHi values. This is an array of shape (n,).
     """
 
-    n_replicas = 10
-    assert era5_rhi_all_replicas.shape[1] == n_replicas
+    n_members = 10
+    assert era5_rhi_all_members.shape[1] == n_members
 
-    recalibrated_rhi = quantile_rhi_map(era5_rhi_all_replicas[:, replica], replica)
+    # Perform histogram matching on the given ensemble member
+    recalibrated_rhi = quantile_rhi_map(era5_rhi_all_members[:, member], member)
 
-    # Calculate the mean recalibrated RHi over all ensemble members
-    ensemble_mean_rhi = recalibrated_rhi
-    for r in range(n_replicas):
-        if r == replica:
-            continue
-        ensemble_mean_rhi += quantile_rhi_map(era5_rhi_all_replicas[:, r], r)
+    # Perform histogram matching on all other ensemble members
+    # Add up the results into a single 'ensemble_mean_rhi' array
+    ensemble_mean_rhi = 0.0
+    for r in range(n_members):
+        if r == member:
+            ensemble_mean_rhi += recalibrated_rhi
+        else:
+            ensemble_mean_rhi += quantile_rhi_map(era5_rhi_all_members[:, r], r)
 
-    ensemble_mean_rhi /= n_replicas
+    # Divide by the number of ensemble members to get the mean
+    ensemble_mean_rhi /= n_members
 
     eckel_a = -0.005213832567192828
     eckel_c = 2.7859172756970354
 
     out = (ensemble_mean_rhi - eckel_a) + eckel_c * (recalibrated_rhi - ensemble_mean_rhi)
-    return out.astype(era5_rhi_all_replicas.dtype)
-
-
-@dataclasses.dataclass
-class HistogramMatchingParams(ModelParams):
-    """Parameters for :class:`HistogramMatching`."""
-
-    mode: str = "era5_ensembles"
-
-    replica: int = 0
+    return out.astype(era5_rhi_all_members.dtype)
 
 
 class HistogramMatching(HumidityScaling):
-    """Scale humidity by histogram matching to IAGOS RHi quantiles."""
+    """Not yet implemented.
 
-    formula = "histogram_matching"
-    long_name = "Histogram Matching"
-    name = "histogram_matching"
+    This humidity scaling should only match histograms without applying any Eckel scaling.
 
-    @overrides
-    def scale(
-        self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
-        **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
-        rhi = thermo.rhi(specific_humidity, air_temperature, air_pressure)
-        return specific_humidity, rhi
+    It does not require multiple ERA5 ensemble members. In could be used directly with
+    ERA5 reanalysis or HRES forecasts (the quantiles must be computed separately).
+    """
+
+
+@dataclasses.dataclass
+class HistogramMatchingWithEckelParams(ModelParams):
+    """Parameters for :class:`HistogramMatchingWithEckel`."""
+
+    #: A length-10 list of ERA5 ensemble members.
+    #: Each element is a :class:`MetDataArray` holding specific humidity
+    #: values for a single ensemble member. If None, a ValueError will be
+    #: raised at model evaluation time. The order of the list must be
+    #: consistent with the order of the ERA5 ensemble members.
+    ensemble_specific_humidity: list[MetDataArray] | None = None
+
+    #: The specific member used. Must be in the range [0, 10). If None,
+    #: a ValueError will be raised at model evaluation time.
+    member: int | None = None
 
 
 class HistogramMatchingWithEckel(HumidityScaling):
     """Scale humidity by histogram matching to IAGOS RHi quantiles.
 
-    This method also applies the Eckel correction to the recalibrated RHi values.
+    This method also applies the Eckel scaling to the recalibrated RHi values.
+
+    Unlike other specific humidity scaling methods, this method requires met data
+    and performs interpolation at evaluation time.
 
     References
     ----------
     - :cite:`eckelCorrectionRadiativeTransfer2017`
     """
 
+    name = "histogram_matching_with_eckel"
+    long_name = "IAGOS RHi histogram matching with Eckel scaling"
+    formula = "era5_quantiles -> iagos_quantiles -> recalibrated_rhi"
+    default_params = HistogramMatchingWithEckelParams
+
+    n_members = 10
+
+    def __init__(
+        self,
+        met: MetDataset | None = None,
+        params: dict[str, Any] | None = None,
+        **params_kwargs: Any,
+    ) -> None:
+        super().__init__(met, params, **params_kwargs)
+
+        # Some very crude validation
+        member = self.params["member"]
+        assert member in range(self.n_members)
+        self.member: int = member
+
+        ensemble_specific_humidity = self.params["ensemble_specific_humidity"]
+        assert len(ensemble_specific_humidity) == self.n_members
+        for member, mda in enumerate(ensemble_specific_humidity):
+            try:
+                assert mda.data["number"] == member
+            except KeyError:
+                pass
+
+        self.ensemble_specific_humidity: list[MetDataArray] = ensemble_specific_humidity
+
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
+        """Scale specific humidity by histogram matching to IAGOS RHi quantiles.
+
+        This method assumes ``source`` is equipped with the following variables:
+
+        - air_temperature
+        - specific_humidity: Humidity values for the :attr:`member` ERA5 ensemble member.
+        """
+
+        self.update_params(params)
+        assert source is not None
+        self.set_source(source)
+        self.require_source_type(GeoVectorDataset)
+
+        if "rhi" in self.source:
+            warnings.warn(
+                "Variable 'rhi' already found on source to be scaled. This "
+                "is unexpected and may be the result of humidity scaling "
+                "being applied more than once."
+            )
+
+        # Create a 2D array of specific humidity values for all ensemble members
+        # The specific humidity values for the current member are taken from the source
+        # This matches patterns used in other humidity scaling methods
+        # The remaining values are interpolated from the ERA5 ensemble members
+        q = self.source.data["specific_humidity"]
+        q2d = np.empty((len(source), self.n_members), dtype=q.dtype)
+
+        for member, mda in enumerate(self.ensemble_specific_humidity):
+            if member == self.member:
+                q2d[:, member] = q
+            else:
+                q2d[:, member] = self.source.intersect_met(mda, **self.interp_kwargs)
+
+        p = self.source.setdefault("air_pressure", self.source.air_pressure)
+        T = self.source.data["air_temperature"]
+
+        q, rhi = self.scale(q2d, T, p)
+        self.source.update(specific_humidity=q, rhi=rhi)
+
+        return self.source
+
     @overrides
     def scale(
         self,
@@ -688,11 +767,20 @@ class HistogramMatchingWithEckel(HumidityScaling):
         air_pressure: ArrayLike,
         **kwargs: Any,
     ) -> tuple[ArrayLike, ArrayLike]:
-        thermo.rhi(specific_humidity, air_temperature, air_pressure)
+        """Scale specific humidity values via histogram matching and Eckel scaling.
 
-        era5_rhi_all_replicas = kwargs["era5_rhi_all_replicas"]
-        replica = kwargs["replica"]
+        This function assumes the following shapes for the input data:
+        - specific_humidity.ndim == 2
+        - specific_humidity.shape[1] == self.n_members
+        - air_temperature.ndim == 1
+        - air_pressure.ndim == 1
+        - specific_humidity.shape[0] == air_temperature.shape[0] == air_pressure.shape[0]
+        """
 
-        recalibrated_rhi = recalibrate_rhi(era5_rhi_all_replicas, replica)
+        rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
+        rhi = rhi_over_q[:, np.newaxis] * specific_humidity
 
-        return specific_humidity, recalibrated_rhi
+        recalibrated_rhi = recalibrate_rhi(rhi, self.member)
+        recalibrated_q = recalibrated_rhi / rhi_over_q
+
+        return recalibrated_q, recalibrated_rhi
