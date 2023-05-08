@@ -438,6 +438,8 @@ def T_critical_sac(
     # We only apply Newton's method at points with rh bounded below 1 (scipy will
     # raise an error if Newton's method is not converging well).
     filt = relative_humidity < 0.999
+    if not np.any(filt):
+        return T_LM
 
     U_filt = relative_humidity[filt]
     T_LM_filt = T_LM[filt]
