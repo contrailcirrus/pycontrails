@@ -376,8 +376,8 @@ class Cocip(Model):
         # Save humidity scaling type to output attrs
         # NOTE: Do this after _process_flight because that method automatically
         # broadcasts all numeric source params.
-        if self.params["humidity_scaling"] is not None:
-            for k, v in self.params["humidity_scaling"].description.items():
+        if (hs := self.params["humidity_scaling"]) is not None:
+            for k, v in hs.description.items():
                 self.source.attrs[f"humidity_scaling_{k}"] = v
 
         if isinstance(self.source, Fleet):
@@ -532,7 +532,7 @@ class Cocip(Model):
         # STEP 4: Begin met interpolation
         # Unfortunately we use both "u_wind" and "eastward_wind" to refer to the
         # same variable, so the logic gets a bit more complex.
-        scale_humidity = (self.params["humidity_scaling"] is not None) and (
+        scale_humidity = ((hs := self.params["humidity_scaling"]) is not None) and (
             "specific_humidity" not in self.source
         )
         variables = {
@@ -545,7 +545,7 @@ class Cocip(Model):
             interpolate_met(met, self.source, met_variable, fl_variable, **self.interp_kwargs)
 
         if scale_humidity:
-            self.params["humidity_scaling"].eval(self.source, copy_source=False)
+            hs.eval(self.source, copy_source=False)
 
         # if humidity_scaling isn't defined, add rhi to source for verbose_outputs
         elif self.params["verbose_outputs"]:
@@ -867,8 +867,8 @@ class Cocip(Model):
             **self.interp_kwargs,
         )
 
-        if self.params["humidity_scaling"] is not None:
-            self.params["humidity_scaling"].eval(contrail_1, copy_source=False)
+        if (hs := self.params["humidity_scaling"]) is not None:
+            hs.eval(contrail_1, copy_source=False)
         else:
             contrail_1["air_pressure"] = contrail_1.air_pressure
             contrail_1["rhi"] = thermo.rhi(
@@ -2141,8 +2141,8 @@ def calc_timestep_contrail_evolution(
 
     interpolate_met(met, contrail_2, "specific_humidity", **interp_kwargs)
 
-    if params["humidity_scaling"] is not None:
-        params["humidity_scaling"].eval(contrail_2, copy_source=False)
+    if (hs := params["humidity_scaling"]) is not None:
+        hs.eval(contrail_2, copy_source=False)
     else:
         contrail_2["air_pressure"] = contrail_2.air_pressure
         contrail_2["rhi"] = thermo.rhi(
