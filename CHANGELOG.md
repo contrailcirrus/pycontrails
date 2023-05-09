@@ -3,10 +3,24 @@
 
 ## v0.42.1 (unreleased)
 
+### Features
+
+- Add new `HistogramMatchingWithEckel` experimental humidity scaling model. This is still a work in progress.
+
+### Breaking changes
+
+- No longer attach empty fields "sdr", "rsr", "olr", "rf_sw", "rf_lw", "rf_net" onto the `source` parameter in `Cocip.eval` when the flight doesn't generate any persistent contrails.
+- Remove params `humidity_scaling`, `rhi_adj_uncertainty`, and `rhi_boost_exponent_uncertainty` from `CocipUncertaintyParams`.
+
 ### Fixes
 
-- Fix a unit test (`test_dtypes.py::test_issr_sac_grid_output`) that occasionally hangs.
+- Fix a unit test (`test_dtypes.py::test_issr_sac_grid_output`) that occasionally hangs. There may be another test in `test_ecmwf.py` that suffers from the same issue.
 - Fix issue encountered in `Cocip.eval` when concatenating contrails with inconsistent values for `_out_of_bounds`. This is only relevant when running the model with the experimental parameter `interpolation_use_indices=True`.
+
+### Internals
+
+- When possible, replace type hints `np.ndarray` -> `np.typing.NDArray[np.float_]` in the `cocip`, `cocip_params`, `cocip_uncertainty`, `radiative_forcing`, and `wake_vortex` modules.
+- Slight performance enhancements in the `radiative_forcing` module.
 
 ## v0.42.0
 

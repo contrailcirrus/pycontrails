@@ -222,7 +222,7 @@ def habit_weight_regime_idx(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.intp]
         Row index of the habit distribution in array :attr:`CocipParams().habit_distributions`
     """
     # find the regime for each waypoint using thresholds
