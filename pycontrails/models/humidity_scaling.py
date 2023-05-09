@@ -634,7 +634,7 @@ def recalibrate_rhi(
 
     # Perform histogram matching on all other ensemble members
     # Add up the results into a single 'ensemble_mean_rhi' array
-    ensemble_mean_rhi: npt.NDArray[np.float64] = np.array(0.0)
+    ensemble_mean_rhi: npt.NDArray[np.float_] = 0.0  # type: ignore[assignment]
     for r in range(n_members):
         if r == member:
             ensemble_mean_rhi += recalibrated_rhi
