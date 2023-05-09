@@ -77,21 +77,18 @@ class ECMWFAPI(datalib.MetDataSource):
             raise KeyError(f"Input dataset is missing variables {e}")
 
         # downselect times
-        try:
-            if self.timesteps:
+        if not self.timesteps:
+            self.timesteps = ds["time"].values.astype("datetime64[ns]").tolist()
+        else:
+            try:
                 ds = ds.sel(time=self.timesteps)
-            else:
-                # set timesteps from dataset "time" coordinates
-                # np.datetime64 doesn't covert to list[datetime] unless its unit is us
-                self.timesteps = ds["time"].values.astype("datetime64[us]").tolist()
-        except KeyError:
-            # this snippet shows the missing times for convenience
-            np_timesteps = [np.datetime64(t, "ns") for t in self.timesteps]
-            missing_times = list(set(np_timesteps) - set(ds["time"].values))
-            missing_times.sort()
-            raise KeyError(
-                f"Input dataset is missing time coordinates {[str(t) for t in missing_times]}"
-            )
+            except KeyError:
+                # this snippet shows the missing times for convenience
+                np_timesteps = [np.datetime64(t, "ns") for t in self.timesteps]
+                missing_times = sorted(set(np_timesteps) - set(ds["time"].values))
+                raise KeyError(
+                    f"Input dataset is missing time coordinates {[str(t) for t in missing_times]}"
+                )
 
         # downselect pressure level
         # if "level" is not in dims and
@@ -104,15 +101,11 @@ class ECMWFAPI(datalib.MetDataSource):
             ds = ds.sel(level=self.pressure_levels)
         except KeyError:
             # this snippet shows the missing levels for convenience
-            missing_levels = list(set(self.pressure_levels) - set(ds["level"].values))
-            missing_levels.sort()
+            missing_levels = sorted(set(self.pressure_levels) - set(ds["level"].values))
             raise KeyError(f"Input dataset is missing level coordinates {missing_levels}")
 
         # harmonize variable names
         ds = met.standardize_variables(ds, self.variables)
-
-        if "cachestore" not in kwargs:
-            kwargs["cachestore"] = self.cachestore
 
         # modify values
 
@@ -129,4 +122,6 @@ class ECMWFAPI(datalib.MetDataSource):
             ] = "Relative humidity rescaled to [0 - 1] instead of %"
 
         ds.attrs["met_source"] = type(self).__name__
+
+        kwargs.setdefault("cachestore", self.cachestore)
         return met.MetDataset(ds, **kwargs)
