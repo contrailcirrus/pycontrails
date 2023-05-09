@@ -7,6 +7,7 @@ import warnings
 from typing import Any, NoReturn, Sequence, overload
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 from overrides import overrides
@@ -257,7 +258,7 @@ class Cocip(Model):
     contrail_dataset: xr.Dataset | None
 
     #: Array of np.datetime64 time steps for contrail evolution
-    timesteps: np.ndarray
+    timesteps: npt.NDArray[np.datetime64]
 
     #: Parallel copy of flight waypoints after SAC filter applied
     _sac_flight: Flight
@@ -567,6 +568,9 @@ class Cocip(Model):
 
             self.source["rho_air"] = thermo.rho_d(
                 self.source["air_temperature"], self.source.air_pressure
+            )
+            self.source["sdr"] = geo.solar_direct_radiation(
+                self.source["longitude"], self.source["latitude"], self.source["time"]
             )
 
         # STEP 5: Calculate segment-specific properties if they are not already attached
@@ -1830,9 +1834,9 @@ def calc_radiative_properties(contrail: GeoVectorDataset, params: dict[str, Any]
 
 def calc_contrail_properties(
     contrail: GeoVectorDataset,
-    effective_vertical_resolution: float | np.ndarray,
-    wind_shear_enhancement_exponent: float | np.ndarray,
-    sedimentation_impact_factor: float | np.ndarray,
+    effective_vertical_resolution: float | npt.NDArray[np.float_],
+    wind_shear_enhancement_exponent: float | npt.NDArray[np.float_],
+    sedimentation_impact_factor: float | npt.NDArray[np.float_],
     radiative_heating_effects: bool,
 ) -> None:
     """Calculate geometric and ice-related properties of contrail.
@@ -1859,10 +1863,12 @@ def calc_contrail_properties(
     ----------
     contrail : GeoVectorDataset
         Grid points with many precomputed keys.
-    effective_vertical_resolution, wind_shear_enhancement_exponent : float | np.ndarray
-        Passed into :func:`wind_shear.wind_shear_enhancement_factor` function.
-    sedimentation_impact_factor: float | np.ndarray
-        Passed into `contrail_properties.vertical_diffusivity` function.
+    effective_vertical_resolution : float | npt.NDArray[np.float_]
+        Passed into :func:`wind_shear.wind_shear_enhancement_factor`.
+    wind_shear_enhancement_exponent : float | npt.NDArray[np.float_]
+        Passed into :func:`wind_shear.wind_shear_enhancement_factor`.
+    sedimentation_impact_factor: float | npt.NDArray[np.float_]
+        Passed into `contrail_properties.vertical_diffusivity`.
     radiative_heating_effects: bool
         Include radiative heating effects on contrail cirrus properties.
     """
