@@ -651,16 +651,6 @@ def recalibrate_rhi(
     return out.astype(era5_rhi_all_members.dtype)
 
 
-class HistogramMatching(HumidityScaling):
-    """Not yet implemented.
-
-    This humidity scaling should only match histograms without applying any Eckel scaling.
-
-    It does not require multiple ERA5 ensemble members. In could be used directly with
-    ERA5 reanalysis or HRES forecasts (the quantiles must be computed separately).
-    """
-
-
 @dataclasses.dataclass
 class HistogramMatchingWithEckelParams(ModelParams):
     """Parameters for :class:`HistogramMatchingWithEckel`."""
