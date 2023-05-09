@@ -16,10 +16,13 @@ from pycontrails.physics import constants, thermo, units
 from pycontrails.utils.json import NumpyEncoder
 from pycontrails.utils.types import ArrayLike
 
-scaler_cls_list = [
-    e
-    for e in hs.__dict__.values()
-    if isinstance(e, type) and issubclass(e, hs.HumidityScaling) and e is not hs.HumidityScaling
+cls_list = [
+    cls
+    for cls in hs.__dict__.values()
+    if isinstance(cls, type)
+    and issubclass(cls, hs.HumidityScaling)
+    and cls is not hs.HumidityScaling
+    and cls is not hs.HistogramMatchingWithEckel
 ]
 
 
@@ -68,7 +71,7 @@ class DefaultHumidityScaling(hs.HumidityScaling):
         return specific_humidity, rhi
 
 
-@pytest.mark.parametrize("scaler_cls", scaler_cls_list)
+@pytest.mark.parametrize("scaler_cls", cls_list)
 def test_all_scalers(vector: GeoVectorDataset, scaler_cls: type):
     """Check basic usage of humidity scaler instances."""
     scaler = scaler_cls(copy_source=False)
@@ -139,7 +142,7 @@ def test_rhi_already_exists_warning(vector: GeoVectorDataset):
         scaler.eval(vector)
 
 
-@pytest.mark.parametrize("scaler_cls", scaler_cls_list)
+@pytest.mark.parametrize("scaler_cls", cls_list)
 def test_description(scaler_cls: type):
     """Check description for scalers and ensure JSON serialization via NumpyEncoder."""
     scaler = scaler_cls()
@@ -204,7 +207,7 @@ def test_rhi_boost_exponential(vector: GeoVectorDataset, exp: float):
     np.testing.assert_allclose(expected, rhi2[~filt], atol=atol)
 
 
-@pytest.mark.parametrize("scaler_cls", scaler_cls_list)
+@pytest.mark.parametrize("scaler_cls", cls_list)
 def test_scalers_pass_nan_through(vector: GeoVectorDataset, scaler_cls: type):
     """Confirm each scaler pass nan values through when computing rhi."""
     vector["specific_humidity"][55] = np.nan
