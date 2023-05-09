@@ -370,18 +370,17 @@ class DiskCacheStore(CacheStore):
         if disk_path.is_file():
             logger.debug("Remove file at path %s", disk_path)
             disk_path.unlink()
+            return
 
         # Assume anything else is a directory
-        elif disk_path.exists():
+        if disk_path.exists():
             # rm directory recursively
             logger.debug("Remove directory at path %s", disk_path)
             shutil.rmtree(disk_path, ignore_errors=True)
+            return
 
-        else:
-            warnings.warn(f"No cache path found at {disk_path}")
+        warnings.warn(f"No cache path found at {disk_path}")
 
-        # make sure local cache directory exists
-        # pathlib.Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
 
 
 class GCPCacheStore(CacheStore):
