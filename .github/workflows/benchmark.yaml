@@ -21,8 +21,8 @@ concurrency:
 
 jobs:
   benchmark-test:
-    # https://github.com/organizations/contrailcirrus/settings/actions/github-hosted-runners/5
-    runs-on: 16core-64GBram-600GBssd
+    # https://github.com/organizations/contrailcirrus/settings/actions/github-hosted-runners/1
+    runs-on: 8core-32GBram-300GBssd
 
     # set from https://github.com/google-github-actions/auth
     permissions:
