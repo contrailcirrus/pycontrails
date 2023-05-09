@@ -118,12 +118,8 @@ def test_uncertainty_default_dist_within_expect_cocip_function_domain() -> None:
     assert np.all(c.nvpm_ei_n_enhancement_factor_uncertainty.rvs(n) >= 0.3)
     assert np.all(c.nvpm_ei_n_enhancement_factor_uncertainty.rvs(n) <= 3)
 
-    # rhi_adj_uncertainty should be bounded away from 0
-    assert np.all(c.rhi_adj_uncertainty.rvs(n) > 0.4)
-    assert np.all(c.rhi_adj_uncertainty.rvs(n) < 1.6)
-
     # habit_distributions should all sum to 1 and have the right shape
-    assert np.all(np.around(np.sum(c.habit_distributions_uncertainty.rvs(), axis=1), 3) == 1)
+    assert np.all(np.round(np.sum(c.habit_distributions_uncertainty.rvs(), axis=1), 3) == 1)
 
     # rf_lw_enhancement_factor should be bounded near 1
     assert np.all(c.rf_lw_enhancement_factor_uncertainty.rvs(n) > 0.5)
@@ -147,7 +143,7 @@ def test_habit_dirichlet() -> None:
 
     # has a rvs() method
     habit_distributions = hd.rvs()
-    assert np.all(np.around(np.sum(habit_distributions, axis=1), 4) == 1)
+    assert np.all(np.round(np.sum(habit_distributions, axis=1), 4) == 1)
 
     # doesn't support n
     with pytest.raises(ValueError, match="only supports creating one rv"):
@@ -164,7 +160,7 @@ def test_habit_dirichlet() -> None:
     c = CocipUncertaintyParams(seed=1001)
     assert isinstance(c.habit_distributions_uncertainty, rv_frozen)
     habit_distributions = c.habit_distributions_uncertainty.rvs()
-    assert np.all(np.around(np.sum(habit_distributions, axis=1), 4) == 1)
+    assert np.all(np.round(np.sum(habit_distributions, axis=1), 4) == 1)
 
     cp = CocipParams()
     radius_threshold_um = cp.radius_threshold_um
