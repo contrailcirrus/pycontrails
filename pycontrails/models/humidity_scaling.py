@@ -634,7 +634,7 @@ def recalibrate_rhi(
 
     # Perform histogram matching on all other ensemble members
     # Add up the results into a single 'ensemble_mean_rhi' array
-    ensemble_mean_rhi: npt.NDArray[np.float64] = 0.0
+    ensemble_mean_rhi: npt.NDArray[np.float64] = np.array(0.0)
     for r in range(n_members):
         if r == member:
             ensemble_mean_rhi += recalibrated_rhi
@@ -776,21 +776,25 @@ class HistogramMatchingWithEckel(HumidityScaling):
         return self.source
 
     @overrides
-    def scale(
+    def scale(  # type: ignore[override]
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
+        specific_humidity: npt.NDArray[np.float_],
+        air_temperature: npt.NDArray[np.float_],
+        air_pressure: npt.NDArray[np.float_],
         **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
+    ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
         """Scale specific humidity values via histogram matching and Eckel scaling.
 
         This function assumes the following shapes for the input data:
+
         - specific_humidity.ndim == 2
         - specific_humidity.shape[1] == self.n_members
         - air_temperature.ndim == 1
         - air_pressure.ndim == 1
         - specific_humidity.shape[0] == air_temperature.shape[0] == air_pressure.shape[0]
+
+        Unlike the abstract method on the base class, this assumes each of the input
+        arrays are numpy arrays and not :class:`xr.DataArray` objects.
         """
 
         rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
