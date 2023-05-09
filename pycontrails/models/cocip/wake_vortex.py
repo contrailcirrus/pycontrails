@@ -222,7 +222,9 @@ def get_downward_displacement_weakly_stratified(
     return b_0 * (7.68 * (1 - 4.07 * epsn_st + 5.67 * epsn_st**2) * (0.79 - n_bv * t_0) + 1.88)
 
 
-def get_wake_vortex_separation(wingspan: npt.NDArray[np.float_] | float) -> npt.NDArray[np.float_] | float:
+def get_wake_vortex_separation(
+    wingspan: npt.NDArray[np.float_] | float,
+) -> npt.NDArray[np.float_] | float:
     """
     Calculate the wake vortex separation.
 
@@ -321,7 +323,9 @@ def normalized_dissipation_rate(
     return np.minimum(epsn_st, 0.36)
 
 
-def initial_contrail_width(wingspan: npt.NDArray[np.float_] | float, dz_max: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+def initial_contrail_width(
+    wingspan: npt.NDArray[np.float_] | float, dz_max: npt.NDArray[np.float_]
+) -> npt.NDArray[np.float_]:
     """
     Calculate the initial contrail width.
 

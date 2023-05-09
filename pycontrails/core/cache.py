@@ -382,7 +382,6 @@ class DiskCacheStore(CacheStore):
         warnings.warn(f"No cache path found at {disk_path}")
 
 
-
 class GCPCacheStore(CacheStore):
     """Google Cloud Platform (Storage) Cache.
 
