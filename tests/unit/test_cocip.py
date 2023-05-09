@@ -912,10 +912,6 @@ def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: Me
         out["contrail_age"], [np.timedelta64(0, "s")] * 8 + [np.timedelta64("nat")] * 12
     )
 
-    # Check a few other fields that are filled with all nan
-    assert np.all(np.isnan(out["sdr"]))
-    assert np.all(np.isnan(out["rsr"]))
-
     # This key was removed
     assert "_met_intersection" not in out
 

@@ -1278,15 +1278,6 @@ class Cocip(Model):
             Flight or list of Flight objects with empty variables.
         """
 
-        empty = np.full(shape=len(self.source), fill_value=np.nan)
-
-        self.source["sdr"] = empty.copy()
-        self.source["rsr"] = empty.copy()
-        self.source["olr"] = empty.copy()
-        self.source["rf_sw"] = empty.copy()
-        self.source["rf_lw"] = empty.copy()
-        self.source["rf_net"] = empty.copy()
-
         intersection = self.source.data.pop("_met_intersection")
         zeros_and_nans = np.where(intersection, 0.0, np.nan)
         self.source["ef"] = zeros_and_nans.copy()
