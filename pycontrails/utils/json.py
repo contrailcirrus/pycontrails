@@ -161,9 +161,9 @@ def dataframe_to_geojson_points(
 
     def row_to_feature(row: pd.Series) -> dict[str, str | dict[str, Any]]:
         point = [
-            np.around(row.longitude, decimals=4) if not np.isnan(row.longitude) else None,
-            np.around(row.latitude, decimals=4) if not np.isnan(row.latitude) else None,
-            np.around(row.altitude, decimals=4) if not np.isnan(row.altitude) else None,
+            np.round(row.longitude, decimals=4) if not np.isnan(row.longitude) else None,
+            np.round(row.latitude, decimals=4) if not np.isnan(row.latitude) else None,
+            np.round(row.altitude, decimals=4) if not np.isnan(row.altitude) else None,
         ]
         # converting to int to allow JSON serialization
         properties = {"time": int(row.time.timestamp())}

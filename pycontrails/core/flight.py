@@ -1232,9 +1232,9 @@ def _return_linestring(data: dict[str, npt.NDArray[np.float_]]) -> list[list[flo
     """
     # rounding to reduce the size of resultant json arrays
     points = zip(  # pylint: disable=zip-builtin-not-iterating
-        np.around(data["longitude"], decimals=4),
-        np.around(data["latitude"], decimals=4),
-        np.around(data["altitude"], decimals=4),
+        np.round(data["longitude"], decimals=4),
+        np.round(data["latitude"], decimals=4),
+        np.round(data["altitude"], decimals=4),
     )
     return [list(p) for p in points]
 
