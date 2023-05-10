@@ -51,7 +51,7 @@ class ISSR(Model):
     >>> variables = ["air_temperature", "specific_humidity"]
     >>> pressure_levels = [200, 250, 300]
     >>> era5 = ERA5(time, variables, pressure_levels)
-    >>> met = era5.open_metdataset(xr_kwargs=dict(parallel=False))
+    >>> met = era5.open_metdataset()
 
     >>> # Instantiate and run model
     >>> scaling = ConstantHumidityScaling(rhi_adj=0.98)

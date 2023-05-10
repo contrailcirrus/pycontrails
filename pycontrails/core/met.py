@@ -416,7 +416,7 @@ class MetBase(ABC, Generic[XArrayType]):
         >>> variables = "air_temperature", "specific_humidity"
         >>> levels = [200, 300]
         >>> era5 = ERA5(times, variables, levels)
-        >>> mds = era5.open_metdataset(xr_kwargs=dict(parallel=False))
+        >>> mds = era5.open_metdataset()
         >>> mds.variables["level"].values  # faster access than mds.data["level"]
         array([200., 300.])
 
@@ -606,7 +606,7 @@ class MetDataset(MetBase):
     >>> era5 = ERA5(time, variables, pressure_levels)
 
     >>> # Open directly as `MetDataset`
-    >>> met = era5.open_metdataset(xr_kwargs=dict(parallel=False))
+    >>> met = era5.open_metdataset()
     >>> # Use `data` attribute to access `xarray` object
     >>> assert isinstance(met.data, xr.Dataset)
 
@@ -992,7 +992,7 @@ class MetDataset(MetBase):
         >>> variables = ["air_temperature", "specific_humidity"]
         >>> levels = [250, 200]
         >>> era5 = ERA5(time=times, variables=variables, pressure_levels=levels)
-        >>> met = era5.open_metdataset(xr_kwargs=dict(parallel=False))
+        >>> met = era5.open_metdataset()
         >>> met.to_vector(transfer_attrs=False)
         GeoVectorDataset [6 keys x 4152960 length, 1 attributes]
             Keys: longitude, latitude, level, time, air_temperature, ..., specific_humidity
@@ -1507,7 +1507,7 @@ class MetDataArray(MetBase):
         >>> variables = "air_temperature"
         >>> levels = [200, 250, 300]
         >>> era5 = ERA5(times, variables, levels)
-        >>> met = era5.open_metdataset(xr_kwargs=dict(parallel=False))
+        >>> met = era5.open_metdataset()
         >>> mda = met["air_temperature"]
 
         >>> # Interpolation at a grid point agrees with value
@@ -1779,7 +1779,7 @@ class MetDataArray(MetBase):
         >>> from pprint import pprint
         >>> from pycontrails.datalib.ecmwf import ERA5
         >>> era5 = ERA5("2022-03-01", variables="air_temperature", pressure_levels=250)
-        >>> mda = era5.open_metdataset(xr_kwargs=dict(parallel=False))["air_temperature"]
+        >>> mda = era5.open_metdataset()["air_temperature"]
         >>> mda.shape
         (1440, 721, 1, 1)
 
