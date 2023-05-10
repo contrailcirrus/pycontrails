@@ -104,7 +104,7 @@ def met_pcc_pl(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> MetDat
         paths=met_ecmwf_pl_path,
         cachestore=override_cache,
     )
-    return era5.open_metdataset(xr_kwargs={"parallel": False})
+    return era5.open_metdataset()
 
 
 @pytest.fixture(scope="session")
@@ -125,7 +125,7 @@ def met_pcc_sl(met_ecmwf_sl_path: str, override_cache: DiskCacheStore) -> MetDat
         paths=met_ecmwf_sl_path,
         cachestore=override_cache,
     )
-    return era5.open_metdataset(xr_kwargs={"parallel": False})
+    return era5.open_metdataset()
 
 
 @pytest.fixture(scope="session")
