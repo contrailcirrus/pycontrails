@@ -1123,7 +1123,7 @@ class Flight(GeoVectorDataset):
         >>> variables = ["air_temperature", "specific_humidity"]
         >>> levels = [300, 250, 200]
         >>> era5 = ERA5(time=times, variables=variables, pressure_levels=levels)
-        >>> met = era5.open_metdataset(xr_kwargs=dict(parallel=False))
+        >>> met = era5.open_metdataset()
 
         >>> # Build flight
         >>> df = pd.DataFrame()

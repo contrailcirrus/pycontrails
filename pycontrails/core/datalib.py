@@ -32,6 +32,9 @@ NETCDF_ENGINE: str = "netcdf4"
 #: Default chunking strategy when opening datasets with xarray
 DEFAULT_CHUNKS: dict[str, int] = {"time": 1}
 
+#: Whether to open multi-file datasets in parallel
+OPEN_IN_PARALLEL: bool = False
+
 
 def parse_timesteps(time: TimeInput | None, freq: str | None = "1H") -> list[datetime]:
     """Parse time input into set of time steps.
@@ -645,7 +648,7 @@ class MetDataSource(abc.ABC):
 
                 - chunks: {"time": 1}
                 - engine: "netcdf4"
-                - parallel: True
+                - parallel: False
 
         Returns
         -------
@@ -654,5 +657,5 @@ class MetDataSource(abc.ABC):
         """
         xr_kwargs.setdefault("engine", NETCDF_ENGINE)
         xr_kwargs.setdefault("chunks", DEFAULT_CHUNKS)
-        xr_kwargs.setdefault("parallel", True)
+        xr_kwargs.setdefault("parallel", OPEN_IN_PARALLEL)
         return xr.open_mfdataset(disk_paths, **xr_kwargs)
