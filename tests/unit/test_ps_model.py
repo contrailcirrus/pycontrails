@@ -8,6 +8,7 @@ import pytest
 import pycontrails.models.ps_model.ps_model as ps
 from pycontrails.core import Flight
 from pycontrails.physics.units import ft_to_pl, knots_to_m_per_s, m_to_T_isa
+from pycontrails.physics.jet import minimum_fuel_flow_rate_at_cruise
 
 from .conftest import get_static_path
 
@@ -167,6 +168,24 @@ def test_total_fuel_burn():
         correct_fuel_flow=False,
         aircraft_mass=None
     )
+    np.testing.assert_array_almost_equal(np.nansum(aircraft_performance.fuel_burn), 3805.97, decimal=1)
 
 
-# TODO: Unit test fuel clipping
+def test_fuel_clipping():
+    ps_model = ps.PSModel()
+    atyp_param = ps_model.aircraft_engine_params["A320"]
+
+    # Erroneous fuel flow data
+    fuel_flow_est = np.array([3.05, 4.13, 5.20, 0.02, 0.03])
+    altitude_ft = np.ones_like(fuel_flow_est) * 35000
+    air_temperature = np.ones_like(fuel_flow_est) * 220
+    air_pressure = ft_to_pl(altitude_ft) * 100
+    mach_num = np.ones_like(fuel_flow_est) * 0.75
+
+    fuel_flow_corrected = ps.correct_fuel_flow(
+        fuel_flow_est, altitude_ft, air_temperature, air_pressure, mach_num,
+        atyp_param.ff_idle_sls, atyp_param.ff_max_sls
+    )
+    
+    min_fuel_flow = minimum_fuel_flow_rate_at_cruise(atyp_param.ff_idle_sls, altitude_ft)
+    assert np.all((fuel_flow_corrected < atyp_param.ff_max_sls) & (fuel_flow_corrected >= min_fuel_flow))

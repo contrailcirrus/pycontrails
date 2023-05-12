@@ -103,7 +103,7 @@ class PSModel:
             true_airspeed: npt.NDArray[np.float_],
             air_temperature: npt.NDArray[np.float_],
             q_fuel: float,
-            correct_fuel_flow: bool,
+            correct_fuel_flow: bool = True,
             load_factor: None | float = None,
             n_iter: int = 5,
             aircraft_mass: npt.NDArray[np.float_] | float | None,
@@ -111,7 +111,7 @@ class PSModel:
             mtow: float | None = None,
             max_payload: float | None = None
     ) -> AircraftPerformanceData:
-        # TODO: Documentation (Load factor = 0.7)
+        # TODO: Documentation (Assume 70% load factor if not provided)
 
         if aircraft_mass is not None:
             warnings.warn(
@@ -252,10 +252,12 @@ class PSModel:
             air_pressure, air_temperature, mach_num, c_t, eta,
             atyp_param.wing_surface_area, q_fuel
         )
-        fuel_flow = correct_fuel_flow(
-            fuel_flow, altitude_ft, air_temperature, air_pressure, mach_num,
-            atyp_param.ff_idle_sls, atyp_param.ff_max_sls
-        )
+
+        if correct_fuel_flow:
+            fuel_flow = correct_fuel_flow(
+                fuel_flow, altitude_ft, air_temperature, air_pressure, mach_num,
+                atyp_param.ff_idle_sls, atyp_param.ff_max_sls
+            )
         fuel_burn = jet.fuel_burn(fuel_flow, dt_sec)
         return AircraftPerformanceData(
             fuel_flow=fuel_flow,
