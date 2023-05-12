@@ -591,7 +591,7 @@ def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArr
     era5_rhi : npt.NDArray[np.float_]
         ERA5-derived RHi values for the given ensemble member.
     member : int
-        The ERA5 ensemble member to use. Must be in the range [0, 10).
+        The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
 
     Returns
     -------
@@ -616,14 +616,18 @@ def recalibrate_rhi(
     Parameters
     ----------
     era5_rhi_all_members : npt.NDArray[np.float_]
-        ERA5-derived RHi values for all ensemble members. This array should have shape (n, 10).
+        ERA5-derived RHi values for all ensemble members. This array should have shape ``(n, 10)``.
     member : int
-        The ERA5 ensemble member to use. Must be in the range [0, 10).
+        The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
 
     Returns
     -------
     npt.NDArray[np.float_]
-        The recalibrated RHi values. This is an array of shape (n,).
+        The recalibrated RHi values. This is an array of shape ``(n,)``.
+
+    References
+    ----------
+    :cite:`eckelCalibratedProbabilisticQuantitative1998`
     """
 
     n_members = 10
@@ -653,17 +657,21 @@ def recalibrate_rhi(
 
 @dataclasses.dataclass
 class HistogramMatchingWithEckelParams(ModelParams):
-    """Parameters for :class:`HistogramMatchingWithEckel`."""
+    """Parameters for :class:`HistogramMatchingWithEckel`.
+
+    .. warning::
+        Experimental. This may change or be removed in a future release.
+    """
 
     #: A length-10 list of ERA5 ensemble members.
     #: Each element is a :class:`MetDataArray` holding specific humidity
     #: values for a single ensemble member. If None, a ValueError will be
-    #: raised at model evaluation time. The order of the list must be
+    #: raised at model instantiation time. The order of the list must be
     #: consistent with the order of the ERA5 ensemble members.
     ensemble_specific_humidity: list[MetDataArray] | None = None
 
     #: The specific member used. Must be in the range [0, 10). If None,
-    #: a ValueError will be raised at model evaluation time.
+    #: a ValueError will be raised at model instantiation time.
     member: int | None = None
 
 
@@ -675,9 +683,12 @@ class HistogramMatchingWithEckel(HumidityScaling):
     Unlike other specific humidity scaling methods, this method requires met data
     and performs interpolation at evaluation time.
 
+    .. warning::
+        Experimental. This may change or be removed in a future release.
+
     References
     ----------
-    - :cite:`eckelCorrectionRadiativeTransfer2017`
+    :cite:`eckelCalibratedProbabilisticQuantitative1998`
     """
 
     name = "histogram_matching_with_eckel"
@@ -685,7 +696,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
     formula = "era5_quantiles -> iagos_quantiles -> recalibrated_rhi"
     default_params = HistogramMatchingWithEckelParams
 
-    n_members = 10
+    n_members = 10  # hard-coded elsewhere
 
     def __init__(
         self,
@@ -775,16 +786,28 @@ class HistogramMatchingWithEckel(HumidityScaling):
     ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
         """Scale specific humidity values via histogram matching and Eckel scaling.
 
-        This function assumes the following shapes for the input data:
+        Unlike the method on the base class, the method assumes each of the input
+        arrays are :class:`np.ndarray` and not :class:`xr.DataArray` objects.
 
-        - specific_humidity.ndim == 2
-        - specific_humidity.shape[1] == self.n_members
-        - air_temperature.ndim == 1
-        - air_pressure.ndim == 1
-        - specific_humidity.shape[0] == air_temperature.shape[0] == air_pressure.shape[0]
+        Parameters
+        ----------
+        specific_humidity : npt.NDArray[np.float_]
+            A 2D array of specific humidity values for all ERA5 ensemble members.
+            The shape of this array must be ``(n, 10)``, where ``n`` is the number
+            of observations and ``10`` is the number of ERA5 ensemble members.
+        air_temperature : npt.NDArray[np.float_]
+            A 1D array of air temperature values with shape ``(n,)``.
+        air_pressure : npt.NDArray[np.float_]
+            A 1D array of air pressure values with shape ``(n,)``.
+        kwargs: Any
+            Unused, kept for compatibility with the base class.
 
-        Unlike the abstract method on the base class, this assumes each of the input
-        arrays are numpy arrays and not :class:`xr.DataArray` objects.
+        Returns
+        -------
+        specific_humidity : npt.NDArray[np.float_]
+            The recalibrated specific humidity values. A 1D array with shape ``(n,)``.
+        rhi : npt.NDArray[np.float_]
+            The recalibrated RHi values. A 1D array with shape ``(n,)``.
         """
 
         rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
