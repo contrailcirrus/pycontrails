@@ -168,6 +168,7 @@ exclude = ["docs*", "tests*"]
 [tool.setuptools.package-data]
 "pycontrails" = ["py.typed"]
 "pycontrails.models.emissions" = ["static/*.csv"]
+"pycontrails.models" = ["quantiles/*.npy"]
 
 # https://github.com/pypa/setuptools_scm/
 [tool.setuptools_scm]
