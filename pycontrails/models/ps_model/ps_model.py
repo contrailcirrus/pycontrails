@@ -219,7 +219,14 @@ class PSModel:
 
         # Atmospheric quantities
         air_pressure = units.ft_to_pl(altitude_ft) * 100
-        mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)
+
+        # Clip unrealistically high true airspeed
+        max_mach = atyp_param.max_mach_num + 0.02  # allow small buffer
+        true_airspeed, mach_num = jet.clip_mach_number(
+            true_airspeed, air_temperature, max_mach
+        )
+
+        # Reynolds number
         rn = reynolds_number(atyp_param.wing_surface_area, mach_num, air_temperature, air_pressure)
 
         # Trajectory parameters
