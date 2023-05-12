@@ -57,7 +57,7 @@ class habit_dirichlet(rv_frozen):
         default_distributions = cocip_params._habit_distributions()
         alpha_i = 0.5 + self.C * default_distributions
 
-        # In the first distribution, we assume all ice particles are spheres
+        # In the first distribution, we assume all ice particles are droxtals
         # There is no way to quantify the uncertainty in this assumption
         # Consequently, we leave the first distribution in default_distributions
         # alone, and only perturb the rest
