@@ -581,13 +581,11 @@ class Flight(GeoVectorDataset):
         npt.NDArray[np.float_]
             Groundspeed of the segment, [:math:`m s^{-1}`]
         """
-        # get horizontal distance - set altitude to 0
+        # get horizontal distance (altitude is ignored)
         horizontal_segment_length = geo.segment_haversine(self["longitude"], self["latitude"])
 
         # time between waypoints, in seconds
-        dt_sec = np.empty_like(horizontal_segment_length)
-        dt_sec[:-1] = np.diff(self["time"]) / np.timedelta64(1, "s")
-        dt_sec[-1] = np.nan
+        dt_sec = self.segment_duration(dtype=horizontal_segment_length.dtype)
 
         # calculate groundspeed
         groundspeed = horizontal_segment_length / dt_sec
@@ -602,8 +600,8 @@ class Flight(GeoVectorDataset):
 
     def segment_true_airspeed(
         self,
-        u_wind: npt.NDArray[np.float_] | None = None,
-        v_wind: npt.NDArray[np.float_] | None = None,
+        u_wind: npt.NDArray[np.float_] | float = 0.0,
+        v_wind: npt.NDArray[np.float_] | float = 0.0,
         smooth: bool = True,
         window_length: int = 7,
         polyorder: int = 1,
@@ -614,10 +612,10 @@ class Flight(GeoVectorDataset):
 
         Parameters
         ----------
-        u_wind : npt.NDArray[np.float_], optional
+        u_wind : npt.NDArray[np.float_] | float
             U wind speed, [:math:`m \ s^{-1}`].
             Defaults to 0 for all waypoints.
-        v_wind : npt.NDArray[np.float_], optional
+        v_wind : npt.NDArray[np.float_] | float
             V wind speed, [:math:`m \ s^{-1}`].
             Defaults to 0 for all waypoints.
         smooth : bool, optional
@@ -634,12 +632,6 @@ class Flight(GeoVectorDataset):
             True wind speed of each segment, [:math:`m \ s^{-1}`]
         """
         groundspeed = self.segment_groundspeed(smooth, window_length, polyorder)
-
-        if u_wind is None:
-            u_wind = np.zeros_like(groundspeed)
-
-        if v_wind is None:
-            v_wind = np.zeros_like(groundspeed)
 
         sin_a, cos_a = self.segment_angle()
         gs_x = groundspeed * cos_a
