@@ -490,7 +490,7 @@ class Cocip(Model):
         self.source.setdefault("level", self.source.level)
         self.source.setdefault("air_pressure", self.source.air_pressure)
 
-        core_columns = ["longitude", "latitude", "altitude", "time"]
+        core_columns = ("longitude", "latitude", "altitude", "time")
         for col in core_columns:
             if np.isnan(self.source[col]).any():
                 raise ValueError(
@@ -536,20 +536,18 @@ class Cocip(Model):
         # same variable, so the logic gets a bit more complex.
         humidity_scaling = self.params["humidity_scaling"]
         scale_humidity = humidity_scaling is not None and "specific_humidity" not in self.source
-        variables = {
-            "air_temperature": "air_temperature",
-            "specific_humidity": "specific_humidity",
-            "eastward_wind": "u_wind",
-            "northward_wind": "v_wind",
-        }
-        for met_variable, fl_variable in variables.items():
-            interpolate_met(met, self.source, met_variable, fl_variable, **self.interp_kwargs)
+        verbose_outputs = self.params["verbose_outputs"]
+
+        interpolate_met(met, self.source, "air_temperature", **self.interp_kwargs)
+        interpolate_met(met, self.source, "specific_humidity", **self.interp_kwargs)
+        interpolate_met(met, self.source, "eastward_wind", "u_wind", **self.interp_kwargs)
+        interpolate_met(met, self.source, "northward_wind", "v_wind", **self.interp_kwargs)
 
         if scale_humidity:
             humidity_scaling.eval(self.source, copy_source=False)
 
         # if humidity_scaling isn't defined, add rhi to source for verbose_outputs
-        elif self.params["verbose_outputs"]:
+        elif verbose_outputs:
             self.source["rhi"] = thermo.rhi(
                 self.source["specific_humidity"],
                 self.source["air_temperature"],
@@ -557,7 +555,7 @@ class Cocip(Model):
             )
 
         # Cache extra met properties for post-analysis
-        if self.params["verbose_outputs"]:
+        if verbose_outputs:
             interpolate_met(met, self.source, "tau_cirrus", **self.interp_kwargs)
 
             # handle ECMWF/GFS ciwc variables
@@ -583,7 +581,8 @@ class Cocip(Model):
             )
         if "segment_length" not in self.source:
             self.source["segment_length"] = self.source.segment_length()
-        max_ = np.nanmax(self.source["segment_length"])
+
+        max_ = self.source.max_distance_gap
         lim_ = self.params["max_seg_length_m"]
         if max_ > 0.9 * lim_:
             warnings.warn(
