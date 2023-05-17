@@ -124,7 +124,7 @@ def climb_descent_angle(true_airspeed: np.ndarray, rocd_ms: np.ndarray) -> np.nd
 
 
 def clip_mach_number(
-    true_airspeed: np.ndarray,
+    true_airspeed: np.ndarray | float,
     air_temperature: np.ndarray,
     max_mach_number: float,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -310,11 +310,9 @@ def equivalent_fuel_flow_rate_at_cruise(
 
 
 def minimum_fuel_flow_rate_at_cruise(
-        fuel_flow_idle_sls: float,
-        altitude_ft: npt.NDArray[np.float_]
+    fuel_flow_idle_sls: float, altitude_ft: npt.NDArray[np.float_]
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate minimum fuel mass flow rate at cruise conditions
+    r"""Calculate minimum fuel mass flow rate at cruise conditions
 
     Parameters
     ----------
@@ -328,7 +326,9 @@ def minimum_fuel_flow_rate_at_cruise(
     npt.NDArray[np.float_]
         Minimum fuel mass flow rate at cruise conditions, [:math:`kg \ s^{-1}`]
     """
-    return fuel_flow_idle_sls * (1 - 0.178 * (altitude_ft / 10000) + 0.0085 * ((altitude_ft / 10000)**2))
+    return fuel_flow_idle_sls * (
+        1.0 - 0.178 * (altitude_ft / 10000) + 0.0085 * ((altitude_ft / 10000) ** 2)
+    )
 
 
 def reserve_fuel_requirements(
@@ -465,7 +465,7 @@ def update_aircraft_mass(
     max_payload: float,
     fuel_burn: npt.NDArray[np.float_],
     total_reserve_fuel: float,
-    load_factor: None | float = None,
+    load_factor: float | None = None,
 ) -> npt.NDArray[np.float_]:
     """Update aircraft mass based on the simulated total fuel consumption.
 
