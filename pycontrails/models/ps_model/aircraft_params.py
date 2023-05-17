@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import pathlib
-import pandas as pd
 from typing import Mapping
+
+import pandas as pd
 
 
 class AircraftEngineParams:
@@ -76,12 +77,12 @@ class AircraftEngineParams:
         self.x_ref: float = df_aircraft_engine["Xo"]
         self.j_1: float = df_aircraft_engine["j_1"]
         self.j_2: float = df_aircraft_engine["j_2"]
-        self.j_3: float = 70        # Constant for all aircraft-engine types for now, but may vary in the future
+        self.j_3: float = 70.0        # Constant for all aircraft-engine types for now, but may vary in the future
 
         # Engine parameters
         self.ff_idle_sls: float = df_aircraft_engine["(mf)idle SLS (kg/s)"]
         self.ff_max_sls: float = df_aircraft_engine["(mf)max T/O SLS (kg/s)"]
-        self.f_00: float = df_aircraft_engine["nominal (F00)ISA (kn)"] * 1000
+        self.f_00: float = df_aircraft_engine["nominal (F00)ISA (kn)"] * 1000.0
         self.m_des: float = df_aircraft_engine["(M) des"]
         self.c_t_des: float = df_aircraft_engine["(CT)des"]
         self.eta_1: float = df_aircraft_engine["eta_1"]

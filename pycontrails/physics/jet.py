@@ -277,7 +277,7 @@ def equivalent_fuel_flow_rate_at_sea_level(
 
 
 def equivalent_fuel_flow_rate_at_cruise(
-    fuel_flow_sls: npt.NDArray[np.float_],
+    fuel_flow_sls: npt.NDArray[np.float_] | float,
     theta_amb: npt.NDArray[np.float_],
     delta_amb: npt.NDArray[np.float_],
     mach_num: npt.NDArray[np.float_],
@@ -288,7 +288,7 @@ def equivalent_fuel_flow_rate_at_cruise(
 
     Parameters
     ----------
-    fuel_flow_sls : npt.NDArray[np.float_]
+    fuel_flow_sls : npt.NDArray[np.float_] | float
         Fuel mass flow rate, [:math:`kg s^{-1}`]
     theta_amb : npt.NDArray[np.float_]
         Ratio of the ambient temperature to the temperature at mean sea-level.

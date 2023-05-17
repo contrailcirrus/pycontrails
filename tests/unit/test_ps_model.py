@@ -40,9 +40,9 @@ def test_ps_model():
     aircraft_type_icao = "A320"
     mach_number = np.array([0.753, 0.753])
     air_temperature = np.array([220.79, 216.65])
-    altitude_ft = np.array([34000, 41450])
-    air_pressure = ft_to_pl(altitude_ft) * 100
-    aircraft_mass = np.array([58800, 58800])
+    altitude_ft = np.array([34000.0, 41450.0])
+    air_pressure = ft_to_pl(altitude_ft) * 100.0
+    aircraft_mass = np.array([58800.0, 58800.0])
     climb_angle = np.array([0.0, 0.0])
     dv_dt = np.array([0.0, 0.0])
 
@@ -52,37 +52,37 @@ def test_ps_model():
 
     # Test Reynolds Number
     rn = ps.reynolds_number(atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure)
-    np.testing.assert_array_almost_equal(rn / 1e7, np.array([6.777, 4.863]), decimal=2)
+    np.testing.assert_array_almost_equal(rn / 1e7, [6.777, 4.863], decimal=2)
 
     # Test skin friction coefficient
     c_f = ps.skin_friction_coefficient(rn)
-    np.testing.assert_array_almost_equal(c_f, np.array([2.15e-3, 2.26e-3]), decimal=2)
+    np.testing.assert_array_almost_equal(c_f, [2.15e-3, 2.26e-3], decimal=2)
 
     # Test lift coefficient
     c_lift = ps.lift_coefficient(
         atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, climb_angle
     )
-    np.testing.assert_array_almost_equal(c_lift, np.array([0.475, 0.679]), decimal=2)
+    np.testing.assert_array_almost_equal(c_lift, [0.475, 0.679], decimal=2)
 
     # Test zero-lift drag coefficient
     c_drag_0 = ps.zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
-    np.testing.assert_array_almost_equal(c_drag_0, np.array([0.0181, 0.0189]), decimal=2)
+    np.testing.assert_array_almost_equal(c_drag_0, [0.0181, 0.0189], decimal=2)
 
     # Test Oswald efficiency factor
     e_ls = ps.oswald_efficiency_factor(c_drag_0, atyp_param)
-    np.testing.assert_array_almost_equal(e_ls, np.array([0.7805, 0.7740]), decimal=2)
+    np.testing.assert_array_almost_equal(e_ls, [0.7805, 0.7740], decimal=2)
 
     # Test wave drag coefficient
     c_drag_w = ps.wave_drag_coefficient(mach_number, c_lift, atyp_param)
-    np.testing.assert_array_almost_equal(c_drag_w, np.array([0.00074, 0.00129]), decimal=5)
+    np.testing.assert_array_almost_equal(c_drag_w, [0.00074, 0.00129], decimal=5)
 
     # Test airframe drag coefficient
     c_drag = ps.airframe_drag_coefficient(c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio)
-    np.testing.assert_array_almost_equal(c_drag, np.array([0.0285, 0.0402]), decimal=4)
+    np.testing.assert_array_almost_equal(c_drag, [0.0285, 0.0402], decimal=4)
 
     # Test thrust force
     f_thrust = ps.thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, climb_angle)
-    np.testing.assert_array_almost_equal(f_thrust / 1e4, np.array([3.4638, 3.4156]), decimal=2)
+    np.testing.assert_array_almost_equal(f_thrust / 1e4, [3.4638, 3.4156], decimal=2)
 
     # Test thrust force at climb/descent
     theta_climb = np.array([2.5, 2.5])
@@ -96,11 +96,11 @@ def test_ps_model():
     # Test thrust coefficient
     # This should be the same as the drag coefficient as the aircraft is at level flight with no acceleration
     c_t = ps.engine_thrust_coefficient(f_thrust, mach_number, air_pressure, atyp_param.wing_surface_area)
-    np.testing.assert_array_almost_equal(c_t, np.array([0.0285, 0.0402]), decimal=4)
+    np.testing.assert_array_almost_equal(c_t, [0.0285, 0.0402], decimal=4)
 
     # Test overall propulsion efficiency
     engine_efficiency = ps.overall_propulsion_efficiency(mach_number, c_t, atyp_param)
-    np.testing.assert_array_almost_equal(engine_efficiency, np.array([0.315, 0.316]), decimal=3)
+    np.testing.assert_array_almost_equal(engine_efficiency, [0.315, 0.316], decimal=3)
 
     # Test fuel mass flow rate
     fuel_flow = ps.fuel_mass_flow_rate(
@@ -112,7 +112,7 @@ def test_ps_model():
         fuel_flow, altitude_ft, air_temperature, air_pressure, mach_number,
         atyp_param.ff_idle_sls, atyp_param.ff_max_sls
     )
-    np.testing.assert_array_almost_equal(fuel_flow, np.array([0.574, 0.559]), decimal=3)
+    np.testing.assert_array_almost_equal(fuel_flow, [0.574, 0.559], decimal=3)
 
 
 def test_normalised_aircraft_performance_curves():
@@ -122,10 +122,10 @@ def test_normalised_aircraft_performance_curves():
     U-shape and the global maximum of `eta_over_eta_b` should occur where `c_t_over_c_t_eta_b` is equal to 1.
     """
     aircraft_type_icao = "A320"
-    f_thrust = np.arange(10000, 60000, 500)
+    f_thrust = np.arange(10000.0, 60000.0, 500)
     mach_num = np.ones_like(f_thrust) * 0.750
-    altitude_ft = np.ones_like(f_thrust) * 40000
-    air_pressure = ft_to_pl(altitude_ft) * 100
+    altitude_ft = np.ones_like(f_thrust) * 40000.0
+    air_pressure = ft_to_pl(altitude_ft) * 100.0
 
     # Extract aircraft properties for aircraft type
     ps_model = ps.PSModel()
@@ -168,7 +168,7 @@ def test_total_fuel_burn():
         correct_fuel_flow=False,
         aircraft_mass=None
     )
-    np.testing.assert_array_almost_equal(np.nansum(aircraft_performance.fuel_burn), 3805.97, decimal=1)
+    assert np.nansum(aircraft_performance.fuel_burn) == pytest.approx(3805.97, abs=0.1)
 
 
 def test_fuel_clipping():

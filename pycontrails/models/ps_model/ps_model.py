@@ -32,8 +32,7 @@ from pycontrails.models.aircraft_performance import AircraftPerformanceData
 from pycontrails.models.ps_model.aircraft_params import AircraftEngineParams, get_aircraft_engine_params
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
-
-default_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230427.csv"
+default_path = _path_to_static / "ps-aircraft-params-20230427.csv"
 
 
 # TODO: To link up PSModelParams in review
@@ -43,7 +42,7 @@ class PSModelParams(ModelParams):
     """:class:`PSModel` model parameters."""
 
     #: Default paths
-    aircraft_database_path: str | pathlib.Path = _path_to_static / "ps-aircraft-params-20230425.csv"
+    aircraft_database_path: str | pathlib.Path = default_path
 
     #: Fuel type
     fuel: Fuel = dataclasses.field(default_factory=JetA)
@@ -56,10 +55,7 @@ class PSModel:
 
     aircraft_engine_params: Mapping[str, AircraftEngineParams]
 
-    def __init__(
-            self,
-    ) -> None:
-
+    def __init__(self) -> None:
         # Set class variable with engine parameters if not yet loaded
         if not hasattr(self, "aircraft_engine_params"):
             type(self).aircraft_engine_params = get_aircraft_engine_params(default_path)
@@ -218,7 +214,7 @@ class PSModel:
         atyp_param = self.aircraft_engine_params[aircraft_type_icao]
 
         # Atmospheric quantities
-        air_pressure = units.ft_to_pl(altitude_ft) * 100
+        air_pressure = units.ft_to_pl(altitude_ft) * 100.0
 
         # Clip unrealistically high true airspeed
         max_mach = atyp_param.max_mach_num + 0.02  # allow small buffer
@@ -230,9 +226,9 @@ class PSModel:
         rn = reynolds_number(atyp_param.wing_surface_area, mach_num, air_temperature, air_pressure)
 
         # Trajectory parameters
-        dt_sec = flight._dt_waypoints(time, dtype=altitude_ft.dtype)
+        dt_sec = flight.segment_duration(time, dtype=altitude_ft.dtype)
         rocd = jet.rate_of_climb_descent(dt_sec, altitude_ft)
-        rocd_ms = units.ft_to_m(rocd) / 60
+        rocd_ms = units.ft_to_m(rocd) / 60.0
         dv_dt = jet.acceleration(true_airspeed, dt_sec)
         theta = jet.climb_descent_angle(true_airspeed, rocd_ms)
 
@@ -355,7 +351,7 @@ def lift_coefficient(
         aircraft_mass: npt.NDArray[np.float_],
         air_pressure: npt.NDArray[np.float_],
         mach_num: npt.NDArray[np.float_],
-        climb_angle: npt.NDArray[np.float_] | None = None,
+        climb_angle: npt.NDArray[np.float_] | float = 0.0,
 ) -> npt.NDArray[np.float_]:
     """Calculate the lift coefficient.
 
@@ -385,11 +381,8 @@ def lift_coefficient(
     -----
     The lift force is perpendicular to the flight direction, while the aircraft weight acts vertically.
     """
-    if climb_angle is None:
-        climb_angle = np.zeros_like(aircraft_mass)
-
     lift_force = aircraft_mass * constants.g * np.cos(units.degrees_to_radians(climb_angle))
-    denom = (constants.kappa / 2) * air_pressure * mach_num**2 * wing_surface_area
+    denom = (constants.kappa / 2.0) * air_pressure * mach_num**2 * wing_surface_area
     return lift_force / denom
 
 
@@ -477,9 +470,9 @@ def oswald_efficiency_factor(
         transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
         atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
     """
-    numer = np.where(atyp_param.winglets, 1.075, 1)
+    numer = 1.075 if atyp_param.winglets else 1.0
     k_1 = _non_vortex_lift_dependent_drag_factor(c_drag_0, atyp_param.cos_sweep)
-    return numer / ((1 + 0.03 + atyp_param.delta_2) + (k_1 * np.pi * atyp_param.wing_aspect_ratio))
+    return numer / ((1.0 + 0.03 + atyp_param.delta_2) + (k_1 * np.pi * atyp_param.wing_aspect_ratio))
 
 
 def _non_vortex_lift_dependent_drag_factor(c_drag_0: npt.NDArray[np.float_], cos_sweep: float) -> npt.NDArray[np.float_]:
@@ -540,7 +533,7 @@ def wave_drag_coefficient(
 
     c_d_w = np.where(
         x < atyp_param.j_2,
-        0,
+        0.0,
         atyp_param.cos_sweep ** 3 * atyp_param.j_1 * (x - atyp_param.j_2) ** 2
     )
 
@@ -609,7 +602,7 @@ def _low_speed_lift_dependent_drag_factor(
     npt.NDArray[np.float_]
         Low-speed lift-dependent drag factor, K term used to calculate the total airframe drag coefficient.
     """
-    return 1 / (np.pi * wing_aspect_ratio * e_ls)
+    return 1.0 / (np.pi * wing_aspect_ratio * e_ls)
 
 
 # -------------------
@@ -665,7 +658,7 @@ def thrust_force(
             + (aircraft_mass * constants.g * np.sin(theta))
             + aircraft_mass * dv_dt
     )
-    return np.where(f_thrust < 0, 0, f_thrust)
+    return f_thrust.clip(min=0.0)
 
 
 def engine_thrust_coefficient(
@@ -761,19 +754,19 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     sigma = np.where(
         mach_num < 0.4,
         1.3 * (0.4 - mach_num),
-        0
+        0.0
     )
 
     eta_over_eta_b_low = (
-            10 * (1 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b
-            + 33.3333 * (-1 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 2)
-            + 37.037 * (1 + (sigma - 0.43) - 0.9163 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 3)
+            10.0 * (1.0 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b
+            + 33.3333 * (-1.0 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 2)
+            + 37.037 * (1.0 + (sigma - 0.43) - 0.9163 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 3)
     )
     eta_over_eta_b_hi = (
-            (1 + (sigma - 0.43) - sigma * 0.43)
-            + (4 * sigma * 0.43 - 2 * (sigma - 0.43)) * c_t_over_c_t_eta_b
+            (1.0 + (sigma - 0.43) - sigma * 0.43)
+            + (4.0 * sigma * 0.43 - 2.0 * (sigma - 0.43)) * c_t_over_c_t_eta_b
             + ((sigma - 0.43) - 6 * sigma * 0.43) * (c_t_over_c_t_eta_b ** 2)
-            + 4 * sigma * 0.43 * (c_t_over_c_t_eta_b ** 3)
+            + 4.0 * sigma * 0.43 * (c_t_over_c_t_eta_b ** 3)
             - sigma * 0.43 * (c_t_over_c_t_eta_b ** 4)
     )
     return np.where(
@@ -802,7 +795,7 @@ def max_thrust_coefficient(mach_num: npt.NDArray[np.float_], m_des: float, c_t_d
         Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number, (c_t)_eta_b
     """
     m_over_m_des = mach_num / m_des
-    h_2 = ((1 + 0.55 * mach_num) * (m_over_m_des ** 2)) / (1 + 0.55 * m_des)
+    h_2 = ((1.0 + 0.55 * mach_num) * (m_over_m_des ** 2)) / (1.0 + 0.55 * m_des)
     return h_2 * c_t_des
 
 
@@ -927,7 +920,7 @@ def correct_fuel_flow(
     """
     min_fuel_flow = jet.minimum_fuel_flow_rate_at_cruise(fuel_flow_idle_sls, altitude_ft)
     max_fuel_flow = jet.equivalent_fuel_flow_rate_at_cruise(
-        np.ones_like(fuel_flow) * fuel_flow_max_sls,
+        fuel_flow_max_sls,
         (air_temperature / constants.T_msl),
         (air_pressure / constants.p_surface),
         mach_number
