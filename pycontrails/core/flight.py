@@ -285,7 +285,7 @@ class Flight(GeoVectorDataset):
                 warnings.warn(
                     "Flight contains duplicate times. This will cause errors "
                     "with segment-based methods (e.g. 'segment_true_airspeed'). Set "
-                    "'drop_duplicated=True' or call the 'resample_and_fill' method."
+                    "'drop_duplicated_times=True' or call the 'resample_and_fill' method."
                 )
 
     @overrides
