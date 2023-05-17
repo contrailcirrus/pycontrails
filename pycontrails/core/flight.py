@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import pwlf
 import pyproj
 import scipy.signal
 from overrides import overrides
@@ -901,6 +902,62 @@ class Flight(GeoVectorDataset):
         df = df.reset_index()
         return Flight(data=df, attrs=self.attrs)
 
+    def fit_flight_profile(
+        self,
+        max_segments: int = 30,
+        pop: int = 3,
+        r2_target: float = 0.999,
+        max_cruise_rocd: float = 10,
+        sg_window: int = 7,
+        sg_polyorder: int = 1,
+    ) -> Flight:
+        """Use piecewise linear fitting to smooth a flight profile.
+
+        Fit a flight profile to a series of line segments. Segments that have a
+        small rocd will be set to have a slope of zero and snapped to the
+        nearest thousand foot level.  A Savitzky-Golay filter will then be
+        applied to the profile to smooth the climbs and descents.  This filter
+        works best for high frequency flight data, sampled at a 1-3 second
+        sampling period.
+
+        Parameters
+        ----------
+        max_segments : int, optional
+            The maximum number of line segements to fit to the flight profile.
+        pop: int, optional
+            Population parameter used for the stocastic optimization routine
+            used to fit the flight profile.
+        r2_target: float, optional
+            Target r^2 value for solver. Solver will continue to add line
+            segments until the resulting r^2 value is greater than this.
+        max_cruise_rocd: float, optional
+            The maximum ROCD for a segment that will be forced to a slope of
+            zero, [:math:`ft s^{-1}`]
+        sg_window: int, optional
+            Parameter for :func:`scipy.signal.savgol_filter`
+        sg_polyorder: int, optional
+            Parameter for :func:`scipy.signal.savgol_filter`
+
+        Returns
+        -------
+        Flight
+            Smoothed flight
+        """
+        elapsed_time = [0] + np.nancumsum(self.segment_duration())
+        alt_ft = fit_altitude(
+            elapsed_time,
+            self["altitude_ft"],
+            max_segments,
+            pop,
+            r2_target,
+            max_cruise_rocd,
+            sg_window,
+        )
+
+        flight = self.copy()
+        flight.update(altitude_ft=alt_ft)
+        return flight
+
     def _geodesic_interpolation(self, geodesic_threshold: float) -> pd.DataFrame | None:
         """Geodesic interpolate between large gaps between waypoints.
 
@@ -1627,3 +1684,69 @@ def segment_rocd(
     out[-1] = np.nan
 
     return out
+
+
+def fit_altitude(
+    elapsed_time: npt.NDArray[np.float_],
+    altitude_ft: npt.NDArray[np.float_],
+    max_segments: int = 30,
+    pop: int = 3,
+    r2_target: float = 0.999,
+    max_cruise_rocd: float = 10,
+    sg_window: int = 7,
+    sg_polyorder: int = 1,
+) -> npt.NDArray[np.float_]:
+    """Use piecewise linear fitting to smooth a flight profile.
+
+    Fit a flight profile to a series of line segments. Segments that have a
+    small rocd will be set to have a slope of zero and snapped to the
+    nearest thousand foot level.  A Savitzky-Golay filter will then be
+    applied to the profile to smooth the climbs and descents.  This filter
+    works best for high frequency flight data, sampled at a 1-3 second
+    sampling period.
+
+    Parameters
+    ----------
+    elapsed_time: npt.NDArray[np.float_]
+        Cumulative time of flight between waypoints, [:math:`s`]
+    altitude_ft: npt.NDArray[np.float_]
+        Altitude of each waypoint, [:math:`ft`
+    max_segments: int, optional
+        The maximum number of line segements to fit to the flight profile.
+    pop: int, optional
+        Population parameter used for the stocastic optimization routine
+        used to fit the flight profile.
+    r2_target: float, optional
+        Target r^2 value for solver. Solver will continue to add line
+        segments until the resulting r^2 value is greater than this.
+    max_cruise_rocd: float, optional
+        The maximum ROCD for a segment that will be forced to a slope of
+        zero, [:math:`ft s^{-1}`]
+    sg_window: int, optional
+        Parameter for :func:`scipy.signal.savgol_filter`
+    sg_polyorder: int, optional
+        Parameter for :func:`scipy.signal.savgol_filter`
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Smoothed flight altitudes
+    """
+    for i in range(1, max_segments):
+        m2 = pwlf.PiecewiseLinFit(elapsed_time, altitude_ft)
+        r = m2.fitfast(i, pop)
+        r2 = m2.r_squared()
+        if r2 > r2_target:
+            break
+
+    mask = abs(m2.slopes) < max_cruise_rocd / 60.0
+    bounds = r[:-1][mask], r[1:][mask]
+    lvl = np.round(m2.intercepts[mask] / 1000) * 1000
+    for i in range(len(bounds[0])):
+        altitude_ft[
+            np.bitwise_and(elapsed_time >= float(bounds[0][i]), elapsed_time <= float(bounds[1][i]))
+        ] = lvl[i]
+
+    altitude_ft = scipy.signal.savgol_filter(altitude_ft, sg_window, sg_polyorder)
+
+    return altitude_ft

@@ -17,6 +17,8 @@ from pycontrails.core import flight
 from pycontrails.models.issr import ISSR
 from pycontrails.physics import constants, units
 
+from .conftest import get_static_path
+
 ##########
 # Fixtures
 ##########
@@ -218,6 +220,18 @@ def test_flight_validate(flight_data: pd.DataFrame) -> None:
     df["latitude"] = 101
     with pytest.raises(ValueError, match="EPSG:4326 latitude coordinates"):
         Flight(df)
+
+
+def test_flight_fitting() -> None:
+    ds = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
+    ds.rename(columns={"altitude_baro": "altitude_ft", "timestamp": "time"}, inplace=True)
+    ds["time"] = ds["time"].dt.tz_localize(None)
+    flight = Flight(ds[ds["callsign"] == "BAW506"], drop_duplicated_times=True)
+    smoothed_flight = flight.fit_flight_profile()
+
+    assert abs(smoothed_flight["altitude_ft"][1100] - 37000) < 1e-6
+    assert abs(smoothed_flight["altitude_ft"][1200] - 37000) < 1e-6
+    assert abs(smoothed_flight["altitude_ft"][1300] - 37000) < 1e-6
 
 
 def test_flight_eq(fl: Flight) -> None:
