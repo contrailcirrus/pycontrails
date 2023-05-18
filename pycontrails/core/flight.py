@@ -942,10 +942,13 @@ class Flight(GeoVectorDataset):
         Flight
             Smoothed flight
         """
-        elapsed_time = [0] + np.nancumsum(self.segment_duration())
+        # np.roll pushes the last NaN value from `segment_duration` to the front
+        # so the elapsed time at the first waypoint will be 0
+        seg_dur = self.segment_duration(dtype=np.float64)
+        elapsed_time = np.nancumsum(np.roll(seg_dur, 1))
         alt_ft = fit_altitude(
             elapsed_time,
-            self.altitude_ft,
+            np.copy(self.altitude_ft),
             max_segments,
             pop,
             r2_target,
@@ -1750,6 +1753,7 @@ def fit_altitude(
     lvl = np.round(m2.intercepts[mask], -3)
     time_stack = np.repeat(elapsed_time[:, np.newaxis], lvl.size, axis=1)
     filt = (time_stack >= bounds[0]) & (time_stack <= bounds[1])
+    altitude_ft = np.copy(altitude_ft)
     for i in range(lvl.size):
         altitude_ft[filt[:, i]] = lvl[i]
 
