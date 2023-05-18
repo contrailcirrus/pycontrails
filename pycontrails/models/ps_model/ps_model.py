@@ -29,7 +29,7 @@ from pycontrails.physics import constants, jet, units
 
 @dataclasses.dataclass
 class PSModelParams(AircraftPerformanceParams):
-    """:class:`PSModel` model parameters."""
+    """Default parameters for :class:`PSModel`."""
 
     #: Default paths
     data_path: str | pathlib.Path = (
@@ -54,7 +54,7 @@ class PSModel(AircraftPerformance):
         transport aircraft. Part 3 Generalisation to cover climb, descent and holding. Aero. J., submitted.
     """  # noqa: E501  FIXME
 
-    name = "PS Model"
+    name = "PSModel"
     long_name = "Poll-Schumann Aircraft Performance Model"
     met_variables = (AirTemperature,)
     optional_met_variables = EastwardWind, NorthwardWind
@@ -99,7 +99,7 @@ class PSModel(AircraftPerformance):
             raise KeyError(f"Aircraft type {aircraft_type} not covered by the PS model.")
         return False
 
-    def eval(self, source: Flight | None = None, **params: Any) -> Flight:
+    def eval(self, source: Flight | list[Flight] | None = None, **params: Any) -> Any:
         """Evaluate the aircraft performance model."""
         self.update_params(params)
         self.set_source(source)
@@ -259,8 +259,10 @@ class PSModel(AircraftPerformance):
                 atyp_param.wing_surface_area,
                 q_fuel,
             )
+        elif isinstance(fuel_flow, (int, float)):
+            fuel_flow = np.full_like(true_airspeed, fuel_flow)
 
-        if correct_fuel_flow:
+        if self.params["correct_fuel_flow"]:
             fuel_flow = correct_fuel_flow(
                 fuel_flow,
                 altitude_ft,
@@ -271,6 +273,15 @@ class PSModel(AircraftPerformance):
                 atyp_param.ff_max_sls,
             )
         fuel_burn = jet.fuel_burn(fuel_flow, dt_sec)
+
+        # XXX: Explicitly broadcast scalar inputs as needed to keep a consistent
+        # output spec.
+        if isinstance(aircraft_mass, (int, float)):
+            aircraft_mass = np.full_like(true_airspeed, aircraft_mass)
+        if isinstance(engine_efficiency, (int, float)):
+            engine_efficiency = np.full_like(true_airspeed, engine_efficiency)
+        if isinstance(thrust, (int, float)):
+            thrust = np.full_like(true_airspeed, thrust)
 
         return AircraftPerformanceData(
             fuel_flow=fuel_flow,
@@ -365,7 +376,7 @@ def fluid_dynamic_viscosity(air_temperature: npt.NDArray[np.float_]) -> npt.NDAr
 
 def lift_coefficient(
     wing_surface_area: float,
-    aircraft_mass: npt.NDArray[np.float_],
+    aircraft_mass: npt.NDArray[np.float_] | float,
     air_pressure: npt.NDArray[np.float_],
     mach_num: npt.NDArray[np.float_],
     climb_angle: npt.NDArray[np.float_] | float = 0.0,
@@ -380,7 +391,7 @@ def lift_coefficient(
     ----------
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
-    aircraft_mass : npt.NDArray[np.float_]
+    aircraft_mass : npt.NDArray[np.float_] | float
         Aircraft mass, [:math:`kg`]
     air_pressure: npt.NDArray[np.float_]
         Ambient pressure, [:math:`Pa`]
@@ -796,7 +807,9 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     return np.where(c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
 
 
-def max_thrust_coefficient(mach_num: npt.NDArray[np.float_], m_des: float, c_t_des: float):
+def max_thrust_coefficient(
+    mach_num: npt.NDArray[np.float_], m_des: float, c_t_des: float
+) -> npt.NDArray[np.float_]:
     """
     Calculate thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
 
@@ -913,7 +926,7 @@ def correct_fuel_flow(
     fuel_flow_idle_sls: float,
     fuel_flow_max_sls: float,
 ) -> npt.NDArray[np.float_]:
-    """
+    r"""
     Correct fuel mass flow rate to ensure that they are within operational limits.
 
     Parameters
