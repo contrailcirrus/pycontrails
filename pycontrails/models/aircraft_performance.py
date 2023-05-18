@@ -14,7 +14,7 @@ import numpy.typing as npt
 from pycontrails.core import flight
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
-from pycontrails.core.models import Model, ModelParams
+from pycontrails.core.models import Model, ModelParams, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import jet
 
@@ -279,6 +279,30 @@ class AircraftPerformance(Model):
         AircraftPerformanceData
             Derived performance metrics at each waypoint.
         """
+
+    def ensure_tas_on_source(self) -> None:
+        """Add true airspeed to source data if not already present."""
+
+        if "true_airspeed" in self.source:
+            return
+
+        if not isinstance(self.source, Flight):
+            raise TypeError("Model source must be a Flight to calculate true airspeed.")
+
+        # Two step fallback: try to find u_wind and v_wind.
+        try:
+            u = interpolate_met(self.met, self.source, "eastward_wind", **self.interp_kwargs)
+            v = interpolate_met(self.met, self.source, "northward_wind", **self.interp_kwargs)
+
+        except (ValueError, KeyError):
+            raise ValueError(
+                "Variable `true_airspeed` not found. Include 'eastward_wind' and"
+                " 'northward_wind' variables on `met`in model constructor, or define"
+                " `true_airspeed` data on flight. This can be achieved by calling the"
+                " `Flight.segment_true_airspeed` method."
+            )
+
+        self.source["true_airspeed"] = self.source.segment_true_airspeed(u, v)
 
 
 class AircraftPerformanceGrid(Model):
