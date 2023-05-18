@@ -309,20 +309,20 @@ class AircraftPerformanceData:
 
     Parameters
     ----------
-    fuel_flow : npt.NDArray[DTYPE]
+    fuel_flow : npt.NDArray[np.float_]
         Fuel mass flow rate for each waypoint, [:math:`kg s^{-1}`]
-    aircraft_mass : npt.NDArray[DTYPE]
+    aircraft_mass : npt.NDArray[np.float_]
         Aircraft mass for each waypoint, [:math:`kg`]
-    true_airspeed : npt.NDArray[DTYPE]
+    true_airspeed : npt.NDArray[np.float_]
         True airspeed at each waypoint, [:math: `m s^{-1}`]
-    fuel_burn: npt.NDArray[DTYPE]
+    fuel_burn: npt.NDArray[np.float_]
         Fuel consumption for each waypoint, [:math:`kg`]. Set to an array of
         all nan values if it cannot be computed (ie, working with gridpoints).
-    thrust: npt.NDArray[DTYPE]
+    thrust: npt.NDArray[np.float_]
         Thrust force, [:math:`N`]
-    engine_efficiency: npt.NDArray[DTYPE]
+    engine_efficiency: npt.NDArray[np.float_]
         Overall propulsion efficiency for each waypoint
-    rocd : npt.NDArray[DTYPE]
+    rocd : npt.NDArray[np.float_]
         Rate of climb and descent, [:math:`ft min^{-1}`]
     """
 
