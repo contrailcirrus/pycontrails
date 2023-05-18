@@ -20,8 +20,8 @@ from pycontrails.models.aircraft_performance import (
     AircraftPerformanceData,
     AircraftPerformanceParams,
 )
-from pycontrails.models.ps_model.aircraft_params import (
-    AircraftEngineParams,
+from pycontrails.models.ps_model.ps_aircraft_params import (
+    PSAircraftEngineParams,
     get_aircraft_engine_params,
 )
 from pycontrails.physics import constants, jet, units
@@ -60,7 +60,7 @@ class PSModel(AircraftPerformance):
     optional_met_variables = EastwardWind, NorthwardWind
     default_params = PSModelParams
 
-    aircraft_engine_params: Mapping[str, AircraftEngineParams]
+    aircraft_engine_params: Mapping[str, PSAircraftEngineParams]
 
     def __init__(
         self,
@@ -462,7 +462,7 @@ def zero_lift_drag_coefficient(c_f: npt.NDArray[np.float_], psi_0: float) -> npt
 
 
 def oswald_efficiency_factor(
-    c_drag_0: npt.NDArray[np.float_], atyp_param: AircraftEngineParams
+    c_drag_0: npt.NDArray[np.float_], atyp_param: PSAircraftEngineParams
 ) -> npt.NDArray[np.float_]:
     """
     Calculate Oswald efficiency factor.
@@ -528,7 +528,7 @@ def _non_vortex_lift_dependent_drag_factor(
 def wave_drag_coefficient(
     mach_num: npt.NDArray[np.float_],
     c_lift: npt.NDArray[np.float_],
-    atyp_param: AircraftEngineParams,
+    atyp_param: PSAircraftEngineParams,
 ) -> npt.NDArray[np.float_]:
     """
     Calculate wave drag coefficient
@@ -714,7 +714,9 @@ def engine_thrust_coefficient(
 
 
 def overall_propulsion_efficiency(
-    mach_num: npt.NDArray[np.float_], c_t: npt.NDArray[np.float_], atyp_param: AircraftEngineParams
+    mach_num: npt.NDArray[np.float_],
+    c_t: npt.NDArray[np.float_],
+    atyp_param: PSAircraftEngineParams,
 ) -> npt.NDArray[np.float_]:
     """
     Calculate overall propulsion efficiency
