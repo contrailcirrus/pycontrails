@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 
 from pycontrails.physics import constants, units
@@ -834,7 +835,7 @@ def advect_level(
     return (level * 100.0 + (dt_s * velocity)) / 100.0
 
 
-def _dt_to_float_seconds(dt: np.ndarray | np.timedelta64, dtype: np.dtype) -> np.ndarray:
+def _dt_to_float_seconds(dt: np.ndarray | np.timedelta64, dtype: npt.DTypeLike) -> np.ndarray:
     """Convert a time delta to seconds as a float with specified ``dtype`` precision.
 
     Parameters
