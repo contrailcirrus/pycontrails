@@ -46,7 +46,7 @@ _Source = TypeVar("_Source")
 class ModelParams:
     """Class for constructing model parameters.
 
-    Implementing classes must still use the @dataclass operator.
+    Implementing classes must still use the ``@dataclass`` operator.
     """
 
     #: Copy input ``source`` data on eval
@@ -254,20 +254,22 @@ class Model(ABC):
         KeyError
             Raises KeyError if data does not contain variables :attr:`met_variables`
         """
-        if self.met is not None:
-            if hasattr(self, "met_variables"):
-                # Try to verify met_variables
-                try:
-                    self.met.ensure_vars(self.met_variables)
-                except KeyError as e1:
-                    # If that fails, try to verify processed_met_variables
-                    if hasattr(self, "processed_met_variables"):
-                        try:
-                            self.met.ensure_vars(self.processed_met_variables)
-                        except KeyError as e2:
-                            raise e2 from e1
-                    else:
-                        raise e1
+        if self.met is None:
+            return
+
+        if hasattr(self, "met_variables"):
+            # Try to verify met_variables
+            try:
+                self.met.ensure_vars(self.met_variables)
+            except KeyError as e1:
+                # If that fails, try to verify processed_met_variables
+                if hasattr(self, "processed_met_variables"):
+                    try:
+                        self.met.ensure_vars(self.processed_met_variables)
+                    except KeyError as e2:
+                        raise e2 from e1
+                else:
+                    raise e1
 
     def _load_params(self, params: dict[str, Any] | None = None, **params_kwargs: Any) -> None:
         """Load parameters to model :attr:`params`.
@@ -308,7 +310,7 @@ class Model(ABC):
             Defined by implementing class, but must be a subset of ModelInput.
             If None, :attr:`met` is assumed to be evaluation points.
         **params : Any
-            Overwrite model parameters before eval
+            Overwrite model parameters before evaluation.
 
         Returns
         -------
@@ -723,7 +725,7 @@ def interpolate_met(
     vector_key: str | None = None,
     q_method: str | None = None,
     **interp_kwargs: Any,
-) -> np.ndarray:
+) -> npt.NDArray[np.float_]:
     """Interpolate ``vector`` against ``met`` gridded data.
 
     If ``vector_key`` (=``met_key`` by default) already exists,
@@ -752,7 +754,7 @@ def interpolate_met(
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         Interpolated values.
 
     Raises
