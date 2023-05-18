@@ -14,7 +14,6 @@ from pycontrails.core import flight
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
-from pycontrails.core.models import interpolate_met
 from pycontrails.models.aircraft_performance import (
     AircraftPerformance,
     AircraftPerformanceData,
@@ -103,22 +102,8 @@ class PSModel(AircraftPerformance):
         self.downselect_met()
         self.set_source_met()
 
-        # calculate true airspeed if not included in data
-        if "true_airspeed" not in self.source:
-            # Two step fallback: try to find u_wind and v_wind.
-            try:
-                u = interpolate_met(self.met, self.source, "eastward_wind", **self.interp_kwargs)
-                v = interpolate_met(self.met, self.source, "northward_wind", **self.interp_kwargs)
-
-            except (ValueError, KeyError):
-                raise ValueError(
-                    "Variable `true_airspeed` not found. Include 'eastward_wind' and"
-                    " 'northward_wind' variables on `met`in model constructor, or define"
-                    " `true_airspeed` data on flight. This can be achieved by calling the"
-                    " `Flight.segment_true_airspeed` method."
-                )
-
-            self.source["true_airspeed"] = self.source.segment_true_airspeed(u, v)
+        # Calculate true airspeed if not included on source
+        self.ensure_tas_on_source()
 
         # Ensure aircraft type is available
         try:
@@ -131,7 +116,7 @@ class PSModel(AircraftPerformance):
         except KeyError:
             raise KeyError(f"Aircraft type {aircraft_type} not covered by the PS model.")
 
-        # set flight attributes based on engine, if they aren't already defined
+        # Set flight attributes based on engine, if they aren't already defined
         self.source.attrs.setdefault("aircraft_performance_model", self.name)
         self.source.attrs.setdefault("n_engine", aircraft_params.n_engine)
 
@@ -147,6 +132,7 @@ class PSModel(AircraftPerformance):
         load_factor = self.source.attrs.get("load_factor", None)
         q_fuel = self.source.fuel.q_fuel
 
+        # Run the simulation
         outputs = self.simulate_fuel_and_performance(
             aircraft_type=aircraft_type,
             altitude_ft=self.source.altitude_ft,
@@ -165,7 +151,7 @@ class PSModel(AircraftPerformance):
             load_factor=load_factor,
         )
 
-        # set outputs to flight, don't overwrite
+        # Set array outputs to flight, don't overwrite
         for output_var in (
             "aircraft_mass",
             "engine_efficiency",
