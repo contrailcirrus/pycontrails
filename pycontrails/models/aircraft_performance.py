@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import typing
 import warnings
 from typing import Any, NoReturn, overload
 
@@ -11,7 +12,6 @@ import numpy as np
 import numpy.typing as npt
 
 from pycontrails.core import flight
-from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.models import Model, ModelParams
@@ -23,8 +23,8 @@ from pycontrails.physics import jet
 class AircraftPerformanceParams(ModelParams):
     """Parameters for :class:`AircraftPerformance`."""
 
-    #: Whether to correct fuel flow to ensure it remains within the operational
-    #: limits of the aircraft type.
+    #: Whether to correct fuel flow to ensure it remains within
+    #: the operational limits of the aircraft type.
     correct_fuel_flow: bool = True
 
     #: The number of iterations used to calculate aircraft mass and fuel flow.
@@ -35,7 +35,9 @@ class AircraftPerformance(Model):
     """
     Support for standardizing aircraft performance methodologies.
 
-    Currently just a container until additional models are implemented.
+    This class provides a :meth:`simulate_fuel_and_performance` method for
+    iteratively calculating aircraft mass and fuel flow rate. The implementing
+    class must bring a :meth:`eval` and :meth:`calculate_aircraft_performance`.
     """
 
     @abc.abstractmethod
@@ -45,15 +47,10 @@ class AircraftPerformance(Model):
 
     @abc.abstractmethod
     @overload
-    def eval(self, source: Fleet, **params: Any) -> Fleet:
-        ...
-
-    @abc.abstractmethod
-    @overload
     def eval(self, source: list[Flight], **params: Any) -> list[Flight]:
         ...
 
-    # This is only included for type consistency with parent. This will raise.
+    # The source must be a Flight or list of Flights
     @abc.abstractmethod
     @overload
     def eval(self, source: None = None, **params: Any) -> NoReturn:
@@ -62,12 +59,6 @@ class AircraftPerformance(Model):
     @abc.abstractmethod
     def eval(self, source: Flight | list[Flight] | None = None, **params: Any) -> Any:
         """Evaluate the aircraft performance model."""
-
-    @abc.abstractmethod
-    def check_aircraft_type_availability(
-        self, aircraft_type: str, raise_error: bool = True
-    ) -> bool:
-        """Check if aircraft type designator is available in the model's database."""
 
     def simulate_fuel_and_performance(
         self,
@@ -91,9 +82,9 @@ class AircraftPerformance(Model):
         r"""
         Calculate aircraft mass, fuel mass flow rate, and overall propulsion efficiency.
 
-        This method performs `n_iter` iterations, each of which calls
-        :meth:`calculate_aircraft_performance`. Each successive iteration
-        generates a better estimate for mass fuel flow rate and aircraft
+        This method performs ``self.params["n_iter"]`` iterations, each of
+        which calls :meth:`calculate_aircraft_performance`. Each successive
+        iteration generates a better estimate for mass fuel flow rate and aircraft
         mass at each waypoint.
 
         Parameters
@@ -140,8 +131,8 @@ class AircraftPerformance(Model):
         if aircraft_mass is not None:
             warnings.warn(
                 "Parameter 'aircraft_mass' provided to 'simulate_fuel_and_performance' "
-                f"is not None. Skipping {self.params['n_iter']} iterations and only calculating "
-                "aircraft performance once."
+                f"is not None. Skipping {self.params['n_iter']} iterations and only "
+                "calculating aircraft performance once."
             )
 
             # If fuel_flow is None and a non-constant aircraft_mass is provided
@@ -149,6 +140,15 @@ class AircraftPerformance(Model):
             # time is the fuel flow rate.
             if fuel_flow is None and isinstance(aircraft_mass, np.ndarray):
                 d_aircraft_mass = np.diff(aircraft_mass)
+
+                if np.any(d_aircraft_mass > 0.0):
+                    warnings.warn(
+                        "There are increases in aircraft mass between "
+                        "waypoints. This is not expected."
+                    )
+
+                # Only proceed if aircraft mass is decreasing somewhere
+                # This excludes a constant aircraft mass
                 if np.any(d_aircraft_mass < 0.0):
                     if not np.all(d_aircraft_mass < 0.0):
                         warnings.warn(
@@ -173,6 +173,7 @@ class AircraftPerformance(Model):
             )
 
         # Variable aircraft_mass will change dynamically after each iteration
+        # Set the initial aircraft mass depending on a possible load factor
         if load_factor is None:
             aircraft_mass = amass_ref
         else:
@@ -210,8 +211,9 @@ class AircraftPerformance(Model):
             )
 
         # Update aircraft mass to the latest fuel consumption estimate
-        assert isinstance(aircraft_mass, np.ndarray)
-        aircraft_performance.aircraft_mass = aircraft_mass
+        # As long as the for-loop is entered, the aircraft mass will be
+        # a numpy array.
+        aircraft_performance.aircraft_mass = typing.cast(np.ndarray, aircraft_mass)
 
         return aircraft_performance
 
@@ -241,13 +243,9 @@ class AircraftPerformance(Model):
         depend on this phase.
 
         When ``time`` is None, this method can be used to simulate flight performance
-        over a grid of flight waypoints (ie, grid points). Each grid point is treated
-        independently. If a precise 1-dimensional flight trajectory is known,
-        the method :meth:`calculate_aircraft_performance` should be used instead.
-
-        All gridpoints are assumed to be in a "cruise" phase of the flight. It
-        would be possible to support a "climb" or "descent" phase, but this
-        is not yet implemented.
+        over an arbitrary sequence of flight waypoints by assuming nominal flight
+        characteristics. In this case, each point is treated independently and
+        all points are assumed to be in a "cruise" phase of the flight.
 
         Parameters
         ----------
@@ -258,7 +256,7 @@ class AircraftPerformance(Model):
         air_temperature : npt.NDArray[np.float_]
             Ambient temperature for each waypoint, [:math:`K`]
         time: npt.NDArray[np.datetime64] | None
-            Waypoint time in `np.datetime64` format. If None, only drag force
+            Waypoint time in ``np.datetime64`` format. If None, only drag force
             will is used in thrust calculations (ie, no vertical change and constant
             horizontal change). In addition, aircraft is assumed to be in cruise.
         true_airspeed : npt.NDArray[np.float_] | float | None
