@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pwlf
 import pyproj
 import scipy.signal
 from overrides import overrides
@@ -902,12 +901,12 @@ class Flight(GeoVectorDataset):
         df = df.reset_index()
         return Flight(data=df, attrs=self.attrs)
 
-    def fit_flight_profile(
+    def fit_altitude(
         self,
         max_segments: int = 30,
         pop: int = 3,
         r2_target: float = 0.999,
-        max_cruise_rocd: float = 10,
+        max_cruise_rocd: float = 10.0,
         sg_window: int = 7,
         sg_polyorder: int = 1,
     ) -> Flight:
@@ -946,7 +945,7 @@ class Flight(GeoVectorDataset):
         elapsed_time = [0] + np.nancumsum(self.segment_duration())
         alt_ft = fit_altitude(
             elapsed_time,
-            self["altitude_ft"],
+            self.altitude_ft,
             max_segments,
             pop,
             r2_target,
@@ -1692,7 +1691,7 @@ def fit_altitude(
     max_segments: int = 30,
     pop: int = 3,
     r2_target: float = 0.999,
-    max_cruise_rocd: float = 10,
+    max_cruise_rocd: float = 10.0,
     sg_window: int = 7,
     sg_polyorder: int = 1,
 ) -> npt.NDArray[np.float_]:
@@ -1732,6 +1731,13 @@ def fit_altitude(
     npt.NDArray[np.float_]
         Smoothed flight altitudes
     """
+    try:
+        import pwlf
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            "The 'fit_altitude' function requires the 'pwlf' package."
+            "This can be installed with 'pip install pwlf'."
+        )
     for i in range(1, max_segments):
         m2 = pwlf.PiecewiseLinFit(elapsed_time, altitude_ft)
         r = m2.fitfast(i, pop)
@@ -1741,11 +1747,11 @@ def fit_altitude(
 
     mask = abs(m2.slopes) < max_cruise_rocd / 60.0
     bounds = r[:-1][mask], r[1:][mask]
-    lvl = np.round(m2.intercepts[mask] / 1000) * 1000
-    for i in range(len(bounds[0])):
-        altitude_ft[
-            np.bitwise_and(elapsed_time >= float(bounds[0][i]), elapsed_time <= float(bounds[1][i]))
-        ] = lvl[i]
+    lvl = np.round(m2.intercepts[mask], -3)
+    time_stack = np.repeat(elapsed_time[:, np.newaxis], lvl.size, axis=1)
+    filt = (time_stack >= bounds[0]) & (time_stack <= bounds[1])
+    for i in range(lvl.size):
+        altitude_ft[filt[:, i]] = lvl[i]
 
     altitude_ft = scipy.signal.savgol_filter(altitude_ft, sg_window, sg_polyorder)
 

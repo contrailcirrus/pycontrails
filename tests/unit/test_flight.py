@@ -223,11 +223,11 @@ def test_flight_validate(flight_data: pd.DataFrame) -> None:
 
 
 def test_flight_fitting() -> None:
-    ds = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    ds.rename(columns={"altitude_baro": "altitude_ft", "timestamp": "time"}, inplace=True)
-    ds["time"] = ds["time"].dt.tz_localize(None)
-    flight = Flight(ds[ds["callsign"] == "BAW506"], drop_duplicated_times=True)
-    smoothed_flight = flight.fit_flight_profile()
+    df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
+    df.rename(columns={"altitude_baro": "altitude_ft", "timestamp": "time"}, inplace=True)
+    df["time"] = df["time"].dt.tz_localize(None)
+    flight = Flight(df[df["callsign"] == "BAW506"], drop_duplicated_times=True)
+    smoothed_flight = flight.fit_altitude()
 
     assert abs(smoothed_flight["altitude_ft"][1100] - 37000) < 1e-6
     assert abs(smoothed_flight["altitude_ft"][1200] - 37000) < 1e-6

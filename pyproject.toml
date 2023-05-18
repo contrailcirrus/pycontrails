@@ -35,7 +35,6 @@ dependencies = [
     "numpy>=1.22",
     "overrides>=6.1",
     "pandas>=1.4",
-    "pwlf>=2.2.1",
     "pyproj>=3.5",
     "scipy>=1.10",
     "xarray>=2022.3",
@@ -134,6 +133,11 @@ jupyter = [
 # Polyhedra contruction methods
 open3d = [
     "open3d>=0.14",
+]
+
+# Piecewise linear fitting for flight smoothing
+pwlf = [
+    "pwlf>=2.2.1",
 ]
 
 # Polygon construction methods and plotting support 
