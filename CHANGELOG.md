@@ -6,6 +6,7 @@
 ### Features
 
 - Add new `HistogramMatchingWithEckel` experimental humidity scaling model. This is still a work in progress.
+- Add new `Flight.fit_altitude` method which uses piecewise linear fitting to smooth a flight profile.
 
 ### Breaking changes
 
