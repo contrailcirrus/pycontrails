@@ -99,7 +99,8 @@ def test_ps_model():
     np.testing.assert_array_less(f_thrust_descent, f_thrust_climb)
 
     # Test thrust coefficient
-    # This should be the same as the drag coefficient as the aircraft is at level flight with no acceleration
+    # This should be the same as the drag coefficient as the aircraft
+    # is at level flight with no acceleration
     c_t = ps.engine_thrust_coefficient(
         f_thrust, mach_number, air_pressure, atyp_param.wing_surface_area
     )
@@ -134,9 +135,10 @@ def test_ps_model():
 
 def test_normalised_aircraft_performance_curves():
     """
-    For a given Mach number, there is a pair of overall propulsion efficiency (ETA) and thrust coefficient (c_t) at
-    which the ETA is at its maximum. A plot of `eta_over_eta_b` over `c_t_over_c_t_eta_b` should be an inverse
-    U-shape and the global maximum of `eta_over_eta_b` should occur where `c_t_over_c_t_eta_b` is equal to 1.
+    For a given Mach number, there is a pair of overall propulsion efficiency (ETA) and
+    thrust coefficient (c_t) at which the ETA is at its maximum. A plot of `eta_over_eta_b`
+    over `c_t_over_c_t_eta_b` should be an inverse U-shape and the global maximum of
+    `eta_over_eta_b` should occur where `c_t_over_c_t_eta_b` is equal to 1.
     """
     aircraft_type_icao = "A320"
     f_thrust = np.arange(10000.0, 60000.0, 500)
