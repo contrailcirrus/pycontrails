@@ -93,6 +93,49 @@ class Fleet(Flight):
         final_waypoints[final_waypoint_indices] = True
         return final_waypoints
 
+    def fit_altitude(
+        self,
+        max_segments: int = 30,
+        pop: int = 3,
+        r2_target: float = 0.999,
+        max_cruise_rocd: float = 10,
+        sg_window: int = 7,
+        sg_polyorder: int = 1,
+    ) -> Fleet:
+        """Use piecewise linear fitting to smooth a flight profile.
+
+        Fit a flight profile to a series of line segments. Segments that have a
+        small rocd will be set to have a slope of zero and snapped to the
+        nearest thousand foot level.  A Savitzky-Golay filter will then be
+        applied to the profile to smooth the climbs and descents.  This filter
+        works best for high frequency flight data, sampled at a 1-3 second
+        sampling period.
+
+        Parameters
+        ----------
+        max_segments : int, optional
+            The maximum number of line segements to fit to the flight profile.
+        pop: int, optional
+            Population parameter used for the stocastic optimization routine
+            used to fit the flight profile.
+        r2_target: float, optional
+            Target r^2 value for solver. Solver will continue to add line
+            segments until the resulting r^2 value is greater than this.
+        max_cruise_rocd: float, optional
+            The maximum ROCD for a segment that will be forced to a slope of
+            zero, [:math:`ft s^{-1}`]
+        sg_window: int, optional
+            Parameter for :func:`scipy.signal.savgol_filter`
+        sg_polyorder: int, optional
+            Parameter for :func:`scipy.signal.savgol_filter`
+
+        Returns
+        -------
+        Fleet
+            Smoothed flight
+        """
+        raise NotImplementedError("Only implemented for Flight instances")
+
     @classmethod
     def from_seq(
         cls,
