@@ -227,11 +227,13 @@ def test_flight_fitting() -> None:
     df.rename(columns={"altitude_baro": "altitude_ft", "timestamp": "time"}, inplace=True)
     df["time"] = df["time"].dt.tz_localize(None)
     flight = Flight(df[df["callsign"] == "BAW506"], drop_duplicated_times=True)
+    f_copy = flight.copy()
     smoothed_flight = flight.fit_altitude()
 
     assert abs(smoothed_flight["altitude_ft"][1100] - 37000) < 1e-6
     assert abs(smoothed_flight["altitude_ft"][1200] - 37000) < 1e-6
     assert abs(smoothed_flight["altitude_ft"][1300] - 37000) < 1e-6
+    assert f_copy == flight
 
 
 def test_flight_eq(fl: Flight) -> None:

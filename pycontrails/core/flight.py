@@ -418,7 +418,7 @@ class Flight(GeoVectorDataset):
     # Segment Properties
     # ------------
 
-    def segment_duration(self, dtype: np.dtype = np.dtype(np.float32)) -> npt.NDArray[np.float_]:
+    def segment_duration(self, dtype: npt.DTypeLike = np.float32) -> npt.NDArray[np.float_]:
         r"""Compute time elapsed between waypoints in seconds.
 
         ``np.nan`` appended so the length of the output is the same as number of waypoints.
@@ -1567,7 +1567,7 @@ def filter_altitude(
 
 
 def segment_duration(
-    time: npt.NDArray[np.datetime64], dtype: np.dtype = np.dtype(np.float32)
+    time: npt.NDArray[np.datetime64], dtype: npt.DTypeLike = np.float32
 ) -> npt.NDArray[np.float_]:
     """Calculate the time difference between waypoints.
 
