@@ -42,17 +42,13 @@ class PSModel(AircraftPerformance):
 
     References
     ----------
-    Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general atmosphere.
-        Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
+    :cite:`pollEstimationMethodFuel2021`
+    :cite:`pollEstimationMethodFuel2021a`
 
-    Poll & Schumann (2021a). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft during cruise: Part 2, determining the aircraft's characteristic parameters. Aero. J.,
-        125(1284), 257-295, doi: 10.1017/aer.2020.124.
-
-    Poll & Schumann (2022). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft. Part 3 Generalisation to cover climb, descent and holding. Aero. J., submitted.
-    """  # noqa: E501  FIXME
+    Poll & Schumann (2022). An estimation method for the fuel burn and other performance
+    characteristics of civil transport aircraft. Part 3 Generalisation to cover climb,
+    descent and holding. Aero. J., submitted.
+    """
 
     name = "PSModel"
     long_name = "Poll-Schumann Aircraft Performance Model"
@@ -326,11 +322,8 @@ def reynolds_number(
 
     References
     ----------
-    - Refer to Eq. (3) of Poll & Schumann (2021).
-    - Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
-        atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
-    """  # noqa: E501  FIXME
+    Eq. (3) of :cite:`pollEstimationMethodFuel2021`.
+    """
     mu = fluid_dynamic_viscosity(air_temperature)
     return (
         wing_surface_area**0.5
@@ -356,16 +349,13 @@ def fluid_dynamic_viscosity(air_temperature: npt.NDArray[np.float_]) -> npt.NDAr
 
     Notes
     -----
-    The dynamic viscosity is a measure of the fluid's resistance to flow and is represented by Sutherland's Law.
-    The higher the viscosity, the thicker the fluid.
+    The dynamic viscosity is a measure of the fluid's resistance to flow and is represented
+    by Sutherland's Law. The higher the viscosity, the thicker the fluid.
 
     References
     ----------
-    - Refer to Eq. (25) of Poll & Schumann (2021).
-    - Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
-        atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
-    """  # noqa: E501  FIXME
+    Eq. (25) of :cite:`pollEstimationMethodFuel2021`.
+    """
     return 1.458e-6 * (air_temperature**1.5) / (110.4 + air_temperature)
 
 
@@ -438,11 +428,8 @@ def skin_friction_coefficient(rn: npt.NDArray[np.float_]) -> npt.NDArray[np.floa
 
     References
     ----------
-    - Refer to Eq. (28) of Poll & Schumann (2021).
-    - Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
-        atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
-    """  # noqa: E501  FIXME
+    Eq. (28) of :cite:`pollEstimationMethodFuel2021`.
+    """
     return 0.0269 / (rn**0.14)
 
 
@@ -464,11 +451,8 @@ def zero_lift_drag_coefficient(c_f: npt.NDArray[np.float_], psi_0: float) -> npt
 
     References
     ----------
-    - Refer to Eq. (9) of Poll & Schumann (2021).
-    - Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
-        atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
-    """  # noqa: E501  FIXME
+    Eq. (9) of :cite:`pollEstimationMethodFuel2021`.
+    """
     return c_f * psi_0
 
 
@@ -496,11 +480,8 @@ def oswald_efficiency_factor(
 
     References
     ----------
-    - Refer to Eq. (12) of Poll & Schumann (2021).
-    - Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
-        atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
-    """  # noqa: E501  FIXME
+    Eq. (12) of :cite:`pollEstimationMethodFuel2021`.
+    """
     numer = 1.075 if atyp_param.winglets else 1.0
     k_1 = _non_vortex_lift_dependent_drag_factor(c_drag_0, atyp_param.cos_sweep)
     return numer / (
@@ -528,11 +509,8 @@ def _non_vortex_lift_dependent_drag_factor(
 
     References
     ----------
-    - Refer to Eq. (26) of Poll & Schumann (2021).
-    - Poll, D.I.A. and Schumann, U., 2021. An estimation method for the fuel burn and other performance characteristics
-        of civil transport aircraft during cruise: part 2, determining the aircraft’s characteristic parameters. The
-        Aeronautical Journal, 125(1284), pp.296-340.
-    """  # noqa: E501  FIXME
+    Eq. (26) of :cite:`pollEstimationMethodFuel2021a`.
+    """
     return 0.8 * (1.0 - 0.53 * cos_sweep) * c_drag_0
 
 
@@ -608,11 +586,8 @@ def airframe_drag_coefficient(
 
     References
     ----------
-    - Refer to Eq. (8) of Poll & Schumann (2021).
-    - Poll & Schumann (2021). An estimation method for the fuel burn and other performance characteristics of civil
-        transport aircraft in the cruise. Part 1: fundamental quantities and governing relations for a general
-        atmosphere. Aero. J., 125(1284), 296-340, doi: 10.1017/aer.2020.62.
-    """  # noqa: E501  FIXME
+    Eq. (8) of :cite:`pollEstimationMethodFuel2021`.
+    """
     k = _low_speed_lift_dependent_drag_factor(e_ls, wing_aspect_ratio)
     return c_drag_0 + (k * c_lift**2) + c_drag_w
 
@@ -682,11 +657,8 @@ def thrust_force(
 
     References
     ----------
-    - Refer to Eq. (95) of Poll & Schumann (2021).
-    - Poll, D.I.A. and Schumann, U., 2021. An estimation method for the fuel burn and other performance characteristics
-        of civil transport aircraft during cruise: part 2, determining the aircraft's characteristic parameters. The
-        Aeronautical Journal, 125(1284), pp.296-340.
-    """  # noqa: E501  FIXME
+    Eq. (95) of :cite:`pollEstimationMethodFuel2021a`.
+    """
     theta = units.degrees_to_radians(theta)
     f_thrust = (
         (aircraft_mass * constants.g * np.cos(theta) * (c_d / c_l))
@@ -857,11 +829,8 @@ def max_overall_propulsion_efficiency(
 
     References
     ----------
-    - Refer to Eq. (35) of Poll & Schumann (2021).
-    - Poll, D.I.A. and Schumann, U., 2021. An estimation method for the fuel burn and other performance characteristics
-        of civil transport aircraft during cruise: part 2, determining the aircraft's characteristic parameters. The
-        Aeronautical Journal, 125(1284), pp.296-340.
-    """  # noqa: E501  FIXME
+    Eq. (35) of :cite:`pollEstimationMethodFuel2021a`.
+    """
     h_1 = (
         mach_num / mach_num_des
     ) ** eta_2  # Coefficient h_1 coded explicitly, so it can be varied in the future
