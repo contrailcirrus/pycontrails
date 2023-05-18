@@ -662,7 +662,7 @@ def test_bad_time(random_geo_path: VectorDataset):
     df["time"] = pd.to_datetime(df["time"])
 
     assert df["time"].dt.tz is not None
-    with pytest.raises(ValueError, match="Column `time` must be timezone naive"):
+    with pytest.raises(ValueError, match="The 'time' field must be timezone naive."):
         GeoVectorDataset(df)
 
     df["time"] = df["time"].dt.tz_localize(None)

@@ -287,15 +287,17 @@ class VectorDataset:
             # Take extra caution with a time column
 
             if "time" in data:
-                if not hasattr(data["time"], "dt"):
+                time = data["time"]
+
+                if not hasattr(time, "dt"):
                     # If the time column is a string, we try to convert it to a datetime
                     # If it fails (for example, a unix integer time), we raise an error
                     # and let the user figure it out.
                     try:
-                        data["time"] = pd.to_datetime(data["time"])
+                        time = pd.to_datetime(time)
                     except ValueError:
                         raise ValueError(
-                            "Column `time` must hold datetimelike values. "
+                            "The 'time' field must hold datetime-like values. "
                             'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
                             "with the appropriate unit."
                         )
@@ -305,13 +307,19 @@ class VectorDataset:
                 # we raise an error in this case. Timezone issues are complicated,
                 # and so it is better for the user to handle them rather than try
                 # to address them here.
-                if data["time"].dt.tz is not None:
+                if time.dt.tz is not None:
                     raise ValueError(
-                        "Column `time` must be timezone naive. "
+                        "The 'time' field must be timezone naive. "
                         "This can be achieved with: "
                         'data["time"] = data["time"].dt.tz_localize(None)'
                     )
-            self.data = VectorDataDict({col: ser.to_numpy(copy=copy) for col, ser in data.items()})
+
+                data = {col: ser.to_numpy(copy=copy) for col, ser in data.items() if col != "time"}
+                data["time"] = time.to_numpy(copy=copy)
+            else:
+                data = {col: ser.to_numpy(copy=copy) for col, ser in data.items()}
+
+            self.data = VectorDataDict(data)
 
         elif isinstance(data, VectorDataDict) and not copy:
             self.data = data

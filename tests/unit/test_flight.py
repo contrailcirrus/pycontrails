@@ -171,7 +171,7 @@ def test_flight_properties(fl: Flight) -> None:
 
 def test_flight_hashable(fl: Flight) -> None:
     assert isinstance(fl.hash, str)
-    assert fl.hash == "311ff2ee5c3e8ca3aba1de5fcbee426015943c2c"
+    assert fl.hash == "f78fcb6235a6ba3a0e0dc418034736b2a3618720"
 
 
 def test_flight_empty() -> None:
