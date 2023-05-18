@@ -215,12 +215,12 @@ class Model(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Get model name for use as a data key in xr.DataArray or Flight."""
+        """Get model name for use as a data key in :class:`xr.DataArray` or :class`Flight`."""
 
     @property
     @abstractmethod
     def long_name(self) -> str:
-        """Get long name descriptor, annotated on xr.DataArray outputs."""
+        """Get long name descriptor, annotated on :class:`xr.DataArray` outputs."""
 
     @property
     def hash(self) -> str:
