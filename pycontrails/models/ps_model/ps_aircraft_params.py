@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import pathlib
-from typing import Mapping
+from typing import Any, Mapping
 
 import pandas as pd
 
@@ -107,55 +107,51 @@ class PSAircraftEngineParams:
     fuselage_width: float
 
 
-def _row_to_aircraft_engine_params(row: pd.Series) -> PSAircraftEngineParams:
-    wing_aspect_ratio = row["AR"]
-    wing_surface_area = row["Sref/m2"]
-    amass_mtow = row["MTOM (kg)"]
-    return PSAircraftEngineParams(
-        manufacturer=row["Manufacturer"],
-        aircraft_type=row["Type"],
-        n_engine=row["n_engine"],
-        winglets=row["winglets"] == "yes",
+def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParams]:
+    icao = tup.ICAO
+    wing_aspect_ratio = tup.AR
+    wing_surface_area = tup.Sref_m2
+    amass_mtow = tup.MTOM_kg
+    params = PSAircraftEngineParams(
+        manufacturer=tup.Manufacturer,
+        aircraft_type=tup.Type,
+        n_engine=tup.n_engine,
+        winglets=tup.winglets == "yes",
         wing_surface_area=wing_surface_area,
         wing_aspect_ratio=wing_aspect_ratio,
         wing_span=(wing_aspect_ratio * wing_surface_area) ** 0.5,
-        wing_constant=row["wing constant"],
-        delta_2=row["delta_2"],
-        cos_sweep=row["cos_sweep"],
-        psi_0=row["psi_0"],
-        x_ref=row["Xo"],
-        j_1=row["j_1"],
-        j_2=row["j_2"],
-        # Constant for all aircraft-engine types for now, but may vary in the future
-        j_3=70.0,
-        # Engine parameters
-        ff_idle_sls=row["(mf)idle SLS (kg/s)"],
-        ff_max_sls=row["(mf)max T/O SLS (kg/s)"],
-        f_00=row["nominal (F00)ISA (kn)"] * 1000.0,
-        m_des=row["(M) des"],
-        c_t_des=row["(CT)des"],
-        eta_1=row["eta_1"],
-        eta_2=row["eta_2"],
-        # Operational parameters,
+        wing_constant=tup.wing_constant,
+        delta_2=tup.delta_2,
+        cos_sweep=tup.cos_sweep,
+        psi_0=tup.psi_0,
+        x_ref=tup.Xo,
+        j_1=tup.j_1,
+        j_2=tup.j_2,
+        j_3=70.0,  # use constant value for now, may be updated in the future
+        ff_idle_sls=tup.mf_idle_SLS_kg_s,
+        ff_max_sls=tup.mf_max_T_O_SLS_kg_s,
+        f_00=tup.nominal_F00_ISA_kn * 1000.0,
+        m_des=tup.M_des,
+        c_t_des=tup.CT_des,
+        eta_1=tup.eta_1,
+        eta_2=tup.eta_2,
         amass_mtow=amass_mtow,
-        amass_mlw=row["MLM (kg)"],
-        amass_mzfw=row["MZFM (kg)"],
-        amass_oew=row["(OEM)i (kg)"],
-        amass_mpl=row["(MPM)i (kg)"],
+        amass_mlw=tup.MLM_kg,
+        amass_mzfw=tup.MZFM_kg,
+        amass_oew=tup.OEM_i_kg,
+        amass_mpl=tup.MPM_i_kg,
         # Assume reference mass is equal to 70% of the take-off mass (Ian Poll)
         amass_ref=amass_mtow * 0.7,
-        max_altitude_ft=row["MaxAlt/ft"],
-        max_mach_num=row["MMO"],
-        wingspan=row["span/m"],
-        fuselage_width=row["bf/m"],
+        max_altitude_ft=tup.MaxAlt_ft,
+        max_mach_num=tup.MMO,
+        wingspan=(wing_aspect_ratio * wing_surface_area) ** 0.5,
+        fuselage_width=tup.bf_m,
     )
+    return icao, params
 
 
 @functools.cache
 def get_aircraft_engine_params(ps_file_path: pathlib.Path) -> Mapping[str, PSAircraftEngineParams]:
     """Extract aircraft-engine parameters for each aircraft type supported by the PS model."""
-    df = pd.read_csv(ps_file_path, index_col=0)
-    return {
-        atyp_icao: _row_to_aircraft_engine_params(df_aircraft_engine)
-        for atyp_icao, df_aircraft_engine in df.iterrows()
-    }
+    df = pd.read_csv(ps_file_path)
+    return dict(_row_to_aircraft_engine_params(tup) for tup in df.itertuples(index=False))
