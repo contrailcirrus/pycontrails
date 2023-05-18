@@ -242,7 +242,7 @@ class Flight(GeoVectorDataset):
         self.fuel = fuel or JetA()
 
         # Check flight data for possible errors
-        if np.any(self.altitude > 16000):
+        if np.any(self.altitude > 16000.0):
             flight_id = self.attrs.get("flight_id", "")
             flight_id = flight_id and f" for flight {flight_id}"
             warnings.warn(
@@ -257,34 +257,35 @@ class Flight(GeoVectorDataset):
                 "with segment-based methods (e.g. 'segment_true_airspeed')."
             )
 
-        diff_ = np.diff(self["time"])
+        time_diff = np.diff(self["time"])
 
         # Ensure that time is sorted
-        if self and np.any(diff_ < np.timedelta64(0)):
+        if self and np.any(time_diff < np.timedelta64(0)):
             if not copy:
                 raise ValueError(
-                    "`time` data must be sorted if `copy` is False on creation. "
+                    "The 'time' array must be sorted if 'copy=False' on creation. "
                     "Set copy=False, or sort data before creating Flight."
                 )
-            warnings.warn("Sorting Flight data by `time`.")
+            warnings.warn("Sorting Flight data by time.")
 
             sorted_flight = self.sort("time")
             self.data = sorted_flight.data
-            # Update diff_ ... we use it again below
-            diff_ = np.diff(self["time"])
+
+            # Update time_diff ... we use it again below
+            time_diff = np.diff(self["time"])
 
         # Check for duplicate times. If dropping duplicates,
-        # keep the *first* occurrence of each time. This is achieved with
-        # the np.insert (rather than np.append) function.
-        filt = np.insert(diff_ > np.timedelta64(0), 0, True)
-        if not np.all(filt):
+        # keep the *first* occurrence of each time.
+        duplicated_times = time_diff == np.timedelta64(0)
+        if self and np.any(duplicated_times):
             if drop_duplicated_times:
-                filtered_flight = self.filter(filt, copy=False)
+                mask = np.insert(duplicated_times, 0, False)
+                filtered_flight = self.filter(~mask, copy=False)
                 self.data = filtered_flight.data
             else:
                 warnings.warn(
-                    "Flight contains duplicate times. This will cause errors "
-                    "with segment-based methods (e.g. 'segment_true_airspeed'). Set "
+                    f"Flight contains {duplicated_times.sum()} duplicate times. "
+                    "This will cause errors with segment-based methods. Set "
                     "'drop_duplicated_times=True' or call the 'resample_and_fill' method."
                 )
 

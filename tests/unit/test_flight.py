@@ -97,7 +97,7 @@ def test_flight_creation() -> None:
     )
 
     # warn if copy=True and time not sorted
-    with pytest.warns(UserWarning, match="Sorting Flight data by `time`."):
+    with pytest.warns(UserWarning, match="Sorting Flight data by time."):
         fl = Flight(longitude=longitude, latitude=latitude, altitude=altitude, time=time)
 
     assert fl["latitude"][0] == latitude[1]
@@ -310,7 +310,7 @@ def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[
     data = flight_data.copy()
     data.loc[100] = data.loc[101]
     data.loc[51] = data.loc[52]
-    with pytest.warns(UserWarning, match="Flight contains duplicate times"):
+    with pytest.warns(UserWarning, match="Flight contains 2 duplicate times"):
         fl = Flight(data=data, attrs=flight_attrs)
     fl2 = fl.filter_by_first()
     assert fl.attrs == fl2.attrs
@@ -837,7 +837,7 @@ def test_flight_duplicated_times(flight_fake: Flight) -> None:
     """Ensure that duplicate times are removed."""
     fl = flight_fake.copy()
     fl["time"][3] = fl["time"][2]
-    with pytest.warns(UserWarning, match="Flight contains duplicate times"):
+    with pytest.warns(UserWarning, match="Flight contains 1 duplicate times"):
         Flight(fl.data)
 
     fl = Flight(fl.data, drop_duplicated_times=True)
