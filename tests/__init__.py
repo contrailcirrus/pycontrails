@@ -20,7 +20,7 @@ BADA_AVAILABLE = BADA3_PATH.exists() and BADA4_PATH.exists()
 
 
 try:
-    import open3d
+    import open3d  # noqa: F401
 except ModuleNotFoundError:
     OPEN3D_AVAILABLE = False
 else:

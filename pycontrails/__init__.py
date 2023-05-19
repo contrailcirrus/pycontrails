@@ -26,7 +26,7 @@ import dask
 # Work around for https://github.com/pydata/xarray/issues/7259
 # Only occurs for xarray 2022.11 and above
 try:
-    import netCDF4
+    import netCDF4  # noqa: F401
 except ModuleNotFoundError:
     pass
 
