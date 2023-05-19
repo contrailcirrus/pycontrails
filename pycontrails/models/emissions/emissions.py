@@ -6,6 +6,7 @@ Functions without a subscript "_" can be used independently outside .eval()
 from __future__ import annotations
 
 import dataclasses
+import functools
 import pathlib
 import warnings
 from typing import Any, NoReturn, overload
@@ -35,12 +36,18 @@ class EmissionsParams(ModelParams):
     #: Default paths
     edb_engine_path: str | pathlib.Path = _path_to_static / "edb-gaseous-v28c-engines.csv"
     edb_nvpm_path: str | pathlib.Path = _path_to_static / "edb-nvpm-v28c-engines.csv"
+    engine_uid_path: str | pathlib.Path = _path_to_static / "default-engine-uids.csv"
 
-    #: Default nvpm_ei_n value if calculation fails.
+    #: Default nvpm_ei_n value if engine UID is not found
     default_nvpm_ei_n: float = 1e15
 
-    #: Humidity scaling
+    #: Humidity scaling. If None, no scaling is applied.
     humidity_scaling: HumidityScaling | None = None
+
+    #: If True, if an engine UID is not provided on the ``source.attrs``, use a
+    #: default engine UID based on Teoh's analysis of aircraft engine pairs in
+    #: 2019 - 2021 Spire data.
+    use_default_engine_uid: bool = True
 
 
 class Emissions(Model):
@@ -70,10 +77,7 @@ class Emissions(Model):
     met_variables = AirTemperature, SpecificHumidity
     default_params = EmissionsParams
 
-    # For performance reasons, these dictionaries should remain class variables
-    # They will only be created once (see logic in __init__)
-    edb_engine_gaseous: dict[str, EDBGaseous]
-    edb_engine_nvpm: dict[str, EDBnvpm]
+    source: Flight
 
     def __init__(
         self,
@@ -83,20 +87,9 @@ class Emissions(Model):
     ) -> None:
         super().__init__(met, params, **params_kwargs)
 
-        # Set class variable with engine parameters if not yet loaded
-        if not hasattr(self, "edb_engine_gaseous"):
-            type(self).edb_engine_gaseous = get_engine_params_from_edb(
-                self.params["edb_engine_path"]
-            )
-
-        # Set class variable with nvPM emissions profile if not yet loaded
-        if not hasattr(self, "edb_engine_nvpm"):
-            type(self).edb_engine_nvpm = get_engine_nvpm_profile_from_edb(
-                self.params["edb_nvpm_path"]
-            )
-
-    #: Last Flight evaluated in model
-    source: Flight
+        self.edb_engine_gaseous = get_engine_params_from_edb(self.params["edb_engine_path"])
+        self.edb_engine_nvpm = get_engine_nvpm_profile_from_edb(self.params["edb_nvpm_path"])
+        self.default_engines = get_default_aircraft_engine_mapping(self.params["engine_uid_path"])
 
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight:
@@ -166,6 +159,20 @@ class Emissions(Model):
         self.source.ensure_vars(("true_airspeed", "fuel_flow"))
 
         engine_uid = self.source.attrs.get("engine_uid")
+        if (
+            engine_uid is None
+            and self.params["use_default_engine_uid"]
+            and (aircraft_type := self.source.attrs.get("aircraft_type"))
+        ):
+            try:
+                engine_uid = self.default_engines.at[aircraft_type, "engine_uid"]
+                n_engine = self.default_engines.at[aircraft_type, "n_engine"]
+            except KeyError:
+                pass
+            else:
+                self.source.attrs.setdefault("engine_uid", engine_uid)
+                self.source.attrs.setdefault("n_engine", n_engine)
+
         if engine_uid is None:
             warnings.warn(
                 "No 'engine_uid' found on source attrs. A constant emissions will be used."
@@ -175,14 +182,15 @@ class Emissions(Model):
             fuel_flow_per_engine = self.source.get_data_or_attr("fuel_flow_per_engine")
         except KeyError:
             # Try to keep vector and attrs data consistent here
+            n_engine = self.source.attrs["n_engine"]
             try:
                 ff = self.source["fuel_flow"]
             except KeyError:
                 ff = self.source.attrs["fuel_flow"]
-                fuel_flow_per_engine = ff / self.source.attrs["n_engine"]
+                fuel_flow_per_engine = ff / n_engine
                 self.source.attrs["fuel_flow_per_engine"] = fuel_flow_per_engine
             else:
-                fuel_flow_per_engine = ff / self.source.attrs["n_engine"]
+                fuel_flow_per_engine = ff / n_engine
                 self.source["fuel_flow_per_engine"] = fuel_flow_per_engine
 
         # Attach thrust setting
@@ -1147,12 +1155,13 @@ class EDBnvpm:
         return nvpm_ei_m_interp, nvpm_ei_n_interp
 
 
-def get_engine_params_from_edb(file_path_edb_processed: str) -> dict[str, EDBGaseous]:
+@functools.cache
+def get_engine_params_from_edb(filepath: str | pathlib.Path) -> dict[str, EDBGaseous]:
     """Read EDB file into a dictionary of the form ``{engine_uid: gaseous_data}``.
 
     Parameters
     ----------
-    file_path_edb_processed : str
+    filepath : str | pathlib.Path
         Path to EDB csv.
 
     Returns
@@ -1160,40 +1169,44 @@ def get_engine_params_from_edb(file_path_edb_processed: str) -> dict[str, EDBGas
     dict[str, EDBGaseous]
         Mapping from aircraft type to gaseous emissions data for engine.
     """
-    df = load_edb_dataset(file_path_edb_processed)
+    df = pd.read_csv(filepath, index_col=0)
     return {engine_uid: EDBGaseous(df_engine) for engine_uid, df_engine in df.iterrows()}
 
 
-def get_engine_nvpm_profile_from_edb(file_edb_nvpm_path: str) -> dict[str, EDBnvpm]:
+@functools.cache
+def get_engine_nvpm_profile_from_edb(filepath: str | pathlib.Path) -> dict[str, EDBnvpm]:
     """Read EDB file into a dictionary of the form ``{engine_uid: npvm_data}``.
 
     Parameters
     ----------
-    file_edb_nvpm_path : str
+    filepath : str | pathlib.Path
         Path to EDB csv.
-    fuel : Fuel
-        Fuel instance for engines.
 
     Returns
     -------
     dict[str, EDBnvpm]
         Mapping from aircraft type to nvPM data for engine.
     """
-    df = load_edb_dataset(file_edb_nvpm_path)
+    df = pd.read_csv(filepath, index_col=0)
     return {engine_uid: EDBnvpm(df_engine) for engine_uid, df_engine in df.iterrows()}
 
 
-def load_edb_dataset(file_name: str) -> pd.DataFrame:
-    """Read EDB file to DataFrame.
+@functools.cache
+def get_default_aircraft_engine_mapping(filepath: str | pathlib.Path) -> pd.DataFrame:
+    """Read default aircraft type -> engine UID assignments.
 
     Parameters
     ----------
-    file_name : str
-        Path to EDB csv.
+    filepath : str | pathlib.Path
+        Path to default mapping.
 
     Returns
     -------
     pd.DataFrame
-        EDB data with index column "UID No".
+        A :class:`pd.DataFrame` whose index is available aircraft types with columns:
+
+        - engine_uid
+        - engine_name
+        - n-engines
     """
-    return pd.read_csv(file_name, index_col=0)
+    return pd.read_csv(filepath, index_col=0)
