@@ -40,6 +40,12 @@ Launch ``jupyter lab`` to run these notebooks interactively:
 
    examples/ECMWF
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Core utilities
+
+   examples/airports
+   examples/flightplan
 
 Data
 ----
