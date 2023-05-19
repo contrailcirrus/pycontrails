@@ -548,11 +548,11 @@ class Model(ABC):
         variables: Sequence[MetVariable | tuple[MetVariable, ...]]
         if variable is None:
             if optional:
-                variables = [*self.met_variables, *self.optional_met_variables]
+                variables = (*self.met_variables, *self.optional_met_variables)
             else:
-                variables = list(self.met_variables)
+                variables = self.met_variables
         elif isinstance(variable, MetVariable):
-            variables = [variable]
+            variables = (variable,)
         else:
             variables = variable
 
