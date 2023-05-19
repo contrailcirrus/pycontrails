@@ -513,7 +513,7 @@ class GCPCacheStore(CacheStore):
             )
 
         # append a "/" for GCP objects
-        if cache_dir != "" and not cache_dir.endswith("/"):
+        if cache_dir and not cache_dir.endswith("/"):
             cache_dir = f"{cache_dir}/"
 
         # set up gcp client

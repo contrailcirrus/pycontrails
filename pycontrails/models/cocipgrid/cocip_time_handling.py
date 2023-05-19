@@ -215,13 +215,12 @@ class CocipTimeHandlingMixin:
             if isinstance(self.source, MetDataset):
                 n_new_vectors = len(times_in_filt) * n_splits
                 n_steps_new_vectors = int(n_steps_by_time.sum() + 1) * n_splits
+            elif times_in_filt.size:
+                n_new_vectors = max(int(times_in_filt.size / split_size), 1)
+                n_steps_new_vectors = int(n_steps_by_time.max() + 1) * n_new_vectors
             else:
-                if times_in_filt.size:
-                    n_new_vectors = max(int(times_in_filt.size / split_size), 1)
-                    n_steps_new_vectors = int(n_steps_by_time.max() + 1) * n_new_vectors
-                else:
-                    n_new_vectors = 0
-                    n_steps_new_vectors = 0
+                n_new_vectors = 0
+                n_steps_new_vectors = 0
 
             prev_stats = estimate.get(t_prev)
             if prev_stats is None:
