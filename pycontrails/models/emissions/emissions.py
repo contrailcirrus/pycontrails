@@ -16,7 +16,7 @@ import pandas as pd
 
 from pycontrails.core import flight
 from pycontrails.core.flight import Flight
-from pycontrails.core.fuel import Fuel, JetA, SAFBlend
+from pycontrails.core.fuel import SAFBlend
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, SpecificHumidity
@@ -38,11 +38,6 @@ class EmissionsParams(ModelParams):
 
     #: Default nvpm_ei_n value if calculation fails.
     default_nvpm_ei_n: float = 1e15
-
-    #: Fuel type
-    #: This parameter must be set on init even for :class:`FlightModels`
-    #: because it is used in assembling the nvPM profiles.
-    fuel: Fuel = dataclasses.field(default_factory=JetA)
 
     #: Humidity scaling
     humidity_scaling: HumidityScaling | None = None
@@ -163,18 +158,6 @@ class Emissions(Model):
         # Only enhance humidity if it wasn't already present on source
         if scale_humidity:
             self.params["humidity_scaling"].eval(self.source, copy_source=False)
-
-        # Confirm that fuel types match as sanity check
-        # FIXME: Should we use self.get_source_param here? This is consistent with how
-        # other models deal with possible parameter ambiguity.
-        if self.source.fuel != self.params["fuel"]:
-            raise AttributeError(
-                f"Fuel attribute on Flight ({self.source.fuel.fuel_name}) "
-                "is not the same as Emissions model parameter "
-                f"({self.params['fuel'].fuel_name}). The 'fuel' model parameter "
-                "must be set on init to assemble the nvPM emissions profiles "
-                "for each engine type."
-            )
 
         # Ensure that flight has the required variables defined as attrs or columns
         # We could support calculating true_airspeed in the same way as done by BADAFlight
