@@ -4,42 +4,43 @@ import re
 from typing import Any
 
 
-def flightplan_dict_to_str(flightplan: dict[str, Any]) -> str:
-    r"""Convert a dictionary of an ATC flight plan to a string.
-
-    The string will conform to the ICAO Doc 4444 standard.
-
+def to_atc_plan(plan: dict[str, str]) -> str:
+    """Write dictionary from :func:`parse_atc_plan` as ATC flight plan string.
 
     Parameters
     ----------
-    flightplan: dict[str,Any]
-        A dictionary consisting of parsed components of the ATC flight plan.
+    plan: dict[str, str]
+        Dictionary representation of ATC flight plan returned from :func:`parse_atc_plan`.
 
     Returns
     -------
-    flightplan_str : str
-        An ATC flight plan string conforming to ICAO Doc 4444-ATM/501
+    str
+        ATC flight plan string conforming to ICAO Doc 4444-ATM/501
+
+    See Also
+    --------
+    :func:`parse_atc_plan`
     """
-    ret = f'(FPL-{flightplan["callsign"]}-{flightplan["flight_rules"]}'
-    ret += f'{flightplan["type_of_flight"]}\n'
+    ret = f'(FPL-{plan["callsign"]}-{plan["flight_rules"]}'
+    ret += f'{plan["type_of_flight"]}\n'
     ret += "-"
-    if "number" in flightplan and flightplan["number"] <= 10:
-        ret += flightplan["number"]
-    ret += f'{flightplan["type_of_aircraft"]}/{flightplan["wake_cat"]}-'
-    ret += f'{flightplan["equipment"]}/{flightplan["transponder"]}\n'
-    ret += f'-{flightplan["dep_icao"]}{flightplan["time"]}\n'
-    ret += f'-{flightplan["speed_type"]}{flightplan["speed"]}{flightplan["level_type"]}'
-    ret += f'{flightplan["level"]} {flightplan["route"]}\n'
-    if "dest_icao" in flightplan and "ttl_eeet" in flightplan:
-        ret += f'-{flightplan["dest_icao"]}{flightplan["ttl_eeet"]}'
-    if "altn_icao" in flightplan:
-        ret += f' {flightplan["altn_icao"]}'
-    if "second_altn_icao" in flightplan:
-        ret += f' {flightplan["second_altn_icao"]}'
+    if "number_aircraft" in plan and plan["number_aircraft"] <= 10:
+        ret += plan["number_aircraft"]
+    ret += f'{plan["type_of_aircraft"]}/{plan["wake_category"]}-'
+    ret += f'{plan["equipment"]}/{plan["transponder"]}\n'
+    ret += f'-{plan["departure_icao"]}{plan["time"]}\n'
+    ret += f'-{plan["speed_type"]}{plan["speed"]}{plan["level_type"]}'
+    ret += f'{plan["level"]} {plan["route"]}\n'
+    if "destination_icao" in plan and "duration" in plan:
+        ret += f'-{plan["destination_icao"]}{plan["duration"]}'
+    if "alt_icao" in plan:
+        ret += f' {plan["alt_icao"]}'
+    if "second_alt_icao" in plan:
+        ret += f' {plan["second_alt_icao"]}'
     ret += "\n"
-    ret += f'-{flightplan["other_info"]})\n'
-    if "supl_info" in flightplan:
-        ret += " ".join([f"{i[0]}/{i[1]}" for i in flightplan["supl_info"].items()])
+    ret += f'-{plan["other_info"]})\n'
+    if "supplementary_info" in plan:
+        ret += " ".join([f"{i[0]}/{i[1]}" for i in plan["supplementary_info"].items()])
 
     if ret[-1] == "\n":
         ret = ret[:-1]
@@ -47,34 +48,65 @@ def flightplan_dict_to_str(flightplan: dict[str, Any]) -> str:
     return ret
 
 
-def flightplan_str_to_dict(flightplan_str: str) -> dict[str, Any]:
-    r"""Parse an ATC flight plan string into a dictionary.
+def parse_atc_plan(atc_plan: str) -> dict[str, str]:
+    """Parse an ATC flight plan string into a dictionary.
 
     The route string is not converted to lat/lon in this process.
 
     Parameters
     ----------
-    flightplan_str : str
-        An ATC flight plan string conforming to ICAO Doc 4444-ATM/501
+    atc_plan : str
+        An ATC flight plan string conforming to ICAO Doc 4444-ATM/501 (Appendix 2)
 
     Returns
     -------
-    dict[str,Any]
+    dict[str, str]
         A dictionary consisting of parsed components of the ATC flight plan.
-    """
-    flightplan_str = flightplan_str.replace("\r", "")
-    flightplan_str = flightplan_str.replace("\n", "")
-    flightplan_str = flightplan_str.upper()
-    flightplan_str = flightplan_str.strip()
+        A full ATC plan will contain the keys:
 
-    if len(flightplan_str) == 0:
+        - ``callsign``: ICAO flight callsign
+        - ``flight_rules``: Flight rules ("I", "V", "Y", "Z")
+        - ``type_of_flight``: Type of flight ("S", "N", "G", "M", "X")
+        - ``number_aircraft``: The number of aircraft, if more than one
+        - ``type_of_aircraft``: ICAO aircraft type
+        - ``wake_category``: Wake turbulence category
+        - ``equipment``: Radiocommunication, navigation and approach aid equipment and capabilities
+        - ``transponder``: Surveillance equipment and capabilities
+        - ``departure_icao``: ICAO departure airport
+        - ``time``: Estimated off-block (departure) time (UTC)
+        - ``speed_type``: Speed units ("K": km / hr, "N": knots)
+        - ``speed``: Cruise true airspeed in ``speed_type`` units
+        - ``level_type``: Level units ("F", "S", "A", "M")
+        - ``level``: Cruise level
+        - ``route``: Route string
+        - ``destination_icao``: ICAO destination airport
+        - ``duration``: The total estimated elapsed time for the flight plan
+        - ``alt_icao``: ICAO alternate destination airport
+        - ``second_alt_icao``: ICAO second alternate destination airport
+        - ``other_info``: Other information
+        - ``supplementary_info``: Supplementary information
+
+    References
+    ----------
+    - https://applications.icao.int/tools/ATMiKIT/story_content/external_files/story_content/external_files/DOC%204444_PANS%20ATM_en.pdf
+
+    See Also
+    --------
+    :func:`to_atc_plan`
+    """  # noqa: E501
+    atc_plan = atc_plan.replace("\r", "")
+    atc_plan = atc_plan.replace("\n", "")
+    atc_plan = atc_plan.upper()
+    atc_plan = atc_plan.strip()
+
+    if len(atc_plan) == 0:
         raise ValueError("Empty or invalid flight plan")
 
-    flightplan_str = flightplan_str.replace("(FPL", "")
-    flightplan_str = flightplan_str.replace(")", "")
-    flightplan_str = flightplan_str.replace("--", "-")
+    atc_plan = atc_plan.replace("(FPL", "")
+    atc_plan = atc_plan.replace(")", "")
+    atc_plan = atc_plan.replace("--", "-")
 
-    basic = flightplan_str.split("-")
+    basic = atc_plan.split("-")
 
     flightplan: dict[str, Any] = {}
 
@@ -97,13 +129,13 @@ def flightplan_str_to_dict(flightplan_str: str) -> dict[str, Any]:
             groups = ()
 
         if matches and len(groups) > 2:
-            flightplan["number"] = groups[1]
+            flightplan["number_aircraft"] = groups[1]
             flightplan["type_of_aircraft"] = groups[2]
         else:
             flightplan["type_of_aircraft"] = aircraft[0]
 
         if len(aircraft) > 1:
-            flightplan["wake_cat"] = aircraft[1]
+            flightplan["wake_category"] = aircraft[1]
 
     # Equipment
     if len(basic) > 4:
@@ -121,7 +153,7 @@ def flightplan_str_to_dict(flightplan_str: str) -> dict[str, Any]:
             groups = ()
 
         if len(groups) > 0:
-            flightplan["dep_icao"] = groups[0]
+            flightplan["departure_icao"] = groups[0]
         if len(groups) > 1:
             flightplan["time"] = groups[1]
 
@@ -156,9 +188,9 @@ def flightplan_str_to_dict(flightplan_str: str) -> dict[str, Any]:
             groups = ()
 
         if len(groups) > 0:
-            flightplan["dest_icao"] = groups[0]
+            flightplan["destination_icao"] = groups[0]
         if len(groups) > 1:
-            flightplan["ttl_eeet"] = groups[1]
+            flightplan["duration"] = groups[1]
 
         matches = re.match("(\D{4})(\d{4})(\s{1})(\D{4})", basic[7])
         if matches:
@@ -167,7 +199,7 @@ def flightplan_str_to_dict(flightplan_str: str) -> dict[str, Any]:
             groups = ()
 
         if len(groups) > 3:
-            flightplan["altn_icao"] = groups[3]
+            flightplan["alt_icao"] = groups[3]
 
         matches = re.match("(\D{4})(\d{4})(\s{1})(\D{4})(\s{1})(\D{4})", basic[7])
         if matches:
@@ -176,7 +208,7 @@ def flightplan_str_to_dict(flightplan_str: str) -> dict[str, Any]:
             groups = ()
 
         if len(groups) > 5:
-            flightplan["second_altn_icao"] = groups[5]
+            flightplan["second_alt_icao"] = groups[5]
 
     # Other info
     if len(basic) > 8:
@@ -201,5 +233,6 @@ def flightplan_str_to_dict(flightplan_str: str) -> dict[str, Any]:
             last_idx = basic[9].find(last_key)
             suplInfo[last_key[0]] = basic[9][last_idx + 2 :]
 
-            flightplan["supl_info"] = suplInfo
+            flightplan["supplementary_info"] = suplInfo
+
     return flightplan
