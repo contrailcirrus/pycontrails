@@ -65,7 +65,6 @@ class PSAircraftEngineParams:
     - ``amass_mpl``          Aircraft maximum payload, [:math:`kg`]
     - ``max_altitude_ft``    Maximum altitude, [:math:`ft`]
     - ``max_mach_num``       Maximum operational Mach number
-    - ``wingspan``           Aircraft wingspan, [:math:`m`]
     - ``fuselage_width``     Aircraft fuselage width, [:math:`m`]
     """
 
@@ -103,7 +102,6 @@ class PSAircraftEngineParams:
     amass_ref: float
     max_altitude_ft: float
     max_mach_num: float
-    wingspan: float
     fuselage_width: float
 
 
@@ -144,7 +142,6 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
         amass_ref=amass_mtow * 0.7,
         max_altitude_ft=tup.MaxAlt_ft,
         max_mach_num=tup.MMO,
-        wingspan=(wing_aspect_ratio * wing_surface_area) ** 0.5,
         fuselage_width=tup.bf_m,
     )
     return icao, params
