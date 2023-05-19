@@ -288,7 +288,7 @@ def reynolds_number(
     air_pressure: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
     """
-    Calculate Reynolds number
+    Calculate Reynolds number.
 
     Parameters
     ----------
@@ -392,8 +392,7 @@ def lift_coefficient(
 
 
 def skin_friction_coefficient(rn: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
-    """
-    Calculate aircraft skin friction coefficient.
+    """Calculate aircraft skin friction coefficient.
 
     Parameters
     ----------
@@ -420,8 +419,7 @@ def skin_friction_coefficient(rn: npt.NDArray[np.float_]) -> npt.NDArray[np.floa
 
 
 def zero_lift_drag_coefficient(c_f: npt.NDArray[np.float_], psi_0: float) -> npt.NDArray[np.float_]:
-    """
-    Calculate zero-lift drag coefficient.
+    """Calculate zero-lift drag coefficient.
 
     Parameters
     ----------
@@ -445,8 +443,7 @@ def zero_lift_drag_coefficient(c_f: npt.NDArray[np.float_], psi_0: float) -> npt
 def oswald_efficiency_factor(
     c_drag_0: npt.NDArray[np.float_], atyp_param: PSAircraftEngineParams
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate Oswald efficiency factor.
+    """Calculate Oswald efficiency factor.
 
     The Oswald efficiency factor captures all the lift-dependent drag effects, including
     the vortex drag on the wing (primary source), tailplane and fuselage, and is a function
@@ -478,8 +475,7 @@ def oswald_efficiency_factor(
 def _non_vortex_lift_dependent_drag_factor(
     c_drag_0: npt.NDArray[np.float_], cos_sweep: float
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate non-vortex lift-dependent drag factor
+    """Calculate non-vortex lift-dependent drag factor.
 
     Parameters
     ----------
@@ -505,8 +501,7 @@ def wave_drag_coefficient(
     c_lift: npt.NDArray[np.float_],
     atyp_param: PSAircraftEngineParams,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate wave drag coefficient
+    """Calculate wave drag coefficient.
 
     Parameters
     ----------
@@ -549,8 +544,7 @@ def airframe_drag_coefficient(
     e_ls: npt.NDArray[np.float_],
     wing_aspect_ratio: float,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate total airframe drag coefficient
+    """Calculate total airframe drag coefficient.
 
     Parameters
     ----------
@@ -581,8 +575,7 @@ def airframe_drag_coefficient(
 def _low_speed_lift_dependent_drag_factor(
     e_ls: npt.NDArray[np.float_], wing_aspect_ratio: float
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate low-speed lift-dependent drag factor.
+    """Calculate low-speed lift-dependent drag factor.
 
     Parameters
     ----------
@@ -612,8 +605,7 @@ def thrust_force(
     dv_dt: npt.NDArray[np.float_],
     theta: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
-    r"""
-    Calculate thrust force summed over all engines.
+    r"""Calculate thrust force summed over all engines.
 
     Parameters
     ----------
@@ -635,11 +627,11 @@ def thrust_force(
 
     Notes
     -----
-    - The lift-to-drag ratio is calculated using `c_l` and `c_d`,
-    - The first term (mg * cos(theta) * (D/L)) represents the drag force,
-    - The second term (mg * sin(theta)) represents the aircraft weight acting on
+    - The lift-to-drag ratio is calculated using ``c_l`` and ``c_d``,
+    - The first term ``(mg * cos(theta) * (D/L))`` represents the drag force,
+    - The second term ``(mg * sin(theta))`` represents the aircraft weight acting on
       the flight direction,
-    - The third term (m * a) represents the force required to accelerate/decelerate the aircraft.
+    - The third term ``(m * a)`` represents the force required to accelerate the aircraft.
 
     References
     ----------
@@ -660,8 +652,7 @@ def engine_thrust_coefficient(
     air_pressure: npt.NDArray[np.float_],
     wing_surface_area: float,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate engine thrust coefficient.
+    """Calculate engine thrust coefficient.
 
     Parameters
     ----------
@@ -687,8 +678,7 @@ def overall_propulsion_efficiency(
     c_t: npt.NDArray[np.float_],
     atyp_param: PSAircraftEngineParams,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate overall propulsion efficiency
+    """Calculate overall propulsion efficiency.
 
     Parameters
     ----------
@@ -719,8 +709,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     m_des: float,
     c_t_des: float,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate ratio of OPE to maximum OPE that can be attained for a given Mach number.
+    """Calculate ratio of OPE to maximum OPE that can be attained for a given Mach number.
 
     Parameters
     ----------
@@ -740,8 +729,8 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
 
     Notes
     -----
-    - eta/eta_b is approximated using a fourth-order polynomial
-    - eta_b is the maximum overall propulsion efficiency for a given Mach number
+    - ``eta / eta_b`` is approximated using a fourth-order polynomial
+    - ``eta_b`` is the maximum overall propulsion efficiency for a given Mach number
     """
     c_t_eta_b = max_thrust_coefficient(mach_num, m_des, c_t_des)
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
@@ -837,8 +826,7 @@ def fuel_mass_flow_rate(
     wing_surface_area: float,
     q_fuel: float,
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate fuel mass flow rate.
+    r"""Calculate fuel mass flow rate.
 
     Parameters
     ----------
@@ -881,8 +869,7 @@ def correct_fuel_flow(
     fuel_flow_idle_sls: float,
     fuel_flow_max_sls: float,
 ) -> npt.NDArray[np.float_]:
-    r"""
-    Correct fuel mass flow rate to ensure that they are within operational limits.
+    r"""Correct fuel mass flow rate to ensure that they are within operational limits.
 
     Parameters
     ----------
