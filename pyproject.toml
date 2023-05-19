@@ -50,12 +50,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 [project.optional-dependencies]
 # All non-development dependencies
 complete = [
-    "pycontrails[ecmwf]",
-    "pycontrails[gcp]",
-    "pycontrails[gfs]",
-    "pycontrails[jupyter]",
-    "pycontrails[vis]",
-    "pycontrails[zarr]",
+    "pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,vis,zarr]",
 ]
 
 # Development dependencies
