@@ -1637,7 +1637,7 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
     # Extract engine UID attached in BADAGrid
     engine_uid = vector.attrs["engine_uid"]
     assert engine_uid is not None
-    emissions_model = emissions.Emissions(fuel=params["fuel"])
+    emissions_model = emissions.Emissions()
 
     # If engine UID not present in EDB, early exit
     if (edb_gaseous := emissions_model.edb_engine_gaseous.get(engine_uid)) is None:
