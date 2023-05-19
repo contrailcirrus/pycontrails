@@ -1778,7 +1778,7 @@ class MetDataArray(MetBase):
             warnings.warn(f"The 'iso_value' parameter was not specified. Using value: {iso_value}")
 
         # We'll get a nice error message if dependencies are not installed
-        import pycontrails.core.polygon as polygon
+        from pycontrails.core import polygon
 
         # Convert to nested lists of coordinates for GeoJSON representation
         longitude: npt.NDArray[np.float_] = self.variables["longitude"].values
