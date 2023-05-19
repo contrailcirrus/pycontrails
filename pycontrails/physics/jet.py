@@ -231,7 +231,9 @@ def equivalent_fuel_flow_rate_at_cruise(
     mach_num: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
     r"""Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
+
     Refer to Eq. (40) in :cite:`duboisFuelFlowMethod22006`.
+
     Parameters
     ----------
     fuel_flow_sls : npt.NDArray[np.float_] | float
@@ -242,10 +244,12 @@ def equivalent_fuel_flow_rate_at_cruise(
         Ratio of the pressure altitude to the surface pressure.
     mach_num : npt.NDArray[np.float_]
         Mach number
+
     Returns
     -------
     npt.NDArray[np.float_]
         Estimate of fuel mass flow rate at sea level, [:math:`kg \ s^{-1}`]
+
     References
     ----------
     - :cite:`duboisFuelFlowMethod22006`
@@ -256,13 +260,15 @@ def equivalent_fuel_flow_rate_at_cruise(
 def minimum_fuel_flow_rate_at_cruise(
     fuel_flow_idle_sls: float, altitude_ft: npt.NDArray[np.float_]
 ) -> npt.NDArray[np.float_]:
-    r"""Calculate minimum fuel mass flow rate at cruise conditions
+    r"""Calculate minimum fuel mass flow rate at cruise conditions.
+
     Parameters
     ----------
     fuel_flow_idle_sls : float
         Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
     altitude_ft : npt.NDArray[np.float_]
         Waypoint altitude, [:math: `ft`]
+
     Returns
     -------
     npt.NDArray[np.float_]
