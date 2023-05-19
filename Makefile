@@ -80,9 +80,6 @@ mypy:
 pytest:
 	pytest tests/unit
 
-pydocstyle:
-	pydocstyle pycontrails --verbose
-
 pytest-cov:
 	pytest \
 		-v \
@@ -93,7 +90,7 @@ pytest-cov:
 		--ignore=tests/unit/test_zarr.py \
 		tests/unit
 
-test: ruff mypy black-check nb-black-check pydocstyle pytest doctest nb-test
+test: ruff mypy black-check nb-black-check pytest doctest nb-test
 
 profile:
 	python -m cProfile -o $(script).prof $(script)

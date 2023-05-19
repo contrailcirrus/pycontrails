@@ -125,5 +125,4 @@ jobs:
         black pycontrails --check
         ruff pycontrails tests
         mypy pycontrails
-        pydocstyle pycontrails --verbose
         pytest tests/unit -vv

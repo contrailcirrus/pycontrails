@@ -68,7 +68,6 @@ dev = [
     "pre-commit>=2.10",
     "psutil",
     "pyarrow>=5.0",
-    "pydocstyle>=6.1",
     "pytest>=6.1",
     "pytest-cov>=2.11",
     "pytest-timeout>=2.1",
@@ -230,21 +229,6 @@ filterwarnings = [
 ]
 testpaths = ["tests/unit"]
 
-# docstring linter
-# https://www.pydocstyle.org/en/stable/usage.html#configuration-files
-[tool.pydocstyle]
-ignore = [
-    "D105",
-    "D107",
-    "D202",
-    "D203",
-    "D212",
-    "D213",
-    "D402",
-    "D413",
-]
-ignore_decorators = "overrides"
-
 # license check
 # https://github.com/abduhbm/dep-license
 [tool.deplic]
@@ -267,10 +251,19 @@ ignore-path = [
 
 # Python linter
 # https://beta.ruff.rs/docs/
+# https://beta.ruff.rs/docs/settings/#select
+# https://www.pydocstyle.org/en/6.3.0/error_codes.html
 [tool.ruff]
+select = ["D", "E", "F"]
 line-length = 100
-ignore = ["E402"]
+ignore = ["E402", "D105", "D202"]
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 "docs/conf.py" = ["E501"]
+"tests/*" = ["D"]
+
+# https://beta.ruff.rs/docs/settings/#pydocstyle
+[tool.ruff.pydocstyle]
+convention = "numpy"
+ignore-decorators = ["overrides.overrides"]
