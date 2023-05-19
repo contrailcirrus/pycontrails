@@ -259,7 +259,6 @@ line-length = 100
 ignore = ["E402", "D105", "D202"]
 
 [tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"]
 "docs/conf.py" = ["E501"]
 "tests/*" = ["D"]
 
