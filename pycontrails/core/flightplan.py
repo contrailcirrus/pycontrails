@@ -4,12 +4,12 @@ import re
 from typing import Any
 
 
-def to_atc_plan(plan: dict[str, str]) -> str:
+def to_atc_plan(plan: dict[str, Any]) -> str:
     """Write dictionary from :func:`parse_atc_plan` as ATC flight plan string.
 
     Parameters
     ----------
-    plan: dict[str, str]
+    plan: dict[str, Any]
         Dictionary representation of ATC flight plan returned from :func:`parse_atc_plan`.
 
     Returns
