@@ -7,7 +7,10 @@ References
 ----------
 - :cite:`duboisFuelFlowMethod22006`
 """
+
 from __future__ import annotations
+
+import functools
 
 import numpy as np
 import numpy.typing as npt
@@ -16,6 +19,7 @@ from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.physics import jet, units
 
 
+@functools.cache
 def nitrogen_oxide_emissions_index_profile(
     ff_idle: float,
     ff_approach: float,
@@ -70,6 +74,7 @@ def nitrogen_oxide_emissions_index_profile(
     return EmissionsProfileInterpolator(xp=np.log(fuel_flow), fp=np.log(ei_nox))
 
 
+@functools.cache
 def co_hc_emissions_index_profile(
     ff_idle: float,
     ff_approach: float,
