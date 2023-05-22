@@ -35,6 +35,12 @@ class PSModelParams(AircraftPerformanceParams):
         pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20230517.csv"
     )
 
+    #: Clip engine efficiency values below this value
+    ope_min: float = 0.0
+
+    #: Clip engine efficiency values above this value
+    ope_max: float = 0.5
+
 
 class PSModel(AircraftPerformance):
     """Simulate aircraft performance using Poll-Schumann (PS) model.
@@ -229,7 +235,9 @@ class PSModel(AircraftPerformance):
         )
 
         if engine_efficiency is None:
-            engine_efficiency = overall_propulsion_efficiency(mach_num, c_t, atyp_param)
+            engine_efficiency = overall_propulsion_efficiency(
+                mach_num, c_t, atyp_param, self.params["ope_min"], self.params["ope_max"]
+            )
 
         if fuel_flow is None:
             fuel_flow = fuel_mass_flow_rate(
@@ -677,6 +685,8 @@ def overall_propulsion_efficiency(
     mach_num: npt.NDArray[np.float_],
     c_t: npt.NDArray[np.float_],
     atyp_param: PSAircraftEngineParams,
+    clip_min: float | None = None,
+    clip_max: float | None = None,
 ) -> npt.NDArray[np.float_]:
     """Calculate overall propulsion efficiency.
 
@@ -688,6 +698,10 @@ def overall_propulsion_efficiency(
         Engine thrust coefficient
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
+    clip_min : float
+        Minimum value to clip to. If None, no clipping is performed.
+    clip_max : float
+        Maximum value to clip to. If None, no clipping is performed.
 
     Returns
     -------
@@ -700,7 +714,10 @@ def overall_propulsion_efficiency(
     eta_b = max_overall_propulsion_efficiency(
         mach_num, atyp_param.m_des, atyp_param.eta_1, atyp_param.eta_2
     )
-    return eta_over_eta_b * eta_b
+    out = eta_over_eta_b * eta_b
+    if clip_min is not None or clip_max is not None:
+        out.clip(min=clip_min, max=clip_max, out=out)  # type: ignore[arg-type]
+    return out
 
 
 def propulsion_efficiency_over_max_propulsion_efficiency(
@@ -806,10 +823,12 @@ def max_overall_propulsion_efficiency(
     ----------
     Eq. (35) of :cite:`pollEstimationMethodFuel2021a`.
     """
-    h_1 = (
-        mach_num / mach_num_des
-    ) ** eta_2  # Coefficient h_1 coded explicitly, so it can be varied in the future
-    return h_1 * eta_1 * mach_num_des**eta_2
+    # XXX: h_1 may be varied in the future
+    # The current implementation looks like:
+    # h_1 = (mach_num / mach_num_des) ** eta_2
+    # return h_1 * eta_1 * mach_num_des**eta_2
+
+    return eta_1 * mach_num**eta_2
 
 
 # -------------------
