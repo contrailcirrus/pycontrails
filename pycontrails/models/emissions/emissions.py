@@ -904,6 +904,13 @@ def get_thrust_setting(
     return thrust_setting
 
 
+def _row_to_edb_gaseous(tup: Any) -> tuple[str, EDBGaseous]:
+    return tup.engine_uid, EDBGaseous(
+        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(EDBGaseous)}
+    )
+
+
+@dataclasses.dataclass(frozen=True)
 class EDBGaseous:
     """Gaseous emissions data.
 
@@ -981,47 +988,48 @@ class EDBGaseous:
         maximum smoke number value across the range of thrust setting
     """
 
-    def __init__(self, df_engine: pd.Series) -> None:
-        # Engine identification and type
-        self.manufacturer: str = df_engine["Manufacturer"]
-        self.engine_name: str = df_engine["Engine Identification"]
-        self.combustor: str = df_engine["Combustor Description"]
+    # Engine identification and type
+    manufacturer: str
+    engine_name: str
+    combustor: str
 
-        # Engine characteristics
-        self.bypass_ratio: float = df_engine["B/P Ratio"]
-        self.pressure_ratio: float = df_engine["Pressure Ratio"]
-        self.rated_thrust: float = df_engine["Rated Thrust (kN)"]
+    # Engine characteristics
+    bypass_ratio: float
+    pressure_ratio: float
+    rated_thrust: float
 
-        # Fuel consumption
-        self.ff_7: float = df_engine["Fuel Flow Idle (kg/sec)"]
-        self.ff_30: float = df_engine["Fuel Flow App (kg/sec)"]
-        self.ff_85: float = df_engine["Fuel Flow C/O (kg/sec)"]
-        self.ff_100: float = df_engine["Fuel Flow T/O (kg/sec)"]
+    # Fuel consumption
+    ff_7: float
+    ff_30: float
+    ff_85: float
+    ff_100: float
 
-        # Emissions
-        self.ei_nox_7: float = df_engine["NOx EI Idle (g/kg)"]
-        self.ei_nox_30: float = df_engine["NOx EI App (g/kg)"]
-        self.ei_nox_85: float = df_engine["NOx EI C/O (g/kg)"]
-        self.ei_nox_100: float = df_engine["NOx EI T/O (g/kg)"]
+    # Emissions
+    ei_nox_7: float
+    ei_nox_30: float
+    ei_nox_85: float
+    ei_nox_100: float
 
-        self.ei_co_7: float = df_engine["CO EI Idle (g/kg)"]
-        self.ei_co_30: float = df_engine["CO EI App (g/kg)"]
-        self.ei_co_85: float = df_engine["CO EI C/O (g/kg)"]
-        self.ei_co_100: float = df_engine["CO EI T/O (g/kg)"]
+    ei_co_7: float
+    ei_co_30: float
+    ei_co_85: float
+    ei_co_100: float
 
-        self.ei_hc_7: float = df_engine["HC EI Idle (g/kg)"]
-        self.ei_hc_30: float = df_engine["HC EI App (g/kg)"]
-        self.ei_hc_85: float = df_engine["HC EI C/O (g/kg)"]
-        self.ei_hc_100: float = df_engine["HC EI T/O (g/kg)"]
+    ei_hc_7: float
+    ei_hc_30: float
+    ei_hc_85: float
+    ei_hc_100: float
 
-        self.sn_7: float = df_engine["SN Idle"]
-        self.sn_30: float = df_engine["SN App"]
-        self.sn_85: float = df_engine["SN C/O"]
-        self.sn_100: float = df_engine["SN T/O"]
-        self.sn_max: float = df_engine["SN Max"]
+    sn_7: float
+    sn_30: float
+    sn_85: float
+    sn_100: float
+    sn_max: float
 
-        # Emissions profile
-        self.log_ei_nox_profile = ffm2.nitrogen_oxide_emissions_index_profile(
+    @property
+    def log_ei_nox_profile(self) -> EmissionsProfileInterpolator:
+        """Get the logarithmic emissions index profile for NOx emissions."""
+        return ffm2.nitrogen_oxide_emissions_index_profile(
             self.ff_7,
             self.ff_30,
             self.ff_85,
@@ -1031,7 +1039,11 @@ class EDBGaseous:
             self.ei_nox_85,
             self.ei_nox_100,
         )
-        self.log_ei_co_profile = ffm2.co_hc_emissions_index_profile(
+
+    @property
+    def log_ei_co_profile(self) -> EmissionsProfileInterpolator:
+        """Get the logarithmic emissions index profile for CO emissions."""
+        return ffm2.co_hc_emissions_index_profile(
             self.ff_7,
             self.ff_30,
             self.ff_85,
@@ -1042,7 +1054,10 @@ class EDBGaseous:
             self.ei_co_100,
         )
 
-        self.log_ei_hc_profile = ffm2.co_hc_emissions_index_profile(
+    @property
+    def log_ei_hc_profile(self) -> EmissionsProfileInterpolator:
+        """Get the logarithmic emissions index profile for HC emissions."""
+        return ffm2.co_hc_emissions_index_profile(
             self.ff_7,
             self.ff_30,
             self.ff_85,
@@ -1167,10 +1182,43 @@ def get_engine_params_from_edb(filepath: str | pathlib.Path) -> dict[str, EDBGas
     Returns
     -------
     dict[str, EDBGaseous]
-        Mapping from aircraft type to gaseous emissions data for engine.
+        Mapping from engine UID to gaseous emissions data for engine.
     """
-    df = pd.read_csv(filepath, index_col=0)
-    return {engine_uid: EDBGaseous(df_engine) for engine_uid, df_engine in df.iterrows()}
+    df = pd.read_csv(filepath)
+
+    df = df.rename(
+        columns={
+            "UID No": "engine_uid",
+            "Manufacturer": "manufacturer",
+            "Engine Identification": "engine_name",
+            "Combustor Description": "combustor",
+            "B/P Ratio": "bypass_ratio",
+            "Pressure Ratio": "pressure_ratio",
+            "Rated Thrust (kN)": "rated_thrust",
+            "Fuel Flow Idle (kg/sec)": "ff_7",
+            "Fuel Flow App (kg/sec)": "ff_30",
+            "Fuel Flow C/O (kg/sec)": "ff_85",
+            "Fuel Flow T/O (kg/sec)": "ff_100",
+            "NOx EI Idle (g/kg)": "ei_nox_7",
+            "NOx EI App (g/kg)": "ei_nox_30",
+            "NOx EI C/O (g/kg)": "ei_nox_85",
+            "NOx EI T/O (g/kg)": "ei_nox_100",
+            "CO EI Idle (g/kg)": "ei_co_7",
+            "CO EI App (g/kg)": "ei_co_30",
+            "CO EI C/O (g/kg)": "ei_co_85",
+            "CO EI T/O (g/kg)": "ei_co_100",
+            "HC EI Idle (g/kg)": "ei_hc_7",
+            "HC EI App (g/kg)": "ei_hc_30",
+            "HC EI C/O (g/kg)": "ei_hc_85",
+            "HC EI T/O (g/kg)": "ei_hc_100",
+            "SN Idle": "sn_7",
+            "SN App": "sn_30",
+            "SN C/O": "sn_85",
+            "SN T/O": "sn_100",
+            "SN Max": "sn_max",
+        }
+    )
+    return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
 
 @functools.cache
