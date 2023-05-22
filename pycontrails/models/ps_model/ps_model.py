@@ -717,15 +717,15 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
         Mach number at each waypoint.
     c_t : npt.NDArray[np.float_]
         Engine thrust coefficient.
-    m_des: float
+    m_des : float
         Design optimum Mach number where the fuel mass flow rate is at a minimum.
-    c_t_des: float
+    c_t_des : float
         Design optimum engine thrust coefficient where the fuel mass flow rate is at a minimum.
 
     Returns
     -------
     npt.NDArray[np.float_]
-        Ratio of OPE to maximum OPE, eta/eta_b
+        Ratio of OPE to maximum OPE, ``eta / eta_b``
 
     Notes
     -----
