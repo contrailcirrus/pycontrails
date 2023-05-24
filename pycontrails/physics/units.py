@@ -108,7 +108,7 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
 def _low_altitude_m_to_pl(h: np.ndarray) -> np.ndarray:
     T_isa: np.ndarray = m_to_T_isa(h)
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
-    return (constants.p_surface * (T_isa / constants.T_msl) ** power_term) / 100
+    return (constants.p_surface * (T_isa / constants.T_msl) ** power_term) / 100.0
 
 
 def _high_altitude_m_to_pl(h: np.ndarray) -> np.ndarray:
@@ -116,7 +116,7 @@ def _high_altitude_m_to_pl(h: np.ndarray) -> np.ndarray:
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
     inside_exp = (-constants.g / (constants.R_d * T_tropopause_isa)) * (h - constants.h_tropopause)
-    return p_tropopause_isa * np.exp(inside_exp) / 100
+    return p_tropopause_isa * np.exp(inside_exp) / 100.0
 
 
 @support_arraylike
@@ -152,7 +152,7 @@ def m_to_pl(h: np.ndarray) -> np.ndarray:
 
 
 def _low_altitude_pl_to_m(pl: np.ndarray) -> np.ndarray:
-    base = 100 * pl / constants.p_surface
+    base = 100.0 * pl / constants.p_surface
     exponent = -constants.T_lapse_rate * constants.R_d / constants.g
     T_isa = constants.T_msl * base**exponent
     return (T_isa - constants.T_msl) / constants.T_lapse_rate
@@ -162,7 +162,7 @@ def _high_altitude_pl_to_m(pl: np.ndarray) -> np.ndarray:
     T_tropopause_isa = m_to_T_isa(np.asarray(constants.h_tropopause))
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
-    inside_exp = np.log(pl * 100 / p_tropopause_isa)
+    inside_exp = np.log(pl * 100.0 / p_tropopause_isa)
     return inside_exp / (-constants.g / (constants.R_d * T_tropopause_isa)) + constants.h_tropopause
 
 
@@ -220,7 +220,7 @@ def degrees_to_radians(degrees: ArrayScalarLike) -> ArrayScalarLike:
     ArrayScalarLike
         Radians values
     """
-    return degrees * (np.pi / 180)
+    return degrees * (np.pi / 180.0)
 
 
 def radians_to_degrees(radians: ArrayScalarLike) -> ArrayScalarLike:
@@ -236,7 +236,7 @@ def radians_to_degrees(radians: ArrayScalarLike) -> ArrayScalarLike:
     ArrayScalarLike
         Radian values
     """
-    return radians * (180 / np.pi)
+    return radians * (180.0 / np.pi)
 
 
 def ft_to_m(ft: ArrayScalarLike) -> ArrayScalarLike:
@@ -322,7 +322,7 @@ def longitude_distance_to_m(
         cartesian distance along the longitude axis, [:math:`m`]
     """
     latitude_mean_rad = degrees_to_radians(latitude_mean)
-    return (distance_degrees / 180) * np.pi * constants.radius_earth * np.cos(latitude_mean_rad)
+    return (distance_degrees / 180.0) * np.pi * constants.radius_earth * np.cos(latitude_mean_rad)
 
 
 def latitude_distance_to_m(distance_degrees: ArrayScalarLike) -> ArrayScalarLike:
@@ -339,7 +339,7 @@ def latitude_distance_to_m(distance_degrees: ArrayScalarLike) -> ArrayScalarLike
     ArrayScalarLike
         Cartesian distance along the latitude axis, [:math:`m`]
     """
-    return (distance_degrees / 180) * np.pi * constants.radius_earth
+    return (distance_degrees / 180.0) * np.pi * constants.radius_earth
 
 
 def m_to_longitude_distance(
