@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from overrides import overrides
 
-from pycontrails import GeoVectorDataset, VectorDataset
+from pycontrails import GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
 from pycontrails.models import humidity_scaling as hs
 from pycontrails.physics import constants, thermo, units
 from pycontrails.utils.json import NumpyEncoder
@@ -27,25 +27,33 @@ cls_list = [
 
 
 @pytest.fixture(scope="module")
-def rng():
+def rng() -> np.random.Generator:
     """Get random number generator for module."""
     return np.random.default_rng(1234)
 
 
+def assign_random_t_and_q(vector: GeoVectorDataset, rng: np.random.Generator) -> GeoVectorDataset:
+    """Assign random temperature and humidity to vector."""
+    T = vector["air_temperature"] = units.m_to_T_isa(vector.altitude)
+
+    rhi = rng.triangular(0.3, 0.7, 1.3, vector.size)
+    rhi_on_q = vector.air_pressure * (constants.R_v / constants.R_d) / thermo.e_sat_ice(T)
+    vector["specific_humidity"] = rhi / rhi_on_q
+
+    return vector
+
+
 @pytest.fixture
-def vector(rng: np.random.Generator):
+def vector(rng: np.random.Generator) -> GeoVectorDataset:
     """Create vector on which to run humidity scaling."""
     n = 100
     longitude = rng.uniform(-180, 180, n)
     latitude = rng.uniform(-90, 90, n)
     altitude = rng.uniform(5000, 12000, n)
     time = pd.date_range("2019-01-01", "2019-02-01", n)  # never used
+
     vector = GeoVectorDataset(longitude=longitude, latitude=latitude, altitude=altitude, time=time)
-    T = vector["air_temperature"] = units.m_to_T_isa(altitude)
-    rhi = rng.triangular(0.3, 0.7, 1.3, n)
-    rhi_on_q = vector.air_pressure * (constants.R_v / constants.R_d) / thermo.e_sat_ice(T)
-    vector["specific_humidity"] = rhi / rhi_on_q
-    return vector
+    return assign_random_t_and_q(vector, rng)
 
 
 class DefaultHumidityScaling(hs.HumidityScaling):
@@ -72,7 +80,7 @@ class DefaultHumidityScaling(hs.HumidityScaling):
 
 
 @pytest.mark.parametrize("scaler_cls", cls_list)
-def test_all_scalers(vector: GeoVectorDataset, scaler_cls: type):
+def test_all_scalers(vector: GeoVectorDataset, scaler_cls: type) -> None:
     """Check basic usage of humidity scaler instances."""
     scaler = scaler_cls(copy_source=False)
     q1 = vector["specific_humidity"]
@@ -94,7 +102,7 @@ def test_all_scalers(vector: GeoVectorDataset, scaler_cls: type):
     np.testing.assert_allclose(q1, q2, rtol=0.26)
 
 
-def test_rhi_adj_override(vector: GeoVectorDataset):
+def test_rhi_adj_override(vector: GeoVectorDataset) -> None:
     """Confirm vector variables override scaler params."""
     rhi0 = thermo.rhi(vector["specific_humidity"], vector["air_temperature"], vector.air_pressure)
 
@@ -130,7 +138,7 @@ def test_rhi_adj_override(vector: GeoVectorDataset):
     np.testing.assert_allclose(rhi0, 0.6 * rhi4, atol=1e-15)
 
 
-def test_rhi_already_exists_warning(vector: GeoVectorDataset):
+def test_rhi_already_exists_warning(vector: GeoVectorDataset) -> None:
     """Confirm a warning is issued if humidity appears to have been scaled twice."""
     scaler = hs.HumidityScalingByLevel(copy_source=False)
     scaler.eval(vector)
@@ -143,7 +151,7 @@ def test_rhi_already_exists_warning(vector: GeoVectorDataset):
 
 
 @pytest.mark.parametrize("scaler_cls", cls_list)
-def test_description(scaler_cls: type):
+def test_description(scaler_cls: type) -> None:
     """Check description for scalers and ensure JSON serialization via NumpyEncoder."""
     scaler = scaler_cls()
     description = scaler.description
@@ -164,7 +172,7 @@ def test_description(scaler_cls: type):
     assert out == json.dumps(description)
 
 
-def test_pin_specific_description():
+def test_pin_specific_description() -> None:
     """Pin description for HumidityscalementConstantExponentialBoost (default for models)."""
     scaler = hs.ExponentialBoostHumidityScaling()
     assert scaler.description == {
@@ -177,7 +185,7 @@ def test_pin_specific_description():
 
 
 @pytest.mark.parametrize("exp", [1.1, 1.2, 1.9, 2.0, 3.1])
-def test_rhi_boost_exponential(vector: GeoVectorDataset, exp: float):
+def test_rhi_boost_exponential(vector: GeoVectorDataset, exp: float) -> None:
     """Test exponential boosting patterns."""
     base = DefaultHumidityScaling()
     _, rhi1 = base.scale(
@@ -208,7 +216,7 @@ def test_rhi_boost_exponential(vector: GeoVectorDataset, exp: float):
 
 
 @pytest.mark.parametrize("scaler_cls", cls_list)
-def test_scalers_pass_nan_through(vector: GeoVectorDataset, scaler_cls: type):
+def test_scalers_pass_nan_through(vector: GeoVectorDataset, scaler_cls: type) -> None:
     """Confirm each scaler pass nan values through when computing rhi."""
     vector["specific_humidity"][55] = np.nan
     vector["air_temperature"][66] = np.nan
@@ -229,7 +237,7 @@ def test_scalers_pass_nan_through(vector: GeoVectorDataset, scaler_cls: type):
 
 
 @pytest.fixture
-def custom():
+def custom() -> VectorDataset:
     """Create custom VectorDataset for testing ExponentialBoostLatitudeCorrectionHumidityScaling."""
     # Data from Roger: uncorrected and correct RHi values
     latitude = [2.4970, 14.4288, 48.8538, 61.7205, 69.2504, -33.4201, 45.0802, 0.6897]
@@ -251,7 +259,7 @@ def custom():
     return vector
 
 
-def test_global_rhi_correction(custom: VectorDataset):
+def test_global_rhi_correction(custom: VectorDataset) -> None:
     """Check `ExponentialBoostLatitudeCorrectionHumidityScaling` implementation."""
     scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling()
 
@@ -266,3 +274,81 @@ def test_global_rhi_correction(custom: VectorDataset):
         **scaler.params,
     )
     np.testing.assert_allclose(rhi_cor, custom["rhi_cor"], atol=1e-5)
+
+
+@pytest.fixture(scope="module")
+def ensemble_q(met_issr: MetDataset) -> list[MetDataArray]:
+    """Perturb specific humidity to mock ensemble members."""
+
+    rng = np.random.default_rng(424242)
+
+    da = met_issr["specific_humidity"].data
+
+    q_ens = []
+    for _ in range(10):
+        q = da * rng.uniform(0.7, 1.3, size=da.shape)
+        q_ens.append(MetDataArray(q))
+    return q_ens
+
+
+@pytest.fixture(scope="module")
+def ensemble_vector(met_issr: MetDataset) -> GeoVectorDataset:
+    """Construct a vector in bounds of the ensemble."""
+
+    rng = np.random.default_rng(242424)
+    n = 1000
+
+    x0, x1 = met_issr.data.longitude[[0, -1]].values
+    longitude = rng.uniform(x0, x1, size=n)
+
+    y0, y1 = met_issr.data.latitude[[0, -1]].values
+    latitude = rng.uniform(y0, y1, size=n)
+
+    z0, z1 = met_issr.data.level[[0, -1]].values
+    level = rng.uniform(z0, z1, size=n)
+
+    t0, t1 = met_issr.data.time.values
+    time = rng.uniform(t0, t1, size=n).astype("datetime64[ns]")
+
+    vector = GeoVectorDataset(
+        longitude=longitude,
+        latitude=latitude,
+        level=level,
+        time=time,
+    )
+    return assign_random_t_and_q(vector, rng)
+
+
+@pytest.mark.parametrize("member", range(10))
+def test_histogram_matching(
+    ensemble_q: list[MetDataArray],
+    ensemble_vector: GeoVectorDataset,
+    member: int,
+) -> None:
+    """Test the HistogramMatchingWithEckel scaling."""
+
+    model = hs.HistogramMatchingWithEckel(ensemble_specific_humidity=ensemble_q, member=member)
+
+    assert "rhi" not in ensemble_vector
+    out = model.eval(ensemble_vector)
+    rhi = out["rhi"]
+    rhi_mean = rhi.mean()
+
+    q0 = ensemble_vector["specific_humidity"]
+    q1 = out["specific_humidity"]
+    assert not np.allclose(q0, q1)
+
+    # Check pinned values
+    expected = [
+        0.833945732296882,
+        0.8350644457436286,
+        0.8388993162579057,
+        0.8373114614544117,
+        0.8356390786986986,
+        0.8391296500309791,
+        0.8365479598505906,
+        0.83777503112874,
+        0.8384812075419624,
+        0.8346347044939362,
+    ]
+    assert rhi_mean == expected[member]
