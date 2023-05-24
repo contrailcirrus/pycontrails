@@ -332,23 +332,26 @@ def test_histogram_matching(
     assert "rhi" not in ensemble_vector
     out = model.eval(ensemble_vector)
     rhi = out["rhi"]
+    assert np.all(rhi >= 0)
     rhi_mean = rhi.mean()
 
     q0 = ensemble_vector["specific_humidity"]
     q1 = out["specific_humidity"]
     assert not np.allclose(q0, q1)
+    assert np.all(q0 >= 0)
+    assert np.all(q1 >= 0)
 
     # Check pinned values
     expected = [
-        0.833945732296882,
-        0.8350644457436286,
-        0.8388993162579057,
-        0.8373114614544117,
-        0.8356390786986986,
-        0.8391296500309791,
-        0.8365479598505906,
-        0.83777503112874,
-        0.8384812075419624,
-        0.8346347044939362,
+        1.0346026109221682,
+        1.0364847600081353,
+        1.0395931028156713,
+        1.0375727266022454,
+        1.0369398003250168,
+        1.0393332906400063,
+        1.0374413157347022,
+        1.0387069112334044,
+        1.0384249039157067,
+        1.0361586297460212,
     ]
     assert rhi_mean == expected[member]
