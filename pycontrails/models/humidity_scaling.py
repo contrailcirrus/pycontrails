@@ -581,7 +581,7 @@ def _load_era5_ensemble_quantiles() -> npt.NDArray[np.float64]:
     return np.load(path, allow_pickle=False) / 100.0
 
 
-def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArray[np.float64]:
+def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArray[np.float_]:
     """Map ERA5-derived RHi to it's corresponding IAGOS quantile via histogram matching.
 
     This matching is performed on a **single** ERA5 ensemble member.
@@ -603,7 +603,8 @@ def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArr
     era5_quantiles = era5_quantiles[:, member]  # shape (801,)
     iagos_quantiles = _load_iagos_quantiles()  # shape (801,)
 
-    return np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
+    out = np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
+    return out.astype(era5_rhi.dtype, copy=False)
 
 
 def recalibrate_rhi(
@@ -623,7 +624,8 @@ def recalibrate_rhi(
     Returns
     -------
     npt.NDArray[np.float_]
-        The recalibrated RHi values. This is an array of shape ``(n,)``.
+        The recalibrated RHi values. This is an array of shape ``(n,)``. Values are clipped
+        to ensure only non-negative values are returned.
 
     References
     ----------
@@ -653,7 +655,7 @@ def recalibrate_rhi(
 
     out = (ensemble_mean_rhi - eckel_a) + eckel_c * (recalibrated_rhi - ensemble_mean_rhi)
     out.clip(min=0.0, out=out)
-    return out.astype(era5_rhi_all_members.dtype)
+    return out
 
 
 @dataclasses.dataclass
