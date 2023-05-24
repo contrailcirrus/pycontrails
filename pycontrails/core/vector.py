@@ -1278,7 +1278,7 @@ class GeoVectorDataset(VectorDataset):
         try:
             return self["air_pressure"]
         except KeyError:
-            return 100 * self.level
+            return 100.0 * self.level
 
     @property
     def altitude_ft(self) -> npt.NDArray[np.float_]:
