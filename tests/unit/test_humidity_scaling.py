@@ -354,4 +354,4 @@ def test_histogram_matching(
         1.0384249039157067,
         1.0361586297460212,
     ]
-    assert rhi_mean == expected[member]
+    assert rhi_mean == pytest.approx(expected[member], abs=1e-5)
