@@ -607,12 +607,13 @@ def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArr
     return out.astype(era5_rhi.dtype, copy=False)
 
 
-def recalibrate_rhi(
+def histogram_matching(
     era5_rhi_all_members: npt.NDArray[np.float_], member: int
-) -> npt.NDArray[np.float_]:
-    """Recalibrate ERA5-derived RHi values to IAGOS quantiles.
+) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+    """Recalibrate ERA5-derived RHi values to IAGOS quantiles by histogram matching.
 
-    This recalibration requires values for **all** ERA5 ensemble members.
+    This recalibration requires values for **all** ERA5 ensemble members. Currently, the
+    number of ensemble members is hard-coded to 10.
 
     Parameters
     ----------
@@ -623,37 +624,64 @@ def recalibrate_rhi(
 
     Returns
     -------
-    npt.NDArray[np.float_]
-        The recalibrated RHi values. This is an array of shape ``(n,)``. Values are clipped
-        to ensure only non-negative values are returned.
-
-    References
-    ----------
-    :cite:`eckelCalibratedProbabilisticQuantitative1998`
+    ensemble_mean_rhi : npt.NDArray[np.float_]
+        The mean RHi values after histogram matching over all ensemble members.
+        This is an array of shape ``(n,)``.
+    ensemble_member_rhi : npt.NDArray[np.float_]
+        The RHi values after histogram matching for the given ensemble member.
+        This is an array of shape ``(n,)``.
     """
 
     n_members = 10
     assert era5_rhi_all_members.shape[1] == n_members
 
     # Perform histogram matching on the given ensemble member
-    recalibrated_rhi = quantile_rhi_map(era5_rhi_all_members[:, member], member)
+    ensemble_member_rhi = quantile_rhi_map(era5_rhi_all_members[:, member], member)
 
     # Perform histogram matching on all other ensemble members
     # Add up the results into a single 'ensemble_mean_rhi' array
     ensemble_mean_rhi: npt.NDArray[np.float_] = 0.0  # type: ignore[assignment]
     for r in range(n_members):
         if r == member:
-            ensemble_mean_rhi += recalibrated_rhi
+            ensemble_mean_rhi += ensemble_member_rhi
         else:
             ensemble_mean_rhi += quantile_rhi_map(era5_rhi_all_members[:, r], r)
 
     # Divide by the number of ensemble members to get the mean
     ensemble_mean_rhi /= n_members
 
+    return ensemble_mean_rhi, ensemble_member_rhi
+
+
+def eckel_scaling(
+    ensemble_mean_rhi: npt.NDArray[np.float_],
+    ensemble_member_rhi: npt.NDArray[np.float_],
+) -> npt.NDArray[np.float_]:
+    """Apply Eckel scaling to the given RHi values.
+
+    Parameters
+    ----------
+    ensemble_mean_rhi : npt.NDArray[np.float_]
+        The ensemble mean RHi values. This should be a 1D array with the same shape as
+        ``ensemble_member_rhi``.
+    ensemble_member_rhi : npt.NDArray[np.float_]
+        The RHi values for a single ensemble member.
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        The scaled RHi values. Values are manually clipped at 0 to ensure
+        only non-negative values are returned.
+
+    References
+    ----------
+    :cite:`eckelCalibratedProbabilisticQuantitative1998`
+    """
+
     eckel_a = -0.005213832567192828
     eckel_c = 2.7859172756970354
 
-    out = (ensemble_mean_rhi - eckel_a) + eckel_c * (recalibrated_rhi - ensemble_mean_rhi)
+    out = (ensemble_mean_rhi - eckel_a) + eckel_c * (ensemble_member_rhi - ensemble_mean_rhi)
     out.clip(min=0.0, out=out)
     return out
 
@@ -816,7 +844,9 @@ class HistogramMatchingWithEckel(HumidityScaling):
         rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
         rhi = rhi_over_q[:, np.newaxis] * specific_humidity
 
-        recalibrated_rhi = recalibrate_rhi(rhi, self.member)
-        recalibrated_q = recalibrated_rhi / rhi_over_q
+        ensemble_mean_rhi, ensemble_member_rhi = histogram_matching(rhi, self.member)
+        rhi_1 = eckel_scaling(ensemble_mean_rhi, ensemble_member_rhi)
 
-        return recalibrated_q, recalibrated_rhi
+        q_1 = rhi_1 / rhi_over_q
+
+        return q_1, rhi_1
