@@ -1,6 +1,20 @@
 
 # Changelog
 
+## v0.42.3 (unreleased)
+
+### Fixes
+
+- Clip the scaled humidity values computed by `HistogramMatchingWithEckel` to ensure that they are non-negative. Previously, both relative and specific humidity values arising from Eckel scaling could be negative.
+
+### Internals
+
+- Refactor auxillary functions used by `HistogramMatchingWithEckel` to better isolated histogram matching from Eckel scaling.
+
+## v0.42.2
+
+Re-release of [v0.42.1](#v0421).
+
 ## v0.42.1
 
 ### Features
