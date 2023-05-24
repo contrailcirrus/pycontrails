@@ -652,6 +652,7 @@ def recalibrate_rhi(
     eckel_c = 2.7859172756970354
 
     out = (ensemble_mean_rhi - eckel_a) + eckel_c * (recalibrated_rhi - ensemble_mean_rhi)
+    out.clip(min=0.0, out=out)
     return out.astype(era5_rhi_all_members.dtype)
 
 
