@@ -581,7 +581,7 @@ def _load_era5_ensemble_quantiles() -> npt.NDArray[np.float64]:
     return np.load(path, allow_pickle=False) / 100.0
 
 
-def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArray[np.float_]:
+def histogram_matching(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArray[np.float_]:
     """Map ERA5-derived RHi to it's corresponding IAGOS quantile via histogram matching.
 
     This matching is performed on a **single** ERA5 ensemble member.
@@ -607,7 +607,7 @@ def quantile_rhi_map(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArr
     return out.astype(era5_rhi.dtype, copy=False)
 
 
-def histogram_matching(
+def histogram_matching_all_members(
     era5_rhi_all_members: npt.NDArray[np.float_], member: int
 ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     """Recalibrate ERA5-derived RHi values to IAGOS quantiles by histogram matching.
@@ -636,7 +636,7 @@ def histogram_matching(
     assert era5_rhi_all_members.shape[1] == n_members
 
     # Perform histogram matching on the given ensemble member
-    ensemble_member_rhi = quantile_rhi_map(era5_rhi_all_members[:, member], member)
+    ensemble_member_rhi = histogram_matching(era5_rhi_all_members[:, member], member)
 
     # Perform histogram matching on all other ensemble members
     # Add up the results into a single 'ensemble_mean_rhi' array
@@ -645,7 +645,7 @@ def histogram_matching(
         if r == member:
             ensemble_mean_rhi += ensemble_member_rhi
         else:
-            ensemble_mean_rhi += quantile_rhi_map(era5_rhi_all_members[:, r], r)
+            ensemble_mean_rhi += histogram_matching(era5_rhi_all_members[:, r], r)
 
     # Divide by the number of ensemble members to get the mean
     ensemble_mean_rhi /= n_members
@@ -844,7 +844,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
         rhi = rhi_over_q[:, np.newaxis] * specific_humidity
 
-        ensemble_mean_rhi, ensemble_member_rhi = histogram_matching(rhi, self.member)
+        ensemble_mean_rhi, ensemble_member_rhi = histogram_matching_all_members(rhi, self.member)
         rhi_1 = eckel_scaling(ensemble_mean_rhi, ensemble_member_rhi)
 
         q_1 = rhi_1 / rhi_over_q
