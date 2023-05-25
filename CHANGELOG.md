@@ -1,6 +1,82 @@
 
 # Changelog
 
+## v0.44.0
+
+### Features
+
+- Implement a basic working version of the [Poll-Schumann (PS) aircraft performance model](https://doi.org/10.1017/aer.2020.62). This is experimental and may undergo revision in future releases. The PS Model currently supports the following 53 aircraft types:
+
+  - A30B
+  - A306
+  - A310
+  - A313
+  - A318
+  - A319
+  - A320
+  - A321
+  - A332
+  - A333
+  - A342
+  - A343
+  - A345
+  - A346
+  - A359
+  - A388
+  - B712
+  - B732
+  - B733
+  - B734
+  - B735
+  - B736
+  - B737
+  - B738
+  - B739
+  - B742
+  - B743
+  - B744
+  - B748
+  - B752
+  - B753
+  - B762
+  - B763
+  - B764
+  - B77L
+  - B772
+  - B77W
+  - B773
+  - B788
+  - B789
+  - E135
+  - E145
+  - E170
+  - E195
+  - MD82
+  - MD83
+  - GLF5
+  - CRJ9
+  - DC93
+  - RJ1H
+  - B722
+  - A20N
+  - A21N
+
+- Improve the runtime of instantiating the `Emissions` model by a factor of 10-15x. This translates to a time savings of several hundred milliseconds on modern hardware. This improvement is achieved by more efficient parsing of the underlying static data and by deferring the construction of the interpolation artifacts until they are needed.
+- Automatically use a default engine type from the aircraft type in the `Emissions` model if an `engine_uid` parameter is not included on the `source`. This itself is configurable via the `use_default_engine_uid` parameter on the `Emissions` model. The default mappings from aircraft types to engines is included in `pycontrails/models/emissions/static/default-engine-uids.csv`.
+
+### Breaking changes
+
+- Remove the `Aircraft` dataclass from `Flight` instantiation. Any code previously using this should instead directly pass additional `attrs` to the `Flight` constructor.
+
+### Fixes
+
+- Remove the `fuel` parameter from the `Emissions` model. This is inferred directly from the `source` parameter in `Emissions.eval`.
+
+### Internals
+
+- Use `ruff` in place of `pydocstyle` for linting docstrings.
+- Update the `AircraftPerformance` template based on the patterns used in the new `PSModel` class. This may change again in the future.
+
 ## v0.43.0
 
 Support experimental interpolation against gridded specific humidity. Add new data-driven humidity scaling models.
