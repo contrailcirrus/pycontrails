@@ -1192,13 +1192,14 @@ class GeoVectorDataset(VectorDataset):
                 self.update({coord: arr.astype(np.float64)})
 
         # set CRS to "EPSG:4326" by default
-        if "crs" not in self.attrs:
-            self.attrs["crs"] = "EPSG:4326"
+        crs = self.attrs.setdefault("crs", "EPSG:4326")
 
-        if self.attrs["crs"] == "EPSG:4326":
-            if np.any(self["longitude"] > 180) or np.any(self["longitude"] < -180):
+        if crs == "EPSG:4326":
+            longitude = self["longitude"]
+            if np.any(longitude > 180.0) or np.any(longitude < -180.0):
                 raise ValueError("EPSG:4326 longitude coordinates should lie between [-180, 180).")
-            if np.any(self["latitude"] > 90) or np.any(self["latitude"] < -90):
+            latitude = self["latitude"]
+            if np.any(latitude > 90.0) or np.any(latitude < -90.0):
                 raise ValueError("EPSG:4326 latitude coordinates should lie between [-90, 90].")
 
     @overrides
