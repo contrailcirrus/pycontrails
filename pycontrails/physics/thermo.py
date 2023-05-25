@@ -66,7 +66,7 @@ def c_pm(q: ArrayScalarLike) -> ArrayScalarLike:
     Some models (including CoCiP) use a constant value here (1004 :math:`J \ kg^{-1} \ K^{-1}`)
 
     """
-    return constants.c_pd * (1 + (constants.c_pv / constants.c_pd + 1) * q)
+    return constants.c_pd * (1.0 + (constants.c_pv / constants.c_pd + 1.0) * q)
 
 
 def p_vapor(q: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
@@ -133,7 +133,7 @@ def e_sat_ice(T: ArrayScalarLike) -> ArrayScalarLike:
     # this only renders our code more boilerplate and less performant.
     # This comment is pasted several places in `pycontrails` -- they should all be
     # addressed at the same time.
-    return 100 * np.exp(  # type: ignore[return-value]
+    return 100.0 * np.exp(  # type: ignore[return-value]
         (-6024.5282 / T)
         + 24.7219
         + (0.010613868 * T)
@@ -178,7 +178,7 @@ def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
     # this only renders our code more boilerplate and less performant.
     # This comment is pasted several places in `pycontrails` -- they should all be
     # addressed at the same time.
-    return 100 * np.exp(  # type: ignore[return-value]
+    return 100.0 * np.exp(  # type: ignore[return-value]
         -6096.9385 / T
         + 16.635794
         - 0.02711193 * T
