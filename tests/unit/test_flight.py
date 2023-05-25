@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 from pyproj import Geod
 
-from pycontrails import Aircraft, Flight, GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
+from pycontrails import Flight, GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
 from pycontrails.core import flight
 from pycontrails.models.issr import ISSR
 from pycontrails.physics import constants, units
@@ -123,24 +123,6 @@ def test_flight_creation() -> None:
         fl = Flight(
             longitude=longitude, latitude=latitude, altitude=altitude, time=time, copy=False
         )
-
-
-def test_flight_aircraft(flight_data: pd.DataFrame) -> None:
-    aircraft = Aircraft(aircraft_type="A380")
-
-    # aircraft properties set to attrs, including None properties
-    fl = Flight(flight_data, aircraft=aircraft)
-    assert fl.attrs["aircraft_type"] == "A380"
-    assert fl.attrs["wingspan"] is None
-
-    # input attrs should override
-    fl = Flight(flight_data, aircraft=aircraft, attrs={"aircraft_type": "B777"})
-    assert fl.attrs["aircraft_type"] == "B777"
-    assert fl.attrs["wingspan"] is None
-
-    fl = Flight(flight_data, aircraft=aircraft, aircraft_type="B777")
-    assert fl.attrs["aircraft_type"] == "B777"
-    assert fl.attrs["wingspan"] is None
 
 
 def test_flight_constants(fl: Flight) -> None:

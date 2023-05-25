@@ -33,7 +33,7 @@ except ModuleNotFoundError:
 from pycontrails.core.cache import DiskCacheStore, GCPCacheStore
 from pycontrails.core.datalib import MetDataSource
 from pycontrails.core.fleet import Fleet
-from pycontrails.core.flight import Aircraft, Flight
+from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, HydrogenFuel, JetA, SAFBlend
 from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.met_var import MetVariable
@@ -51,7 +51,6 @@ dask.config.set({"array.slicing.split_large_chunks": False})
 
 
 __all__ = [
-    "Aircraft",
     "DiskCacheStore",
     "Fleet",
     "Flight",
