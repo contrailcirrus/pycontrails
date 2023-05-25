@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from pycontrails import Aircraft, DiskCacheStore, Flight, MetDataArray, MetDataset
+from pycontrails import DiskCacheStore, Flight, MetDataArray, MetDataset
 from pycontrails.core import cache, met, met_var
 from pycontrails.datalib.ecmwf import ERA5
 from pycontrails.models.aircraft_performance import AircraftPerformance
@@ -299,12 +299,14 @@ def met_era5_fake() -> MetDataset:
 def flight_cocip1() -> Flight:
     """Keep at function scope (default)."""
     # demo synthetic flight
-    flight_parameters = {
+    attrs = {
+        "aircraft_type": "A380",
+        "wingspan": 48,
+        "n_engine": 2,
         "flight_id": "test",
         "thrust": 0.22,  # thrust
         "nvpm_ei_n": 1.897462e15,
     }
-    aircraft = Aircraft(aircraft_type="A380", wingspan=48, n_engine=2)
 
     # Example flight
     df = pd.DataFrame()
@@ -315,7 +317,7 @@ def flight_cocip1() -> Flight:
     df["fuel_flow"] = np.linspace(2.1, 2.4, 20)  # kg/s
     df["aircraft_mass"] = np.linspace(154445, 154345, 20)  # kg
     df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:30:00", periods=20)
-    return Flight(df, aircraft=aircraft, attrs=flight_parameters)
+    return Flight(df, attrs=attrs)
 
 
 @pytest.fixture
