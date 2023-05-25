@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import enum
 import logging
 import warnings
@@ -52,32 +51,6 @@ SHORT_HAUL_DURATION = 3600.0
 MAX_ON_GROUND_SPEED = 150.0
 
 
-@dataclasses.dataclass
-class Aircraft:
-    """Base class for the physical parameters of the aircraft."""
-
-    #: Aircraft type ICAO
-    aircraft_type: str | None = None
-
-    #: Aircraft type name
-    aircraft_name: str | None = None
-
-    #: Wingspan, [:math:`m`]
-    wingspan: float | None = None
-
-    #: Engine name
-    engine_name: str | None = None
-
-    #: Number of engines
-    n_engine: int | None = None
-
-    #: Maximum Mach number
-    max_mach: float | None = None
-
-    #: Maximum altitude, [:math:`m`]
-    max_altitude: float | None = None
-
-
 class Flight(GeoVectorDataset):
     """A single flight trajectory.
 
@@ -114,17 +87,26 @@ class Flight(GeoVectorDataset):
         Defaults to None.
     attrs : dict[str, Any], optional
         Additional flight properties as a dictionary.
-        Defaults to {}.
+        While different models may utilize Flight attributes differently,
+        pycontrails applies the following conventions:
+
+        - ``flight_id``: An internal flight identifier. Used internally
+          for :class:`Fleet` interoperability.
+        - ``aircraft_type``: Aircraft type ICAO, e.g. ``"A320"``.
+        - ``wingspan``: Aircraft wingspan, [:math:`m`].
+        - ``n_engine``: Number of aircraft engines.
+        - ``engine_uid``: Aircraft engine unique identifier. Used for emissions
+          calculations with the ICAO Aircraft Emissions Databank (EDB).
+        - ``max_mach_number``: Maximum Mach number at cruise altitude. Used by
+          some aircraft performance models to clip true airspeed.
+
+        Numeric quantities that are constant over the entire flight trajectory
+        should be included as attributes.
     copy : bool, optional
         Copy data on Flight creation.
         Defaults to True.
-    aircraft : Aircraft, optional
-        Aircraft flying this flight trajectory.
-        Properties from the Aircraft will be added to :attr:`attrs`.
-        Defaults to None.
     fuel : Fuel, optional
-        Fuel used in flight trajectory.
-        Defaults to JetA if None.
+        Fuel used in flight trajectory. Defaults to :class:`JetA`.
     drop_duplicated_times : bool, optional
         Drop duplicate times in flight trajectory. Defaults to False.
     **attrs_kwargs : Any
@@ -211,22 +193,10 @@ class Flight(GeoVectorDataset):
         time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
-        aircraft: Aircraft | None = None,
         fuel: Fuel | None = None,
         drop_duplicated_times: bool = False,
         **attrs_kwargs: Any,
     ) -> None:
-        # set aircraft properties to attrs
-        # Note input attrs will override aircraft properties
-        # TODO: refactor aircraft to handle the same way as Fuel?
-        if aircraft is not None:
-            aircraft_attrs = dataclasses.asdict(aircraft)
-            if attrs:
-                aircraft_attrs.update(attrs)
-                attrs = aircraft_attrs
-            else:
-                attrs = aircraft_attrs
-
         super().__init__(
             data=data,
             longitude=longitude,

@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from pycontrails import Aircraft, Flight, MetDataset
+from pycontrails import Flight, MetDataset
 from pycontrails.core.met import originates_from_ecmwf
 from pycontrails.models import humidity_scaling as hs
 from pycontrails.models.aircraft_performance import AircraftPerformance
@@ -585,8 +585,7 @@ def test_xarray_contrail(cocip_persistent: Cocip) -> None:
 def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerformance) -> None:
     """Test `Cocip` use of `Emissions` model."""
     # demo synthetic flight for BADA
-    flight_parameters = {"flight_id": "test BADA/EDB"}
-    aircraft = Aircraft(aircraft_type="A320")
+    attrs = {"flight_id": "test BADA/EDB", "aircraft_type": "A320"}
 
     # Example flight
     df = pd.DataFrame()
@@ -595,7 +594,7 @@ def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerform
     df["altitude"] = np.linspace(10900, 11000, 50)
     df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:30:00", periods=50)
 
-    fl = Flight(data=df, aircraft=aircraft, attrs=flight_parameters)
+    fl = Flight(data=df, attrs=attrs)
     # Confirm all initial segment lengths are below the cocip
     # max_seg_length_m default param
     assert Cocip.default_params.max_seg_length_m == 40000
