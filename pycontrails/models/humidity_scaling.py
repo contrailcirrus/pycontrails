@@ -678,7 +678,7 @@ def eckel_scaling(
     :cite:`eckelCalibratedProbabilisticQuantitative1998`
     """
 
-    eckel_a = -0.005213832567192828
+    eckel_a = -0.005213832567192828 / 100.0
     eckel_c = 2.7859172756970354
 
     out = (ensemble_mean_rhi - eckel_a) + eckel_c * (ensemble_member_rhi - ensemble_mean_rhi)
