@@ -12,13 +12,13 @@ from pycontrails.core import models as models_mod
 
 
 @pytest.fixture
-def mda(met_pcc_pl: MetDataset):
+def mda(met_pcc_pl: MetDataset) -> MetDataArray:
     """Return a MetDataArray for interpolation."""
     assert isinstance(met_pcc_pl, MetDataset)
     return met_pcc_pl["air_temperature"]
 
 
-def test_basic_interpolation(mda: MetDataArray, caplog):
+def test_basic_interpolation(mda: MetDataArray, caplog: pytest.LogCaptureFixture) -> None:
     """Test basic interpolation patterns."""
     assert mda.shape == (15, 8, 3, 2)
 
@@ -65,7 +65,7 @@ def test_basic_interpolation(mda: MetDataArray, caplog):
 
 @pytest.mark.parametrize("localize", [True, False])
 @pytest.mark.parametrize("dim", ["longitude", "latitude", "level", "time"])
-def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, localize: bool):
+def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, localize: bool) -> None:
     """Confirm that interpolation output is not nan when singleton dimension encountered."""
     out_of_bounds_da = mda.data.isel(**{dim: [-1]})
     mda.data = mda.data.isel(**{dim: [0]})
@@ -101,7 +101,7 @@ def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, locali
 
 
 @pytest.mark.parametrize("localize", [True, False])
-def test_interpolation_single_level(mda: MetDataArray, localize: bool):
+def test_interpolation_single_level(mda: MetDataArray, localize: bool) -> None:
     """Confirm interpolation works with single level (level = -1) DataArray."""
     # Convert mda to a DataArray with a single level
     mda.data = mda.data.isel(level=[0]).assign_coords(level=[-1.0])
@@ -126,7 +126,7 @@ def test_interpolation_single_level(mda: MetDataArray, localize: bool):
     np.testing.assert_array_equal(np.isnan(out), [False, False, True])
 
 
-def test_localize(mda: MetDataArray):
+def test_localize(mda: MetDataArray) -> None:
     """Confirm _localize implementation."""
     coords = {}
     coords["longitude"] = np.array([1, 2, 3])
@@ -167,7 +167,7 @@ def test_localize(mda: MetDataArray):
 
 
 @pytest.mark.parametrize("localize", [True, False])
-def test_interpolation_time_resolution(mda: MetDataArray, localize: bool):
+def test_interpolation_time_resolution(mda: MetDataArray, localize: bool) -> None:
     """Confirm interpolation works as expected with time to float conversions."""
     longitude = 30
     latitude = 31
@@ -193,7 +193,7 @@ def test_interpolation_time_resolution(mda: MetDataArray, localize: bool):
 
 
 @pytest.mark.parametrize("dtype", ["float32", "float64"])
-def test_regular_4d_grid_interpolator(mda: MetDataArray, dtype: str):
+def test_regular_4d_grid_interpolator(mda: MetDataArray, dtype: str) -> None:
     """Confirm ``PycontrailsRegularGridInterpolator`` agrees with scipy parent class."""
     x = mda.data["longitude"].values
     y = mda.data["latitude"].values
@@ -236,7 +236,7 @@ def test_regular_4d_grid_interpolator(mda: MetDataArray, dtype: str):
 
 @pytest.mark.parametrize("localize", [True, False])
 @pytest.mark.parametrize("dim", ["longitude", "latitude", "level", "time"])
-def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: bool):
+def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: bool) -> None:
     """Confirm ``PycontrailsRegularGridInterpolator`` can handle singleton dimensions.
 
     Previously, scipy 1.8 could not handle singleton dimensions. This was fixed in
@@ -282,7 +282,7 @@ def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: boo
 
 
 @pytest.mark.parametrize("method", ["nearest", "slinear", "cubic", "quintic"])
-def test_scipy19_interpolation_methods(mda: MetDataArray, method: str):
+def test_scipy19_interpolation_methods(mda: MetDataArray, method: str) -> None:
     """Confirm ``PycontrailsRegularGridInterpolator`` can handle methods introduced in scipy 1.9."""
     da = mda.data
     assert da.shape == (15, 8, 3, 2)
@@ -324,7 +324,7 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str):
 
 
 @pytest.fixture
-def arbitrary_coords():
+def arbitrary_coords() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     longitude = np.array([-55, -43, -55, -21, -17, -18], dtype=np.float32)
     latitude = np.array([12, 17, -8, -44, 22, 23], dtype=np.float32)
     level = np.array([227, 228, 231, 233, 231, 230], dtype=np.float32)
@@ -344,7 +344,7 @@ def arbitrary_coords():
 def test_indices_distinct_vars(
     met_pcc_pl: MetDataset,
     arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-):
+) -> None:
     """Check that indices are consistent when interpolating over distinct variables."""
 
     assert list(met_pcc_pl) == [
@@ -388,7 +388,7 @@ def test_indices_same_var(
     met_pcc_pl: MetDataset,
     arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
     var: str,
-):
+) -> None:
     """Check that interpolation with and without indices gives the same result."""
 
     da = met_pcc_pl[var].data
@@ -420,7 +420,9 @@ def test_indices_same_var(
 @pytest.mark.parametrize("bounds_error", [False, True])
 @pytest.mark.parametrize("idx", range(5))
 @pytest.mark.parametrize("coord", ["longitude", "latitude", "level", "time"])
-def test_interpolation_propagate_nan(mda: MetDataArray, bounds_error: bool, idx: int, coord: str):
+def test_interpolation_propagate_nan(
+    mda: MetDataArray, bounds_error: bool, idx: int, coord: str
+) -> None:
     """Ensure nan values propagate through interpolation."""
 
     longitude = np.arange(5, dtype=float)
@@ -458,7 +460,7 @@ def test_fill_value(
     arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
     replace_value: float | np.float64,
     fill_value: float | np.float64 | None,
-):
+) -> None:
     """Check implementation with nonstandard fill_value."""
 
     da = mda.data
@@ -514,8 +516,9 @@ def test_interpolation_q_method(
     met_pcc_pl: MetDataset,
     arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
     q_method: str,
-):
+) -> None:
     """Pin values for experimental interpolation q methods."""
+
     longitude, latitude, level, time = arbitrary_coords
     vector = GeoVectorDataset(longitude=longitude, latitude=latitude, level=level, time=time)
     assert np.all(vector.coords_intersect_met(met_pcc_pl))
