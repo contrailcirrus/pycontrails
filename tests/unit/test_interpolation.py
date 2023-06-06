@@ -6,8 +6,9 @@ import numpy as np
 import pytest
 import scipy.interpolate
 
-from pycontrails import MetDataArray, MetDataset
+from pycontrails import MetDataArray, MetDataset, GeoVectorDataset
 from pycontrails.core import interpolation as interp_mod
+from pycontrails.core import models as models_mod
 
 
 @pytest.fixture
@@ -506,3 +507,35 @@ def test_fill_value(
         return
     assert np.isfinite(out1[3])
     assert out1[3] == fill_value
+
+
+@pytest.mark.parametrize("q_method", ["linear", "log-q-log-p", "cubic-spline", "log-q"])
+def test_interpolation_q_method(
+    met_pcc_pl: MetDataset,
+    arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+    q_method: str,
+):
+    """Pin values for experimental interpolation q methods."""
+    longitude, latitude, level, time = arbitrary_coords
+    vector = GeoVectorDataset(longitude=longitude, latitude=latitude, level=level, time=time)
+    assert np.all(vector.coords_intersect_met(met_pcc_pl))
+
+    if q_method == "log-q":
+        with pytest.raises(ValueError, match="Unknown q_method 'log-q'"):
+            models_mod.interpolate_met(met_pcc_pl, vector, "specific_humidity", q_method=q_method)
+        return
+
+    # The q values are different
+    q = models_mod.interpolate_met(met_pcc_pl, vector, "specific_humidity", q_method=q_method)
+    mean = q.mean()
+
+    if q_method == "linear":
+        assert mean == pytest.approx(6.557144e-05, abs=1e-8)
+    elif q_method == "log-q-log-p":
+        assert mean == pytest.approx(5.8988215e-05, abs=1e-8)
+    elif q_method == "cubic-spline":
+        assert mean == pytest.approx(6.525579e-05, abs=1e-8)
+
+    # The T values are the same
+    T = models_mod.interpolate_met(met_pcc_pl, vector, "air_temperature", q_method=q_method)
+    assert T.mean() == pytest.approx(223.37915, abs=1e-3)
