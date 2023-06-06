@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import logging
@@ -827,24 +828,101 @@ def _prepare_q(
         return mda, level
 
     if q_method == "cubic-spline":
-        # XXX: Replace with historical q_mean
-        q_mean = da.groupby("level").mean(...)
-        if not np.all(np.diff(q_mean) > 0):
-            warnings.warn(
-                "Statistical lapse rate is not strictly increasing. This may cause "
-                "issues with cubic spline interpolation."
-            )
-        ppoly = scipy.interpolate.CubicSpline(q_mean["level"].values, q_mean)
+        if da["level"][0] < 50.0 or da["level"][-1] > 1000.0:
+            raise ValueError("Cubic spline interpolation requires data to span 50-1000 hPa.")
+        ppoly = _load_spline()
 
         da = da.assign_coords(level=ppoly(da["level"]))
         mda = MetDataArray(da, copy=False)
+
         level = ppoly(level)
+
         return mda, level
 
     raise ValueError(
         f"Unknown q_method '{q_method}'. Valid options are 'linear', "
         "'log-q-log-p', and 'cubic-spline'."
     )
+
+
+@functools.cache
+def _load_spline() -> scipy.interpolate.PchipInterpolator:
+    """Load spline interpolator estimating the specific humidity vertical profile (ie, lapse rate).
+
+    Data computed from historic ERA5 reanalysis data for 2019.
+
+    The first data point ``(50.0, 1.8550577e-06)`` is added to the spline to
+    ensure that the spline is monotonic for high altitudes. It was chosen
+    so that the resulting spline has a continuous second derivative at 100 hPa.
+
+    Returns
+    -------
+    scipy.interpolate.PchipInterpolator
+        Spline interpolator.
+    """
+
+    level = [
+        50.0,
+        100.0,
+        125.0,
+        150.0,
+        175.0,
+        200.0,
+        225.0,
+        250.0,
+        300.0,
+        350.0,
+        400.0,
+        450.0,
+        500.0,
+        550.0,
+        600.0,
+        650.0,
+        700.0,
+        750.0,
+        775.0,
+        800.0,
+        825.0,
+        850.0,
+        875.0,
+        900.0,
+        925.0,
+        950.0,
+        975.0,
+        1000.0,
+    ]
+    q = [
+        1.8550577e-06,
+        2.6863474e-06,
+        3.4371210e-06,
+        5.6529648e-06,
+        1.0849595e-05,
+        2.0879523e-05,
+        3.7430935e-05,
+        6.1511033e-05,
+        1.3460252e-04,
+        2.4769874e-04,
+        4.0938452e-04,
+        6.2360929e-04,
+        8.9822523e-04,
+        1.2304801e-03,
+        1.5927359e-03,
+        2.0140875e-03,
+        2.5222234e-03,
+        3.1251940e-03,
+        3.4660504e-03,
+        3.8333545e-03,
+        4.2424337e-03,
+        4.7023618e-03,
+        5.1869694e-03,
+        5.6702676e-03,
+        6.1630723e-03,
+        6.6630659e-03,
+        7.0036170e-03,
+        7.1794386e-03,
+    ]
+
+    return scipy.interpolate.PchipInterpolator(level, q, extrapolate=False)
 
 
 def update_param_dict(param_dict: dict[str, Any], new_params: dict[str, Any]) -> None:
