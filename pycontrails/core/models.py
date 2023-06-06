@@ -782,7 +782,7 @@ def interpolate_met(
 
         out = vector.intersect_met(mda, **interp_kwargs)
         if q_method == "log-q-log-p":
-            out = np.log(out)
+            out = np.exp(out)
 
     # Default interpolation
     else:
@@ -842,7 +842,7 @@ def _prepare_q(
         return mda, level
 
     raise ValueError(
-        f"Unknown q_method {q_method}. Valid options are 'linear', "
+        f"Unknown q_method '{q_method}'. Valid options are 'linear', "
         "'log-q-log-p', and 'cubic-spline'."
     )
 
