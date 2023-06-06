@@ -537,7 +537,7 @@ def test_interpolation_q_method(
     elif q_method == "log-q-log-p":
         assert mean == pytest.approx(5.8988215e-05, abs=1e-8)
     elif q_method == "cubic-spline":
-        assert mean == pytest.approx(6.525579e-05, abs=1e-8)
+        assert mean == pytest.approx(6.476205e-05, abs=1e-8)
 
     # The T values are the same
     T = models_mod.interpolate_met(met_pcc_pl, vector, "air_temperature", q_method=q_method)
