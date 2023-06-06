@@ -11,6 +11,8 @@ from dataclasses import dataclass, fields
 from typing import Any, List, NoReturn, Sequence, Type, TypeVar, Union, overload
 
 import numpy as np
+import numpy.typing as npt
+import scipy.interpolate
 import xarray as xr
 
 from pycontrails.core.fleet import Fleet
@@ -71,6 +73,16 @@ class ModelParams:
 
     #: Experimental. See :mod:`pycontrails.core.interpolation`.
     interpolation_use_indices: bool = False
+
+    #: Experimental. Alternative interpolation method to account for specific humidity
+    #: lapse rate bias. Must be one of "linear", "cubic-spline", or "log-q-log-p".
+    #: The "linear" method applies naive linear interpolation over gridded met data.
+    #: The "cubic-spline" method applies a custom stretching of the met interpolation
+    #: table to account for the specific humidity lapse rate bias. The "log-q-log-p"
+    #: method interpolates in the log of specific humidity and pressure, then converts
+    #: back to specific humidity.
+    #: Only used by models calling to :func:`interpolate_met`.
+    interpolation_q_method: str = "linear"
 
     # -----------
     # Meteorology
@@ -311,14 +323,18 @@ class Model(ABC):
     def interp_kwargs(self) -> dict[str, Any]:
         """Shortcut to create interpolation arguments from :attr:`params`.
 
-        Creates the required dict format for ``RegularGridInterpolator``
-        attached to ``MetDataArray``.
-
         Returns
         -------
         dict[str, Any]
-            Dictionary with keys "method", "bounds_error", and "fill_value" as determined by
-            :attr:`params`.
+            Dictionary with keys
+
+            - "method"
+            - "bounds_error"
+            - "fill_value"
+            - "localize"
+            - "use_indices"
+
+            as determined by :attr:`params`.
         """
         return {
             "method": self.params["interpolation_method"],
@@ -553,10 +569,20 @@ class Model(ABC):
             # take the first var name output from ensure_vars
             met_key = self.met.ensure_vars(var)[0]
 
+            q_method = self.params["interpolation_q_method"]
+
             # interpolate GeoVectorDataset
             if isinstance(self.source, GeoVectorDataset):
-                interpolate_met(self.met, self.source, met_key, **self.interp_kwargs)
+                interpolate_met(
+                    self.met, self.source, met_key, q_method=q_method, **self.interp_kwargs
+                )
                 continue
+
+            if q_method != "linear":
+                raise NotImplementedError(
+                    "Experimental 'q_method' parameter only supported when source "
+                    "is a GeoVectorDataset."
+                )
 
             # set MetDataset
             if not isinstance(self.source, MetDataset):
@@ -696,6 +722,7 @@ def interpolate_met(
     vector: GeoVectorDataset,
     met_key: str,
     vector_key: str | None = None,
+    q_method: str = "linear",
     **interp_kwargs: Any,
 ) -> np.ndarray:
     """Interpolate ``vector`` against ``met`` gridded data.
@@ -717,6 +744,8 @@ def interpolate_met(
     vector_key : str, optional
         Key of variable to attach to ``vector``.
         By default, use ``met_key``.
+    q_method : str, optional
+        Experimental method to use for interpolating specific humidity.
     **interp_kwargs : Any,
         Additional keyword only arguments passed to `intersect_met`. For example,
         `level=np.array([...])`.
@@ -745,9 +774,77 @@ def interpolate_met(
     except KeyError as exc:
         raise KeyError(f"No variable key {met_key} in ``met``") from exc
 
-    out = vector.intersect_met(mda, **interp_kwargs)
+    # Experimental q_method
+    if q_method != "linear" and met_key in ("q", "specific_humidity"):
+        level = interp_kwargs.get("level", vector.level)
+        mda, level = _prepare_q(mda, level, q_method)
+        interp_kwargs = {**interp_kwargs, "level": level}
+
+        out = vector.intersect_met(mda, **interp_kwargs)
+        if q_method == "log-q-log-p":
+            out = np.log(out)
+
+    # Default interpolation
+    else:
+        out = vector.intersect_met(mda, **interp_kwargs)
+
     vector[vector_key] = out
     return out
+
+
+def _prepare_q(
+    mda: MetDataArray, level: npt.NDArray[np.float_], q_method: str
+) -> tuple[MetDataArray, npt.NDArray[np.float_]]:
+    """Prepare specific humidity for interpolation with experimental ``q_method``.
+
+    Parameters
+    ----------
+    mda : MetDataArray
+        MetDataArray of specific humidity.
+    level : npt.NDArray[np.float_]
+        Levels to interpolate to, [:math:`hPa`].
+    q_method : str
+        One of ``"log-q-log-p"`` or ``"cubic-spline"``.
+
+    Returns
+    -------
+    mda : MetDataArray
+        MetDataArray of specific humidity transformed for interpolation.
+    level : npt.NDArray[np.float_]
+        Transformed levels for interpolation.
+    """
+    da = mda.data
+
+    if q_method == "log-q-log-p":
+        if not da._in_memory:
+            da.load()
+
+        da = da.assign_coords(level=np.log(da["level"]))
+        da = np.log(da)  # type: ignore[assignment]
+        mda = MetDataArray(da, copy=False)
+
+        level = np.log(level)
+        return mda, level
+
+    if q_method == "cubic-spline":
+        # XXX: Replace with historical q_mean
+        q_mean = da.groupby("level").mean(...)
+        if not np.all(np.diff(q_mean) > 0):
+            warnings.warn(
+                "Statistical lapse rate is not strictly increasing. This may cause "
+                "issues with cubic spline interpolation."
+            )
+        ppoly = scipy.interpolate.CubicSpline(q_mean["level"].values, q_mean)
+
+        da = da.assign_coords(level=ppoly(da["level"]))
+        mda = MetDataArray(da, copy=False)
+        level = ppoly(level)
+        return mda, level
+
+    raise ValueError(
+        f"Unknown q_method {q_method}. Valid options are 'linear', "
+        "'log-q-log-p', and 'cubic-spline'."
+    )
 
 
 def update_param_dict(param_dict: dict[str, Any], new_params: dict[str, Any]) -> None:

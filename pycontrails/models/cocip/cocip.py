@@ -538,10 +538,11 @@ class Cocip(Model):
         scale_humidity = humidity_scaling is not None and "specific_humidity" not in self.source
         verbose_outputs = self.params["verbose_outputs"]
 
-        interpolate_met(met, self.source, "air_temperature", **self.interp_kwargs)
-        interpolate_met(met, self.source, "specific_humidity", **self.interp_kwargs)
-        interpolate_met(met, self.source, "eastward_wind", "u_wind", **self.interp_kwargs)
-        interpolate_met(met, self.source, "northward_wind", "v_wind", **self.interp_kwargs)
+        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
+        interpolate_met(met, self.source, "air_temperature", **interp_kwargs)
+        interpolate_met(met, self.source, "specific_humidity", **interp_kwargs)
+        interpolate_met(met, self.source, "eastward_wind", "u_wind", **interp_kwargs)
+        interpolate_met(met, self.source, "northward_wind", "v_wind", **interp_kwargs)
 
         if scale_humidity:
             humidity_scaling.eval(self.source, copy_source=False)
@@ -556,13 +557,13 @@ class Cocip(Model):
 
         # Cache extra met properties for post-analysis
         if verbose_outputs:
-            interpolate_met(met, self.source, "tau_cirrus", **self.interp_kwargs)
+            interpolate_met(met, self.source, "tau_cirrus", **interp_kwargs)
 
             # handle ECMWF/GFS ciwc variables
             if (key := "specific_cloud_ice_water_content") in met:
-                interpolate_met(met, self.source, key, **self.interp_kwargs)
+                interpolate_met(met, self.source, key, **interp_kwargs)
             elif (key := "ice_water_mixing_ratio") in met:
-                interpolate_met(met, self.source, key, **self.interp_kwargs)
+                interpolate_met(met, self.source, key, **interp_kwargs)
 
             self.source["rho_air"] = thermo.rho_d(
                 self.source["air_temperature"], self.source.air_pressure
@@ -747,13 +748,14 @@ class Cocip(Model):
         level_lower = air_pressure_lower / 100
 
         # get full met grid or flight data interpolated to the pressure level `p_dz`
+        interp_kwargs = {"q_method": self.params["interpolation_method"], **self.interp_kwargs}
         air_temperature_lower = interpolate_met(
             met,
             self._sac_flight,
             "air_temperature",
             "air_temperature_lower",
             level=level_lower,
-            **self.interp_kwargs,
+            **interp_kwargs,
         )
         u_wind_lower = interpolate_met(
             met,
@@ -761,7 +763,7 @@ class Cocip(Model):
             "eastward_wind",
             "u_wind_lower",
             level=level_lower,
-            **self.interp_kwargs,
+            **interp_kwargs,
         )
         v_wind_lower = interpolate_met(
             met,
@@ -769,7 +771,7 @@ class Cocip(Model):
             "northward_wind",
             "v_wind_lower",
             level=level_lower,
-            **self.interp_kwargs,
+            **interp_kwargs,
         )
 
         # Temperature gradient
@@ -857,18 +859,9 @@ class Cocip(Model):
         )
 
         # get met post wake vortex along initial contrail
-        air_temperature_1 = interpolate_met(
-            met,
-            contrail_1,
-            "air_temperature",
-            **self.interp_kwargs,
-        )
-        interpolate_met(
-            met,
-            contrail_1,
-            "specific_humidity",
-            **self.interp_kwargs,
-        )
+        interp_kwargs = {"q_method": self.params["interpolation_method"], **self.interp_kwargs}
+        air_temperature_1 = interpolate_met(met, contrail_1, "air_temperature", **interp_kwargs)
+        interpolate_met(met, contrail_1, "specific_humidity", **interp_kwargs)
 
         humidity_scaling = self.params["humidity_scaling"]
         if humidity_scaling is not None:
@@ -958,9 +951,11 @@ class Cocip(Model):
 
         calc_continuous(self._downwash_contrail)
         calc_timestep_geometry(self._downwash_contrail)
-        calc_timestep_meteorology(self._downwash_contrail, met, self.params, self.interp_kwargs)
-        calc_shortwave_radiation(rad, self._downwash_contrail, **self.interp_kwargs)
-        calc_outgoing_longwave_radiation(rad, self._downwash_contrail, **self.interp_kwargs)
+
+        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
+        calc_timestep_meteorology(self._downwash_contrail, met, self.params, **interp_kwargs)
+        calc_shortwave_radiation(rad, self._downwash_contrail, **interp_kwargs)
+        calc_outgoing_longwave_radiation(rad, self._downwash_contrail, **interp_kwargs)
         calc_contrail_properties(
             self._downwash_contrail,
             self.params["effective_vertical_resolution"],
@@ -1037,7 +1032,7 @@ class Cocip(Model):
             # And there is huge room to optimize this
             calc_continuous(latest_contrail)
             calc_timestep_geometry(latest_contrail)
-            calc_timestep_meteorology(latest_contrail, met, self.params, self.interp_kwargs)
+            calc_timestep_meteorology(latest_contrail, met, self.params, **interp_kwargs)
             calc_contrail_properties(
                 latest_contrail,
                 self.params["effective_vertical_resolution"],
@@ -1052,7 +1047,7 @@ class Cocip(Model):
                 contrail_1=latest_contrail,
                 time_2=time_end,
                 params=self.params,
-                **self.interp_kwargs,
+                **interp_kwargs,
             )
             self.contrail_list.append(final_contrail)
 
@@ -1547,7 +1542,7 @@ def calc_timestep_meteorology(
     contrail: GeoVectorDataset,
     met: MetDataset,
     params: dict[str, Any],
-    interp_kwargs: dict[str, Any],
+    **interp_kwargs: Any,
 ) -> None:
     """Get and store meteorology parameters.
 
@@ -1564,7 +1559,7 @@ def calc_timestep_meteorology(
         MetDataset with meteorology data variables.
     params : dict[str, Any]
         Cocip model ``params``.
-    interp_kwargs : dict[str, Any]
+    **interp_kwargs : Any
         Cocip model ``interp_kwargs``.
     """
     # get contrail geometry
@@ -1649,7 +1644,7 @@ def calc_timestep_meteorology(
 def calc_shortwave_radiation(
     rad: MetDataset,
     vector: GeoVectorDataset,
-    **kwargs: Any,
+    **interp_kwargs: Any,
 ) -> None:
     """Calculate shortwave radiation variables.
 
@@ -1665,7 +1660,7 @@ def calc_shortwave_radiation(
        Radiation data
     vector : GeoVectorDataset
         Flight or GeoVectorDataset instance
-    **kwargs : Any
+    **interp_kwargs : Any
         Interpolation keyword arguments
 
     Raises
@@ -1695,12 +1690,12 @@ def calc_shortwave_radiation(
 
     # GFS contains RSR (toa_upward_shortwave_flux) variable directly
     if "toa_upward_shortwave_flux" in rad:
-        interpolate_met(rad, vector, "toa_upward_shortwave_flux", "rsr", **kwargs)
+        interpolate_met(rad, vector, "toa_upward_shortwave_flux", "rsr", **interp_kwargs)
 
     # ECMWF contains "top_net_solar_radiation" which is SDR - RSR
     elif "top_net_solar_radiation" in rad:
-        interpolate_met(rad, vector, "top_net_solar_radiation", **kwargs)
-        vector["rsr"] = np.maximum(vector["sdr"] - vector["top_net_solar_radiation"], 0)
+        interpolate_met(rad, vector, "top_net_solar_radiation", **interp_kwargs)
+        vector["rsr"] = np.maximum(vector["sdr"] - vector["top_net_solar_radiation"], 0.0)
 
     else:
         raise ValueError(
@@ -1712,7 +1707,7 @@ def calc_shortwave_radiation(
 def calc_outgoing_longwave_radiation(
     rad: MetDataset,
     vector: GeoVectorDataset,
-    **kwargs: Any,
+    **interp_kwargs: Any,
 ) -> None:
     """Calculate outgoing longwave radiation (``olr``) from the radiation data provided.
 
@@ -1724,7 +1719,7 @@ def calc_outgoing_longwave_radiation(
        Radiation data
     vector : GeoVectorDataset
         Flight or GeoVectorDataset instance
-    **kwargs : Any
+    **interp_kwargs : Any
         Interpolation keyword arguments
 
     Raises
@@ -1739,12 +1734,12 @@ def calc_outgoing_longwave_radiation(
 
     # GFS contains OLR (toa_upward_longwave_flux) variable directly
     if "toa_upward_longwave_flux" in rad:
-        interpolate_met(rad, vector, "toa_upward_longwave_flux", "olr", **kwargs)
+        interpolate_met(rad, vector, "toa_upward_longwave_flux", "olr", **interp_kwargs)
         return
 
     # ECMWF contains "top_net_thermal_radiation" which is -1 * OLR
     if "top_net_thermal_radiation" in rad:
-        interpolate_met(rad, vector, "top_net_thermal_radiation", **kwargs)
+        interpolate_met(rad, vector, "top_net_thermal_radiation", **interp_kwargs)
         vector["olr"] = np.maximum(-vector["top_net_thermal_radiation"], 0.0)
         return
 
@@ -2178,7 +2173,7 @@ def calc_timestep_contrail_evolution(
     contrail_2["iwc"] = iwc_2
 
     # calculate next timestep meteorology, contrail, and radiative properties
-    calc_timestep_meteorology(contrail_2, met, params, interp_kwargs)
+    calc_timestep_meteorology(contrail_2, met, params, **interp_kwargs)
 
     # Intersect with rad dataset
     calc_shortwave_radiation(rad, contrail_2, **interp_kwargs)
