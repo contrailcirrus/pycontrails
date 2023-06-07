@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import scipy.interpolate
 
-from pycontrails import MetDataArray, MetDataset, GeoVectorDataset
+from pycontrails import GeoVectorDataset, MetDataArray, MetDataset
 from pycontrails.core import interpolation as interp_mod
 from pycontrails.core import models as models_mod
 
