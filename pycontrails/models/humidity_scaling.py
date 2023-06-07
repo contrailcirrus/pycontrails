@@ -642,6 +642,8 @@ def histogram_matching_all_members(
         ERA5-derived RHi values for all ensemble members. This array should have shape ``(n, 10)``.
     member : int
         The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
+    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+        The interpolation method.
 
     Returns
     -------
@@ -731,6 +733,8 @@ def eckel_scaling(
 
 @dataclasses.dataclass
 class HistogramMatchingParams(models.ModelParams):
+    """Parameters for :class:`HistogramMatching`."""
+
     #: The ERA5 product. Must be one of ``"reanalysis"`` or ``"ensemble_members"``.
     product_type: str = "reanalysis"
 
