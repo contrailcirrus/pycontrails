@@ -921,7 +921,7 @@ def _evolve_vector(
         )
         v_next = calc_evolve_one_step(v_now, v_next, params)
         if v_next:
-            summary_data.append(v_next.select(["index", "age", "ef"]))
+            summary_data.append(v_next.select(("index", "age", "ef")))
         vector = v_next + v_future
 
         if contrail_list is not None:
