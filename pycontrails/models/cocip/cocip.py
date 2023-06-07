@@ -748,7 +748,7 @@ class Cocip(Model):
         level_lower = air_pressure_lower / 100
 
         # get full met grid or flight data interpolated to the pressure level `p_dz`
-        interp_kwargs = {"q_method": self.params["interpolation_method"], **self.interp_kwargs}
+        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
         air_temperature_lower = interpolate_met(
             met,
             self._sac_flight,
@@ -859,7 +859,7 @@ class Cocip(Model):
         )
 
         # get met post wake vortex along initial contrail
-        interp_kwargs = {"q_method": self.params["interpolation_method"], **self.interp_kwargs}
+        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
         air_temperature_1 = interpolate_met(met, contrail_1, "air_temperature", **interp_kwargs)
         interpolate_met(met, contrail_1, "specific_humidity", **interp_kwargs)
 
