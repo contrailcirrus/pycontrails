@@ -571,7 +571,7 @@ class HumidityScalingByLevel(HumidityScaling):
 @functools.cache
 def _load_quantiles() -> pd.DataFrame:
     """Load precomputed ERA5 and IAGOS quantiles.
-    
+
     Returns
     -------
     pd.DataFrame
