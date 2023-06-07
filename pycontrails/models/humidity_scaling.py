@@ -11,11 +11,12 @@ from typing import Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import xarray as xr
 from overrides import overrides
 
 from pycontrails.core.met import MetDataArray, MetDataset
-from pycontrails.core.models import Model, ModelParams
+from pycontrails.core import models
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import constants, thermo, units
 from pycontrails.utils.types import ArrayLike
@@ -26,7 +27,7 @@ def _rhi_over_q(air_temperature: ArrayLike, air_pressure: ArrayLike) -> ArrayLik
     return air_pressure * (constants.R_v / constants.R_d) / thermo.e_sat_ice(air_temperature)
 
 
-class HumidityScaling(Model):
+class HumidityScaling(models.Model):
     """Support for standardizing humidity scaling methodologies.
 
     The method :meth:`scale` or :meth:`eval` should be called immediately
@@ -160,7 +161,7 @@ class HumidityScaling(Model):
 
 
 @dataclasses.dataclass
-class ConstantHumidityScalingParams(ModelParams):
+class ConstantHumidityScalingParams(models.ModelParams):
     """Parameters for :class:`ConstantHumidityScaling`."""
 
     #: Scale specific humidity by dividing it with adjustment factor per
@@ -289,7 +290,7 @@ class ExponentialBoostHumidityScaling(HumidityScaling):
 
 
 @dataclasses.dataclass
-class ExponentialBoostLatitudeCorrectionHumidityScalingParams(ModelParams):
+class ExponentialBoostLatitudeCorrectionHumidityScalingParams(models.ModelParams):
     """Parameters for :class:`ExponentialBoostLatitudeCorrectionHumidityScaling`."""
 
     #: Constants obtained by fitting a sigmoid curve to IAGOS data. These can be
@@ -464,7 +465,7 @@ def _calc_rhi_max(air_temperature: ArrayLike) -> ArrayLike:
 
 
 @dataclasses.dataclass
-class HumidityScalingByLevelParams(ModelParams):
+class HumidityScalingByLevelParams(models.ModelParams):
     """Parameters for :class:`HumidityScalingByLevel`."""
 
     #: Fraction of troposphere for mid-troposphere humidity scaling.
@@ -568,20 +569,17 @@ class HumidityScalingByLevel(HumidityScaling):
 
 
 @functools.cache
-def _load_iagos_quantiles() -> npt.NDArray[np.float64]:
-    path = pathlib.Path(__file__).parent / "quantiles" / "iagos_quantiles.npy"
-    # FIXME: Recompute to avoid the divide by 100.0 here
-    return np.load(path, allow_pickle=False) / 100.0
+def _load_quantiles() -> pd.DataFrame:
+    path = pathlib.Path(__file__).parent / "quantiles" / "quantiles.pq"
+    return pd.read_parquet(path)
 
 
-@functools.cache
-def _load_era5_ensemble_quantiles() -> npt.NDArray[np.float64]:
-    path = pathlib.Path(__file__).parent / "quantiles" / "era5_ensemble_quantiles.npy"
-    # FIXME: Recompute to avoid the divide by 100.0 here
-    return np.load(path, allow_pickle=False) / 100.0
-
-
-def histogram_matching(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDArray[np.float_]:
+def histogram_matching(
+    era5_rhi: npt.NDArray[np.float_],
+    product_type: str,
+    member: int | None,
+    q_method: str,
+) -> npt.NDArray[np.float_]:
     """Map ERA5-derived RHi to it's corresponding IAGOS quantile via histogram matching.
 
     This matching is performed on a **single** ERA5 ensemble member.
@@ -590,25 +588,48 @@ def histogram_matching(era5_rhi: npt.NDArray[np.float_], member: int) -> npt.NDA
     ----------
     era5_rhi : npt.NDArray[np.float_]
         ERA5-derived RHi values for the given ensemble member.
-    member : int
+    product_type : {"reanalysis", "ensemble_members"}
+        The ERA5 product type.
+    member : int | None
         The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
+        Only used if ``product_type == "ensemble_members"``.
+    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+        The interpolation method.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.float_]
         The IAGOS quantiles corresponding to the ERA5-derived RHi values.
     """
+    df = _load_quantiles()
+    iagos_quantiles = df[("iagos", "iagos")]  # shape (801,)
 
-    era5_quantiles = _load_era5_ensemble_quantiles()  # shape (801, 10)
-    era5_quantiles = era5_quantiles[:, member]  # shape (801,)
-    iagos_quantiles = _load_iagos_quantiles()  # shape (801,)
+    if product_type == "ensemble_members":
+        col = f"ensemble{member}", q_method
+    elif product_type == "reanalysis":
+        col = "reanalysis", q_method
+    else:
+        raise ValueError(
+            f"Invalid 'product_type' value '{product_type}'. "
+            "Must be one of ['reanalysis', 'ensemble_members']."
+        )
+
+    try:
+        era5_quantiles = df[col]  # shape (801,)
+    except KeyError:
+        raise ValueError(
+            f"Invalid 'q_method' value '{q_method}'. "
+            "Must be one of ['linear', 'cubic-spline', 'log-q-log-p']."
+        )
 
     out = np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
+
+    # Preserve the dtype (np.interp returns float64)
     return out.astype(era5_rhi.dtype, copy=False)
 
 
 def histogram_matching_all_members(
-    era5_rhi_all_members: npt.NDArray[np.float_], member: int
+    era5_rhi_all_members: npt.NDArray[np.float_], member: int, q_method: str
 ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     """Recalibrate ERA5-derived RHi values to IAGOS quantiles by histogram matching.
 
@@ -636,7 +657,9 @@ def histogram_matching_all_members(
     assert era5_rhi_all_members.shape[1] == n_members
 
     # Perform histogram matching on the given ensemble member
-    ensemble_member_rhi = histogram_matching(era5_rhi_all_members[:, member], member)
+    ensemble_member_rhi = histogram_matching(
+        era5_rhi_all_members[:, member], "ensemble_members", member, q_method
+    )
 
     # Perform histogram matching on all other ensemble members
     # Add up the results into a single 'ensemble_mean_rhi' array
@@ -645,7 +668,9 @@ def histogram_matching_all_members(
         if r == member:
             ensemble_mean_rhi += ensemble_member_rhi
         else:
-            ensemble_mean_rhi += histogram_matching(era5_rhi_all_members[:, r], r)
+            ensemble_mean_rhi += histogram_matching(
+                era5_rhi_all_members[:, r], "ensemble_members", r, q_method
+            )
 
     # Divide by the number of ensemble members to get the mean
     ensemble_mean_rhi /= n_members
@@ -656,6 +681,7 @@ def histogram_matching_all_members(
 def eckel_scaling(
     ensemble_mean_rhi: npt.NDArray[np.float_],
     ensemble_member_rhi: npt.NDArray[np.float_],
+    q_method: str,
 ) -> npt.NDArray[np.float_]:
     """Apply Eckel scaling to the given RHi values.
 
@@ -666,6 +692,8 @@ def eckel_scaling(
         ``ensemble_member_rhi``.
     ensemble_member_rhi : npt.NDArray[np.float_]
         The RHi values for a single ensemble member.
+    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+        The interpolation method.
 
     Returns
     -------
@@ -678,8 +706,23 @@ def eckel_scaling(
     :cite:`eckelCalibratedProbabilisticQuantitative1998`
     """
 
-    eckel_a = -0.005213832567192828 / 100.0
-    eckel_c = 2.7859172756970354
+    # https://journals.ametsoc.org/view/journals/wefo/27/1/waf-d-11-00015_1.xml
+    # https://doi.org/10.1016/B978-0-12-812372-0.00003-0
+
+    if q_method == "linear-q":
+        eckel_a = -6.365384483974193e-05
+        eckel_c = 2.731157095387021
+    elif q_method == "cubic-spline":
+        eckel_a = -6.268024189244961e-05
+        eckel_c = 2.6843757126334302
+    elif q_method == "log-q-log-p":
+        eckel_a = -5.8690498260424506e-05
+        eckel_c = 2.679501356493337
+    else:
+        raise ValueError(
+            f"Invalid 'q_method' value '{q_method}'. "
+            "Must be one of ['linear', 'cubic-spline', 'log-q-log-p']."
+        )
 
     out = (ensemble_mean_rhi - eckel_a) + eckel_c * (ensemble_member_rhi - ensemble_mean_rhi)
     out.clip(min=0.0, out=out)
@@ -687,7 +730,47 @@ def eckel_scaling(
 
 
 @dataclasses.dataclass
-class HistogramMatchingWithEckelParams(ModelParams):
+class HistogramMatchingParams(models.ModelParams):
+    #: The ERA5 product. Must be one of ``"reanalysis"`` or ``"ensemble_members"``.
+    product_type: str = "reanalysis"
+
+    #: The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
+    #: Only used if ``product_type`` is ``"ensemble_members"``.
+    member: int | None = None
+
+
+class HistogramMatching(HumidityScaling):
+    """Scale humidity by histogram matching to IAGOS RHi quantiles."""
+
+    name = "histogram_matching"
+    long_name = "IAGOS RHi histogram matching"
+    formula = "era5_quantiles -> iagos_quantiles"
+    default_params = HistogramMatchingParams
+
+    @overrides
+    def scale(  # type: ignore[override]
+        self,
+        specific_humidity: npt.NDArray[np.float_],
+        air_temperature: npt.NDArray[np.float_],
+        air_pressure: npt.NDArray[np.float_],
+        **kwargs: Any,
+    ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+        rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
+        rhi = rhi_over_q * specific_humidity
+
+        rhi_1 = histogram_matching(
+            rhi,
+            self.params["product_type"],
+            self.params["member"],
+            self.params["interpolation_q_method"],
+        )
+        q_1 = rhi_1 / rhi_over_q
+
+        return q_1, rhi_1
+
+
+@dataclasses.dataclass
+class HistogramMatchingWithEckelParams(models.ModelParams):
     """Parameters for :class:`HistogramMatchingWithEckel`.
 
     .. warning::
@@ -729,18 +812,9 @@ class HistogramMatchingWithEckel(HumidityScaling):
 
     n_members = 10  # hard-coded elsewhere
 
-    def __init__(
-        self,
-        met: MetDataset | None = None,
-        params: dict[str, Any] | None = None,
-        **params_kwargs: Any,
-    ) -> None:
-        super().__init__(met, params, **params_kwargs)
-
-        # Some very crude validation
+    def _validate_params(self) -> None:
         member = self.params["member"]
         assert member in range(self.n_members)
-        self.member: int = member
 
         ensemble_specific_humidity = self.params["ensemble_specific_humidity"]
         assert len(ensemble_specific_humidity) == self.n_members
@@ -749,8 +823,6 @@ class HistogramMatchingWithEckel(HumidityScaling):
                 assert mda.data["number"] == member
             except KeyError:
                 pass
-
-        self.ensemble_specific_humidity: list[MetDataArray] = ensemble_specific_humidity
 
     @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
@@ -776,6 +848,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         """
 
         self.update_params(params)
+        self._validate_params()
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
 
@@ -793,11 +866,21 @@ class HistogramMatchingWithEckel(HumidityScaling):
         q = self.source.data["specific_humidity"]
         q2d = np.empty((len(self.source), self.n_members), dtype=q.dtype)
 
-        for member, mda in enumerate(self.ensemble_specific_humidity):
-            if member == self.member:
-                q2d[:, member] = q
-            else:
-                q2d[:, member] = self.source.intersect_met(mda, **self.interp_kwargs)
+        q_method: str = self.params["interpolation_q_method"]
+        ensemble_specific_humidity: list[MetDataArray] = self.params["ensemble_specific_humidity"]
+        member: int = self.params["member"]
+
+        for i, mda in enumerate(ensemble_specific_humidity):
+            if i == member:
+                q2d[:, i] = q
+                continue
+
+            name = f"specific_humidity_{i}"
+            ds = mda.data.to_dataset(name=name)
+            mds = MetDataset(ds, copy=False)
+            q2d[:, i] = models.interpolate_met(
+                mds, self.source, name, q_method=q_method, **self.interp_kwargs
+            )
 
         p = self.source.setdefault("air_pressure", self.source.air_pressure)
         T = self.source.data["air_temperature"]
@@ -844,8 +927,12 @@ class HistogramMatchingWithEckel(HumidityScaling):
         rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
         rhi = rhi_over_q[:, np.newaxis] * specific_humidity
 
-        ensemble_mean_rhi, ensemble_member_rhi = histogram_matching_all_members(rhi, self.member)
-        rhi_1 = eckel_scaling(ensemble_mean_rhi, ensemble_member_rhi)
+        q_method = self.params["interpolation_q_method"]
+
+        ensemble_mean_rhi, ensemble_member_rhi = histogram_matching_all_members(
+            rhi, self.params["member"], q_method
+        )
+        rhi_1 = eckel_scaling(ensemble_mean_rhi, ensemble_member_rhi, q_method)
 
         q_1 = rhi_1 / rhi_over_q
 
