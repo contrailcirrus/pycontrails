@@ -770,13 +770,13 @@ class VectorDataset:
         """
         return type(self)(data=self.data, attrs=self.attrs, copy=True)
 
-    def select(self: VectorDataset, keys: list[str], copy: bool = True) -> VectorDataset:
+    def select(self: VectorDataset, keys: Iterable[str], copy: bool = True) -> VectorDataset:
         """Return new class instance only containing specified keys.
 
         Parameters
         ----------
-        keys : list[str]
-            A list of keys to filter by.
+        keys : Iterable[str]
+            An iterable of keys to filter by.
         copy : bool, optional
             Copy data on selection.
             Defaults to True.
@@ -784,9 +784,9 @@ class VectorDataset:
         Returns
         -------
         VectorDataset
-            VectorDataset containing only data associated to `keys`.
-            Note that this method always returns a VectorDataset, even if
-            the calling class is an implementation (i.e. Flight, Contrail)
+            VectorDataset containing only data associated to ``keys``.
+            Note that this method always returns a :class:`VectorDataset`, even if
+            the calling class is a proper subclass of :class:`VectorDataset`.
         """
         data = {key: self[key] for key in keys}
         return VectorDataset(data=data, attrs=self.attrs, copy=copy)
