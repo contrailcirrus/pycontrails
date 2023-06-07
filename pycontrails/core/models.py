@@ -76,14 +76,14 @@ class ModelParams:
     interpolation_use_indices: bool = False
 
     #: Experimental. Alternative interpolation method to account for specific humidity
-    #: lapse rate bias. Must be one of "linear", "cubic-spline", or "log-q-log-p".
-    #: The "linear" method applies naive linear interpolation over gridded met data.
+    #: lapse rate bias. Must be one of "linear-q", "cubic-spline", or "log-q-log-p".
+    #: The "linear-q" method applies naive linear interpolation over gridded met data.
     #: The "cubic-spline" method applies a custom stretching of the met interpolation
     #: table to account for the specific humidity lapse rate bias. The "log-q-log-p"
     #: method interpolates in the log of specific humidity and pressure, then converts
     #: back to specific humidity.
     #: Only used by models calling to :func:`interpolate_met`.
-    interpolation_q_method: str = "linear"
+    interpolation_q_method: str = "linear-q"
 
     # -----------
     # Meteorology
@@ -579,7 +579,7 @@ class Model(ABC):
                 )
                 continue
 
-            if q_method != "linear":
+            if q_method != "linear-q":
                 raise NotImplementedError(
                     "Experimental 'q_method' parameter only supported when source "
                     "is a GeoVectorDataset."
@@ -723,7 +723,7 @@ def interpolate_met(
     vector: GeoVectorDataset,
     met_key: str,
     vector_key: str | None = None,
-    q_method: str = "linear",
+    q_method: str = "linear-q",
     **interp_kwargs: Any,
 ) -> np.ndarray:
     """Interpolate ``vector`` against ``met`` gridded data.
@@ -746,7 +746,8 @@ def interpolate_met(
         Key of variable to attach to ``vector``.
         By default, use ``met_key``.
     q_method : str, optional
-        Experimental method to use for interpolating specific humidity.
+        Experimental method to use for interpolating specific humidity. See
+        :class:`ModelParams` for more information.
     **interp_kwargs : Any,
         Additional keyword only arguments passed to `intersect_met`. For example,
         `level=np.array([...])`.
@@ -776,7 +777,7 @@ def interpolate_met(
         raise KeyError(f"No variable key {met_key} in ``met``") from exc
 
     # Experimental q_method
-    if q_method != "linear" and met_key in ("q", "specific_humidity"):
+    if q_method != "linear-q" and met_key in ("q", "specific_humidity"):
         level = interp_kwargs.get("level", vector.level)
         mda, level = _prepare_q(mda, level, q_method)
         interp_kwargs = {**interp_kwargs, "level": level}
@@ -840,7 +841,7 @@ def _prepare_q(
         return mda, level
 
     raise ValueError(
-        f"Unknown q_method '{q_method}'. Valid options are 'linear', "
+        f"Unknown q_method '{q_method}'. Valid options are 'linear-q', "
         "'log-q-log-p', and 'cubic-spline'."
     )
 
