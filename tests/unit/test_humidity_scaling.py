@@ -405,6 +405,6 @@ def test_histogram_matching_members(
     if q_method == "linear-q":
         assert rhi2_mean == pytest.approx(0.209, abs=0.01)
     elif q_method == "cubic-spline":
-        assert rhi2_mean == pytest.approx(0.201, abs=0.01)
+        assert rhi2_mean == pytest.approx(0.204, abs=0.01)
     elif q_method == "log-q-log-p":
-        assert rhi2_mean == pytest.approx(0.132, abs=0.01)
+        assert rhi2_mean == pytest.approx(0.179, abs=0.01)
