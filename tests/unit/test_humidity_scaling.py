@@ -11,6 +11,7 @@ import pytest
 from overrides import overrides
 
 from pycontrails import GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
+from pycontrails.core import models
 from pycontrails.models import humidity_scaling as hs
 from pycontrails.physics import constants, thermo, units
 from pycontrails.utils.json import NumpyEncoder
@@ -286,12 +287,12 @@ def ensemble_q(met_issr: MetDataset) -> list[MetDataArray]:
 
     q_ens = []
     for _ in range(10):
-        q = da * rng.uniform(0.7, 1.3, size=da.shape)
+        q = da * rng.uniform(0.3, 0.4, size=da.shape)
         q_ens.append(MetDataArray(q))
     return q_ens
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def ensemble_vector(met_issr: MetDataset) -> GeoVectorDataset:
     """Construct a vector in bounds of the ensemble."""
 
@@ -310,48 +311,99 @@ def ensemble_vector(met_issr: MetDataset) -> GeoVectorDataset:
     t0, t1 = met_issr.data.time.values
     time = rng.uniform(t0, t1, size=n).astype("datetime64[ns]")
 
-    vector = GeoVectorDataset(
+    return GeoVectorDataset(
         longitude=longitude,
         latitude=latitude,
         level=level,
         time=time,
     )
-    return assign_random_t_and_q(vector, rng)
 
 
+@pytest.mark.parametrize("q_method", ["linear-q", "cubic-spline", "log-q-log-p"])
+def test_histogram_matching_reanalysis(
+    met_issr: MetDataset,
+    ensemble_vector: GeoVectorDataset,
+    q_method: str,
+) -> None:
+    """Test the HistogramMatching model."""
+
+    models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
+    q0 = models.interpolate_met(met_issr, ensemble_vector, "specific_humidity", q_method=q_method)
+
+    model = hs.HistogramMatching(product_type="reanalysis", interpolation_q_method=q_method)
+    vector = model.eval(ensemble_vector)
+    q1 = vector["specific_humidity"]
+
+    # Check that the two methods give different results
+    diff = np.abs(np.log(q1) - np.log(q0))
+    assert diff.min() >= 1e-6
+    assert diff.max() <= 2
+    assert 0.02 < diff.mean() < 0.1
+
+
+@pytest.mark.parametrize("q_method", ["linear-q", "cubic-spline", "log-q-log-p"])
 @pytest.mark.parametrize("member", range(10))
-def test_histogram_matching(
+def test_histogram_matching_members(
+    met_issr: MetDataset,
     ensemble_q: list[MetDataArray],
     ensemble_vector: GeoVectorDataset,
     member: int,
+    q_method: str,
 ) -> None:
     """Test the HistogramMatchingWithEckel scaling."""
 
-    model = hs.HistogramMatchingWithEckel(ensemble_specific_humidity=ensemble_q, member=member)
+    models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
+    mds_q = MetDataset(ensemble_q[member].data.to_dataset(name="specific_humidity"))
+    q0 = models.interpolate_met(mds_q, ensemble_vector, "specific_humidity", q_method=q_method)
+
+    rhi0 = thermo.rhi(
+        ensemble_vector["specific_humidity"],
+        ensemble_vector["air_temperature"],
+        ensemble_vector.air_pressure,
+    )
+    model = hs.HistogramMatching(
+        product_type="ensemble_members",
+        member=member,
+        interpolation_q_method=q_method,
+    )
 
     assert "rhi" not in ensemble_vector
     out = model.eval(ensemble_vector)
-    rhi = out["rhi"]
-    assert np.all(rhi >= 0)
-    rhi_mean = rhi.mean()
+    assert "rhi" not in ensemble_vector
 
-    q0 = ensemble_vector["specific_humidity"]
     q1 = out["specific_humidity"]
-    assert not np.allclose(q0, q1)
+    rhi1 = out["rhi"]
+
+    model = hs.HistogramMatchingWithEckel(
+        ensemble_specific_humidity=ensemble_q,
+        member=member,
+        interpolation_q_method=q_method,
+    )
+    out = model.eval(ensemble_vector)
+    assert "rhi" not in ensemble_vector
+
+    q2 = out["specific_humidity"]
+    rhi2 = out["rhi"]
+
+    assert np.all(rhi0 >= 0)
+    assert np.all(rhi1 >= 0)
+    assert np.all(rhi2 >= 0)
+
     assert np.all(q0 >= 0)
     assert np.all(q1 >= 0)
+    assert np.all(q2 >= 0)
 
-    # Check pinned values
-    expected = [
-        1.0346026109221682,
-        1.0364847600081353,
-        1.0395931028156713,
-        1.0375727266022454,
-        1.0369398003250168,
-        1.0393332906400063,
-        1.0374413157347022,
-        1.0387069112334044,
-        1.0384249039157067,
-        1.0361586297460212,
-    ]
-    assert rhi_mean == pytest.approx(expected[member], abs=1e-5)
+    rhi0_mean = rhi0.mean()
+    rhi1_mean = rhi1.mean()
+    rhi2_mean = rhi2.mean()
+
+    # Crude checks that work for all methods
+    assert rhi0_mean == pytest.approx(rhi1_mean, abs=0.02)
+    assert rhi0_mean == pytest.approx(rhi2_mean, abs=0.04)
+
+    if q_method == "linear-q":
+        assert rhi2_mean == pytest.approx(0.209, abs=0.01)
+    elif q_method == "cubic-spline":
+        assert rhi2_mean == pytest.approx(0.201, abs=0.01)
+    elif q_method == "log-q-log-p":
+        assert rhi2_mean == pytest.approx(0.132, abs=0.01)
