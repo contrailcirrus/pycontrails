@@ -230,6 +230,7 @@ def test_scalers_pass_nan_through(vector: GeoVectorDataset, scaler_cls: type) ->
     boosters = (
         hs.ExponentialBoostHumidityScaling,
         hs.ExponentialBoostLatitudeCorrectionHumidityScaling,
+        hs.HistogramMatching,
     )
     if isinstance(scaler, boosters):
         assert np.isnan(vector["specific_humidity"][66])
