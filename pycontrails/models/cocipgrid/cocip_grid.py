@@ -680,8 +680,8 @@ def run_interpolators(
             raise ValueError("`keys` override only valid for `met` input")
 
         for met_key in keys:
-            value = vector.intersect_met(met[met_key], **interp_kwargs)
-            vector.update({met_key: value})
+            # NOTE: Changed in v0.43: no longer overwrites existing variables
+            models.interpolate_met(met, vector, met_key, **interp_kwargs)
 
         return _apply_humidity_scaling(vector, humidity_scaling, humidity_interpolated)
 
@@ -711,7 +711,7 @@ def run_interpolators(
     air_temperature = vector["air_temperature"]
     air_pressure = vector.air_pressure
     air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
-    lower_level = air_pressure_lower / 100
+    lower_level = air_pressure_lower / 100.0
 
     # Advect at lower_level
     for met_key in ("air_temperature", "eastward_wind", "northward_wind"):
