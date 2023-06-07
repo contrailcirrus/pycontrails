@@ -511,7 +511,7 @@ def test_fill_value(
     assert out1[3] == fill_value
 
 
-@pytest.mark.parametrize("q_method", ["linear", "log-q-log-p", "cubic-spline", "log-q"])
+@pytest.mark.parametrize("q_method", ["linear-q", "log-q-log-p", "cubic-spline", "log-q"])
 def test_interpolation_q_method(
     met_pcc_pl: MetDataset,
     arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
@@ -532,7 +532,7 @@ def test_interpolation_q_method(
     q = models_mod.interpolate_met(met_pcc_pl, vector, "specific_humidity", q_method=q_method)
     mean = q.mean()
 
-    if q_method == "linear":
+    if q_method == "linear-q":
         assert mean == pytest.approx(6.557144e-05, abs=1e-8)
     elif q_method == "log-q-log-p":
         assert mean == pytest.approx(5.8988215e-05, abs=1e-8)
