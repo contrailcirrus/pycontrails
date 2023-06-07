@@ -602,7 +602,7 @@ class VectorDataset:
         if not self:
             return other
 
-        return type(self).sum([self, other])
+        return type(self).sum((self, other))
 
     @classmethod
     def sum(
@@ -663,8 +663,8 @@ class VectorDataset:
         data = {key: concat(key) for key in keys}
 
         if infer_attrs:
-            return cls(data, attrs=vectors[0].attrs)
-        return cls(data)
+            return cls(data, attrs=vectors[0].attrs, copy=False)
+        return cls(data, copy=False)
 
     def __eq__(self: VectorDatasetType, other: object) -> bool:
         """Determine if two instances are equal.
