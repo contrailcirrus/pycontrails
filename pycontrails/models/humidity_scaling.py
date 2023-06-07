@@ -15,8 +15,8 @@ import pandas as pd
 import xarray as xr
 from overrides import overrides
 
-from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core import models
+from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import constants, thermo, units
 from pycontrails.utils.types import ArrayLike
@@ -889,11 +889,8 @@ class HistogramMatchingWithEckel(HumidityScaling):
                 q2d[:, i] = q
                 continue
 
-            name = f"specific_humidity_{i}"
-            ds = mda.data.to_dataset(name=name)
-            mds = MetDataset(ds, copy=False)
-            q2d[:, i] = models.interpolate_met(
-                mds, self.source, name, q_method=q_method, **self.interp_kwargs
+            q2d[:, i] = models.interpolate_gridded_specific_humidity(
+                mda, self.source, q_method=q_method, **self.interp_kwargs
             )
 
         p = self.source.setdefault("air_pressure", self.source.air_pressure)
