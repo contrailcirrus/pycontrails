@@ -776,21 +776,50 @@ def interpolate_met(
     except KeyError as exc:
         raise KeyError(f"No variable key {met_key} in ``met``") from exc
 
-    # Experimental q_method
-    if q_method != "linear-q" and met_key in ("q", "specific_humidity"):
-        level = interp_kwargs.get("level", vector.level)
-        mda, level = _prepare_q(mda, level, q_method)
-        interp_kwargs = {**interp_kwargs, "level": level}
-
-        out = vector.intersect_met(mda, **interp_kwargs)
-        if q_method == "log-q-log-p":
-            out = np.exp(out)
-
-    # Default interpolation
+    if met_key in ("q", "specific_humidity"):
+        out = interpolate_gridded_specific_humidity(mda, vector, q_method, **interp_kwargs)
     else:
         out = vector.intersect_met(mda, **interp_kwargs)
 
     vector[vector_key] = out
+    return out
+
+
+def interpolate_gridded_specific_humidity(
+    mda: MetDataArray,
+    vector: GeoVectorDataset,
+    q_method: str,
+    **interp_kwargs: Any,
+) -> np.ndarray:
+    """Interpolate specific humidity against ``vector`` with experimental ``q_method``.
+
+    Parameters
+    ----------
+    mda : MetDataArray
+        MetDataArray of specific humidity.
+    vector : GeoVectorDataset
+        Flight or GeoVectorDataset instance
+    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+        Experimental method to use for interpolating specific humidity.
+    **interp_kwargs : Any,
+        Additional keyword only arguments passed to `intersect_met`.
+
+    Returns
+    -------
+    np.ndarray
+        Interpolated values.
+    """
+    if q_method == "linear-q":
+        return vector.intersect_met(mda, **interp_kwargs)
+
+    level = interp_kwargs.get("level", vector.level)
+    mda, level = _prepare_q(mda, level, q_method)
+    interp_kwargs = {**interp_kwargs, "level": level}
+
+    out = vector.intersect_met(mda, **interp_kwargs)
+    if q_method == "log-q-log-p":
+        out = np.exp(out)
+
     return out
 
 
