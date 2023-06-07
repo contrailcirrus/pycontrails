@@ -570,7 +570,17 @@ class HumidityScalingByLevel(HumidityScaling):
 
 @functools.cache
 def _load_quantiles() -> pd.DataFrame:
-    path = pathlib.Path(__file__).parent / "quantiles" / "quantiles.pq"
+    """Load precomputed ERA5 and IAGOS quantiles.
+    
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with 801 rows and 34 columns. The index is parameterized
+        by the quantile, and the columns are parameterized by the met source
+        and the interpolation methodology. The IAOGS quantiles are in the
+        ``("iagos", "iagos")`` column.
+    """
+    path = pathlib.Path(__file__).parent / "quantiles" / "era5-quantiles.pq"
     return pd.read_parquet(path)
 
 
@@ -602,7 +612,7 @@ def histogram_matching(
         The IAGOS quantiles corresponding to the ERA5-derived RHi values.
     """
     df = _load_quantiles()
-    iagos_quantiles = df[("iagos", "iagos")]  # shape (801,)
+    iagos_quantiles = df[("iagos", "iagos")]
 
     if product_type == "ensemble_members":
         col = f"ensemble{member}", q_method
@@ -615,7 +625,7 @@ def histogram_matching(
         )
 
     try:
-        era5_quantiles = df[col]  # shape (801,)
+        era5_quantiles = df[col]
     except KeyError:
         raise ValueError(
             f"Invalid 'q_method' value '{q_method}'. "
