@@ -823,7 +823,7 @@ def interpolate_gridded_specific_humidity(
     return out
 
 
-def _prepare_q(
+def _prepare_q(  # type: ignore[return-value]
     mda: MetDataArray, level: npt.NDArray[np.float_], q_method: str
 ) -> tuple[MetDataArray, npt.NDArray[np.float_]]:
     """Prepare specific humidity for interpolation with experimental ``q_method``.
@@ -869,10 +869,24 @@ def _prepare_q(
 
         return mda, level
 
-    raise ValueError(
-        f"Unknown q_method '{q_method}'. Valid options are 'linear-q', "
-        "'log-q-log-p', and 'cubic-spline'."
-    )
+    raise_invalid_q_method_error(q_method)
+
+
+def raise_invalid_q_method_error(q_method: str) -> NoReturn:
+    """Raise error for invalid ``q_method``.
+
+    Parameters
+    ----------
+    q_method : str
+        ``q_method`` to raise error for.
+
+    Raises
+    ------
+    ValueError
+        ``q_method`` is not one of ``"linear-q"``, ``"log-q-log-p"``, or ``"cubic-spline"``.
+    """
+    available = ["linear-q", "log-q-log-p", "cubic-spline"]
+    raise ValueError(f"Invalid 'q_method' value '{q_method}'. Must be one of {available}.")
 
 
 @functools.cache
