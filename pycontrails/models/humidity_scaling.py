@@ -627,10 +627,7 @@ def histogram_matching(
     try:
         era5_quantiles = df[col]
     except KeyError:
-        raise ValueError(
-            f"Invalid 'q_method' value '{q_method}'. "
-            "Must be one of ['linear', 'cubic-spline', 'log-q-log-p']."
-        )
+        models.raise_invalid_q_method_error(q_method)
 
     out = np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
 
@@ -731,10 +728,7 @@ def eckel_scaling(
         eckel_a = -5.8690498260424506e-05
         eckel_c = 2.679501356493337
     else:
-        raise ValueError(
-            f"Invalid 'q_method' value '{q_method}'. "
-            "Must be one of ['linear', 'cubic-spline', 'log-q-log-p']."
-        )
+        models.raise_invalid_q_method_error(q_method)
 
     out = (ensemble_mean_rhi - eckel_a) + eckel_c * (ensemble_member_rhi - ensemble_mean_rhi)
     out.clip(min=0.0, out=out)
