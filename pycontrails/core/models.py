@@ -729,7 +729,7 @@ def interpolate_met(
     """Interpolate ``vector`` against ``met`` gridded data.
 
     If ``vector_key`` (=``met_key`` by default) already exists,
-    then break and return values at ``vector_key``.
+    return values at ``vector_key``.
 
     Mutates parameter ``vector`` in place by attaching new key
     and returns values.
@@ -749,8 +749,8 @@ def interpolate_met(
         Experimental method to use for interpolating specific humidity. See
         :class:`ModelParams` for more information.
     **interp_kwargs : Any,
-        Additional keyword only arguments passed to `intersect_met`. For example,
-        `level=np.array([...])`.
+        Additional keyword only arguments passed to :meth:`GeoVectorDataset.intersect_met`.
+        For example, ``level=[...]``.
 
     Returns
     -------
