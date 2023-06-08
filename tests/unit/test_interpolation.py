@@ -524,7 +524,7 @@ def test_interpolation_q_method(
     assert np.all(vector.coords_intersect_met(met_pcc_pl))
 
     if q_method == "log-q":
-        with pytest.raises(ValueError, match="Unknown q_method 'log-q'"):
+        with pytest.raises(ValueError, match="Invalid 'q_method' value 'log-q'"):
             models_mod.interpolate_met(met_pcc_pl, vector, "specific_humidity", q_method=q_method)
         return
 

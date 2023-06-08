@@ -301,14 +301,11 @@ class GFSForecast(datalib.MetDataSource):
         """Return filename string for grid spacing."""
         if self.grid == 0.25:
             return "0p25"
-        elif self.grid == 0.5:
+        if self.grid == 0.5:
             return "0p50"
-        elif self.grid == 1:
+        if self.grid == 1:
             return "1p00"
-        else:
-            raise ValueError(
-                f"Unsupported grid spacing {self.grid}. Must be one of 0.25, 0.5, or 1.0."
-            )
+        raise ValueError(f"Unsupported grid spacing {self.grid}. Must be one of 0.25, 0.5, or 1.0.")
 
     @property
     def forecast_path(self) -> str:
