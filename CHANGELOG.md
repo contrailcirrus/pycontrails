@@ -5,26 +5,31 @@
 
 ### Features
 
-- Add new experimental `interpolation_q_method` model parameter. This parameter controls the interpolation methodology when interpolation against gridded specific humidity. The possible values are:
+- Add new experimental `interpolation_q_method` field to the `ModelParams` data class. This parameter controls the interpolation methodology when interpolation against gridded specific humidity. The possible values are:
   - `"linear-q"`: Interpolate linearly against specific humidity. This is the default behavior and is the same as the previous behavior.
   - `"cubic-spline"`: Apply cubic-spline scaling to the interpolation table vertical coordinate before interpolating linearly against specific humidity.
   - `"log-q-log-p"`: Interpolate in the log-log domain against specific humidity and pressure.
-- Add new `HistogramMatching` humidity scaling. The previous `HistogramMatchingWithEckel` scaling is still available when working with ERA5 ensemble members.
+
+  This interpolation parameter is used when calling `pycontrails.core.models.interpolate_met`. It can also be used directly with the new lower-level `pycontrails.core.models.interpolate_gridded_specific_humidity` function.
+- Add new experimental `HistogramMatching` humidity scaling model to match RHi values against IAGOS observations. The previous `HistogramMatchingWithEckel` scaling is still available when working with ERA5 ensemble members.
 
 ### Breaking changes
 
-- Add an optional `q_method` parameter to the `interpolate_met` function. The default value `"linear-q"` agrees with the previous behavior of the function.
-- Change function signatures in the `cocip.py` module for consistency. THe `interp_kwargs` parameter is now unpacked in the `calc_timestep_meterology` function. Rename `kwargs` to `interp_kwargs` where appropriate.
+- Add an optional `q_method` parameter to the `pycontrails.core.models.interpolate_met` function. The default value `"linear-q"` agrees with the previous behavior.
+- Change function signatures in the `cocip.py` module for consistency. The `interp_kwargs` parameter is now unpacked in the `calc_timestep_meterology` signature. Rename `kwargs` to `interp_kwargs` where appropriate.
 
 ### Fixes
 
-- Clip the scaled humidity values computed by `HistogramMatchingWithEckel` to ensure that they are non-negative. Previously, both relative and specific humidity values arising from Eckel scaling could be negative.
-- Fix the precomputed Eckel coefficients. Previous values where computed for different interpolation methods and were not correct for the default interpolation method.
+- Recompute and extend quantiles for histogram matching humidity scaling. Quantiles are now available for each combination of `q_method` and the following ERA5 data products: reanalysis and ensemble members 0-9. This data is available as a parquet file and is packaged with `pycontrails`.
+- Fix the precomputed Eckel coefficients. Previous values where computed for different interpolation assumptions and were not correct for the default interpolation method.
+- Clip the scaled humidity values computed by the `humidity_scaling.eckel_scaling` function to ensure that they are non-negative. Previously, both relative and specific humidity values arising from Eckel scaling could be negative.
+- Avoid extraneous copy when calling `VectorDataset.sum`.
 
 ### Internals
 
 - Refactor auxillary functions used by `HistogramMatchingWithEckel` to better isolated histogram matching from Eckel scaling.
 - Refactor `intersect_met` method in `pycontrails.core.models` to handle experimental `q_method` parameter.
+- Include precomputed humidity lapse rate values in the new `pycontrails.core.models._load_spline` function.
 
 ## v0.42.2
 
