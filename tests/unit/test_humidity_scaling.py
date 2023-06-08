@@ -320,6 +320,7 @@ def ensemble_vector(met_issr: MetDataset) -> GeoVectorDataset:
     )
 
 
+@pytest.mark.filterwarnings("ignore:No variable key 'log_specific_humidity'")
 @pytest.mark.parametrize("q_method", ["linear-q", "cubic-spline", "log-q-log-p"])
 def test_histogram_matching_reanalysis(
     met_issr: MetDataset,
@@ -342,6 +343,7 @@ def test_histogram_matching_reanalysis(
     assert 0.02 < diff.mean() < 0.1
 
 
+@pytest.mark.filterwarnings("ignore:No variable key 'log_specific_humidity'")
 @pytest.mark.parametrize("q_method", ["linear-q", "cubic-spline", "log-q-log-p"])
 @pytest.mark.parametrize("member", range(10))
 def test_histogram_matching_members(
@@ -375,10 +377,17 @@ def test_histogram_matching_members(
     q1 = out["specific_humidity"]
     rhi1 = out["rhi"]
 
+    if q_method == "log-q-log-p":
+        ensemble_q = [MetDataArray(np.log(mda.data)) for mda in ensemble_q]
+        log_applied = True
+    else:
+        log_applied = False
+
     model = hs.HistogramMatchingWithEckel(
         ensemble_specific_humidity=ensemble_q,
         member=member,
         interpolation_q_method=q_method,
+        log_applied=log_applied,
     )
     out = model.eval(ensemble_vector)
     assert "rhi" not in ensemble_vector

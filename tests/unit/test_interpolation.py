@@ -529,7 +529,14 @@ def test_interpolation_q_method(
         return
 
     # The q values are different
-    q = models_mod.interpolate_met(met_pcc_pl, vector, "specific_humidity", q_method=q_method)
+    if q_method == "log-q-log-p":
+        with pytest.warns(UserWarning, match="log_specific_humidity"):
+            q = models_mod.interpolate_met(
+                met_pcc_pl, vector, "specific_humidity", q_method=q_method
+            )
+    else:
+        q = models_mod.interpolate_met(met_pcc_pl, vector, "specific_humidity", q_method=q_method)
+
     mean = q.mean()
 
     if q_method == "linear-q":

@@ -796,6 +796,10 @@ class HistogramMatchingWithEckelParams(models.ModelParams):
     #: a ValueError will be raised at model instantiation time.
     member: int | None = None
 
+    #: If a log transform has already been applied to each member of
+    #: ``ensemble_specific_humidity``, set this to True.
+    log_applied: bool = False
+
 
 class HistogramMatchingWithEckel(HumidityScaling):
     """Scale humidity by histogram matching to IAGOS RHi quantiles.
@@ -877,6 +881,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         q_method: str = self.params["interpolation_q_method"]
         ensemble_specific_humidity: list[MetDataArray] = self.params["ensemble_specific_humidity"]
         member: int = self.params["member"]
+        log_applied: bool = self.params["log_applied"]
 
         for i, mda in enumerate(ensemble_specific_humidity):
             if i == member:
@@ -884,7 +889,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
                 continue
 
             q2d[:, i] = models.interpolate_gridded_specific_humidity(
-                mda, self.source, q_method=q_method, **self.interp_kwargs
+                mda, self.source, q_method, log_applied, **self.interp_kwargs
             )
 
         p = self.source.setdefault("air_pressure", self.source.air_pressure)

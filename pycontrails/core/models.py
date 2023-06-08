@@ -762,69 +762,74 @@ def interpolate_met(
     KeyError
         Parameter ``met_key`` not found in ``met``.
     """
-    if vector_key is None:
-        vector_key = met_key
+    vector_key = vector_key or met_key
 
     if (out := vector.get(vector_key, None)) is not None:
         return out
 
     if met is None:
-        raise ValueError(f"No variable key {vector_key} in ``vector`` and ``met`` is None")
-
-    try:
-        mda = met[met_key]
-    except KeyError as exc:
-        raise KeyError(f"No variable key {met_key} in ``met``") from exc
+        raise ValueError(f"No variable key '{vector_key}' in 'vector' and 'met' is None")
 
     if met_key in ("q", "specific_humidity"):
-        out = interpolate_gridded_specific_humidity(mda, vector, q_method, **interp_kwargs)
+        mda, log_applied = _extract_q(met, met_key, q_method)
+        out = interpolate_gridded_specific_humidity(
+            mda, vector, q_method, log_applied, **interp_kwargs
+        )
+
     else:
+        try:
+            mda = met[met_key]
+        except KeyError as exc:
+            raise KeyError(f"No variable key '{met_key}' in 'met'.") from exc
+
         out = vector.intersect_met(mda, **interp_kwargs)
 
     vector[vector_key] = out
     return out
 
 
-def interpolate_gridded_specific_humidity(
-    mda: MetDataArray,
-    vector: GeoVectorDataset,
-    q_method: str,
-    **interp_kwargs: Any,
-) -> np.ndarray:
-    """Interpolate specific humidity against ``vector`` with experimental ``q_method``.
+def _extract_q(met: MetDataset, met_key: str, q_method: str) -> tuple[MetDataArray, bool]:
+    """Extract specific humidity from ``met`` :class:`MetDataset`.
 
     Parameters
     ----------
-    mda : MetDataArray
-        MetDataArray of specific humidity.
-    vector : GeoVectorDataset
-        Flight or GeoVectorDataset instance
-    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
-        Experimental method to use for interpolating specific humidity.
-    **interp_kwargs : Any,
-        Additional keyword only arguments passed to `intersect_met`.
+    met : MetDataset
+        Met data
+    met_key : str
+        Key of specific humidity in ``met``. Typically either ``"q"`` or ``"specific_humidity"``.
+    q_method : str
+        Method to use for interpolating specific humidity.
 
     Returns
     -------
-    np.ndarray
-        Interpolated values.
+    mda : MetDataArray
+        Specific humidity data
+    log_applied : bool
+        Whether a log transform was applied to ``mda``.
     """
-    if q_method == "linear-q":
-        return vector.intersect_met(mda, **interp_kwargs)
+    if q_method != "log-q-log-p":
+        try:
+            return met[met_key], False
+        except KeyError as exc:
+            raise KeyError(f"No variable key '{met_key}' in 'met'.") from exc
 
-    level = interp_kwargs.get("level", vector.level)
-    mda, level = _prepare_q(mda, level, q_method)
-    interp_kwargs = {**interp_kwargs, "level": level}
+    try:
+        return met["log_specific_humidity"], True
+    except KeyError:
+        warnings.warn(
+            "No variable key 'log_specific_humidity' in 'met'. "
+            "Falling back to 'specific_humidity'. "
+            "Computation will be faster if 'log_specific_humidity' is provided."
+        )
 
-    out = vector.intersect_met(mda, **interp_kwargs)
-    if q_method == "log-q-log-p":
-        out = np.exp(out)
-
-    return out
+    try:
+        return met[met_key], False
+    except KeyError as exc:
+        raise KeyError(f"No variable key '{met_key}' in 'met'.") from exc
 
 
 def _prepare_q(  # type: ignore[return-value]
-    mda: MetDataArray, level: npt.NDArray[np.float_], q_method: str
+    mda: MetDataArray, level: npt.NDArray[np.float_], q_method: str, log_applied: bool
 ) -> tuple[MetDataArray, npt.NDArray[np.float_]]:
     """Prepare specific humidity for interpolation with experimental ``q_method``.
 
@@ -836,6 +841,8 @@ def _prepare_q(  # type: ignore[return-value]
         Levels to interpolate to, [:math:`hPa`].
     q_method : str
         One of ``"log-q-log-p"`` or ``"cubic-spline"``.
+    log_applied : bool
+        Whether a log transform was applied to ``mda``.
 
     Returns
     -------
@@ -851,11 +858,21 @@ def _prepare_q(  # type: ignore[return-value]
             da.load()
 
         da = da.assign_coords(level=np.log(da["level"]))
-        da = np.log(da)  # type: ignore[assignment]
+
+        if not log_applied:
+            # ERA5 specific humidity can have negative values
+            # These will get converted to NaNs
+            # Ignore the xarray warning
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="invalid value encountered in log")
+                da = np.log(da)  # type: ignore[assignment]
+
         mda = MetDataArray(da, copy=False)
 
         level = np.log(level)
         return mda, level
+
+    assert not log_applied, "Log transform should not be applied for cubic spline interpolation"
 
     if q_method == "cubic-spline":
         if da["level"][0] < 50.0 or da["level"][-1] > 1000.0:
@@ -870,6 +887,47 @@ def _prepare_q(  # type: ignore[return-value]
         return mda, level
 
     raise_invalid_q_method_error(q_method)
+
+
+def interpolate_gridded_specific_humidity(
+    mda: MetDataArray,
+    vector: GeoVectorDataset,
+    q_method: str,
+    log_applied: bool,
+    **interp_kwargs: Any,
+) -> np.ndarray:
+    """Interpolate specific humidity against ``vector`` with experimental ``q_method``.
+
+    Parameters
+    ----------
+    mda : MetDataArray
+        MetDataArray of specific humidity.
+    vector : GeoVectorDataset
+        Flight or GeoVectorDataset instance
+    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+        Experimental method to use for interpolating specific humidity.
+    log_applied : bool
+        Whether or not a log transform was applied to specific humidity.
+    **interp_kwargs : Any,
+        Additional keyword only arguments passed to `intersect_met`.
+
+    Returns
+    -------
+    np.ndarray
+        Interpolated values.
+    """
+    if q_method == "linear-q":
+        return vector.intersect_met(mda, **interp_kwargs)
+
+    level = interp_kwargs.get("level", vector.level)
+    mda, level = _prepare_q(mda, level, q_method, log_applied)
+    interp_kwargs = {**interp_kwargs, "level": level}
+
+    out = vector.intersect_met(mda, **interp_kwargs)
+    if q_method == "log-q-log-p":
+        out = np.exp(out)
+
+    return out
 
 
 def raise_invalid_q_method_error(q_method: str) -> NoReturn:
