@@ -8,6 +8,7 @@ import xarray as xr
 
 from pycontrails.models.cocip import contrail_properties
 from pycontrails.physics import constants, units
+from pycontrails.physics.geo import grid_surface_area
 
 np.random.seed(1)
 
@@ -64,7 +65,7 @@ def cirrus_summary_statistics(
     # Get percentage cirrus cover
     lon_coords_met = tau_natural["longitude"].values
     lat_coords_met = tau_natural["latitude"].values
-    pixel_area = _get_pixel_area(lon_coords_met, lat_coords_met)
+    pixel_area = grid_surface_area(lon_coords_met, lat_coords_met)
 
     # This is specific to NATS
     # is_in_airspace = get_2d_airspace_domain_for_met_data(lon_coords_met, lat_coords_met)
@@ -155,35 +156,6 @@ def _get_pct_cirrus_cover_t(
     numer = np.sum(pixel_area_np[is_in_airspace_np] * cirrus_cover_2d_np[is_in_airspace_np])
     denom = np.sum(pixel_area_np[is_in_airspace_np])
     return numer / denom * 100
-
-
-# ---
-# helpers.py
-# ---
-
-
-def _get_pixel_area(lon_deg: np.ndarray, lat_deg: np.ndarray) -> xr.DataArray:
-    """Calculate the area that is covered by the pixel of each grid cell.
-
-    Source: https://www.pmel.noaa.gov/maillists/tmap/ferret_users/fu_2004/msg00023.html
-    """
-    lon_2d, lat_2d = np.meshgrid(lon_deg, lat_deg)
-    d_lon = np.abs(lon_deg[1] - lon_deg[0])
-    d_lat = np.abs(lat_deg[1] - lat_deg[0])
-
-    area_lat_btm = _get_area_between_latitude_and_north_pole(lat_2d - d_lat)
-    area_lat_top = _get_area_between_latitude_and_north_pole(lat_2d)
-    grid_surface_area = (d_lon / 360) * (area_lat_btm - area_lat_top)
-    return xr.DataArray(
-        grid_surface_area.T,
-        dims=["longitude", "latitude"],
-        coords={"longitude": lon_deg, "latitude": lat_deg},
-    )
-
-
-def _get_area_between_latitude_and_north_pole(latitude: np.ndarray) -> np.ndarray:
-    lat_radians = units.degrees_to_radians(latitude)
-    return 2 * np.pi * constants.radius_earth**2 * (1 - np.sin(lat_radians))
 
 
 # ---
