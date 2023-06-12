@@ -35,11 +35,9 @@ class PSModelParams(AircraftPerformanceParams):
         pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20230517.csv"
     )
 
-    #: Clip engine efficiency values below this value
-    ope_min: float = 0.0
-
-    #: Clip engine efficiency values above this value
-    ope_max: float = 0.5
+    #: Clip the ratio of the overall propulsion efficiency to the maximum propulsion
+    #: efficiency to always exceed this value.
+    eta_over_eta_b_min: float | None = 0.5
 
 
 class PSModel(AircraftPerformance):
@@ -236,7 +234,7 @@ class PSModel(AircraftPerformance):
 
         if engine_efficiency is None:
             engine_efficiency = overall_propulsion_efficiency(
-                mach_num, c_t, atyp_param, self.params["ope_min"], self.params["ope_max"]
+                mach_num, c_t, atyp_param, self.params["eta_over_eta_b_min"]
             )
 
         if fuel_flow is None:
@@ -393,6 +391,10 @@ def lift_coefficient(
     -----
     The lift force is perpendicular to the flight direction, while the
     aircraft weight acts vertically.
+
+    References
+    ----------
+    Eq. (5) of :cite:`pollEstimationMethodFuel2021`.
     """
     lift_force = aircraft_mass * constants.g * np.cos(units.degrees_to_radians(climb_angle))
     denom = (constants.kappa / 2.0) * air_pressure * mach_num**2 * wing_surface_area
@@ -475,9 +477,8 @@ def oswald_efficiency_factor(
     """
     numer = 1.075 if atyp_param.winglets else 1.0
     k_1 = _non_vortex_lift_dependent_drag_factor(c_drag_0, atyp_param.cos_sweep)
-    return numer / (
-        (1.0 + 0.03 + atyp_param.delta_2) + (k_1 * np.pi * atyp_param.wing_aspect_ratio)
-    )
+    denom = 1.0 + 0.03 + atyp_param.delta_2 + (k_1 * (np.pi * atyp_param.wing_aspect_ratio))
+    return numer / denom
 
 
 def _non_vortex_lift_dependent_drag_factor(
@@ -499,7 +500,7 @@ def _non_vortex_lift_dependent_drag_factor(
 
     References
     ----------
-    Eq. (26) of :cite:`pollEstimationMethodFuel2021a`.
+    Eq. (13) of :cite:`pollEstimationMethodFuel2021a`.
     """
     return 0.8 * (1.0 - 0.53 * cos_sweep) * c_drag_0
 
@@ -685,8 +686,7 @@ def overall_propulsion_efficiency(
     mach_num: npt.NDArray[np.float_],
     c_t: npt.NDArray[np.float_],
     atyp_param: PSAircraftEngineParams,
-    clip_min: float | None = None,
-    clip_max: float | None = None,
+    eta_over_eta_b_min: float | None = None,
 ) -> npt.NDArray[np.float_]:
     """Calculate overall propulsion efficiency.
 
@@ -698,10 +698,10 @@ def overall_propulsion_efficiency(
         Engine thrust coefficient
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
-    clip_min : float
-        Minimum value to clip to. If None, no clipping is performed.
-    clip_max : float
-        Maximum value to clip to. If None, no clipping is performed.
+    eta_over_eta_b_min : float | None
+        Clip the ratio of the overall propulsion efficiency to the maximum propulsion
+        efficiency to this value. See :func:`propulsion_efficiency_over_max_propulsion_efficiency`.
+        If ``None``, no clipping is performed.
 
     Returns
     -------
@@ -711,13 +711,12 @@ def overall_propulsion_efficiency(
     eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(
         mach_num, c_t, atyp_param.m_des, atyp_param.c_t_des
     )
+    if eta_over_eta_b_min is not None:
+        eta_over_eta_b.clip(min=eta_over_eta_b_min, out=eta_over_eta_b)
     eta_b = max_overall_propulsion_efficiency(
         mach_num, atyp_param.m_des, atyp_param.eta_1, atyp_param.eta_2
     )
-    out = eta_over_eta_b * eta_b
-    if clip_min is not None or clip_max is not None:
-        out.clip(min=clip_min, max=clip_max, out=out)  # type: ignore[arg-type]
-    return out
+    return eta_over_eta_b * eta_b
 
 
 def propulsion_efficiency_over_max_propulsion_efficiency(
