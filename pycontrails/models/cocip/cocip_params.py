@@ -178,6 +178,14 @@ class CocipParams(ModelParams):
     #:  .. versionadded:: 0.28.9
     radiative_heating_effects: bool = False
 
+    #: Radiative effects due to contrail-contrail overlapping
+    #: Account for change in local contrail shortwave and longwave radiative forcing
+    #: due to contrail-contrail overlapping. Contrails are grouped into altitude intervals
+    #: of `dz_overlap_m`, all contrails within each altitude interval are treated as one
+    #: contrail layer where they do not overlap.
+    contrail_contrail_overlapping: bool = False
+    dz_overlap_m: float = 500.0
+
     #: Radius threshold for regime bins, [:math:`\mu m`]
     #: This is the row index label for ``habit_distributions``.
     #: See Table 2 in :cite:`schumannEffectiveRadiusIce2011`.
