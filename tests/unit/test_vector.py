@@ -11,6 +11,8 @@ import pytest
 from pycontrails import GeoVectorDataset, MetDataset, VectorDataset
 from pycontrails.core.vector import AttrDict, VectorDataDict
 
+from .conftest import get_static_path
+
 
 @pytest.fixture(scope="module")
 def random_path() -> VectorDataset:
@@ -706,3 +708,14 @@ def test_vector_set_item_array_like():
     d = np.array([3.3, 4.4, 5.5])
     vector["d"] = d
     assert vector["d"] is d
+
+
+def test_vector_to_lon_lat_grid():
+    """Ensure that the aggregated outputs are consistent with the inputs. """
+    fl = pd.read_json(get_static_path("cocip-flight-output2.json"), orient="records")
+    vector = GeoVectorDataset(
+        fl[['longitude', 'latitude', 'altitude', 'time', 'ef']].copy(),
+        copy=False
+    )
+    ds_out = vector.to_lon_lat_grid(agg={"ef": "sum"})
+    assert ds_out["ef"].sum() == pytest.approx(fl["ef"].sum())
