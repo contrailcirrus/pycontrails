@@ -862,3 +862,41 @@ def effective_tau_cirrus(
     """
     tau_cirrus_eff = tau_cirrus / (mue + 1e-6)
     return np.exp(tau_cirrus * delta_sc) - (tau_cirrus_eff * delta_sc_aps)
+
+
+# -----------------------------
+# Contrail-contrail overlapping
+# -----------------------------
+# TODO: Add reference
+
+
+def contrail_contrail_overlapping_effects(
+        longitude: npt.NDArray[np.float_],
+        latitude: npt.NDArray[np.float_],
+        altitude: npt.NDArray[np.float_],
+        time: npt.NDArray[np.timedelta64],
+        width: npt.NDArray[np.timedelta64],
+        r_ice_vol: npt.NDArray[np.float_],
+        tau_contrail: npt.NDArray[np.float_],
+        tau_cirrus: npt.NDArray[np.float_],
+        air_temperature: npt.NDArray[np.float_],
+        sdr: npt.NDArray[np.float_],
+        rsr: npt.NDArray[np.float_],
+        olr: npt.NDArray[np.float_],
+        dz_overlap_m: float = 500.0
+) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+    # TODO: Assert time is the same
+    # TODO: Initialise grid for delta_rsr and delta_olr
+    # TODO: For loop for each altitude layer
+    # TODO: Recalculate contrail RF `local_sw_and_lw_rf_overlap`
+    # TODO: Adjust RSR and OLR due to contrails `delta_background_rsr_and_olr`
+    # TODO: Concatenate contrails
+    return
+
+
+def local_sw_and_lw_rf_overlap():
+    return
+
+
+def delta_background_rsr_and_olr():
+    return
