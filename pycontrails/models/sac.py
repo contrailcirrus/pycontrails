@@ -437,7 +437,7 @@ def T_critical_sac(
     # right hand column on page 10 in Schumann 1996.
     # We only apply Newton's method at points with rh bounded below 1 (scipy will
     # raise an error if Newton's method is not converging well).
-    filt = relative_humidity < 0.999
+    filt = (relative_humidity < 0.999) & np.isfinite(T_LM)
     if not np.any(filt):
         return T_LM
 
@@ -451,12 +451,12 @@ def T_critical_sac(
         return T - T_LM_filt + (e_L_of_T_LM_filt - U_filt * thermo.e_sat_liquid(T)) / G_filt
 
     def fprime(T: ArrayLike) -> ArrayLike:
-        return 1 - U_filt * _e_sat_liquid_prime(T) / G_filt
+        return 1.0 - U_filt * _e_sat_liquid_prime(T) / G_filt
 
     # This initial guess should be less than T_LM.
     # For relative_humidity away from 1, Newton's method converges quickly, and so
     # any initial guess will work.
-    init_guess = T_LM_filt - 1
+    init_guess = T_LM_filt - 1.0
     newton_approx = scipy.optimize.newton(func, init_guess, fprime=fprime, maxiter=maxiter)
 
     # For relative_humidity > 0.999, we just use T_LM
