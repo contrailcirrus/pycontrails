@@ -853,3 +853,99 @@ def _dt_to_float_seconds(dt: np.ndarray | np.timedelta64, dtype: npt.DTypeLike) 
     out = np.empty(dt.shape, dtype=dtype)
     np.divide(dt, np.timedelta64(1, "s"), out=out)
     return out
+
+
+# ---------------
+# Grid properties
+# ---------------
+
+def spatial_bounding_box(
+        longitude: npt.NDArray[np.float_],
+        latitude: npt.NDArray[np.float_], *,
+        buffer: float = 1.0
+) -> tuple:
+    """
+    Construct rectangular spatial bounding box from a set of waypoints.
+
+    Parameters
+    ----------
+    longitude : np.ndarray
+        1D Longitude values with index corresponding to longitude inputs, [:math:`\deg`]
+    latitude : np.ndarray
+        1D Latitude values with index corresponding to latitude inputs, [:math:`\deg`]
+    buffer: float
+        Add buffer to rectangular spatial bounding box, [:math:`\deg`]
+
+    Returns
+    -------
+    tuple
+        Spatial bounding box, (lon_min, lon_max, lat_min, lat_max), [:math:`\deg`]
+    """
+    lon_min = np.maximum(np.floor(np.min(longitude) - buffer), -180)
+    lon_max = np.minimum(np.ceil(np.max(longitude) + buffer), 179.75)
+    lat_min = np.maximum(np.floor(np.min(latitude) - buffer), -90)
+    lat_max = np.minimum(np.floor(np.max(latitude) + buffer), 90)
+    return lon_min, lon_max, lat_min, lat_max
+
+
+def grid_surface_area(
+        lon_coords: npt.NDArray[np.float_],
+        lat_coords: npt.NDArray[np.float_]
+) -> xr.DataArray:
+    """
+    Calculate area that is covered by each pixel in a longitude-latitude grid.
+
+    Parameters
+    ----------
+    lon_coords: npt.NDArray[np.float_]
+        Longitude coordinates in a longitude-latitude grid, [:math:`\deg`]
+    lat_coords: npt.NDArray[np.float_]
+        Latitude coordinates in a longitude-latitude grid, [:math:`\deg`]
+
+    Returns
+    -------
+    xr.DataArray
+        Grid surface area, [:math:`m^{2}`]
+
+    References
+    ----------
+    - https://www.pmel.noaa.gov/maillists/tmap/ferret_users/fu_2004/msg00023.html
+    """
+    # Ensure that grid spacing is uniform
+    d_lon = np.diff(lon_coords)
+    if np.all(d_lon == d_lon[0]) is False:
+        raise AssertionError("Longitude grid spacing is not uniform. ")
+
+    d_lat = np.diff(lat_coords)
+    if np.all(d_lat == d_lat[0]) is False:
+        raise AssertionError("Latitude grid spacing is not uniform. ")
+
+    lon_2d, lat_2d = np.meshgrid(lon_coords, lat_coords)
+    area_lat_btm = _area_between_latitude_and_north_pole(lat_2d - np.abs(d_lat[0]))
+    area_lat_top = _area_between_latitude_and_north_pole(lat_2d)
+    area = (np.abs(d_lon[0]) / 360) * (area_lat_btm - area_lat_top)
+    return xr.DataArray(
+        area.T,
+        dims=["longitude", "latitude"],
+        coords={"longitude": lon_coords, "latitude": lat_coords},
+    )
+
+
+def _area_between_latitude_and_north_pole(
+        latitude: npt.NDArray[np.float_]
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate surface area from the provided latitude to the North Pole
+
+    Parameters
+    ----------
+    latitude: npt.NDArray[np.float_]
+        1D Latitude values with index corresponding to latitude inputs, [:math:`\deg`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Surface area from latitude to North Pole, [:math:`m^{2}`]
+    """
+    lat_radians = units.degrees_to_radians(latitude)
+    return 2 * np.pi * constants.radius_earth**2 * (1 - np.sin(lat_radians))
