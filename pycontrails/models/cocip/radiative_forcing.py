@@ -13,6 +13,11 @@ from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
+
+from pycontrails import MetDataset, GeoVectorDataset
+from pycontrails.physics import geo
+from pycontrails.core.vector import vector_to_lon_lat_grid
 
 
 @dataclass
@@ -866,36 +871,411 @@ def effective_tau_cirrus(
 # -----------------------------
 # Contrail-contrail overlapping
 # -----------------------------
-# TODO: Add reference
+
+def contrail_contrail_overlap_radiative_effects(
+        contrails: GeoVectorDataset,
+        habit_distributions: npt.NDArray[np.float_],
+        radius_threshold_um: npt.NDArray[np.float_], *,
+        min_altitude_m: float = 6000.0,
+        max_altitude_m: float = 13000.0,
+        dz_overlap_m: float = 500.0,
+        spatial_grid_res: float = 0.25
+) -> GeoVectorDataset:
+    """
+    Calculate radiative properties after accounting for contrail overlapping.
+
+    Parameters
+    ----------
+    contrails : GeoVectorDataset
+        All contrail waypoints at a given time.
+    habit_distributions : npt.NDArray[np.float_]
+        Habit weight distributions.
+        See :attr:`CocipParams().habit_distributions`
+    radius_threshold_um : npt.NDArray[np.float_]
+        Radius thresholds for habit distributions.
+        See :attr:`CocipParams.radius_threshold_um`
+    min_altitude_m : float
+        Minimum altitude domain in simulation, [:math:`m`]
+        See :attr:`CocipParams.min_altitude_m`
+    max_altitude_m
+        Maximum altitude domain in simulation, [:math:`m`]
+        See :attr:`CocipParams.min_altitude_m`
+    dz_overlap_m : float
+        Altitude interval used to segment contrail waypoints, [:math:`m`]
+        See :attr:`CocipParams.dz_overlap_m`
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
+
+    Returns
+    -------
+    GeoVectorDataset
+        Contrail waypoints at a given time with additional variables attached, including
+        `rsr_overlap`, `olr_overlap`, `tau_cirrus_overlap`, `rf_sw_overlap`, `rf_lw_overlap`,
+        and `rf_net_overlap`.
+
+    References
+    ----------
+    - Schumann et al. (2021) Air traffic and contrail changes over Europe during COVID-19:
+        A model study, Atmos. Chem. Phys., 21, 7429–7450, https://doi.org/10.5194/ACP-21-7429-2021.
+    - Teoh et al. (2023) Global aviation contrail climate effects from 2019 to 2021.
+
+    Notes
+    -----
+    - The radiative effects of contrail-contrail overlapping is approximated by changing the
+        background RSR and OLR fields, and the overlying cirrus optical depth above the contrail.
+    - All contrail segments within each altitude interval are treated as one contrail layer, where
+        they do not overlap. Contrail layers are processed starting from the bottom to the top.
+    - Refer to the Supporting Information (S4.3) of Teoh et al. (2023)
+    """
+    # Ensure `contrails` is not empty, contains the required variables, and have the same timestamp
+    contrails.ensure_vars(
+        (
+            "segment_length",
+            "width",
+            "r_ice_vol",
+            "tau_contrail",
+            "tau_cirrus",
+            "air_temperature",
+            "sdr",
+            "rsr",
+            "olr",
+        )
+    )
+    if len(contrails.dataframe) == 0:
+        raise AssertionError("GeoVectorDataset does not contain any contrail waypoints.")
+
+    if np.all(contrails.dataframe["time"] == contrails.dataframe["time"].iloc[0]) is False:
+        raise AssertionError("Contrail waypoints do not have the same timestamp.")
+
+    # Initialise radiation fields to store change in background RSR and OLR due to contrails
+    spatial_bbox = geo.spatial_bounding_box(contrails["longitude"], contrails["latitude"])
+    lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
+    lat_coords = np.arange(spatial_bbox[1], spatial_bbox[3] + 0.01, spatial_grid_res)
+
+    dims = ["longitude", "latitude", "level", "time"]
+    delta_rad_t = xr.Dataset(
+        data_vars=dict(
+            rsr=(dims, np.zeros((len(lon_coords), len(lat_coords), 1, 1))),
+            olr=(dims, np.zeros((len(lon_coords), len(lat_coords), 1, 1))),
+        ),
+        coords=dict(
+            longitude=lon_coords,
+            latitude=lat_coords,
+            level=[-1],
+            time=[contrails.dataframe["time"].iloc[0]]
+        )
+    )
+
+    # Account for contrail overlapping starting from bottom to top layers
+    altitude_layers = np.arange(min_altitude_m, max_altitude_m + 1, dz_overlap_m)
+    rsr_overlap = np.zeros_like(contrails["longitude"])
+    olr_overlap = np.zeros_like(contrails["longitude"])
+    tau_cirrus_overlap = np.zeros_like(contrails["longitude"])
+    rf_sw_overlap = np.zeros_like(contrails["longitude"])
+    rf_lw_overlap = np.zeros_like(contrails["longitude"])
+    rf_net_overlap = np.zeros_like(contrails["longitude"])
+
+    for i in range(len(altitude_layers) - 1):
+        # Get contrail waypoints at current altitude layer
+        is_in_layer = contrails.dataframe["altitude"].between(
+            altitude_layers[i], altitude_layers[i + 1], inclusive="left"
+        )
+        contrails_level = contrails.filter(is_in_layer, copy=True)
+
+        # Skip altitude layer if no contrails are present
+        if len(contrails_level) == 0:
+            continue
+
+        # Get contrails above altitude layer
+        is_above_layer = contrails.dataframe["altitude"].between(
+            altitude_layers[i + 1], altitude_layers[-1], inclusive="both"
+        )
+        contrails_above = contrails.filter(is_above_layer, copy=True)
+        contrails_level = _contrail_optical_depth_above_contrail_layer(
+            contrails_level,
+            contrails_above,
+            spatial_bbox=spatial_bbox,
+            spatial_grid_res=spatial_grid_res
+        )
+
+        # Calculate updated RSR and OLR with contrail overlapping
+        contrails_level = _rsr_and_olr_with_contrail_overlap(
+            contrails_level, delta_rad_t
+        )
+
+        # Calculate local contrail SW and LW RF with contrail overlapping
+        contrails_level = _local_sw_and_lw_rf_with_contrail_overlap(
+            contrails_level, habit_distributions, radius_threshold_um
+        )
+
+        # Cumulative change in background RSR and OLR fields
+        delta_rad_t = _change_in_background_rsr_and_olr(
+            contrails_level,
+            delta_rad_t,
+            spatial_bbox=spatial_bbox,
+            spatial_grid_res=spatial_grid_res
+        )
+
+        # Save values
+        rsr_overlap[is_in_layer] = contrails_level["rsr_overlap"]
+        olr_overlap[is_in_layer] = contrails_level["olr_overlap"]
+        tau_cirrus_overlap[is_in_layer] = (
+                contrails_level["tau_cirrus"] + contrails_level["tau_contrails_above"]
+        )
+        rf_sw_overlap[is_in_layer] = contrails_level["rf_sw_overlap"]
+        rf_lw_overlap[is_in_layer] = contrails_level["rf_lw_overlap"]
+        rf_net_overlap[is_in_layer] = contrails_level["rf_net_overlap"]
+
+    # Add additional variables to `contrails`
+    contrails["rsr_overlap"] = rsr_overlap
+    contrails["olr_overlap"] = olr_overlap
+    contrails["tau_cirrus_overlap"] = tau_cirrus_overlap
+    contrails["rf_sw_overlap"] = rf_sw_overlap
+    contrails["rf_lw_overlap"] = rf_lw_overlap
+    contrails["rf_net_overlap"] = rf_net_overlap
+    return contrails
 
 
-def contrail_contrail_overlapping_effects(
-        longitude: npt.NDArray[np.float_],
-        latitude: npt.NDArray[np.float_],
-        altitude: npt.NDArray[np.float_],
-        time: npt.NDArray[np.timedelta64],
-        width: npt.NDArray[np.timedelta64],
-        r_ice_vol: npt.NDArray[np.float_],
-        tau_contrail: npt.NDArray[np.float_],
-        tau_cirrus: npt.NDArray[np.float_],
-        air_temperature: npt.NDArray[np.float_],
-        sdr: npt.NDArray[np.float_],
-        rsr: npt.NDArray[np.float_],
-        olr: npt.NDArray[np.float_],
-        dz_overlap_m: float = 500.0
-) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
-    # TODO: Assert time is the same
-    # TODO: Initialise grid for delta_rsr and delta_olr
-    # TODO: For loop for each altitude layer
-    # TODO: Recalculate contrail RF `local_sw_and_lw_rf_overlap`
-    # TODO: Adjust RSR and OLR due to contrails `delta_background_rsr_and_olr`
-    # TODO: Concatenate contrails
-    return
+def _contrail_optical_depth_above_contrail_layer(
+        contrails_level: GeoVectorDataset,
+        contrails_above: GeoVectorDataset, *,
+        spatial_bbox: tuple = (-180, -90, 180, 90),
+        spatial_grid_res: float = 0.5,
+) -> GeoVectorDataset:
+    """
+    Calculate the contrail optical depth above the contrail waypoints.
+
+    Parameters
+    ----------
+    contrails_level : GeoVectorDataset
+        Contrail waypoints at the current altitude layer.
+    contrails_above : GeoVectorDataset
+        Contrail waypoints above the current altitude layer.
+    spatial_bbox : tuple
+        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
+
+    Returns
+    -------
+    GeoVectorDataset
+        Contrail waypoints at the current altitude layer with `tau_contrails_above` attached.
+    """
+    # Ensure `contrails_above` contain the required variables.
+    contrails_level.ensure_vars(("tau_contrail", "segment_length", "width"))
+
+    contrails_above["tau_contrails_above"] = (
+            contrails_above["tau_contrail"]
+            * contrails_above["segment_length"]
+            * contrails_above["width"]
+    )
+
+    # Aggregate contrail optical depth to a longitude-latitude grid
+    ds = vector_to_lon_lat_grid(
+        contrails_above,
+        agg={"tau_contrails_above": "sum"},
+        spatial_bbox=spatial_bbox,
+        spatial_grid_res=spatial_grid_res
+    )
+    ds = ds.expand_dims({"level": np.array([-1])})
+    ds = ds.expand_dims({"time": np.array([contrails_level["time"][0]])})
+    da_surface_area = geo.grid_surface_area(ds["longitude"].values, ds["latitude"].values)
+    ds["tau_contrails_above"] = ds["tau_contrails_above"] / da_surface_area
+    lon_coords = ds["longitude"].values
+    is_global = (lon_coords[-1] + lon_coords[0] + np.diff(lon_coords)[0]) == 0.0
+    ds = MetDataset(ds, wrap_longitude=is_global)
+
+    # Interpolate to `contrails_level`
+    contrails_level["tau_contrails_above"] = contrails_level.intersect_met(
+        ds["tau_contrails_above"].copy(), level=-np.ones(len(contrails_level)) * 1.0
+    )
+    return contrails_level
 
 
-def local_sw_and_lw_rf_overlap():
-    return
+def _rsr_and_olr_with_contrail_overlap(
+        contrails_level: GeoVectorDataset,
+        delta_rad_t: xr.Dataset
+) -> GeoVectorDataset:
+    """
+    Calculate RSR and OLR at contrail waypoints after accounting for contrail overlapping.
+
+    Parameters
+    ----------
+    contrails_level : GeoVectorDataset
+        Contrail waypoints at the current altitude layer.
+    delta_rad_t : xr.Dataset
+        Radiation fields with cumulative change in RSR and OLR due to contrail overlapping.
+
+    Returns
+    -------
+    GeoVectorDataset
+        Contrail waypoints at the current altitude layer with `rsr_overlap` and
+        `olr_overlap` attached.
+    """
+    # Ensure `contrails_level` contains the required variables.
+    contrails_level.ensure_vars(("sdr", "rsr", "olr"))
+
+    # Change in radiation fields
+    lon_coords = delta_rad_t["longitude"].values
+    is_global = (lon_coords[-1] + lon_coords[0] + np.diff(lon_coords)[0]) == 0.0
+    ds = MetDataset(delta_rad_t, wrap_longitude=is_global)
+
+    # Interpolate radiation fields to obtain `rsr_overlap` and `olr_overlap`
+    delta_rsr = contrails_level.intersect_met(
+        ds["rsr"].copy(), level=-np.ones(len(contrails_level))
+    )
+    delta_olr = contrails_level.intersect_met(
+        ds["olr"].copy(), level=-np.ones(len(contrails_level))
+    )
+
+    # Constrain RSR so it is not larger than the SDR
+    contrails_level["rsr_overlap"] = np.minimum(
+        contrails_level["sdr"],
+        contrails_level["rsr"] + delta_rsr,
+    )
+
+    # Constrain OLR so it is not smaller than 80% of the original value
+    contrails_level["olr_overlap"] = np.maximum(
+        0.8 * contrails_level["olr"],
+        contrails_level["olr"] + delta_olr,
+    )
+    return contrails_level
 
 
-def delta_background_rsr_and_olr():
-    return
+def _local_sw_and_lw_rf_with_contrail_overlap(
+        contrails_level: GeoVectorDataset,
+        habit_distributions: npt.NDArray[np.float_],
+        radius_threshold_um: npt.NDArray[np.float_],
+) -> GeoVectorDataset:
+    """
+    Calculate local contrail SW and LW RF after accounting for contrail overlapping.
+
+    Parameters
+    ----------
+    contrails_level : GeoVectorDataset
+        Contrail waypoints at the current altitude layer.
+    habit_distributions : npt.NDArray[np.float_]
+        Habit weight distributions.
+        See :attr:`CocipParams().habit_distributions`
+    radius_threshold_um : npt.NDArray[np.float_]
+        Radius thresholds for habit distributions.
+        See :attr:`CocipParams.radius_threshold_um`
+
+    Returns
+    -------
+    GeoVectorDataset
+        Contrail waypoints at the current altitude layer with `rf_sw_overlap`,
+        `rf_lw_overlap`, and `rf_net_overlap` attached.
+    """
+    # Ensure `contrails_level` contains the required variables.
+    contrails_level.ensure_vars(
+        (
+            "time",
+            "r_ice_vol",
+            "tau_contrail",
+            "tau_cirrus",
+            "tau_contrails_above",
+            "air_temperature",
+            "sdr",
+            "rsr_overlap",
+            "olr_overlap",
+        )
+    )
+
+    # Calculate habit weights
+    habit_w = habit_weights(
+        (contrails_level['r_ice_vol'] * 1e6),
+        habit_distributions,
+        radius_threshold_um
+    )
+
+    # Calculate solar constant
+    theta_rad = geo.orbital_position(contrails_level["time"])
+    sd0 = geo.solar_constant(theta_rad)
+
+    # Calculate local SW and LW RF
+    contrails_level["rf_sw_overlap"] = shortwave_radiative_forcing(
+        (contrails_level['r_ice_vol'] * 1e6),
+        contrails_level['sdr'],
+        contrails_level['rsr_overlap'],
+        sd0,
+        contrails_level['tau_contrail'],
+        (contrails_level['tau_cirrus'] + contrails_level['tau_contrails_above']),
+        habit_w
+    )
+
+    contrails_level["rf_lw_overlap"] = longwave_radiative_forcing(
+        (contrails_level['r_ice_vol'] * 1e6),
+        contrails_level['olr_overlap'],
+        contrails_level['air_temperature'],
+        contrails_level['tau_contrail'],
+        (contrails_level['tau_cirrus'] + contrails_level['tau_contrails_above']),
+        habit_w
+    )
+    contrails_level["rf_net_overlap"] = contrails_level["rf_lw_overlap"] + contrails_level["rf_sw_overlap"]
+    return contrails_level
+
+
+def _change_in_background_rsr_and_olr(
+        contrails_level: GeoVectorDataset,
+        delta_rad_t: xr.Dataset, *,
+        spatial_bbox: tuple = (-180, -90, 180, 90),
+        spatial_grid_res: float = 0.5,
+) -> xr.Dataset:
+    """
+    Calculate change in background RSR and OLR fields.
+
+    Parameters
+    ----------
+    contrails_level : GeoVectorDataset
+        Contrail waypoints at the current altitude layer.
+    delta_rad_t : xr.Dataset
+        Radiation fields with cumulative change in RSR and OLR due to contrail overlapping.
+    spatial_bbox : tuple
+        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
+
+    Returns
+    -------
+    xr.Dataset
+        Radiation fields with cumulative change in RSR and OLR due to contrail overlapping.
+    """
+    # Ensure `contrails_level` contains the required variables.
+    contrails_level.ensure_vars(
+        (
+            "rf_sw_overlap",
+            "rf_lw_overlap",
+            "segment_length",
+            "width",
+        )
+    )
+
+    # Calculate SW and LW radiative flux (Units: W)
+    contrails_level["sw_radiative_flux"] = (
+        np.abs(contrails_level["rf_sw_overlap"])
+        * contrails_level["segment_length"]
+        * contrails_level["width"]
+    )
+
+    contrails_level["lw_radiative_flux"] = (
+        contrails_level["rf_lw_overlap"]
+        * contrails_level["segment_length"]
+        * contrails_level["width"]
+    )
+
+    # Aggregate SW and LW radiative flux to a longitude-latitude grid
+    ds = vector_to_lon_lat_grid(
+        contrails_level,
+        agg={"sw_radiative_flux": "sum", "lw_radiative_flux": "sum"},
+        spatial_bbox=spatial_bbox,
+        spatial_grid_res=spatial_grid_res
+    )
+    ds = ds.expand_dims({"level": np.array([-1])})
+    ds = ds.expand_dims({"time": np.array([contrails_level["time"][0]])})
+    da_surface_area = geo.grid_surface_area(ds["longitude"].values, ds["latitude"].values)
+
+    # Cumulative change in RSR and OLR
+    delta_rad_t["rsr"] += ds["sw_radiative_flux"] / da_surface_area
+    delta_rad_t["olr"] -= ds["lw_radiative_flux"] / da_surface_area
+    return delta_rad_t
