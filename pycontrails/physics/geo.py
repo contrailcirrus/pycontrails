@@ -879,13 +879,14 @@ def spatial_bounding_box(
     Returns
     -------
     tuple
-        Spatial bounding box, (lon_min, lon_max, lat_min, lat_max), [:math:`\deg`]
+        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
     """
+    # min or max
     lon_min = np.maximum(np.floor(np.min(longitude) - buffer), -180)
     lon_max = np.minimum(np.ceil(np.max(longitude) + buffer), 179.75)
     lat_min = np.maximum(np.floor(np.min(latitude) - buffer), -90)
     lat_max = np.minimum(np.floor(np.max(latitude) + buffer), 90)
-    return lon_min, lon_max, lat_min, lat_max
+    return lon_min, lat_min, lon_max, lat_max
 
 
 def grid_surface_area(
@@ -893,7 +894,7 @@ def grid_surface_area(
         lat_coords: npt.NDArray[np.float_]
 ) -> xr.DataArray:
     """
-    Calculate area that is covered by each pixel in a longitude-latitude grid.
+    Calculate surface area that is covered by each pixel in a longitude-latitude grid.
 
     Parameters
     ----------

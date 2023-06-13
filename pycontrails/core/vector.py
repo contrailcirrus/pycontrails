@@ -1781,52 +1781,65 @@ class GeoVectorDataset(VectorDataset):
             spatial_bbox: tuple = (-180, 180, -90, 90),
             spatial_grid_res: float = 0.5,
     ) -> xr.Dataset:
-        """
-        Convert vectors to a longitude-latitude grid.
+        return vector_to_lon_lat_grid(
+            self, agg=agg, spatial_bbox=spatial_bbox, spatial_grid_res=spatial_grid_res
+        )
 
-        Parameters
-        ----------
-        agg: dict[str, str]
-            Variable name and the function selected for aggregation, i.e. {"segment_length": "sum"}.
-        spatial_bbox: tuple
-            Spatial bounding box, (lon_min, lon_max, lat_min, lat_max), [:math:`\deg`]
-        spatial_grid_res: float
-            Spatial grid resolution, [:math:`\deg`]
 
-        Returns
-        -------
-        xr.Dataset
-            Aggregated variables in a longitude-latitude grid.
-        """
-        vars_agg = list(agg.keys())
-        df = self.dataframe[["longitude", "latitude"] + vars_agg].copy()
+def vector_to_lon_lat_grid(
+        vector: GeoVectorDataset, *,
+        agg: dict[str, str],
+        spatial_bbox: tuple = (-180, -90, 180, 90),
+        spatial_grid_res: float = 0.5,
+) -> xr.Dataset:
+    """
+    Convert vectors to a longitude-latitude grid.
 
-        # Ensure variables are available
-        if np.all(pd.Series(vars_agg).isin(self.dataframe.columns)) is False:
-            raise AssertionError("Object does not contain some/all of the variables listed for aggregation.")
+    Parameters
+    ----------
+    vector: GeoVectorDataset
+        Contains the longitude, latitude and variables for aggregation.
+    agg: dict[str, str]
+        Variable name and the function selected for aggregation, i.e. {"segment_length": "sum"}.
+    spatial_bbox: tuple
+        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
+    spatial_grid_res: float
+        Spatial grid resolution, [:math:`\deg`]
 
-        # Create longitude and latitude coordinates
-        arr_lon = np.arange(spatial_bbox[0], spatial_bbox[1] + 0.01, spatial_grid_res)
-        arr_lat = np.arange(spatial_bbox[2], spatial_bbox[3] + 0.01, spatial_grid_res)
+    Returns
+    -------
+    xr.Dataset
+        Aggregated variables in a longitude-latitude grid.
+    """
+    vars_agg = list(agg.keys())
+    df = vector.dataframe[["longitude", "latitude"] + vars_agg].copy()
 
-        # Convert vector to lon-lat grid
-        df["idx_lon"] = np.searchsorted(arr_lon, df["longitude"]) - 1
-        df["idx_lat"] = np.searchsorted(arr_lat, df["latitude"]) - 1
+    # Ensure variables are available
+    if np.all(pd.Series(vars_agg).isin(vector.dataframe.columns)) is False:
+        raise AssertionError("Object does not contain some/all of the variables listed for aggregation.")
 
-        ds_out = dict()
+    # Create longitude and latitude coordinates
+    lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
+    lat_coords = np.arange(spatial_bbox[1], spatial_bbox[3] + 0.01, spatial_grid_res)
 
-        for var_name in vars_agg:
-            arr = np.zeros((arr_lon.size, arr_lat.size))
+    # Convert vector to lon-lat grid
+    df["idx_lon"] = np.searchsorted(lon_coords, df["longitude"]) - 1
+    df["idx_lat"] = np.searchsorted(lat_coords, df["latitude"]) - 1
 
-            if agg[var_name] == "sum":
-                df_arr = df[["idx_lon", "idx_lat", var_name]].groupby(by=["idx_lon", "idx_lat"]).sum()
-            elif agg[var_name] == "mean":
-                df_arr = df[["idx_lon", "idx_lat", var_name]].groupby(by=["idx_lon", "idx_lat"]).mean()
-            else:
-                raise NameError('Aggregation only accepts operations of "mean" or "sum".')
+    ds_out = dict()
 
-            arr[df_arr.index.get_level_values(0), df_arr.index.get_level_values(1)] = df_arr[var_name]
-            ds_out[var_name] = xr.DataArray(coords={"longitude": arr_lon, "latitude": arr_lat}, data=arr)
+    for var_name in vars_agg:
+        arr = np.zeros((lon_coords.size, lat_coords.size))
 
-        ds_out = xr.Dataset(ds_out)
-        return ds_out
+        if agg[var_name] == "sum":
+            df_arr = df[["idx_lon", "idx_lat", var_name]].groupby(by=["idx_lon", "idx_lat"]).sum()
+        elif agg[var_name] == "mean":
+            df_arr = df[["idx_lon", "idx_lat", var_name]].groupby(by=["idx_lon", "idx_lat"]).mean()
+        else:
+            raise NameError('Aggregation only accepts operations of "mean" or "sum".')
+
+        arr[df_arr.index.get_level_values(0), df_arr.index.get_level_values(1)] = df_arr[var_name]
+        ds_out[var_name] = xr.DataArray(coords={"longitude": lon_coords, "latitude": lat_coords}, data=arr)
+
+    ds_out = xr.Dataset(ds_out)
+    return ds_out
