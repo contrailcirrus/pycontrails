@@ -855,7 +855,7 @@ class MetDataset(MetBase):
         KeyError
             Raises when dataset does not contain variable in ``vars``
         """
-        if isinstance(vars, MetVariable):
+        if isinstance(vars, (MetVariable, str)):
             vars = [vars]
 
         met_keys: list[str] = []
