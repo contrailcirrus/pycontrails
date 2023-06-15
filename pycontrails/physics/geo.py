@@ -863,7 +863,7 @@ def spatial_bounding_box(
         longitude: npt.NDArray[np.float_],
         latitude: npt.NDArray[np.float_], *,
         buffer: float = 1.0
-) -> tuple:
+) -> list[float]:
     """
     Construct rectangular spatial bounding box from a set of waypoints.
 
@@ -878,15 +878,39 @@ def spatial_bounding_box(
 
     Returns
     -------
-    tuple
-        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
+    list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
     """
-    # min or max
-    lon_min = np.maximum(np.floor(np.min(longitude) - buffer), -180)
-    lon_max = np.minimum(np.ceil(np.max(longitude) + buffer), 179.75)
-    lat_min = np.maximum(np.floor(np.min(latitude) - buffer), -90)
-    lat_max = np.minimum(np.floor(np.max(latitude) + buffer), 90)
-    return lon_min, lat_min, lon_max, lat_max
+    lon_min = max(np.floor(np.min(longitude) - buffer), -180)
+    lon_max = min(np.ceil(np.max(longitude) + buffer), 179.99)
+    lat_min = max(np.floor(np.min(latitude) - buffer), -90)
+    lat_max = min(np.floor(np.max(latitude) + buffer), 90)
+    return [lon_min, lat_min, lon_max, lat_max]
+
+
+def domain_surface_area(
+        spatial_bbox: list[float] = [-180, -90, 180, 90], *,
+        spatial_grid_res: float = 0.5
+) -> float:
+    """
+    Calculate surface area in the provided spatial bounding box.
+
+    Parameters
+    ----------
+    spatial_bbox: list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
+
+    Returns
+    -------
+    float
+        Domain surface area, [:math:`m^{2}`]
+    """
+    lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
+    lat_coords = np.arange(spatial_bbox[1], spatial_bbox[3] + 0.01, spatial_grid_res)
+    da_surface_area = grid_surface_area(lon_coords, lat_coords)
+    return np.nansum(da_surface_area)
 
 
 def grid_surface_area(
@@ -906,7 +930,7 @@ def grid_surface_area(
     Returns
     -------
     xr.DataArray
-        Grid surface area, [:math:`m^{2}`]
+        Surface area of each pixel in a longitude-latitude grid, [:math:`m^{2}`]
 
     References
     ----------
@@ -925,6 +949,7 @@ def grid_surface_area(
     area_lat_btm = _area_between_latitude_and_north_pole(lat_2d - np.abs(d_lat[0]))
     area_lat_top = _area_between_latitude_and_north_pole(lat_2d)
     area = (np.abs(d_lon[0]) / 360) * (area_lat_btm - area_lat_top)
+    area = np.where(area < 0, np.nan, area)    # Prevent negative values at latitude of -90 degrees
     return xr.DataArray(
         area.T,
         dims=["longitude", "latitude"],

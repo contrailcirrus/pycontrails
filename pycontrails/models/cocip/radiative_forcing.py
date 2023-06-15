@@ -15,8 +15,8 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 
-from pycontrails import MetDataset, GeoVectorDataset
 from pycontrails.physics import geo
+from pycontrails import MetDataset, GeoVectorDataset
 from pycontrails.core.vector import vector_to_lon_lat_grid
 
 
@@ -945,7 +945,7 @@ def contrail_contrail_overlap_radiative_effects(
     if len(contrails.dataframe) == 0:
         raise AssertionError("GeoVectorDataset does not contain any contrail waypoints.")
 
-    if np.all(contrails.dataframe["time"] == contrails.dataframe["time"].iloc[0]) is False:
+    if ~np.all(contrails.dataframe["time"] == contrails.dataframe["time"].iloc[0]):
         raise AssertionError("Contrail waypoints do not have the same timestamp.")
 
     # Initialise radiation fields to store change in background RSR and OLR due to contrails
@@ -1040,7 +1040,7 @@ def contrail_contrail_overlap_radiative_effects(
 def _contrail_optical_depth_above_contrail_layer(
         contrails_level: GeoVectorDataset,
         contrails_above: GeoVectorDataset, *,
-        spatial_bbox: tuple = (-180, -90, 180, 90),
+        spatial_bbox: list[float] = [-180, -90, 180, 90],
         spatial_grid_res: float = 0.5,
 ) -> GeoVectorDataset:
     """
@@ -1052,8 +1052,8 @@ def _contrail_optical_depth_above_contrail_layer(
         Contrail waypoints at the current altitude layer.
     contrails_above : GeoVectorDataset
         Contrail waypoints above the current altitude layer.
-    spatial_bbox : tuple
-        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
+    spatial_bbox: list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -1220,7 +1220,7 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
 def _change_in_background_rsr_and_olr(
         contrails_level: GeoVectorDataset,
         delta_rad_t: xr.Dataset, *,
-        spatial_bbox: tuple = (-180, -90, 180, 90),
+        spatial_bbox: list[float] = [-180, -90, 180, 90],
         spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
     """
@@ -1232,8 +1232,8 @@ def _change_in_background_rsr_and_olr(
         Contrail waypoints at the current altitude layer.
     delta_rad_t : xr.Dataset
         Radiation fields with cumulative change in RSR and OLR due to contrail overlapping.
-    spatial_bbox : tuple
-        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
+    spatial_bbox: list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
 

@@ -1778,7 +1778,7 @@ class GeoVectorDataset(VectorDataset):
     def to_lon_lat_grid(
             self: GeoVectorDatasetType, *,
             agg: dict[str, str],
-            spatial_bbox: tuple = (-180, 180, -90, 90),
+            spatial_bbox: list[float] = [-180, -90, 180, 90],
             spatial_grid_res: float = 0.5,
     ) -> xr.Dataset:
         return vector_to_lon_lat_grid(
@@ -1789,7 +1789,7 @@ class GeoVectorDataset(VectorDataset):
 def vector_to_lon_lat_grid(
         vector: GeoVectorDataset, *,
         agg: dict[str, str],
-        spatial_bbox: tuple = (-180, -90, 180, 90),
+        spatial_bbox: list[float] = [-180, -90, 180, 90],
         spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
     """
@@ -1801,8 +1801,8 @@ def vector_to_lon_lat_grid(
         Contains the longitude, latitude and variables for aggregation.
     agg: dict[str, str]
         Variable name and the function selected for aggregation, i.e. {"segment_length": "sum"}.
-    spatial_bbox: tuple
-        Spatial bounding box, (lon_min, lat_min, lon_max, lat_max), [:math:`\deg`]
+    spatial_bbox: list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
     spatial_grid_res: float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -1816,7 +1816,9 @@ def vector_to_lon_lat_grid(
 
     # Ensure variables are available
     if np.all(pd.Series(vars_agg).isin(vector.dataframe.columns)) is False:
-        raise AssertionError("Object does not contain some/all of the variables listed for aggregation.")
+        raise AssertionError(
+            "Object does not contain some/all of the variables listed for aggregation."
+        )
 
     # Create longitude and latitude coordinates
     lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
