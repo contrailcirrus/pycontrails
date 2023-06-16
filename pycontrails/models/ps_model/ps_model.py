@@ -15,6 +15,7 @@ from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
 from pycontrails.models.aircraft_performance import (
+    DEFAULT_LOAD_FACTOR,
     AircraftPerformance,
     AircraftPerformanceData,
     AircraftPerformanceParams,
@@ -129,15 +130,15 @@ class PSModel(AircraftPerformance):
         self.source.attrs.setdefault("max_altitude", units.ft_to_m(aircraft_params.max_altitude_ft))
         self.source.attrs.setdefault("n_engine", aircraft_params.n_engine)
 
-        amass_ref = self.source.attrs.get("amass_ref", aircraft_params.amass_ref)
         amass_oew = self.source.attrs.get("amass_oew", aircraft_params.amass_oew)
         amass_mtow = self.source.attrs.get("amass_mtow", aircraft_params.amass_mtow)
         amass_mpl = self.source.attrs.get("amass_mpl", aircraft_params.amass_mpl)
-        load_factor = self.source.attrs.get("load_factor", None)
+        load_factor = self.source.attrs.get("load_factor", DEFAULT_LOAD_FACTOR)
+        takeoff_mass = self.source.attrs.get("takeoff_mass")
         q_fuel = self.source.fuel.q_fuel
 
         # Run the simulation
-        outputs = self.simulate_fuel_and_performance(
+        aircraft_performance = self.simulate_fuel_and_performance(
             aircraft_type=aircraft_type,
             altitude_ft=self.source.altitude_ft,
             time=self.source["time"],
@@ -148,15 +149,16 @@ class PSModel(AircraftPerformance):
             engine_efficiency=self.get_source_param("engine_efficiency", None),
             fuel_flow=self.get_source_param("fuel_flow", None),
             q_fuel=q_fuel,
-            amass_ref=amass_ref,
+            n_iter=self.params["n_iter"],
             amass_oew=amass_oew,
             amass_mtow=amass_mtow,
             amass_mpl=amass_mpl,
             load_factor=load_factor,
+            takeoff_mass=takeoff_mass,
         )
 
-        # Set array outputs to flight, don't overwrite
-        for output_var in (
+        # Set array aircraft_performance to flight, don't overwrite
+        for var in (
             "aircraft_mass",
             "engine_efficiency",
             "fuel_flow",
@@ -164,11 +166,11 @@ class PSModel(AircraftPerformance):
             "thrust",
             "rocd",
         ):
-            self.source.setdefault(output_var, getattr(outputs, output_var))
+            self.source.setdefault(var, getattr(aircraft_performance, var))
 
         self._cleanup_indices()
 
-        self.source.attrs["total_fuel_burn"] = np.nansum(outputs.fuel_burn).item()
+        self.source.attrs["total_fuel_burn"] = np.nansum(aircraft_performance.fuel_burn).item()
 
         return self.source
 
@@ -186,7 +188,9 @@ class PSModel(AircraftPerformance):
         fuel_flow: npt.NDArray[np.float_] | float | None,
         thrust: npt.NDArray[np.float_] | float | None,
         q_fuel: float,
+        **kwargs: Any,
     ) -> AircraftPerformanceData:
+        del kwargs  # unused
         if not isinstance(true_airspeed, np.ndarray):
             raise NotImplementedError("Only array inputs are supported")
         if not isinstance(time, np.ndarray):
