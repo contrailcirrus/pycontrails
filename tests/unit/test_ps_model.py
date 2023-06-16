@@ -170,19 +170,29 @@ def test_normalised_aircraft_performance_curves():
     assert (c_t_over_c_t_eta_b[i_max] > 0.99) and (c_t_over_c_t_eta_b[i_max] < 1.01)
 
 
-def test_total_fuel_burn():
+@pytest.mark.parametrize("load_factor", [0.5, 0.6, 0.7, 0.8])
+def test_total_fuel_burn(load_factor: float):
+    """Check pinned total fuel burn values for different load factors."""
     df_flight = pd.read_csv(get_static_path("flight.csv"))
-    flight = Flight(df_flight.iloc[:100])
+
+    attrs = {"flight_id": "1", "aircraft_type": "A320", "load_factor": load_factor}
+    flight = Flight(df_flight.iloc[:100], attrs=attrs)
+
     flight["air_temperature"] = m_to_T_isa(flight["altitude"])
     flight["true_airspeed"] = knots_to_m_per_s(flight["speed"])
-
-    # add parameters
-    flight.attrs.update({"flight_id": "1", "aircraft_type": "A320"})
 
     # Aircraft performance model
     ps_model = ps.PSModel()
     out = ps_model.eval(flight)
-    assert out.attrs["total_fuel_burn"] == pytest.approx(3812, abs=0.1)
+
+    if load_factor == 0.5:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4308, abs=0.1)
+    elif load_factor == 0.6:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4500, abs=0.1)
+    elif load_factor == 0.7:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4718.3, abs=0.1)
+    elif load_factor == 0.8:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4969.8, abs=0.1)
 
 
 def test_fuel_clipping():
