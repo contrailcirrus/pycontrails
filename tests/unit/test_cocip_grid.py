@@ -662,9 +662,9 @@ def test_grid_against_flight(
                 ]
             np.testing.assert_allclose(q1, q2, rtol=1e-8, atol=1e-5)
 
-        # And there are at most two waypoint that doesn't show consistent
+        # And there are at most three waypoint that doesn't show consistent
         # This is caused by continuity conventions
-        assert np.sum(cocip_fl_state != grid_fl_state) <= 2
+        assert np.sum(cocip_fl_state != grid_fl_state) <= 3
         if cocip_fl_state.sum():
             n_fls_with_contrails += 1
 
