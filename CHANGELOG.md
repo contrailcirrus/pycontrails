@@ -67,10 +67,14 @@
 ### Breaking changes
 
 - Remove the `Aircraft` dataclass from `Flight` instantiation. Any code previously using this should instead directly pass additional `attrs` to the `Flight` constructor.
+- The `load_factor` is now required in `AircraftPerformance` models. The global `DEFAULT_LOAD_FACTOR` constant in `pycontrails.models.aircraft_performance` provides a reasonable default. This is currently set to 0.7.
+- Use a `takeoff_mass` parameter in `AircraftPerformance` models if provided in the `source.attrs` data.
+- No longer use a reference mass `ref_mass` in `AircraftPerformance` models. This is replaced by the `takeoff_mass` parameter if provided, or calculated from operating empty operating mass, max payload mass, total fuel consumption mass, reserve fuel mass, and the load factor.
 
 ### Fixes
 
 - Remove the `fuel` parameter from the `Emissions` model. This is inferred directly from the `source` parameter in `Emissions.eval`.
+- Fix edge cases in the `jet.reserve_fuel_requirements` implementation. The previous version would return `nan` for some combinations of `fuel_flow` and `segment_phase` variables.
 
 ### Internals
 
