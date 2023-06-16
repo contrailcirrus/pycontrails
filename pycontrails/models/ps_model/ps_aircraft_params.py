@@ -99,7 +99,6 @@ class PSAircraftEngineParams:
     amass_oew: float
     amass_mpl: float
 
-    amass_ref: float
     max_altitude_ft: float
     max_mach_num: float
     fuselage_width: float
@@ -138,8 +137,6 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
         amass_mzfw=tup.MZFM_kg,
         amass_oew=tup.OEM_i_kg,
         amass_mpl=tup.MPM_i_kg,
-        # Assume reference mass is equal to 70% of the take-off mass (Ian Poll)
-        amass_ref=amass_mtow * 0.7,
         max_altitude_ft=tup.MaxAlt_ft,
         max_mach_num=tup.MMO,
         fuselage_width=tup.bf_m,
@@ -150,5 +147,44 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
 @functools.cache
 def get_aircraft_engine_params(ps_file_path: pathlib.Path) -> Mapping[str, PSAircraftEngineParams]:
     """Extract aircraft-engine parameters for each aircraft type supported by the PS model."""
-    df = pd.read_csv(ps_file_path)
+    dtypes = {
+        "ICAO": object,
+        "Manufacturer": object,
+        "Type": object,
+        "n_engine": int,
+        "winglets": object,
+        "Sref_m2": float,
+        "delta_2": float,
+        "cos_sweep": float,
+        "AR": float,
+        "psi_0": float,
+        "Xo": float,
+        "wing_constant": float,
+        "j_2": float,
+        "j_1": float,
+        "mf_idle_SLS_kg_s": float,
+        "mf_max_T_O_SLS_kg_s": float,
+        "nominal_F00_ISA_kn": float,
+        "M_des": float,
+        "CT_des": float,
+        "eta_1": float,
+        "eta_2": float,
+        "WV": object,
+        "MTOM_kg": float,
+        "MLM_kg": float,
+        "MZFM_kg": float,
+        "OEM_i_kg": float,
+        "MPM_i_kg": float,
+        "MZFM_MTOM": float,
+        "OEM_i_MTOM": float,
+        "MPM_i_MTOM": float,
+        "etaL_D_do": float,
+        "MaxAlt_ft": float,
+        "MMO": float,
+        "span_m": float,
+        "bf_m": float,
+    }
+
+    df = pd.read_csv(ps_file_path, dtype=dtypes)
+
     return dict(_row_to_aircraft_engine_params(tup) for tup in df.itertuples(index=False))
