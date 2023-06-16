@@ -324,22 +324,20 @@ def reserve_fuel_requirements(
     """
     segment_phase = flight.segment_phase(rocd, altitude_ft)
 
-    # In case flight does not have cruise phase
-    is_climb_cruise = (segment_phase == flight.FlightPhase.CLIMB) | (
-        segment_phase == flight.FlightPhase.CRUISE
-    )
+    is_cruise = (segment_phase == flight.FlightPhase.CRUISE) & np.isfinite(fuel_flow)
 
-    # If there are no climb and cruise phase, take the mean
-    if not np.all(is_climb_cruise):
-        ff_end_of_cruise = np.nanmean(fuel_flow)
+    # If there is no cruise phase, take the mean over the whole flight
+    if not np.any(is_cruise):
+        ff_end_of_cruise = np.nanmean(fuel_flow).item()
 
-    # Take average of final three waypoints
+    # Otherwise, take the average of the final 10 waypoints
     else:
-        ff_end_of_cruise = np.nanmean(fuel_flow[is_climb_cruise][-3:])
+        ff_end_of_cruise = np.mean(fuel_flow[is_cruise][-10:]).item()
 
-    reserve_fuel_1 = ff_end_of_cruise * (90 * 60)
-    reserve_fuel_2 = 0.15 * float(np.nansum(fuel_burn))
-    return np.maximum(reserve_fuel_1, reserve_fuel_2)
+    reserve_fuel_1 = (90.0 * 60.0) * ff_end_of_cruise  # 90 minutes at cruise fuel flow
+    reserve_fuel_2 = 0.15 * np.nansum(fuel_burn).item()  # 15% uplift on total fuel burn
+
+    return max(reserve_fuel_1, reserve_fuel_2)
 
 
 # -------------
