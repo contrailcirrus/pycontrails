@@ -509,7 +509,7 @@ def compressor_inlet_temperature(T: ArrayScalarLike, mach_num: ArrayScalarLike) 
     - :cite:`stettlerGlobalCivilAviation2013`
     - :cite:`cumpstyJetPropulsion2015`
     """
-    return T * (1 + ((constants.kappa - 1) / 2) * mach_num**2)
+    return T * (1.0 + ((constants.kappa - 1.0) / 2.0) * mach_num**2)
 
 
 def compressor_inlet_pressure(p: ArrayScalarLike, mach_num: ArrayScalarLike) -> ArrayScalarLike:
@@ -532,8 +532,8 @@ def compressor_inlet_pressure(p: ArrayScalarLike, mach_num: ArrayScalarLike) -> 
     - :cite:`stettlerGlobalCivilAviation2013`
     - :cite:`cumpstyJetPropulsion2015`
     """
-    power_term = constants.kappa / (constants.kappa - 1)
-    return p * (1 + ((constants.kappa - 1) / 2) * mach_num**2) ** power_term
+    power_term = constants.kappa / (constants.kappa - 1.0)
+    return p * (1.0 + ((constants.kappa - 1.0) / 2.0) * mach_num**2) ** power_term
 
 
 def combustor_inlet_pressure(
@@ -562,7 +562,7 @@ def combustor_inlet_pressure(
     - :cite:`stettlerGlobalCivilAviation2013`
     - :cite:`cumpstyJetPropulsion2015`
     """
-    return (p_comp_inlet * (pressure_ratio - 1) * thrust_setting) + p_comp_inlet
+    return (p_comp_inlet * (pressure_ratio - 1.0) * thrust_setting) + p_comp_inlet
 
 
 def combustor_inlet_temperature(
@@ -594,7 +594,7 @@ def combustor_inlet_temperature(
     - :cite:`stettlerGlobalCivilAviation2013`
     - :cite:`cumpstyJetPropulsion2015`
     """
-    power_term = (constants.kappa - 1) / (constants.kappa * comp_efficiency)
+    power_term = (constants.kappa - 1.0) / (constants.kappa * comp_efficiency)
     return T_comp_inlet * (p_comb_inlet / p_comp_inlet) ** power_term
 
 
@@ -621,7 +621,7 @@ def turbine_inlet_temperature(
     ----------
     - :cite:`cumpstyJetPropulsion2015`
     """
-    return (afr * constants.c_pd * T_comb_inlet + q_fuel) / (constants.c_p_combustion * (1 + afr))
+    return (afr * constants.c_pd * T_comb_inlet + q_fuel) / (constants.c_p_combustion * (1.0 + afr))
 
 
 # --------------------------------------
