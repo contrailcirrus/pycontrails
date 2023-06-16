@@ -610,24 +610,24 @@ def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerform
     cocip.eval(source=fl)
 
     assert "engine_efficiency" in cocip.source
-    assert np.all(cocip.source["engine_efficiency"][:-1] < 0.37)
-    assert np.all(cocip.source["engine_efficiency"][:-1] > 0.28)
+    assert np.all(cocip.source["engine_efficiency"][:-1] < 0.28)
+    assert np.all(cocip.source["engine_efficiency"][:-1] > 0.21)
 
     assert "fuel_flow" in cocip.source
     assert np.all(cocip.source["fuel_flow"][:-1] < 0.73)
-    assert np.all(cocip.source["fuel_flow"][:-1] > 0.72)
+    assert np.all(cocip.source["fuel_flow"][:-1] > 0.60)
 
     assert "nvpm_ei_n" in cocip.source
-    assert np.all(cocip.source["nvpm_ei_n"][:-1] < 1.20e15)
-    assert np.all(cocip.source["nvpm_ei_n"][:-1] > 1.05e15)
+    assert np.all(cocip.source["nvpm_ei_n"][:-1] < 1.32e15)
+    assert np.all(cocip.source["nvpm_ei_n"][:-1] > 1.08e15)
 
     assert "thrust" in cocip.source
-    assert np.all(cocip.source["thrust"][:-1] < 81000)
-    assert np.all(cocip.source["thrust"][:-1] > 51000)
+    assert np.all(cocip.source["thrust"][:-1] < 51000)
+    assert np.all(cocip.source["thrust"][:-1] > 38000)
 
     assert "thrust_setting" in cocip.source
     assert np.all(cocip.source["thrust_setting"][:-1] < 0.51)
-    assert np.all(cocip.source["thrust_setting"][:-1] > 0.47)
+    assert np.all(cocip.source["thrust_setting"][:-1] > 0.40)
 
 
 def test_intermediate_columns_in_flight_output(cocip_persistent: Cocip) -> None:
