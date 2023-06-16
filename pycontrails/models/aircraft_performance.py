@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-import typing
 import warnings
 from typing import Any, NoReturn, overload
 
@@ -17,6 +16,9 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.models import Model, ModelParams, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import jet
+
+#: Default load factor for aircraft performance models.
+DEFAULT_LOAD_FACTOR = 0.7
 
 
 @dataclasses.dataclass
@@ -73,16 +75,18 @@ class AircraftPerformance(Model):
         engine_efficiency: npt.NDArray[np.float_] | float | None,
         fuel_flow: npt.NDArray[np.float_] | float | None,
         q_fuel: float,
-        amass_ref: float,
+        n_iter: int,
         amass_oew: float,
         amass_mtow: float,
         amass_mpl: float,
-        load_factor: float | None = None,
+        load_factor: float,
+        takeoff_mass: float | None,
+        **kwargs: Any,
     ) -> AircraftPerformanceData:
         r"""
         Calculate aircraft mass, fuel mass flow rate, and overall propulsion efficiency.
 
-        This method performs ``self.params["n_iter"]`` iterations, each of
+        This method performs ``n_iter`` iterations, each of
         which calls :meth:`calculate_aircraft_performance`. Each successive
         iteration generates a better estimate for mass fuel flow rate and aircraft
         mass at each waypoint.
@@ -109,17 +113,30 @@ class AircraftPerformance(Model):
             Override the fuel flow at each waypoint, [:math:`kg s^{-1}`].
         q_fuel : float
             Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
-        amass_ref : float
-            Nominal aircraft reference mass, [:math:`kg`].
         amass_oew : float
-            Aircraft operating empty weight, [:math:`kg`].
+            Aircraft operating empty weight, [:math:`kg`]. Used to determine
+            the initial aircraft mass if ``takeoff_mass`` is not provided.
+            This quantity is constant for a given aircraft type.
         amass_mtow : float
-            Aircraft maximum take-off weight, [:math:`kg`].
+            Aircraft maximum take-off weight, [:math:`kg`]. Used to determine
+            the initial aircraft mass if ``takeoff_mass`` is not provided.
+            This quantity is constant for a given aircraft type.
         amass_mpl : float
-            Aircraft maximum payload, [:math:`kg`].
-        load_factor : float | None, optional
-            Aircraft load factor assumption (between 0 and 1). If None is given,
-            the ``amass_ref`` is used.
+            Aircraft maximum payload, [:math:`kg`]. Used to determine
+            the initial aircraft mass if ``takeoff_mass`` is not provided.
+            This quantity is constant for a given aircraft type.
+        load_factor : float
+            Aircraft load factor assumption (between 0 and 1). If unknown,
+            a value of 0.7 is a reasonable default. Typically, this parameter
+            is between 0.6 and 0.8. During the height of the COVID-19 pandemic,
+            this parameter was often much lower.
+        takeoff_mass : float | None, optional
+            If known, the takeoff mass can be provided to skip the calculation
+            in :func:`jet.initial_aircraft_mass`. In this case, the parameters
+            ``load_factor``, ``amass_oew``, ``amass_mtow``, and ``amass_mpl`` are
+            ignored.
+        **kwargs : Any
+            Additional keyword arguments are passed to :meth:`calculate_aircraft_performance`.
 
         Returns
         -------
@@ -131,7 +148,7 @@ class AircraftPerformance(Model):
         if aircraft_mass is not None:
             warnings.warn(
                 "Parameter 'aircraft_mass' provided to 'simulate_fuel_and_performance' "
-                f"is not None. Skipping {self.params['n_iter']} iterations and only "
+                f"is not None. Skipping {n_iter} iterations and only "
                 "calculating aircraft performance once."
             )
 
@@ -170,16 +187,19 @@ class AircraftPerformance(Model):
                 fuel_flow=fuel_flow,
                 thrust=thrust,
                 q_fuel=q_fuel,
+                **kwargs,
             )
 
         # Variable aircraft_mass will change dynamically after each iteration
         # Set the initial aircraft mass depending on a possible load factor
-        if load_factor is None:
-            aircraft_mass = amass_ref
+        if takeoff_mass is not None:
+            aircraft_mass = takeoff_mass
         else:
-            aircraft_mass = amass_mtow
+            # The initial aircraft mass gets updated at each iteration
+            # The exact value here is not important
+            aircraft_mass = amass_oew + load_factor * (amass_mtow - amass_oew)
 
-        for _ in range(self.params["n_iter"]):
+        for _ in range(n_iter):
             aircraft_performance = self.calculate_aircraft_performance(
                 aircraft_type=aircraft_type,
                 altitude_ft=altitude_ft,
@@ -191,7 +211,16 @@ class AircraftPerformance(Model):
                 fuel_flow=fuel_flow,
                 thrust=thrust,
                 q_fuel=q_fuel,
+                **kwargs,
             )
+
+            # The max value in the BADA tables is 4.6 kg/s per engine.
+            # Multiplying this by 4 engines and giving a buffer.
+            if np.any(aircraft_performance.fuel_flow > 25.0):
+                raise RuntimeError(
+                    "Model failure: fuel mass flow rate is unrealistic and the "
+                    "built-in guardrails are not working."
+                )
 
             tot_reserve_fuel = jet.reserve_fuel_requirements(
                 aircraft_performance.rocd,
@@ -202,18 +231,18 @@ class AircraftPerformance(Model):
 
             aircraft_mass = jet.update_aircraft_mass(
                 operating_empty_weight=amass_oew,
-                ref_mass=amass_ref,
                 max_takeoff_weight=amass_mtow,
                 max_payload=amass_mpl,
                 fuel_burn=aircraft_performance.fuel_burn,
                 total_reserve_fuel=tot_reserve_fuel,
                 load_factor=load_factor,
+                takeoff_mass=takeoff_mass,
             )
 
         # Update aircraft mass to the latest fuel consumption estimate
         # As long as the for-loop is entered, the aircraft mass will be
         # a numpy array.
-        aircraft_performance.aircraft_mass = typing.cast(np.ndarray, aircraft_mass)
+        aircraft_performance.aircraft_mass = aircraft_mass  # type: ignore[assignment]
 
         return aircraft_performance
 
@@ -231,6 +260,7 @@ class AircraftPerformance(Model):
         fuel_flow: npt.NDArray[np.float_] | float | None,
         thrust: npt.NDArray[np.float_] | float | None,
         q_fuel: float,
+        **kwargs: Any,
     ) -> AircraftPerformanceData:
         r"""
         Calculate aircraft performance along a trajectory.
