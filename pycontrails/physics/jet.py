@@ -421,12 +421,12 @@ def initial_aircraft_mass(
 def update_aircraft_mass(
     *,
     operating_empty_weight: float,
-    ref_mass: float,
     max_takeoff_weight: float,
     max_payload: float,
     fuel_burn: npt.NDArray[np.float_],
     total_reserve_fuel: float,
-    load_factor: None | float = None,
+    load_factor: float,
+    takeoff_mass: float | None,
 ) -> npt.NDArray[np.float_]:
     """Update aircraft mass based on the simulated total fuel consumption.
 
@@ -447,9 +447,13 @@ def update_aircraft_mass(
         Fuel consumption for each waypoint, [:math:`kg`]
     total_reserve_fuel: float
         Total reserve fuel requirements, [:math:`kg`]
-    load_factor: None | float
-        Aircraft load factor assumption (between 0 and 1). If None is given, the reference mass
-        from the BADA 3 database will be used to get the mass of the specific aircraft type.
+    load_factor: float
+        Aircraft load factor assumption (between 0 and 1). This is the ratio of the
+        actual payload weight to the maximum payload weight.
+    takeoff_mass: float | None
+        Initial aircraft mass, [:math:`kg`]. If None, the initial mass is calculated
+        using :func:`initial_aircraft_mass`. If supplied, all other parameters except
+        ``fuel_burn`` are ignored.
 
     Returns
     -------
@@ -460,23 +464,23 @@ def update_aircraft_mass(
     --------
     :func:`fuel_burn`
     :func:`reserve_fuel_requirements`
+    :func:`initial_aircraft_mass`
     """
-    if load_factor is not None:
-        initial_amass = initial_aircraft_mass(
+    if takeoff_mass is None:
+        takeoff_mass = initial_aircraft_mass(
             operating_empty_weight=operating_empty_weight,
             max_takeoff_weight=max_takeoff_weight,
             max_payload=max_payload,
-            total_fuel_burn=float(np.nansum(fuel_burn)),
+            total_fuel_burn=np.nansum(fuel_burn).item(),
             total_reserve_fuel=total_reserve_fuel,
             load_factor=load_factor,
         )
-    else:
-        initial_amass = ref_mass
 
     # Calculate updated aircraft mass for each waypoint
     amass = np.empty_like(fuel_burn)
-    amass[0] = initial_amass
-    amass[1:] = initial_amass - np.nancumsum(fuel_burn)[:-1]
+    amass[0] = takeoff_mass
+    amass[1:] = takeoff_mass - np.nancumsum(fuel_burn)[:-1]
+
     return amass
 
 
