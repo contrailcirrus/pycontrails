@@ -374,6 +374,19 @@ def initial_aircraft_mass(
 ) -> float:
     """Estimate initial aircraft mass as a function of load factor and fuel requirements.
 
+    This function uses the following equation::
+
+        TOM = OEM + PM + FM_nc + TFM
+            = OEM + LF * MPM + FM_nc + TFM
+
+    where:
+    - TOM is the aircraft take-off mass
+    - OEM is the aircraft operating empty weight
+    - PM is the payload mass
+    - FM_nc is the mass of the fuel not consumed
+    - TFM is the trip fuel mass
+    - MPM is the maximum payload mass
+
     Parameters
     ----------
     operating_empty_weight: float
@@ -403,12 +416,8 @@ def initial_aircraft_mass(
     --------
     :func:`reserve_fuel_requirements`
     """
-    initial_amass = (
-        operating_empty_weight
-        + (load_factor * max_payload)
-        + (total_fuel_burn + total_reserve_fuel)
-    )
-    return np.minimum(initial_amass, max_takeoff_weight)
+    tom = operating_empty_weight + load_factor * max_payload + total_fuel_burn + total_reserve_fuel
+    return min(tom, max_takeoff_weight)
 
 
 def update_aircraft_mass(
