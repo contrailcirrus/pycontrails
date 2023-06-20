@@ -811,7 +811,7 @@ class MetDataset(MetBase):
     @property
     @overrides
     def size(self) -> int:
-        return np.product(self.shape).item()
+        return np.prod(self.shape).item()
 
     def copy(self) -> MetDataset:
         """Create a copy of the current class.
