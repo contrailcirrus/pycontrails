@@ -198,8 +198,6 @@ class PSModel(AircraftPerformance):
 
         if not isinstance(true_airspeed, np.ndarray):
             raise NotImplementedError("Only array inputs are supported")
-        if not isinstance(time, np.ndarray):
-            raise NotImplementedError("Only array inputs are supported")
 
         atyp_param = self.aircraft_engine_params[aircraft_type]
 
@@ -213,12 +211,25 @@ class PSModel(AircraftPerformance):
         # Reynolds number
         rn = reynolds_number(atyp_param.wing_surface_area, mach_num, air_temperature, air_pressure)
 
-        # Trajectory parameters
-        dt_sec = flight.segment_duration(time, dtype=altitude_ft.dtype)
-        rocd = flight.segment_rocd(dt_sec, altitude_ft)
-        rocd_ms = units.ft_to_m(rocd) / 60.0
-        dv_dt = jet.acceleration(true_airspeed, dt_sec)
-        theta = jet.climb_descent_angle(true_airspeed, rocd_ms)
+        # Allow array or None time
+        dv_dt: npt.NDArray[np.float_] | float
+        theta: npt.NDArray[np.float_] | float
+        if time is None:
+            # Assume a nominal cruising state
+            dt_sec = None
+            rocd = np.zeros_like(altitude_ft)
+            dv_dt = 0.0
+            theta = 0.0
+
+        elif isinstance(time, np.ndarray):
+            dt_sec = flight.segment_duration(time, dtype=altitude_ft.dtype)
+            rocd = flight.segment_rocd(dt_sec, altitude_ft)
+            rocd_ms = units.ft_to_m(rocd) / 60.0
+            dv_dt = jet.acceleration(true_airspeed, dt_sec)
+            theta = jet.climb_descent_angle(true_airspeed, rocd_ms)
+
+        else:
+            raise NotImplementedError("Only array inputs are supported")
 
         # Aircraft performance parameters
         c_lift = lift_coefficient(
@@ -268,7 +279,11 @@ class PSModel(AircraftPerformance):
                 atyp_param.ff_idle_sls,
                 atyp_param.ff_max_sls,
             )
-        fuel_burn = jet.fuel_burn(fuel_flow, dt_sec)
+
+        if dt_sec is not None:
+            fuel_burn = jet.fuel_burn(fuel_flow, dt_sec)
+        else:
+            fuel_burn = np.full_like(fuel_flow, np.nan)
 
         # XXX: Explicitly broadcast scalar inputs as needed to keep a consistent
         # output spec.
@@ -619,8 +634,8 @@ def thrust_force(
     aircraft_mass: npt.NDArray[np.float_] | float,
     c_l: npt.NDArray[np.float_],
     c_d: npt.NDArray[np.float_],
-    dv_dt: npt.NDArray[np.float_],
-    theta: npt.NDArray[np.float_],
+    dv_dt: npt.NDArray[np.float_] | float,
+    theta: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_]:
     r"""Calculate thrust force summed over all engines.
 
@@ -632,9 +647,9 @@ def thrust_force(
         Lift coefficient
     c_d : npt.NDArray[np.float_]
         Total airframe drag coefficient
-    dv_dt : npt.NDArray[np.float_]
+    dv_dt : npt.NDArray[np.float_] | float
         Acceleration/deceleration at each waypoint, [:math:`m \ s^{-2}`]
-    theta : npt.NDArray[np.float_]
+    theta : npt.NDArray[np.float_] | float
         Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
 
     Returns
