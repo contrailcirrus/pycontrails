@@ -68,6 +68,8 @@ class ACCFParams(ModelParams):
     h2o_scaling: float = 1.0
     o3_scaling: float = 1.0
 
+    forecast_step: float = 6.0
+
     sep_ri_rw: bool = False
 
     climate_indicator: str = "ATR"
@@ -308,7 +310,10 @@ class ACCF(Model):
             self.ds_sur = None
 
         ws = WeatherStore(
-            self.ds_met, self.ds_sur, ll_resolution=self.p_settings["horizontal_resolution"]
+            self.ds_met,
+            self.ds_sur,
+            ll_resolution=self.p_settings["horizontal_resolution"],
+            forecast_step=self.p_settings["forecast_step"],
         )
         if self.p_settings["lat_bound"] and self.p_settings["lon_bound"]:
             ws.reduce_domain(
@@ -335,6 +340,7 @@ class ACCF(Model):
             "lon_bound": self.params["lon_bound"],
             "time_bound": None,
             "horizontal_resolution": self.params["horizontal_resolution"],
+            "forecast_step": self.params["forecast_step"],
             "NOx_aCCF": True,
             "NOx&inverse_EIs": self.params["nox_ei"],
             "output_format": "netCDF",
