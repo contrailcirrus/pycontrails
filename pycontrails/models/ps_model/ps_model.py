@@ -184,7 +184,7 @@ class PSModel(AircraftPerformance):
         air_temperature: npt.NDArray[np.float_],
         time: npt.NDArray[np.datetime64] | None,
         true_airspeed: npt.NDArray[np.float_] | float | None,
-        aircraft_mass: npt.NDArray[np.float_] | float | None,
+        aircraft_mass: npt.NDArray[np.float_] | float,
         engine_efficiency: npt.NDArray[np.float_] | float | None,
         fuel_flow: npt.NDArray[np.float_] | float | None,
         thrust: npt.NDArray[np.float_] | float | None,
@@ -200,7 +200,6 @@ class PSModel(AircraftPerformance):
             raise NotImplementedError("Only array inputs are supported")
         if not isinstance(time, np.ndarray):
             raise NotImplementedError("Only array inputs are supported")
-        assert aircraft_mass is not None
 
         atyp_param = self.aircraft_engine_params[aircraft_type]
 

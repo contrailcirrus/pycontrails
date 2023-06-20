@@ -323,7 +323,7 @@ class AircraftPerformance(Model):
         air_temperature: npt.NDArray[np.float_],
         time: npt.NDArray[np.datetime64] | None,
         true_airspeed: npt.NDArray[np.float_] | float | None,
-        aircraft_mass: npt.NDArray[np.float_] | float | None,
+        aircraft_mass: npt.NDArray[np.float_] | float,
         engine_efficiency: npt.NDArray[np.float_] | float | None,
         fuel_flow: npt.NDArray[np.float_] | float | None,
         thrust: npt.NDArray[np.float_] | float | None,
@@ -360,9 +360,8 @@ class AircraftPerformance(Model):
         true_airspeed : npt.NDArray[np.float_] | float | None
             True airspeed for each waypoint, [:math:`m s^{-1}`].
             If None, a nominal value is used.
-        aircraft_mass : npt.NDArray[np.float_] | float | None
+        aircraft_mass : npt.NDArray[np.float_] | float
             Aircraft mass for each waypoint, [:math:`kg`].
-            If None, a nominal value is used.
         engine_efficiency : npt.NDArray[np.float_] | float | None
             Override the engine efficiency at each waypoint.
         fuel_flow : npt.NDArray[np.float_] | float | None
