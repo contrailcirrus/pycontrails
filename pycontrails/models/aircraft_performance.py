@@ -151,45 +151,111 @@ class AircraftPerformance(Model):
                 f"is not None. Skipping {n_iter} iterations and only "
                 "calculating aircraft performance once."
             )
-
-            # If fuel_flow is None and a non-constant aircraft_mass is provided
-            # at each waypoint, then assume that the derivative with respect to
-            # time is the fuel flow rate.
-            if fuel_flow is None and isinstance(aircraft_mass, np.ndarray):
-                d_aircraft_mass = np.diff(aircraft_mass)
-
-                if np.any(d_aircraft_mass > 0.0):
-                    warnings.warn(
-                        "There are increases in aircraft mass between "
-                        "waypoints. This is not expected."
-                    )
-
-                # Only proceed if aircraft mass is decreasing somewhere
-                # This excludes a constant aircraft mass
-                if np.any(d_aircraft_mass < 0.0):
-                    if not np.all(d_aircraft_mass < 0.0):
-                        warnings.warn(
-                            "Aircraft mass is being used to compute fuel flow, but the "
-                            "aircraft mass is not monotonically decreasing. This may "
-                            "result in incorrect fuel flow calculations."
-                        )
-                    segment_duration = flight.segment_duration(time, dtype=aircraft_mass.dtype)
-                    fuel_flow = -np.append(d_aircraft_mass, np.float32(np.nan)) / segment_duration
-
-            return self.calculate_aircraft_performance(
+            return self._simulate_fuel_and_performance_known_aircraft_mass(
                 aircraft_type=aircraft_type,
                 altitude_ft=altitude_ft,
-                air_temperature=air_temperature,
                 time=time,
                 true_airspeed=true_airspeed,
+                air_temperature=air_temperature,
                 aircraft_mass=aircraft_mass,
+                thrust=thrust,
                 engine_efficiency=engine_efficiency,
                 fuel_flow=fuel_flow,
-                thrust=thrust,
                 q_fuel=q_fuel,
                 **kwargs,
             )
 
+        return self._simulate_fuel_and_performance_unknown_aircraft_mass(
+            aircraft_type=aircraft_type,
+            altitude_ft=altitude_ft,
+            time=time,
+            true_airspeed=true_airspeed,
+            air_temperature=air_temperature,
+            thrust=thrust,
+            engine_efficiency=engine_efficiency,
+            fuel_flow=fuel_flow,
+            q_fuel=q_fuel,
+            n_iter=n_iter,
+            amass_oew=amass_oew,
+            amass_mtow=amass_mtow,
+            amass_mpl=amass_mpl,
+            load_factor=load_factor,
+            takeoff_mass=takeoff_mass,
+            **kwargs,
+        )
+
+    def _simulate_fuel_and_performance_known_aircraft_mass(
+        self,
+        *,
+        aircraft_type: str,
+        altitude_ft: npt.NDArray[np.float_],
+        time: npt.NDArray[np.datetime64],
+        true_airspeed: npt.NDArray[np.float_],
+        air_temperature: npt.NDArray[np.float_],
+        aircraft_mass: npt.NDArray[np.float_] | float,
+        thrust: npt.NDArray[np.float_] | float | None,
+        engine_efficiency: npt.NDArray[np.float_] | float | None,
+        fuel_flow: npt.NDArray[np.float_] | float | None,
+        q_fuel: float,
+        **kwargs: Any,
+    ) -> AircraftPerformanceData:
+        # If fuel_flow is None and a non-constant aircraft_mass is provided
+        # at each waypoint, then assume that the derivative with respect to
+        # time is the fuel flow rate.
+        if fuel_flow is None and isinstance(aircraft_mass, np.ndarray):
+            d_aircraft_mass = np.diff(aircraft_mass)
+
+            if np.any(d_aircraft_mass > 0.0):
+                warnings.warn(
+                    "There are increases in aircraft mass between waypoints. This is not expected."
+                )
+
+            # Only proceed if aircraft mass is decreasing somewhere
+            # This excludes a constant aircraft mass
+            if np.any(d_aircraft_mass < 0.0):
+                if not np.all(d_aircraft_mass < 0.0):
+                    warnings.warn(
+                        "Aircraft mass is being used to compute fuel flow, but the "
+                        "aircraft mass is not monotonically decreasing. This may "
+                        "result in incorrect fuel flow calculations."
+                    )
+                segment_duration = flight.segment_duration(time, dtype=aircraft_mass.dtype)
+                fuel_flow = -np.append(d_aircraft_mass, np.float32(np.nan)) / segment_duration
+
+        return self.calculate_aircraft_performance(
+            aircraft_type=aircraft_type,
+            altitude_ft=altitude_ft,
+            air_temperature=air_temperature,
+            time=time,
+            true_airspeed=true_airspeed,
+            aircraft_mass=aircraft_mass,
+            engine_efficiency=engine_efficiency,
+            fuel_flow=fuel_flow,
+            thrust=thrust,
+            q_fuel=q_fuel,
+            **kwargs,
+        )
+
+    def _simulate_fuel_and_performance_unknown_aircraft_mass(
+        self,
+        *,
+        aircraft_type: str,
+        altitude_ft: npt.NDArray[np.float_],
+        time: npt.NDArray[np.datetime64],
+        true_airspeed: npt.NDArray[np.float_],
+        air_temperature: npt.NDArray[np.float_],
+        thrust: npt.NDArray[np.float_] | float | None,
+        engine_efficiency: npt.NDArray[np.float_] | float | None,
+        fuel_flow: npt.NDArray[np.float_] | float | None,
+        q_fuel: float,
+        n_iter: int,
+        amass_oew: float,
+        amass_mtow: float,
+        amass_mpl: float,
+        load_factor: float,
+        takeoff_mass: float | None,
+        **kwargs: Any,
+    ) -> AircraftPerformanceData:
         # Variable aircraft_mass will change dynamically after each iteration
         # Set the initial aircraft mass depending on a possible load factor
         if takeoff_mass is not None:
@@ -303,6 +369,8 @@ class AircraftPerformance(Model):
             Override the thrust setting at each waypoint, [:math: `N`].
         q_fuel : float
             Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
+        **kwargs : Any
+            Additional keyword arguments to pass to the model.
 
         Returns
         -------
