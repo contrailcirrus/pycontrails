@@ -76,7 +76,10 @@ def clip_mach_number(
 ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     r"""Compute the Mach number from the true airspeed and ambient temperature.
 
-    This method clips the computed Mach number to the value of `max_mach_number`.
+    This method clips the computed Mach number to the value of ``max_mach_number``.
+
+    If no mach number exceeds ``max_mach_number``, the original array ``true_airspeed``
+    and the computed Mach number are returned.
 
     Parameters
     ----------
@@ -90,20 +93,25 @@ def clip_mach_number(
 
     Returns
     -------
-    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]] :
-        Pair of true airspeed and Mach number arrays. Both are corrected so that
-        the Mach numbers are clipped at `max_mach_number`.
+    true_airspeed : npt.NDArray[np.float_]
+        Array of true airspeed, [:math:`m \ s^{-1}`]. All values are clipped at
+        ``max_mach_number``.
+    mach_num : npt.NDArray[np.float_]
+        Array of Mach numbers, [:math:`Ma`]. All values are clipped at
+        ``max_mach_number``.
     """
     mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)
 
     is_unrealistic = mach_num > max_mach_number
-    if np.any(is_unrealistic):
-        msg = (
-            f"Unrealistic Mach numbers found. Discovered {np.sum(is_unrealistic)} / "
-            f"{is_unrealistic.size} values exceeding this, the largest of which "
-            f"is {np.nanmax(mach_num)}. These are all clipped at {max_mach_number}."
-        )
-        logger.debug(msg)
+    if not np.any(is_unrealistic):
+        return true_airspeed, mach_num
+
+    msg = (
+        f"Unrealistic Mach numbers found. Discovered {np.sum(is_unrealistic)} / "
+        f"{is_unrealistic.size} values exceeding this, the largest of which "
+        f"is {np.nanmax(mach_num):.4f}. These are all clipped at {max_mach_number}."
+    )
+    logger.debug(msg)
 
     max_tas = units.mach_number_to_tas(max_mach_number, air_temperature)
     adjusted_mach_num = np.where(is_unrealistic, max_mach_number, mach_num)
