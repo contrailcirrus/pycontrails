@@ -155,6 +155,7 @@ class PSModel(AircraftPerformance):
             amass_mpl=amass_mpl,
             load_factor=load_factor,
             takeoff_mass=takeoff_mass,
+            correct_fuel_flow=self.params["correct_fuel_flow"],
         )
 
         # Set array aircraft_performance to flight, don't overwrite
@@ -190,7 +191,11 @@ class PSModel(AircraftPerformance):
         q_fuel: float,
         **kwargs: Any,
     ) -> AircraftPerformanceData:
-        del kwargs  # unused
+        try:
+            correct_fuel_flow_ = kwargs["correct_fuel_flow"]
+        except KeyError:
+            raise KeyError("A 'correct_fuel_flow' kwarg is required for this model")
+
         if not isinstance(true_airspeed, np.ndarray):
             raise NotImplementedError("Only array inputs are supported")
         if not isinstance(time, np.ndarray):
@@ -254,7 +259,7 @@ class PSModel(AircraftPerformance):
         elif isinstance(fuel_flow, (int, float)):
             fuel_flow = np.full_like(true_airspeed, fuel_flow)
 
-        if self.params["correct_fuel_flow"]:
+        if correct_fuel_flow_:
             fuel_flow = correct_fuel_flow(
                 fuel_flow,
                 altitude_ft,
