@@ -252,3 +252,8 @@ html_css_files = ["css/style.css"]
 # html_js_files = []
 
 html_sourcelink_suffix = ""
+
+# Add plausible script to track usage
+html_js_files = [
+    ("https://plausible.io/js/script.js", {"data-domain": "py.contrails.org", "defer": "defer"}),
+]
