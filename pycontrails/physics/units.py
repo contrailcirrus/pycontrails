@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 
 from pycontrails.physics import constants
 from pycontrails.utils.types import ArrayScalarLike, support_arraylike
@@ -56,17 +57,17 @@ def ft_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     return m_to_pl(ft_to_m(h))
 
 
-def kelvin_to_celcius(kelvin: np.ndarray) -> np.ndarray:
+def kelvin_to_celcius(kelvin: ArrayScalarLike) -> ArrayScalarLike:
     """Convert temperature from kelvin to celcius.
 
     Parameters
     ----------
-    kelvin : np.ndarray
+    kelvin : ArrayScalarLike
         temperature [:math:`K`]
 
     Returns
     -------
-    np.ndarray
+    ArrayScalarLike
         temperature [:math:`C`]
     """
     return kelvin + constants.absolute_zero
@@ -105,13 +106,13 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
     return constants.T_msl + h_min * constants.T_lapse_rate  # type: ignore[return-value]
 
 
-def _low_altitude_m_to_pl(h: np.ndarray) -> np.ndarray:
+def _low_altitude_m_to_pl(h: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     T_isa: np.ndarray = m_to_T_isa(h)
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     return (constants.p_surface * (T_isa / constants.T_msl) ** power_term) / 100.0
 
 
-def _high_altitude_m_to_pl(h: np.ndarray) -> np.ndarray:
+def _high_altitude_m_to_pl(h: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     T_tropopause_isa = m_to_T_isa(np.asarray(constants.h_tropopause))
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
@@ -120,17 +121,17 @@ def _high_altitude_m_to_pl(h: np.ndarray) -> np.ndarray:
 
 
 @support_arraylike
-def m_to_pl(h: np.ndarray) -> np.ndarray:
+def m_to_pl(h: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     r"""Convert from altitude (m) to pressure level (hPa).
 
     Parameters
     ----------
-    h : np.ndarray
+    h : npt.NDArray[np.float_]
         altitude, [:math:`m`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     References
@@ -151,14 +152,14 @@ def m_to_pl(h: np.ndarray) -> np.ndarray:
     return np.piecewise(h, condlist, funclist)
 
 
-def _low_altitude_pl_to_m(pl: np.ndarray) -> np.ndarray:
+def _low_altitude_pl_to_m(pl: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     base = 100.0 * pl / constants.p_surface
     exponent = -constants.T_lapse_rate * constants.R_d / constants.g
     T_isa = constants.T_msl * base**exponent
     return (T_isa - constants.T_msl) / constants.T_lapse_rate
 
 
-def _high_altitude_pl_to_m(pl: np.ndarray) -> np.ndarray:
+def _high_altitude_pl_to_m(pl: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     T_tropopause_isa = m_to_T_isa(np.asarray(constants.h_tropopause))
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
@@ -167,7 +168,7 @@ def _high_altitude_pl_to_m(pl: np.ndarray) -> np.ndarray:
 
 
 @support_arraylike
-def pl_to_m(pl: np.ndarray) -> np.ndarray:
+def pl_to_m(pl: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
     r"""Convert from pressure level (hPa) to altitude (m).
 
     Function is slightly different from the classical formula:
@@ -405,29 +406,31 @@ def tas_to_mach_number(true_airspeed: ArrayScalarLike, T: ArrayScalarLike) -> Ar
     ----------
     - :cite:`cumpstyJetPropulsion2015`
     """
-    return true_airspeed / np.sqrt(constants.kappa * constants.R_d * T)
+    return true_airspeed / np.sqrt((constants.kappa * constants.R_d) * T)
 
 
-def mach_number_to_tas(mach_number: float | np.ndarray, T: np.ndarray) -> np.ndarray:
+def mach_number_to_tas(
+    mach_number: float | npt.NDArray[np.float_], T: npt.NDArray[np.float_]
+) -> npt.NDArray[np.float_]:
     r"""Calculate true airspeed from the Mach number at a specified ambient temperature.
 
     Parameters
     ----------
-    mach_number : float | np.ndarray
+    mach_number : float | npt.NDArray[np.float_]
         Mach number, [:math: `Ma`]
-    T : np.ndarray
+    T : npt.NDArray[np.float_]
         Ambient temperature, [:math:`K`]
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.float_]
         True airspeed, [:math:`m \ s^{-1}`]
 
     References
     ----------
     - :cite:`cumpstyJetPropulsion2015`
     """
-    return mach_number * np.sqrt(constants.kappa * constants.R_d * T)
+    return mach_number * np.sqrt((constants.kappa * constants.R_d) * T)
 
 
 def lbs_to_kg(lbs: ArrayScalarLike) -> ArrayScalarLike:
