@@ -258,6 +258,8 @@ class AircraftPerformance(Model):
     ) -> AircraftPerformanceData:
         # Variable aircraft_mass will change dynamically after each iteration
         # Set the initial aircraft mass depending on a possible load factor
+
+        aircraft_mass: npt.NDArray[np.float_] | float
         if takeoff_mass is not None:
             aircraft_mass = takeoff_mass
         else:
