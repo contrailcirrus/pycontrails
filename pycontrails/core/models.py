@@ -76,14 +76,14 @@ class ModelParams:
     interpolation_use_indices: bool = False
 
     #: Experimental. Alternative interpolation method to account for specific humidity
-    #: lapse rate bias. Must be one of "linear-q", "cubic-spline", or "log-q-log-p".
-    #: The "linear-q" method applies naive linear interpolation over gridded met data.
-    #: The "cubic-spline" method applies a custom stretching of the met interpolation
-    #: table to account for the specific humidity lapse rate bias. The "log-q-log-p"
+    #: lapse rate bias. Must be one of ``None``, ``"cubic-spline"``, or ``"log-q-log-p"``.
+    #: If ``None``, no special interpolation is used for specific humidity.
+    #: The ``"cubic-spline"`` method applies a custom stretching of the met interpolation
+    #: table to account for the specific humidity lapse rate bias. The ``"log-q-log-p"``
     #: method interpolates in the log of specific humidity and pressure, then converts
     #: back to specific humidity.
     #: Only used by models calling to :func:`interpolate_met`.
-    interpolation_q_method: str = "linear-q"
+    interpolation_q_method: str | None = None
 
     # -----------
     # Meteorology
@@ -579,7 +579,7 @@ class Model(ABC):
                 )
                 continue
 
-            if q_method != "linear-q":
+            if q_method is not None:
                 raise NotImplementedError(
                     "Experimental 'q_method' parameter only supported when source "
                     "is a GeoVectorDataset."
@@ -723,7 +723,7 @@ def interpolate_met(
     vector: GeoVectorDataset,
     met_key: str,
     vector_key: str | None = None,
-    q_method: str = "linear-q",
+    q_method: str | None = None,
     **interp_kwargs: Any,
 ) -> np.ndarray:
     """Interpolate ``vector`` against ``met`` gridded data.
@@ -770,7 +770,7 @@ def interpolate_met(
     if met is None:
         raise ValueError(f"No variable key '{vector_key}' in 'vector' and 'met' is None")
 
-    if met_key in ("q", "specific_humidity"):
+    if met_key in ("q", "specific_humidity") and q_method is not None:
         mda, log_applied = _extract_q(met, met_key, q_method)
         out = interpolate_gridded_specific_humidity(
             mda, vector, q_method, log_applied, **interp_kwargs
@@ -892,7 +892,7 @@ def _prepare_q(  # type: ignore[return-value]
 def interpolate_gridded_specific_humidity(
     mda: MetDataArray,
     vector: GeoVectorDataset,
-    q_method: str,
+    q_method: str | None,
     log_applied: bool,
     **interp_kwargs: Any,
 ) -> np.ndarray:
@@ -904,7 +904,7 @@ def interpolate_gridded_specific_humidity(
         MetDataArray of specific humidity.
     vector : GeoVectorDataset
         Flight or GeoVectorDataset instance
-    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+    q_method : {None, "cubic-spline", "log-q-log-p"}
         Experimental method to use for interpolating specific humidity.
     log_applied : bool
         Whether or not a log transform was applied to specific humidity.
@@ -916,7 +916,7 @@ def interpolate_gridded_specific_humidity(
     np.ndarray
         Interpolated values.
     """
-    if q_method == "linear-q":
+    if q_method is None:
         return vector.intersect_met(mda, **interp_kwargs)
 
     level = interp_kwargs.get("level", vector.level)
@@ -941,9 +941,9 @@ def raise_invalid_q_method_error(q_method: str) -> NoReturn:
     Raises
     ------
     ValueError
-        ``q_method`` is not one of ``"linear-q"``, ``"log-q-log-p"``, or ``"cubic-spline"``.
+        ``q_method`` is not one of ``None``, ``"log-q-log-p"``, or ``"cubic-spline"``.
     """
-    available = ["linear-q", "log-q-log-p", "cubic-spline"]
+    available = None, "log-q-log-p", "cubic-spline"
     raise ValueError(f"Invalid 'q_method' value '{q_method}'. Must be one of {available}.")
 
 
