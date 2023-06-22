@@ -1177,13 +1177,11 @@ def plume_temporal_evolution(
         vertical gradient of the horizontal velocity (wind shear) normal to the contrail axis
         at the start of the time step, [:math:`m s^{-1} / Pa`]::
 
-
                            X-----------------------X               X
                                         ^                           |
                                         | (dsn_dz)                  |  <-- (dsn_dz)
                                         |                           |
                                                                     X
-
     diffuse_h_t1 : npt.NDArray[np.float_]
         horizontal diffusivity at the start of the time step, [:math:`m^{2} s^{-1}`]
     diffuse_v_t1 : npt.NDArray[np.float_]

@@ -163,8 +163,7 @@ def habit_weights(
     For example:
 
     - For waypoints with r_vol_um < 5 um, the mix of ice particle habits will
-      be from Group 1 (100% Droxtals,
-        refer to :attr:`CocipParams().habit_distributions`).
+      be from Group 1 (100% Droxtals, refer to :attr:`CocipParams().habit_distributions`).
     - For waypoints with 5 um <= ``r_vol_um`` < 9.5 um, the mix of ice particle
       habits will be from Group 2 (30% solid columns, 70% droxtals)
 
@@ -189,7 +188,7 @@ def habit_weights(
     ------
     ValueError
         Raises when ``habit_distributions`` do not sum to 1 across columns or
-        if there is a size mistmatch with ``radius_threshold_um``.
+        if there is a size mismatch with ``radius_threshold_um``.
     """
     # all rows of the habit weights should sum to 1
     if not np.all(np.round(np.sum(habit_distributions, axis=1), 3) == 1):
