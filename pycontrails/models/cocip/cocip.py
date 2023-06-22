@@ -29,7 +29,6 @@ from pycontrails.models.cocip import (
     wind_shear,
 )
 from pycontrails.models.cocip.cocip_params import CocipFlightParams
-from pycontrails.models.cocip.output import flight_summary
 from pycontrails.models.emissions.emissions import Emissions
 from pycontrails.physics import geo, thermo, units
 
@@ -419,26 +418,6 @@ class Cocip(Model):
             return self.source.to_flight_list()  # type: ignore[attr-defined]
 
         return self.source
-
-    def output_flight_statistics(self) -> pd.Series:
-        """Calculate summary flight statistics for evaluated flight.
-
-        Returns
-        -------
-        pd.Series
-            Summary statistics as a :class:`pandas.Series`
-
-        Raises
-        ------
-        RuntimeError
-            If :meth:`eval` has not been called.
-        """
-        if "ef" not in self.source:
-            raise RuntimeError(
-                "Model must be evaluated with `Cocip.eval` before flight statistics are available"
-            )
-
-        return flight_summary.flight_statistics(self.source, self.contrail)
 
     def _calc_timesteps(self) -> None:
         """Calculate :attr:`timesteps`."""
