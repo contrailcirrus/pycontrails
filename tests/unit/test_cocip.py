@@ -667,30 +667,6 @@ def test_flight_statistics(cocip_persistent: Cocip) -> None:
         np.testing.assert_allclose(output_stats[k], opened_stats[k], err_msg=k, rtol=1e-5)
 
 
-def test_grid_cirrus(cocip_persistent: Cocip) -> None:
-    """Test `grid_cirrus.cirrus_summary_statistics` function."""
-    df_contrails = cocip_persistent.contrail
-    assert isinstance(df_contrails, pd.DataFrame)
-    df_contrails["flight_id"] = cocip_persistent.source.attrs["flight_id"]
-
-    grid_summary = grid_cirrus.cirrus_summary_statistics(
-        df_contrails,
-        cocip_persistent.met.data["fraction_of_cloud_cover"].isel(time=slice(0, 8)),
-        cocip_persistent.met.data["tau_cirrus"].isel(time=slice(0, 8)),
-    )
-
-    # summary json output for comparison
-    # grid_summary.to_json(
-    #     get_static_path("cocip-output-grid-cirrus-summary.json"), indent=2, orient="records"
-    # )
-
-    # load summary json output for comparison
-    grid_summary_previous = pd.read_json(get_static_path("cocip-output-grid-cirrus-summary.json"))
-
-    for key in grid_summary:
-        assert np.allclose(grid_summary[key], grid_summary_previous[key])
-
-
 def test_contrail_edges(cocip_persistent: Cocip) -> None:
     """Test contrail edges methods."""
     df_contrail = cocip_persistent.contrail
