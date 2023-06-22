@@ -1132,22 +1132,13 @@ class MetDataset(MetBase):
         return cls(xr.Dataset({}, coords=coords))
 
     @classmethod
-    def from_zarr(
-        cls,
-        store: Any,
-        cache_size: float | int | None = None,
-        **kwargs: Any,
-    ) -> MetDataset:
+    def from_zarr(cls, store: Any, **kwargs: Any) -> MetDataset:
         """Create a :class:`MetDataset` from a path to a Zarr store.
 
         Parameters
         ----------
         store : Any
             Path to Zarr store. Passed into :func:`xarray.open_zarr`.
-        cache_size: float | int | None, optional
-            If not None, wrap the Zarr store with a :class:`zarr.LRUStoreCache`.
-            This parameter is the number of bytes of memory for the memory cache.
-            For example, use ``cache_size=4e9`` for a 4 gigabyte memory cache store.
         **kwargs : Any
             Other keyword only arguments passed into :func:`xarray.open_zarr`.
 
@@ -1155,40 +1146,7 @@ class MetDataset(MetBase):
         -------
         MetDataset
             MetDataset with data from Zarr store.
-
-        Notes
-        -----
-        The :class:`zarr.LRUStoreCache` approach is not fully optimized because
-        it holds encoded chunks (raw ``bytes`` downloaded from a cloud Zarr store)
-        as opposed decoded :class:`np.ndarray`s. See
-
-        - https://github.com/zarr-developers/zarr-python/pull/306
-        - https://github.com/zarr-developers/zarr-python/issues/278
-
-        After some prototyping and profiling, it seems best to hold decoded
-        :class:`np.ndarray` data directly through ``dask``. See :meth:`values`
-        or :meth:`xr.DataArray.load`.
         """
-        if cache_size is not None:
-            if cache_size < 1e9:
-                warnings.warn(
-                    "The unit for the 'cache_size' parameter is number of bytes. "
-                    "For performance, this should be at least one gigabyte. Set to "
-                    "at least 1e9 to avoid this warning."
-                )
-
-            try:
-                import fsspec
-                import zarr
-            except ModuleNotFoundError:
-                raise ModuleNotFoundError(
-                    "The zarr and fsspec packages are required to use cache_size. "
-                    "Install them with 'pip install pycontrails[zarr]'."
-                )
-
-            mapper = fsspec.get_mapper(store)
-            store = zarr.LRUStoreCache(mapper, max_size=cache_size)
-
         kwargs.setdefault("storage_options", {"read_only": True})
         ds = xr.open_zarr(store, **kwargs)
         return cls(ds)

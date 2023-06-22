@@ -19,19 +19,13 @@ if ZARR_STORE is None:
     pytest.skip("Zarr store not available from environment variable", allow_module_level=True)
 
 
-@pytest.fixture()
-def ds():
-    ds_ = xr.open_zarr(ZARR_STORE)  # using default chunks="auto" for dask interop
-    try:
-        # This raises ValueError if chunks needs work
-        # This seems to be happening only for an auxiliary coordinate.
-        ds_.chunks
-        return ds_
-    except ValueError:
-        return ds_.unify_chunks()  # cheap if only a single time-derived coordinate is fixed
+@pytest.fixture
+def ds() -> xr.Dataset:
+    """Open the Zarr store as an xarray Dataset."""
+    return xr.open_zarr(ZARR_STORE)  # using default chunks="auto" for dask interop
 
 
-def test_open_zarr_as_dataset(ds: xr.Dataset):
+def test_open_zarr_as_dataset(ds: xr.Dataset) -> None:
     """Confirm interaction with a zarr-based Dataset.
 
     This test downloads a single chunks from the Zarr store.
@@ -47,7 +41,7 @@ def test_open_zarr_as_dataset(ds: xr.Dataset):
     assert point.values.item() == 13.631146430969238
 
 
-def test_open_zarr_as_metdataset(ds: xr.Dataset):
+def test_open_zarr_as_metdataset(ds: xr.Dataset) -> None:
     """Confirm a zarr-based Dataset can be opened as a MetDataset.
 
     No chunks (apart from xarray dimensions) are actually downloaded here.
@@ -66,12 +60,12 @@ def test_open_zarr_as_metdataset(ds: xr.Dataset):
     assert not mda.in_memory
 
 
-def test_zarr_interpolation():
+def test_zarr_interpolation() -> None:
     """Confirm a zarr-based Dataset can interpolate a GeoVectorDataset.
 
     Two time chunks are downloaded here.
     """
-    mds = MetDataset.from_zarr(ZARR_STORE, cache_size=1e9)
+    mds = MetDataset.from_zarr(ZARR_STORE)
     mda = mds["eastward_wind"]
 
     rng = np.random.default_rng(13579)
