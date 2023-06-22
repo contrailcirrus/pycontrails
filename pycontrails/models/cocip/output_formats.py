@@ -41,13 +41,14 @@ def flight_waypoint_outputs(
     flight_waypoints : GeoVectorDataset
         Flight waypoints that were used in `cocip.eval` to produce `contrails`.
     contrails : GeoVectorDataset
-        Contrail waypoint outputs from CoCiP, `cocip.contrail`.
+        Contrail evolution outputs from CoCiP, `cocip.contrail`.
 
     Returns
     -------
     GeoVectorDataset
         Contrail summary statistics attached to each flight waypoint.
     """
+    # TODO: Document units
     # Aggregation map
     agg_map_contrails_to_flight_waypoints = {
         # Location, ambient meteorology and properties
@@ -71,12 +72,12 @@ def flight_waypoint_outputs(
         "rsr": "mean",
     }
 
-    # Check and pre-process `flights` variable
+    # Check and pre-process `flights`
     flight_waypoints.ensure_vars(["flight_id", "waypoint"])
     flight_waypoints = flight_waypoints.dataframe
     flight_waypoints.set_index(["flight_id", "waypoint"], inplace=True)
 
-    # Check and pre-process `contrails` variable
+    # Check and pre-process `contrails`
     contrail_vars = (
             ["flight_id", "waypoint", "formation_time"]
             + list(agg_map_contrails_to_flight_waypoints.keys())
@@ -95,7 +96,6 @@ def flight_waypoint_outputs(
     )
     rename_cols = {
         "mean_altitude": "mean_contrail_altitude",
-        "max_age_h": "contrail_age",
         "sum_ef": "ef"
     }
     contrails.rename(columns=rename_cols, inplace=True)
@@ -106,23 +106,51 @@ def flight_waypoint_outputs(
     return GeoVectorDataset(flight_waypoints, copy=True)
 
 
-def flight_summary_outputs(
-        flight_waypoints: GeoVectorDataset,
-) -> pd.DataFrame:
-    # TODO: Documentation
+def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.DataFrame:
+    """
+    Calculate contrail summary statistics for each flight.
 
+    Parameters
+    ----------
+    flight_waypoints : GeoVectorDataset
+        Flight waypoint outputs with contrail summary statistics attached.
+        See :func:`flight_waypoint_outputs`.
+
+    Returns
+    -------
+    pd.DataFrame
+        Contrail summary statistics for each flight
+
+    Notes
+    -----
+    Outputs and units:
+    - ``total_flight_distance_flown``, [:math:`m`]
+    - ``total_contrails_formed``, [:math:`m`]
+    - ``total_persistent_contrails_formed``, [:math:`m`]
+    - ``mean_lifetime_contrail_altitude``, [:math:`m`]
+    - ``mean_lifetime_rhi``, [dimensionless]
+    - ``mean_lifetime_n_ice_per_m``, [:math:`m^{-1}`]
+    - ``mean_lifetime_r_ice_vol``, [:math:`m`]
+    - ``mean_lifetime_contrail_width``, [:math:`m`]
+    - ``mean_lifetime_contrail_depth``, [:math:`m`]
+    - ``mean_lifetime_tau_contrail``, [dimensionless]
+    - ``mean_lifetime_tau_cirrus``, [dimensionless]
+    - ``mean_contrail_lifetime``, [:math:`h`]
+    - ``max_contrail_lifetime``, [:math:`h`]
+    - ``mean_lifetime_rf_sw``, [:math:`W m^{-2}`]
+    - ``mean_lifetime_rf_lw``, [:math:`W m^{-2}`]
+    - ``mean_lifetime_rf_net``, [:math:`W m^{-2}`]
+    - ``total_energy_forcing``, [:math:`J`]
+    - ``mean_lifetime_olr``, [:math:`W m^{-2}`]
+    - ``mean_lifetime_sdr``, [:math:`W m^{-2}`]
+    - ``mean_lifetime_rsr``, [:math:`W m^{-2}`]
+    """
     # Aggregation map
     agg_map_flight_waypoints_to_summary = {
-        # Trajectory and aircraft performance
-        "altitude": ["min", "max"],
-        "time": ["first", "last"],
-        "segment_length": "sum",
-        "aircraft_mass": "mean",
-        "engine_efficiency": "mean",
-
         # Contrail properties and ambient meteorology
-        "contrails_km": "sum",
-        "persistent_contrails_km": "sum",
+        "segment_length": "sum",
+        "contrail_length": "sum",
+        "persistent_contrail_length": "sum",
         "mean_contrail_altitude": "mean",
         "mean_rhi": "mean",
         "mean_n_ice_per_m": "mean",
@@ -143,7 +171,61 @@ def flight_summary_outputs(
         "mean_rsr": "mean",
     }
 
-    return
+    # Check and pre-process `flight_waypoints`
+    vars_required = (
+            ["flight_id", "sac"] + list(agg_map_flight_waypoints_to_summary.keys())
+    )
+    vars_required.remove("contrail_length")
+    vars_required.remove("persistent_contrail_length")
+    flight_waypoints.ensure_vars(vars_required)
+
+    flight_waypoints['contrail_length'] = np.where(
+        flight_waypoints["sac"] == 1,
+        flight_waypoints['segment_length'],
+        0
+    )
+
+    flight_waypoints['persistent_contrail_length'] = np.where(
+        np.isnan(flight_waypoints["ef"]),
+        0,
+        flight_waypoints["segment_length"]
+    )
+
+    # Calculate contrail statistics for each flight
+    flight_summary = flight_waypoints.dataframe.groupby(["flight_id"]).agg(
+        agg_map_flight_waypoints_to_summary
+    )
+    flight_summary.columns = (
+            flight_summary.columns.get_level_values(1) + "_"
+            + flight_summary.columns.get_level_values(0)
+    )
+
+    rename_flight_summary_cols = {
+        "sum_segment_length": "total_flight_distance_flown",
+        "sum_contrail_length": "total_contrails_formed",
+        "sum_persistent_contrail_length": "total_persistent_contrails_formed",
+        "mean_mean_contrail_altitude": "mean_lifetime_contrail_altitude",
+        "mean_mean_rhi": "mean_lifetime_rhi",
+        "mean_mean_n_ice_per_m": "mean_lifetime_n_ice_per_m",
+        "mean_mean_r_ice_vol": "mean_lifetime_r_ice_vol",
+        "mean_mean_width": "mean_lifetime_contrail_width",
+        "mean_mean_depth": "mean_lifetime_contrail_depth",
+        "mean_mean_tau_contrail": "mean_lifetime_tau_contrail",
+        "mean_mean_tau_cirrus": "mean_lifetime_tau_cirrus",
+        "mean_max_age_h": "mean_contrail_lifetime",
+        "max_max_age_h": "max_contrail_lifetime",
+        "mean_mean_rf_sw": "mean_lifetime_rf_sw",
+        "mean_mean_rf_lw": "mean_lifetime_rf_lw",
+        "mean_mean_rf_net": "mean_lifetime_rf_net",
+        "sum_ef": "total_energy_forcing",
+        "mean_mean_olr": "mean_lifetime_olr",
+        "mean_mean_sdr": "mean_lifetime_sdr",
+        "mean_mean_rsr": "mean_lifetime_rsr",
+    }
+
+    flight_summary.rename(columns=rename_flight_summary_cols, inplace=True)
+    flight_summary.reset_index(["flight_id"], inplace=True)
+    return flight_summary
 
 
 def longitude_latitude_grid(
@@ -168,7 +250,7 @@ def longitude_latitude_grid(
         Flight waypoint outputs with contrail summary statistics attached.
         See :func:`flight_waypoint_outputs`.
     contrails : GeoVectorDataset
-        Contrail waypoint outputs from CoCiP, `cocip.contrail`.
+        Contrail evolution outputs from CoCiP, `cocip.contrail`.
     met : MetDataset
         Pressure level dataset containing 'air_temperature', 'specific_humidity',
         'specific_cloud_ice_water_content', and 'geopotential'.
@@ -377,7 +459,7 @@ def time_slice_statistics(
     flight_waypoints : GeoVectorDataset
         Flight waypoint outputs.
     contrails : GeoVectorDataset
-        Contrail waypoint outputs from CoCiP, `cocip.contrail`.
+        Contrail evolution outputs from CoCiP, `cocip.contrail`.
     met : MetDataset | None
         Pressure level dataset containing 'air_temperature', 'specific_humidity',
         'specific_cloud_ice_water_content', and 'geopotential'.
@@ -399,7 +481,7 @@ def time_slice_statistics(
 
     Notes
     -----
-    Description of the outputs and units of provided by this function:
+    Outputs and units:
     - ``n_flights``, [dimensionless]
     - ``n_flights_forming_contrails``, [dimensionless]
     - ``n_flights_forming_persistent_contrails``, [dimensionless]
