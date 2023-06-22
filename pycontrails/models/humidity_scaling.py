@@ -856,7 +856,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         This method assumes ``source`` is equipped with the following variables:
 
         - air_temperature
-        - specific_humidity: Humidity values for the :attr:`member` ERA5 ensemble member.
+        - specific_humidity: Humidity values for the ``params["member"]`` ERA5 ensemble member.
         """
 
         self.update_params(params)
@@ -878,7 +878,9 @@ class HistogramMatchingWithEckel(HumidityScaling):
         q = self.source.data["specific_humidity"]
         q2d = np.empty((len(self.source), self.n_members), dtype=q.dtype)
 
-        q_method: str = self.params["interpolation_q_method"]
+        interp_kwargs = self.interp_kwargs
+        q_method = interp_kwargs.pop("q_method")
+
         ensemble_specific_humidity: list[MetDataArray] = self.params["ensemble_specific_humidity"]
         member: int = self.params["member"]
         log_applied: bool = self.params["log_applied"]
@@ -889,7 +891,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
                 continue
 
             q2d[:, i] = models.interpolate_gridded_specific_humidity(
-                mda, self.source, q_method, log_applied, **self.interp_kwargs
+                mda, self.source, q_method, log_applied, **interp_kwargs
             )
 
         p = self.source.setdefault("air_pressure", self.source.air_pressure)

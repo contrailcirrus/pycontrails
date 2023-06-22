@@ -334,6 +334,7 @@ class Model(ABC):
             - "fill_value"
             - "localize"
             - "use_indices"
+            - "q_method"
 
             as determined by :attr:`params`.
         """
@@ -343,6 +344,7 @@ class Model(ABC):
             "fill_value": self.params["interpolation_fill_value"],
             "localize": self.params["interpolation_localize"],
             "use_indices": self.params["interpolation_use_indices"],
+            "q_method": self.params["interpolation_q_method"],
         }
 
     def require_met(self) -> MetDataset:
@@ -570,16 +572,12 @@ class Model(ABC):
             # take the first var name output from ensure_vars
             met_key = self.met.ensure_vars(var)[0]
 
-            q_method = self.params["interpolation_q_method"]
-
             # interpolate GeoVectorDataset
             if isinstance(self.source, GeoVectorDataset):
-                interpolate_met(
-                    self.met, self.source, met_key, q_method=q_method, **self.interp_kwargs
-                )
+                interpolate_met(self.met, self.source, met_key, **self.interp_kwargs)
                 continue
 
-            if q_method is not None:
+            if self.params["interpolation_q_method"] is not None:
                 raise NotImplementedError(
                     "Experimental 'q_method' parameter only supported when source "
                     "is a GeoVectorDataset."
