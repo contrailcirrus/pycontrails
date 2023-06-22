@@ -1834,10 +1834,12 @@ def vector_to_lon_lat_grid(
         elif agg[var_name] == "mean":
             df_arr = df[["idx_lon", "idx_lat", var_name]].groupby(by=["idx_lon", "idx_lat"]).mean()
         else:
-            raise NameError('Aggregation only accepts operations of "mean" or "sum".')
+            raise NotImplementedError('Aggregation only accepts operations of "mean" or "sum".')
 
         arr[df_arr.index.get_level_values(0), df_arr.index.get_level_values(1)] = df_arr[var_name]
-        ds_out[var_name] = xr.DataArray(coords={"longitude": lon_coords, "latitude": lat_coords}, data=arr)
+        ds_out[var_name] = xr.DataArray(
+            coords={"longitude": lon_coords, "latitude": lat_coords}, data=arr
+        )
 
     ds_out = xr.Dataset(ds_out)
     return ds_out
