@@ -294,15 +294,15 @@ def segment_angle(longitude: np.ndarray, latitude: np.ndarray) -> tuple[np.ndarr
     -----
     ::
 
-            (lon_2, lat_2)  X
-                           /|
-                          / |
-                         /  |
-                        /   |
-                       /    |
-                      /     |
-                     /      |
-    (lon_1, lat_1)  X -------> longitude (x-axis)
+                (lon_2, lat_2)  X
+                               /|
+                              / |
+                             /  |
+                            /   |
+                           /    |
+                          /     |
+                         /      |
+        (lon_1, lat_1)  X -------> longitude (x-axis)
 
     See Also
     --------
