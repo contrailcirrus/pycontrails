@@ -27,11 +27,12 @@ from pycontrails.models.tau_cirrus import tau_cirrus
 # Main functions for different CoCiP output formats
 # -------------------------------------------------
 
-def hourly_grid_and_time_slice_outputs(
-        flight_waypoints: GeoVectorDataset,
-        contrails: GeoVectorDataset
-):
-    # TODO: Documentations
+
+def flight_waypoint_outputs():
+    return
+
+
+def flight_summary_outputs():
     return
 
 
@@ -39,163 +40,12 @@ def longitude_latitude_grid(
         t_start, t_end,
         flight_waypoints: GeoVectorDataset,
         contrails: GeoVectorDataset,
-        tau_cirrus: xr.DataArray,
-        natural_cirrus_cover: xr.DataArray
+        met: MetDataset | None = None,
+        spatial_bbox: list[float] = [-180, -90, 180, 90],
 ):
     # TODO: MetDataArray, Spatial bbox, grid resolution
     return
 
-
-# ----------------------
-# Flight summary outputs
-# ----------------------
-
-agg_map_contrails_to_flight_waypoints = {}
-agg_map_flight_waypoints_to_flight_summary = {}
-
-
-def flights_summary(
-        flights: list[Flight],
-        contrails: GeoVectorDataset
-):
-    # TODO: Documentation
-    # TODO: Assertion
-
-    return
-
-
-def flight_statistics():
-    return
-
-
-# --------------
-# Grid functions
-# --------------
-
-def cirrus_coverage_single_level(
-        time: np.datetime64 | pd.Timestamp,
-        met: MetDataset,
-        contrails: GeoVectorDataset, *,
-        optical_depth_threshold : float = 0.1
-) -> MetDataset:
-    """
-    Identify presence of contrail and natural cirrus in a longitude-latitude grid.
-
-    Parameters
-    ----------
-    met : MetDataset
-        Pressure level dataset containing 'air_temperature', 'specific_cloud_ice_water_content',
-        and 'geopotential'
-    contrails : GeoVectorDataset
-        Contrail waypoints containing `tau_contrail`.
-    time : np.datetime64 | pd.Timestamp
-        Time when the cirrus statistics is computed.
-    optical_depth_threshold : float
-        Sensitivity of cirrus detection, set at 0.1 to match the capability of satellites.
-
-    Returns
-    -------
-    MetDataset
-        Single level dataset containing the contrail and natural cirrus coverage.
-    """
-    # Ensure `met` and `contrails` contains the required variables
-    met.ensure_vars(('air_temperature', 'specific_cloud_ice_water_content', 'geopotential'))
-    contrails.ensure_vars('tau_contrail')
-
-    # Spatial bounding box and resolution of `met`
-    spatial_bbox = [
-        np.min(met["longitude"].values),
-        np.min(met["latitude"].values),
-        np.max(met["longitude"].values),
-        np.max(met["latitude"].values),
-    ]
-    spatial_grid_res = np.diff(met["longitude"].values)[0]
-
-    # Contrail cirrus optical depth in a longitude-latitude grid
-    tau_contrail = vector_to_lon_lat_grid(
-        contrails.filter(contrails["time"] == time),
-        agg={"tau_contrail": "sum"},
-        spatial_bbox=spatial_bbox,
-        spatial_grid_res=spatial_grid_res
-    )['tau_contrail']
-    tau_contrail = tau_contrail.expand_dims({"level": np.array([-1])})
-    tau_contrail = tau_contrail.expand_dims({"time": np.array([time])})
-    tau_contrail = MetDataArray(tau_contrail)
-
-    # Natural cirrus optical depth in a longitude-latitude grid
-    met["tau_cirrus"] = tau_cirrus(met)
-    tau_cirrus_max = met['tau_cirrus'].data.sel(level=met["level"].data[-1], time=time)
-    tau_cirrus_max = tau_cirrus_max.expand_dims({"level": np.array([-1])})
-    tau_cirrus_max = tau_cirrus_max.expand_dims({"time": np.array([time])})
-    tau_cirrus_max = MetDataArray(tau_cirrus_max)
-
-    tau_all = tau_contrail.data + tau_cirrus_max.data
-    tau_all = MetDataArray(tau_all)
-
-    # Contrail and natural cirrus coverage in a longitude-latitude grid
-    cc_contrails_clear_sky = optical_depth_to_cirrus_coverage(
-        tau_contrail, threshold=optical_depth_threshold
-    )
-    cc_natural_cirrus = optical_depth_to_cirrus_coverage(
-        tau_cirrus_max, threshold=optical_depth_threshold
-    )
-    cc_total = optical_depth_to_cirrus_coverage(
-        tau_all, threshold=optical_depth_threshold
-    )
-    cc_contrails = cc_total.data - cc_natural_cirrus.data
-    cc_contrails = MetDataArray(cc_contrails)
-
-    # Concatenate data
-    ds = xr.Dataset(
-        data_vars=dict(
-            contrails_clear_sky=cc_contrails_clear_sky.data,
-            natural_cirrus=cc_natural_cirrus.data,
-            contrails=cc_contrails.data,
-        ),
-        coords=cc_contrails_clear_sky.coords
-    )
-
-    # Update attributes
-    ds["contrails_clear_sky"].attrs = {
-        "units": " ", "long_name": "Contrail cirrus cover in clear sky conditions."
-    }
-    ds["natural_cirrus"].attrs = {
-        "units": " ", "long_name": "Natural cirrus cover."
-    }
-    ds["contrails"].attrs = {
-        "units": " ", "long_name": "Contrail cirrus cover without overlap with natural cirrus."
-    }
-    return MetDataset(ds)
-
-
-def optical_depth_to_cirrus_coverage(
-        optical_depth: MetDataArray, *,
-        threshold: float = 0.1,
-) -> MetDataArray:
-    """
-    Calculate contrail or natural cirrus coverage in a longitude-latitude grid.
-
-    A grid cell is assumed to be covered by cirrus if the optical depth is above `threshold`
-
-    Parameters
-    ----------
-    optical_depth : MetDataArray
-        Contrail or natural cirrus optical depth in a longitude-latitude grid
-    threshold : float
-        Sensitivity of cirrus detection, set at 0.1 to match the capability of satellites.
-
-    Returns
-    -------
-    MetDataArray
-        Contrail or natural cirrus coverage in a longitude-latitude grid
-    """
-    cirrus_cover = xr.where(optical_depth.data > threshold, 1, 0)
-    return MetDataArray(cirrus_cover)
-
-
-# -------------------
-# Time-slice outputs
-# -------------------
 
 def time_slice_statistics(
         t_start: np.datetime64 | pd.Timestamp,
@@ -519,7 +369,7 @@ def time_slice_statistics(
             met_stats["contrail_cirrus_percentage_coverage"],
             met_stats["contrail_cirrus_clear_sky_percentage_coverage"]
         ) if met is not None else np.nan,
-        
+
         # Radiation statistics
         'mean_sdr_domain': rad_stats["mean_sdr_domain"] if rad is not None else np.nan,
 
@@ -544,6 +394,158 @@ def time_slice_statistics(
         ) if np.any(is_at_t_end) else np.nan,
     }
     return pd.Series(stats_t)
+
+
+# ----------------------
+# Flight summary outputs
+# ----------------------
+
+agg_map_contrails_to_flight_waypoints = {}
+agg_map_flight_waypoints_to_flight_summary = {}
+
+
+def flights_summary(
+        flights: list[Flight],
+        contrails: GeoVectorDataset
+):
+    # TODO: Documentation
+    # TODO: Assertion
+
+    return
+
+
+def flight_statistics():
+    return
+
+
+# --------------
+# Grid functions
+# --------------
+
+def cirrus_coverage_single_level(
+        time: np.datetime64 | pd.Timestamp,
+        met: MetDataset,
+        contrails: GeoVectorDataset, *,
+        optical_depth_threshold : float = 0.1
+) -> MetDataset:
+    """
+    Identify presence of contrail and natural cirrus in a longitude-latitude grid.
+
+    Parameters
+    ----------
+    met : MetDataset
+        Pressure level dataset containing 'air_temperature', 'specific_cloud_ice_water_content',
+        and 'geopotential'
+    contrails : GeoVectorDataset
+        Contrail waypoints containing `tau_contrail`.
+    time : np.datetime64 | pd.Timestamp
+        Time when the cirrus statistics is computed.
+    optical_depth_threshold : float
+        Sensitivity of cirrus detection, set at 0.1 to match the capability of satellites.
+
+    Returns
+    -------
+    MetDataset
+        Single level dataset containing the contrail and natural cirrus coverage.
+    """
+    # Ensure `met` and `contrails` contains the required variables
+    met.ensure_vars(('air_temperature', 'specific_cloud_ice_water_content', 'geopotential'))
+    contrails.ensure_vars('tau_contrail')
+
+    # Spatial bounding box and resolution of `met`
+    spatial_bbox = [
+        np.min(met["longitude"].values),
+        np.min(met["latitude"].values),
+        np.max(met["longitude"].values),
+        np.max(met["latitude"].values),
+    ]
+    spatial_grid_res = np.diff(met["longitude"].values)[0]
+
+    # Contrail cirrus optical depth in a longitude-latitude grid
+    tau_contrail = vector_to_lon_lat_grid(
+        contrails.filter(contrails["time"] == time),
+        agg={"tau_contrail": "sum"},
+        spatial_bbox=spatial_bbox,
+        spatial_grid_res=spatial_grid_res
+    )['tau_contrail']
+    tau_contrail = tau_contrail.expand_dims({"level": np.array([-1])})
+    tau_contrail = tau_contrail.expand_dims({"time": np.array([time])})
+    tau_contrail = MetDataArray(tau_contrail)
+
+    # Natural cirrus optical depth in a longitude-latitude grid
+    met["tau_cirrus"] = tau_cirrus(met)
+    tau_cirrus_max = met['tau_cirrus'].data.sel(level=met["level"].data[-1], time=time)
+    tau_cirrus_max = tau_cirrus_max.expand_dims({"level": np.array([-1])})
+    tau_cirrus_max = tau_cirrus_max.expand_dims({"time": np.array([time])})
+    tau_cirrus_max = MetDataArray(tau_cirrus_max)
+
+    tau_all = tau_contrail.data + tau_cirrus_max.data
+    tau_all = MetDataArray(tau_all)
+
+    # Contrail and natural cirrus coverage in a longitude-latitude grid
+    cc_contrails_clear_sky = optical_depth_to_cirrus_coverage(
+        tau_contrail, threshold=optical_depth_threshold
+    )
+    cc_natural_cirrus = optical_depth_to_cirrus_coverage(
+        tau_cirrus_max, threshold=optical_depth_threshold
+    )
+    cc_total = optical_depth_to_cirrus_coverage(
+        tau_all, threshold=optical_depth_threshold
+    )
+    cc_contrails = cc_total.data - cc_natural_cirrus.data
+    cc_contrails = MetDataArray(cc_contrails)
+
+    # Concatenate data
+    ds = xr.Dataset(
+        data_vars=dict(
+            contrails_clear_sky=cc_contrails_clear_sky.data,
+            natural_cirrus=cc_natural_cirrus.data,
+            contrails=cc_contrails.data,
+        ),
+        coords=cc_contrails_clear_sky.coords
+    )
+
+    # Update attributes
+    ds["contrails_clear_sky"].attrs = {
+        "units": " ", "long_name": "Contrail cirrus cover in clear sky conditions."
+    }
+    ds["natural_cirrus"].attrs = {
+        "units": " ", "long_name": "Natural cirrus cover."
+    }
+    ds["contrails"].attrs = {
+        "units": " ", "long_name": "Contrail cirrus cover without overlap with natural cirrus."
+    }
+    return MetDataset(ds)
+
+
+def optical_depth_to_cirrus_coverage(
+        optical_depth: MetDataArray, *,
+        threshold: float = 0.1,
+) -> MetDataArray:
+    """
+    Calculate contrail or natural cirrus coverage in a longitude-latitude grid.
+
+    A grid cell is assumed to be covered by cirrus if the optical depth is above `threshold`
+
+    Parameters
+    ----------
+    optical_depth : MetDataArray
+        Contrail or natural cirrus optical depth in a longitude-latitude grid
+    threshold : float
+        Sensitivity of cirrus detection, set at 0.1 to match the capability of satellites.
+
+    Returns
+    -------
+    MetDataArray
+        Contrail or natural cirrus coverage in a longitude-latitude grid
+    """
+    cirrus_cover = xr.where(optical_depth.data > threshold, 1, 0)
+    return MetDataArray(cirrus_cover)
+
+
+# -------------------
+# Time-slice helpers
+# -------------------
 
 
 def meteorological_statistics(
