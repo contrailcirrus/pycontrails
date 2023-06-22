@@ -47,8 +47,27 @@ def flight_waypoint_outputs(
     -------
     GeoVectorDataset
         Contrail summary statistics attached to each flight waypoint.
+
+    Notes
+    -----
+    Outputs and units:
+    - ``mean_contrail_altitude``, [:math:`m`]
+    - ``mean_rhi``, [dimensionless]
+    - ``mean_n_ice_per_m``, [:math:`m^{-1}`]
+    - ``mean_r_ice_vol``, [:math:`m`]
+    - ``mean_width``, [:math:`m`]
+    - ``mean_depth``, [:math:`m`]
+    - ``mean_tau_contrail``, [dimensionless]
+    - ``mean_tau_cirrus``, [dimensionless]
+    - ``max_age``, [:math:`h`]
+    - ``mean_rf_sw``, [:math:`W m^{-2}`]
+    - ``mean_rf_lw``, [:math:`W m^{-2}`]
+    - ``mean_rf_net``, [:math:`W m^{-2}`]
+    - ``ef``, [:math:`J`]
+    - ``mean_olr``, [:math:`W m^{-2}`]
+    - ``mean_sdr``, [:math:`W m^{-2}`]
+    - ``mean_rsr``, [:math:`W m^{-2}`]
     """
-    # TODO: Document units
     # Aggregation map
     agg_map_contrails_to_flight_waypoints = {
         # Location, ambient meteorology and properties
@@ -60,7 +79,7 @@ def flight_waypoint_outputs(
         "depth": "mean",
         "tau_contrail": "mean",
         "tau_cirrus": "mean",
-        "age_h": "max",
+        "age": "max",
 
         # Radiative properties
         "rf_sw": "mean",
@@ -82,9 +101,9 @@ def flight_waypoint_outputs(
             ["flight_id", "waypoint", "formation_time"]
             + list(agg_map_contrails_to_flight_waypoints.keys())
     )
-    contrail_vars.remove("age_h")
+    contrail_vars.remove("age")
     contrails.ensure_vars(contrail_vars)
-    contrails['age_h'] = (contrails['time'] - contrails['formation_time']) / np.timedelta64(1, 'h')
+    contrails['age'] = (contrails['time'] - contrails['formation_time']) / np.timedelta64(1, 'h')
 
     # Calculate contrail statistics at each flight waypoint
     contrails = contrails.dataframe.copy()
@@ -159,7 +178,7 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
         "mean_depth": "mean",
         "mean_tau_contrail": "mean",
         "mean_tau_cirrus": "mean",
-        "max_age_h": ["mean", "max"],
+        "max_age": ["mean", "max"],
 
         # Radiative properties
         "mean_rf_sw": "mean",
@@ -212,8 +231,8 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
         "mean_mean_depth": "mean_lifetime_contrail_depth",
         "mean_mean_tau_contrail": "mean_lifetime_tau_contrail",
         "mean_mean_tau_cirrus": "mean_lifetime_tau_cirrus",
-        "mean_max_age_h": "mean_contrail_lifetime",
-        "max_max_age_h": "max_contrail_lifetime",
+        "mean_max_age": "mean_contrail_lifetime",
+        "max_max_age": "max_contrail_lifetime",
         "mean_mean_rf_sw": "mean_lifetime_rf_sw",
         "mean_mean_rf_lw": "mean_lifetime_rf_lw",
         "mean_mean_rf_net": "mean_lifetime_rf_net",
@@ -339,14 +358,14 @@ def longitude_latitude_grid(
         * contrails_t_end["width"]
     )
 
-    contrails_t_end['age_h'] = (
+    contrails_t_end['age'] = (
         (contrails_t_end['time'] - contrails_t_end['formation_time'])
         / np.timedelta64(1, 'h')
     )
 
     ds_contrails_t_end = vector_to_lon_lat_grid(
         contrails_t_end,
-        agg={"segment_length": "sum", "tau_contrail_area": "sum", "age_h": "mean"},
+        agg={"segment_length": "sum", "tau_contrail_area": "sum", "age": "mean"},
         spatial_bbox=spatial_bbox,
         spatial_grid_res=spatial_grid_res
     )
@@ -387,7 +406,7 @@ def longitude_latitude_grid(
             persistent_contrails_formed=ds_wypts_t["persistent_contrails"] / 1000,
             persistent_contrails=ds_contrails_t_end["segment_length"] / 1000,
             tau_contrail=ds_contrails_t_end["tau_contrail"],
-            contrail_age=ds_contrails_t_end["age_h"],
+            contrail_age=ds_contrails_t_end["age"],
             cc_natural_cirrus=ds_cirrus_coverage["natural_cirrus"],
             cc_contrails=ds_cirrus_coverage["contrails"],
             cc_contrails_clear_sky=ds_cirrus_coverage["contrails_clear_sky"],
@@ -589,7 +608,7 @@ def time_slice_statistics(
     contrails['plume_mass_per_m'] = plume_mass_per_distance(
         contrails['area_eff'], contrails['rho_air']
     )
-    contrails['age_h'] = (contrails["time"] - contrails["formation_time"]) / np.timedelta64(1, 'h')
+    contrails['age'] = (contrails["time"] - contrails["formation_time"]) / np.timedelta64(1, 'h')
 
     # Meteorology domain statistics
     if met is not None:
@@ -662,11 +681,11 @@ def time_slice_statistics(
 
         # Contrail properties at `time_end`
         'mean_contrail_age': np.nanmean(
-            contrails.filter(is_at_t_end)['age_h']
+            contrails.filter(is_at_t_end)['age']
         ) if np.any(is_at_t_end) else np.nan,
 
         'max_contrail_age': np.nanmax(
-            contrails.filter(is_at_t_end)['age_h']
+            contrails.filter(is_at_t_end)['age']
         ) if np.any(is_at_t_end) else np.nan,
 
         'mean_n_ice_per_m': np.nanmean(
