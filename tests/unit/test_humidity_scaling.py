@@ -321,7 +321,7 @@ def ensemble_vector(met_issr: MetDataset) -> GeoVectorDataset:
 
 
 @pytest.mark.filterwarnings("ignore:No variable key 'log_specific_humidity'")
-@pytest.mark.parametrize("q_method", ["linear-q", "cubic-spline", "log-q-log-p"])
+@pytest.mark.parametrize("q_method", [None, "cubic-spline", "log-q-log-p"])
 def test_histogram_matching_reanalysis(
     met_issr: MetDataset,
     ensemble_vector: GeoVectorDataset,
@@ -344,7 +344,7 @@ def test_histogram_matching_reanalysis(
 
 
 @pytest.mark.filterwarnings("ignore:No variable key 'log_specific_humidity'")
-@pytest.mark.parametrize("q_method", ["linear-q", "cubic-spline", "log-q-log-p"])
+@pytest.mark.parametrize("q_method", [None, "cubic-spline", "log-q-log-p"])
 @pytest.mark.parametrize("member", range(10))
 def test_histogram_matching_members(
     met_issr: MetDataset,
@@ -411,7 +411,7 @@ def test_histogram_matching_members(
     assert rhi0_mean == pytest.approx(rhi1_mean, abs=0.02)
     assert rhi0_mean == pytest.approx(rhi2_mean, abs=0.04)
 
-    if q_method == "linear-q":
+    if q_method is None:
         assert rhi2_mean == pytest.approx(0.209, abs=0.01)
     elif q_method == "cubic-spline":
         assert rhi2_mean == pytest.approx(0.204, abs=0.01)

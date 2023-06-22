@@ -6,7 +6,7 @@
 ### Features
 
 - Add new experimental `interpolation_q_method` field to the `ModelParams` data class. This parameter controls the interpolation methodology when interpolation against gridded specific humidity. The possible values are:
-  - `"linear-q"`: Interpolate linearly against specific humidity. This is the default behavior and is the same as the previous behavior.
+  - `None`: Interpolate linearly against specific humidity. This is the default behavior and is the same as the previous behavior.
   - `"cubic-spline"`: Apply cubic-spline scaling to the interpolation table vertical coordinate before interpolating linearly against specific humidity.
   - `"log-q-log-p"`: Interpolate in the log-log domain against specific humidity and pressure.
 
@@ -15,7 +15,7 @@
 
 ### Breaking changes
 
-- Add an optional `q_method` parameter to the `pycontrails.core.models.interpolate_met` function. The default value `"linear-q"` agrees with the previous behavior.
+- Add an optional `q_method` parameter to the `pycontrails.core.models.interpolate_met` function. The default value `None` agrees with the previous behavior.
 - Change function signatures in the `cocip.py` module for consistency. The `interp_kwargs` parameter is now unpacked in the `calc_timestep_meterology` signature. Rename `kwargs` to `interp_kwargs` where appropriate.
 
 ### Fixes
