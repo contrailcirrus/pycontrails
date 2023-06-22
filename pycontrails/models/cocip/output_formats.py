@@ -27,12 +27,78 @@ from pycontrails.models.tau_cirrus import tau_cirrus
 # Main functions for different CoCiP output formats
 # -------------------------------------------------
 
+AGG_MAP_CONTRAILS_TO_FLIGHT_WYPTS = {
+    # Location, ambient meteorology and properties
+    "altitude": "mean",
+    "rhi": ["mean", "std"],
+    "n_ice_per_m": ["mean", "std"],
+    "r_ice_vol": "mean",
+    "width": "mean",
+    "depth": "mean",
+    "tau_contrail": "mean",
+    "tau_cirrus": "mean",
+    "age_h": "max",
 
-def flight_waypoint_outputs():
-    return
+    # Radiative properties
+    "rf_lw": "mean",
+    "rf_sw": "mean",
+    "rf_net": "mean",
+    "ef": "sum",
+    "olr": "mean",
+    "sdr": "mean",
+    "rsr": "mean",
+}
 
 
-def flight_summary_outputs():
+def flight_waypoint_outputs(
+        flight_waypoints: GeoVectorDataset, contrails: GeoVectorDataset
+) -> pd.DataFrame:
+    """
+    Calculate the contrail summary statistics at each flight waypoint.
+
+    Parameters
+    ----------
+    flight_waypoints : GeoVectorDataset
+        Flight waypoints that were used in `cocip.eval` to produce `contrails`.
+    contrails : GeoVectorDataset
+        Contrail waypoint outputs from CoCiP, `cocip.contrail`.
+
+    Returns
+    -------
+    pd.DataFrame
+        Contrail summary statistics attached to each flight waypoint.
+    """
+    # Check and pre-process `flights` variable
+    flight_waypoints.ensure_vars(["flight_id", "waypoint"])
+    flight_waypoints = flight_waypoints.dataframe
+    flight_waypoints.set_index(["flight_id", "waypoint"], inplace=True)
+
+    # Check and pre-process `contrails` variable
+    contrail_vars = (
+            ["flight_id", "waypoint", "formation_time"]
+            + list(AGG_MAP_CONTRAILS_TO_FLIGHT_WYPTS.keys())
+    )
+    contrail_vars.remove("age_h")
+    contrails.ensure_vars(contrail_vars)
+    contrails['age_h'] = (contrails['time'] - contrails['formation_time']) / np.timedelta64(1, 'h')
+
+    # Calculate contrail statistics at each flight waypoint
+    contrails = contrails.dataframe.copy()
+    contrails = contrails.groupby(["flight_id", "waypoint"]).agg(
+        AGG_MAP_CONTRAILS_TO_FLIGHT_WYPTS
+    )
+    contrails.columns = (
+            contrails.columns.get_level_values(1) + "_" + contrails.columns.get_level_values(0)
+    )
+    contrails.rename(columns={"max_age_h": "contrail_age", "sum_ef": "ef"}, inplace=True)
+
+    # Concatenate to flight-waypoint outputs
+    flight_waypoints = flight_waypoints.join(contrails, how="left")
+    flight_waypoints.reset_index(inplace=True)
+    return flight_waypoints
+
+
+def flight_summary_outputs(flight_metadata: pd.DataFrame, flight_waypoints: pd.DataFrame, *, flight_attrs: list):
     return
 
 
@@ -396,28 +462,6 @@ def time_slice_statistics(
     return pd.Series(stats_t)
 
 
-# ----------------------
-# Flight summary outputs
-# ----------------------
-
-agg_map_contrails_to_flight_waypoints = {}
-agg_map_flight_waypoints_to_flight_summary = {}
-
-
-def flights_summary(
-        flights: list[Flight],
-        contrails: GeoVectorDataset
-):
-    # TODO: Documentation
-    # TODO: Assertion
-
-    return
-
-
-def flight_statistics():
-    return
-
-
 # --------------
 # Grid functions
 # --------------
@@ -426,7 +470,7 @@ def cirrus_coverage_single_level(
         time: np.datetime64 | pd.Timestamp,
         met: MetDataset,
         contrails: GeoVectorDataset, *,
-        optical_depth_threshold : float = 0.1
+        optical_depth_threshold: float = 0.1
 ) -> MetDataset:
     """
     Identify presence of contrail and natural cirrus in a longitude-latitude grid.
