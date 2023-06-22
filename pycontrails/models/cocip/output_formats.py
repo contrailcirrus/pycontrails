@@ -413,13 +413,13 @@ def longitude_latitude_grid(
             rf_sw=ds_forcing["rf_sw"] * 1000,
             rf_lw=ds_forcing["rf_lw"] * 1000,
             rf_net=ds_forcing["rf_net"] * 1000,
-            contrail_ef=ds_forcing["ef"],
-            contrail_ef_initial_loc=ds_wypts_t["ef"],
+            ef=ds_forcing["ef"],
+            ef_initial_loc=ds_wypts_t["ef"],
         ),
         coords=ds_wypts_t.coords
     )
     ds = ds.fillna(0)
-    ds.expand_dims().assign_coords({"time": t_end})
+    ds = ds.expand_dims({"time": np.array([t_end])})
 
     # Assign attributes
     ds["flight_distance_flown"].attrs = {
@@ -928,6 +928,122 @@ def optical_depth_to_cirrus_coverage(
     """
     cirrus_cover = xr.where(optical_depth.data > threshold, 1, 0)
     return MetDataArray(cirrus_cover)
+
+
+def regional_statistics(da_var: xr.DataArray, *, agg: str) -> pd.Series:
+    """
+    Calculate regional statistics from longitude-latitude grid.
+
+    Parameters
+    ----------
+    da_var : xr.DataArray
+        Air traffic or contrail variable in a longitude-latitude grid.
+    agg : str
+        Function selected for aggregation, (i.e., "sum" and "mean").
+
+    Returns
+    -------
+    pd.Series
+        Regional statistics
+
+    Notes
+    -----
+    - The spatial bounding box for each region is defined in Teoh et al. (2023)
+    - Teoh, R., Engberg, Z., Shapiro, M., Dray, L., and Stettler, M.: A high-resolution Global
+        Aviation emissions Inventory based on ADS-B (GAIA) for 2019–2021, EGUsphere [preprint],
+        https://doi.org/10.5194/egusphere-2023-724, 2023.
+    """
+    if (agg == "mean") & (len(da_var.time) > 1):
+        da_var = da_var.mean(dim=["time"])
+        da_var = da_var.fillna(0)
+
+    # Get regional domain
+    world = da_var.copy()
+    usa = da_var.sel(longitude=slice(-126, -66), latitude=slice(23, 50))
+    europe = da_var.sel(longitude=slice(-12, 20), latitude=slice(35, 60))
+    east_asia = da_var.sel(longitude=slice(103, 150), latitude=slice(15, 48))
+    sea = da_var.sel(longitude=slice(87.5, 130), latitude=slice(-10, 20))
+    latin_america = da_var.sel(longitude=slice(-85, -35), latitude=slice(-60, 15))
+    africa = da_var.sel(longitude=slice(-20, 50), latitude=slice(-35, 40))
+    china = da_var.sel(longitude=slice(73.5, 135), latitude=slice(18, 53.5))
+    india = da_var.sel(longitude=slice(68, 97.5), latitude=slice(8, 35.5))
+    n_atlantic = da_var.sel(longitude=slice(-70, -5), latitude=slice(40, 63))
+    n_pacific_1 = da_var.sel(longitude=slice(-180, -140), latitude=slice(35, 65))
+    n_pacific_2 = da_var.sel(longitude=slice(120, 180), latitude=slice(35, 65))
+    arctic = da_var.sel(latitude=slice(66.5, 90))
+
+    if agg == "sum":
+        vals = {
+            "World": np.nansum(world.values),
+            "USA": np.nansum(usa.values),
+            "Europe": np.nansum(europe.values),
+            "East Asia": np.nansum(east_asia.values),
+            "SEA": np.nansum(sea.values),
+            "Latin America": np.nansum(latin_america.values),
+            "Africa": np.nansum(africa.values),
+            "China": np.nansum(china.values),
+            "India": np.nansum(india.values),
+            "North Atlantic": np.nansum(n_atlantic.values),
+            "North Pacific": np.nansum(n_pacific_1.values) + np.nansum(n_pacific_2.values),
+            "Arctic": np.nansum(arctic.values),
+        }
+    elif agg == "mean":
+        area_world = geo.grid_surface_area(da_var["longitude"].values, da_var["latitude"].values)
+        area_usa = area_world.sel(longitude=slice(-126, -66), latitude=slice(23, 50))
+        area_europe = area_world.sel(longitude=slice(-12, 20), latitude=slice(35, 60))
+        area_east_asia = area_world.sel(longitude=slice(103, 150), latitude=slice(15, 48))
+        area_sea = area_world.sel(longitude=slice(87.5, 130), latitude=slice(-10, 20))
+        area_latin_america = area_world.sel(longitude=slice(-85, -35), latitude=slice(-60, 15))
+        area_africa = area_world.sel(longitude=slice(-20, 50), latitude=slice(-35, 40))
+        area_china = area_world.sel(longitude=slice(73.5, 135), latitude=slice(18, 53.5))
+        area_india = area_world.sel(longitude=slice(68, 97.5), latitude=slice(8, 35.5))
+        area_n_atlantic = area_world.sel(longitude=slice(-70, -5), latitude=slice(40, 63))
+        area_n_pacific_1 = area_world.sel(longitude=slice(-180, -140), latitude=slice(35, 65))
+        area_n_pacific_2 = area_world.sel(longitude=slice(120, 180), latitude=slice(35, 65))
+        area_arctic = area_world.sel(latitude=slice(66.5, 90))
+
+        vals = {
+            "World": _area_mean_properties(world, area_world),
+            "USA": _area_mean_properties(usa, area_usa),
+            "Europe": _area_mean_properties(europe, area_europe),
+            "East Asia": _area_mean_properties(east_asia, area_east_asia),
+            "SEA": _area_mean_properties(sea, area_sea),
+            "Latin America": _area_mean_properties(latin_america, area_latin_america),
+            "Africa": _area_mean_properties(africa, area_africa),
+            "China": _area_mean_properties(china, area_china),
+            "India": _area_mean_properties(india, area_india),
+            "North Atlantic": _area_mean_properties(n_atlantic, area_n_atlantic),
+            "North Pacific": (
+                0.4 * _area_mean_properties(n_pacific_1, area_n_pacific_1)
+                + 0.6 * _area_mean_properties(n_pacific_2, area_n_pacific_2)
+            ),
+            "Arctic": _area_mean_properties(arctic, area_arctic),
+        }
+    else:
+        raise NotImplementedError('Aggregation only accepts operations of "mean" or "sum".')
+
+    return pd.Series(vals)
+
+
+def _area_mean_properties(da_var_region: xr.DataArray, da_area_region: xr.DataArray) -> float:
+    """
+    Calculate area-mean properties.
+
+    Parameters
+    ----------
+    da_var_region : xr.DataArray
+        Regional air traffic or contrail variable in a longitude-latitude grid.
+    da_area_region : xr.DataArray
+        Regional surface area in a longitude-latitude grid.
+    Returns
+    -------
+    float
+        Area-mean properties
+    """
+    return (
+            np.nansum(da_var_region.values * da_area_region.values)
+            / np.nansum(da_area_region.values)
+    )
 
 
 # -------------------
