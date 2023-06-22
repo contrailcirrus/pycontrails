@@ -122,10 +122,7 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self.rad = rad
 
         # Convenience -- only used in `run_interpolators`
-        self.params["_interp_kwargs"] = {
-            "q_method": self.params["interpolation_q_method"],
-            **self.interp_kwargs,
-        }
+        self.params["_interp_kwargs"] = self.interp_kwargs
 
         if self.params["radiative_heating_effects"]:
             raise NotImplementedError(
