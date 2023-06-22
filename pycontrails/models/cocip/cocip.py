@@ -517,7 +517,7 @@ class Cocip(Model):
         scale_humidity = humidity_scaling is not None and "specific_humidity" not in self.source
         verbose_outputs = self.params["verbose_outputs"]
 
-        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
+        interp_kwargs = self.interp_kwargs
         interpolate_met(met, self.source, "air_temperature", **interp_kwargs)
         interpolate_met(met, self.source, "specific_humidity", **interp_kwargs)
         interpolate_met(met, self.source, "eastward_wind", "u_wind", **interp_kwargs)
@@ -727,7 +727,7 @@ class Cocip(Model):
         level_lower = air_pressure_lower / 100
 
         # get full met grid or flight data interpolated to the pressure level `p_dz`
-        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
+        interp_kwargs = self.interp_kwargs
         air_temperature_lower = interpolate_met(
             met,
             self._sac_flight,
@@ -838,7 +838,7 @@ class Cocip(Model):
         )
 
         # get met post wake vortex along initial contrail
-        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
+        interp_kwargs = self.interp_kwargs
         air_temperature_1 = interpolate_met(met, contrail_1, "air_temperature", **interp_kwargs)
         interpolate_met(met, contrail_1, "specific_humidity", **interp_kwargs)
 
@@ -931,7 +931,7 @@ class Cocip(Model):
         calc_continuous(self._downwash_contrail)
         calc_timestep_geometry(self._downwash_contrail)
 
-        interp_kwargs = {"q_method": self.params["interpolation_q_method"], **self.interp_kwargs}
+        interp_kwargs = self.interp_kwargs
         calc_timestep_meteorology(self._downwash_contrail, met, self.params, **interp_kwargs)
         calc_shortwave_radiation(rad, self._downwash_contrail, **interp_kwargs)
         calc_outgoing_longwave_radiation(rad, self._downwash_contrail, **interp_kwargs)
