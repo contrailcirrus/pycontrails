@@ -1813,13 +1813,8 @@ def vector_to_lon_lat_grid(
         Aggregated variables in a longitude-latitude grid.
     """
     vars_agg = list(agg.keys())
+    vector.ensure_vars(list(agg.keys()))
     df = vector.dataframe[["longitude", "latitude"] + vars_agg].copy()
-
-    # Ensure variables are available
-    if np.all(pd.Series(vars_agg).isin(vector.dataframe.columns)) is False:
-        raise AssertionError(
-            "Object does not contain some/all of the variables listed for aggregation."
-        )
 
     # Create longitude and latitude coordinates
     lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
