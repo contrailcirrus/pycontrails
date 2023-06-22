@@ -603,7 +603,7 @@ def histogram_matching(
     member : int | None
         The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
         Only used if ``product_type == "ensemble_members"``.
-    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+    q_method : {None, "cubic-spline", "log-q-log-p"}
         The interpolation method.
 
     Returns
@@ -615,9 +615,9 @@ def histogram_matching(
     iagos_quantiles = df[("iagos", "iagos")]
 
     if product_type == "ensemble_members":
-        col = f"ensemble{member}", q_method
+        col = f"ensemble{member}", q_method or "linear-q"
     elif product_type == "reanalysis":
-        col = "reanalysis", q_method
+        col = "reanalysis", q_method or "linear-q"
     else:
         raise ValueError(
             f"Invalid 'product_type' value '{product_type}'. "
@@ -649,7 +649,7 @@ def histogram_matching_all_members(
         ERA5-derived RHi values for all ensemble members. This array should have shape ``(n, 10)``.
     member : int
         The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
-    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+    q_method : {None, "cubic-spline", "log-q-log-p"}
         The interpolation method.
 
     Returns
@@ -701,7 +701,7 @@ def eckel_scaling(
         ``ensemble_member_rhi``.
     ensemble_member_rhi : npt.NDArray[np.float_]
         The RHi values for a single ensemble member.
-    q_method : {"linear-q", "cubic-spline", "log-q-log-p"}
+    q_method : {None, "cubic-spline", "log-q-log-p"}
         The interpolation method.
 
     Returns
@@ -718,7 +718,7 @@ def eckel_scaling(
     # https://journals.ametsoc.org/view/journals/wefo/27/1/waf-d-11-00015_1.xml
     # https://doi.org/10.1016/B978-0-12-812372-0.00003-0
 
-    if q_method == "linear-q":
+    if q_method is None:
         eckel_a = -6.365384483974193e-05
         eckel_c = 2.731157095387021
     elif q_method == "cubic-spline":
