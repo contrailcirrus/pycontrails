@@ -17,4 +17,5 @@ Launch ``jupyter lab`` to run these notebooks interactively:
    :maxdepth: 1
    :caption: Tutorials
 
-   tutorials/CoCiP.ipynb
+   tutorials/CoCiP
+   tutorials/interpolating-specific-humidity
