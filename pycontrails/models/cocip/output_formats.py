@@ -22,37 +22,17 @@ from pycontrails.models.cocip.radiative_forcing import albedo
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.tau_cirrus import tau_cirrus
 
+# TODO: @Zeb would it be able to make Flight automatically attach `segment_length` in dataframe?
+
 
 # -------------------------------------------------
 # Main functions for different CoCiP output formats
 # -------------------------------------------------
 
-AGG_MAP_CONTRAILS_TO_FLIGHT_WYPTS = {
-    # Location, ambient meteorology and properties
-    "altitude": "mean",
-    "rhi": ["mean", "std"],
-    "n_ice_per_m": ["mean", "std"],
-    "r_ice_vol": "mean",
-    "width": "mean",
-    "depth": "mean",
-    "tau_contrail": "mean",
-    "tau_cirrus": "mean",
-    "age_h": "max",
-
-    # Radiative properties
-    "rf_lw": "mean",
-    "rf_sw": "mean",
-    "rf_net": "mean",
-    "ef": "sum",
-    "olr": "mean",
-    "sdr": "mean",
-    "rsr": "mean",
-}
-
 
 def flight_waypoint_outputs(
         flight_waypoints: GeoVectorDataset, contrails: GeoVectorDataset
-) -> pd.DataFrame:
+) -> GeoVectorDataset:
     """
     Calculate the contrail summary statistics at each flight waypoint.
 
@@ -65,9 +45,32 @@ def flight_waypoint_outputs(
 
     Returns
     -------
-    pd.DataFrame
+    GeoVectorDataset
         Contrail summary statistics attached to each flight waypoint.
     """
+    # Aggregation map
+    agg_map_contrails_to_flight_waypoints = {
+        # Location, ambient meteorology and properties
+        "altitude": "mean",
+        "rhi": ["mean", "std"],
+        "n_ice_per_m": ["mean", "std"],
+        "r_ice_vol": "mean",
+        "width": "mean",
+        "depth": "mean",
+        "tau_contrail": "mean",
+        "tau_cirrus": "mean",
+        "age_h": "max",
+
+        # Radiative properties
+        "rf_sw": "mean",
+        "rf_lw": "mean",
+        "rf_net": "mean",
+        "ef": "sum",
+        "olr": "mean",
+        "sdr": "mean",
+        "rsr": "mean",
+    }
+
     # Check and pre-process `flights` variable
     flight_waypoints.ensure_vars(["flight_id", "waypoint"])
     flight_waypoints = flight_waypoints.dataframe
@@ -76,7 +79,7 @@ def flight_waypoint_outputs(
     # Check and pre-process `contrails` variable
     contrail_vars = (
             ["flight_id", "waypoint", "formation_time"]
-            + list(AGG_MAP_CONTRAILS_TO_FLIGHT_WYPTS.keys())
+            + list(agg_map_contrails_to_flight_waypoints.keys())
     )
     contrail_vars.remove("age_h")
     contrails.ensure_vars(contrail_vars)
@@ -85,32 +88,271 @@ def flight_waypoint_outputs(
     # Calculate contrail statistics at each flight waypoint
     contrails = contrails.dataframe.copy()
     contrails = contrails.groupby(["flight_id", "waypoint"]).agg(
-        AGG_MAP_CONTRAILS_TO_FLIGHT_WYPTS
+        agg_map_contrails_to_flight_waypoints
     )
     contrails.columns = (
             contrails.columns.get_level_values(1) + "_" + contrails.columns.get_level_values(0)
     )
-    contrails.rename(columns={"max_age_h": "contrail_age", "sum_ef": "ef"}, inplace=True)
+    rename_cols = {
+        "mean_altitude": "mean_contrail_altitude",
+        "max_age_h": "contrail_age",
+        "sum_ef": "ef"
+    }
+    contrails.rename(columns=rename_cols, inplace=True)
 
     # Concatenate to flight-waypoint outputs
     flight_waypoints = flight_waypoints.join(contrails, how="left")
     flight_waypoints.reset_index(inplace=True)
-    return flight_waypoints
+    return GeoVectorDataset(flight_waypoints, copy=True)
 
 
-def flight_summary_outputs(flight_metadata: pd.DataFrame, flight_waypoints: pd.DataFrame, *, flight_attrs: list):
+def flight_summary_outputs(
+        flight_waypoints: GeoVectorDataset,
+) -> pd.DataFrame:
+    # TODO: Documentation
+
+    # Aggregation map
+    agg_map_flight_waypoints_to_summary = {
+        # Trajectory and aircraft performance
+        "altitude": ["min", "max"],
+        "time": ["first", "last"],
+        "segment_length": "sum",
+        "aircraft_mass": "mean",
+        "engine_efficiency": "mean",
+
+        # Contrail properties and ambient meteorology
+        "contrails_km": "sum",
+        "persistent_contrails_km": "sum",
+        "mean_contrail_altitude": "mean",
+        "mean_rhi": "mean",
+        "mean_n_ice_per_m": "mean",
+        "mean_r_ice_vol": "mean",
+        "mean_width": "mean",
+        "mean_depth": "mean",
+        "mean_tau_contrail": "mean",
+        "mean_tau_cirrus": "mean",
+        "max_age_h": ["mean", "max"],
+
+        # Radiative properties
+        "mean_rf_sw": "mean",
+        "mean_rf_lw": "mean",
+        "mean_rf_net": "mean",
+        "ef": "sum",
+        "mean_olr": "mean",
+        "mean_sdr": "mean",
+        "mean_rsr": "mean",
+    }
+
     return
 
 
 def longitude_latitude_grid(
-        t_start, t_end,
+        t_start: np.datetime64 | pd.Timestamp,
+        t_end: np.datetime64 | pd.Timestamp,
         flight_waypoints: GeoVectorDataset,
-        contrails: GeoVectorDataset,
-        met: MetDataset | None = None,
+        contrails: GeoVectorDataset, *,
+        met: MetDataset,
         spatial_bbox: list[float] = [-180, -90, 180, 90],
-):
-    # TODO: MetDataArray, Spatial bbox, grid resolution
-    return
+        spatial_grid_res: float = 0.5,
+) -> xr.Dataset:
+    """
+    Aggregate air traffic and contrail outputs to a longitude-latitude grid
+
+    Parameters
+    ----------
+    t_start : np.datetime64 | pd.Timestamp
+        UTC time at beginning of time step.
+    t_end : np.datetime64 | pd.Timestamp
+        UTC time at end of time step.
+    flight_waypoints : GeoVectorDataset
+        Flight waypoint outputs with contrail summary statistics attached.
+        See :func:`flight_waypoint_outputs`.
+    contrails : GeoVectorDataset
+        Contrail waypoint outputs from CoCiP, `cocip.contrail`.
+    met : MetDataset
+        Pressure level dataset containing 'air_temperature', 'specific_humidity',
+        'specific_cloud_ice_water_content', and 'geopotential'.
+    spatial_bbox : list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
+
+    Returns
+    -------
+    xr.Dataset
+        Air traffic and contrail outputs at a longitude-latitude grid.
+    """
+    # Ensure the required columns are included in `flight_waypoints`, `contrails` and `met`
+    flight_waypoints.ensure_vars(('segment_length', 'ef'))
+    contrails.ensure_vars(
+        (
+            'formation_time',
+            'segment_length',
+            'width',
+            'tau_contrail',
+            'rf_sw',
+            'rf_lw',
+            'rf_net',
+            'ef'
+        )
+    )
+    met.ensure_vars(
+        (
+            'air_temperature',
+            'specific_humidity',
+            'specific_cloud_ice_water_content',
+            'geopotential'
+        )
+    )
+
+    # Downselect `met` to specified spatial bounding box
+    met = met.downselect(spatial_bbox)
+
+    # Ensure that `flight_waypoints` and `contrails` are within `t_start` and `t_end`
+    is_in_time = flight_waypoints.dataframe["time"].between(t_start, t_end, inclusive="right")
+    if ~np.all(is_in_time):
+        warnings.warn(
+            "Flight waypoints have times that are outside the range of `t_start` and `t_end`. "
+            "Waypoints outside the defined time bounds are removed. "
+        )
+        flight_waypoints = flight_waypoints.filter(is_in_time)
+
+    is_in_time = contrails.dataframe["time"].between(t_start, t_end, inclusive="right")
+    if ~np.all(is_in_time):
+        warnings.warn(
+            "Contrail waypoints have times that are outside the range of `t_start` and `t_end`."
+            "Waypoints outside the defined time bounds are removed. "
+        )
+        contrails = contrails.filter(is_in_time)
+
+    # Calculate additional variables
+    dt_integration_sec = np.diff(np.unique(contrails["time"]))[0] / np.timedelta64(1, 's')
+
+    da_area = geo.grid_surface_area(met["longitude"].values, met["latitude"].values)
+
+    flight_waypoints["persistent_contrails"] = np.where(
+        np.isnan(flight_waypoints["ef"]),
+        0,
+        flight_waypoints["segment_length"]
+    )
+
+    # ----------------
+    # Grid aggregation
+    # ----------------
+    # (1) Waypoint properties between `t_start` and `t_end`
+    is_between_time = flight_waypoints.dataframe["time"].between(t_start, t_end, inclusive="right")
+    ds_wypts_t = vector_to_lon_lat_grid(
+        flight_waypoints.filter(is_between_time, copy=True),
+        agg={"segment_length": "sum", "persistent_contrails": "sum", "ef": "sum"},
+        spatial_bbox=spatial_bbox,
+        spatial_grid_res=spatial_grid_res
+    )
+
+    # (2) Contrail properties at `t_end`
+    contrails_t_end = contrails.filter(contrails["time"] == t_end)
+
+    contrails_t_end["tau_contrail_area"] = (
+        contrails_t_end["tau_contrail"]
+        * contrails_t_end["segment_length"]
+        * contrails_t_end["width"]
+    )
+
+    contrails_t_end['age_h'] = (
+        (contrails_t_end['time'] - contrails_t_end['formation_time'])
+        / np.timedelta64(1, 'h')
+    )
+
+    ds_contrails_t_end = vector_to_lon_lat_grid(
+        contrails_t_end,
+        agg={"segment_length": "sum", "tau_contrail_area": "sum", "age_h": "mean"},
+        spatial_bbox=spatial_bbox,
+        spatial_grid_res=spatial_grid_res
+    )
+    ds_contrails_t_end["tau_contrail"] = ds_contrails_t_end["tau_contrail_area"] / da_area
+
+    # (3) Contrail and natural cirrus coverage area at `t_end`
+    ds_cirrus_coverage = cirrus_coverage_single_level(t_end, met, contrails)
+    ds_cirrus_coverage = ds_cirrus_coverage.data.squeeze(dim=["level", "time"])
+
+    # (4) Contrail climate forcing between `t_start` and `t_end`
+    contrails["ef_sw"] = np.where(
+        contrails["ef"] == 0,
+        0,
+        contrails["rf_sw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec
+    )
+    contrails["ef_lw"] = np.where(
+        contrails["ef"] == 0,
+        0,
+        contrails["rf_lw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec
+    )
+
+    ds_forcing = vector_to_lon_lat_grid(
+        contrails,
+        agg={"ef_sw": "sum", "ef_lw": "sum", "ef": "sum"},
+        spatial_bbox=spatial_bbox,
+        spatial_grid_res=spatial_grid_res
+    )
+    ds_forcing["rf_sw"] = ds_forcing["ef_sw"] / (da_area * dt_integration_sec)
+    ds_forcing["rf_lw"] = ds_forcing["ef_lw"] / (da_area * dt_integration_sec)
+    ds_forcing["rf_net"] = ds_forcing["ef"] / (da_area * dt_integration_sec)
+
+    # -----------------------
+    # Package gridded outputs
+    # -----------------------
+    ds = xr.Dataset(
+        data_vars=dict(
+            flight_distance_flown=ds_wypts_t["segment_length"] / 1000,
+            persistent_contrails_formed=ds_wypts_t["persistent_contrails"] / 1000,
+            persistent_contrails=ds_contrails_t_end["segment_length"] / 1000,
+            tau_contrail=ds_contrails_t_end["tau_contrail"],
+            contrail_age=ds_contrails_t_end["age_h"],
+            cc_natural_cirrus=ds_cirrus_coverage["natural_cirrus"],
+            cc_contrails=ds_cirrus_coverage["contrails"],
+            cc_contrails_clear_sky=ds_cirrus_coverage["contrails_clear_sky"],
+            rf_sw=ds_forcing["rf_sw"] * 1000,
+            rf_lw=ds_forcing["rf_lw"] * 1000,
+            rf_net=ds_forcing["rf_net"] * 1000,
+            contrail_ef=ds_forcing["ef"],
+            contrail_ef_initial_loc=ds_wypts_t["ef"],
+        ),
+        coords=ds_wypts_t.coords
+    )
+    ds = ds.fillna(0)
+    ds.expand_dims().assign_coords({"time": t_end})
+
+    # Assign attributes
+    ds["flight_distance_flown"].attrs = {
+        "units": "km", "long_name": f"Total flight distance flown between t_start and t_end"
+    }
+    ds["persistent_contrails_formed"].attrs = {
+        "units": "km", "long_name": "Persistent contrails formed between t_start and t_end"
+    }
+    ds["persistent_contrails"].attrs = {
+        "units": "km", "long_name": "Persistent contrails at t_end"}
+    ds["tau_contrail"].attrs = {
+        "units": " ", "long_name": "Area-normalised mean contrail optical depth at t_end"
+    }
+    ds["contrail_age"].attrs = {"units": "h", "long_name": "Mean contrail age at t_end"}
+    ds["cc_natural_cirrus"].attrs = {"units": " ", "long_name": "Natural cirrus cover at t_end"}
+    ds["cc_contrails"].attrs = {"units": " ", "long_name": "Contrail cirrus cover at t_end"}
+    ds["cc_contrails_clear_sky"].attrs = {
+        "units": " ", "long_name": "Contrail cirrus cover under clear sky conditions at t_end"
+    }
+    ds["rf_sw"].attrs = {
+        "units": "mW/m**2", "long_name": "Mean contrail cirrus shortwave radiative forcing at t_end"
+    }
+    ds["rf_lw"].attrs = {
+        "units": "mW/m**2", "long_name": "Mean contrail cirrus longwave radiative forcing at t_end"
+    }
+    ds["rf_net"].attrs = {
+        "units": "mW/m**2", "long_name": "Mean contrail cirrus net radiative forcing at t_end"}
+    ds["ef"].attrs = {
+        "units": "J", "long_name": "Total contrail energy forcing between t_start and t_end"}
+    ds["ef_initial_loc"].attrs = {
+        "units": "J",
+        "long_name": "Total contrail energy forcing attributed back to the flight waypoint."
+    }
+    return ds
 
 
 def time_slice_statistics(
@@ -135,18 +377,18 @@ def time_slice_statistics(
     flight_waypoints : GeoVectorDataset
         Flight waypoint outputs.
     contrails : GeoVectorDataset
-        Contrail waypoint outputs provided by CoCiP.
+        Contrail waypoint outputs from CoCiP, `cocip.contrail`.
     met : MetDataset | None
         Pressure level dataset containing 'air_temperature', 'specific_humidity',
-        'specific_cloud_ice_water_content', and 'geopotential'. Meteorological statistics
-        will not be computed if `None` is provided.
+        'specific_cloud_ice_water_content', and 'geopotential'.
+        Meteorological statistics will not be computed if `None` is provided.
     rad : MetDataset | None
         Single level dataset containing the `sdr`, `rsr` and `olr`.Radiation statistics
         will not be computed if `None` is provided.
     humidity_scaling : HumidityScaling
         Humidity scaling methodology.
         See :attr:`CocipParams.humidity_scaling`
-    spatial_bbox: list[float]
+    spatial_bbox : list[float]
         Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
 
     Returns
@@ -463,7 +705,7 @@ def time_slice_statistics(
 
 
 # --------------
-# Grid functions
+# Grid helpers
 # --------------
 
 def cirrus_coverage_single_level(
