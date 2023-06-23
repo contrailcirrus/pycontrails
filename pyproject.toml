@@ -71,6 +71,7 @@ dev = [
     "pydocstyle>=6.1",
     "pytest>=6.1",
     "pytest-cov>=2.11",
+    "pytest-timeout>=2.1",
     "requests>=2.25",
     "ruff>=0.0.259",
 ]
