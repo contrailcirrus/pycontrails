@@ -1,194 +1,191 @@
-"""Cocip Grid Outputs."""
-
 from __future__ import annotations
 
-import warnings
 import numpy as np
-import pandas as pd
+import numpy.typing as npt
 import xarray as xr
-
-from tqdm import tqdm
-from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.models.cocip import contrail_properties
-from pycontrails.physics import units
-from pycontrails.physics.geo import spatial_bounding_box
-
-np.random.seed(1)
+from pycontrails.core.met import MetDataset
+from pycontrails.models.tau_cirrus import tau_cirrus
 
 
-
-
-
-# ---
-# natural_cirrus.py
-# ---
-
-
-def get_max_cirrus_cover_and_tau(
-    cloud_cover: xr.DataArray,
-    tau_cirrus: xr.DataArray,
-    *,
-    boost_res: bool = False,
-    grid_res: float = 0.05,
-) -> tuple[xr.DataArray, xr.DataArray]:
-    """Calculate the maximum natural cirrus coverage and optical depth.
-
-    Returns these properties in the xr.DataArray format.
+def natural_cirrus_properties_to_hi_res_grid(
+        met: MetDataset, *,
+        spatial_grid_res: float = 0.05,
+        optical_depth_threshold: float = 0.1,
+        seed: int = 1
+) -> MetDataset:
     """
-    cc_max = _get_2d_cirrus_cover(cloud_cover)
-    tau_cirrus_max = tau_cirrus.sel(
-        level=tau_cirrus["level"][-1]
-    )  # Get maximum values at lowest layer
+    Increase the longitude-latitude resolution of natural cirrus cover and optical depth.
 
-    if boost_res:
-        cc_max, tau_cirrus_max = _boost_cirrus_cover_and_tau_resolution(
-            cc_max, tau_cirrus_max, grid_res=grid_res
-        )
+    Parameters
+    ----------
+    met : MetDataset
+        Pressure level dataset for one time step containing 'air_temperature', 'specific_humidity',
+        'specific_cloud_ice_water_content', 'geopotential',and `fraction_of_cloud_cover`
+    spatial_grid_res : float
+        Spatial grid resolution for the output, [:math:`\deg`]
+    optical_depth_threshold : float
+        Sensitivity of cirrus detection, set at 0.1 to match the capability of satellites.
+    seed : int
+        A number used to initialize a pseudorandom number generator.
 
-    return cc_max, tau_cirrus_max
-
-
-def _get_2d_cirrus_cover(cloud_cover: xr.DataArray) -> xr.DataArray:
-    """Calculate 2D cirrus cover effective for observers from above.
-
-    cc_max(x,y,t) = max[cc(x,y,z,t)].
-    """
-    cc_max_t = [
-        _get_2d_cirrus_cover_time_slice(cloud_cover, tt) for tt in range(len(cloud_cover["time"]))
-    ]
-    cc_max = xr.concat(cc_max_t, dim="time")
-    dim_order: list = ["longitude", "latitude", "time"]
-    return cc_max.transpose(*dim_order)
-
-
-def _get_2d_cirrus_cover_time_slice(cloud_cover: xr.DataArray, time_int: int) -> xr.DataArray:
-    cirrus_cover_t = cloud_cover.sel(time=cloud_cover["time"][time_int])
-    return cirrus_cover_t.max(dim="level")
-
-
-def _boost_cirrus_cover_and_tau_resolution(
-    cc_max: xr.DataArray, tau_cirrus_max: xr.DataArray, *, grid_res: float = 0.05
-) -> tuple[xr.DataArray, xr.DataArray]:
-    """Increase resolution of cirrus cover and optical depth via approximation method by Schumann.
-
-    This is necessary because the existing spatial resolution is too coarse to resolve the
-    contributions from relatively narrow contrails.
+    Returns
+    -------
+    MetDataset
+        Single-level dataset containing the high resolution natural cirrus properties.
 
     References
     ----------
     - :cite:`schumannContrailCirrusPrediction2012`
+
+    Notes
+    -----
+    - The high-resolution natural cirrus coverage and optical depth is distributed randomly,
+        ensuring that the mean value is equal to the value of the original grid.
+    - Enhancing the spatial resolution is necessary because the existing spatial resolution of
+        numerical weather prediction (NWP) models are too coarse to resolve the coverage area of
+        relatively narrow contrails.
     """
-    time = cc_max.time.values
-    lon_hi_res, lat_hi_res = _boost_spatial_resolution(
-        cc_max.longitude.values, cc_max.latitude.values, grid_res=grid_res
-    )
-    n_rep = int(len(lon_hi_res) / len(cc_max.longitude.values))
-    res = [
-        _boost_cc_and_tau_res_t(
-            cc_max.sel(time=t).values, tau_cirrus_max.sel(time=t).values, n_rep=n_rep
+    # Ensure the required columns are included in `met`
+    met.ensure_vars(
+        (
+            'air_temperature',
+            'specific_humidity',
+            'specific_cloud_ice_water_content',
+            'geopotential',
+            'fraction_of_cloud_cover',
         )
-        for t in time
-    ]
-
-    # Convert results to xr.DataArray
-    dim_order: list = ["longitude", "latitude", "time"]
-    cc_max_hi_res = np.array([res[i][0] for i in range(len(res))])
-    cc_max_hi_res_xr = xr.DataArray(
-        cc_max_hi_res,
-        dims=["time", "longitude", "latitude"],
-        coords={"time": time, "longitude": lon_hi_res, "latitude": lat_hi_res},
     )
-    cc_max_hi_res_xr = cc_max_hi_res_xr.transpose(*dim_order)
 
-    tauc_max_hi_res = np.array([res[i][1] for i in range(len(res))])
-    tauc_max_hi_res_xr = xr.DataArray(
-        tauc_max_hi_res,
-        dims=["time", "longitude", "latitude"],
-        coords={"time": time, "longitude": lon_hi_res, "latitude": lat_hi_res},
-    )
-    tauc_max_hi_res_xr = tauc_max_hi_res_xr.transpose(*dim_order)
-    return cc_max_hi_res_xr, tauc_max_hi_res_xr
-
-
-def _boost_spatial_resolution(
-    lon_deg: np.ndarray, lat_deg: np.ndarray, *, grid_res: float = 0.05
-) -> tuple[np.ndarray, np.ndarray]:
-    """Increase the longitude and latitude grid resolution."""
-    d_lon = np.abs(lon_deg[1] - lon_deg[0])
-    d_lat = np.abs(lat_deg[1] - lat_deg[0])
-    is_whole_number = ((d_lon / grid_res) - int(d_lon / grid_res)) == 0
-
-    if d_lon != d_lat:
-        raise RuntimeWarning(
-            "Note: Resolution of existing longitude and latitude inputs is not equal. "
+    # Ensure `met` only contains one time step, constraint can be relaxed in the future.
+    if len(met["time"].data) > 1:
+        raise AssertionError(
+            "`met` contains more than one time step, but function only accepts one time step. "
         )
 
-    if (d_lon <= grid_res) & (d_lat <= grid_res):
+    # Calculate tau_cirrus as observed by satellites
+    met["tau_cirrus"] = tau_cirrus(met)
+    tau_cirrus_max = met["tau_cirrus"].data.sel(level=met["level"].data[-1])
+
+    # Calculate cirrus coverage as observed by satellites, cc_max(x,y,t) = max[cc(x,y,z,t)]
+    cirrus_cover_max = met["fraction_of_cloud_cover"].data.max(dim="level")
+
+    # Increase resolution of longitude and latitude dimensions
+    lon_coords_hi_res, lat_coords_hi_res = _hi_res_grid_coordinates(
+        met["longitude"].values, met["latitude"].values, spatial_grid_res=spatial_grid_res
+    )
+
+    # Increase spatial resolution by repeating existing values (temporarily)
+    n_reps = int(len(lon_coords_hi_res) / len(met["longitude"].values))
+    cc_rep = _repeat_rows_and_columns(cirrus_cover_max.values, n_reps=n_reps)
+    tau_cirrus_rep = _repeat_rows_and_columns(tau_cirrus_max.values, n_reps=n_reps)
+
+    # Enhance resolution of `tau_cirrus`
+    np.random.seed(seed)
+    rand_number = np.random.uniform(0, 1, np.shape(tau_cirrus_rep))
+    dx = 0.03  # Prevent division of small values: calibrated to match the original cirrus cover
+    has_cirrus_cover = rand_number > (1 + dx - cc_rep)
+    tau_cirrus_hi_res = np.where(
+        has_cirrus_cover,
+        tau_cirrus_rep / cc_rep,
+        0
+    )
+
+    # Enhance resolution of `cirrus coverage`
+    cirrus_cover_hi_res = np.where(
+        tau_cirrus_hi_res > optical_depth_threshold,
+        1,
+        0
+    )
+
+    # Package outputs
+    ds_hi_res = xr.Dataset(
+        data_vars=dict(
+            tau_cirrus=(["longitude", "latitude"], cirrus_cover_hi_res),
+            cc_natural_cirrus=(["longitude", "latitude"], cirrus_cover_hi_res),
+        ),
+        coords=dict(longitude=lon_coords_hi_res, latitude=lat_coords_hi_res)
+    )
+    ds_hi_res = ds_hi_res.expand_dims({"level": np.array([-1])})
+    ds_hi_res = ds_hi_res.expand_dims({"time": met["time"].values})
+    return MetDataset(ds_hi_res)
+
+
+def _hi_res_grid_coordinates(
+        lon_coords: npt.NDArray[np.float_],
+        lat_coords: npt.NDArray[np.float_], *,
+        spatial_grid_res: float = 0.05
+) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+    """
+    Calculate longitude and latitude coordinates for the high resolution grid.
+
+    Parameters
+    ----------
+    lon_coords : npt.NDArray[np.float_]
+        Longitude coordinates provided by the original `MetDataset`.
+    lat_coords : npt.NDArray[np.float_]
+        Latitude coordinates provided by the original `MetDataset`.
+    spatial_grid_res : float
+        Spatial grid resolution for the output, [:math:`\deg`]
+
+    Returns
+    -------
+    tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]
+        Longitude and latitude coordinates for the high resolution grid.
+    """
+    d_lon = np.abs(np.diff(lon_coords)[0])
+    d_lat = np.abs(np.diff(lat_coords)[0])
+    is_whole_number = (d_lon / spatial_grid_res) - int(d_lon / spatial_grid_res) == 0
+
+    if (d_lon <= spatial_grid_res) | (d_lat <= spatial_grid_res):
         raise ArithmeticError(
-            "Error: Resolution of existing longitude or latitude is already higher than"
-            ' "grid_res". '
+            "Spatial resolution of `met` is already higher than `spatial_grid_res`"
         )
 
     if ~is_whole_number:
         raise ArithmeticError(
-            "Select a grid resolution that provides a whole number to the new number of pixels. "
+            "Select a spatial grid resolution where `spatial_grid_res / existing_grid_res` is "
+            "a whole number. "
         )
 
-    n_pixel_per_box = int(d_lon / grid_res)
-    edges = grid_res * 0.5 * (n_pixel_per_box - 1)
-    lon_boosted = np.linspace(
-        min(lon_deg) - edges, max(lon_deg) + edges, (len(lon_deg) * n_pixel_per_box)
-    )
-    lat_boosted = np.linspace(
-        min(lat_deg) - edges, max(lat_deg) + edges, (len(lat_deg) * n_pixel_per_box)
+    lon_coords_hi_res = np.arange(
+        lon_coords[0], lon_coords[-1] + spatial_grid_res, spatial_grid_res
     )
 
-    is_float_residual = np.abs(lon_boosted) < 1e-8
-    lon_boosted[is_float_residual] = 0.0
+    lat_coords_hi_res = np.arange(
+        lat_coords[0], lat_coords[-1] + spatial_grid_res, spatial_grid_res
+    )
 
-    is_float_residual = np.abs(lat_boosted) < 1e-8
-    lat_boosted[is_float_residual] = 0.0
-    return lon_boosted, lat_boosted
+    return (
+        np.round(lon_coords_hi_res, decimals=3),
+        np.round(lat_coords_hi_res, decimals=3)
+    )
 
 
-def _boost_cc_and_tau_res_t(
-    cc_max_t: np.ndarray, tau_cirrus_max_t: np.ndarray, *, n_rep: int, tau_threshold: float = 0.1
-) -> tuple[np.ndarray, np.ndarray]:
-    """Scale the mean value of the boosted resolution to the original pixel mean.
-
-    The natural cirrus coverage and optical depth for the boosted resolution is
-    distributed randomly in each pixel. This ensures that the mean value in the
-    boosted resolution is equal to the value of the original pixel.
-
-    References
-    ----------
-    - :cite:`schumannContrailCirrusPrediction2012`
+def _repeat_rows_and_columns(
+        array_2d: npt.NDArray[np.float_, np.float_], *,
+        n_reps: int
+) -> npt.NDArray[np.float_, np.float_]:
     """
-    cc_hi_res_t = _repeat_elements_along_rows_columns(cc_max_t, n_rep=n_rep)
-    tau_cirrus_hi_res_t = _repeat_elements_along_rows_columns(tau_cirrus_max_t, n_rep=n_rep)
+    Repeat the elements in `array_2d` along each row and column.
 
-    cc_hi_res_adj_t = np.zeros_like(cc_hi_res_t)
-    tauc_hi_res_adj_t = np.zeros_like(tau_cirrus_hi_res_t)
+    Parameters
+    ----------
+    array_2d : npt.NDArray[np.float_, np.float_]
+        2D array containing `tau_cirrus` or `cirrus_coverage` across longitude and latitude.
+    n_reps : int
+        Number of repetitions.
 
-    # Adjusted cirrus optical depth
-    rand_num = np.random.uniform(0, 1, np.shape(cc_hi_res_t))
-    dx = 0.03  # Prevent division of small values: calibrated to match the original cirrus cover
-    has_cover = rand_num > (1 + dx - cc_hi_res_t)
-    tauc_hi_res_adj_t[has_cover] = tau_cirrus_hi_res_t[has_cover] / cc_hi_res_t[has_cover]
-
-    # Adjusted cirrus coverage
-    is_above_threshold = tauc_hi_res_adj_t >= tau_threshold
-    cc_hi_res_adj_t[is_above_threshold] = 1
-    return cc_hi_res_adj_t, tauc_hi_res_adj_t
-
-
-def _repeat_elements_along_rows_columns(array_2d: np.ndarray, *, n_rep: int) -> np.ndarray:
-    """Repeat the elements of a 2D numpy array n_rep times along each row and column."""
+    Returns
+    -------
+    npt.NDArray[np.float_, np.float_]
+        2D array containing `tau_cirrus` or `cirrus_coverage` at a higher spatial resolution.
+        See :func:`_hi_res_grid_coordinates`.
+    """
     dimension = np.shape(array_2d)
 
     # Repeating elements along axis=1
-    array_2d_rep = [np.repeat(array_2d[i, :], n_rep) for i in np.arange(dimension[0])]
+    array_2d_rep = [np.repeat(array_2d[i, :], n_reps) for i in np.arange(dimension[0])]
     stacked = np.vstack(array_2d_rep)
 
     # Repeating elements along axis=0
-    return np.repeat(stacked, n_rep, axis=0)
+    return np.repeat(stacked, n_reps, axis=0)
