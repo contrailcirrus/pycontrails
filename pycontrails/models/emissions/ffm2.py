@@ -323,10 +323,10 @@ def _estimate_specific_humidity(
     - :cite:`duboisFuelFlowMethod22006`
     """
     # Equation (43)
-    air_temperature_celcius = units.kelvin_to_celcius(air_temperature)
+    air_temperature_celsius = units.kelvin_to_celsius(air_temperature)
 
     # Equation (44)
-    exponent = (7.5 * air_temperature_celcius) / (237.3 + air_temperature_celcius)
+    exponent = (7.5 * air_temperature_celsius) / (237.3 + air_temperature_celsius)
     P_sat = 6.107 * 10**exponent
 
     # Equation (45)
