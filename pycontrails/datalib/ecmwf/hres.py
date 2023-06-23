@@ -170,7 +170,7 @@ class HRES(ECMWFAPI):
     `MARS key word definitions <https://confluence.ecmwf.int/display/UDOC/Identification+keywords>`_
 
     - `class <https://apps.ecmwf.int/codes/grib/format/mars/class/>`_:
-       in most cases this will be operational data, or "od"
+      in most cases this will be operational data, or "od"
     - `stream <https://apps.ecmwf.int/codes/grib/format/mars/stream/>`_:
       "enfo" = ensemble forecast, "oper" = atmospheric model/HRES
     - `expver <https://confluence.ecmwf.int/pages/viewpage.action?pageId=124752178>`_:
@@ -184,7 +184,7 @@ class HRES(ECMWFAPI):
     - `levtype <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335319>`_:
       options include surface, pressure levels, or model levels
     - `levelist <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335403>`_:
-      list of levels in format specified by **levtype** `levelist reference `_
+      list of levels in format specified by **levtype** `levelist`_
     - `param <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335858>`_:
       list of variables in catalog number, long name or short name
     - `step <https://confluence.ecmwf.int/pages/viewpage.action?pageId=118820050>`_:
@@ -192,7 +192,7 @@ class HRES(ECMWFAPI):
     - `number <https://confluence.ecmwf.int/pages/viewpage.action?pageId=149335478>`_:
       for ensemble forecasts, ensemble numbers
     - `format <https://confluence.ecmwf.int/pages/viewpage.action?pageId=116970058>`_:
-      specify netcdf instead of default grib, DEPRECATED `format reference `_
+      specify netcdf instead of default grib, DEPRECATED `format`_
     - `grid <https://confluence.ecmwf.int/pages/viewpage.action?pageId=123799065>`_:
       specify model return grid spacing
 

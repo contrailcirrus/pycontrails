@@ -3,10 +3,11 @@
 
 ## v0.44.0
 
+Support for the [Poll-Schumann aircraft performance model](https://doi.org/10.1017/aer.2020.62).
+
 ### Features
 
-- Implement a basic working version of the [Poll-Schumann (PS) aircraft performance model](https://doi.org/10.1017/aer.2020.62). This is experimental and may undergo revision in future releases. The PS Model currently supports the following 53 aircraft types:
-
+- Implement a basic working version of the Poll-Schumann (PS) aircraft performance model. This is experimental and may undergo revision in future releases. The PS Model currently supports the following 53 aircraft types:
   - A30B
   - A306
   - A310
@@ -61,6 +62,7 @@
   - A20N
   - A21N
 
+  The "gridded" version of this model is not yet implemented. This will be added in a future release.
 - Improve the runtime of instantiating the `Emissions` model by a factor of 10-15x. This translates to a time savings of several hundred milliseconds on modern hardware. This improvement is achieved by more efficient parsing of the underlying static data and by deferring the construction of the interpolation artifacts until they are needed.
 - Automatically use a default engine type from the aircraft type in the `Emissions` model if an `engine_uid` parameter is not included on the `source`. This itself is configurable via the `use_default_engine_uid` parameter on the `Emissions` model. The default mappings from aircraft types to engines is included in `pycontrails/models/emissions/static/default-engine-uids.csv`.
 

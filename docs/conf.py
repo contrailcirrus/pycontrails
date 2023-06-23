@@ -114,7 +114,6 @@ napoleon_type_aliases = {
     "VectorDataset": "~pycontrails.VectorDataset",
     "GeoVectorDataset": "~pycontrails.GeoVectorDataset",
     "Flight": "~pycontrails.Flight",
-    "Aircraft": "~pycontrails.Aircraft",
     "Fuel": "~pycontrails.Fuel",
     "JetA": "~pycontrails.JetA",
     "GCPCacheStore": "~pycontrails.GCPCacheStore",
