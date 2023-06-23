@@ -89,7 +89,7 @@ jobs:
         verify-metadata: true
 
   upload_pypi:
-    if: ${{ github.event_name == 'release' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'release'}}
     needs: [build_wheels, build_sdist, check-main-test-status]
     runs-on: ubuntu-latest
     steps:
