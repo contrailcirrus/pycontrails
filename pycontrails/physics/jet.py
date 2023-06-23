@@ -391,6 +391,7 @@ def initial_aircraft_mass(
     - PM is the payload mass
     - FM_nc is the mass of the fuel not consumed
     - TFM is the trip fuel mass
+    - LF is the load factor
     - MPM is the maximum payload mass
 
     Parameters
