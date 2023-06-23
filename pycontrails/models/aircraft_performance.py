@@ -39,8 +39,19 @@ class AircraftPerformance(Model):
     Support for standardizing aircraft performance methodologies.
 
     This class provides a :meth:`simulate_fuel_and_performance` method for
-    iteratively calculating aircraft mass and fuel flow rate. The implementing
-    class must bring a :meth:`eval` and :meth:`calculate_aircraft_performance`.
+    iteratively calculating aircraft mass and fuel flow rate.
+
+    The implementing class must bring :meth:`eval` and
+    :meth:`calculate_aircraft_performance` methods. At runtime, these methods
+    are intended to be chained together as follows:
+
+    1. The :meth:`eval` method is called with a :class:`Flight`
+    2. The :meth:`simulate_fuel_and_performance` method is called inside :meth:`eval`
+       to iteratively calculate aircraft mass and fuel flow rate. If an aircraft
+       mass is provided, the fuel flow rate is calculated once directly with a single
+       call to :meth:`calculate_aircraft_performance`. If an aircraft mass is not
+       provided, the fuel flow rate is calculated iteratively with multiple calls to
+       :meth:`calculate_aircraft_performance`.
     """
 
     @abc.abstractmethod
