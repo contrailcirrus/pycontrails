@@ -15,7 +15,7 @@ class MetVariable:
     References
     ----------
     - `CF Standard Names, version 77
-    <https://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html>`_
+      <https://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html>`_
     - `ECMWF Parameter Database <https://apps.ecmwf.int/codes/grib/param-db>`_
     - `NCEP Grib v1 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/on388/table2.html>`
     - `WMO Codes Registry, Grib Edition 2 <https://codes.wmo.int/_grib2>`_

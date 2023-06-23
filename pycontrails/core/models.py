@@ -474,15 +474,15 @@ class Model(ABC):
 
         - :attr:`source` must be defined before calling :meth:`downselect_met`.
         - This method copies and re-assigns :attr:`met` using :meth:`met.copy()`
-        to avoid side-effects.
+          to avoid side-effects.
 
         Raises
         ------
         ValueError
             Raised if :attr:`source` is not defined.
-            Raised if :attr:`source` is not  GeoVectorDataset.
+            Raised if :attr:`source` is not a :class:`GeoVectorDataset`.
         TypeError
-            Raised if :attr:`met` is not a MetDataset.
+            Raised if :attr:`met` is not a :class:`MetDataset`.
         """
         if not hasattr(self, "source"):
             raise ValueError("Attribute `source` must be defined before calling `downselect_met`")

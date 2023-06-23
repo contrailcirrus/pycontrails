@@ -35,7 +35,6 @@ Flight & Aircraft
     :toctree: api/
 
     Flight
-    Aircraft
     Fuel
     JetA
     SAFBlend
