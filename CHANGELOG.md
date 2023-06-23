@@ -31,6 +31,7 @@ Support experimental interpolation against gridded specific humidity. Add new da
 - Avoid extraneous copy when calling `VectorDataset.sum`.
 - Officially support `numpy` v1.25.0.
 - Set a `pytest-timeout` limit for tests in `tests/unit/test_ecmwf.py` to avoid hanging tests.
+- Add `forecast_step` parameter to the `ACCF` model.
 
 ### Internals
 
