@@ -2,351 +2,392 @@
 
 from __future__ import annotations
 
+import warnings
 import numpy as np
 import pandas as pd
 import xarray as xr
 
+from tqdm import tqdm
+from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.cocip import contrail_properties
-from pycontrails.physics import constants, units
-from pycontrails.physics.geo import grid_surface_area
+from pycontrails.physics import units
+from pycontrails.physics.geo import spatial_bounding_box
 
 np.random.seed(1)
 
-# ---
-# contrail_cirrus.py
-# ---
 
-
-def get_gridded_tau_contrail(
-    df_contrails: pd.DataFrame,
-    cc_natural_2d: xr.DataArray,
-    *,
-    time_slices: np.ndarray | None = None,
+def contrails_to_hi_res_grid(
+        time: pd.Timestamp | np.datetime64,
+        contrails_t: GeoVectorDataset, *,
+        var_name: str,
+        spatial_bbox: list[float] = [-180, -90, 180, 90],
+        spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
     """
-    Convert the contrail waypoints to a gridded format.
-
-    Notes
-    -----
-    The exact methodology of this function is outlined in Appendix A12 in Schumann (2012).
-
-    References
-    ----------
-    Schumann, U., 2012. A contrail cirrus prediction model.
-        Geoscientific Model Development, 5(3), pp.543-580.
-    """
-    # Get coordinates
-    lon_coords_met = cc_natural_2d["longitude"].values
-    lat_coords_met = cc_natural_2d["latitude"].values
-
-    if time_slices is None:
-        time_slices_met = cc_natural_2d["time"].values
-    else:
-        time_slices_met = np.copy(time_slices)
-
-    # calculate edges for use in gridded calculations
-    (
-        df_contrails["lon_edge_l"],
-        df_contrails["lat_edge_l"],
-        df_contrails["lon_edge_r"],
-        df_contrails["lat_edge_r"],
-    ) = contrail_properties.contrail_edges(
-        df_contrails["longitude"],
-        df_contrails["latitude"],
-        df_contrails["sin_a"],
-        df_contrails["cos_a"],
-        df_contrails["width"],
-    )
-
-    # Filter required contrail properties
-    df_contrails = df_contrails[
-        [
-            "flight_id",  # TODO: do we really need this for the sort below?
-            "waypoint",
-            "continuous",
-            "longitude",
-            "latitude",
-            "lon_edge_l",
-            "lon_edge_r",
-            "lat_edge_l",
-            "lat_edge_r",
-            "time",
-            "width",
-            "tau_contrail",
-            "rf_net",
-        ]
-    ].copy()
-    df_contrails["time"] = pd.to_datetime(df_contrails["time"])
-
-    da_tau_contrail: list[xr.DataArray] = []
-    for t in time_slices_met:
-        da_tau_contrail_t = _get_gridded_outputs_time_slice(
-            df_contrails, t, lon_coords_met, lat_coords_met
-        )
-        da_tau_contrail.append(da_tau_contrail_t)
-
-    da_tau_contrail_xr = xr.concat(da_tau_contrail, dim="time")
-    dim_order: list[str] = ["longitude", "latitude", "time"]
-    return da_tau_contrail_xr.transpose(*dim_order)
-
-
-def _get_gridded_outputs_time_slice(
-    df_contrails: pd.DataFrame,
-    time_slice: np.datetime64,
-    lon_coords_met: np.ndarray,
-    lat_coords_met: np.ndarray,
-) -> xr.DataArray:
-    """Convert the contrail waypoints for a given hour to a gridded format."""
-    da_main_tau_contrail = _initialize_main_grid_xr(lon_coords_met, lat_coords_met)
-
-    if len(df_contrails) == 0:
-        return da_main_tau_contrail.assign_coords({"time": time_slice})
-
-    contrail_heads_t = df_contrails[df_contrails["time"] == time_slice].copy()
-    contrail_heads_t.sort_values(["flight_id", "waypoint"], inplace=True)
-    contrail_tails_t = contrail_heads_t.shift(periods=-1)
-
-    is_continuous = contrail_heads_t["continuous"].values
-    contrail_heads_t = contrail_heads_t[is_continuous].copy()
-    contrail_tails_t = contrail_tails_t[is_continuous].copy()
-
-    for i in range(len(contrail_heads_t)):
-        tau_contrail = get_contrail_segment_subgrid(
-            contrail_heads_t.iloc[i], contrail_tails_t.iloc[i], da_main_tau_contrail
-        )
-        da_main_tau_contrail = _concatenate_segment_to_main_grid(da_main_tau_contrail, tau_contrail)
-
-    return da_main_tau_contrail.expand_dims().assign_coords({"time": time_slice})
-
-
-def _initialize_main_grid_xr(
-    lon_coords_met: np.ndarray, lat_coords_met: np.ndarray
-) -> xr.DataArray:
-    """Initialize DataArray with specified coordinates.
-
-    Initialize an empty xr.DataArray with longitude and latitude coordinates
-    that is provided by the maximum cirrus coverage met variable. This
-    "main grid" will be used to store the aggregated properties of the individual
-    contrail segments, such as the gridded contrail optical depth and radiative forcing.
-    """
-    lon_grid, lat_grid = np.meshgrid(lon_coords_met, lat_coords_met)
-    return xr.DataArray(
-        np.zeros_like(lon_grid.T),
-        dims=["longitude", "latitude"],
-        coords={"longitude": lon_coords_met, "latitude": lat_coords_met},
-    )
-
-
-def _concatenate_segment_to_main_grid(
-    da_vals_main_grid: xr.DataArray, da_vals_subgrid: xr.DataArray
-) -> xr.DataArray:
-    """Add values of the subgrid (contrail segment contribution to each pixel) to the main grid."""
-    vals_main_grid = da_vals_main_grid.values
-    vals_subgrid = da_vals_subgrid.values
-
-    lon_main = da_vals_main_grid["longitude"].values
-    lat_main = da_vals_main_grid["latitude"].values
-
-    lon_subgrid = da_vals_subgrid["longitude"].values
-    lat_subgrid = da_vals_subgrid["latitude"].values
-
-    try:
-        # NOTE: mypy is concerned that np.argmax may return something that is not be coercible
-        # to a python int. So we cast explicitly here, and if something goes wrong, an error will
-        # be raised
-        ix_ = int(np.argmax(lon_main == lon_subgrid[0]))
-        ix = int(np.argmax(lon_main == lon_subgrid[-1]) + 1)
-        iy_ = int(np.argmax(lat_main == lat_subgrid[0]))
-        iy = int(np.argmax(lat_main == lat_subgrid[-1]) + 1)
-    except IndexError:
-        # FIXME: log instead of print
-        print(
-            "NOTE: Contrail segment ignored as it is located beyond the meteorological boundaries. "
-        )
-    else:
-        vals_main_grid[ix_:ix, iy_:iy] = vals_main_grid[ix_:ix, iy_:iy] + vals_subgrid
-
-    return xr.DataArray(
-        vals_main_grid,
-        dims=["longitude", "latitude"],
-        coords={"longitude": lon_main, "latitude": lat_main},
-    )
-
-
-# ---
-# contrail_subgrid.py
-# ---
-
-
-def get_contrail_segment_subgrid(
-    contrail_head: pd.Series, contrail_tail: pd.Series, da_main_grid: xr.DataArray
-) -> xr.DataArray:
-    """Convert the properties of an individual contrail segment to a grid format.
+    Aggregate contrail segments to a high-resolution longitude-latitude grid.
 
     Parameters
     ----------
-    contrail_head : pd.Series
-        Description
-    contrail_tail : pd.Series
-        Description
-    da_main_grid : xr.DataArray
-        Description
+    time : pd.Timestamp | np.datetime64
+        UTC time of interest.
+    contrails_t : GeoVectorDataset
+        All contrail waypoint outputs at `time`.
+    var_name : str
+        Contrail property for aggregation, where `var_name` must be included in `contrail_segment`.
+        For example, `tau_contrail`, `rf_sw`, `rf_lw`, and `rf_net`
+    spatial_bbox : list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
+
+    Returns
+    -------
+    xr.DataArray
+        Contrail segments and their properties aggregated to a longitude-latitude grid.
     """
-    grid = _initialize_contrail_segment_subgrid(contrail_head, contrail_tail, da_main_grid)
-    weights = _get_weights_to_subgrid_pixels(contrail_head, contrail_tail, grid)
-    dist_perp = _get_perpendicular_dist_to_pixels(contrail_head, contrail_tail, weights)
-    concentration = _get_gaussian_plume_concentration(
-        contrail_head, contrail_tail, weights, dist_perp
-    )
-    tau_contrail = _get_subgrid_contrail_property(
-        contrail_head, contrail_tail, weights, concentration
-    )
+    # Ensure the required columns are included in `contrails_t`
+    cols_req = [
+        "flight_id", "waypoint", "longitude", "latitude",
+        "altitude", "time", "sin_a", "cos_a", "width", var_name
+    ]
+    contrails_t.ensure_vars(cols_req)
 
-    return tau_contrail
+    # Ensure that the times in `contrails_t` are the same.
+    is_in_time = contrails_t["time"] == time
+    if ~np.all(is_in_time):
+        warnings.warn(
+            f"Contrails have inconsistent times. Waypoints that are not in {time} are removed."
+        )
+        contrails_t = contrails_t.filter(is_in_time)
+
+    main_grid = _initialise_longitude_latitude_grid(spatial_bbox, spatial_grid_res)
+
+    # Contrail head and tails: continuous segments only
+    heads_t = contrails_t.dataframe
+    heads_t.sort_values(["flight_id", "waypoint"], inplace=True)
+    tails_t = heads_t.shift(periods=-1)
+
+    is_continuous = heads_t["continuous"]
+    heads_t = heads_t[is_continuous].copy()
+    tails_t = tails_t[is_continuous].copy()
+    tails_t["waypoint"] = tails_t['waypoint'].astype('int')
+
+    heads_t.set_index(["flight_id", "waypoint"], inplace=True, drop=False)
+    tails_t.index = heads_t.index
+
+    # Aggregate contrail segments to a high resolution longitude-latitude grid
+    for i in tqdm(heads_t.index[:2000]):
+        contrail_segment = GeoVectorDataset(
+            pd.concat([heads_t[cols_req].loc[i], tails_t[cols_req].loc[i]], axis=1).T,
+            copy=True
+        )
+
+        segment_grid = segment_property_to_hi_res_grid(
+            contrail_segment, var_name=var_name, spatial_grid_res=spatial_grid_res
+        )
+        main_grid = _add_segment_to_main_grid(main_grid, segment_grid)
+
+    return main_grid
 
 
-def _initialize_contrail_segment_subgrid(
-    contrail_head: pd.Series, contrail_tail: pd.Series, da_main_grid: xr.DataArray
+def _initialise_longitude_latitude_grid(
+        spatial_bbox: list[float] = [-180, -90, 180, 90],
+        spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
-    """Initialize a contrail segment subgrid.
-
-    Function initializes an empty xr.DataArray with a subset of
-    longitude and latitude coordinates from the main grid. The spatial
-    domain of the subgrid is defined by the area that is covered by the
-    contrail. Note that the subgrid architecture is used to reduce the
-    computational requirements.
     """
-    # Longitude coordinates that are covered by the contrail segment
-    lon_edges = np.array(
-        [
-            contrail_head["lon_edge_l"],
-            contrail_head["lon_edge_r"],
-            contrail_tail["lon_edge_l"],
-            contrail_tail["lon_edge_r"],
-        ]
-    )
-    lon_coords_main = da_main_grid["longitude"].values
-    lon_tolerance = np.round(0.5 * (lon_coords_main[1] - lon_coords_main[0]), 3)
-    is_near_contrail = (lon_coords_main >= (min(lon_edges) - lon_tolerance)) & (
-        lon_coords_main <= (max(lon_edges) + lon_tolerance)
-    )
-    lon_coords_subgrid = lon_coords_main[is_near_contrail]
+    Create longitude-latitude grid of specified coordinates and spatial resolution.
 
-    # Latitude coordinates that are covered by the contrail segment
-    lat_edges = np.array(
-        [
-            contrail_head["lat_edge_l"],
-            contrail_head["lat_edge_r"],
-            contrail_tail["lat_edge_l"],
-            contrail_tail["lat_edge_r"],
-        ]
-    )
-    lat_coords_main = da_main_grid["latitude"].values
-    lat_tolerance = np.round(0.5 * (lat_coords_main[1] - lat_coords_main[0]), 3)
-    is_near_contrail = (lat_coords_main >= (min(lat_edges) - lat_tolerance)) & (
-        lat_coords_main <= (max(lat_edges) + lat_tolerance)
-    )
-    lat_coords_subgrid = lat_coords_main[is_near_contrail]
+    Parameters
+    ----------
+    spatial_bbox : list[float]
+        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
 
-    # Initialize subgrid
-    lon_subgrid, lat_subgrid = np.meshgrid(lon_coords_subgrid, lat_coords_subgrid)
-    da_subgrid = xr.DataArray(
-        np.zeros_like(lon_subgrid.T),
+    Returns
+    -------
+    xr.DataArray
+        Longitude-latitude grid of specified coordinates and spatial resolution, filled with zeros.
+
+    Notes
+    -----
+    This empty grid is used to store the aggregated contrail properties of the individual
+    contrail segments, such as the gridded contrail optical depth and radiative forcing.
+    """
+    lon_coords = np.arange(
+        spatial_bbox[0], spatial_bbox[2] + spatial_grid_res, spatial_grid_res
+    )
+    lat_coords = np.arange(
+        spatial_bbox[1], spatial_bbox[3] + spatial_grid_res, spatial_grid_res
+    )
+    return xr.DataArray(
+        np.zeros((len(lon_coords), len(lat_coords))),
         dims=["longitude", "latitude"],
-        coords={"longitude": lon_coords_subgrid, "latitude": lat_coords_subgrid},
+        coords={"longitude": lon_coords, "latitude": lat_coords},
     )
-    return da_subgrid
 
 
-def _get_weights_to_subgrid_pixels(
-    contrail_head: pd.Series, contrail_tail: pd.Series, grid: xr.DataArray
+def segment_property_to_hi_res_grid(
+        contrail_segment: GeoVectorDataset, *,
+        var_name: str,
+        spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
-    """Calculate weights for subgrid pixels.
-
-    Function calculates the weights (from the beginning of the contrail segment)
-    to the nearest longitude and latitude pixel in the subgrid. Note that weights
-    with values that is out of range (w < 0 and w > 1) imply that the contrail
-    segment do not contribute to the pixel. The methodology is in Appendix A12
-    of Schumann (2012).
     """
-    dx = units.longitude_distance_to_m(
-        np.abs(contrail_head["longitude"] - contrail_tail["longitude"]),
-        0.5 * (contrail_head["latitude"] + contrail_tail["latitude"]),
+    Convert the contrail segment property to a high-resolution longitude-latitude grid.
+
+    Parameters
+    ----------
+    contrail_segment : GeoVectorDataset
+        Contrail segment waypoints (head and tail).
+    var_name : str
+        Contrail property of interest, where `var_name` must be included in `contrail_segment`.
+        For example, `tau_contrail`, `rf_sw`, `rf_lw`, and `rf_net`
+    spatial_grid_res : float
+        Spatial grid resolution, [:math:`\deg`]
+
+    Returns
+    -------
+    xr.DataArray
+        Contrail segment dimension and property projected to a longitude-latitude grid.
+
+    Notes
+    -----
+    - See Appendix A11 and A12 of :cite:`schumannContrailCirrusPrediction2012`.
+    """
+    # Ensure that `contrail_segment` contains the required variables
+    contrail_segment.ensure_vars(("sin_a", "cos_a", "width", var_name))
+
+    # Ensure that `contrail_segment` only contains two waypoints and have the same time.
+    assert len(contrail_segment) == 2
+    assert contrail_segment["time"][0] == contrail_segment["time"][1]
+
+    # Calculate contrail edges
+    (
+        contrail_segment["lon_edge_l"],
+        contrail_segment["lat_edge_l"],
+        contrail_segment["lon_edge_r"],
+        contrail_segment["lat_edge_r"],
+    ) = contrail_properties.contrail_edges(
+        contrail_segment["longitude"],
+        contrail_segment["latitude"],
+        contrail_segment["sin_a"],
+        contrail_segment["cos_a"],
+        contrail_segment["width"],
     )
-    dy = units.latitude_distance_to_m(contrail_head["latitude"] - contrail_tail["latitude"])
+
+    # Initialise contrail segment grid with spatial domain that covers the contrail area.
+    lon_edges = np.concatenate(
+        [contrail_segment["lon_edge_l"], contrail_segment["lon_edge_r"]], axis=0
+    )
+    lat_edges = np.concatenate(
+        [contrail_segment["lat_edge_l"], contrail_segment["lat_edge_r"]], axis=0
+    )
+    spatial_bbox = spatial_bounding_box(lon_edges, lat_edges, buffer=0.5)
+    segment_grid = _initialise_longitude_latitude_grid(spatial_bbox, spatial_grid_res)
+
+    # Calculate gridded contrail segment properties
+    weights = _pixel_weights(contrail_segment, segment_grid)
+    dist_perpendicular = _segment_perpendicular_distance_to_pixels(contrail_segment, weights)
+    plume_concentration = _gaussian_plume_concentration(
+        contrail_segment, weights, dist_perpendicular
+    )
+
+    # Distribute selected contrail property to grid
+    return plume_concentration * (
+            weights * xr.ones_like(weights) * contrail_segment[var_name][1]
+            + (1 - weights) * xr.ones_like(weights) * contrail_segment[var_name][0]
+    )
+
+
+def _pixel_weights(
+        contrail_segment: GeoVectorDataset,
+        segment_grid: xr.DataArray
+) -> xr.DataArray:
+    """
+    Calculate the pixel weights for `segment_grid`.
+
+    Parameters
+    ----------
+    contrail_segment : GeoVectorDataset
+        Contrail segment waypoints (head and tail).
+    segment_grid : xr.DataArray
+        Contrail segment grid with spatial domain that covers the contrail area.
+
+    Returns
+    -------
+    xr.DataArray
+        Pixel weights for `segment_grid`
+
+    Notes
+    -----
+    - See Appendix A12 of :cite:`schumannContrailCirrusPrediction2012`.
+    - This is the weights (from the beginning of the contrail segment) to the nearest longitude and
+        latitude pixel in the `segment_grid`.
+    - The contrail segment do not contribute to the pixel if weight < 0 or > 1.
+    """
+    head = contrail_segment.dataframe.iloc[0]
+    tail = contrail_segment.dataframe.iloc[1]
+
+    # Calculate determinant
+    dx = units.longitude_distance_to_m(
+        (tail["longitude"] - head["longitude"]),
+        0.5 * (head["latitude"] + tail["latitude"]),
+    )
+    dy = units.latitude_distance_to_m(tail["latitude"] - head["latitude"])
     det = dx**2 + dy**2
 
-    lon_subgrid, lat_subgrid = np.meshgrid(grid["longitude"].values, grid["latitude"].values)
-    dx_grid = units.longitude_distance_to_m(
-        np.abs(contrail_head["longitude"] - lon_subgrid),
-        0.5 * (contrail_head["latitude"] + lat_subgrid),
+    # Calculate pixel weights
+    lon_grid, lat_grid = np.meshgrid(
+        segment_grid["longitude"].values, segment_grid["latitude"].values
     )
-    dy_grid = units.latitude_distance_to_m(np.abs(contrail_head["latitude"] - lat_subgrid))
+    dx_grid = units.longitude_distance_to_m(
+        (lon_grid - head["longitude"]),
+        0.5 * (head["latitude"] + lat_grid),
+    )
+    dy_grid = units.latitude_distance_to_m((lat_grid - head["latitude"]))
     weights = (dx * dx_grid + dy * dy_grid) / det
-    return xr.DataArray(data=weights.T, coords=grid.coords)
+    return xr.DataArray(
+        data=weights.T,
+        dims=["longitude", "latitude"],
+        coords={"longitude": segment_grid["longitude"], "latitude": segment_grid["latitude"]},
+    )
 
 
-def _get_perpendicular_dist_to_pixels(
-    contrail_head: pd.Series, contrail_tail: pd.Series, weights: xr.DataArray
+def _segment_perpendicular_distance_to_pixels(
+        contrail_segment: GeoVectorDataset,
+        weights: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate the perpendicular distance from the contrail segment to each pixel in the subgrid.
-
-    Refer to Figure A7 in Schumann (2012).
     """
-    lon_subgrid, lat_subgrid = np.meshgrid(weights["longitude"].values, weights["latitude"].values)
+    Calculate perpendicular distance from contrail segment to each segment grid pixel.
+
+    Parameters
+    ----------
+    contrail_segment : GeoVectorDataset
+        Contrail segment waypoints (head and tail).
+    weights : xr.DataArray
+        Pixel weights for `segment_grid`.
+        See `_pixel_weights` function.
+
+    Returns
+    -------
+    xr.DataArray
+        Perpendicular distance from contrail segment to each segment grid pixel, [:math:`m`]
+
+    Notes
+    -----
+    - See Figure A7 of :cite:`schumannContrailCirrusPrediction2012`.
+    """
+    head = contrail_segment.dataframe.iloc[0]
+    tail = contrail_segment.dataframe.iloc[1]
 
     # Longitude and latitude along contrail segment
-    lon_s = contrail_head["longitude"] + weights.T.values * (
-        contrail_tail["longitude"] - contrail_head["longitude"]
+    lon_grid, lat_grid = np.meshgrid(
+        weights["longitude"].values, weights["latitude"].values
     )
-    lat_s = contrail_head["latitude"] + weights.T.values * (
-        contrail_tail["latitude"] - contrail_head["latitude"]
-    )
+
+    lon_s = head["longitude"] + weights.T.values * (tail["longitude"] - head["longitude"])
+    lat_s = head["latitude"] + weights.T.values * (tail["latitude"] - head["latitude"])
 
     lon_dist = units.longitude_distance_to_m(
-        np.abs(lon_s - lon_subgrid), 0.5 * (lat_s + lat_subgrid)
+        np.abs(lon_grid - lon_s),
+        0.5 * (lat_s + lat_grid)
     )
-    lat_dist = units.latitude_distance_to_m(np.abs(lat_s - lat_subgrid))
+
+    lat_dist = units.latitude_distance_to_m(np.abs(lat_grid - lat_s))
     dist_perp = (lon_dist**2 + lat_dist**2) ** 0.5
-    da_dist_perp = xr.DataArray(dist_perp.T, coords=weights.coords)
-
-    return da_dist_perp
+    return xr.DataArray(dist_perp.T, coords=weights.coords)
 
 
-def _get_gaussian_plume_concentration(
-    contrail_head: pd.Series,
-    contrail_tail: pd.Series,
-    weights: xr.DataArray,
-    dist_perp: xr.DataArray,
+def _gaussian_plume_concentration(
+        contrail_segment: GeoVectorDataset,
+        weights: xr.DataArray,
+        dist_perpendicular: xr.DataArray,
 ) -> xr.DataArray:
-    """Calculate the relative concentration distribution along the axis of the contrail width.
-
-    Assumes a one-dimensional Gaussian plume. The methodology for this function can be found in
-    Appendix A11 of Schumann (2012).
     """
+    Calculate relative gaussian plume concentration along the contrail width.
 
-    width = weights.values * contrail_tail["width"] + (1 - weights.values) * contrail_head["width"]
+    Parameters
+    ----------
+    contrail_segment : GeoVectorDataset
+        Contrail segment waypoints (head and tail).
+    weights : xr.DataArray
+        Pixel weights for `segment_grid`.
+        See `_pixel_weights` function.
+    dist_perpendicular : xr.DataArray
+        Perpendicular distance from contrail segment to each segment grid pixel, [:math:`m`]
+        See `_segment_perpendicular_distance_to_pixels` function.
+
+    Returns
+    -------
+    xr.DataArray
+        Relative gaussian plume concentration along the contrail width
+
+    Notes
+    -----
+    - Assume a one-dimensional Gaussian plume.
+    - See Appendix A11 of :cite:`schumannContrailCirrusPrediction2012`.
+    """
+    head = contrail_segment.dataframe.iloc[0]
+    tail = contrail_segment.dataframe.iloc[1]
+
+    width = weights.values * tail["width"] + (1 - weights.values) * head["width"]
     sigma_yy = 0.125 * width**2
 
-    concentration = (4 / np.pi) ** 0.5 * np.exp(-0.5 * dist_perp.values**2 / sigma_yy)
-    is_out_of_range = (weights.values < 0) | (weights.values > 1)
-    concentration[is_out_of_range] = 0
+    concentration = np.where(
+        (weights.values < 0) | (weights.values > 1),
+        0,
+        (4 / np.pi)**0.5 * np.exp(-0.5 * dist_perpendicular.values**2 / sigma_yy)
+    )
     return xr.DataArray(concentration, coords=weights.coords)
 
 
-def _get_subgrid_contrail_property(
-    contrail_head: pd.Series,
-    contrail_tail: pd.Series,
-    weights: xr.DataArray,
-    concentration: xr.DataArray,
+def _add_segment_to_main_grid(
+        main_grid: xr.DataArray,
+        segment_grid: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate the contrail segment contribution to each pixel in the subgrid."""
-    w_1 = weights.values
-    w_2 = 1 - w_1
-    conc = concentration.values
-    da_property_head = xr.ones_like(weights) * contrail_head["tau_contrail"]
-    da_property_tail = xr.ones_like(weights) * contrail_tail["tau_contrail"]
-    return (w_1 * da_property_tail + w_2 * da_property_head) * conc
+    """
+    Add the gridded contrail segment to the main grid.
+
+    Parameters
+    ----------
+    main_grid : xr.DataArray
+        Aggregated contrail segment properties in a longitude-latitude grid.
+    segment_grid : xr.DataArray
+        Contrail segment dimension and property projected to a longitude-latitude grid.
+
+    Returns
+    -------
+    xr.DataArray
+        Aggregated contrail segment properties, including `segment_grid`.
+
+    Notes
+    -----
+    - The spatial domain of `segment_grid` only covers the contrail segment, which is added to
+        the `main_grid` which is expected to have a larger spatial domain than the `segment_grid`.
+    - This architecture is used to reduce the computational resources.
+    """
+    lon_main = main_grid["longitude"].values
+    lat_main = main_grid["latitude"].values
+
+    lon_segment_grid = np.round(segment_grid["longitude"].values, decimals=2)
+    lat_segment_grid = np.round(segment_grid["latitude"].values, decimals=2)
+
+    main_grid_arr = main_grid.values
+    subgrid_arr = segment_grid.values
+
+    try:
+        ix_ = np.searchsorted(lon_main, lon_segment_grid[0])
+        ix = np.searchsorted(lon_main, lon_segment_grid[-1]) + 1
+        iy_ = np.searchsorted(lat_main, lat_segment_grid[0])
+        iy = np.searchsorted(lat_main, lat_segment_grid[-1]) + 1
+    except IndexError:
+        warnings.warn(
+            "Contrail segment ignored as it is outside spatial bounding box of the main grid. "
+        )
+    else:
+        main_grid_arr[ix_:ix, iy_:iy] = main_grid_arr[ix_:ix, iy_:iy] + subgrid_arr
+
+    return xr.DataArray(main_grid_arr, coords=main_grid.coords)
 
 
 # ---
