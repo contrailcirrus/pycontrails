@@ -14,6 +14,11 @@ from pycontrails.datalib.ecmwf import ECMWF_VARIABLES, ERA5, HRES
 from pycontrails.datalib.ecmwf.hres import get_forecast_filename
 
 
+# There is at least one test in this module that occasionally hangs indefinitely.
+# The root cause is a dask threading issue that is not yet resolved.
+pytestmark = pytest.mark.timeout(3)
+
+
 def test_environ_keys() -> None:
     """Test CDS Keys."""
     assert os.environ.get("CDSAPI_URL") == "FAKE"
