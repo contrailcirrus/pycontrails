@@ -815,7 +815,7 @@ def max_thrust_coefficient(
         Mach Number, ``(c_t)_eta_b``
     """
     m_over_m_des = mach_num / m_des
-    h_2 = ((1 + 0.55 * mach_num) / (1 + 0.55 * m_des)) / (m_over_m_des**2)
+    h_2 = ((1.0 + 0.55 * mach_num) / (1.0 + 0.55 * m_des)) / (m_over_m_des**2)
     return h_2 * c_t_des
 
 
