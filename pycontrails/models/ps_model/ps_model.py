@@ -108,7 +108,7 @@ class PSModel(AircraftPerformance):
         self.set_source_met()
 
         # Calculate true airspeed if not included on source
-        self.ensure_tas_on_source()
+        self.ensure_true_airspeed_on_source()
 
         # Ensure aircraft type is available
         try:

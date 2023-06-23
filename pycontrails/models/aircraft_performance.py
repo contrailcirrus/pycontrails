@@ -380,8 +380,8 @@ class AircraftPerformance(Model):
             Derived performance metrics at each waypoint.
         """
 
-    def ensure_tas_on_source(self) -> None:
-        """Add true airspeed to source data if not already present."""
+    def ensure_true_airspeed_on_source(self) -> None:
+        """Add ``true_airspeed`` field to :attr:`source` data if not already present."""
 
         if "true_airspeed" in self.source:
             return
