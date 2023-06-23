@@ -84,8 +84,8 @@ $ make test
 The project uses [mypy](http://mypy-lang.org/) for static type checking.
 All code should have specific, clear type annotations.
 
-The project uses [Black](https://black.readthedocs.io/en/stable/), [isort](https://pycqa.github.io/isort/), [ruff](https://github.com/charliermarsh/ruff) and [doc8](https://doc8.readthedocs.io/en/latest/readme.html) to standardize code-formatting.
-These tools are run automatically in a pre-comit hook.
+The project uses [Black](https://black.readthedocs.io/en/stable/), [ruff](https://github.com/charliermarsh/ruff) and [doc8](https://doc8.readthedocs.io/en/latest/readme.html) to standardize code-formatting.
+These tools are run automatically in a pre-commit hook.
 
 The project uses [pytest](https://docs.pytest.org/en/7.2.x/) to run unit tests.
 New code should include clear unit tests for implementation and output values.

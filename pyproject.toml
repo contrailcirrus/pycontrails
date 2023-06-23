@@ -60,7 +60,6 @@ dev = [
     "dep_license",
     "fastparquet>=0.8",
     "ipdb>=0.13",
-    "isort>=5.4",
     "memory_profiler",
     "mypy>=0.99",
     "mypy-extensions>=0.4",
@@ -205,12 +204,6 @@ show_error_codes = true
 line-length = 100
 preview = true
 
-# isort import formatting
-# https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#isort
-[tool.isort]
-profile = "black"
-line_length = 100
-
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
 [tool.pytest.ini_options]
@@ -254,7 +247,7 @@ ignore-path = [
 # https://beta.ruff.rs/docs/settings/#select
 # https://www.pydocstyle.org/en/6.3.0/error_codes.html
 [tool.ruff]
-select = ["D", "E", "F", "PL"]
+select = ["D", "E", "F", "I", "PL"]
 line-length = 100
 ignore = ["E402", "D105", "D202", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLW2901"]
 
