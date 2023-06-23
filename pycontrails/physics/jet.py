@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def acceleration(
-    true_airspeed: npt.NDArray[np.float_], dt: npt.NDArray[np.float_]
+    true_airspeed: npt.NDArray[np.float_], segment_duration: npt.NDArray[np.float_]
 ) -> npt.NDArray[np.float_]:
     r"""Calculate the acceleration/deceleration at each waypoint.
 
@@ -33,16 +33,20 @@ def acceleration(
     ----------
     true_airspeed : npt.NDArray[np.float_]
         True airspeed, [:math:`m \ s^{-1}`]
-    dt : npt.NDArray[np.float_]
-        Time between waypoints, [:math:`s`]
+    segment_duration : npt.NDArray[np.float_]
+        Time difference between waypoints, [:math:`s`]
 
     Returns
     -------
     npt.NDArray[np.float_]
         Acceleration/deceleration, [:math:`m \ s^{-2}`]
+
+    See Also
+    --------
+    :func:`flight.segment_duration`
     """
     dv_dt = np.empty_like(true_airspeed)
-    dv_dt[:-1] = np.diff(true_airspeed) / dt[:-1]
+    dv_dt[:-1] = np.diff(true_airspeed) / segment_duration[:-1]
     dv_dt[-1] = 0.0
     np.nan_to_num(dv_dt, copy=False)
     return dv_dt
@@ -641,7 +645,7 @@ def turbine_inlet_temperature(
 def thrust_force(
     altitude: npt.NDArray[np.float_],
     true_airspeed: npt.NDArray[np.float_],
-    dt: npt.NDArray[np.float_],
+    segment_duration: npt.NDArray[np.float_],
     aircraft_mass: npt.NDArray[np.float_],
     F_drag: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
@@ -653,8 +657,8 @@ def thrust_force(
         Waypoint altitude, [:math:`m`]
     true_airspeed : npt.NDArray[np.float_]
         True airspeed, [:math:`m \ s^{-1}`]
-    dt : npt.NDArray[np.float_]
-        Time between waypoints, [:math:`s`]
+    segment_duration : npt.NDArray[np.float_]
+        Time difference between waypoints, [:math:`s`]
     aircraft_mass : npt.NDArray[np.float_]
         Aircraft mass, [:math:`kg`]
     F_drag : npt.NDArray[np.float_]
@@ -679,11 +683,11 @@ def thrust_force(
     Negative thrust must be corrected.
     """
     dh_dt = np.empty_like(altitude)
-    dh_dt[:-1] = np.diff(altitude) / dt[:-1]
+    dh_dt[:-1] = np.diff(altitude) / segment_duration[:-1]
     dh_dt[-1] = 0.0
     np.nan_to_num(dh_dt, copy=False)
 
-    dv_dt = acceleration(true_airspeed, dt)
+    dv_dt = acceleration(true_airspeed, segment_duration)
 
     return (
         F_drag
