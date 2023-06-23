@@ -826,7 +826,7 @@ def _extract_q(met: MetDataset, met_key: str, q_method: str) -> tuple[MetDataArr
         raise KeyError(f"No variable key '{met_key}' in 'met'.") from exc
 
 
-def _prepare_q(  # type: ignore[return-value]
+def _prepare_q(
     mda: MetDataArray, level: npt.NDArray[np.float_], q_method: str, log_applied: bool
 ) -> tuple[MetDataArray, npt.NDArray[np.float_]]:
     """Prepare specific humidity for interpolation with experimental ``q_method``.
@@ -852,39 +852,51 @@ def _prepare_q(  # type: ignore[return-value]
     da = mda.data
 
     if q_method == "log-q-log-p":
-        if not da._in_memory:
-            da.load()
-
-        da = da.assign_coords(level=np.log(da["level"]))
-
-        if not log_applied:
-            # ERA5 specific humidity can have negative values
-            # These will get converted to NaNs
-            # Ignore the xarray warning
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message="invalid value encountered in log")
-                da = np.log(da)  # type: ignore[assignment]
-
-        mda = MetDataArray(da, copy=False)
-
-        level = np.log(level)
-        return mda, level
+        return _prepare_q_log_q_log_p(da, level, log_applied)
 
     assert not log_applied, "Log transform should not be applied for cubic spline interpolation"
 
     if q_method == "cubic-spline":
-        if da["level"][0] < 50.0 or da["level"][-1] > 1000.0:
-            raise ValueError("Cubic spline interpolation requires data to span 50-1000 hPa.")
-        ppoly = _load_spline()
-
-        da = da.assign_coords(level=ppoly(da["level"]))
-        mda = MetDataArray(da, copy=False)
-
-        level = ppoly(level)
-
-        return mda, level
+        return _prepare_q_cubic_spline(da, level)
 
     raise_invalid_q_method_error(q_method)
+
+
+def _prepare_q_log_q_log_p(
+    da: xr.DataArray, level: npt.NDArray[np.float_], log_applied: bool
+) -> tuple[MetDataArray, npt.NDArray[np.float_]]:
+    if not da._in_memory:
+        da.load()
+
+    da = da.assign_coords(level=np.log(da["level"]))
+
+    if not log_applied:
+        # ERA5 specific humidity can have negative values
+        # These will get converted to NaNs
+        # Ignore the xarray warning
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="invalid value encountered in log")
+            da = np.log(da)  # type: ignore[assignment]
+
+    mda = MetDataArray(da, copy=False)
+
+    level = np.log(level)
+    return mda, level
+
+
+def _prepare_q_cubic_spline(
+    da: xr.DataArray, level: npt.NDArray[np.float_]
+) -> tuple[MetDataArray, npt.NDArray[np.float_]]:
+    if da["level"][0] < 50.0 or da["level"][-1] > 1000.0:
+        raise ValueError("Cubic spline interpolation requires data to span 50-1000 hPa.")
+    ppoly = _load_spline()
+
+    da = da.assign_coords(level=ppoly(da["level"]))
+    mda = MetDataArray(da, copy=False)
+
+    level = ppoly(level)
+
+    return mda, level
 
 
 def interpolate_gridded_specific_humidity(
