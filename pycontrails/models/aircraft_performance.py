@@ -30,7 +30,8 @@ class AircraftPerformanceParams(ModelParams):
     correct_fuel_flow: bool = True
 
     #: The number of iterations used to calculate aircraft mass and fuel flow.
-    n_iter: int = 5
+    #: The default value of 3 is sufficient for most cases.
+    n_iter: int = 3
 
 
 class AircraftPerformance(Model):
