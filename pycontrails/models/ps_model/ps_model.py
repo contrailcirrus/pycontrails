@@ -224,9 +224,8 @@ class PSModel(AircraftPerformance):
         elif isinstance(time, np.ndarray):
             dt_sec = flight.segment_duration(time, dtype=altitude_ft.dtype)
             rocd = flight.segment_rocd(dt_sec, altitude_ft)
-            rocd_ms = units.ft_to_m(rocd) / 60.0
             dv_dt = jet.acceleration(true_airspeed, dt_sec)
-            theta = jet.climb_descent_angle(true_airspeed, rocd_ms)
+            theta = jet.climb_descent_angle(true_airspeed, rocd)
 
         else:
             raise NotImplementedError("Only array inputs are supported")
