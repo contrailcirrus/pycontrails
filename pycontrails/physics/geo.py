@@ -884,7 +884,7 @@ def spatial_bounding_box(
     lon_min = max(np.floor(np.min(longitude) - buffer), -180)
     lon_max = min(np.ceil(np.max(longitude) + buffer), 179.99)
     lat_min = max(np.floor(np.min(latitude) - buffer), -90)
-    lat_max = min(np.floor(np.max(latitude) + buffer), 90)
+    lat_max = min(np.ceil(np.max(latitude) + buffer), 90)
     return [lon_min, lat_min, lon_max, lat_max]
 
 
@@ -897,7 +897,7 @@ def domain_surface_area(
 
     Parameters
     ----------
-    spatial_bbox: list[float]
+    spatial_bbox : list[float]
         Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
