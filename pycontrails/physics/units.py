@@ -57,8 +57,8 @@ def ft_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     return m_to_pl(ft_to_m(h))
 
 
-def kelvin_to_celcius(kelvin: ArrayScalarLike) -> ArrayScalarLike:
-    """Convert temperature from kelvin to celcius.
+def kelvin_to_celsius(kelvin: ArrayScalarLike) -> ArrayScalarLike:
+    """Convert temperature from Kelvin to Celsius.
 
     Parameters
     ----------

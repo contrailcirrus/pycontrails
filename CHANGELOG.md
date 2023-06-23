@@ -75,10 +75,12 @@
 
 - Remove the `fuel` parameter from the `Emissions` model. This is inferred directly from the `source` parameter in `Emissions.eval`.
 - Fix edge cases in the `jet.reserve_fuel_requirements` implementation. The previous version would return `nan` for some combinations of `fuel_flow` and `segment_phase` variables.
+- Fix a spelling mistake: `units.kelvin_to_celcius` -> `units.kelvin_to_celsius`.
 
 ### Internals
 
 - Use `ruff` in place of `pydocstyle` for linting docstrings.
+- Use `ruff` in place of `isort` for sorting imports.
 - Update the `AircraftPerformance` template based on the patterns used in the new `PSModel` class. This may change again in the future.
 
 ## v0.43.0
