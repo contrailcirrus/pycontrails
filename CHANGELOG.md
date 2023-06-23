@@ -12,24 +12,31 @@
 
   This interpolation parameter is used when calling `pycontrails.core.models.interpolate_met`. It can also be used directly with the new lower-level `pycontrails.core.models.interpolate_gridded_specific_humidity` function.
 - Add new experimental `HistogramMatching` humidity scaling model to match RHi values against IAGOS observations. The previous `HistogramMatchingWithEckel` scaling is still available when working with ERA5 ensemble members.
+- Add new [tutorial](https://py.contrails.org/tutorials/interpolating-specific-humidity.html) discussing the new specific humidity interpolation methodology.
 
 ### Breaking changes
 
 - Add an optional `q_method` parameter to the `pycontrails.core.models.interpolate_met` function. The default value `None` agrees with the previous behavior.
 - Change function signatures in the `cocip.py` module for consistency. The `interp_kwargs` parameter is now unpacked in the `calc_timestep_meterology` signature. Rename `kwargs` to `interp_kwargs` where appropriate.
+- Remove the `cache_size` parameter in `MetDataset.from_zarr`. Previously this parameter allowed the user to wrap the Zarr store in a `LRUCacheStore` to improve performance. Changes to Zarr internals have broken this approach. Custom Zarr patterns should now be handled outside of `pycontrails`.
 
 ### Fixes
 
 - Recompute and extend quantiles for histogram matching humidity scaling. Quantiles are now available for each combination of `q_method` and the following ERA5 data products: reanalysis and ensemble members 0-9. This data is available as a parquet file and is packaged with `pycontrails`.
 - Fix the precomputed Eckel coefficients. Previous values where computed for different interpolation assumptions and were not correct for the default interpolation method.
 - Clip the scaled humidity values computed by the `humidity_scaling.eckel_scaling` function to ensure that they are non-negative. Previously, both relative and specific humidity values arising from Eckel scaling could be negative.
+- Handle edge case of all NaN values in the `T_critical_sac` function in the `sac.py` module.
 - Avoid extraneous copy when calling `VectorDataset.sum`.
+- Officially support `numpy` v1.25.0.
+- Set a `pytest-timeout` limit for tests in `tests/unit/test_ecmwf.py` to avoid hanging tests.
 
 ### Internals
 
 - Refactor auxillary functions used by `HistogramMatchingWithEckel` to better isolated histogram matching from Eckel scaling.
 - Refactor `intersect_met` method in `pycontrails.core.models` to handle experimental `q_method` parameter.
+- Include a `q_method` field in `Model.interp_kwargs`.
 - Include precomputed humidity lapse rate values in the new `pycontrails.core.models._load_spline` function.
+- Move the `humidity_scaling.py` module into its own subdirectory within `pycontrails/models`.
 
 ## v0.42.2
 
