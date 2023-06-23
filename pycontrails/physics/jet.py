@@ -53,7 +53,7 @@ def acceleration(
 
 
 def climb_descent_angle(
-    true_airspeed: npt.NDArray[np.float_], rocd_ms: npt.NDArray[np.float_]
+    true_airspeed: npt.NDArray[np.float_], rocd: npt.NDArray[np.float_]
 ) -> npt.NDArray[np.float_]:
     r"""Calculate angle between the horizontal plane and the actual flight path.
 
@@ -61,14 +61,20 @@ def climb_descent_angle(
     ----------
     true_airspeed : npt.NDArray[np.float_]
         True airspeed, [:math:`m \ s^{-1}`]
-    rocd_ms : npt.NDArray[np.float_]
-        Rate of climb/descent, [:math:`m \ s^{-1}`]
+    rocd : npt.NDArray[np.float_]
+        Rate of climb/descent, [:math:`ft min^{-1}`]
 
     Returns
     -------
     npt.NDArray[np.float_]
         Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
+
+    See Also
+    --------
+    :func:`flight.segment_rocd`
+    :func:`flight.segment_true_airspeed`
     """
+    rocd_ms = units.ft_to_m(rocd) / 60.0
     sin_theta = rocd_ms / true_airspeed
     return units.radians_to_degrees(np.arcsin(sin_theta))
 
