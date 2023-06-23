@@ -186,13 +186,13 @@ def test_total_fuel_burn(load_factor: float):
     out = ps_model.eval(flight)
 
     if load_factor == 0.5:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4308, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4558.2, abs=0.1)
     elif load_factor == 0.6:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4500, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4931.8, abs=0.1)
     elif load_factor == 0.7:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4718.3, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5267.7, abs=0.1)
     elif load_factor == 0.8:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4969.8, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5414.8, abs=0.1)
 
 
 def test_fuel_clipping():
