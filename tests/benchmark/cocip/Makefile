@@ -21,9 +21,17 @@ download-outputs:
 generate-outputs:
 	ipython output.py
 
+	# generate outputs in new directory
+	# ipython output.py outputs-2
+
 # run model and compare with existing output data
 compare:
-	ipython compare.py
+	ipython compare-run.py
+
+# compare new model outputs with existing output data
+# requires generating-outputs
+compare-files:
+	ipython compare-files.py outputs-2
 
 # sync data after regenerating
 upload-inputs:

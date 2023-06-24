@@ -28,10 +28,14 @@ logging.basicConfig(
 )
 
 # setup
-INPUT_PATH = pathlib.Path("inputs")
-OUTPUT_PATH = pathlib.Path("outputs")
+INPUT_PATH = pathlib.Path(__file__).parent / "inputs"
+OUTPUT_PATH = pathlib.Path(__file__).parent / "outputs"
 FLIGHT_METADATA_FILE = "flight-metadata.pq"
 FLIGHT_WAYPOINT_FILE = "flight-waypoints.pq"
+
+# relative tolerances for comparison
+FLIGHT_TOLERANCE = 1e-6
+CONTRAIL_TOLERANCE = 1e-3
 
 # ----
 # Load Flights
@@ -73,6 +77,7 @@ def load_flights() -> list[Flight]:
             "engine_name": df_flights_metadata.loc[flt_id]["engine_type_edb"],
             "engine_uid": df_flights_metadata.loc[flt_id]["engine_uid"],
             "load_factor": df_flights_metadata.loc[flt_id]["assumed_load_factor"],
+            # "wingspan": # TODO: Add wingspan to metadata
         }
 
         # Create flight object
@@ -134,13 +139,13 @@ def load_ERA5() -> tuple[MetDataset, MetDataset]:
         time=time,
         variables=Cocip.met_variables,
         pressure_levels=pressure_levels,
-        paths=list(pathlib.Path(INPUT_PATH / "met").glob("*.nc")),
+        paths=list((INPUT_PATH / "met").glob("*.nc")),
         cachestore=None,
     )
     era5sl = ERA5(
         time=time,
         variables=Cocip.rad_variables,
-        paths=list(pathlib.Path(INPUT_PATH / "rad").glob("*.nc")),
+        paths=list((INPUT_PATH / "rad").glob("*.nc")),
         cachestore=None,
     )
 
