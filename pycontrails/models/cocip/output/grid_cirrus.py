@@ -75,7 +75,10 @@ def natural_cirrus_properties_to_hi_res_grid(
     )
 
     # Increase spatial resolution by repeating existing values (temporarily)
-    n_reps = int(len(lon_coords_hi_res) / len(met["longitude"].values))
+    n_reps = int(
+        np.round(np.diff(met["longitude"].values)[0], decimals=2)
+        / np.round(np.diff(lon_coords_hi_res)[0], decimals=2)
+    )
     cc_rep = _repeat_rows_and_columns(cirrus_cover_max.values, n_reps=n_reps)
     tau_cirrus_rep = _repeat_rows_and_columns(tau_cirrus_max.values, n_reps=n_reps)
 
@@ -83,12 +86,10 @@ def natural_cirrus_properties_to_hi_res_grid(
     np.random.seed(seed)
     rand_number = np.random.uniform(0, 1, np.shape(tau_cirrus_rep))
     dx = 0.03  # Prevent division of small values: calibrated to match the original cirrus cover
-    has_cirrus_cover = rand_number > (1 + dx - cc_rep)
-    tau_cirrus_hi_res = np.where(
-        has_cirrus_cover,
-        tau_cirrus_rep / cc_rep,
-        0
-    )
+    has_cirrus = rand_number > (1 + dx - cc_rep)
+    tau_cirrus_hi_res = np.zeros_like(tau_cirrus_rep)
+    tau_cirrus_hi_res[has_cirrus] = (tau_cirrus_rep[has_cirrus] / cc_rep[has_cirrus])
+    # TODO: Zeb, using np.where would lead to RunTimeWarning because some cc_rep is zero
 
     # Enhance resolution of `cirrus coverage`
     cirrus_cover_hi_res = np.where(
@@ -100,7 +101,7 @@ def natural_cirrus_properties_to_hi_res_grid(
     # Package outputs
     ds_hi_res = xr.Dataset(
         data_vars=dict(
-            tau_cirrus=(["longitude", "latitude"], cirrus_cover_hi_res),
+            tau_cirrus=(["longitude", "latitude"], tau_cirrus_hi_res),
             cc_natural_cirrus=(["longitude", "latitude"], cirrus_cover_hi_res),
         ),
         coords=dict(longitude=lon_coords_hi_res, latitude=lat_coords_hi_res)
@@ -188,4 +189,7 @@ def _repeat_rows_and_columns(
     stacked = np.vstack(array_2d_rep)
 
     # Repeating elements along axis=0
-    return np.repeat(stacked, n_reps, axis=0)
+    array_2d_rep = np.repeat(stacked, n_reps, axis=0)
+
+    # Do not repeat final row and column as they are on the edge
+    return array_2d_rep[:-(n_reps - 1), :-(n_reps - 1)]
