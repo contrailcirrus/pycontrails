@@ -7,7 +7,7 @@ This module includes functions to produce additional output formats, including t
             See :func:`contrail_flight_summary_outputs`.
     (3) Gridded outputs.
             See :func:`longitude_latitude_grid`.
-    (4) Time-slice statistics. 
+    (4) Time-slice statistics.
             See :func:`time_slice_statistics`.
     (5) Aggregate contrail segment optical depth/RF to a high-resolution longitude-latitude grid.
             See :func:`contrails_to_hi_res_grid`.
@@ -39,7 +39,8 @@ from pycontrails.models.tau_cirrus import tau_cirrus
 # -----------------------
 
 def flight_waypoint_outputs(
-        flight_waypoints: GeoVectorDataset, contrails: GeoVectorDataset
+        flight_waypoints: GeoVectorDataset,
+        contrails: GeoVectorDataset
 ) -> GeoVectorDataset:
     """
     Calculate the contrail summary statistics at each flight waypoint.
