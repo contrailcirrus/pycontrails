@@ -1,6 +1,16 @@
 
 # Changelog
 
+## v0.44.1
+
+### Breaking changes
+
+- By default, call `xr.open_mfdataset` with `lock=False` in the `MetDataSource.open_dataset` method. This helps alleviate a `dask` threading issue similar to [this GitHub issue](https://github.com/pydata/xarray/issues/4406).
+
+### Fixes
+
+- Support `MetDataset` source in the `HistogramMatching` humidity scaling model. Previously only `GeoVectorDataset` sources were explicitly supported.
+
 ## v0.44.0
 
 Support for the [Poll-Schumann aircraft performance model](https://doi.org/10.1017/aer.2020.62).
