@@ -589,7 +589,7 @@ def _load_quantiles() -> pd.DataFrame:
 
 
 def histogram_matching(
-    era5_rhi: npt.NDArray[np.float_],
+    era5_rhi: ArrayLike,
     product_type: str,
     member: int | None,
     q_method: str,
@@ -600,7 +600,7 @@ def histogram_matching(
 
     Parameters
     ----------
-    era5_rhi : npt.NDArray[np.float_]
+    era5_rhi : ArrayLike
         ERA5-derived RHi values for the given ensemble member.
     product_type : {"reanalysis", "ensemble_members"}
         The ERA5 product type.
@@ -613,7 +613,8 @@ def histogram_matching(
     Returns
     -------
     npt.NDArray[np.float_]
-        The IAGOS quantiles corresponding to the ERA5-derived RHi values.
+        The IAGOS quantiles corresponding to the ERA5-derived RHi values. Returned
+        as a numpy array with the same shape and dtype as ``era5_rhi``.
     """
     df = _load_quantiles()
     iagos_quantiles = df[("iagos", "iagos")]
@@ -760,13 +761,13 @@ class HistogramMatching(HumidityScaling):
     default_params = HistogramMatchingParams
 
     @overrides
-    def scale(  # type: ignore[override]
+    def scale(
         self,
-        specific_humidity: npt.NDArray[np.float_],
-        air_temperature: npt.NDArray[np.float_],
-        air_pressure: npt.NDArray[np.float_],
+        specific_humidity: ArrayLike,
+        air_temperature: ArrayLike,
+        air_pressure: ArrayLike,
         **kwargs: Any,
-    ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+    ) -> tuple[ArrayLike, ArrayLike]:
         rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
         rhi = rhi_over_q * specific_humidity
 
@@ -776,9 +777,20 @@ class HistogramMatching(HumidityScaling):
             self.params["member"],
             self.params["interpolation_q_method"],
         )
+
+        # If the input is an xarray DataArray, return an xarray DataArray
+        if isinstance(rhi, xr.DataArray):
+            rhi_1 = xr.DataArray(  # type: ignore[assignment]
+                rhi_1,
+                dims=rhi.dims,
+                coords=rhi.coords,
+                name="rhi",
+                attrs=rhi.attrs,
+            )
+
         q_1 = rhi_1 / rhi_over_q
 
-        return q_1, rhi_1
+        return q_1, rhi_1  # type: ignore[return-value]
 
 
 @dataclasses.dataclass
