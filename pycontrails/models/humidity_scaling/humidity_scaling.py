@@ -24,7 +24,11 @@ from pycontrails.utils.types import ArrayLike
 
 def _rhi_over_q(air_temperature: ArrayLike, air_pressure: ArrayLike) -> ArrayLike:
     """Compute the quotient ``RHi / q``."""
-    return air_pressure * (constants.R_v / constants.R_d) / thermo.e_sat_ice(air_temperature)
+
+    # Keep the air_temperature term before the air_pressure term
+    # If these are xr.DataArray, we want the return value to have the same coords
+    # as the temperature. If air_pressure comes first, the coords will be transposed.
+    return (constants.R_v / constants.R_d) / thermo.e_sat_ice(air_temperature) * air_pressure
 
 
 class HumidityScaling(models.Model):
