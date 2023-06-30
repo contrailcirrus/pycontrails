@@ -95,7 +95,7 @@ def q_exhaust(
         Humidity released by water vapour from aircraft emissions, [:math:`kg_{H_{2}O}/kg_{air}`]
     """
     rho_air = thermo.rho_d(air_temperature, air_pressure)
-    return (ei_h2o * fuel_dist) / ((np.pi / 4) * width * depth * rho_air)
+    return (ei_h2o * fuel_dist) / ((np.pi / 4.0) * width * depth * rho_air)
 
 
 def iwc_adiabatic_heating(
@@ -124,9 +124,10 @@ def iwc_adiabatic_heating(
     p_ice = thermo.e_sat_ice(air_temperature)
     air_temperature_1 = temperature_adiabatic_heating(air_temperature, air_pressure, air_pressure_1)
     p_ice_1 = thermo.e_sat_ice(air_temperature_1)
-    return np.maximum(
-        (constants.R_d / constants.R_v) * ((p_ice_1 / air_pressure_1) - (p_ice / air_pressure)), 0
-    )
+
+    out = (constants.R_d / constants.R_v) * ((p_ice_1 / air_pressure_1) - (p_ice / air_pressure))
+    out.clip(min=0.0, out=out)
+    return out
 
 
 def temperature_adiabatic_heating(
@@ -160,7 +161,7 @@ def temperature_adiabatic_heating(
     ----------
     - :cite:`schumannContrailCirrusPrediction2012`
     """
-    exponent = (constants.gamma - 1) / constants.gamma
+    exponent = (constants.gamma - 1.0) / constants.gamma
     return air_temperature * (air_pressure_1 / air_pressure) ** exponent
 
 
@@ -198,7 +199,7 @@ def iwc_post_wake_vortex(
     ----------
     - :cite:`schumannContrailCirrusPrediction2012`
     """
-    return np.maximum((iwc - iwc_ad), 0)
+    return np.maximum(iwc - iwc_ad, 0.0)
 
 
 def ice_particle_number(
@@ -278,15 +279,15 @@ def ice_particle_activation_rate(
     - :cite:`brauerAirborneMeasurementsContrail2021`
     """
     d_temp = air_temperature - T_crit_sac
-    d_temp = np.minimum(d_temp, 0)
+    d_temp.clip(None, 0.0, out=d_temp)
 
     # NOTE: It seems somewhat unnecessary to do this additional "rounding down"
     # of d_temp for values below -5. As d_temp near -5, the activation rate approaches
     # 1. This additional rounding injects a small jump discontinuity into the activation rate that
     # likely does not match reality. I suggest removing the line below. This will change
     # model outputs roughly at 0.001 - 0.1%.
-    d_temp[d_temp < -5] = -np.inf
-    return -0.661 * np.exp(d_temp) + 1
+    d_temp[d_temp < -5.0] = -np.inf
+    return -0.661 * np.exp(d_temp) + 1.0
 
 
 def ice_particle_survival_factor(
@@ -312,10 +313,12 @@ def ice_particle_survival_factor(
         Fraction of contrail ice particle number that survive the wake vortex phase.
     """
     f_surv = np.empty_like(iwc)
-    is_positive = (iwc > 0) & (iwc_1 > 0)
+    is_positive = (iwc > 0.0) & (iwc_1 > 0.0)
 
-    f_surv[is_positive] = iwc_1[is_positive] / iwc[is_positive]
-    f_surv[is_positive] = np.minimum(f_surv[is_positive], 1)
+    ratio = iwc_1[is_positive] / iwc[is_positive]
+    ratio.clip(None, 1.0, out=ratio)
+
+    f_surv[is_positive] = ratio
     f_surv[~is_positive] = 0.5
 
     return f_surv
@@ -355,7 +358,7 @@ def initial_persistent(
     and RHi < 100%, the contrail lifetime will not end immediately as the ice particles
     will gradually evaporate with the rate depending on the background RHi.
     """
-    out = (iwc_1 > 1e-12) & (iwc_1 < 1e10) & (rhi_1 > 0) & (rhi_1 < 1e10)
+    out = (iwc_1 > 1e-12) & (iwc_1 < 1e10) & (rhi_1 > 0.0) & (rhi_1 < 1e10)
     dtype = np.result_type(iwc_1, rhi_1)
     return out.astype(dtype)
 
@@ -536,7 +539,7 @@ def contrail_edges(
     lon_edge_r = lon + dlon
     lat_edge_r = lat - dlat
 
-    return (lon_edge_l, lat_edge_l, lon_edge_r, lat_edge_r)
+    return lon_edge_l, lat_edge_l, lon_edge_r, lat_edge_r
 
 
 def contrail_vertices(
@@ -607,7 +610,7 @@ def contrail_vertices(
     lat_3 = lat - dlat_width + dlat_length
     lat_4 = lat + dlat_width + dlat_length
 
-    return (lon_1, lat_1, lon_2, lat_2, lon_3, lat_3, lon_4, lat_4)
+    return lon_1, lat_1, lon_2, lat_2, lon_3, lat_3, lon_4, lat_4
 
 
 def plume_effective_cross_sectional_area(
@@ -755,10 +758,11 @@ def ice_particle_volume_mean_radius(
     number of contrail ice particles per kg of air (``n_ice_per_kg_air``, :math:`#/kg-air`).
     """
     total_ice_volume = iwc / constants.rho_ice
-    r_ice_vol = ((3 / (4 * np.pi)) * (total_ice_volume / n_ice_per_kg_air)) ** (1 / 3)
-    zero_negative_values = iwc <= 0
+    r_ice_vol = ((3 / (4.0 * np.pi)) * (total_ice_volume / n_ice_per_kg_air)) ** (1 / 3)
+    zero_negative_values = iwc <= 0.0
     r_ice_vol[zero_negative_values] = iwc[zero_negative_values]
-    return np.maximum(r_ice_vol, 1e-10)
+    r_ice_vol.clip(min=1e-10, out=r_ice_vol)
+    return r_ice_vol
 
 
 def ice_particle_terminal_fall_speed(
@@ -811,7 +815,7 @@ def ice_particle_terminal_fall_speed(
     particle_mass = ipm < 2.146e-13
     alpha[particle_mass] = 735.4 * ipm[particle_mass] ** 0.42
 
-    return alpha * (30000 / air_pressure) ** 0.178 * (233 / air_temperature) ** 0.394
+    return alpha * (30000.0 / air_pressure) ** 0.178 * (233.0 / air_temperature) ** 0.394
 
 
 def ice_particle_mass(r_ice_vol: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
@@ -972,7 +976,7 @@ def particle_losses_aggregation(
     ----------
     - :cite:`schumannPropertiesIndividualContrails2017`
     """
-    return (8 * agg_efficiency * np.pi * r_ice_vol**2 * terminal_fall_speed) / area_eff
+    return (8.0 * agg_efficiency * np.pi * r_ice_vol**2 * terminal_fall_speed) / area_eff
 
 
 def particle_losses_turbulence(
@@ -1051,8 +1055,9 @@ def contrail_optical_depth(
     tau_contrail = constants.c_r * np.pi * r_ice_vol**2 * (n_ice_per_m / width) * q_ext
 
     bool_small = r_ice_vol <= 1e-9
-    tau_contrail[bool_small] = 0
-    return np.maximum(tau_contrail, 0)
+    tau_contrail[bool_small] = 0.0
+    tau_contrail.clip(min=0.0, out=tau_contrail)
+    return tau_contrail
 
 
 def scattering_extinction_efficiency(r_ice_vol: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
@@ -1074,7 +1079,9 @@ def scattering_extinction_efficiency(r_ice_vol: npt.NDArray[np.float_]) -> npt.N
     - https://en.wikipedia.org/wiki/Mie_scattering
     """
     phase_delay = light_wave_phase_delay(r_ice_vol)
-    return 2 - (4 / phase_delay) * (np.sin(phase_delay) - ((1 - np.cos(phase_delay)) / phase_delay))
+    return 2.0 - (4.0 / phase_delay) * (
+        np.sin(phase_delay) - ((1.0 - np.cos(phase_delay)) / phase_delay)
+    )
 
 
 def light_wave_phase_delay(r_ice_vol: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
@@ -1095,8 +1102,9 @@ def light_wave_phase_delay(r_ice_vol: npt.NDArray[np.float_]) -> npt.NDArray[np.
     ----------
     - https://en.wikipedia.org/wiki/Mie_scattering
     """
-    phase_delay = (4 * np.pi * (constants.mu_ice - 1) / constants.lambda_light) * r_ice_vol
-    return np.minimum(phase_delay, 100)
+    phase_delay = (4.0 * np.pi * (constants.mu_ice - 1.0) / constants.lambda_light) * r_ice_vol
+    phase_delay.clip(min=None, max=100.0, out=phase_delay)
+    return phase_delay
 
 
 #######################################################
@@ -1206,7 +1214,7 @@ def plume_temporal_evolution(
     # Convert dt to seconds value and use dtype of other variables
     dtype = np.result_type(width_t1, depth_t1, sigma_yz_t1, dsn_dz_t1, diffuse_h_t1, diffuse_v_t1)
     dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(dtype)
+    dt_s = dt_s.astype(dtype, copy=False)
 
     sigma_yy = 0.125 * (width_t1**2)
     sigma_zz = 0.125 * (depth_t1**2)
@@ -1219,7 +1227,7 @@ def plume_temporal_evolution(
     # calculations, we required that
     #   sigma_yy_t2 * sigma_zz_t2 - sigma_yz_t2**2 >= 0
     max_sigma_zz = 0.125 * max_contrail_depth**2
-    max_diffuse_v = (max_sigma_zz - sigma_zz) / (2 * dt_s)
+    max_diffuse_v = (max_sigma_zz - sigma_zz) / (2.0 * dt_s)
     diffuse_v_t1 = np.minimum(diffuse_v_t1, max_diffuse_v)
 
     # Avoid some redundant calculations
@@ -1231,11 +1239,11 @@ def plume_temporal_evolution(
     sigma_yy_t2 = (
         ((2 / 3) * dsn_dz_t1_2 * diffuse_v_t1 * dt_s_3)
         + (dsn_dz_t1_2 * sigma_zz * dt_s_2)
-        + (2 * (diffuse_h_t1 + dsn_dz_t1 * sigma_yz_t1) * dt_s)
+        + (2.0 * (diffuse_h_t1 + dsn_dz_t1 * sigma_yz_t1) * dt_s)
         + sigma_yy
     ) * (seg_ratio**2)
 
-    sigma_zz_t2 = (2 * diffuse_v_t1 * dt_s) + sigma_zz
+    sigma_zz_t2 = (2.0 * diffuse_v_t1 * dt_s) + sigma_zz
 
     sigma_yz_t2 = (
         (dsn_dz_t1 * diffuse_v_t1 * dt_s_2) + (dsn_dz_t1 * sigma_zz * dt_s) + sigma_yz_t1
@@ -1301,7 +1309,7 @@ def new_effective_area_from_sigma(
         Effective cross-sectional area of the contrail plume (area_eff)
     """
     det_sigma = sigma_yy * sigma_zz - sigma_yz**2
-    return 2 * np.pi * det_sigma**0.5
+    return 2.0 * np.pi * det_sigma**0.5
 
 
 def new_ice_water_content(
@@ -1361,7 +1369,8 @@ def new_ice_water_content(
     mass_h2o_t1 = mass_plume_t1 * (iwc_t1 + q_sat_t1)
     mass_h2o_t2 = mass_h2o_t1 + (mass_plume_t2 - mass_plume_t1) * q_mean
     iwc_t2 = (mass_h2o_t2 / mass_plume_t2) - q_sat_t2
-    return np.maximum(iwc_t2, 0)
+    iwc_t2.clip(min=0.0, out=iwc_t2)
+    return iwc_t2
 
 
 def new_ice_particle_number(
@@ -1397,9 +1406,9 @@ def new_ice_particle_number(
     dt_s = dt / np.timedelta64(1, "s")
     dt_s = dt_s.astype(dtype)
 
-    n_ice_per_m_t1 = np.maximum(n_ice_per_m_t1, 0)
+    n_ice_per_m_t1 = np.maximum(n_ice_per_m_t1, 0.0)
 
-    exp_term = np.where(dn_dt_turb * dt_s < 80, np.exp(-dn_dt_turb * dt_s), 0)
+    exp_term = np.where(dn_dt_turb * dt_s < 80.0, np.exp(-dn_dt_turb * dt_s), 0.0)
 
     numerator = dn_dt_turb * n_ice_per_m_t1 * exp_term
     denominator = dn_dt_turb + (dn_dt_agg * n_ice_per_m_t1 * (1 - exp_term))
@@ -1408,7 +1417,8 @@ def new_ice_particle_number(
     small_loss = (dn_dt_turb * dt_s) < 1e-5  # For small ice particle losses
     denom = 1 + (dn_dt_agg * dt_s * n_ice_per_m_t1)
     n_ice_per_m_t2[small_loss] = n_ice_per_m_t1[small_loss] / denom[small_loss]
-    return np.maximum(n_ice_per_m_t2, 1)
+    n_ice_per_m_t2.clip(min=0.0, out=n_ice_per_m_t2)
+    return n_ice_per_m_t2
 
 
 ########
@@ -1516,5 +1526,5 @@ def mean_energy_flux_per_m(
     :func:`mean_radiative_flux_per_m`
     """
     dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(rad_flux_per_m.dtype)
+    dt_s = dt_s.astype(rad_flux_per_m.dtype, copy=False)
     return rad_flux_per_m * dt_s
