@@ -12,6 +12,10 @@
 - Support `MetDataset` source in the `HistogramMatching` humidity scaling model. Previously only `GeoVectorDataset` sources were explicitly supported.
 - Replace `np.gradient` with `dask.array.gradient` in the `tau_cirrus` module. This ensures that the computation is done lazily for dask-backed arrays.
 
+### Internals
+
+- Take more care with `float` and `int` types in the `contrail_properties` module. Prefer `np.clip` to `np.where` or `np.maximum` for clipping values.
+
 ## v0.44.0
 
 Support for the [Poll-Schumann aircraft performance model](https://doi.org/10.1017/aer.2020.62).
