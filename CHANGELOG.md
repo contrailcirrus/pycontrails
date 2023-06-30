@@ -15,6 +15,7 @@
 ### Internals
 
 - Take more care with `float` and `int` types in the `contrail_properties` module. Prefer `np.clip` to `np.where` or `np.maximum` for clipping values.
+- Support `air_temperature` in `CocipGrid` verbose formation outputs.
 
 ## v0.44.0
 

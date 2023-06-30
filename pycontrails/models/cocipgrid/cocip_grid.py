@@ -977,9 +977,9 @@ def _run_downwash(
     calc_emissions(vector, params)
 
     # Get verbose outputs from emissions. These include fuel_flow, nvpm_ei_n, true_airspeed.
-    for key in vector:
-        if key in verbose_outputs_formation:
-            verbose_dict[key] = pd.Series(data=vector[key], index=vector["index"])
+    for key in verbose_outputs_formation:
+        if (val := vector.get(key)) is not None:
+            verbose_dict[key] = pd.Series(data=val, index=vector["index"])
 
     # Get verbose outputs from SAC calculation.
     vector, sac_ = find_initial_contrail_regions(vector, params)
@@ -987,8 +987,8 @@ def _run_downwash(
         verbose_dict[key] = sac_
     if (key := "T_crit_sac") in verbose_outputs_formation:
         # This key isn't always present, e.g. find_initial_contrail_regions can exit early
-        if (data := vector.get(key)) is not None:
-            verbose_dict[key] = pd.Series(data=data, index=vector["index"])
+        if (val := vector.get(key)) is not None:
+            verbose_dict[key] = pd.Series(data=val, index=vector["index"])
 
     # Early exit if nothing in vector passes the SAC
     if not vector:
@@ -1099,7 +1099,7 @@ def find_initial_contrail_regions(
     rh_crit = sac.rh_critical_sac(air_temperature, t_sat_liq, G)
     sac_ = sac.sac(rh, rh_crit)
 
-    filt = sac_ == 1
+    filt = sac_ == 1.0
     logger.debug(
         "Fraction of grid points satisfying the SAC: %s / %s.",
         filt.sum(),
@@ -1212,7 +1212,7 @@ def simulate_wake_vortex_downwash(
     # Initial contrail is constructed at a lower altitude
     altitude_1 = altitude - 0.5 * depth
     level_1 = units.m_to_pl(altitude_1)
-    air_pressure_1 = 100 * level_1
+    air_pressure_1 = 100.0 * level_1
 
     data = {
         "index": index,
@@ -1594,7 +1594,8 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
         vector.attrs.setdefault("engine_uid", param_engine_uid)
     fuel = vector.attrs.setdefault("fuel", params["fuel"])
 
-    bada_vars = ["true_airspeed", "engine_efficiency", "fuel_flow", "aircraft_mass", "n_engine"]
+    # TODO(June 2023): Replace with AircraftPerformanceGrid model
+    bada_vars = "true_airspeed", "engine_efficiency", "fuel_flow", "aircraft_mass", "n_engine"
     if not vector.ensure_vars(bada_vars, False):
         bada_params = {
             "bada3_path": params["bada3_path"],
@@ -1619,6 +1620,8 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
         head_tail_dt = (head_tail_dt_s * 1_000_000_000.0).astype("timedelta64[ns]")
         vector["head_tail_dt"] = head_tail_dt
 
+    # Update params -- this is needed in bundle_results
+    # TODO(June 2023): This should happen upstream in the model, possibly early in eval
     params["bada_model"] = vector.attrs["bada_model"]
 
     # Update wingspan from BADA model, if its not already defined
@@ -1868,7 +1871,7 @@ def advect(
         "longitude": longitude_t2,
         "latitude": latitude_t2,
         "level": level_t2,
-        "air_pressure": 100 * level_t2,
+        "air_pressure": 100.0 * level_t2,
         "altitude": altitude_t2,
         "time": time_t2,
         "formation_time": formation_time,
@@ -2055,7 +2058,7 @@ def result_merge_source(
 
     # Initialize the main output arrays to all zeros
     dtype = result["age"].dtype if result else "timedelta64[ns]"
-    contrail_age = np.full(source.size, 0, dtype=dtype)
+    contrail_age = np.zeros(source.size, dtype=dtype)
 
     dtype = result["ef"].dtype if result else np.float32
     ef_per_m = np.zeros(source.size, dtype=dtype)
@@ -2128,6 +2131,7 @@ def _contrail_grid_variable_attrs() -> dict[str, dict[str, str]]:
         },
         "fuel_flow": {"long_name": "Jet engine fuel flow", "units": "kg / s"},
         "specific_humidity": {"long_name": "Specific humidity", "units": "kg / kg"},
+        "air_temperature": {"long_name": "Air temperature", "units": "K"},
         "rhi": {"long_name": "Relative humidity", "units": "dimensionless"},
         "iwc": {
             "long_name": "Ice water content after the wake vortex phase",
@@ -2154,7 +2158,7 @@ def _warn_not_wrap(met: MetDataset) -> None:
     """
     if not met.is_wrapped:
         lon = met.data["longitude"]
-        if lon.min() == -180 and lon.max() == 179.75:
+        if lon.min() == -180.0 and lon.max() == 179.75:
             warnings.warn(
                 "The MetDataset `met` not been wrapped. The CocipGrid model may "
                 "perform better if `met.wrap_longitude()` is called first."
@@ -2162,14 +2166,20 @@ def _warn_not_wrap(met: MetDataset) -> None:
 
 
 def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np.float_]]:
-    """Return uncertainty parameters in `contrail.data`.
+    """Return uncertainty parameters in ``contrail``.
+
+    This function assumes the underlying humidity scaling model is
+    :class:`ConstantHumidityScaling`. This function should get revised if other
+    humidity scaling models are used for uncertainty analysis.
 
     For each of the keys:
         - "rhi_adj",
         - "rhi_boost_exponent",
         - "sedimentation_impact_factor",
         - "wind_shear_enhancement_exponent",
-    this function checks if key is present in contrail. The data is then bundled and returned.
+
+    this function checks if key is present in contrail. The data is then
+    bundled and returned as a dictionary.
 
     Parameters
     ----------
@@ -2181,13 +2191,13 @@ def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np
     dict[str, npt.NDArray[np.float_]]
         Dictionary of uncertainty parameters.
     """
-    keys = [
+    keys = (
         "rhi_adj",
         "rhi_boost_exponent",
         "sedimentation_impact_factor",
         "wind_shear_enhancement_exponent",
-    ]
-    return {key: contrail[key] for key in keys if key in contrail}
+    )
+    return {key: val for key in keys if (val := contrail.get(key)) is not None}
 
 
 _T = TypeVar("_T", np.float_, np.datetime64)
@@ -2211,9 +2221,6 @@ def _check_overlap(
     name : str
         Name of met dataset. Only used for warning message.
     """
-    if coord not in ["longitude", "latitude", "level", "time"]:
-        raise ValueError(f"Unsupported coordinate: {coord}")
-
     if met_array.min() > grid_array.min() or met_array.max() < grid_array.max():
         warnings.warn(
             f"Met data '{name}' does not overlap the grid domain along the {coord} axis. "
