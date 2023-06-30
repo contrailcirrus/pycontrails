@@ -9,7 +9,7 @@ See Also
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -138,7 +138,7 @@ def _round_polygon(polygon: shapely.Polygon, precision: int) -> shapely.Polygon:
 
 
 def _contours_to_polygons(
-    contours: tuple[npt.NDArray[np.float_], ...],
+    contours: Sequence[npt.NDArray[np.float_]],
     hierarchy: npt.NDArray[np.int_],
     min_area: float,
     convex_hull: bool,
@@ -153,7 +153,7 @@ def _contours_to_polygons(
 
     Parameters
     ----------
-    contours : tuple[npt.NDArray[np.float_], ...]
+    contours : Sequence[npt.NDArray[np.float_]
         The contours output from :func:`cv2.findContours`.
     hierarchy : npt.NDArray[np.int_]
         The hierarchy output from :func:`cv2.findContours`.
