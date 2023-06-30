@@ -236,9 +236,12 @@ def _contours_to_polygons(
 
 def determine_buffer(longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np.float_]) -> float:
     """Determine the proper buffer size to use when converting to polygons."""
+
+    ndigits = 6
+
     try:
-        d_lon = longitude[1] - longitude[0]
-        d_lat = latitude[1] - latitude[0]
+        d_lon = round(longitude[1] - longitude[0], ndigits)
+        d_lat = round(latitude[1] - latitude[0], ndigits)
     except IndexError as e:
         raise ValueError("Longitude and latitude must each have at least 2 elements.") from e
 
@@ -246,12 +249,12 @@ def determine_buffer(longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np
         warnings.warn(
             "Longitude and latitude are not evenly spaced. Buffer size may be inaccurate."
         )
-    if not np.all(np.diff(longitude) == d_lon):
+    if not np.all(np.diff(longitude).round(ndigits) == d_lon):
         warnings.warn("Longitude is not evenly spaced. Buffer size may be inaccurate.")
-    if not np.all(np.diff(latitude) == d_lat):
+    if not np.all(np.diff(latitude).round(ndigits) == d_lat):
         warnings.warn("Latitude is not evenly spaced. Buffer size may be inaccurate.")
 
-    return min(d_lon, d_lat) / 2
+    return min(d_lon, d_lat) / 2.0
 
 
 def find_multipolygon(
@@ -393,7 +396,7 @@ def _buffer_simplify_iterate(polygon: shapely.Polygon, epsilon: float) -> shapel
     # Values here are somewhat ad hoc: These seem to allow the algorithm to
     # terminate and are not too computationally expensive
     for i in range(1, 11):
-        distance = epsilon * i / 10
+        distance = epsilon * i / 10.0
 
         # Taking the buffer can change the orientation of the contour
         out = polygon.buffer(distance, quad_segs=1)
