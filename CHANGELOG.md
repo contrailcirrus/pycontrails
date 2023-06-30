@@ -12,11 +12,13 @@
 - Support `MetDataset` source in the `HistogramMatching` humidity scaling model. Previously only `GeoVectorDataset` sources were explicitly supported.
 - Replace `np.gradient` with `dask.array.gradient` in the `tau_cirrus` module. This ensures that the computation is done lazily for dask-backed arrays.
 - Round to 6 digits in the `polygon.determine_buffer` function. This avoid unnecessary warnings for rounding errors.
+- Fix type hint for `opencv-python` 4.8.0.74.
 
 ### Internals
 
 - Take more care with `float` and `int` types in the `contrail_properties` module. Prefer `np.clip` to `np.where` or `np.maximum` for clipping values.
 - Support `air_temperature` in `CocipGrid` verbose formation outputs.
+- Remove `pytest-timeout` dev dependency.
 
 ## v0.44.0
 
