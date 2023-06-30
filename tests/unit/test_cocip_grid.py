@@ -704,12 +704,13 @@ def test_verbose_outputs_formation(instance_params: dict[str, Any], source: MetD
         "true_airspeed",
         "fuel_flow",
         "specific_humidity",
+        "air_temperature",
         "rhi",
         "iwc",
     }
     assert model.params["verbose_outputs_formation"] == expected
 
-    assert len(out) == 10 + 2  # 10 verbose + 2 core (ef, age)
+    assert len(out) == len(expected) + 2  # verbose formation + 2 core (ef, age)
     for var in model.params["verbose_outputs_formation"]:
         assert var in out
 
