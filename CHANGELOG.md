@@ -11,6 +11,7 @@
 
 - Support `MetDataset` source in the `HistogramMatching` humidity scaling model. Previously only `GeoVectorDataset` sources were explicitly supported.
 - Replace `np.gradient` with `dask.array.gradient` in the `tau_cirrus` module. This ensures that the computation is done lazily for dask-backed arrays.
+- Round to 6 digits in the `polygon.determine_buffer` function. This avoid unnecessary warnings for rounding errors.
 
 ### Internals
 
