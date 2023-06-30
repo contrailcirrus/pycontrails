@@ -58,7 +58,7 @@ def test_implementations_close(met_cocip1: MetDataset) -> None:
     assert (da1 <= 2 * da2).all()
 
     # Pin the mean values of each
-    assert da1.mean().item() == 0.01444357167929411
+    assert da1.mean() == 0.01444357167929411
     assert da2.mean().item() == 0.008129739202558994
 
 
