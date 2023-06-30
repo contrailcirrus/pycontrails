@@ -1,6 +1,6 @@
 """Calculate tau cirrus on Met data."""
 
-import numpy as np
+import dask.array
 import xarray as xr
 
 from pycontrails.core.met import MetDataset
@@ -63,7 +63,7 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
         met.data["air_pressure"],
     )
 
-    dz = -np.gradient(geopotential_height, axis=geopotential_height.get_axis_num("level"))
+    dz = -dask.array.gradient(geopotential_height, axis=geopotential_height.get_axis_num("level"))
     dz = xr.DataArray(dz, dims=geopotential_height.dims)
 
     da = beta_e * dz
