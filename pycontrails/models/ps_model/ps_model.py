@@ -99,8 +99,8 @@ class PSModel(AircraftPerformance):
             raise KeyError(f"Aircraft type {aircraft_type} not covered by the PS model.")
         return False
 
-    def eval(self, source: Flight | list[Flight] | None = None, **params: Any) -> Any:
-        """Evaluate the aircraft performance model."""
+    @overrides
+    def eval(self, source: Flight | None = None, **params: Any) -> Any:
         self.update_params(params)
         self.set_source(source)
         self.source = self.require_source_type(Flight)
@@ -109,6 +109,7 @@ class PSModel(AircraftPerformance):
 
         # Calculate true airspeed if not included on source
         true_airspeed = self.ensure_true_airspeed_on_source()
+        true_airspeed[true_airspeed == 0.0] = np.nan
 
         # Ensure aircraft type is available
         try:
