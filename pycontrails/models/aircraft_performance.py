@@ -54,14 +54,11 @@ class AircraftPerformance(Model):
        :meth:`calculate_aircraft_performance`.
     """
 
-    @abc.abstractmethod
-    @overload
-    def eval(self, source: Flight, **params: Any) -> Flight:
-        ...
+    source: Flight
 
     @abc.abstractmethod
     @overload
-    def eval(self, source: list[Flight], **params: Any) -> list[Flight]:
+    def eval(self, source: Flight, **params: Any) -> Flight:
         ...
 
     # The source must be a Flight or list of Flights
@@ -71,7 +68,7 @@ class AircraftPerformance(Model):
         ...
 
     @abc.abstractmethod
-    def eval(self, source: Flight | list[Flight] | None = None, **params: Any) -> Any:
+    def eval(self, source: Flight | None = None, **params: Any) -> Any:
         """Evaluate the aircraft performance model."""
 
     def simulate_fuel_and_performance(
