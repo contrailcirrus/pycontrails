@@ -669,21 +669,24 @@ class Model(ABC):
         KeyError
             Raises KeyError if key is not found in any location and ``default`` is not provided.
         """
-        if key in self.source.data:
-            return self.source.data[key]
+        marker = self.__marker
 
-        if key in self.source.attrs:
-            return self.source.attrs[key]
+        out = self.source.data.get(key, marker)
+        if out is not marker:
+            return out
 
-        if key in self.params:
-            out = self.params[key]
+        out = self.source.attrs.get(key, marker)
+        if out is not marker:
+            return out
 
+        out = self.params.get(key, marker)
+        if out is not marker:
             # Set parameter to source attr for better post model evaluation tracking
             self.source.attrs[key] = out
 
             return out
 
-        if default is not self.__marker:
+        if default is not marker:
             return default
 
         raise KeyError(f"key {key} not found in source data, attrs, or model params")
