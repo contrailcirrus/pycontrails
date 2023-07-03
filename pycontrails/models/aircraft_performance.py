@@ -388,11 +388,21 @@ class AircraftPerformance(Model):
             Derived performance metrics at each waypoint.
         """
 
-    def ensure_true_airspeed_on_source(self) -> None:
-        """Add ``true_airspeed`` field to :attr:`source` data if not already present."""
+    def ensure_true_airspeed_on_source(self) -> npt.NDArray[np.float_]:
+        """Add ``true_airspeed`` field to :attr:`source` data if not already present.
 
-        if "true_airspeed" in self.source:
-            return
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            True airspeed, [:math:`m s^{-1}`]. If ``true_airspeed`` is already present
+            on :attr:`source`, this is returned directly. Otherwise, it is calculated
+            using :meth:`Flight.segment_true_airspeed`.
+        """
+
+        try:
+            return self.source["true_airspeed"]
+        except KeyError:
+            pass
 
         if not isinstance(self.source, Flight):
             raise TypeError("Model source must be a Flight to calculate true airspeed.")
@@ -410,7 +420,9 @@ class AircraftPerformance(Model):
                 " `Flight.segment_true_airspeed` method."
             )
 
-        self.source["true_airspeed"] = self.source.segment_true_airspeed(u, v)
+        out = self.source.segment_true_airspeed(u, v)
+        self.source["true_airspeed"] = out
+        return out
 
 
 class AircraftPerformanceGrid(Model):
