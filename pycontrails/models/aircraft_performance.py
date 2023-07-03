@@ -61,7 +61,6 @@ class AircraftPerformance(Model):
     def eval(self, source: Flight, **params: Any) -> Flight:
         ...
 
-    # The source must be a Flight or list of Flights
     @abc.abstractmethod
     @overload
     def eval(self, source: None = None, **params: Any) -> NoReturn:
@@ -107,7 +106,7 @@ class AircraftPerformance(Model):
         altitude_ft: npt.NDArray[np.float_]
             Altitude at each waypoint, [:math:`ft`]
         time: npt.NDArray[np.datetime64]
-            Waypoint time in np.datetime64 format.
+            Waypoint time in ``np.datetime64`` format.
         true_airspeed: npt.NDArray[np.float_]
             True airspeed for each waypoint, [:math:`m s^{-1}`]
         air_temperature : npt.NDArray[np.float_]
