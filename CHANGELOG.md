@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.44.2 (unreleased)
+
+### Fixes
+
+- Narrow type hints on the ABC `AircraftPerformance` model. The `AircraftPerformance.eval` method requires a `Flight` object for the `source` parameter.
+
 ## v0.44.1
 
 ### Breaking changes
