@@ -6,6 +6,7 @@
 ### Fixes
 
 - Narrow type hints on the ABC `AircraftPerformance` model. The `AircraftPerformance.eval` method requires a `Flight` object for the `source` parameter.
+- In `PSModel.eval`, explicitly set any aircraft performance data at waypoints with zero true airspeed to `np.nan`. This avoids numpy `RuntimeWarning`s without affecting the results.
 
 ## v0.44.1
 
