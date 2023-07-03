@@ -14,7 +14,7 @@ from pycontrails.physics.units import ft_to_pl, knots_to_m_per_s, m_to_T_isa
 from .conftest import get_static_path
 
 
-def test_aircraft_type_coverage():
+def test_aircraft_type_coverage() -> None:
     ps_model = ps.PSModel()
 
     # There are currently 53 aircraft types supported by the PS model
@@ -34,7 +34,7 @@ def test_aircraft_type_coverage():
             ps_model.check_aircraft_type_availability(atyp)
 
 
-def test_ps_model():
+def test_ps_model() -> None:
     """
     Test intermediate variables and model outputs to be consistent with outputs from Ian Poll.
     """
@@ -133,7 +133,7 @@ def test_ps_model():
     np.testing.assert_array_almost_equal(fuel_flow, [0.574, 0.559], decimal=3)
 
 
-def test_normalised_aircraft_performance_curves():
+def test_normalised_aircraft_performance_curves() -> None:
     """
     For a given Mach number, there is a pair of overall propulsion efficiency (ETA) and
     thrust coefficient (c_t) at which the ETA is at its maximum. A plot of `eta_over_eta_b`
@@ -171,7 +171,7 @@ def test_normalised_aircraft_performance_curves():
 
 
 @pytest.mark.parametrize("load_factor", [0.5, 0.6, 0.7, 0.8])
-def test_total_fuel_burn(load_factor: float):
+def test_total_fuel_burn(load_factor: float) -> None:
     """Check pinned total fuel burn values for different load factors."""
     df_flight = pd.read_csv(get_static_path("flight.csv"))
 
@@ -195,7 +195,8 @@ def test_total_fuel_burn(load_factor: float):
         assert out.attrs["total_fuel_burn"] == pytest.approx(5414.8, abs=0.1)
 
 
-def test_fuel_clipping():
+def test_fuel_clipping() -> None:
+    """Check the ps.correct_fuel_flow function."""
     ps_model = ps.PSModel()
     atyp_param = ps_model.aircraft_engine_params["A320"]
 
@@ -220,3 +221,28 @@ def test_fuel_clipping():
     assert np.all(
         (fuel_flow_corrected < atyp_param.ff_max_sls) & (fuel_flow_corrected >= min_fuel_flow)
     )
+
+
+def test_zero_tas_waypoints() -> None:
+    """Confirm the PSModel gracefully handles waypoints with zero true airspeed."""
+    df_flight = pd.read_csv(get_static_path("flight.csv"))
+    df_flight["longitude"].iat[48] = df_flight["longitude"].iat[47]
+    df_flight["latitude"].iat[48] = df_flight["latitude"].iat[47]
+
+    attrs = {"flight_id": "1", "aircraft_type": "A320"}
+    flight = Flight(df_flight.iloc[:100], attrs=attrs)
+
+    flight["air_temperature"] = m_to_T_isa(flight["altitude"])
+    flight["true_airspeed"] = flight.segment_groundspeed()
+    assert flight["true_airspeed"][47] == 0.0
+
+    # Aircraft performance model
+    ps_model = ps.PSModel()
+    out = ps_model.eval(flight)
+
+    # Confirm the PSModel sets NaN values for the zero TAS waypoint
+    keys = "fuel_flow", "engine_efficiency", "thrust"
+    for key in keys:
+        assert np.isnan(out[key][47])
+        assert np.all(np.isfinite(out[key][:47]))
+        assert np.all(np.isfinite(out[key][48:-1]))
