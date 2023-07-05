@@ -76,9 +76,10 @@ class PCR(Model):
         -------
         GeoVectorDataset | Flight | MetDataArray
             Returns 1 in potential contrail regions, 0 everywhere else.
-            Returns `np.nan` if interpolating outside meteorology grid.
+            Returns ``np.nan`` if interpolating outside meteorology grid.
         **params : Any
-            Overwrite model parameters before eval
+            Overwrite model parameters.
+
         Raises
         ------
         NotImplementedError

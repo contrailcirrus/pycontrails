@@ -82,7 +82,7 @@ class VectorDataDict(Dict[str, np.ndarray]):
         Keyword arguments, override values in ``data``
     """
 
-    __slots__ = "_size"
+    __slots__ = ("_size",)
 
     #: Length of the data
     _size: int
