@@ -13,6 +13,7 @@ import xarray as xr
 from overrides import overrides
 
 from pycontrails.core import met_var
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
@@ -20,7 +21,6 @@ from pycontrails.core.models import Model, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict
 from pycontrails.datalib import ecmwf, gfs
 from pycontrails.models import sac, tau_cirrus
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import (
     contrail_properties,
     radiative_forcing,
