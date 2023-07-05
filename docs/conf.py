@@ -198,12 +198,12 @@ myst_enable_extensions: list[str] = []
 
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-pygments_style
 # https://pygments.org/styles/
-# pygments_style = "monokai"
+pygments_style = "default"
+pygments_dark_style = "monokai"  # furo-specific
+
 
 # -- Options for HTML output -------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.
-# See the documentation for a list of builtin themes.
 # https://github.com/pradyunsg/furo
 html_theme = "furo"
 html_title = f"{project} v{release}"
@@ -235,8 +235,18 @@ html_theme_options = {
             "class": "",
         },
     ],
+    "light_css_variables": {
+        "color-brand-primary": "#0F6F8A",
+        "color-brand-content": "#0F6F8A",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#34C3EB",
+        "color-brand-content": "#34C3EB",
+    },
+    # Note these paths must be relative to `_static/`
+    "light_logo": "img/logo.png",
+    "dark_logo": "img/logo-dark.png",
 }
-
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.

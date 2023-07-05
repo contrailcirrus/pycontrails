@@ -31,6 +31,6 @@ pycontrails
    :caption: Links
 
    Github <https://github.com/contrailcirrus/pycontrails>
-   Contrails Map <https://map.contrails.org>
    Contrails API <https://api.contrails.org>
+   Contrails Map <https://map.contrails.org>
    Contrails Navigator <https://forecast.contrails.org>
