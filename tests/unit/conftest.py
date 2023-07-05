@@ -13,8 +13,8 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore, Flight, MetDataArray, MetDataset
 from pycontrails.core import cache, met, met_var
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.datalib.ecmwf import ERA5
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
 
 # find default cache dir for testing

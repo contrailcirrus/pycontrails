@@ -11,15 +11,15 @@ import numpy.typing as npt
 from overrides import overrides
 
 from pycontrails.core import flight
-from pycontrails.core.flight import Flight
-from pycontrails.core.met import MetDataset
-from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
-from pycontrails.models.aircraft_performance import (
+from pycontrails.core.aircraft_performance import (
     DEFAULT_LOAD_FACTOR,
     AircraftPerformance,
     AircraftPerformanceData,
     AircraftPerformanceParams,
 )
+from pycontrails.core.flight import Flight
+from pycontrails.core.met import MetDataset
+from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
 from pycontrails.models.ps_model.ps_aircraft_params import (
     PSAircraftEngineParams,
     get_aircraft_engine_params,

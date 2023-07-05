@@ -12,9 +12,9 @@ import pytest
 import xarray as xr
 
 from pycontrails import Flight, MetDataset
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.met import originates_from_ecmwf
 from pycontrails.models import humidity_scaling as hs
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import (
     Cocip,
     CocipFlightParams,

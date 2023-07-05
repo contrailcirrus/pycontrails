@@ -14,7 +14,7 @@ except ImportError:
     pytest.skip("CocipGrid not available", allow_module_level=True)
 
 from pycontrails import GeoVectorDataset, MetDataset
-from pycontrails.models.aircraft_performance import AircraftPerformance
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import Cocip
 from pycontrails.models.cocipgrid import cocip_grid as cg_module
 from pycontrails.models.humidity_scaling import ExponentialBoostHumidityScaling

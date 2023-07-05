@@ -1,4 +1,4 @@
-"""Abstract classes for aircraft performance models."""
+"""Abstract interfaces for aircraft performance models."""
 
 from __future__ import annotations
 
