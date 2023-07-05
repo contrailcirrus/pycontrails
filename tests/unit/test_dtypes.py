@@ -7,8 +7,8 @@ import pytest
 import xarray as xr
 
 from pycontrails import Flight, GeoVectorDataset, MetDataset
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.met import MetDataArray
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import Cocip
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 from pycontrails.models.issr import ISSR

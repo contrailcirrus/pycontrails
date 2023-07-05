@@ -10,8 +10,8 @@ import dataclasses
 import numpy as np
 import numpy.typing as npt
 
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.models import ModelParams
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.humidity_scaling import HumidityScaling
 
