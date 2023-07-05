@@ -53,8 +53,6 @@ class EmissionsParams(ModelParams):
 class Emissions(Model):
     """Emissions handling using ICAO Emissions Databank (EDB) and black carbon correlations.
 
-    See :mod:`pycontrails.models.emissions.black_carbon`
-
     Parameters
     ----------
     met : MetDataset | None, optional
@@ -70,6 +68,11 @@ class Emissions(Model):
     - :cite:`schumannDehydrationEffectsContrails2015`
     - :cite:`stettlerGlobalCivilAviation2013`
     - :cite:`wilkersonAnalysisEmissionData2010`
+
+    See Also
+    --------
+    :mod:`pycontrails.models.emissions.black_carbon`
+    :mod:`pycontrails.models.emissions.ffm2`
     """
 
     name = "emissions"
