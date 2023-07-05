@@ -108,7 +108,7 @@ class PSModel(AircraftPerformance):
         self.set_source_met()
 
         # Calculate true airspeed if not included on source
-        true_airspeed = self.ensure_true_airspeed_on_source()
+        true_airspeed = self.ensure_true_airspeed_on_source().copy()
         true_airspeed[true_airspeed == 0.0] = np.nan
 
         # Ensure aircraft type is available
