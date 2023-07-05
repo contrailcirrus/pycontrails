@@ -244,8 +244,8 @@ html_theme_options = {
         "color-brand-content": "#34C3EB",
     },
     # Note these paths must be relative to `_static/`
-    "light_logo": "img/logo.png",
-    "dark_logo": "img/logo-dark.png",
+    # "light_logo": "img/logo.png",
+    # "dark_logo": "img/logo-dark.png",
 }
 
 # The name of an image file (relative to this directory) to place at the top
