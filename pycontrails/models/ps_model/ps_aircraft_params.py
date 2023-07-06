@@ -9,6 +9,9 @@ from typing import Any, Mapping
 
 import pandas as pd
 
+#: Path to the Poll-Schumann aircraft parameters CSV file.
+PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20230517.csv"
+
 
 @dataclasses.dataclass(frozen=True)
 class PSAircraftEngineParams:
@@ -145,7 +148,7 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
 
 
 @functools.cache
-def get_aircraft_engine_params(ps_file_path: pathlib.Path) -> Mapping[str, PSAircraftEngineParams]:
+def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
     """Extract aircraft-engine parameters for each aircraft type supported by the PS model."""
     dtypes = {
         "ICAO": object,
@@ -185,6 +188,6 @@ def get_aircraft_engine_params(ps_file_path: pathlib.Path) -> Mapping[str, PSAir
         "bf_m": float,
     }
 
-    df = pd.read_csv(ps_file_path, dtype=dtypes)
+    df = pd.read_csv(PS_FILE_PATH, dtype=dtypes)
 
     return dict(_row_to_aircraft_engine_params(tup) for tup in df.itertuples(index=False))

@@ -22,7 +22,7 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
 from pycontrails.models.ps_model.ps_aircraft_params import (
     PSAircraftEngineParams,
-    get_aircraft_engine_params,
+    load_aircraft_engine_params,
 )
 from pycontrails.physics import constants, jet, units
 
@@ -30,11 +30,6 @@ from pycontrails.physics import constants, jet, units
 @dataclasses.dataclass
 class PSModelParams(AircraftPerformanceParams):
     """Default parameters for :class:`PSModel`."""
-
-    #: Default paths
-    data_path: str | pathlib.Path = (
-        pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20230517.csv"
-    )
 
     #: Clip the ratio of the overall propulsion efficiency to the maximum propulsion
     #: efficiency to always exceed this value.
@@ -69,7 +64,7 @@ class PSModel(AircraftPerformance):
         **params_kwargs: Any,
     ) -> None:
         super().__init__(met=met, params=params, **params_kwargs)
-        self.aircraft_engine_params = get_aircraft_engine_params(self.params["data_path"])
+        self.aircraft_engine_params = load_aircraft_engine_params()
 
     def check_aircraft_type_availability(
         self, aircraft_type: str, raise_error: bool = True
