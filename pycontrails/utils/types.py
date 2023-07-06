@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Callable, Type, TypeVar, Union
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
@@ -14,7 +15,7 @@ import xarray as xr
 ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray, Union[xr.DataArray, np.ndarray])
 
 #: Array or Float (np.ndarray, float)
-ArrayOrFloat = TypeVar("ArrayOrFloat", np.ndarray, float)
+ArrayOrFloat = TypeVar("ArrayOrFloat", npt.NDArray[np.float_], float)
 
 #: Array like input (np.ndarray, xr.DataArray, np.float64, float)
 ArrayScalarLike = TypeVar(
