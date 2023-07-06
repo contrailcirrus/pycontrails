@@ -379,7 +379,7 @@ def lift_coefficient(
     aircraft_mass: npt.NDArray[np.float_] | float,
     air_pressure: npt.NDArray[np.float_],
     mach_num: npt.NDArray[np.float_],
-    climb_angle: npt.NDArray[np.float_] | float = 0.0,
+    climb_angle: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_]:
     r"""Calculate the lift coefficient.
 
