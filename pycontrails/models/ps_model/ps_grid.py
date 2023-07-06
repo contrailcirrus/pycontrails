@@ -16,6 +16,7 @@ from pycontrails.utils.types import ArrayOrFloat
 
 # mypy: disable-error-code = type-var
 
+
 class PSGrid(AircraftPerformanceGrid):
     """Compute nominal Poll-Schumann aircraft performance over a grid."""
 
@@ -58,9 +59,7 @@ def _nominal_perf(
         thrust, mach_num, air_pressure, atyp_param.wing_surface_area
     )
 
-    engine_efficiency = ps_model.overall_propulsion_efficiency(
-        mach_num, c_t, atyp_param
-    )
+    engine_efficiency = ps_model.overall_propulsion_efficiency(mach_num, c_t, atyp_param)
 
     fuel_flow = ps_model.fuel_mass_flow_rate(
         air_pressure,
