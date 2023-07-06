@@ -5,7 +5,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import warnings
-from typing import Any, NoReturn, overload
+from typing import Any, Generic, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -16,6 +16,7 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.models import Model, ModelParams, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import jet
+from pycontrails.utils.types import ArrayOrFloat
 
 #: Default load factor for aircraft performance models.
 DEFAULT_LOAD_FACTOR = 0.7
@@ -476,3 +477,11 @@ class AircraftPerformanceData:
     thrust: npt.NDArray[np.float_]
     engine_efficiency: npt.NDArray[np.float_]
     rocd: npt.NDArray[np.float_]
+
+
+@dataclasses.dataclass
+class AircraftPerformanceGridData(Generic[ArrayOrFloat]):
+    """Store the computed aircraft performance metrics for nominal cruise conditions."""
+
+    fuel_flow: ArrayOrFloat
+    engine_efficiency: ArrayOrFloat
