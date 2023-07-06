@@ -28,6 +28,7 @@ from pycontrails.utils.types import ArrayOrFloat
 
 # mypy: disable-error-code = "type-var, arg-type"
 
+
 @dataclasses.dataclass
 class PSModelParams(AircraftPerformanceParams):
     """Default parameters for :class:`PSModel`."""
@@ -241,9 +242,7 @@ class PSModel(AircraftPerformance):
 
         # Engine parameters and fuel consumption
         if thrust is None:
-            thrust = thrust_force(
-                aircraft_mass, c_lift, c_drag, dv_dt, theta
-            )
+            thrust = thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, theta)
 
         c_t = engine_thrust_coefficient(
             thrust, mach_num, air_pressure, atyp_param.wing_surface_area
@@ -788,14 +787,10 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
         + 4.0 * sigma * 0.43 * (c_t_over_c_t_eta_b**3)
         - sigma * 0.43 * (c_t_over_c_t_eta_b**4)
     )
-    return np.where(
-        c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi
-    )
+    return np.where(c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
 
 
-def max_thrust_coefficient(
-    mach_num: ArrayOrFloat, m_des: float, c_t_des: float
-) -> ArrayOrFloat:
+def max_thrust_coefficient(mach_num: ArrayOrFloat, m_des: float, c_t_des: float) -> ArrayOrFloat:
     """
     Calculate thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
 
