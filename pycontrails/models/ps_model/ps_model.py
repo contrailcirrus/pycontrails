@@ -26,6 +26,7 @@ from pycontrails.models.ps_model.ps_aircraft_params import (
 from pycontrails.physics import constants, jet, units
 from pycontrails.utils.types import ArrayOrFloat
 
+# mypy: disable-error-code = "type-var, arg-type"
 
 @dataclasses.dataclass
 class PSModelParams(AircraftPerformanceParams):
@@ -227,20 +228,20 @@ class PSModel(AircraftPerformance):
             raise NotImplementedError("Only array inputs are supported")
 
         # Aircraft performance parameters
-        c_lift = lift_coefficient(  # type: ignore[type-var]
+        c_lift = lift_coefficient(
             atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_num, theta
         )
         c_f = skin_friction_coefficient(rn)
         c_drag_0 = zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
         e_ls = oswald_efficiency_factor(c_drag_0, atyp_param)
-        c_drag_w = wave_drag_coefficient(mach_num, c_lift, atyp_param)  # type: ignore[type-var]
-        c_drag = airframe_drag_coefficient(  # type: ignore[type-var]
+        c_drag_w = wave_drag_coefficient(mach_num, c_lift, atyp_param)
+        c_drag = airframe_drag_coefficient(
             c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio
         )
 
         # Engine parameters and fuel consumption
         if thrust is None:
-            thrust = thrust_force(  # type: ignore[type-var]
+            thrust = thrust_force(
                 aircraft_mass, c_lift, c_drag, dv_dt, theta
             )
 
@@ -676,35 +677,35 @@ def thrust_force(
 
 
 def engine_thrust_coefficient(
-    f_thrust: npt.NDArray[np.float_] | float,
-    mach_num: npt.NDArray[np.float_],
-    air_pressure: npt.NDArray[np.float_],
+    f_thrust: ArrayOrFloat,
+    mach_num: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
     wing_surface_area: float,
-) -> npt.NDArray[np.float_]:
+) -> ArrayOrFloat:
     """Calculate engine thrust coefficient.
 
     Parameters
     ----------
-    f_thrust : npt.NDArray[np.float_]
+    f_thrust : ArrayOrFloat
         Thrust force summed over all engines, [:math:`N`]
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint
-    air_pressure : npt.NDArray[np.float_]
+    air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    wing_surface_area : npt.NDArray[np.float_]
+    wing_surface_area : ArrayOrFloat
         Aircraft wing surface area, [:math:`m^2`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Engine thrust coefficient (c_t)
     """
     return f_thrust / (0.5 * constants.kappa * air_pressure * mach_num**2 * wing_surface_area)
 
 
 def overall_propulsion_efficiency(
-    mach_num: npt.NDArray[np.float_],
-    c_t: npt.NDArray[np.float_],
+    mach_num: ArrayOrFloat,
+    c_t: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
     eta_over_eta_b_min: float | None = None,
 ) -> npt.NDArray[np.float_]:
@@ -712,9 +713,9 @@ def overall_propulsion_efficiency(
 
     Parameters
     ----------
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint
-    c_t : npt.NDArray[np.float_]
+    c_t : ArrayOrFloat
         Engine thrust coefficient
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
@@ -740,8 +741,8 @@ def overall_propulsion_efficiency(
 
 
 def propulsion_efficiency_over_max_propulsion_efficiency(
-    mach_num: npt.NDArray[np.float_],
-    c_t: npt.NDArray[np.float_],
+    mach_num: ArrayOrFloat,
+    c_t: ArrayOrFloat,
     m_des: float,
     c_t_des: float,
 ) -> npt.NDArray[np.float_]:
@@ -749,9 +750,9 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
 
     Parameters
     ----------
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint.
-    c_t : npt.NDArray[np.float_]
+    c_t : ArrayOrFloat
         Engine thrust coefficient.
     m_des : float
         Design optimum Mach number where the fuel mass flow rate is at a minimum.
@@ -787,18 +788,20 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
         + 4.0 * sigma * 0.43 * (c_t_over_c_t_eta_b**3)
         - sigma * 0.43 * (c_t_over_c_t_eta_b**4)
     )
-    return np.where(c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
+    return np.where(
+        c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi
+    )
 
 
 def max_thrust_coefficient(
-    mach_num: npt.NDArray[np.float_], m_des: float, c_t_des: float
-) -> npt.NDArray[np.float_]:
+    mach_num: ArrayOrFloat, m_des: float, c_t_des: float
+) -> ArrayOrFloat:
     """
     Calculate thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
 
     Parameters
     ----------
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint.
     m_des: float
         Design optimum Mach number where the fuel mass flow rate is at a minimum.
@@ -807,7 +810,7 @@ def max_thrust_coefficient(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Thrust coefficient at maximum overall propulsion efficiency for a given
         Mach Number, ``(c_t)_eta_b``
     """
@@ -817,14 +820,14 @@ def max_thrust_coefficient(
 
 
 def max_overall_propulsion_efficiency(
-    mach_num: npt.NDArray[np.float_] | float, mach_num_des: float, eta_1: float, eta_2: float
-) -> npt.NDArray[np.float_]:
+    mach_num: ArrayOrFloat, mach_num_des: float, eta_1: float, eta_2: float
+) -> ArrayOrFloat:
     """
     Calculate maximum overall propulsion efficiency that can be achieved for a given Mach number.
 
     Parameters
     ----------
-    mach_num : npt.NDArray[np.float_] | float
+    mach_num : ArrayOrFloat
         Mach number at each waypoint
     mach_num_des : float
         Design optimum Mach number where the fuel mass flow rate is at a minimum.
@@ -835,7 +838,7 @@ def max_overall_propulsion_efficiency(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Maximum overall propulsion efficiency that can be achieved for a given Mach number
 
     References
@@ -899,27 +902,27 @@ def fuel_mass_flow_rate(
 
 
 def correct_fuel_flow(
-    fuel_flow: npt.NDArray[np.float_],
-    altitude_ft: npt.NDArray[np.float_],
-    air_temperature: npt.NDArray[np.float_],
-    air_pressure: npt.NDArray[np.float_],
-    mach_number: npt.NDArray[np.float_],
+    fuel_flow: ArrayOrFloat,
+    altitude_ft: ArrayOrFloat,
+    air_temperature: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
+    mach_number: ArrayOrFloat,
     fuel_flow_idle_sls: float,
     fuel_flow_max_sls: float,
-) -> npt.NDArray[np.float_]:
+) -> ArrayOrFloat:
     r"""Correct fuel mass flow rate to ensure that they are within operational limits.
 
     Parameters
     ----------
-    fuel_flow : npt.NDArray[np.float_]
+    fuel_flow : ArrayOrFloat
         Fuel mass flow rate, [:math:`kg s^{-1}`]
-    altitude_ft : npt.NDArray[np.float_]
+    altitude_ft : ArrayOrFloat
         Waypoint altitude, [:math: `ft`]
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : ArrayOrFloat
         Ambient temperature at each waypoint, [:math:`K`]
-    air_pressure : npt.NDArray[np.float_]
+    air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    mach_number : npt.NDArray[np.float_]
+    mach_number : ArrayOrFloat
         Mach number
     fuel_flow_idle_sls : float
         Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
@@ -928,7 +931,7 @@ def correct_fuel_flow(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Corrected fuel mass flow rate, [:math:`kg \ s^{-1}`]
     """
     min_fuel_flow = jet.minimum_fuel_flow_rate_at_cruise(fuel_flow_idle_sls, altitude_ft)
