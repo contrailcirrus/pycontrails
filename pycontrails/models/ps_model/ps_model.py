@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-import pathlib
 from typing import Any, Mapping
 
 import numpy as np
@@ -25,6 +24,7 @@ from pycontrails.models.ps_model.ps_aircraft_params import (
     load_aircraft_engine_params,
 )
 from pycontrails.physics import constants, jet, units
+from pycontrails.utils.types import ArrayOrFloat
 
 
 @dataclasses.dataclass
@@ -227,20 +227,22 @@ class PSModel(AircraftPerformance):
             raise NotImplementedError("Only array inputs are supported")
 
         # Aircraft performance parameters
-        c_lift = lift_coefficient(
+        c_lift = lift_coefficient(  # type: ignore[type-var]
             atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_num, theta
         )
         c_f = skin_friction_coefficient(rn)
         c_drag_0 = zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
         e_ls = oswald_efficiency_factor(c_drag_0, atyp_param)
-        c_drag_w = wave_drag_coefficient(mach_num, c_lift, atyp_param)
-        c_drag = airframe_drag_coefficient(
+        c_drag_w = wave_drag_coefficient(mach_num, c_lift, atyp_param)  # type: ignore[type-var]
+        c_drag = airframe_drag_coefficient(  # type: ignore[type-var]
             c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio
         )
 
         # Engine parameters and fuel consumption
         if thrust is None:
-            thrust = thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, theta)
+            thrust = thrust_force(  # type: ignore[type-var]
+                aircraft_mass, c_lift, c_drag, dv_dt, theta
+            )
 
         c_t = engine_thrust_coefficient(
             thrust, mach_num, air_pressure, atyp_param.wing_surface_area
@@ -307,10 +309,10 @@ class PSModel(AircraftPerformance):
 
 def reynolds_number(
     wing_surface_area: float,
-    mach_num: npt.NDArray[np.float_],
-    air_temperature: npt.NDArray[np.float_],
-    air_pressure: npt.NDArray[np.float_],
-) -> npt.NDArray[np.float_]:
+    mach_num: ArrayOrFloat,
+    air_temperature: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
+) -> ArrayOrFloat:
     """
     Calculate Reynolds number.
 
@@ -318,16 +320,16 @@ def reynolds_number(
     ----------
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : ArrayOrFloat
         Ambient temperature at each waypoint, [:math:`K`]
-    air_pressure: npt.NDArray[np.float_]
+    air_pressure: ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Reynolds number at each waypoint
 
     References
@@ -343,13 +345,13 @@ def reynolds_number(
     )
 
 
-def fluid_dynamic_viscosity(air_temperature: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+def fluid_dynamic_viscosity(air_temperature: ArrayOrFloat) -> ArrayOrFloat:
     """
     Calculate fluid dynamic viscosity.
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : ArrayOrFloat
         Ambient temperature at each waypoint, [:math:`K`]
 
     Returns
@@ -376,11 +378,11 @@ def fluid_dynamic_viscosity(air_temperature: npt.NDArray[np.float_]) -> npt.NDAr
 
 def lift_coefficient(
     wing_surface_area: float,
-    aircraft_mass: npt.NDArray[np.float_] | float,
-    air_pressure: npt.NDArray[np.float_],
-    mach_num: npt.NDArray[np.float_],
-    climb_angle: npt.NDArray[np.float_] | float,
-) -> npt.NDArray[np.float_]:
+    aircraft_mass: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
+    mach_num: ArrayOrFloat,
+    climb_angle: ArrayOrFloat,
+) -> ArrayOrFloat:
     r"""Calculate the lift coefficient.
 
     This quantity is a dimensionless coefficient that relates the lift generated
@@ -391,18 +393,18 @@ def lift_coefficient(
     ----------
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
-    aircraft_mass : npt.NDArray[np.float_] | float
+    aircraft_mass : ArrayOrFloat
         Aircraft mass, [:math:`kg`]
-    air_pressure: npt.NDArray[np.float_]
+    air_pressure: ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint
-    climb_angle : npt.NDArray[np.float_] | None
+    climb_angle : ArrayOrFloat
         Angle between the horizontal plane and the actual flight path, [:math:`\deg`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Lift coefficient
 
     Notes
@@ -419,17 +421,17 @@ def lift_coefficient(
     return lift_force / denom
 
 
-def skin_friction_coefficient(rn: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+def skin_friction_coefficient(rn: ArrayOrFloat) -> ArrayOrFloat:
     """Calculate aircraft skin friction coefficient.
 
     Parameters
     ----------
-    rn: npt.NDArray[np.float_]
+    rn: ArrayOrFloat
         Reynolds number
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Skin friction coefficient.
 
     Notes
@@ -446,19 +448,19 @@ def skin_friction_coefficient(rn: npt.NDArray[np.float_]) -> npt.NDArray[np.floa
     return 0.0269 / (rn**0.14)
 
 
-def zero_lift_drag_coefficient(c_f: npt.NDArray[np.float_], psi_0: float) -> npt.NDArray[np.float_]:
+def zero_lift_drag_coefficient(c_f: ArrayOrFloat, psi_0: float) -> ArrayOrFloat:
     """Calculate zero-lift drag coefficient.
 
     Parameters
     ----------
-    c_f : npt.NDArray[np.float_]
+    c_f : ArrayOrFloat
         Skin friction coefficient
     psi_0 : float
         Aircraft geometry drag parameter
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Zero-lift drag coefficient (c_d_0)
 
     References
@@ -469,8 +471,8 @@ def zero_lift_drag_coefficient(c_f: npt.NDArray[np.float_], psi_0: float) -> npt
 
 
 def oswald_efficiency_factor(
-    c_drag_0: npt.NDArray[np.float_], atyp_param: PSAircraftEngineParams
-) -> npt.NDArray[np.float_]:
+    c_drag_0: ArrayOrFloat, atyp_param: PSAircraftEngineParams
+) -> ArrayOrFloat:
     """Calculate Oswald efficiency factor.
 
     The Oswald efficiency factor captures all the lift-dependent drag effects, including
@@ -479,14 +481,14 @@ def oswald_efficiency_factor(
 
     Parameters
     ----------
-    c_drag_0 : npt.NDArray[np.float_]
+    c_drag_0 : ArrayOrFloat
         Zero-lift drag coefficient.
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Oswald efficiency factor (e_ls)
 
     References
@@ -500,20 +502,20 @@ def oswald_efficiency_factor(
 
 
 def _non_vortex_lift_dependent_drag_factor(
-    c_drag_0: npt.NDArray[np.float_], cos_sweep: float
-) -> npt.NDArray[np.float_]:
+    c_drag_0: ArrayOrFloat, cos_sweep: float
+) -> ArrayOrFloat:
     """Calculate non-vortex lift-dependent drag factor.
 
     Parameters
     ----------
-    c_drag_0 : npt.NDArray[np.float_]
+    c_drag_0 : ArrayOrFloat
         Zero-lift drag coefficient
     cos_sweep : float
         Cosine of wing sweep angle measured at the 1/4 chord line
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Miscellaneous lift-dependent drag factor (k_1)
 
     References
@@ -524,24 +526,24 @@ def _non_vortex_lift_dependent_drag_factor(
 
 
 def wave_drag_coefficient(
-    mach_num: npt.NDArray[np.float_],
-    c_lift: npt.NDArray[np.float_],
+    mach_num: ArrayOrFloat,
+    c_lift: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
-) -> npt.NDArray[np.float_]:
+) -> ArrayOrFloat:
     """Calculate wave drag coefficient.
 
     Parameters
     ----------
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint
-    c_lift : npt.NDArray[np.float_]
+    c_lift : ArrayOrFloat
         Zero-lift drag coefficient
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Wave drag coefficient (c_d_w)
 
     Notes
@@ -559,36 +561,36 @@ def wave_drag_coefficient(
         atyp_param.cos_sweep**3 * atyp_param.j_1 * (x - atyp_param.j_2) ** 2,
     )
 
-    return np.where(
+    return np.where(  # type: ignore[return-value]
         x < atyp_param.x_ref, c_d_w, c_d_w + atyp_param.j_3 * (x - atyp_param.x_ref) ** 4
     )
 
 
 def airframe_drag_coefficient(
-    c_drag_0: npt.NDArray[np.float_],
-    c_drag_w: npt.NDArray[np.float_],
-    c_lift: npt.NDArray[np.float_],
-    e_ls: npt.NDArray[np.float_],
+    c_drag_0: ArrayOrFloat,
+    c_drag_w: ArrayOrFloat,
+    c_lift: ArrayOrFloat,
+    e_ls: ArrayOrFloat,
     wing_aspect_ratio: float,
-) -> npt.NDArray[np.float_]:
+) -> ArrayOrFloat:
     """Calculate total airframe drag coefficient.
 
     Parameters
     ----------
-    c_drag_0 : npt.NDArray[np.float_]
+    c_drag_0 : ArrayOrFloat
         Zero-lift drag coefficient
-    c_drag_w : npt.NDArray[np.float_]
+    c_drag_w : ArrayOrFloat
         Wave drag coefficient
-    c_lift : npt.NDArray[np.float_]
+    c_lift : ArrayOrFloat
         Lift coefficient
-    e_ls : npt.NDArray[np.float_]
+    e_ls : ArrayOrFloat
         Oswald efficiency factor
     wing_aspect_ratio : float
         Wing aspect ratio
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Total airframe drag coefficient
 
     References
@@ -600,20 +602,20 @@ def airframe_drag_coefficient(
 
 
 def _low_speed_lift_dependent_drag_factor(
-    e_ls: npt.NDArray[np.float_], wing_aspect_ratio: float
-) -> npt.NDArray[np.float_]:
+    e_ls: ArrayOrFloat, wing_aspect_ratio: float
+) -> ArrayOrFloat:
     """Calculate low-speed lift-dependent drag factor.
 
     Parameters
     ----------
-    e_ls : npt.NDArray[np.float_]
+    e_ls : ArrayOrFloat
         Oswald efficiency factor
     wing_aspect_ratio : float
         Wing aspect ratio
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Low-speed lift-dependent drag factor, K term used to calculate the total
         airframe drag coefficient.
     """
@@ -626,30 +628,30 @@ def _low_speed_lift_dependent_drag_factor(
 
 
 def thrust_force(
-    aircraft_mass: npt.NDArray[np.float_] | float,
-    c_l: npt.NDArray[np.float_],
-    c_d: npt.NDArray[np.float_],
-    dv_dt: npt.NDArray[np.float_] | float,
-    theta: npt.NDArray[np.float_] | float,
-) -> npt.NDArray[np.float_]:
+    aircraft_mass: ArrayOrFloat,
+    c_l: ArrayOrFloat,
+    c_d: ArrayOrFloat,
+    dv_dt: ArrayOrFloat,
+    theta: ArrayOrFloat,
+) -> ArrayOrFloat:
     r"""Calculate thrust force summed over all engines.
 
     Parameters
     ----------
-    aircraft_mass : npt.NDArray[np.float_] | float
+    aircraft_mass : ArrayOrFloat
         Aircraft mass at each waypoint, [:math:`kg`]
-    c_l : npt.NDArray[np.float_]
+    c_l : ArrayOrFloat
         Lift coefficient
-    c_d : npt.NDArray[np.float_]
+    c_d : ArrayOrFloat
         Total airframe drag coefficient
-    dv_dt : npt.NDArray[np.float_] | float
+    dv_dt : ArrayOrFloat
         Acceleration/deceleration at each waypoint, [:math:`m \ s^{-2}`]
-    theta : npt.NDArray[np.float_] | float
+    theta : ArrayOrFloat
         Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Thrust force summed over all engines, [:math:`N`]
 
     Notes
@@ -854,27 +856,27 @@ def max_overall_propulsion_efficiency(
 
 
 def fuel_mass_flow_rate(
-    air_pressure: npt.NDArray[np.float_],
-    air_temperature: npt.NDArray[np.float_],
-    mach_num: npt.NDArray[np.float_],
-    c_t: npt.NDArray[np.float_],
-    eta: npt.NDArray[np.float_] | float,
+    air_pressure: ArrayOrFloat,
+    air_temperature: ArrayOrFloat,
+    mach_num: ArrayOrFloat,
+    c_t: ArrayOrFloat,
+    eta: ArrayOrFloat | float,
     wing_surface_area: float,
     q_fuel: float,
-) -> npt.NDArray[np.float_]:
+) -> ArrayOrFloat:
     r"""Calculate fuel mass flow rate.
 
     Parameters
     ----------
-    air_pressure : npt.NDArray[np.float_]
+    air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : ArrayOrFloat
         Ambient temperature at each waypoint, [:math:`K`]
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number at each waypoint
-    c_t : npt.NDArray[np.float_]
+    c_t : ArrayOrFloat
         Engine thrust coefficient
-    eta : npt.NDArray[np.float_]
+    eta : ArrayOrFloat
         Overall propulsion efficiency
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
@@ -883,7 +885,7 @@ def fuel_mass_flow_rate(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Fuel mass flow rate, [:math:`kg s^{-1}`]
     """
     return (
