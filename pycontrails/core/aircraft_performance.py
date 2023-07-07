@@ -10,7 +10,7 @@ from typing import Any, Generic, NoReturn, overload
 import numpy as np
 import numpy.typing as npt
 
-from pycontrails.core import flight
+from pycontrails.core import flight, fuel
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.models import Model, ModelParams, interpolate_met
@@ -20,6 +20,11 @@ from pycontrails.utils.types import ArrayOrFloat
 
 #: Default load factor for aircraft performance models.
 DEFAULT_LOAD_FACTOR = 0.7
+
+
+# --------------------------------------
+# Trajectory aircraft performance models
+# --------------------------------------
 
 
 @dataclasses.dataclass
@@ -68,8 +73,38 @@ class AircraftPerformance(Model):
         ...
 
     @abc.abstractmethod
-    def eval(self, source: Flight | None = None, **params: Any) -> Any:
-        """Evaluate the aircraft performance model."""
+    def eval(self, source: Flight | None = None, **params: Any) -> Flight:
+        """Evaluate the aircraft performance model.
+
+        The implementing model adds the following fields to the source flight:
+
+        - ``aircraft_mass``: aircraft mass at each waypoint, [:math:`kg`]
+        - ``fuel_flow``: fuel mass flow rate at each waypoint, [:math:`kg s^{-1}`]
+        - ``thrust``: thrust at each waypoint, [:math:`N`]
+        - ``engine_efficiency``: engine efficiency at each waypoint
+        - ``rocd``: rate of climb or descent at each waypoint, [:math:`ft min^{-1}`]
+        - ``fuel_burn``: fuel burn at each waypoint, [:math:`kg`]
+
+        In addition, the following attributes are added to the source flight:
+
+        - ``n_engine``: number of engines
+        - ``wingspan``: wingspan, [:math:`m`]
+        - ``max_mach``: maximum Mach number
+        - ``max_altitude``: maximum altitude, [:math:`m`]
+        - ``total_fuel_burn``: total fuel burn, [:math:`kg`]
+
+        Parameters
+        ----------
+        source : Flight
+            Flight trajectory to evaluate.
+        params : Any
+            Override :attr:`params` with keyword arguments.
+
+        Returns
+        -------
+        Flight
+            Flight trajectory with aircraft performance data.
+        """
 
     def simulate_fuel_and_performance(
         self,
@@ -425,28 +460,6 @@ class AircraftPerformance(Model):
         return out
 
 
-class AircraftPerformanceGrid(Model):
-    """
-    Support for standardizing aircraft performance methodologies on a grid.
-
-    Currently just a container until additional models are implemented.
-    """
-
-    @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
-
-    @overload
-    def eval(self, source: MetDataset | None = None, **params: Any) -> MetDataset:
-        ...
-
-    @abc.abstractmethod
-    def eval(
-        self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
-    ) -> GeoVectorDataset | MetDataset:
-        """Evaluate the aircraft performance model."""
-
-
 @dataclasses.dataclass
 class AircraftPerformanceData:
     """Store the computed aircraft performance metrics.
@@ -477,6 +490,55 @@ class AircraftPerformanceData:
     thrust: npt.NDArray[np.float_]
     engine_efficiency: npt.NDArray[np.float_]
     rocd: npt.NDArray[np.float_]
+
+
+# --------------------------------
+# Grid aircraft performance models
+# --------------------------------
+
+
+@dataclasses.dataclass
+class AircraftPerformanceGridParams(ModelParams):
+    """Parameters for :class:`AircraftPerformanceGrid`."""
+
+    #: Fuel type
+    fuel: fuel.Fuel = dataclasses.field(default_factory=fuel.JetA)
+
+    #: ICAO code designating simulated aircraft type.
+    #: Can be overridden by including ``aircraft_type`` attribute in source data
+    aircraft_type: str = "B737"
+
+    #: Mach number, [:math:`Ma`]
+    #: If ``None``, a nominal cruise value is determined by the implementation.
+    #: Can be overridden by including a ``mach_number`` key in source data
+    mach_number: float | None = None
+
+    #: Aircraft mass, [:math:`kg`]
+    #: If ``None``, a nominal value is determined by the implementation.
+    #: Can be overridden by including an ``aircraft_mass`` key in source data
+    aircraft_mass: float | None = None
+
+
+class AircraftPerformanceGrid(Model):
+    """
+    Support for standardizing aircraft performance methodologies on a grid.
+
+    Currently just a container until additional models are implemented.
+    """
+
+    @overload
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
+        ...
+
+    @overload
+    def eval(self, source: MetDataset | None = None, **params: Any) -> MetDataset:
+        ...
+
+    @abc.abstractmethod
+    def eval(
+        self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
+    ) -> GeoVectorDataset | MetDataset:
+        """Evaluate the aircraft performance model."""
 
 
 @dataclasses.dataclass
