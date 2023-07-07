@@ -596,17 +596,20 @@ class Cocip(Model):
         """
         logger.debug("Processing flight emissions")
 
-        # currently only one emissions model
-        emissions = Emissions(copy_source=False)
+        # Call Emissions and the aircraft performance model as needed
+        # NOTE: None of these sub-model actually do any interpolation -- self.source already has
+        # all of the required met variables attached. Therefore, we don't need to worry about
+        # being consistent with passing in Cocip's interp_kwargs and humidity_scaling into
+        # the sub-models.
+        emissions = Emissions()
+        ap_model = self.params["aircraft_performance"]
 
         # Run against a list of flights (Fleet)
         if isinstance(self.source, Fleet):
             # Rip the Fleet apart, run BADA on each, then reassemble
             logger.debug("Separately running aircraft performance on each flight in fleet")
             fls = self.source.to_flight_list(copy=False)
-            fls = [
-                _eval_aircraft_performance(self.params["aircraft_performance"], fl) for fl in fls
-            ]
+            fls = [_eval_aircraft_performance(ap_model, fl) for fl in fls]
 
             # In Fleet-mode, always call emissions
             logger.debug("Separately running emissions on each flight in fleet")
@@ -624,9 +627,7 @@ class Cocip(Model):
 
         # Single flight
         else:
-            self.source = _eval_aircraft_performance(
-                self.params["aircraft_performance"], self.source
-            )
+            self.source = _eval_aircraft_performance(ap_model, self.source)
             self.source = _eval_emissions(emissions, self.source)
 
         # Scale nvPM with parameter (fleet / flight)
