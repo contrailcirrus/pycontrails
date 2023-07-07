@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Mapping
+from typing import Any, Mapping, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -96,8 +96,16 @@ class PSModel(AircraftPerformance):
             raise KeyError(f"Aircraft type {aircraft_type} not covered by the PS model.")
         return False
 
+    @overload
+    def eval(self, source: Flight, **params: Any) -> Flight:
+        ...
+
+    @overload
+    def eval(self, source: None = None, **params: Any) -> NoReturn:
+        ...
+
     @overrides
-    def eval(self, source: Flight | None = None, **params: Any) -> Any:
+    def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         self.update_params(params)
         self.set_source(source)
         self.source = self.require_source_type(Flight)
