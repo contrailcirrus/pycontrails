@@ -27,16 +27,14 @@ from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, jet, units
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
+EDB_ENGINE_PATH = _path_to_static / "edb-gaseous-v28c-engines.csv"
+EDB_NVPM_PATH = _path_to_static / "edb-nvpm-v28c-engines.csv"
+ENGINE_UID_PATH = _path_to_static / "default-engine-uids.csv"
 
 
 @dataclasses.dataclass
 class EmissionsParams(ModelParams):
     """:class:`Emissions` model parameters."""
-
-    #: Default paths
-    edb_engine_path: str | pathlib.Path = _path_to_static / "edb-gaseous-v28c-engines.csv"
-    edb_nvpm_path: str | pathlib.Path = _path_to_static / "edb-nvpm-v28c-engines.csv"
-    engine_uid_path: str | pathlib.Path = _path_to_static / "default-engine-uids.csv"
 
     #: Default nvpm_ei_n value if engine UID is not found
     default_nvpm_ei_n: float = 1e15
@@ -90,9 +88,9 @@ class Emissions(Model):
     ) -> None:
         super().__init__(met, params, **params_kwargs)
 
-        self.edb_engine_gaseous = get_engine_params_from_edb(self.params["edb_engine_path"])
-        self.edb_engine_nvpm = get_engine_nvpm_profile_from_edb(self.params["edb_nvpm_path"])
-        self.default_engines = get_default_aircraft_engine_mapping(self.params["engine_uid_path"])
+        self.edb_engine_gaseous = load_engine_params_from_edb()
+        self.edb_engine_nvpm = load_engine_nvpm_profile_from_edb()
+        self.default_engines = load_default_aircraft_engine_mapping()
 
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight:
@@ -1240,13 +1238,8 @@ def _nvpm_emissions_profiles(
 
 
 @functools.cache
-def get_engine_params_from_edb(filepath: str | pathlib.Path) -> dict[str, EDBGaseous]:
+def load_engine_params_from_edb() -> dict[str, EDBGaseous]:
     """Read EDB file into a dictionary of the form ``{engine_uid: gaseous_data}``.
-
-    Parameters
-    ----------
-    filepath : str | pathlib.Path
-        Path to EDB csv.
 
     Returns
     -------
@@ -1285,20 +1278,15 @@ def get_engine_params_from_edb(filepath: str | pathlib.Path) -> dict[str, EDBGas
         "SN Max": "sn_max",
     }
 
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(EDB_ENGINE_PATH)
     df = df.rename(columns=columns)
 
     return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
 
 @functools.cache
-def get_engine_nvpm_profile_from_edb(filepath: str | pathlib.Path) -> dict[str, EDBnvpm]:
+def load_engine_nvpm_profile_from_edb() -> dict[str, EDBnvpm]:
     """Read EDB file into a dictionary of the form ``{engine_uid: npvm_data}``.
-
-    Parameters
-    ----------
-    filepath : str | pathlib.Path
-        Path to EDB csv.
 
     Returns
     -------
@@ -1328,20 +1316,15 @@ def get_engine_nvpm_profile_from_edb(filepath: str | pathlib.Path) -> dict[str, 
         "nvPM EInum_SL T/O (#/kg)": "nvpm_ei_n_100",
     }
 
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(EDB_NVPM_PATH)
     df = df.rename(columns=columns)
 
     return dict(_row_to_edb_nvpm(tup) for tup in df.itertuples(index=False))
 
 
 @functools.cache
-def get_default_aircraft_engine_mapping(filepath: str | pathlib.Path) -> pd.DataFrame:
+def load_default_aircraft_engine_mapping() -> pd.DataFrame:
     """Read default aircraft type -> engine UID assignments.
-
-    Parameters
-    ----------
-    filepath : str | pathlib.Path
-        Path to default mapping.
 
     Returns
     -------
@@ -1352,4 +1335,4 @@ def get_default_aircraft_engine_mapping(filepath: str | pathlib.Path) -> pd.Data
         - engine_name
         - n-engines
     """
-    return pd.read_csv(filepath, index_col=0)
+    return pd.read_csv(ENGINE_UID_PATH, index_col=0)
