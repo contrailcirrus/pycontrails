@@ -842,12 +842,12 @@ class VectorDataset:
         """
         return type(self)(data=self.dataframe.sort_values(by=by), attrs=self.attrs)
 
-    def ensure_vars(self, vars: str | Sequence[str], raise_error: bool = True) -> bool:
+    def ensure_vars(self, vars: str | Iterable[str], raise_error: bool = True) -> bool:
         """Ensure variables exist in column of :attr:`data` or :attr:`attrs`.
 
         Parameters
         ----------
-        vars : str | Sequence[str]
+        vars : str | Iterable[str]
             A single string variable name or a sequence of string variable names.
         raise_error : bool, optional
             Raise KeyError if data does not contain variables.
