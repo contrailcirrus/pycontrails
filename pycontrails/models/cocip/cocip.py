@@ -946,6 +946,11 @@ class Cocip(Model):
         # Intersect with rad dataset
         calc_radiative_properties(self._downwash_contrail, self.params)
 
+        contrail_contrail_overlapping = self.params["contrail_contrail_overlapping"]
+        if contrail_contrail_overlapping:
+            if not isinstance(self.source, Fleet):
+                warnings.warn("Contrail-Contrail Overlapping is only valid for Fleet mode.")
+
         # Complete iteration at time_idx - 2
         for time_idx, time_end in enumerate(self.timesteps[:-1]):
             logger.debug("Start time integration step %s ending at time %s", time_idx, time_end)
@@ -1028,6 +1033,10 @@ class Cocip(Model):
                 params=self.params,
                 **interp_kwargs,
             )
+
+            if contrail_contrail_overlapping:
+                final_contrail = _contrail_contrail_overlapping(final_contrail, self.params)
+
             self.contrail_list.append(final_contrail)
 
     def _create_downwash_contrail(self) -> GeoVectorDataset:
@@ -2242,3 +2251,29 @@ def calc_timestep_contrail_evolution(
         final_contrail["ef"][~continuous] = 0
         final_contrail["age"][~continuous] = np.timedelta64(0, "ns")
     return final_contrail
+
+
+def _contrail_contrail_overlapping(
+    contrail: GeoVectorDataset, params: dict[str, Any]
+) -> GeoVectorDataset:
+    """Mutate ``contrail`` to account for contrail-contrail overlapping effects."""
+
+    tmp = radiative_forcing.contrail_contrail_overlap_radiative_effects(
+        contrail,
+        habit_distributions=params["habit_distributions"],
+        radius_threshold_um=params["radius_threshold_um"],
+        min_altitude_m=params["min_altitude_m"],
+        max_altitude_m=params["max_altitude_m"],
+        dz_overlap_m=params["dz_overlap_m"],
+    )
+
+    contrail.update(
+        rsr=tmp["rsr_overlap"],
+        olr=tmp["olr_overlap"],
+        tau_cirrus=tmp["tau_cirrus_overlap"],
+        rf_sw=tmp["rf_sw_overlap"],
+        rf_lw=tmp["rf_lw_overlap"],
+        rf_net=tmp["rf_net_overlap"],
+    )
+
+    return contrail

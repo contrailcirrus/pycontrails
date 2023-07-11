@@ -181,6 +181,7 @@ class CocipParams(ModelParams):
     #: Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
     #: due to contrail-contrail overlapping.
+    #: .. versionadded:: 0.45
     contrail_contrail_overlapping: bool = False
 
     #: Contrail-contrail overlapping altitude interval
