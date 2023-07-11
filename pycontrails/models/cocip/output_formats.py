@@ -25,7 +25,8 @@ import numpy.typing as npt
 
 from tqdm import tqdm
 from pycontrails.physics import geo
-from pycontrails import MetDataArray, MetDataset, GeoVectorDataset
+from pycontrails.core.met import MetDataset, MetDataArray
+from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.core.vector import vector_to_lon_lat_grid
 from pycontrails.physics import units
 from pycontrails.physics.thermo import rho_d
@@ -33,8 +34,6 @@ from pycontrails.models.cocip.contrail_properties import plume_mass_per_distance
 from pycontrails.models.cocip.radiative_forcing import albedo
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.tau_cirrus import tau_cirrus
-
-# TODO: @Zeb would it be able to make Flight automatically attach `segment_length` in dataframe?
 
 
 # -----------------------
@@ -111,7 +110,7 @@ def flight_waypoint_outputs(
     # Check and pre-process `contrails`
     contrail_vars = (
             ["flight_id", "waypoint", "formation_time"]
-            + list(agg_map_contrails_to_flight_waypoints.keys())
+            + list(agg_map_contrails_to_flight_waypoints)
     )
     contrail_vars.remove("age")
     contrails.ensure_vars(contrail_vars)
@@ -215,14 +214,14 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
     flight_waypoints.ensure_vars(vars_required)
 
     flight_waypoints['contrail_length'] = np.where(
-        flight_waypoints["sac"] == 1,
+        flight_waypoints["sac"] == 1.0,
         flight_waypoints['segment_length'],
-        0
+        0.0
     )
 
     flight_waypoints['persistent_contrail_length'] = np.where(
         np.isnan(flight_waypoints["ef"]),
-        0,
+        0.0,
         flight_waypoints["segment_length"]
     )
 
@@ -273,7 +272,7 @@ def longitude_latitude_grid(
         flight_waypoints: GeoVectorDataset,
         contrails: GeoVectorDataset, *,
         met: MetDataset,
-        spatial_bbox: list[float] = [-180, -90, 180, 90],
+        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
         spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
     """
@@ -293,8 +292,8 @@ def longitude_latitude_grid(
     met : MetDataset
         Pressure level dataset containing 'air_temperature', 'specific_humidity',
         'specific_cloud_ice_water_content', and 'geopotential'.
-    spatial_bbox : list[float]
-        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_bbox : tuple[float, float, float, float]
+        Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -331,7 +330,7 @@ def longitude_latitude_grid(
 
     # Ensure that `flight_waypoints` and `contrails` are within `t_start` and `t_end`
     is_in_time = flight_waypoints.dataframe["time"].between(t_start, t_end, inclusive="right")
-    if ~np.all(is_in_time):
+    if not np.all(is_in_time):
         warnings.warn(
             "Flight waypoints have times that are outside the range of `t_start` and `t_end`. "
             "Waypoints outside the defined time bounds are removed. "
@@ -339,7 +338,8 @@ def longitude_latitude_grid(
         flight_waypoints = flight_waypoints.filter(is_in_time)
 
     is_in_time = contrails.dataframe["time"].between(t_start, t_end, inclusive="right")
-    if ~np.all(is_in_time):
+
+    if not np.all(is_in_time):
         warnings.warn(
             "Contrail waypoints have times that are outside the range of `t_start` and `t_end`."
             "Waypoints outside the defined time bounds are removed. "
@@ -347,14 +347,13 @@ def longitude_latitude_grid(
         contrails = contrails.filter(is_in_time)
 
     # Calculate additional variables
-    dt_integration_sec = np.diff(np.unique(contrails["time"]))[0] / np.timedelta64(1, 's')
+    t_slices = np.unique(contrails["time"])
+    dt_integration_sec = (t_slices[1] - t_slices[0]) / np.timedelta64(1, 's')
 
     da_area = geo.grid_surface_area(met["longitude"].values, met["latitude"].values)
 
     flight_waypoints["persistent_contrails"] = np.where(
-        np.isnan(flight_waypoints["ef"]),
-        0,
-        flight_waypoints["segment_length"]
+        np.isnan(flight_waypoints["ef"]), 0.0, flight_waypoints["segment_length"]
     )
 
     # ----------------
@@ -397,13 +396,13 @@ def longitude_latitude_grid(
 
     # (4) Contrail climate forcing between `t_start` and `t_end`
     contrails["ef_sw"] = np.where(
-        contrails["ef"] == 0,
-        0,
+        contrails["ef"] == 0.0,
+        0.0,
         contrails["rf_sw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec
     )
     contrails["ef_lw"] = np.where(
-        contrails["ef"] == 0,
-        0,
+        contrails["ef"] == 0.0,
+        0.0,
         contrails["rf_lw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec
     )
 
@@ -422,58 +421,101 @@ def longitude_latitude_grid(
     # -----------------------
     ds = xr.Dataset(
         data_vars=dict(
-            flight_distance_flown=ds_wypts_t["segment_length"] / 1000,
-            persistent_contrails_formed=ds_wypts_t["persistent_contrails"] / 1000,
-            persistent_contrails=ds_contrails_t_end["segment_length"] / 1000,
+            flight_distance_flown=ds_wypts_t["segment_length"] / 1000.0,
+            persistent_contrails_formed=ds_wypts_t["persistent_contrails"] / 1000.0,
+            persistent_contrails=ds_contrails_t_end["segment_length"] / 1000.0,
             tau_contrail=ds_contrails_t_end["tau_contrail"],
             contrail_age=ds_contrails_t_end["age"],
             cc_natural_cirrus=ds_cirrus_coverage["natural_cirrus"],
             cc_contrails=ds_cirrus_coverage["contrails"],
             cc_contrails_clear_sky=ds_cirrus_coverage["contrails_clear_sky"],
-            rf_sw=ds_forcing["rf_sw"] * 1000,
-            rf_lw=ds_forcing["rf_lw"] * 1000,
-            rf_net=ds_forcing["rf_net"] * 1000,
+            rf_sw=ds_forcing["rf_sw"] * 1000.0,
+            rf_lw=ds_forcing["rf_lw"] * 1000.0,
+            rf_net=ds_forcing["rf_net"] * 1000.0,
             ef=ds_forcing["ef"],
             ef_initial_loc=ds_wypts_t["ef"],
         ),
         coords=ds_wypts_t.coords
     )
-    ds = ds.fillna(0)
+    ds = ds.fillna(0.0)
     ds = ds.expand_dims({"time": np.array([t_end])})
 
     # Assign attributes
-    ds["flight_distance_flown"].attrs = {
-        "units": "km", "long_name": f"Total flight distance flown between t_start and t_end"
-    }
-    ds["persistent_contrails_formed"].attrs = {
-        "units": "km", "long_name": "Persistent contrails formed between t_start and t_end"
-    }
-    ds["persistent_contrails"].attrs = {
-        "units": "km", "long_name": "Persistent contrails at t_end"}
-    ds["tau_contrail"].attrs = {
-        "units": " ", "long_name": "Area-normalised mean contrail optical depth at t_end"
-    }
-    ds["contrail_age"].attrs = {"units": "h", "long_name": "Mean contrail age at t_end"}
-    ds["cc_natural_cirrus"].attrs = {"units": " ", "long_name": "Natural cirrus cover at t_end"}
-    ds["cc_contrails"].attrs = {"units": " ", "long_name": "Contrail cirrus cover at t_end"}
-    ds["cc_contrails_clear_sky"].attrs = {
-        "units": " ", "long_name": "Contrail cirrus cover under clear sky conditions at t_end"
-    }
-    ds["rf_sw"].attrs = {
-        "units": "mW/m**2", "long_name": "Mean contrail cirrus shortwave radiative forcing at t_end"
-    }
-    ds["rf_lw"].attrs = {
-        "units": "mW/m**2", "long_name": "Mean contrail cirrus longwave radiative forcing at t_end"
-    }
-    ds["rf_net"].attrs = {
-        "units": "mW/m**2", "long_name": "Mean contrail cirrus net radiative forcing at t_end"}
-    ds["ef"].attrs = {
-        "units": "J", "long_name": "Total contrail energy forcing between t_start and t_end"}
-    ds["ef_initial_loc"].attrs = {
-        "units": "J",
-        "long_name": "Total contrail energy forcing attributed back to the flight waypoint."
-    }
+    attrs = _create_attributes()
+
+    for name in ds.data_vars:
+        ds[name].attrs = attrs[name]
+
     return ds
+
+
+def _create_attributes() -> dict[str, dict[str, str]]:
+    return {
+        "flight_distance_flown": {
+            "long_name": "Total flight distance flown between t_start and t_end",
+            "units": "km",
+        },
+        "persistent_contrails_formed": {
+            "long_name": "Persistent contrails formed between t_start and t_end",
+            "units": "km",
+        },
+        "persistent_contrails": {
+            "long_name": "Persistent contrails at t_end",
+            "units": "km",
+        },
+        "tau_contrail": {
+            "long_name": "Area-normalised mean contrail optical depth at t_end",
+            "units": " ",
+        },
+        "contrail_age": {
+            "long_name": "Mean contrail age at t_end",
+            "units": "h",
+        },
+        "cc_natural_cirrus": {
+            "long_name": "Natural cirrus cover at t_end",
+            "units": " ",
+        },
+        "cc_contrails": {
+            "long_name": "Contrail cirrus cover at t_end",
+            "units": " ",
+        },
+        "cc_contrails_clear_sky": {
+            "long_name": "Contrail cirrus cover under clear sky conditions at t_end",
+            "units": " ",
+        },
+        "rf_sw": {
+            "long_name": "Mean contrail cirrus shortwave radiative forcing at t_end",
+            "units": "mW/m**2",
+        },
+        "rf_lw": {
+            "long_name": "Mean contrail cirrus longwave radiative forcing at t_end",
+            "units": "mW/m**2",
+        },
+        "rf_net": {
+            "long_name": "Mean contrail cirrus net radiative forcing at t_end",
+            "units": "mW/m**2",
+        },
+        "ef": {
+            "long_name": "Total contrail energy forcing between t_start and t_end",
+            "units": "J",
+        },
+        "ef_initial_loc": {
+            "long_name": "Total contrail energy forcing attributed back to the flight waypoint.",
+            "units": "J",
+        },
+        "contrails_clear_sky": {
+            "long_name": "Contrail cirrus cover in clear sky conditions.",
+            "units": " ",
+        },
+        "natural_cirrus": {
+            "long_name": "Natural cirrus cover.",
+            "units": " ",
+        },
+        "contrails": {
+            "long_name": "Contrail cirrus cover without overlap with natural cirrus.",
+            "units": " ",
+        },
+    }
 
 
 def cirrus_coverage_single_level(
@@ -507,12 +549,12 @@ def cirrus_coverage_single_level(
     contrails.ensure_vars('tau_contrail')
 
     # Spatial bounding box and resolution of `met`
-    spatial_bbox = [
+    spatial_bbox = (
         np.min(met["longitude"].values),
         np.min(met["latitude"].values),
         np.max(met["longitude"].values),
         np.max(met["latitude"].values),
-    ]
+    )
     spatial_grid_res = np.diff(met["longitude"].values)[0]
 
     # Contrail cirrus optical depth in a longitude-latitude grid
@@ -560,15 +602,11 @@ def cirrus_coverage_single_level(
     )
 
     # Update attributes
-    ds["contrails_clear_sky"].attrs = {
-        "units": " ", "long_name": "Contrail cirrus cover in clear sky conditions."
-    }
-    ds["natural_cirrus"].attrs = {
-        "units": " ", "long_name": "Natural cirrus cover."
-    }
-    ds["contrails"].attrs = {
-        "units": " ", "long_name": "Contrail cirrus cover without overlap with natural cirrus."
-    }
+    attrs = _create_attributes()
+
+    for name in ds.data_vars:
+        ds[name].attrs = attrs[name]
+
     return MetDataset(ds)
 
 
@@ -593,7 +631,7 @@ def optical_depth_to_cirrus_coverage(
     MetDataArray
         Contrail or natural cirrus coverage in a longitude-latitude grid
     """
-    cirrus_cover = xr.where(optical_depth.data > threshold, 1, 0)
+    cirrus_cover = (optical_depth.data > threshold).astype(int)
     return MetDataArray(cirrus_cover)
 
 
@@ -620,76 +658,104 @@ def regional_statistics(da_var: xr.DataArray, *, agg: str) -> pd.Series:
         Aviation emissions Inventory based on ADS-B (GAIA) for 2019–2021, EGUsphere [preprint],
         https://doi.org/10.5194/egusphere-2023-724, 2023.
     """
-    if (agg == "mean") & (len(da_var.time) > 1):
+    if (agg == "mean") and (len(da_var.time) > 1):
         da_var = da_var.mean(dim=["time"])
-        da_var = da_var.fillna(0)
+        da_var = da_var.fillna(0.0)
 
     # Get regional domain
-    world = da_var.copy()
-    usa = da_var.sel(longitude=slice(-126, -66), latitude=slice(23, 50))
-    europe = da_var.sel(longitude=slice(-12, 20), latitude=slice(35, 60))
-    east_asia = da_var.sel(longitude=slice(103, 150), latitude=slice(15, 48))
-    sea = da_var.sel(longitude=slice(87.5, 130), latitude=slice(-10, 20))
-    latin_america = da_var.sel(longitude=slice(-85, -35), latitude=slice(-60, 15))
-    africa = da_var.sel(longitude=slice(-20, 50), latitude=slice(-35, 40))
-    china = da_var.sel(longitude=slice(73.5, 135), latitude=slice(18, 53.5))
-    india = da_var.sel(longitude=slice(68, 97.5), latitude=slice(8, 35.5))
-    n_atlantic = da_var.sel(longitude=slice(-70, -5), latitude=slice(40, 63))
-    n_pacific_1 = da_var.sel(longitude=slice(-180, -140), latitude=slice(35, 65))
-    n_pacific_2 = da_var.sel(longitude=slice(120, 180), latitude=slice(35, 65))
-    arctic = da_var.sel(latitude=slice(66.5, 90))
+    vars_regional = _regional_data_arrays(da_var)
 
     if agg == "sum":
         vals = {
-            "World": np.nansum(world.values),
-            "USA": np.nansum(usa.values),
-            "Europe": np.nansum(europe.values),
-            "East Asia": np.nansum(east_asia.values),
-            "SEA": np.nansum(sea.values),
-            "Latin America": np.nansum(latin_america.values),
-            "Africa": np.nansum(africa.values),
-            "China": np.nansum(china.values),
-            "India": np.nansum(india.values),
-            "North Atlantic": np.nansum(n_atlantic.values),
-            "North Pacific": np.nansum(n_pacific_1.values) + np.nansum(n_pacific_2.values),
-            "Arctic": np.nansum(arctic.values),
+            "World": np.nansum(vars_regional["world"].values),
+            "USA": np.nansum(vars_regional["usa"].values),
+            "Europe": np.nansum(vars_regional["europe"].values),
+            "East Asia": np.nansum(vars_regional["east_asia"].values),
+            "SEA": np.nansum(vars_regional["sea"].values),
+            "Latin America": np.nansum(vars_regional["latin_america"].values),
+            "Africa": np.nansum(vars_regional["africa"].values),
+            "China": np.nansum(vars_regional["china"].values),
+            "India": np.nansum(vars_regional["india"].values),
+            "North Atlantic": np.nansum(vars_regional["n_atlantic"].values),
+            "North Pacific": (
+                np.nansum(vars_regional["n_pacific_1"].values)
+                + np.nansum(vars_regional["n_pacific_2"].values)
+            ),
+            "Arctic": np.nansum(vars_regional["arctic"].values),
         }
     elif agg == "mean":
         area_world = geo.grid_surface_area(da_var["longitude"].values, da_var["latitude"].values)
-        area_usa = area_world.sel(longitude=slice(-126, -66), latitude=slice(23, 50))
-        area_europe = area_world.sel(longitude=slice(-12, 20), latitude=slice(35, 60))
-        area_east_asia = area_world.sel(longitude=slice(103, 150), latitude=slice(15, 48))
-        area_sea = area_world.sel(longitude=slice(87.5, 130), latitude=slice(-10, 20))
-        area_latin_america = area_world.sel(longitude=slice(-85, -35), latitude=slice(-60, 15))
-        area_africa = area_world.sel(longitude=slice(-20, 50), latitude=slice(-35, 40))
-        area_china = area_world.sel(longitude=slice(73.5, 135), latitude=slice(18, 53.5))
-        area_india = area_world.sel(longitude=slice(68, 97.5), latitude=slice(8, 35.5))
-        area_n_atlantic = area_world.sel(longitude=slice(-70, -5), latitude=slice(40, 63))
-        area_n_pacific_1 = area_world.sel(longitude=slice(-180, -140), latitude=slice(35, 65))
-        area_n_pacific_2 = area_world.sel(longitude=slice(120, 180), latitude=slice(35, 65))
-        area_arctic = area_world.sel(latitude=slice(66.5, 90))
+        area_regional = _regional_data_arrays(area_world)
 
         vals = {
-            "World": _area_mean_properties(world, area_world),
-            "USA": _area_mean_properties(usa, area_usa),
-            "Europe": _area_mean_properties(europe, area_europe),
-            "East Asia": _area_mean_properties(east_asia, area_east_asia),
-            "SEA": _area_mean_properties(sea, area_sea),
-            "Latin America": _area_mean_properties(latin_america, area_latin_america),
-            "Africa": _area_mean_properties(africa, area_africa),
-            "China": _area_mean_properties(china, area_china),
-            "India": _area_mean_properties(india, area_india),
-            "North Atlantic": _area_mean_properties(n_atlantic, area_n_atlantic),
-            "North Pacific": (
-                0.4 * _area_mean_properties(n_pacific_1, area_n_pacific_1)
-                + 0.6 * _area_mean_properties(n_pacific_2, area_n_pacific_2)
+            "World": _area_mean_properties(vars_regional["world"], area_regional["world"]),
+            "USA": _area_mean_properties(vars_regional["usa"], area_regional["usa"]),
+            "Europe": _area_mean_properties(vars_regional["europe"], area_regional["europe"]),
+            "East Asia": _area_mean_properties(
+                vars_regional["east_asia"], area_regional["east_asia"]
             ),
-            "Arctic": _area_mean_properties(arctic, area_arctic),
+            "SEA": _area_mean_properties(vars_regional["sea"], area_regional["sea"]),
+            "Latin America": _area_mean_properties(
+                vars_regional["latin_america"], area_regional["latin_america"]
+            ),
+            "Africa": _area_mean_properties(vars_regional["africa"], area_regional["africa"]),
+            "China": _area_mean_properties(vars_regional["china"], area_regional["china"]),
+            "India": _area_mean_properties(vars_regional["india"], area_regional["india"]),
+            "North Atlantic": _area_mean_properties(
+                vars_regional["n_atlantic"], area_regional["n_atlantic"]
+            ),
+            "North Pacific": (
+                0.4 * _area_mean_properties(
+                    vars_regional["n_pacific_1"], area_regional["n_pacific_1"]
+                )
+                + 0.6 * _area_mean_properties(
+                    vars_regional["n_pacific_2"], area_regional["n_pacific_2"]
+                )
+            ),
+            "Arctic": _area_mean_properties(vars_regional["arctic"], area_regional["arctic"]),
         }
     else:
         raise NotImplementedError('Aggregation only accepts operations of "mean" or "sum".')
 
     return pd.Series(vals)
+
+
+def _regional_data_arrays(da_global: xr.DataArray) -> dict[str, xr.DataArray]:
+    """
+    Extract regional data arrays from global data array.
+
+    Parameters
+    ----------
+    da_global : xr.DataArray
+        Global air traffic or contrail variable in a longitude-latitude grid.
+
+    Returns
+    -------
+    dict[str, xr.DataArray]
+        Regional data arrays.
+
+    Notes
+    -----
+    - The spatial bounding box for each region is defined in Teoh et al. (2023)
+    - Teoh, R., Engberg, Z., Shapiro, M., Dray, L., and Stettler, M.: A high-resolution Global
+        Aviation emissions Inventory based on ADS-B (GAIA) for 2019–2021, EGUsphere [preprint],
+        https://doi.org/10.5194/egusphere-2023-724, 2023.
+    """
+    return {
+        "world": da_global.copy(),
+        "usa": da_global.sel(longitude=slice(-126.0, -66.0), latitude=slice(23.0, 50.0)),
+        "europe": da_global.sel(longitude=slice(-12.0, 20.0), latitude=slice(35.0, 60.0)),
+        "east_asia": da_global.sel(longitude=slice(103.0, 150.0), latitude=slice(15.0, 48.0)),
+        "sea": da_global.sel(longitude=slice(87.5, 130.0), latitude=slice(-10.0, 20.0)),
+        "latin_america": da_global.sel(longitude=slice(-85.0, -35.0), latitude=slice(-60.0, 15.0)),
+        "africa": da_global.sel(longitude=slice(-20.0, 50.0), latitude=slice(-35.0, 40.0)),
+        "china": da_global.sel(longitude=slice(73.5, 135.0), latitude=slice(18.0, 53.5)),
+        "india": da_global.sel(longitude=slice(68.0, 97.5), latitude=slice(8.0, 35.5)),
+        "n_atlantic": da_global.sel(longitude=slice(-70.0, -5.0), latitude=slice(40.0, 63.0)),
+        "n_pacific_1": da_global.sel(longitude=slice(-180.0, -140.0), latitude=slice(35.0, 65.0)),
+        "n_pacific_2": da_global.sel(longitude=slice(120.0, 180.0), latitude=slice(35.0, 65.0)),
+        "arctic": da_global.sel(latitude=slice(66.5, 90.0)),
+    }
 
 
 def _area_mean_properties(da_var_region: xr.DataArray, da_area_region: xr.DataArray) -> float:
@@ -725,7 +791,7 @@ def time_slice_statistics(
         met: MetDataset | None = None,
         rad: MetDataset | None = None,
         humidity_scaling: HumidityScaling | None = None,
-        spatial_bbox: list[float] = [-180, -90, 180, 90],
+        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
 ) -> pd.Series:
     """
     Calculate the flight and contrail summary statistics between `t_start` and `t_end`.
@@ -750,8 +816,8 @@ def time_slice_statistics(
     humidity_scaling : HumidityScaling
         Humidity scaling methodology.
         See :attr:`CocipParams.humidity_scaling`
-    spatial_bbox : list[float]
-        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_bbox : tuple[float, float, float, float]
+        Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
 
     Returns
     -------
@@ -840,7 +906,8 @@ def time_slice_statistics(
 
     # Ensure that the waypoints are within `t_start` and `t_end`
     is_in_time = flight_waypoints.dataframe["time"].between(t_start, t_end, inclusive="right")
-    if ~np.all(is_in_time):
+
+    if not np.all(is_in_time):
         warnings.warn(
             "Flight waypoints have times that are outside the range of `t_start` and `t_end`. "
             "Waypoints outside the defined time bounds are removed. "
@@ -848,7 +915,7 @@ def time_slice_statistics(
         flight_waypoints = flight_waypoints.filter(is_in_time)
 
     is_in_time = contrails.dataframe["time"].between(t_start, t_end, inclusive="right")
-    if ~np.all(is_in_time):
+    if not np.all(is_in_time):
         warnings.warn(
             "Contrail waypoints have times that are outside the range of `t_start` and `t_end`."
             "Waypoints outside the defined time bounds are removed. "
@@ -1441,7 +1508,7 @@ def contrails_to_hi_res_grid(
         time: pd.Timestamp | np.datetime64,
         contrails_t: GeoVectorDataset, *,
         var_name: str,
-        spatial_bbox: list[float] = [-180, -90, 180, 90],
+        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
         spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
     """
@@ -1456,8 +1523,8 @@ def contrails_to_hi_res_grid(
     var_name : str
         Contrail property for aggregation, where `var_name` must be included in `contrail_segment`.
         For example, `tau_contrail`, `rf_sw`, `rf_lw`, and `rf_net`
-    spatial_bbox : list[float]
-        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_bbox : tuple[float, float, float, float]
+        Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -1475,7 +1542,7 @@ def contrails_to_hi_res_grid(
 
     # Ensure that the times in `contrails_t` are the same.
     is_in_time = contrails_t["time"] == time
-    if ~np.all(is_in_time):
+    if not np.all(is_in_time):
         warnings.warn(
             f"Contrails have inconsistent times. Waypoints that are not in {time} are removed."
         )
@@ -1512,7 +1579,7 @@ def contrails_to_hi_res_grid(
 
 
 def _initialise_longitude_latitude_grid(
-        spatial_bbox: list[float] = [-180, -90, 180, 90],
+        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
         spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
     """
@@ -1520,8 +1587,8 @@ def _initialise_longitude_latitude_grid(
 
     Parameters
     ----------
-    spatial_bbox : list[float]
-        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_bbox : tuple[float, float, float, float]
+        Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -1819,7 +1886,7 @@ def natural_cirrus_properties_to_hi_res_grid(
         met: MetDataset, *,
         spatial_grid_res: float = 0.05,
         optical_depth_threshold: float = 0.1,
-        seed: int = 1
+        random_state: np.random.Generator | int | None = None
 ) -> MetDataset:
     """
     Increase the longitude-latitude resolution of natural cirrus cover and optical depth.
@@ -1833,7 +1900,7 @@ def natural_cirrus_properties_to_hi_res_grid(
         Spatial grid resolution for the output, [:math:`\deg`]
     optical_depth_threshold : float
         Sensitivity of cirrus detection, set at 0.1 to match the capability of satellites.
-    seed : int
+    random_state : np.random.Generator | int | None
         A number used to initialize a pseudorandom number generator.
 
     Returns
@@ -1891,13 +1958,13 @@ def natural_cirrus_properties_to_hi_res_grid(
     tau_cirrus_rep = _repeat_rows_and_columns(tau_cirrus_max.values, n_reps=n_reps)
 
     # Enhance resolution of `tau_cirrus`
-    np.random.seed(seed)
-    rand_number = np.random.uniform(0, 1, np.shape(tau_cirrus_rep))
+    rng = np.random.default_rng(random_state)
+    rand_number = rng.uniform(0, 1, np.shape(tau_cirrus_rep))
     dx = 0.03  # Prevent division of small values: calibrated to match the original cirrus cover
     has_cirrus = rand_number > (1 + dx - cc_rep)
+
     tau_cirrus_hi_res = np.zeros_like(tau_cirrus_rep)
     tau_cirrus_hi_res[has_cirrus] = (tau_cirrus_rep[has_cirrus] / cc_rep[has_cirrus])
-    # TODO: Zeb, using np.where would lead to RunTimeWarning because some cc_rep is zero
 
     # Enhance resolution of `cirrus coverage`
     cirrus_cover_hi_res = np.where(
@@ -1950,7 +2017,7 @@ def _hi_res_grid_coordinates(
             "Spatial resolution of `met` is already higher than `spatial_grid_res`"
         )
 
-    if ~is_whole_number:
+    if not is_whole_number:
         raise ArithmeticError(
             "Select a spatial grid resolution where `spatial_grid_res / existing_grid_res` is "
             "a whole number. "

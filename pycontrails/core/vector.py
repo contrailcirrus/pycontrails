@@ -1777,9 +1777,9 @@ class GeoVectorDataset(VectorDataset):
     # Vector to grid
     # ------------
     def to_lon_lat_grid(
-            self: GeoVectorDatasetType, *,
+            self, *,
             agg: dict[str, str],
-            spatial_bbox: list[float] = [-180, -90, 180, 90],
+            spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
             spatial_grid_res: float = 0.5,
     ) -> xr.Dataset:
         return vector_to_lon_lat_grid(
@@ -1790,7 +1790,7 @@ class GeoVectorDataset(VectorDataset):
 def vector_to_lon_lat_grid(
         vector: GeoVectorDataset, *,
         agg: dict[str, str],
-        spatial_bbox: list[float] = [-180, -90, 180, 90],
+        spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
         spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
     """
@@ -1802,8 +1802,8 @@ def vector_to_lon_lat_grid(
         Contains the longitude, latitude and variables for aggregation.
     agg: dict[str, str]
         Variable name and the function selected for aggregation, i.e. {"segment_length": "sum"}.
-    spatial_bbox: list[float]
-        Spatial bounding box, [lon_min, lat_min, lon_max, lat_max], [:math:`\deg`]
+    spatial_bbox: tuple[float, float, float, float]
+        Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
     spatial_grid_res: float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -1812,11 +1812,11 @@ def vector_to_lon_lat_grid(
     xr.Dataset
         Aggregated variables in a longitude-latitude grid.
     """
-    vars_agg = list(agg.keys())
-    vector.ensure_vars(list(agg.keys()))
-    df = vector.dataframe[["longitude", "latitude"] + vars_agg].copy()
+    vector.ensure_vars(agg)
+    df = vector.select(["longitude", "latitude", *agg], copy=False).dataframe
 
     # Create longitude and latitude coordinates
+    assert spatial_grid_res > 0.01
     lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
     lat_coords = np.arange(spatial_bbox[1], spatial_bbox[3] + 0.01, spatial_grid_res)
 
@@ -1824,22 +1824,14 @@ def vector_to_lon_lat_grid(
     df["idx_lon"] = np.searchsorted(lon_coords, df["longitude"]) - 1
     df["idx_lat"] = np.searchsorted(lat_coords, df["latitude"]) - 1
 
-    ds_out = dict()
+    out = dict()
+    df_agg = df.groupby(["idx_lon", "idx_lat"]).agg(agg)
 
-    for var_name in vars_agg:
+    for var_name in agg:
         arr = np.zeros((lon_coords.size, lat_coords.size))
-
-        if agg[var_name] == "sum":
-            df_arr = df[["idx_lon", "idx_lat", var_name]].groupby(by=["idx_lon", "idx_lat"]).sum()
-        elif agg[var_name] == "mean":
-            df_arr = df[["idx_lon", "idx_lat", var_name]].groupby(by=["idx_lon", "idx_lat"]).mean()
-        else:
-            raise NotImplementedError('Aggregation only accepts operations of "mean" or "sum".')
-
-        arr[df_arr.index.get_level_values(0), df_arr.index.get_level_values(1)] = df_arr[var_name]
-        ds_out[var_name] = xr.DataArray(
+        arr[df_agg.index.get_level_values(0), df_agg.index.get_level_values(1)] = df_agg[var_name]
+        out[var_name] = xr.DataArray(
             coords={"longitude": lon_coords, "latitude": lat_coords}, data=arr
         )
 
-    ds_out = xr.Dataset(ds_out)
-    return ds_out
+    return xr.Dataset(out)
