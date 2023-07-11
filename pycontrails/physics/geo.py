@@ -888,7 +888,7 @@ def spatial_bounding_box(
 
 
 def domain_surface_area(
-    spatial_bbox: tuple[float, float, float, float] = [-180.0, -90.0, 180.0, 90.0],
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
     *,
     spatial_grid_res: float = 0.5,
 ) -> float:

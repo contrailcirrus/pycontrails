@@ -1085,11 +1085,11 @@ def _contrail_optical_depth_above_contrail_layer(
     ds["tau_contrails_above"] = ds["tau_contrails_above"] / da_surface_area
     lon_coords = ds["longitude"].values
     is_global = (lon_coords[-1] + lon_coords[0] + np.diff(lon_coords)[0]) == 0.0
-    ds = MetDataset(ds, wrap_longitude=is_global)
+    mds = MetDataset(ds, wrap_longitude=is_global, copy=False)
 
     # Interpolate to `contrails_level`
     contrails_level["tau_contrails_above"] = contrails_level.intersect_met(
-        ds["tau_contrails_above"].copy(), level=-np.ones(len(contrails_level)) * 1.0
+        mds["tau_contrails_above"], level=-np.ones(len(contrails_level)) * 1.0
     )
     return contrails_level
 

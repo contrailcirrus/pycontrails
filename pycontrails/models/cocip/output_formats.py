@@ -18,6 +18,7 @@ This module includes functions to produce additional output formats, including t
 from __future__ import annotations
 
 import warnings
+from typing import Hashable
 
 import numpy as np
 import numpy.typing as npt
@@ -101,8 +102,8 @@ def flight_waypoint_outputs(
 
     # Check and pre-process `flights`
     flight_waypoints.ensure_vars(["flight_id", "waypoint"])
-    flight_waypoints = flight_waypoints.dataframe
-    flight_waypoints.set_index(["flight_id", "waypoint"], inplace=True)
+    df_flight_waypoints = flight_waypoints.dataframe
+    df_flight_waypoints.set_index(["flight_id", "waypoint"], inplace=True)
 
     # Check and pre-process `contrails`
     contrail_vars = ["flight_id", "waypoint", "formation_time"] + list(
@@ -113,20 +114,20 @@ def flight_waypoint_outputs(
     contrails["age"] = (contrails["time"] - contrails["formation_time"]) / np.timedelta64(1, "h")
 
     # Calculate contrail statistics at each flight waypoint
-    contrails = contrails.dataframe.copy()
-    contrails = contrails.groupby(["flight_id", "waypoint"]).agg(
+    df_contrails = contrails.dataframe
+    df_contrails = df_contrails.groupby(["flight_id", "waypoint"]).agg(
         agg_map_contrails_to_flight_waypoints
     )
-    contrails.columns = (
-        contrails.columns.get_level_values(1) + "_" + contrails.columns.get_level_values(0)
+    df_contrails.columns = (
+        df_contrails.columns.get_level_values(1) + "_" + df_contrails.columns.get_level_values(0)
     )
     rename_cols = {"mean_altitude": "mean_contrail_altitude", "sum_ef": "ef"}
-    contrails.rename(columns=rename_cols, inplace=True)
+    df_contrails.rename(columns=rename_cols, inplace=True)
 
     # Concatenate to flight-waypoint outputs
-    flight_waypoints = flight_waypoints.join(contrails, how="left")
-    flight_waypoints.reset_index(inplace=True)
-    return GeoVectorDataset(flight_waypoints, copy=True)
+    df_flight_waypoints = df_flight_waypoints.join(df_contrails, how="left")
+    df_flight_waypoints.reset_index(inplace=True)
+    return GeoVectorDataset(df_flight_waypoints, copy=True)
 
 
 # -------------------------------
@@ -375,8 +376,8 @@ def longitude_latitude_grid(
     ds_contrails_t_end["tau_contrail"] = ds_contrails_t_end["tau_contrail_area"] / da_area
 
     # (3) Contrail and natural cirrus coverage area at `t_end`
-    ds_cirrus_coverage = cirrus_coverage_single_level(t_end, met, contrails)
-    ds_cirrus_coverage = ds_cirrus_coverage.data.squeeze(dim=["level", "time"])
+    mds_cirrus_coverage = cirrus_coverage_single_level(t_end, met, contrails)
+    ds_cirrus_coverage = mds_cirrus_coverage.data.squeeze(dim=["level", "time"])
 
     # (4) Contrail climate forcing between `t_start` and `t_end`
     contrails["ef_sw"] = np.where(
@@ -433,7 +434,7 @@ def longitude_latitude_grid(
     return ds
 
 
-def _create_attributes() -> dict[str, dict[str, str]]:
+def _create_attributes() -> dict[Hashable, dict[str, str]]:
     return {
         "flight_distance_flown": {
             "long_name": "Total flight distance flown between t_start and t_end",
@@ -551,37 +552,34 @@ def cirrus_coverage_single_level(
     )["tau_contrail"]
     tau_contrail = tau_contrail.expand_dims({"level": np.array([-1])})
     tau_contrail = tau_contrail.expand_dims({"time": np.array([time])})
-    tau_contrail = MetDataArray(tau_contrail)
+    mda_tau_contrail = MetDataArray(tau_contrail)
 
     # Natural cirrus optical depth in a longitude-latitude grid
     met["tau_cirrus"] = tau_cirrus(met)
     tau_cirrus_max = met["tau_cirrus"].data.sel(level=met["level"].data[-1], time=time)
     tau_cirrus_max = tau_cirrus_max.expand_dims({"level": np.array([-1])})
     tau_cirrus_max = tau_cirrus_max.expand_dims({"time": np.array([time])})
-    tau_cirrus_max = MetDataArray(tau_cirrus_max)
-
-    tau_all = tau_contrail.data + tau_cirrus_max.data
-    tau_all = MetDataArray(tau_all)
+    mda_tau_cirrus_max = MetDataArray(tau_cirrus_max)
+    mda_tau_all = MetDataArray(mda_tau_contrail.data + mda_tau_cirrus_max.data)
 
     # Contrail and natural cirrus coverage in a longitude-latitude grid
-    cc_contrails_clear_sky = optical_depth_to_cirrus_coverage(
-        tau_contrail, threshold=optical_depth_threshold
+    mda_cc_contrails_clear_sky = optical_depth_to_cirrus_coverage(
+        mda_tau_contrail, threshold=optical_depth_threshold
     )
-    cc_natural_cirrus = optical_depth_to_cirrus_coverage(
-        tau_cirrus_max, threshold=optical_depth_threshold
+    mda_cc_natural_cirrus = optical_depth_to_cirrus_coverage(
+        mda_tau_cirrus_max, threshold=optical_depth_threshold
     )
-    cc_total = optical_depth_to_cirrus_coverage(tau_all, threshold=optical_depth_threshold)
-    cc_contrails = cc_total.data - cc_natural_cirrus.data
-    cc_contrails = MetDataArray(cc_contrails)
+    mda_cc_total = optical_depth_to_cirrus_coverage(mda_tau_all, threshold=optical_depth_threshold)
+    mda_cc_contrails = MetDataArray(mda_cc_total.data - mda_cc_natural_cirrus.data)
 
     # Concatenate data
     ds = xr.Dataset(
         data_vars=dict(
-            contrails_clear_sky=cc_contrails_clear_sky.data,
-            natural_cirrus=cc_natural_cirrus.data,
-            contrails=cc_contrails.data,
+            contrails_clear_sky=mda_cc_contrails_clear_sky.data,
+            natural_cirrus=mda_cc_natural_cirrus.data,
+            contrails=mda_cc_contrails.data,
         ),
-        coords=cc_contrails_clear_sky.coords,
+        coords=mda_cc_contrails_clear_sky.coords,
     )
 
     # Update attributes
@@ -770,9 +768,9 @@ def time_slice_statistics(
     flight_waypoints: GeoVectorDataset,
     contrails: GeoVectorDataset,
     *,
+    humidity_scaling: HumidityScaling,
     met: MetDataset | None = None,
     rad: MetDataset | None = None,
-    humidity_scaling: HumidityScaling | None = None,
     spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
 ) -> pd.Series:
     r"""
@@ -788,6 +786,9 @@ def time_slice_statistics(
         Flight waypoint outputs.
     contrails : GeoVectorDataset
         Contrail evolution outputs from CoCiP, `cocip.contrail`.
+    humidity_scaling : HumidityScaling
+        Humidity scaling methodology.
+        See :attr:`CocipParams.humidity_scaling`
     met : MetDataset | None
         Pressure level dataset containing 'air_temperature', 'specific_humidity',
         'specific_cloud_ice_water_content', and 'geopotential'.
@@ -795,9 +796,7 @@ def time_slice_statistics(
     rad : MetDataset | None
         Single level dataset containing the `sdr`, `rsr` and `olr`.Radiation statistics
         will not be computed if `None` is provided.
-    humidity_scaling : HumidityScaling
-        Humidity scaling methodology.
-        See :attr:`CocipParams.humidity_scaling`
+
     spatial_bbox : tuple[float, float, float, float]
         Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
 
@@ -886,14 +885,6 @@ def time_slice_statistics(
             "ef",
         )
     )
-    met.ensure_vars(
-        ("air_temperature", "specific_humidity", "specific_cloud_ice_water_content", "geopotential")
-    )
-    rad.ensure_vars(("sdr", "rsr", "olr"))
-
-    # Downselect `met` and `rad` to specified spatial bounding box
-    met = met.downselect(spatial_bbox)
-    rad = rad.downselect(spatial_bbox)
 
     # Ensure that the waypoints are within `t_start` and `t_end`
     is_in_time = flight_waypoints.dataframe["time"].between(t_start, t_end, inclusive="right")
@@ -928,15 +919,26 @@ def time_slice_statistics(
 
     # Meteorology domain statistics
     if met is not None:
+        met.ensure_vars(
+            (
+                "air_temperature",
+                "specific_humidity",
+                "specific_cloud_ice_water_content",
+                "geopotential",
+            )
+        )
+        met = met.downselect(spatial_bbox)
         met_stats = meteorological_time_slice_statistics(t_end, contrails, met, humidity_scaling)
 
     # Radiation domain statistics
     if rad is not None:
+        rad.ensure_vars(("sdr", "rsr", "olr"))
+        rad = rad.downselect(spatial_bbox)
         rad_stats = radiation_time_slice_statistics(rad, t_end)
 
     # Calculate time-slice statistics
-    is_sac = flight_waypoints["sac"] == 1
-    is_persistent = flight_waypoints["persistent_1"] == 1
+    is_sac = flight_waypoints["sac"] == 1.0
+    is_persistent = flight_waypoints["persistent_1"] == 1.0
     is_at_t_end = contrails["time"] == t_end
     is_night_time = contrails["sdr"] < 0.1
     domain_area = geo.domain_surface_area(spatial_bbox)
@@ -1142,7 +1144,7 @@ def meteorological_time_slice_statistics(
     time: np.datetime64 | pd.Timestamp,
     contrails: GeoVectorDataset,
     met: MetDataset,
-    humidity_scaling: HumidityScaling | None = None,
+    humidity_scaling: HumidityScaling,
     cirrus_coverage: MetDataset | None = None,
 ) -> pd.Series:
     """
@@ -2026,8 +2028,8 @@ def _hi_res_grid_coordinates(
 
 
 def _repeat_rows_and_columns(
-    array_2d: npt.NDArray[np.float_, np.float_], *, n_reps: int
-) -> npt.NDArray[np.float_, np.float_]:
+    array_2d: npt.NDArray[np.float_], *, n_reps: int
+) -> npt.NDArray[np.float_]:
     """
     Repeat the elements in `array_2d` along each row and column.
 
@@ -2047,8 +2049,8 @@ def _repeat_rows_and_columns(
     dimension = np.shape(array_2d)
 
     # Repeating elements along axis=1
-    array_2d_rep = [np.repeat(array_2d[i, :], n_reps) for i in np.arange(dimension[0])]
-    stacked = np.vstack(array_2d_rep)
+    array_1d_rep = [np.repeat(array_2d[i, :], n_reps) for i in np.arange(dimension[0])]
+    stacked = np.vstack(array_1d_rep)
 
     # Repeating elements along axis=0
     array_2d_rep = np.repeat(stacked, n_reps, axis=0)
