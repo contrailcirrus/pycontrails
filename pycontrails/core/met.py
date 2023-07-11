@@ -963,7 +963,7 @@ class MetDataset(MetBase):
         return da
 
     @overrides
-    def downselect(self, bbox: list[float]) -> MetDataset:
+    def downselect(self, bbox: tuple[float, ...]) -> MetDataset:
         data = downselect(self.data, bbox)
         return MetDataset(data, cachestore=self.cachestore, copy=False)
 
@@ -2275,17 +2275,17 @@ def _extract_2d_arr_and_altitude(
     return arr, altitude
 
 
-def downselect(data: XArrayType, bbox: list[float]) -> XArrayType:
+def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:
     """Downselect :class:`xr.Dataset` or :class:`xr.DataArray` with spatial bounding box.
 
     Parameters
     ----------
     data : XArrayType
         xr.Dataset or xr.DataArray to downselect
-    bbox : list[float]
-        List of coordinates defining a spatial bounding box in WGS84 coordinates.
-        For 2D queries, list is [west, south, east, north].
-        For 3D queries, list is [west, south, min-level, east, north, max-level]
+    bbox : tuple[float, ...]
+        Tuple of coordinates defining a spatial bounding box in WGS84 coordinates.
+        For 2D queries, tuple is ``(west, south, east, north)``.
+        For 3D queries, tuple is ``(west, south, min-level, east, north, max-level)``.
         with level defined in [:math:`hPa`].
 
     Returns

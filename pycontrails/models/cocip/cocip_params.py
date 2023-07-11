@@ -180,10 +180,13 @@ class CocipParams(ModelParams):
 
     #: Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
-    #: due to contrail-contrail overlapping. Contrails are grouped into altitude intervals
-    #: of `dz_overlap_m`, all contrails within each altitude interval are treated as one
-    #: contrail layer where they do not overlap.
+    #: due to contrail-contrail overlapping.
     contrail_contrail_overlapping: bool = False
+
+    #: Contrail-contrail overlapping altitude interval
+    #: If :attr:`contrail_contrail_overlapping` is set to True, contrails will be grouped into
+    #: altitude intervals, and all contrails within each altitude interval are treated as one
+    #: contrail layer where they do not overlap.
     dz_overlap_m: float = 500.0
 
     #: Radius threshold for regime bins, [:math:`\mu m`]

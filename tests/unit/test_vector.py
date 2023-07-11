@@ -714,8 +714,10 @@ def test_vector_to_lon_lat_grid():
     """Ensure that the aggregated outputs are consistent with the inputs. """
     fl = pd.read_json(get_static_path("cocip-flight-output2.json"), orient="records")
     vector = GeoVectorDataset(
-        fl[['longitude', 'latitude', 'altitude', 'time', 'ef']].copy(),
+        fl[['longitude', 'latitude', 'altitude', 'time', 'segment_length', 'ef']].copy(),
         copy=False
     )
-    ds_out = vector.to_lon_lat_grid(agg={"ef": "sum"})
+    ds_out = vector.to_lon_lat_grid(agg={"segment_length": "sum", "ef": "sum"})
     assert ds_out["ef"].sum() == pytest.approx(fl["ef"].sum())
+    assert ds_out["segment_length"].sum() == pytest.approx(fl["segment_length"].sum())
+    assert np.count_nonzero(ds_out["ef"]) == 15
