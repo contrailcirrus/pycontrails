@@ -536,7 +536,7 @@ class MetBase(ABC, Generic[XArrayType]):
         return self.data.attrs
 
     @abstractmethod
-    def downselect(self, bbox: list[float]) -> MetBase:
+    def downselect(self, bbox: tuple[float, ...]) -> MetBase:
         """Downselect met data within spatial bounding box.
 
         Parameters
@@ -2080,7 +2080,7 @@ class MetDataArray(MetBase):
         return da
 
     @overrides
-    def downselect(self, bbox: list[float]) -> MetDataArray:
+    def downselect(self, bbox: tuple[float, ...]) -> MetDataArray:
         data = downselect(self.data, bbox)
         return MetDataArray(data, cachestore=self.cachestore)
 
