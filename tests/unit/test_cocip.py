@@ -21,7 +21,6 @@ from pycontrails.models.cocip import (
     contrail_properties,
     radiative_heating,
 )
-from pycontrails.models.cocip.output import grid_cirrus
 from pycontrails.models.humidity_scaling import (
     ExponentialBoostHumidityScaling,
     ExponentialBoostLatitudeCorrectionHumidityScaling,
