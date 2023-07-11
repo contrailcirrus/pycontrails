@@ -18,31 +18,29 @@ This module includes functions to produce additional output formats, including t
 from __future__ import annotations
 
 import warnings
-import pandas as pd
-import xarray as xr
+
 import numpy as np
 import numpy.typing as npt
-
+import pandas as pd
+import xarray as xr
 from tqdm import tqdm
-from pycontrails.physics import geo
-from pycontrails.core.met import MetDataset, MetDataArray
-from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.core.vector import vector_to_lon_lat_grid
-from pycontrails.physics import units
-from pycontrails.physics.thermo import rho_d
-from pycontrails.models.cocip.contrail_properties import plume_mass_per_distance, contrail_edges
+
+from pycontrails.core.met import MetDataArray, MetDataset
+from pycontrails.core.vector import GeoVectorDataset, vector_to_lon_lat_grid
+from pycontrails.models.cocip.contrail_properties import contrail_edges, plume_mass_per_distance
 from pycontrails.models.cocip.radiative_forcing import albedo
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.tau_cirrus import tau_cirrus
-
+from pycontrails.physics import geo, units
+from pycontrails.physics.thermo import rho_d
 
 # -----------------------
 # Flight waypoint outputs
 # -----------------------
 
+
 def flight_waypoint_outputs(
-        flight_waypoints: GeoVectorDataset,
-        contrails: GeoVectorDataset
+    flight_waypoints: GeoVectorDataset, contrails: GeoVectorDataset
 ) -> GeoVectorDataset:
     """
     Calculate the contrail summary statistics at each flight waypoint.
@@ -91,7 +89,6 @@ def flight_waypoint_outputs(
         "tau_contrail": "mean",
         "tau_cirrus": "mean",
         "age": "max",
-
         # Radiative properties
         "rf_sw": "mean",
         "rf_lw": "mean",
@@ -108,13 +105,12 @@ def flight_waypoint_outputs(
     flight_waypoints.set_index(["flight_id", "waypoint"], inplace=True)
 
     # Check and pre-process `contrails`
-    contrail_vars = (
-            ["flight_id", "waypoint", "formation_time"]
-            + list(agg_map_contrails_to_flight_waypoints)
+    contrail_vars = ["flight_id", "waypoint", "formation_time"] + list(
+        agg_map_contrails_to_flight_waypoints
     )
     contrail_vars.remove("age")
     contrails.ensure_vars(contrail_vars)
-    contrails['age'] = (contrails['time'] - contrails['formation_time']) / np.timedelta64(1, 'h')
+    contrails["age"] = (contrails["time"] - contrails["formation_time"]) / np.timedelta64(1, "h")
 
     # Calculate contrail statistics at each flight waypoint
     contrails = contrails.dataframe.copy()
@@ -122,12 +118,9 @@ def flight_waypoint_outputs(
         agg_map_contrails_to_flight_waypoints
     )
     contrails.columns = (
-            contrails.columns.get_level_values(1) + "_" + contrails.columns.get_level_values(0)
+        contrails.columns.get_level_values(1) + "_" + contrails.columns.get_level_values(0)
     )
-    rename_cols = {
-        "mean_altitude": "mean_contrail_altitude",
-        "sum_ef": "ef"
-    }
+    rename_cols = {"mean_altitude": "mean_contrail_altitude", "sum_ef": "ef"}
     contrails.rename(columns=rename_cols, inplace=True)
 
     # Concatenate to flight-waypoint outputs
@@ -139,6 +132,7 @@ def flight_waypoint_outputs(
 # -------------------------------
 # Contrail flight summary outputs
 # -------------------------------
+
 
 def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.DataFrame:
     """
@@ -194,7 +188,6 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
         "mean_tau_contrail": "mean",
         "mean_tau_cirrus": "mean",
         "max_age": ["mean", "max"],
-
         # Radiative properties
         "mean_rf_sw": "mean",
         "mean_rf_lw": "mean",
@@ -206,23 +199,17 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
     }
 
     # Check and pre-process `flight_waypoints`
-    vars_required = (
-            ["flight_id", "sac"] + list(agg_map_flight_waypoints_to_summary.keys())
-    )
+    vars_required = ["flight_id", "sac"] + list(agg_map_flight_waypoints_to_summary.keys())
     vars_required.remove("contrail_length")
     vars_required.remove("persistent_contrail_length")
     flight_waypoints.ensure_vars(vars_required)
 
-    flight_waypoints['contrail_length'] = np.where(
-        flight_waypoints["sac"] == 1.0,
-        flight_waypoints['segment_length'],
-        0.0
+    flight_waypoints["contrail_length"] = np.where(
+        flight_waypoints["sac"] == 1.0, flight_waypoints["segment_length"], 0.0
     )
 
-    flight_waypoints['persistent_contrail_length'] = np.where(
-        np.isnan(flight_waypoints["ef"]),
-        0.0,
-        flight_waypoints["segment_length"]
+    flight_waypoints["persistent_contrail_length"] = np.where(
+        np.isnan(flight_waypoints["ef"]), 0.0, flight_waypoints["segment_length"]
     )
 
     # Calculate contrail statistics for each flight
@@ -230,8 +217,9 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
         agg_map_flight_waypoints_to_summary
     )
     flight_summary.columns = (
-            flight_summary.columns.get_level_values(1) + "_"
-            + flight_summary.columns.get_level_values(0)
+        flight_summary.columns.get_level_values(1)
+        + "_"
+        + flight_summary.columns.get_level_values(0)
     )
 
     rename_flight_summary_cols = {
@@ -266,17 +254,19 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
 # Gridded outputs
 # ---------------
 
+
 def longitude_latitude_grid(
-        t_start: np.datetime64 | pd.Timestamp,
-        t_end: np.datetime64 | pd.Timestamp,
-        flight_waypoints: GeoVectorDataset,
-        contrails: GeoVectorDataset, *,
-        met: MetDataset,
-        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
-        spatial_grid_res: float = 0.5,
+    t_start: np.datetime64 | pd.Timestamp,
+    t_end: np.datetime64 | pd.Timestamp,
+    flight_waypoints: GeoVectorDataset,
+    contrails: GeoVectorDataset,
+    *,
+    met: MetDataset,
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
+    spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
-    """
-    Aggregate air traffic and contrail outputs to a longitude-latitude grid
+    r"""
+    Aggregate air traffic and contrail outputs to a longitude-latitude grid.
 
     Parameters
     ----------
@@ -303,26 +293,21 @@ def longitude_latitude_grid(
         Air traffic and contrail outputs at a longitude-latitude grid.
     """
     # Ensure the required columns are included in `flight_waypoints`, `contrails` and `met`
-    flight_waypoints.ensure_vars(('segment_length', 'ef'))
+    flight_waypoints.ensure_vars(("segment_length", "ef"))
     contrails.ensure_vars(
         (
-            'formation_time',
-            'segment_length',
-            'width',
-            'tau_contrail',
-            'rf_sw',
-            'rf_lw',
-            'rf_net',
-            'ef'
+            "formation_time",
+            "segment_length",
+            "width",
+            "tau_contrail",
+            "rf_sw",
+            "rf_lw",
+            "rf_net",
+            "ef",
         )
     )
     met.ensure_vars(
-        (
-            'air_temperature',
-            'specific_humidity',
-            'specific_cloud_ice_water_content',
-            'geopotential'
-        )
+        ("air_temperature", "specific_humidity", "specific_cloud_ice_water_content", "geopotential")
     )
 
     # Downselect `met` to specified spatial bounding box
@@ -348,7 +333,7 @@ def longitude_latitude_grid(
 
     # Calculate additional variables
     t_slices = np.unique(contrails["time"])
-    dt_integration_sec = (t_slices[1] - t_slices[0]) / np.timedelta64(1, 's')
+    dt_integration_sec = (t_slices[1] - t_slices[0]) / np.timedelta64(1, "s")
 
     da_area = geo.grid_surface_area(met["longitude"].values, met["latitude"].values)
 
@@ -365,7 +350,7 @@ def longitude_latitude_grid(
         flight_waypoints.filter(is_between_time, copy=True),
         agg={"segment_length": "sum", "persistent_contrails": "sum", "ef": "sum"},
         spatial_bbox=spatial_bbox,
-        spatial_grid_res=spatial_grid_res
+        spatial_grid_res=spatial_grid_res,
     )
 
     # (2) Contrail properties at `t_end`
@@ -377,16 +362,15 @@ def longitude_latitude_grid(
         * contrails_t_end["width"]
     )
 
-    contrails_t_end['age'] = (
-        (contrails_t_end['time'] - contrails_t_end['formation_time'])
-        / np.timedelta64(1, 'h')
-    )
+    contrails_t_end["age"] = (
+        contrails_t_end["time"] - contrails_t_end["formation_time"]
+    ) / np.timedelta64(1, "h")
 
     ds_contrails_t_end = vector_to_lon_lat_grid(
         contrails_t_end,
         agg={"segment_length": "sum", "tau_contrail_area": "sum", "age": "mean"},
         spatial_bbox=spatial_bbox,
-        spatial_grid_res=spatial_grid_res
+        spatial_grid_res=spatial_grid_res,
     )
     ds_contrails_t_end["tau_contrail"] = ds_contrails_t_end["tau_contrail_area"] / da_area
 
@@ -398,19 +382,19 @@ def longitude_latitude_grid(
     contrails["ef_sw"] = np.where(
         contrails["ef"] == 0.0,
         0.0,
-        contrails["rf_sw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec
+        contrails["rf_sw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec,
     )
     contrails["ef_lw"] = np.where(
         contrails["ef"] == 0.0,
         0.0,
-        contrails["rf_lw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec
+        contrails["rf_lw"] * contrails["segment_length"] * contrails["width"] * dt_integration_sec,
     )
 
     ds_forcing = vector_to_lon_lat_grid(
         contrails,
         agg={"ef_sw": "sum", "ef_lw": "sum", "ef": "sum"},
         spatial_bbox=spatial_bbox,
-        spatial_grid_res=spatial_grid_res
+        spatial_grid_res=spatial_grid_res,
     )
     ds_forcing["rf_sw"] = ds_forcing["ef_sw"] / (da_area * dt_integration_sec)
     ds_forcing["rf_lw"] = ds_forcing["ef_lw"] / (da_area * dt_integration_sec)
@@ -435,7 +419,7 @@ def longitude_latitude_grid(
             ef=ds_forcing["ef"],
             ef_initial_loc=ds_wypts_t["ef"],
         ),
-        coords=ds_wypts_t.coords
+        coords=ds_wypts_t.coords,
     )
     ds = ds.fillna(0.0)
     ds = ds.expand_dims({"time": np.array([t_end])})
@@ -519,10 +503,11 @@ def _create_attributes() -> dict[str, dict[str, str]]:
 
 
 def cirrus_coverage_single_level(
-        time: np.datetime64 | pd.Timestamp,
-        met: MetDataset,
-        contrails: GeoVectorDataset, *,
-        optical_depth_threshold: float = 0.1
+    time: np.datetime64 | pd.Timestamp,
+    met: MetDataset,
+    contrails: GeoVectorDataset,
+    *,
+    optical_depth_threshold: float = 0.1,
 ) -> MetDataset:
     """
     Identify presence of contrail and natural cirrus in a longitude-latitude grid.
@@ -545,8 +530,8 @@ def cirrus_coverage_single_level(
         Single level dataset containing the contrail and natural cirrus coverage.
     """
     # Ensure `met` and `contrails` contains the required variables
-    met.ensure_vars(('air_temperature', 'specific_cloud_ice_water_content', 'geopotential'))
-    contrails.ensure_vars('tau_contrail')
+    met.ensure_vars(("air_temperature", "specific_cloud_ice_water_content", "geopotential"))
+    contrails.ensure_vars("tau_contrail")
 
     # Spatial bounding box and resolution of `met`
     spatial_bbox = (
@@ -562,15 +547,15 @@ def cirrus_coverage_single_level(
         contrails.filter(contrails["time"] == time),
         agg={"tau_contrail": "sum"},
         spatial_bbox=spatial_bbox,
-        spatial_grid_res=spatial_grid_res
-    )['tau_contrail']
+        spatial_grid_res=spatial_grid_res,
+    )["tau_contrail"]
     tau_contrail = tau_contrail.expand_dims({"level": np.array([-1])})
     tau_contrail = tau_contrail.expand_dims({"time": np.array([time])})
     tau_contrail = MetDataArray(tau_contrail)
 
     # Natural cirrus optical depth in a longitude-latitude grid
     met["tau_cirrus"] = tau_cirrus(met)
-    tau_cirrus_max = met['tau_cirrus'].data.sel(level=met["level"].data[-1], time=time)
+    tau_cirrus_max = met["tau_cirrus"].data.sel(level=met["level"].data[-1], time=time)
     tau_cirrus_max = tau_cirrus_max.expand_dims({"level": np.array([-1])})
     tau_cirrus_max = tau_cirrus_max.expand_dims({"time": np.array([time])})
     tau_cirrus_max = MetDataArray(tau_cirrus_max)
@@ -585,9 +570,7 @@ def cirrus_coverage_single_level(
     cc_natural_cirrus = optical_depth_to_cirrus_coverage(
         tau_cirrus_max, threshold=optical_depth_threshold
     )
-    cc_total = optical_depth_to_cirrus_coverage(
-        tau_all, threshold=optical_depth_threshold
-    )
+    cc_total = optical_depth_to_cirrus_coverage(tau_all, threshold=optical_depth_threshold)
     cc_contrails = cc_total.data - cc_natural_cirrus.data
     cc_contrails = MetDataArray(cc_contrails)
 
@@ -598,7 +581,7 @@ def cirrus_coverage_single_level(
             natural_cirrus=cc_natural_cirrus.data,
             contrails=cc_contrails.data,
         ),
-        coords=cc_contrails_clear_sky.coords
+        coords=cc_contrails_clear_sky.coords,
     )
 
     # Update attributes
@@ -611,8 +594,9 @@ def cirrus_coverage_single_level(
 
 
 def optical_depth_to_cirrus_coverage(
-        optical_depth: MetDataArray, *,
-        threshold: float = 0.1,
+    optical_depth: MetDataArray,
+    *,
+    threshold: float = 0.1,
 ) -> MetDataArray:
     """
     Calculate contrail or natural cirrus coverage in a longitude-latitude grid.
@@ -677,9 +661,8 @@ def regional_statistics(da_var: xr.DataArray, *, agg: str) -> pd.Series:
             "China": np.nansum(vars_regional["china"].values),
             "India": np.nansum(vars_regional["india"].values),
             "North Atlantic": np.nansum(vars_regional["n_atlantic"].values),
-            "North Pacific": (
-                np.nansum(vars_regional["n_pacific_1"].values)
-                + np.nansum(vars_regional["n_pacific_2"].values)
+            "North Pacific": np.nansum(vars_regional["n_pacific_1"].values) + np.nansum(
+                vars_regional["n_pacific_2"].values
             ),
             "Arctic": np.nansum(vars_regional["arctic"].values),
         }
@@ -704,13 +687,10 @@ def regional_statistics(da_var: xr.DataArray, *, agg: str) -> pd.Series:
             "North Atlantic": _area_mean_properties(
                 vars_regional["n_atlantic"], area_regional["n_atlantic"]
             ),
-            "North Pacific": (
-                0.4 * _area_mean_properties(
-                    vars_regional["n_pacific_1"], area_regional["n_pacific_1"]
-                )
-                + 0.6 * _area_mean_properties(
-                    vars_regional["n_pacific_2"], area_regional["n_pacific_2"]
-                )
+            "North Pacific": 0.4 * _area_mean_properties(
+                vars_regional["n_pacific_1"], area_regional["n_pacific_1"]
+            ) + 0.6 * _area_mean_properties(
+                vars_regional["n_pacific_2"], area_regional["n_pacific_2"]
             ),
             "Arctic": _area_mean_properties(vars_regional["arctic"], area_regional["arctic"]),
         }
@@ -768,14 +748,14 @@ def _area_mean_properties(da_var_region: xr.DataArray, da_area_region: xr.DataAr
         Regional air traffic or contrail variable in a longitude-latitude grid.
     da_area_region : xr.DataArray
         Regional surface area in a longitude-latitude grid.
+
     Returns
     -------
     float
         Area-mean properties
     """
-    return (
-            np.nansum(da_var_region.values * da_area_region.values)
-            / np.nansum(da_area_region.values)
+    return np.nansum(da_var_region.values * da_area_region.values) / np.nansum(
+        da_area_region.values
     )
 
 
@@ -783,17 +763,19 @@ def _area_mean_properties(da_var_region: xr.DataArray, da_area_region: xr.DataAr
 # Time-slice statistics
 # ---------------------
 
+
 def time_slice_statistics(
-        t_start: np.datetime64 | pd.Timestamp,
-        t_end: np.datetime64 | pd.Timestamp,
-        flight_waypoints: GeoVectorDataset,
-        contrails: GeoVectorDataset, *,
-        met: MetDataset | None = None,
-        rad: MetDataset | None = None,
-        humidity_scaling: HumidityScaling | None = None,
-        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
+    t_start: np.datetime64 | pd.Timestamp,
+    t_end: np.datetime64 | pd.Timestamp,
+    flight_waypoints: GeoVectorDataset,
+    contrails: GeoVectorDataset,
+    *,
+    met: MetDataset | None = None,
+    rad: MetDataset | None = None,
+    humidity_scaling: HumidityScaling | None = None,
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
 ) -> pd.Series:
-    """
+    r"""
     Calculate the flight and contrail summary statistics between `t_start` and `t_end`.
 
     Parameters
@@ -882,23 +864,32 @@ def time_slice_statistics(
     - ``mean_albedo_at_contrail_wypts``, [dimensionless]
     """
     # Ensure the required columns are included in `flight_waypoints`, `contrails`, `met` and `rad`
-    flight_waypoints.ensure_vars(('flight_id', 'segment_length', 'true_airspeed', 'fuel_flow'))
+    flight_waypoints.ensure_vars(("flight_id", "segment_length", "true_airspeed", "fuel_flow"))
     contrails.ensure_vars(
         (
-            'flight_id', 'segment_length', 'air_temperature', 'iwc', 'r_ice_vol',
-            'n_ice_per_m', 'tau_contrail', 'tau_cirrus', 'width', 'area_eff',
-            'sdr', 'rsr', 'olr', 'rf_sw', 'rf_lw', 'rf_net', 'ef',
+            "flight_id",
+            "segment_length",
+            "air_temperature",
+            "iwc",
+            "r_ice_vol",
+            "n_ice_per_m",
+            "tau_contrail",
+            "tau_cirrus",
+            "width",
+            "area_eff",
+            "sdr",
+            "rsr",
+            "olr",
+            "rf_sw",
+            "rf_lw",
+            "rf_net",
+            "ef",
         )
     )
     met.ensure_vars(
-        (
-            'air_temperature',
-            'specific_humidity',
-            'specific_cloud_ice_water_content',
-            'geopotential'
-        )
+        ("air_temperature", "specific_humidity", "specific_cloud_ice_water_content", "geopotential")
     )
-    rad.ensure_vars(('sdr', 'rsr', 'olr'))
+    rad.ensure_vars(("sdr", "rsr", "olr"))
 
     # Downselect `met` and `rad` to specified spatial bounding box
     met = met.downselect(spatial_bbox)
@@ -923,20 +914,17 @@ def time_slice_statistics(
         contrails = contrails.filter(is_in_time)
 
     # Additional variables
-    flight_waypoints['fuel_burn'] = (
-            flight_waypoints['fuel_flow']
-            * (1 / flight_waypoints['true_airspeed'])
-            * flight_waypoints['segment_length']
+    flight_waypoints["fuel_burn"] = (
+        flight_waypoints["fuel_flow"]
+        * (1 / flight_waypoints["true_airspeed"])
+        * flight_waypoints["segment_length"]
     )
-    contrails['pressure'] = units.m_to_pl(contrails['altitude'])
-    contrails['rho_air'] = rho_d(
-        contrails['air_temperature'],
-        contrails['pressure']
+    contrails["pressure"] = units.m_to_pl(contrails["altitude"])
+    contrails["rho_air"] = rho_d(contrails["air_temperature"], contrails["pressure"])
+    contrails["plume_mass_per_m"] = plume_mass_per_distance(
+        contrails["area_eff"], contrails["rho_air"]
     )
-    contrails['plume_mass_per_m'] = plume_mass_per_distance(
-        contrails['area_eff'], contrails['rho_air']
-    )
-    contrails['age'] = (contrails["time"] - contrails["formation_time"]) / np.timedelta64(1, 'h')
+    contrails["age"] = (contrails["time"] - contrails["formation_time"]) / np.timedelta64(1, "h")
 
     # Meteorology domain statistics
     if met is not None:
@@ -947,198 +935,215 @@ def time_slice_statistics(
         rad_stats = radiation_time_slice_statistics(rad, t_end)
 
     # Calculate time-slice statistics
-    is_sac = flight_waypoints['sac'] == 1
-    is_persistent = flight_waypoints['persistent_1'] == 1
-    is_at_t_end = contrails['time'] == t_end
-    is_night_time = contrails['sdr'] < 0.1
+    is_sac = flight_waypoints["sac"] == 1
+    is_persistent = flight_waypoints["persistent_1"] == 1
+    is_at_t_end = contrails["time"] == t_end
+    is_night_time = contrails["sdr"] < 0.1
     domain_area = geo.domain_surface_area(spatial_bbox)
 
     stats_t = {
-        'time_start': t_start,
-        'time_end': t_end,
-
+        "time_start": t_start,
+        "time_end": t_end,
         # Flight statistics
-        'n_flights': len(flight_waypoints.dataframe['flight_id'].unique()),
-        'n_flights_forming_contrails': len(
-            flight_waypoints.filter(is_sac).dataframe['flight_id'].unique()
+        "n_flights": len(flight_waypoints.dataframe["flight_id"].unique()),
+        "n_flights_forming_contrails": len(
+            flight_waypoints.filter(is_sac).dataframe["flight_id"].unique()
         ),
-        'n_flights_forming_persistent_contrails': len(
-            flight_waypoints.filter(is_persistent).dataframe['flight_id'].unique()
+        "n_flights_forming_persistent_contrails": len(
+            flight_waypoints.filter(is_persistent).dataframe["flight_id"].unique()
         ),
-        'n_flights_with_persistent_contrails_at_t_end': len(
-            contrails.filter(is_at_t_end).dataframe['flight_id'].unique()
+        "n_flights_with_persistent_contrails_at_t_end": len(
+            contrails.filter(is_at_t_end).dataframe["flight_id"].unique()
         ),
-
         # Waypoint statistics
-        'n_waypoints': len(flight_waypoints),
-        'n_waypoints_forming_contrails': len(flight_waypoints.filter(is_sac)),
-        'n_waypoints_forming_persistent_contrails': len(flight_waypoints.filter(is_persistent)),
-        'n_waypoints_with_persistent_contrails_at_t_end': len(contrails.filter(is_at_t_end)),
-        'n_contrail_waypoints_at_night': (
-            len(contrails.filter(is_at_t_end))
+        "n_waypoints": len(flight_waypoints),
+        "n_waypoints_forming_contrails": len(flight_waypoints.filter(is_sac)),
+        "n_waypoints_forming_persistent_contrails": len(flight_waypoints.filter(is_persistent)),
+        "n_waypoints_with_persistent_contrails_at_t_end": len(contrails.filter(is_at_t_end)),
+        "n_contrail_waypoints_at_night": len(contrails.filter(is_at_t_end)),
+        "pct_contrail_waypoints_at_night": (
+            len(contrails.filter(is_night_time)) / len(contrails) * 100
         ),
-        'pct_contrail_waypoints_at_night': (
-                len(contrails.filter(is_night_time)) / len(contrails) * 100
-        ),
-
         # Distance statistics
-        'total_flight_distance': np.nansum(flight_waypoints['segment_length']) / 1000,
-        'total_contrails_formed': (
-                np.nansum(flight_waypoints.filter(is_sac)['segment_length']) / 1000
+        "total_flight_distance": np.nansum(flight_waypoints["segment_length"]) / 1000,
+        "total_contrails_formed": (
+            np.nansum(flight_waypoints.filter(is_sac)["segment_length"]) / 1000
         ),
-        'total_persistent_contrails_formed': (
-                np.nansum(flight_waypoints.filter(is_persistent)['segment_length']) / 1000
+        "total_persistent_contrails_formed": (
+            np.nansum(flight_waypoints.filter(is_persistent)["segment_length"]) / 1000
         ),
-        'total_persistent_contrails_at_t_end': (
-                np.nansum(contrails.filter(is_at_t_end)['segment_length']) / 1000
+        "total_persistent_contrails_at_t_end": (
+            np.nansum(contrails.filter(is_at_t_end)["segment_length"]) / 1000
         ),
-
         # Aircraft performance statistics
-        'total_fuel_burn': np.nansum(flight_waypoints['fuel_burn']),
-        'mean_propulsion_efficiency_all_flights': np.nanmean(
-            flight_waypoints['engine_efficiency']
+        "total_fuel_burn": np.nansum(flight_waypoints["fuel_burn"]),
+        "mean_propulsion_efficiency_all_flights": np.nanmean(flight_waypoints["engine_efficiency"]),
+        "mean_propulsion_efficiency_flights_with_persistent_contrails": (
+            np.nanmean(flight_waypoints.filter(is_persistent)["engine_efficiency"])
+            if np.any(is_persistent)
+            else np.nan
         ),
-        'mean_propulsion_efficiency_flights_with_persistent_contrails': np.nanmean(
-            flight_waypoints.filter(is_persistent)['engine_efficiency']
-        ) if np.any(is_persistent) else np.nan,
-
-        'mean_nvpm_ei_n_all_flights': np.nanmean(flight_waypoints['nvpm_ei_n']),
-        'mean_nvpm_ei_n_flights_with_persistent_contrails': np.nanmean(
-            flight_waypoints.filter(is_persistent)['nvpm_ei_n']
-        ) if np.any(is_persistent) else np.nan,
-
+        "mean_nvpm_ei_n_all_flights": np.nanmean(flight_waypoints["nvpm_ei_n"]),
+        "mean_nvpm_ei_n_flights_with_persistent_contrails": (
+            np.nanmean(flight_waypoints.filter(is_persistent)["nvpm_ei_n"])
+            if np.any(is_persistent)
+            else np.nan
+        ),
         # Contrail properties at `time_end`
-        'mean_contrail_age': np.nanmean(
-            contrails.filter(is_at_t_end)['age']
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'max_contrail_age': np.nanmax(
-            contrails.filter(is_at_t_end)['age']
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_n_ice_per_m': np.nanmean(
-            contrails.filter(is_at_t_end)['n_ice_per_m']
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_contrail_ice_water_path': area_mean_ice_water_path(
-            contrails.filter(is_at_t_end)['iwc'],
-            contrails.filter(is_at_t_end)['plume_mass_per_m'],
-            contrails.filter(is_at_t_end)['segment_length'],
-            domain_area
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'area_mean_contrail_ice_radius': area_mean_ice_particle_radius(
-            contrails.filter(is_at_t_end)['r_ice_vol'],
-            contrails.filter(is_at_t_end)['n_ice_per_m'],
-            contrails.filter(is_at_t_end)['segment_length'],
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'volume_mean_contrail_ice_radius': volume_mean_ice_particle_radius(
-            contrails.filter(is_at_t_end)['r_ice_vol'],
-            contrails.filter(is_at_t_end)['n_ice_per_m'],
-            contrails.filter(is_at_t_end)['segment_length'],
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_contrail_ice_effective_radius': mean_ice_particle_effective_radius(
-            contrails.filter(is_at_t_end)['r_ice_vol'],
-            contrails.filter(is_at_t_end)['n_ice_per_m'],
-            contrails.filter(is_at_t_end)['segment_length'],
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_tau_contrail': area_mean_contrail_property(
-            contrails.filter(is_at_t_end)['tau_contrail'],
-            contrails.filter(is_at_t_end)['segment_length'],
-            contrails.filter(is_at_t_end)['width'],
-            domain_area
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_tau_cirrus': area_mean_contrail_property(
-            contrails.filter(is_at_t_end)['tau_cirrus'],
-            contrails.filter(is_at_t_end)['segment_length'],
-            contrails.filter(is_at_t_end)['width'],
-            domain_area
-        ) if np.any(is_at_t_end) else np.nan,
-
+        "mean_contrail_age": (
+            np.nanmean(contrails.filter(is_at_t_end)["age"]) if np.any(is_at_t_end) else np.nan
+        ),
+        "max_contrail_age": (
+            np.nanmax(contrails.filter(is_at_t_end)["age"]) if np.any(is_at_t_end) else np.nan
+        ),
+        "mean_n_ice_per_m": (
+            np.nanmean(contrails.filter(is_at_t_end)["n_ice_per_m"])
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "mean_contrail_ice_water_path": (
+            area_mean_ice_water_path(
+                contrails.filter(is_at_t_end)["iwc"],
+                contrails.filter(is_at_t_end)["plume_mass_per_m"],
+                contrails.filter(is_at_t_end)["segment_length"],
+                domain_area,
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "area_mean_contrail_ice_radius": (
+            area_mean_ice_particle_radius(
+                contrails.filter(is_at_t_end)["r_ice_vol"],
+                contrails.filter(is_at_t_end)["n_ice_per_m"],
+                contrails.filter(is_at_t_end)["segment_length"],
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "volume_mean_contrail_ice_radius": (
+            volume_mean_ice_particle_radius(
+                contrails.filter(is_at_t_end)["r_ice_vol"],
+                contrails.filter(is_at_t_end)["n_ice_per_m"],
+                contrails.filter(is_at_t_end)["segment_length"],
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "mean_contrail_ice_effective_radius": (
+            mean_ice_particle_effective_radius(
+                contrails.filter(is_at_t_end)["r_ice_vol"],
+                contrails.filter(is_at_t_end)["n_ice_per_m"],
+                contrails.filter(is_at_t_end)["segment_length"],
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "mean_tau_contrail": (
+            area_mean_contrail_property(
+                contrails.filter(is_at_t_end)["tau_contrail"],
+                contrails.filter(is_at_t_end)["segment_length"],
+                contrails.filter(is_at_t_end)["width"],
+                domain_area,
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "mean_tau_cirrus": (
+            area_mean_contrail_property(
+                contrails.filter(is_at_t_end)["tau_cirrus"],
+                contrails.filter(is_at_t_end)["segment_length"],
+                contrails.filter(is_at_t_end)["width"],
+                domain_area,
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
         # Contrail climate forcing
-        'mean_rf_sw': area_mean_contrail_property(
-            contrails.filter(is_at_t_end)['rf_sw'],
-            contrails.filter(is_at_t_end)['segment_length'],
-            contrails.filter(is_at_t_end)['width'],
-            domain_area
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_rf_lw': area_mean_contrail_property(
-            contrails.filter(is_at_t_end)['rf_lw'],
-            contrails.filter(is_at_t_end)['segment_length'],
-            contrails.filter(is_at_t_end)['width'],
-            domain_area
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_rf_net': area_mean_contrail_property(
-            contrails.filter(is_at_t_end)['rf_net'],
-            contrails.filter(is_at_t_end)['segment_length'],
-            contrails.filter(is_at_t_end)['width'],
-            domain_area
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'total_contrail_ef': np.nansum(contrails['ef']) if np.any(is_at_t_end) else np.nan,
-
+        "mean_rf_sw": (
+            area_mean_contrail_property(
+                contrails.filter(is_at_t_end)["rf_sw"],
+                contrails.filter(is_at_t_end)["segment_length"],
+                contrails.filter(is_at_t_end)["width"],
+                domain_area,
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "mean_rf_lw": (
+            area_mean_contrail_property(
+                contrails.filter(is_at_t_end)["rf_lw"],
+                contrails.filter(is_at_t_end)["segment_length"],
+                contrails.filter(is_at_t_end)["width"],
+                domain_area,
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "mean_rf_net": (
+            area_mean_contrail_property(
+                contrails.filter(is_at_t_end)["rf_net"],
+                contrails.filter(is_at_t_end)["segment_length"],
+                contrails.filter(is_at_t_end)["width"],
+                domain_area,
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
+        "total_contrail_ef": np.nansum(contrails["ef"]) if np.any(is_at_t_end) else np.nan,
         # Meteorology statistics
         "issr_percentage_coverage": (
-            met_stats["issr_percentage_coverage"]
-        ) if met is not None else np.nan,
-
+            (met_stats["issr_percentage_coverage"]) if met is not None else np.nan
+        ),
         "mean_rhi_in_issr": met_stats["mean_rhi_in_issr"] if met is not None else np.nan,
-
         "contrail_cirrus_percentage_coverage": (
-            met_stats["contrail_cirrus_percentage_coverage"]
-        ) if met is not None else np.nan,
-
+            (met_stats["contrail_cirrus_percentage_coverage"]) if met is not None else np.nan
+        ),
         "contrail_cirrus_clear_sky_percentage_coverage": (
-            met_stats["contrail_cirrus_clear_sky_percentage_coverage"]
-        ) if met is not None else np.nan,
-
+            (met_stats["contrail_cirrus_clear_sky_percentage_coverage"])
+            if met is not None
+            else np.nan
+        ),
         "natural_cirrus_percentage_coverage": (
-            met_stats["natural_cirrus_percentage_coverage"]
-        ) if met is not None else np.nan,
-
-        "cloud_contrail_overlap_percentage": percentage_cloud_contrail_overlap(
-            met_stats["contrail_cirrus_percentage_coverage"],
-            met_stats["contrail_cirrus_clear_sky_percentage_coverage"]
-        ) if met is not None else np.nan,
-
+            (met_stats["natural_cirrus_percentage_coverage"]) if met is not None else np.nan
+        ),
+        "cloud_contrail_overlap_percentage": (
+            percentage_cloud_contrail_overlap(
+                met_stats["contrail_cirrus_percentage_coverage"],
+                met_stats["contrail_cirrus_clear_sky_percentage_coverage"],
+            )
+            if met is not None
+            else np.nan
+        ),
         # Radiation statistics
-        'mean_sdr_domain': rad_stats["mean_sdr_domain"] if rad is not None else np.nan,
-
-        'mean_sdr_at_contrail_wypts': np.nanmean(
-            contrails.filter(is_at_t_end)['sdr']
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_rsr_domain': rad_stats["mean_rsr_domain"] if rad is not None else np.nan,
-
-        'mean_rsr_at_contrail_wypts': np.nanmean(
-            contrails.filter(is_at_t_end)['rsr']
-        ) if np.any(is_at_t_end) else np.nan,
-
-        'mean_olr_domain': rad_stats["mean_olr_domain"] if rad is not None else np.nan,
-
-        'mean_olr_at_contrail_wypts': np.nanmean(
-            contrails.filter(is_at_t_end)['olr']
-        ) if np.any(is_at_t_end) else np.nan,
-
-        "mean_albedo_at_contrail_wypts": np.nanmean(
-            albedo(contrails.filter(is_at_t_end)['sdr'], contrails.filter(is_at_t_end)['rsr'])
-        ) if np.any(is_at_t_end) else np.nan,
+        "mean_sdr_domain": rad_stats["mean_sdr_domain"] if rad is not None else np.nan,
+        "mean_sdr_at_contrail_wypts": (
+            np.nanmean(contrails.filter(is_at_t_end)["sdr"]) if np.any(is_at_t_end) else np.nan
+        ),
+        "mean_rsr_domain": rad_stats["mean_rsr_domain"] if rad is not None else np.nan,
+        "mean_rsr_at_contrail_wypts": (
+            np.nanmean(contrails.filter(is_at_t_end)["rsr"]) if np.any(is_at_t_end) else np.nan
+        ),
+        "mean_olr_domain": rad_stats["mean_olr_domain"] if rad is not None else np.nan,
+        "mean_olr_at_contrail_wypts": (
+            np.nanmean(contrails.filter(is_at_t_end)["olr"]) if np.any(is_at_t_end) else np.nan
+        ),
+        "mean_albedo_at_contrail_wypts": (
+            np.nanmean(
+                albedo(contrails.filter(is_at_t_end)["sdr"], contrails.filter(is_at_t_end)["rsr"])
+            )
+            if np.any(is_at_t_end)
+            else np.nan
+        ),
     }
     return pd.Series(stats_t)
 
 
 def meteorological_time_slice_statistics(
-        time: np.datetime64 | pd.Timestamp,
-        contrails: GeoVectorDataset,
-        met: MetDataset,
-        humidity_scaling: HumidityScaling | None = None,
-        cirrus_coverage: MetDataset | None = None,
+    time: np.datetime64 | pd.Timestamp,
+    contrails: GeoVectorDataset,
+    met: MetDataset,
+    humidity_scaling: HumidityScaling | None = None,
+    cirrus_coverage: MetDataset | None = None,
 ) -> pd.Series:
     """
     Calculate meteorological statistics in the domain provided.
@@ -1167,18 +1172,13 @@ def meteorological_time_slice_statistics(
     """
     # Ensure vars
     met.ensure_vars(
-        (
-            'air_temperature',
-            'specific_humidity',
-            'specific_cloud_ice_water_content',
-            'geopotential'
-        )
+        ("air_temperature", "specific_humidity", "specific_cloud_ice_water_content", "geopotential")
     )
 
     # ISSR: Volume of airspace with RHi > 100% between FL300 and FL450
     met = humidity_scaling.eval(met)
     rhi = met["rhi"].data.sel(level=slice(150, 300))
-    is_issr = (rhi > 1)
+    is_issr = rhi > 1
 
     # Cirrus in a longitude-latitude grid
     if cirrus_coverage is None:
@@ -1189,26 +1189,25 @@ def meteorological_time_slice_statistics(
     weights = area / np.nansum(area)
 
     stats = {
-        'issr_percentage_coverage': (
-                np.nansum((is_issr * weights)) / (np.nansum(weights) * len(rhi.level))
+        "issr_percentage_coverage": (
+            np.nansum((is_issr * weights)) / (np.nansum(weights) * len(rhi.level))
         ) * 100,
-        'mean_rhi_in_issr': np.nanmean(rhi.values[is_issr.values]),
-        'contrail_cirrus_percentage_coverage': (
-                np.nansum((area * cirrus_coverage["contrails"].data)) / np.nansum(area)
+        "mean_rhi_in_issr": np.nanmean(rhi.values[is_issr.values]),
+        "contrail_cirrus_percentage_coverage": (
+            np.nansum((area * cirrus_coverage["contrails"].data)) / np.nansum(area)
         ) * 100,
-        'contrail_cirrus_clear_sky_percentage_coverage': (
-                np.nansum((area * cirrus_coverage["contrails_clear_sky"].data)) / np.nansum(area)
+        "contrail_cirrus_clear_sky_percentage_coverage": (
+            np.nansum((area * cirrus_coverage["contrails_clear_sky"].data)) / np.nansum(area)
         ) * 100,
-        'natural_cirrus_percentage_coverage': (
-                np.nansum((area * cirrus_coverage["natural_cirrus"].data)) / np.nansum(area)
+        "natural_cirrus_percentage_coverage": (
+            np.nansum((area * cirrus_coverage["natural_cirrus"].data)) / np.nansum(area)
         ) * 100,
     }
     return pd.Series(stats)
 
 
 def radiation_time_slice_statistics(
-        rad: MetDataset,
-        time: np.datetime64 | pd.Timestamp
+    rad: MetDataset, time: np.datetime64 | pd.Timestamp
 ) -> pd.Series:
     """
     Calculate radiation statistics in the domain provided.
@@ -1225,25 +1224,25 @@ def radiation_time_slice_statistics(
     pd.Series
         Mean SDR, RSR and OLR in domain area.
     """
-    rad.ensure_vars(('sdr', 'rsr', 'olr'))
+    rad.ensure_vars(("sdr", "rsr", "olr"))
     surface_area = geo.grid_surface_area(rad["longitude"].values, rad["latitude"].values)
     weights = surface_area.values / np.nansum(surface_area)
     stats = {
-        'mean_sdr_domain': np.nansum(rad["sdr"].data.sel(level=-1, time=time).values * weights),
-        'mean_rsr_domain': np.nansum(rad["rsr"].data.sel(level=-1, time=time).values * weights),
-        'mean_olr_domain': np.nansum(rad["olr"].data.sel(level=-1, time=time).values * weights)
+        "mean_sdr_domain": np.nansum(rad["sdr"].data.sel(level=-1, time=time).values * weights),
+        "mean_rsr_domain": np.nansum(rad["rsr"].data.sel(level=-1, time=time).values * weights),
+        "mean_olr_domain": np.nansum(rad["olr"].data.sel(level=-1, time=time).values * weights),
     }
     return pd.Series(stats)
 
 
 def area_mean_ice_water_path(
-        iwc: npt.NDArray[np.float_],
-        plume_mass_per_m: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_],
-        domain_area: float
+    iwc: npt.NDArray[np.float_],
+    plume_mass_per_m: npt.NDArray[np.float_],
+    segment_length: npt.NDArray[np.float_],
+    domain_area: float,
 ) -> float:
     """
-    Calculate area-mean contrail ice water path
+    Calculate area-mean contrail ice water path.
 
     Ice water path (IWC) is the contrail ice mass divided by the domain area of interest.
 
@@ -1258,6 +1257,7 @@ def area_mean_ice_water_path(
         Contrail segment length for each waypoint, [:math:`m`]
     domain_area : float
         Domain surface area, [:math:`m^{2}`]
+
     Returns
     -------
     float
@@ -1267,11 +1267,11 @@ def area_mean_ice_water_path(
 
 
 def area_mean_ice_particle_radius(
-        r_ice_vol: npt.NDArray[np.float_],
-        n_ice_per_m: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_]
+    r_ice_vol: npt.NDArray[np.float_],
+    n_ice_per_m: npt.NDArray[np.float_],
+    segment_length: npt.NDArray[np.float_],
 ) -> float:
-    """
+    r"""
     Calculate the area-mean contrail ice particle radius.
 
     Parameters
@@ -1301,11 +1301,11 @@ def area_mean_ice_particle_radius(
 
 
 def volume_mean_ice_particle_radius(
-        r_ice_vol: npt.NDArray[np.float_],
-        n_ice_per_m: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_]
+    r_ice_vol: npt.NDArray[np.float_],
+    n_ice_per_m: npt.NDArray[np.float_],
+    segment_length: npt.NDArray[np.float_],
 ) -> float:
-    """
+    r"""
     Calculate the volume-mean contrail ice particle radius.
 
     Parameters
@@ -1333,11 +1333,11 @@ def volume_mean_ice_particle_radius(
 
 
 def mean_ice_particle_effective_radius(
-        r_ice_vol: npt.NDArray[np.float_],
-        n_ice_per_m: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_]
+    r_ice_vol: npt.NDArray[np.float_],
+    n_ice_per_m: npt.NDArray[np.float_],
+    segment_length: npt.NDArray[np.float_],
 ) -> float:
-    """
+    r"""
     Calculate the mean contrail ice particle effective radius.
 
     Parameters
@@ -1368,9 +1368,9 @@ def mean_ice_particle_effective_radius(
 
 
 def _total_ice_particle_cross_sectional_area(
-        r_ice_vol: npt.NDArray[np.float_],
-        n_ice_per_m: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_]
+    r_ice_vol: npt.NDArray[np.float_],
+    n_ice_per_m: npt.NDArray[np.float_],
+    segment_length: npt.NDArray[np.float_],
 ) -> float:
     """
     Calculate total contrail ice particle cross-sectional area.
@@ -1394,9 +1394,9 @@ def _total_ice_particle_cross_sectional_area(
 
 
 def _total_ice_particle_volume(
-        r_ice_vol: npt.NDArray[np.float_],
-        n_ice_per_m: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_]
+    r_ice_vol: npt.NDArray[np.float_],
+    n_ice_per_m: npt.NDArray[np.float_],
+    segment_length: npt.NDArray[np.float_],
 ) -> float:
     """
     Calculate total contrail ice particle volume.
@@ -1420,8 +1420,7 @@ def _total_ice_particle_volume(
 
 
 def _total_ice_particle_number(
-        n_ice_per_m: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_]
+    n_ice_per_m: npt.NDArray[np.float_], segment_length: npt.NDArray[np.float_]
 ) -> float:
     """
     Calculate total number of contrail ice particles.
@@ -1442,10 +1441,10 @@ def _total_ice_particle_number(
 
 
 def area_mean_contrail_property(
-        contrail_property: npt.NDArray[np.float_],
-        segment_length: npt.NDArray[np.float_],
-        width: npt.NDArray[np.float_],
-        domain_area: float
+    contrail_property: npt.NDArray[np.float_],
+    segment_length: npt.NDArray[np.float_],
+    width: npt.NDArray[np.float_],
+    domain_area: float,
 ) -> float:
     """
     Calculate area mean contrail property.
@@ -1473,8 +1472,7 @@ def area_mean_contrail_property(
 
 
 def percentage_cloud_contrail_overlap(
-        contrail_cover: float | np.ndarray,
-        contrail_cover_clear_sky: float | np.ndarray
+    contrail_cover: float | np.ndarray, contrail_cover_clear_sky: float | np.ndarray
 ) -> float | np.ndarray:
     """
     Calculate the percentage area of cloud-contrail overlap.
@@ -1504,14 +1502,16 @@ def percentage_cloud_contrail_overlap(
 # High resolution grid: contrail segments
 # ---------------------------------------
 
+
 def contrails_to_hi_res_grid(
-        time: pd.Timestamp | np.datetime64,
-        contrails_t: GeoVectorDataset, *,
-        var_name: str,
-        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
-        spatial_grid_res: float = 0.05,
+    time: pd.Timestamp | np.datetime64,
+    contrails_t: GeoVectorDataset,
+    *,
+    var_name: str,
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
+    spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
-    """
+    r"""
     Aggregate contrail segments to a high-resolution longitude-latitude grid.
 
     Parameters
@@ -1535,8 +1535,16 @@ def contrails_to_hi_res_grid(
     """
     # Ensure the required columns are included in `contrails_t`
     cols_req = [
-        "flight_id", "waypoint", "longitude", "latitude",
-        "altitude", "time", "sin_a", "cos_a", "width", var_name
+        "flight_id",
+        "waypoint",
+        "longitude",
+        "latitude",
+        "altitude",
+        "time",
+        "sin_a",
+        "cos_a",
+        "width",
+        var_name,
     ]
     contrails_t.ensure_vars(cols_req)
 
@@ -1558,7 +1566,7 @@ def contrails_to_hi_res_grid(
     is_continuous = heads_t["continuous"]
     heads_t = heads_t[is_continuous].copy()
     tails_t = tails_t[is_continuous].copy()
-    tails_t["waypoint"] = tails_t['waypoint'].astype('int')
+    tails_t["waypoint"] = tails_t["waypoint"].astype("int")
 
     heads_t.set_index(["flight_id", "waypoint"], inplace=True, drop=False)
     tails_t.index = heads_t.index
@@ -1566,8 +1574,7 @@ def contrails_to_hi_res_grid(
     # Aggregate contrail segments to a high resolution longitude-latitude grid
     for i in tqdm(heads_t.index[:2000]):
         contrail_segment = GeoVectorDataset(
-            pd.concat([heads_t[cols_req].loc[i], tails_t[cols_req].loc[i]], axis=1).T,
-            copy=True
+            pd.concat([heads_t[cols_req].loc[i], tails_t[cols_req].loc[i]], axis=1).T, copy=True
         )
 
         segment_grid = segment_property_to_hi_res_grid(
@@ -1579,10 +1586,10 @@ def contrails_to_hi_res_grid(
 
 
 def _initialise_longitude_latitude_grid(
-        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
-        spatial_grid_res: float = 0.05,
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
+    spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
-    """
+    r"""
     Create longitude-latitude grid of specified coordinates and spatial resolution.
 
     Parameters
@@ -1602,12 +1609,8 @@ def _initialise_longitude_latitude_grid(
     This empty grid is used to store the aggregated contrail properties of the individual
     contrail segments, such as the gridded contrail optical depth and radiative forcing.
     """
-    lon_coords = np.arange(
-        spatial_bbox[0], spatial_bbox[2] + spatial_grid_res, spatial_grid_res
-    )
-    lat_coords = np.arange(
-        spatial_bbox[1], spatial_bbox[3] + spatial_grid_res, spatial_grid_res
-    )
+    lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + spatial_grid_res, spatial_grid_res)
+    lat_coords = np.arange(spatial_bbox[1], spatial_bbox[3] + spatial_grid_res, spatial_grid_res)
     return xr.DataArray(
         np.zeros((len(lon_coords), len(lat_coords))),
         dims=["longitude", "latitude"],
@@ -1616,11 +1619,12 @@ def _initialise_longitude_latitude_grid(
 
 
 def segment_property_to_hi_res_grid(
-        contrail_segment: GeoVectorDataset, *,
-        var_name: str,
-        spatial_grid_res: float = 0.05,
+    contrail_segment: GeoVectorDataset,
+    *,
+    var_name: str,
+    spatial_grid_res: float = 0.05,
 ) -> xr.DataArray:
-    """
+    r"""
     Convert the contrail segment property to a high-resolution longitude-latitude grid.
 
     Parameters
@@ -1682,15 +1686,12 @@ def segment_property_to_hi_res_grid(
 
     # Distribute selected contrail property to grid
     return plume_concentration * (
-            weights * xr.ones_like(weights) * contrail_segment[var_name][1]
-            + (1 - weights) * xr.ones_like(weights) * contrail_segment[var_name][0]
+        weights * xr.ones_like(weights) * contrail_segment[var_name][1]
+        + (1 - weights) * xr.ones_like(weights) * contrail_segment[var_name][0]
     )
 
 
-def _pixel_weights(
-        contrail_segment: GeoVectorDataset,
-        segment_grid: xr.DataArray
-) -> xr.DataArray:
+def _pixel_weights(contrail_segment: GeoVectorDataset, segment_grid: xr.DataArray) -> xr.DataArray:
     """
     Calculate the pixel weights for `segment_grid`.
 
@@ -1742,8 +1743,7 @@ def _pixel_weights(
 
 
 def _segment_perpendicular_distance_to_pixels(
-        contrail_segment: GeoVectorDataset,
-        weights: xr.DataArray
+    contrail_segment: GeoVectorDataset, weights: xr.DataArray
 ) -> xr.DataArray:
     """
     Calculate perpendicular distance from contrail segment to each segment grid pixel.
@@ -1769,17 +1769,12 @@ def _segment_perpendicular_distance_to_pixels(
     tail = contrail_segment.dataframe.iloc[1]
 
     # Longitude and latitude along contrail segment
-    lon_grid, lat_grid = np.meshgrid(
-        weights["longitude"].values, weights["latitude"].values
-    )
+    lon_grid, lat_grid = np.meshgrid(weights["longitude"].values, weights["latitude"].values)
 
     lon_s = head["longitude"] + weights.T.values * (tail["longitude"] - head["longitude"])
     lat_s = head["latitude"] + weights.T.values * (tail["latitude"] - head["latitude"])
 
-    lon_dist = units.longitude_distance_to_m(
-        np.abs(lon_grid - lon_s),
-        0.5 * (lat_s + lat_grid)
-    )
+    lon_dist = units.longitude_distance_to_m(np.abs(lon_grid - lon_s), 0.5 * (lat_s + lat_grid))
 
     lat_dist = units.latitude_distance_to_m(np.abs(lat_grid - lat_s))
     dist_perp = (lon_dist**2 + lat_dist**2) ** 0.5
@@ -1787,9 +1782,9 @@ def _segment_perpendicular_distance_to_pixels(
 
 
 def _gaussian_plume_concentration(
-        contrail_segment: GeoVectorDataset,
-        weights: xr.DataArray,
-        dist_perpendicular: xr.DataArray,
+    contrail_segment: GeoVectorDataset,
+    weights: xr.DataArray,
+    dist_perpendicular: xr.DataArray,
 ) -> xr.DataArray:
     """
     Calculate relative gaussian plume concentration along the contrail width.
@@ -1824,15 +1819,12 @@ def _gaussian_plume_concentration(
     concentration = np.where(
         (weights.values < 0) | (weights.values > 1),
         0,
-        (4 / np.pi)**0.5 * np.exp(-0.5 * dist_perpendicular.values**2 / sigma_yy)
+        (4 / np.pi) ** 0.5 * np.exp(-0.5 * dist_perpendicular.values**2 / sigma_yy),
     )
     return xr.DataArray(concentration, coords=weights.coords)
 
 
-def _add_segment_to_main_grid(
-        main_grid: xr.DataArray,
-        segment_grid: xr.DataArray
-) -> xr.DataArray:
+def _add_segment_to_main_grid(main_grid: xr.DataArray, segment_grid: xr.DataArray) -> xr.DataArray:
     """
     Add the gridded contrail segment to the main grid.
 
@@ -1882,13 +1874,15 @@ def _add_segment_to_main_grid(
 # High resolution grid: natural cirrus
 # ------------------------------------
 
+
 def natural_cirrus_properties_to_hi_res_grid(
-        met: MetDataset, *,
-        spatial_grid_res: float = 0.05,
-        optical_depth_threshold: float = 0.1,
-        random_state: np.random.Generator | int | None = None
+    met: MetDataset,
+    *,
+    spatial_grid_res: float = 0.05,
+    optical_depth_threshold: float = 0.1,
+    random_state: np.random.Generator | int | None = None,
 ) -> MetDataset:
-    """
+    r"""
     Increase the longitude-latitude resolution of natural cirrus cover and optical depth.
 
     Parameters
@@ -1923,11 +1917,11 @@ def natural_cirrus_properties_to_hi_res_grid(
     # Ensure the required columns are included in `met`
     met.ensure_vars(
         (
-            'air_temperature',
-            'specific_humidity',
-            'specific_cloud_ice_water_content',
-            'geopotential',
-            'fraction_of_cloud_cover',
+            "air_temperature",
+            "specific_humidity",
+            "specific_cloud_ice_water_content",
+            "geopotential",
+            "fraction_of_cloud_cover",
         )
     )
 
@@ -1964,14 +1958,10 @@ def natural_cirrus_properties_to_hi_res_grid(
     has_cirrus = rand_number > (1 + dx - cc_rep)
 
     tau_cirrus_hi_res = np.zeros_like(tau_cirrus_rep)
-    tau_cirrus_hi_res[has_cirrus] = (tau_cirrus_rep[has_cirrus] / cc_rep[has_cirrus])
+    tau_cirrus_hi_res[has_cirrus] = tau_cirrus_rep[has_cirrus] / cc_rep[has_cirrus]
 
     # Enhance resolution of `cirrus coverage`
-    cirrus_cover_hi_res = np.where(
-        tau_cirrus_hi_res > optical_depth_threshold,
-        1,
-        0
-    )
+    cirrus_cover_hi_res = np.where(tau_cirrus_hi_res > optical_depth_threshold, 1, 0)
 
     # Package outputs
     ds_hi_res = xr.Dataset(
@@ -1979,7 +1969,7 @@ def natural_cirrus_properties_to_hi_res_grid(
             tau_cirrus=(["longitude", "latitude"], tau_cirrus_hi_res),
             cc_natural_cirrus=(["longitude", "latitude"], cirrus_cover_hi_res),
         ),
-        coords=dict(longitude=lon_coords_hi_res, latitude=lat_coords_hi_res)
+        coords=dict(longitude=lon_coords_hi_res, latitude=lat_coords_hi_res),
     )
     ds_hi_res = ds_hi_res.expand_dims({"level": np.array([-1])})
     ds_hi_res = ds_hi_res.expand_dims({"time": met["time"].values})
@@ -1987,11 +1977,12 @@ def natural_cirrus_properties_to_hi_res_grid(
 
 
 def _hi_res_grid_coordinates(
-        lon_coords: npt.NDArray[np.float_],
-        lat_coords: npt.NDArray[np.float_], *,
-        spatial_grid_res: float = 0.05
+    lon_coords: npt.NDArray[np.float_],
+    lat_coords: npt.NDArray[np.float_],
+    *,
+    spatial_grid_res: float = 0.05,
 ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
-    """
+    r"""
     Calculate longitude and latitude coordinates for the high resolution grid.
 
     Parameters
@@ -2031,15 +2022,11 @@ def _hi_res_grid_coordinates(
         lat_coords[0], lat_coords[-1] + spatial_grid_res, spatial_grid_res
     )
 
-    return (
-        np.round(lon_coords_hi_res, decimals=3),
-        np.round(lat_coords_hi_res, decimals=3)
-    )
+    return (np.round(lon_coords_hi_res, decimals=3), np.round(lat_coords_hi_res, decimals=3))
 
 
 def _repeat_rows_and_columns(
-        array_2d: npt.NDArray[np.float_, np.float_], *,
-        n_reps: int
+    array_2d: npt.NDArray[np.float_, np.float_], *, n_reps: int
 ) -> npt.NDArray[np.float_, np.float_]:
     """
     Repeat the elements in `array_2d` along each row and column.
@@ -2067,4 +2054,4 @@ def _repeat_rows_and_columns(
     array_2d_rep = np.repeat(stacked, n_reps, axis=0)
 
     # Do not repeat final row and column as they are on the edge
-    return array_2d_rep[:-(n_reps - 1), :-(n_reps - 1)]
+    return array_2d_rep[: -(n_reps - 1), : -(n_reps - 1)]

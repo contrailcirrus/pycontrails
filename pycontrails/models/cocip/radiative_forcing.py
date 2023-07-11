@@ -11,15 +11,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import pandas as pd
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import xarray as xr
 
-from pycontrails.physics import geo
 from pycontrails.core.met import MetDataset
-from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.core.vector import vector_to_lon_lat_grid
+from pycontrails.core.vector import GeoVectorDataset, vector_to_lon_lat_grid
+from pycontrails.physics import geo
 
 
 @dataclass
@@ -874,16 +873,18 @@ def effective_tau_cirrus(
 # Contrail-contrail overlapping
 # -----------------------------
 
+
 def contrail_contrail_overlap_radiative_effects(
-        contrails: GeoVectorDataset,
-        habit_distributions: npt.NDArray[np.float_],
-        radius_threshold_um: npt.NDArray[np.float_], *,
-        min_altitude_m: float = 6000.0,
-        max_altitude_m: float = 13000.0,
-        dz_overlap_m: float = 500.0,
-        spatial_grid_res: float = 0.25
+    contrails: GeoVectorDataset,
+    habit_distributions: npt.NDArray[np.float_],
+    radius_threshold_um: npt.NDArray[np.float_],
+    *,
+    min_altitude_m: float = 6000.0,
+    max_altitude_m: float = 13000.0,
+    dz_overlap_m: float = 500.0,
+    spatial_grid_res: float = 0.25,
 ) -> GeoVectorDataset:
-    """
+    r"""
     Calculate radiative properties after accounting for contrail overlapping.
 
     Parameters
@@ -962,11 +963,8 @@ def contrail_contrail_overlap_radiative_effects(
             olr=(dims, np.zeros((len(lon_coords), len(lat_coords), 1, 1))),
         ),
         coords=dict(
-            longitude=lon_coords,
-            latitude=lat_coords,
-            level=[-1],
-            time=[contrails["time"][0]]
-        )
+            longitude=lon_coords, latitude=lat_coords, level=[-1], time=[contrails["time"][0]]
+        ),
     )
 
     # Account for contrail overlapping starting from bottom to top layers
@@ -1000,13 +998,11 @@ def contrail_contrail_overlap_radiative_effects(
             contrails_level,
             contrails_above,
             spatial_bbox=spatial_bbox,
-            spatial_grid_res=spatial_grid_res
+            spatial_grid_res=spatial_grid_res,
         )
 
         # Calculate updated RSR and OLR with contrail overlapping
-        contrails_level = _rsr_and_olr_with_contrail_overlap(
-            contrails_level, delta_rad_t
-        )
+        contrails_level = _rsr_and_olr_with_contrail_overlap(contrails_level, delta_rad_t)
 
         # Calculate local contrail SW and LW RF with contrail overlapping
         contrails_level = _local_sw_and_lw_rf_with_contrail_overlap(
@@ -1018,14 +1014,14 @@ def contrail_contrail_overlap_radiative_effects(
             contrails_level,
             delta_rad_t,
             spatial_bbox=spatial_bbox,
-            spatial_grid_res=spatial_grid_res
+            spatial_grid_res=spatial_grid_res,
         )
 
         # Save values
         rsr_overlap[is_in_layer] = contrails_level["rsr_overlap"]
         olr_overlap[is_in_layer] = contrails_level["olr_overlap"]
         tau_cirrus_overlap[is_in_layer] = (
-                contrails_level["tau_cirrus"] + contrails_level["tau_contrails_above"]
+            contrails_level["tau_cirrus"] + contrails_level["tau_contrails_above"]
         )
         rf_sw_overlap[is_in_layer] = contrails_level["rf_sw_overlap"]
         rf_lw_overlap[is_in_layer] = contrails_level["rf_lw_overlap"]
@@ -1042,12 +1038,13 @@ def contrail_contrail_overlap_radiative_effects(
 
 
 def _contrail_optical_depth_above_contrail_layer(
-        contrails_level: GeoVectorDataset,
-        contrails_above: GeoVectorDataset, *,
-        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
-        spatial_grid_res: float = 0.5,
+    contrails_level: GeoVectorDataset,
+    contrails_above: GeoVectorDataset,
+    *,
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
+    spatial_grid_res: float = 0.5,
 ) -> GeoVectorDataset:
-    """
+    r"""
     Calculate the contrail optical depth above the contrail waypoints.
 
     Parameters
@@ -1070,9 +1067,9 @@ def _contrail_optical_depth_above_contrail_layer(
     contrails_level.ensure_vars(("tau_contrail", "segment_length", "width"))
 
     contrails_above["tau_contrails_above"] = (
-            contrails_above["tau_contrail"]
-            * contrails_above["segment_length"]
-            * contrails_above["width"]
+        contrails_above["tau_contrail"]
+        * contrails_above["segment_length"]
+        * contrails_above["width"]
     )
 
     # Aggregate contrail optical depth to a longitude-latitude grid
@@ -1080,7 +1077,7 @@ def _contrail_optical_depth_above_contrail_layer(
         contrails_above,
         agg={"tau_contrails_above": "sum"},
         spatial_bbox=spatial_bbox,
-        spatial_grid_res=spatial_grid_res
+        spatial_grid_res=spatial_grid_res,
     )
     ds = ds.expand_dims({"level": np.array([-1])})
     ds = ds.expand_dims({"time": np.array([contrails_level["time"][0]])})
@@ -1098,8 +1095,7 @@ def _contrail_optical_depth_above_contrail_layer(
 
 
 def _rsr_and_olr_with_contrail_overlap(
-        contrails_level: GeoVectorDataset,
-        delta_rad_t: xr.Dataset
+    contrails_level: GeoVectorDataset, delta_rad_t: xr.Dataset
 ) -> GeoVectorDataset:
     """
     Calculate RSR and OLR at contrail waypoints after accounting for contrail overlapping.
@@ -1148,9 +1144,9 @@ def _rsr_and_olr_with_contrail_overlap(
 
 
 def _local_sw_and_lw_rf_with_contrail_overlap(
-        contrails_level: GeoVectorDataset,
-        habit_distributions: npt.NDArray[np.float_],
-        radius_threshold_um: npt.NDArray[np.float_],
+    contrails_level: GeoVectorDataset,
+    habit_distributions: npt.NDArray[np.float_],
+    radius_threshold_um: npt.NDArray[np.float_],
 ) -> GeoVectorDataset:
     """
     Calculate local contrail SW and LW RF after accounting for contrail overlapping.
@@ -1189,9 +1185,7 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
 
     # Calculate habit weights
     habit_w = habit_weights(
-        (contrails_level['r_ice_vol'] * 1e6),
-        habit_distributions,
-        radius_threshold_um
+        (contrails_level["r_ice_vol"] * 1e6), habit_distributions, radius_threshold_um
     )
 
     # Calculate solar constant
@@ -1200,36 +1194,37 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
 
     # Calculate local SW and LW RF
     contrails_level["rf_sw_overlap"] = shortwave_radiative_forcing(
-        (contrails_level['r_ice_vol'] * 1e6),
-        contrails_level['sdr'],
-        contrails_level['rsr_overlap'],
+        (contrails_level["r_ice_vol"] * 1e6),
+        contrails_level["sdr"],
+        contrails_level["rsr_overlap"],
         sd0,
-        contrails_level['tau_contrail'],
-        (contrails_level['tau_cirrus'] + contrails_level['tau_contrails_above']),
-        habit_w
+        contrails_level["tau_contrail"],
+        (contrails_level["tau_cirrus"] + contrails_level["tau_contrails_above"]),
+        habit_w,
     )
 
     contrails_level["rf_lw_overlap"] = longwave_radiative_forcing(
-        (contrails_level['r_ice_vol'] * 1e6),
-        contrails_level['olr_overlap'],
-        contrails_level['air_temperature'],
-        contrails_level['tau_contrail'],
-        (contrails_level['tau_cirrus'] + contrails_level['tau_contrails_above']),
-        habit_w
+        (contrails_level["r_ice_vol"] * 1e6),
+        contrails_level["olr_overlap"],
+        contrails_level["air_temperature"],
+        contrails_level["tau_contrail"],
+        (contrails_level["tau_cirrus"] + contrails_level["tau_contrails_above"]),
+        habit_w,
     )
     contrails_level["rf_net_overlap"] = (
-            contrails_level["rf_lw_overlap"] + contrails_level["rf_sw_overlap"]
+        contrails_level["rf_lw_overlap"] + contrails_level["rf_sw_overlap"]
     )
     return contrails_level
 
 
 def _change_in_background_rsr_and_olr(
-        contrails_level: GeoVectorDataset,
-        delta_rad_t: xr.Dataset, *,
-        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
-        spatial_grid_res: float = 0.5,
+    contrails_level: GeoVectorDataset,
+    delta_rad_t: xr.Dataset,
+    *,
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
+    spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
-    """
+    r"""
     Calculate change in background RSR and OLR fields.
 
     Parameters
@@ -1276,7 +1271,7 @@ def _change_in_background_rsr_and_olr(
         contrails_level,
         agg={"sw_radiative_flux": "sum", "lw_radiative_flux": "sum"},
         spatial_bbox=spatial_bbox,
-        spatial_grid_res=spatial_grid_res
+        spatial_grid_res=spatial_grid_res,
     )
     ds = ds.expand_dims({"level": np.array([-1])})
     ds = ds.expand_dims({"time": np.array([contrails_level["time"][0]])})
