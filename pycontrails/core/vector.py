@@ -11,8 +11,8 @@ from typing import Any, Dict, Generator, Iterable, Iterator, Sequence, Type, Typ
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import xarray as xr
 import pyproj
+import xarray as xr
 from overrides import overrides
 
 from pycontrails.core import coordinates, interpolation
@@ -1777,23 +1777,32 @@ class GeoVectorDataset(VectorDataset):
     # Vector to grid
     # ------------
     def to_lon_lat_grid(
-            self, *,
-            agg: dict[str, str],
-            spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
-            spatial_grid_res: float = 0.5,
+        self,
+        *,
+        agg: dict[str, str],
+        spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
+        spatial_grid_res: float = 0.5,
     ) -> xr.Dataset:
+        """
+        Convert vectors to a longitude-latitude grid.
+
+        See Also
+        --------
+        vector_to_lon_lat_grid
+        """
         return vector_to_lon_lat_grid(
             self, agg=agg, spatial_bbox=spatial_bbox, spatial_grid_res=spatial_grid_res
         )
 
 
 def vector_to_lon_lat_grid(
-        vector: GeoVectorDataset, *,
-        agg: dict[str, str],
-        spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
-        spatial_grid_res: float = 0.5,
+    vector: GeoVectorDataset,
+    *,
+    agg: dict[str, str],
+    spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
+    spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
-    """
+    r"""
     Convert vectors to a longitude-latitude grid.
 
     Parameters

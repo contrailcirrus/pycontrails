@@ -859,12 +859,11 @@ def _dt_to_float_seconds(dt: np.ndarray | np.timedelta64, dtype: npt.DTypeLike) 
 # Grid properties
 # ---------------
 
+
 def spatial_bounding_box(
-        longitude: npt.NDArray[np.float_],
-        latitude: npt.NDArray[np.float_], *,
-        buffer: float = 1.0
+    longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np.float_], *, buffer: float = 1.0
 ) -> tuple[float, float, float, float]:
-    """
+    r"""
     Construct rectangular spatial bounding box from a set of waypoints.
 
     Parameters
@@ -889,10 +888,11 @@ def spatial_bounding_box(
 
 
 def domain_surface_area(
-        spatial_bbox: tuple[float, float, float, float] = [-180.0, -90.0, 180.0, 90.0], *,
-        spatial_grid_res: float = 0.5
+    spatial_bbox: tuple[float, float, float, float] = [-180.0, -90.0, 180.0, 90.0],
+    *,
+    spatial_grid_res: float = 0.5,
 ) -> float:
-    """
+    r"""
     Calculate surface area in the provided spatial bounding box.
 
     Parameters
@@ -915,10 +915,9 @@ def domain_surface_area(
 
 
 def grid_surface_area(
-        lon_coords: npt.NDArray[np.float_],
-        lat_coords: npt.NDArray[np.float_]
+    lon_coords: npt.NDArray[np.float_], lat_coords: npt.NDArray[np.float_]
 ) -> xr.DataArray:
-    """
+    r"""
     Calculate surface area that is covered by each pixel in a longitude-latitude grid.
 
     Parameters
@@ -950,7 +949,7 @@ def grid_surface_area(
     area_lat_btm = _area_between_latitude_and_north_pole(lat_2d - np.abs(d_lat[0]))
     area_lat_top = _area_between_latitude_and_north_pole(lat_2d)
     area = (np.abs(d_lon[0]) / 360.0) * (area_lat_btm - area_lat_top)
-    area[area < 0.0] = np.nan    # Prevent negative values at -90 degree latitude slice
+    area[area < 0.0] = np.nan  # Prevent negative values at -90 degree latitude slice
     return xr.DataArray(
         area.T,
         dims=["longitude", "latitude"],
@@ -959,10 +958,10 @@ def grid_surface_area(
 
 
 def _area_between_latitude_and_north_pole(
-        latitude: npt.NDArray[np.float_]
+    latitude: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
-    """
-    Calculate surface area from the provided latitude to the North Pole
+    r"""
+    Calculate surface area from the provided latitude to the North Pole.
 
     Parameters
     ----------
