@@ -82,10 +82,10 @@ def buffer_and_clean(
             polygon = shapely.Polygon(base)
         except shapely.errors.TopologicalError:
             return None
-        if not polygon.is_valid:
-            polygon = polygon.buffer(buffer / 10, quad_segs=1)
 
-    assert polygon.is_valid
+    if not polygon.is_valid:
+        polygon = polygon.buffer(buffer / 10.0, quad_segs=1)
+        assert polygon.is_valid, "Fail to make polygon valid after buffer"
 
     # Remove all interior rings
     if polygon.interiors:
