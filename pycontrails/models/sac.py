@@ -457,7 +457,9 @@ def T_critical_sac(
     # For relative_humidity away from 1, Newton's method converges quickly, and so
     # any initial guess will work.
     init_guess = T_LM_filt - 1.0
-    newton_approx = scipy.optimize.newton(func, init_guess, fprime=fprime, maxiter=maxiter)
+    newton_approx = scipy.optimize.newton(
+        func, init_guess, fprime=fprime, maxiter=maxiter, disp=False
+    )
 
     # For relative_humidity > 0.999, we just use T_LM
     # We copy over the entire array T_LM here instead of using np.empty_like
