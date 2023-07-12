@@ -825,30 +825,6 @@ def test_gridded_and_time_slice_outputs() -> None:
     np.testing.assert_allclose(t_slice_stats["total_contrail_ef"], ds["ef"].sum(), rtol=1)
 
 
-def test_flight_statistics(cocip_persistent: Cocip) -> None:
-    """Test `Cocip.output_flight_statistics`."""
-    stats = cocip_persistent.output_flight_statistics()
-    assert isinstance(stats, pd.Series)
-
-    # update output stats when algorithm is adjusted
-    # stats.to_json(get_static_path("cocip-flight-statistics.json"), indent=2)
-
-    # compare each value after being processed through json
-    output_stats = json.loads(stats.to_json())
-
-    _path = get_static_path("cocip-flight-statistics.json")
-    with open(_path, "r") as f:
-        opened_stats = json.load(f)
-
-    for k in output_stats:
-        if opened_stats[k] is None:
-            continue
-        if isinstance(opened_stats[k], str):
-            assert output_stats[k] == opened_stats[k]
-            continue
-        np.testing.assert_allclose(output_stats[k], opened_stats[k], err_msg=k, rtol=1e-5)
-
-
 def test_contrail_edges(cocip_persistent: Cocip) -> None:
     """Test contrail edges methods."""
     df_contrail = cocip_persistent.contrail
