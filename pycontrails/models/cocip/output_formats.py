@@ -2,9 +2,9 @@
 
 This module includes functions to produce additional output formats, including the:
     (1) Flight waypoint outputs.
-            See :func:`flight_waypoint_outputs`.
+            See :func:`flight_waypoint_summary_statistics`.
     (2) Contrail flight summary outputs.
-            See :func:`contrail_flight_summary_outputs`.
+            See :func:`contrail_flight_summary_statistics`.
     (3) Gridded outputs.
             See :func:`longitude_latitude_grid`.
     (4) Time-slice statistics.
@@ -40,7 +40,7 @@ from pycontrails.physics.thermo import rho_d
 # -----------------------
 
 
-def flight_waypoint_outputs(
+def flight_waypoint_summary_statistics(
     flight_waypoints: GeoVectorDataset, contrails: GeoVectorDataset
 ) -> GeoVectorDataset:
     """
@@ -135,7 +135,7 @@ def flight_waypoint_outputs(
 # -------------------------------
 
 
-def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.DataFrame:
+def contrail_flight_summary_statistics(flight_waypoints: GeoVectorDataset) -> pd.DataFrame:
     """
     Calculate contrail summary statistics for each flight.
 
@@ -200,7 +200,7 @@ def contrail_flight_summary_outputs(flight_waypoints: GeoVectorDataset) -> pd.Da
     }
 
     # Check and pre-process `flight_waypoints`
-    vars_required = ["flight_id", "sac"] + list(agg_map_flight_waypoints_to_summary.keys())
+    vars_required = ["flight_id", "sac"] + list(agg_map_flight_waypoints_to_summary)
     vars_required.remove("contrail_length")
     vars_required.remove("persistent_contrail_length")
     flight_waypoints.ensure_vars(vars_required)
@@ -863,7 +863,18 @@ def time_slice_statistics(
     - ``mean_albedo_at_contrail_wypts``, [dimensionless]
     """
     # Ensure the required columns are included in `flight_waypoints`, `contrails`, `met` and `rad`
-    flight_waypoints.ensure_vars(("flight_id", "segment_length", "true_airspeed", "fuel_flow"))
+    flight_waypoints.ensure_vars(
+        (
+            "flight_id",
+            "segment_length",
+            "true_airspeed",
+            "fuel_flow",
+            "engine_efficiency",
+            "nvpm_ei_n",
+            "sac",
+            "persistent_1"
+        )
+    )
     contrails.ensure_vars(
         (
             "flight_id",

@@ -11,19 +11,29 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from pycontrails.datalib.ecmwf import ERA5
 from pycontrails import Flight, MetDataset
+from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.core.met import originates_from_ecmwf
 from pycontrails.models import humidity_scaling as hs
 from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import (
     Cocip,
+    CocipParams,
     CocipFlightParams,
     contrail_properties,
     radiative_heating,
 )
+from pycontrails.models.cocip.radiative_forcing import contrail_contrail_overlap_radiative_effects
 from pycontrails.models.humidity_scaling import (
     ExponentialBoostHumidityScaling,
     ExponentialBoostLatitudeCorrectionHumidityScaling,
+)
+from pycontrails.models.cocip.output_formats import (
+    flight_waypoint_summary_statistics,
+    contrail_flight_summary_statistics,
+    longitude_latitude_grid,
+    time_slice_statistics
 )
 
 from .conftest import get_static_path
@@ -636,9 +646,183 @@ def test_intermediate_columns_in_flight_output(cocip_persistent: Cocip) -> None:
         assert np.all(np.isfinite(cocip_persistent.source[col]))
 
 
+def test_contrail_contrail_overlapping_effects() -> None:
+    """Test `cocip.radiative_forcing.contrail_contrail_overlap_radiative_effects`."""
+    # Load one time slice of contrail outputs over Europe
+    contrails = GeoVectorDataset(
+        pd.read_parquet(get_static_path("cocip-output-flts-20190101-eu.pq")),
+        copy=True
+    )
+    is_time = contrails["time"] == pd.to_datetime("2019-01-01 13:00:00")
+    contrails = contrails.filter(is_time)
+
+    # Account for contrail-contrail overlapping
+    cocip_params = CocipParams()
+    contrails_overlap = contrail_contrail_overlap_radiative_effects(
+        contrails, cocip_params.habit_distributions, cocip_params.radius_threshold_um
+    )
+
+    # Check outputs
+    assert np.all(contrails_overlap["tau_cirrus_overlap"] >= contrails_overlap["tau_cirrus"])
+    assert np.all(contrails_overlap["rsr_overlap"] >= contrails_overlap["rsr"])
+    assert np.all(contrails_overlap["olr_overlap"] <= contrails_overlap["olr"])
+    assert np.all(contrails_overlap["rf_lw_overlap"] <= contrails_overlap["rf_lw"])
+    assert np.all(contrails_overlap["rf_sw_overlap"] >= contrails_overlap["rf_sw"])
+    #: Do not check for the change in `rf_net` because it's sign depends on the change in
+    #: `rf_sw` and `rf_lw`
+
 # ------
 # Output
 # ------
+
+
+def test_flight_waypoint_and_flight_summary_statistics() -> None:
+    """Ensure flight waypoint and flight summary outputs are consistent with CoCiP outputs. """
+    # Load flight waypoints
+    flight_waypoints_opened = pd.read_parquet(get_static_path("flt-wypts-20190101-eu.pq"))
+
+    cols_req = [
+        "flight_id", "waypoint", "longitude", "latitude", "altitude",
+        "time", "segment_length", "sac",
+    ]
+    flight_waypoints_in = GeoVectorDataset(flight_waypoints_opened[cols_req], copy=True)
+
+    # Load CoCiP outputs
+    contrails_opened = GeoVectorDataset(
+        pd.read_parquet(get_static_path("cocip-output-flts-20190101-eu.pq")),
+    )
+
+    # -------------------------------
+    # Test flight-waypoint statistics
+    # -------------------------------
+    flight_waypoints_out = flight_waypoint_summary_statistics(
+        flight_waypoints_in, contrails_opened
+    )
+
+    n_contrails_unique = len(
+        np.unique(contrails_opened["flight_id"] + '-' + contrails_opened["waypoint"].astype(str))
+    )
+    assert n_contrails_unique == (~np.isnan(flight_waypoints_out["ef"])).sum()
+    np.testing.assert_allclose(
+        np.nansum(flight_waypoints_out["ef"]), np.nansum(contrails_opened["ef"]), rtol=1
+    )
+
+    # -------------------------------
+    # Test flight-waypoint statistics
+    # -------------------------------
+    flight_summary = contrail_flight_summary_statistics(flight_waypoints_out)
+    assert len(flight_summary) == len(np.unique(flight_waypoints_out["flight_id"]))
+    np.testing.assert_allclose(
+        np.nansum(flight_summary["total_flight_distance_flown"]),
+        np.nansum(flight_waypoints_out["segment_length"]), rtol=1
+    )
+    assert np.all(
+        flight_summary["total_flight_distance_flown"] >= flight_summary["total_contrails_formed"]
+    )
+    assert np.all(
+        flight_summary["total_contrails_formed"]
+        >= flight_summary["total_persistent_contrails_formed"]
+    )
+    np.testing.assert_allclose(
+        np.nansum(flight_waypoints_out["persistent_contrail_length"]),
+        np.nansum(flight_summary["total_persistent_contrails_formed"]), rtol=1
+    )
+    assert (
+            (flight_summary["total_persistent_contrails_formed"] == 0.0).sum() ==
+            (flight_summary["mean_lifetime_rf_net"].isna()).sum()
+    )
+    np.testing.assert_allclose(
+        np.nansum(flight_summary["total_energy_forcing"]),
+        np.nansum(flight_waypoints_out["ef"]), rtol=1
+    )
+
+
+def test_gridded_and_time_slice_outputs() -> None:
+    """Ensure gridded and time-slice outputs are consistent with CoCiP outputs. """
+    t_start = pd.to_datetime("2019-01-01 12:00:00")
+    t_end = pd.to_datetime("2019-01-01 13:00:00")
+
+    # Load flight waypoints
+    flight_waypoints_t = GeoVectorDataset(
+        pd.read_parquet(get_static_path("flt-wypts-20190101-eu.pq"))
+    )
+
+    # Load CoCiP outputs
+    contrails = GeoVectorDataset(
+        pd.read_parquet(get_static_path("cocip-output-flts-20190101-eu.pq")),
+    )
+    is_time = contrails.dataframe["time"].between(t_start, t_end, inclusive="right")
+    contrails_t = contrails.filter(is_time, copy=True)
+
+    # Load meteorology
+    era5_met = ERA5(
+        time=("2019-01-01 12:00:00", "2019-01-01 13:00:00"),
+        variables=[
+            "air_temperature", "specific_humidity",
+            "specific_cloud_ice_water_content", "geopotential"
+        ],
+        pressure_levels=[
+            100, 125, 150, 175, 200, 225, 250, 300,
+            350, 400, 450, 500, 550, 600, 650, 700,
+            750, 775, 800, 825, 850, 875, 900, 925,
+            950, 975, 1000,
+        ],
+        paths=get_static_path("met-20190101-eu.nc"),
+        cachestore=None
+    )
+    met = era5_met.open_metdataset(wrap_longitude=False)
+
+    # Load radiation
+    ds_rad = xr.open_mfdataset(get_static_path("rad-20190101-eu.nc"))
+    ds_rad['sdr'] = np.maximum((ds_rad['tisr'] / (1 * 60 * 60)), 0)
+    ds_rad['rsr'] = np.maximum(((ds_rad['tisr'] - ds_rad['tsr']) / (1 * 60 * 60)), 0)
+    ds_rad['olr'] = np.maximum(-(ds_rad['ttr'] / (1 * 60 * 60)), 0)
+    ds_rad = ds_rad.drop(["tisr", "tsr", "ttr"])
+    ds_rad = ds_rad.expand_dims({"level": np.array([-1])})
+    rad = MetDataset(ds_rad, wrap_longitude=False)
+
+    # --------------------
+    # Test gridded outputs
+    # --------------------
+    ds = longitude_latitude_grid(
+        t_start, t_end, flight_waypoints_t, contrails_t, met=met, spatial_bbox=(-12, 35, 20, 60)
+    )
+
+    np.testing.assert_allclose(
+        ds["flight_distance_flown"].sum().values,
+        np.nansum(flight_waypoints_t["segment_length"]),
+        rtol=1
+    )
+    np.testing.assert_allclose(ds["ef"].sum().values, contrails_t["ef"].sum(), rtol=1)
+
+    # The number of grid cells at `t_end` with contrails must be equal
+    assert np.count_nonzero(ds["persistent_contrails"]) == np.count_nonzero(ds["tau_contrail"])
+    assert np.count_nonzero(ds["ef"]) == 227
+
+    # --------------------------
+    # Test time-slice statistics
+    # --------------------------
+    t_slice_stats = time_slice_statistics(
+        t_start, t_end, flight_waypoints_t, contrails_t,
+        humidity_scaling=ExponentialBoostLatitudeCorrectionHumidityScaling(),
+        met=met, rad=rad,
+        spatial_bbox=(-12, 35, 20, 60),
+    )
+
+    assert t_slice_stats["n_waypoints"] == len(flight_waypoints_t)
+    np.testing.assert_allclose(
+        t_slice_stats["total_flight_distance"], ds["flight_distance_flown"].sum(), rtol=1
+    )
+    assert (
+            t_slice_stats["n_waypoints_forming_persistent_contrails"]
+            > t_slice_stats["n_waypoints_with_persistent_contrails_at_t_end"]
+    )
+    np.testing.assert_allclose(
+        t_slice_stats["total_persistent_contrails_formed"] * 1000,
+        np.nansum(flight_waypoints_t["segment_length"][flight_waypoints_t["persistent_1"] == 1.0]),
+        rtol=1
+    )
+    np.testing.assert_allclose(t_slice_stats["total_contrail_ef"], ds["ef"].sum(), rtol=1)
 
 
 def test_flight_statistics(cocip_persistent: Cocip) -> None:
