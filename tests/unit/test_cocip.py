@@ -707,9 +707,9 @@ def test_flight_waypoint_and_flight_summary_statistics() -> None:
         np.nansum(flight_waypoints_out["ef"]), np.nansum(contrails_opened["ef"]), rtol=1
     )
 
-    # -------------------------------
-    # Test flight-waypoint statistics
-    # -------------------------------
+    # ------------------------------
+    # Test flight-summary statistics
+    # ------------------------------
     flight_summary = contrail_flight_summary_statistics(flight_waypoints_out)
     assert len(flight_summary) == len(np.unique(flight_waypoints_out["flight_id"]))
     np.testing.assert_allclose(
