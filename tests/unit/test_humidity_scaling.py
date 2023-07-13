@@ -261,12 +261,13 @@ def custom() -> VectorDataset:
     return vector
 
 
-def test_global_rhi_correction(custom: VectorDataset) -> None:
+@pytest.mark.parametrize("q_method", [None, "cubic-spline"])
+def test_global_rhi_correction(custom: VectorDataset, q_method: str | None) -> None:
     """Check `ExponentialBoostLatitudeCorrectionHumidityScaling` implementation."""
     scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling()
 
     with pytest.raises(KeyError, match="latitude"):
-        scaler.scale(custom["q"], custom["T"], custom["p"], **scaler.params)
+        scaler.scale(custom["q"], custom["T"], custom["p"], **scaler.params, q_method=q_method)
 
     _, rhi_cor = scaler.scale(
         custom["q"],
@@ -274,8 +275,16 @@ def test_global_rhi_correction(custom: VectorDataset) -> None:
         custom["p"],
         latitude=custom["latitude"],
         **scaler.params,
+        q_method=q_method,
     )
-    np.testing.assert_allclose(rhi_cor, custom["rhi_cor"], atol=1e-5)
+    if q_method is None:
+        np.testing.assert_allclose(rhi_cor, custom["rhi_cor"], atol=1e-5)
+        assert rhi_cor.mean() == 1.0545183974070191
+    else:
+        # cubic-spline interp correction always exceeds linear interp correction
+        assert np.all(rhi_cor >= custom["rhi_cor"])
+        np.testing.assert_allclose(rhi_cor, custom["rhi_cor"], rtol=0.1)
+        assert rhi_cor.mean() == 1.0937216653381616
 
 
 @pytest.fixture(scope="module")
