@@ -317,6 +317,7 @@ class _SigmoidCoefficients:
     b4: float
 
 
+@functools.cache
 def _load_sigmoid_coef(q_method: str | None) -> _SigmoidCoefficients:
     if q_method is None:
         return _SigmoidCoefficients(
@@ -474,7 +475,7 @@ def _calc_rhi_max(air_temperature: ArrayLike) -> ArrayLike:
             p_liq / p_ice,
         )
 
-    low = air_temperature < 235
+    low = air_temperature < 235.0
     air_temperature_low = air_temperature[low]
     air_temperature_high = air_temperature[~low]
 
@@ -707,7 +708,7 @@ def histogram_matching_all_members(
             )
 
     # Divide by the number of ensemble members to get the mean
-    ensemble_mean_rhi /= n_members
+    ensemble_mean_rhi /= float(n_members)
 
     return ensemble_mean_rhi, ensemble_member_rhi
 
