@@ -1,7 +1,7 @@
 
 # Changelog
 
-## v0.44.2 (unreleased)
+## v0.44.2
 
 ### Fixes
 
@@ -9,6 +9,17 @@
 - In `PSModel.eval`, explicitly set any aircraft performance data at waypoints with zero true airspeed to `np.nan`. This avoids numpy `RuntimeWarning`s without affecting the results.
 - Fix corner-case in the `polygon.buffer_and_clean` function in which the polygon created by buffering the `opencv` contour is not valid. Now a second attempt to buffer the polygon is made with a smaller buffer distance.
 - Ignore RuntimeError raised in `scipy.optimize.newton` if the maximum number of iterations is reached before convergence. This is a workaround for occasional false positive convergence warnings. The pycontrails use-case may be related to [this GitHub issue](https://github.com/scipy/scipy/issues/8904).
+- Update the `Models.__init__` warnings when `humidity_scaling` is not provided. The previous warning provided an outdated code example.
+- Ensure the `interpolation_q_method` used in a parent model is passed into the `humidity_scaling` child model in the `Models.__init__` method. If the two `interpolation_q_method` values are different, a warning is issued. This could be extended to other model parameters in the future.
+
+### Features
+
+- Enable `ExponentialBoostLatitudeCorrectionHumidityScaling` humidity scaling for the model parameter `interpolation_q_method="cubic_spline"`.
+- Add [GFS notebook](https://py.contrails.org/examples/GFS.html) example.
+
+### Breaking changes
+
+- Remove `ExponentialBoostLatitudeCorrectionHumidityScalingParams`. These parameters are now hard-coded in the `ExponentialBoostLatitudeCorrectionHumidityScaling` model.
 
 ## v0.44.1
 
