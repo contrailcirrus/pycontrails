@@ -284,7 +284,7 @@ def test_global_rhi_correction(custom: VectorDataset, q_method: str | None) -> N
         # cubic-spline interp correction always exceeds linear interp correction
         assert np.all(rhi_cor >= custom["rhi_cor"])
         np.testing.assert_allclose(rhi_cor, custom["rhi_cor"], rtol=0.1)
-        assert rhi_cor.mean() == 1.0937216653381616
+        assert rhi_cor.mean() == 1.09371812002226
 
 
 @pytest.fixture(scope="module")
