@@ -39,6 +39,7 @@ Launch ``jupyter lab`` to run these notebooks interactively:
    :caption: Data Access
 
    examples/ECMWF
+   examples/GFS
 
 .. toctree::
    :maxdepth: 1
