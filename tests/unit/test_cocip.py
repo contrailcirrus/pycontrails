@@ -915,6 +915,34 @@ def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: Me
     assert "_met_intersection" not in out
 
 
+@pytest.mark.filterwarnings("ignore:All tau_contrail values are nan")
+@pytest.mark.parametrize("q_method", [None, "cubic-spline"])
+def test_exponential_boost_coefficients(
+    fl: Flight, met: MetDataset, rad: MetDataset, q_method: str | None
+) -> None:
+    """Ensure the correct coefficients are chosen depending on the interpolation q method."""
+    params = {
+        "max_age": np.timedelta64(30, "m"),
+        "dt_integration": np.timedelta64(10, "m"),
+        "process_emissions": False,
+        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
+        "interpolation_q_method": q_method,
+        "verbose_outputs": True,
+    }
+
+    if q_method is None:
+        cocip = Cocip(met, rad=rad, params=params)
+        fl = cocip.eval(source=fl)
+        assert fl["rhi"].mean() == pytest.approx(0.68793, rel=1e-5)
+        return
+
+    assert q_method == "cubic-spline"
+    with pytest.warns(UserWarning, match="Model Cocip uses interpolation_q_method=cubic-spline"):
+        cocip = Cocip(met, rad=rad, params=params)
+    fl = cocip.eval(source=fl)
+    assert fl["rhi"].mean() == pytest.approx(0.69541, rel=1e-5)
+
+
 def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDataset):
     """Run Cocip with the radiative_heating_effects parameter.
 
@@ -922,9 +950,9 @@ def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDa
     radiative_heating_effects parameter.
     """
 
-    fl.update(longitude=np.linspace(-29, -32, 20))
-    fl.update(latitude=np.linspace(56, 57, 20))
-    fl.update(altitude=np.linspace(10900, 10900, 20))
+    fl.update(longitude=np.linspace(-29.0, -32.0, 20))
+    fl.update(latitude=np.linspace(56.0, 57.0, 20))
+    fl.update(altitude=np.full(20, 10900.0))
 
     params = {
         "max_age": np.timedelta64(90, "m"),  # keep short to avoid blowing out of bounds
@@ -933,7 +961,7 @@ def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDa
         "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
     }
 
-    # Artifically shift time to get some SDR
+    # Artificially shift time to get some SDR
     met.data = met.data.assign_coords(time=met.data["time"] + np.timedelta64(12, "h"))
     rad.data = rad.data.assign_coords(time=rad.data["time"] + np.timedelta64(12, "h"))
     fl.update(time=fl["time"] + np.timedelta64(12, "h"))
