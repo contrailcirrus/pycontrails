@@ -156,12 +156,15 @@ class HumidityScaling(models.Model):
 
         q = self.source.data["specific_humidity"]
         T = self.source.data["air_temperature"]
-        kwargs = {k: self.get_source_param(k) for k in self.scaler_specific_keys}
+        kwargs = self._scale_kwargs()
 
         q, rhi = self.scale(q, T, p, **kwargs)
         self.source.update(specific_humidity=q, rhi=rhi)
 
         return self.source
+
+    def _scale_kwargs(self) -> dict[str, Any]:
+        return {k: self.get_source_param(k) for k in self.scaler_specific_keys}
 
 
 @dataclasses.dataclass
@@ -294,19 +297,50 @@ class ExponentialBoostHumidityScaling(HumidityScaling):
 
 
 @dataclasses.dataclass
-class ExponentialBoostLatitudeCorrectionHumidityScalingParams(models.ModelParams):
-    """Parameters for :class:`ExponentialBoostLatitudeCorrectionHumidityScaling`."""
+class _SigmoidCoefficients:
+    """Coefficients for a sigmoid function.
 
-    #: Constants obtained by fitting a sigmoid curve to IAGOS data. These can be
-    #: overridden by keyword arguments with the same name.
-    rhi_a0: float = 0.062621
-    rhi_a1: float = 0.45893
-    rhi_a2: float = 39.254
-    rhi_a3: float = 0.95224
-    rhi_b0: float = 1.4706
-    rhi_b1: float = 0.44312
-    rhi_b2: float = 18.755
-    rhi_b3: float = 1.4325
+    These coefficients are used in the following manner::
+
+        a_opt = a1 / (1 + np.exp(a3 * (lat - a4))) + a2
+        b_opt = b1 / (1 + np.exp(b3 * (lat - b4))) + b2
+
+    """
+
+    a1: float
+    a2: float
+    a3: float
+    a4: float
+    b1: float
+    b2: float
+    b3: float
+    b4: float
+
+
+def _load_sigmoid_coef(q_method: str | None) -> _SigmoidCoefficients:
+    if q_method is None:
+        return _SigmoidCoefficients(
+            a1=0.062621,
+            a2=0.95224,
+            a3=0.45893,
+            a4=39.254,
+            b1=1.4706,
+            b2=1.4325,
+            b3=0.44312,
+            b4=18.755,
+        )
+    if q_method == "cubic-spline":
+        return _SigmoidCoefficients(
+            a1=0.05699870357308205,
+            a2=0.9341796835600861,
+            a3=1.7135444711133285,
+            a4=35.8943767461318,
+            b1=1.4708683273258494,
+            b2=1.4312402236821724,
+            b3=0.5584457489433758,
+            b4=21.548669457023447,
+        )
+    raise NotImplementedError(f"Unsupported q_method: {q_method}")
 
 
 class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
@@ -368,18 +402,12 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
     name = "exponential_boost_latitude_customization"
     long_name = "Latitude specific humidity scaling composed with exponential boosting"
     formula = "rhi -> (rhi / rhi_adj) ^ rhi_boost_exponent"
-    default_params = ExponentialBoostLatitudeCorrectionHumidityScalingParams
-    scaler_specific_keys = (
-        "latitude",
-        "rhi_a0",
-        "rhi_a1",
-        "rhi_a2",
-        "rhi_a3",
-        "rhi_b0",
-        "rhi_b1",
-        "rhi_b2",
-        "rhi_b3",
-    )
+    default_params = models.ModelParams
+    scaler_specific_keys = ("latitude",)
+
+    def _scale_kwargs(self) -> dict[str, Any]:
+        q_method = self.params["interpolation_q_method"]
+        return {**super()._scale_kwargs(), "q_method": q_method}
 
     @overrides
     def scale(
@@ -390,14 +418,8 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
         **kwargs: Any,
     ) -> tuple[ArrayLike, ArrayLike]:
         # Get sigmoid coefficients
-        a0 = kwargs["rhi_a0"]
-        a1 = kwargs["rhi_a1"]
-        a2 = kwargs["rhi_a2"]
-        a3 = kwargs["rhi_a3"]
-        b0 = kwargs["rhi_b0"]
-        b1 = kwargs["rhi_b1"]
-        b2 = kwargs["rhi_b2"]
-        b3 = kwargs["rhi_b3"]
+        q_method = kwargs["q_method"]
+        coef = _load_sigmoid_coef(q_method)
 
         # Use the dtype of specific_humidity to determine the precision of the
         # the calculation. If working with gridded data here, latitude will have
@@ -412,27 +434,24 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
         rhi = specific_humidity * rhi_over_q
 
         # Calculate the rhi_adj factor and correct RHi
-        rhi_adj = a0 / (1.0 + np.exp(a1 * (lat_abs - a2))) + a3
+        rhi_adj = coef.a1 / (1.0 + np.exp(coef.a3 * (lat_abs - coef.a4))) + coef.a2
         rhi /= rhi_adj
 
         # Find ISSRs
-        is_issr = rhi >= 1
+        is_issr = rhi >= 1.0
 
         # Limit RHi to maximum value allowed by physics
         rhi_max = _calc_rhi_max(air_temperature)
 
-        # Apply boosting to ISSRs
+        # Apply boosting only to ISSRs
         if isinstance(rhi, xr.DataArray):
-            boost_exponent = b0 / (1.0 + np.exp(b1 * (lat_abs - b2))) + b3
-            rhi = rhi.where(~is_issr, rhi**boost_exponent)
+            boost_exp = coef.b1 / (1.0 + np.exp(coef.b3 * (lat_abs - coef.b4))) + coef.b2
+            rhi = rhi.where(~is_issr, rhi**boost_exp)
             rhi = rhi.clip(max=rhi_max)
 
         else:
-            # Calculate the optimal b coefficient over points in ISSRs
-            boost_exponent = b0 / (1.0 + np.exp(b1 * (lat_abs[is_issr] - b2))) + b3
-
-            # Apply boosting to ISSRs
-            rhi[is_issr] = rhi[is_issr] ** boost_exponent
+            boost_exp = coef.b1 / (1.0 + np.exp(coef.b3 * (lat_abs[is_issr] - coef.b4))) + coef.b2
+            rhi[is_issr] = rhi[is_issr] ** boost_exp
             rhi.clip(max=rhi_max, out=rhi)
 
         # Recompute specific_humidity from corrected rhi
@@ -592,7 +611,7 @@ def histogram_matching(
     era5_rhi: ArrayLike,
     product_type: str,
     member: int | None,
-    q_method: str,
+    q_method: str | None,
 ) -> npt.NDArray[np.float_]:
     """Map ERA5-derived RHi to it's corresponding IAGOS quantile via histogram matching.
 
@@ -632,6 +651,7 @@ def histogram_matching(
     try:
         era5_quantiles = df[col]
     except KeyError:
+        assert q_method is not None
         models.raise_invalid_q_method_error(q_method)
 
     out = np.interp(era5_rhi, era5_quantiles, iagos_quantiles)
