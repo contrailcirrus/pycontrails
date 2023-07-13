@@ -192,21 +192,40 @@ class Model(ABC):
         if self.params["verify_met"]:
             self._verify_met()
 
-        # gut check - warn if humidity_scaling param is present for ECMWF met data
-        if self.params.get("humidity_scaling", None) is None:
-            if (
-                self.met is not None
-                and SpecificHumidity in getattr(self, "met_variables", [])
-                and originates_from_ecmwf(self.met)
-            ):
+        # Warn if humidity_scaling param is NOT present for ECMWF met data
+        humidity_scaling = self.params.get("humidity_scaling")
+
+        if (
+            humidity_scaling is None
+            and self.met is not None
+            and SpecificHumidity in getattr(self, "met_variables", ())
+            and originates_from_ecmwf(self.met)
+        ):
+            warnings.warn(
+                "Met data appears to have originated from ECMWF and no humidity "
+                "scaling is enabled. For ECMWF data, consider using one of: \n"
+                " - 'ConstantHumidityScaling'\n"
+                " - 'ExponentialBoostHumidityScaling'\n"
+                " - 'ExponentialBoostLatitudeCorrectionHumidityScaling'\n"
+                " - 'HistogramMatching'\n"
+                "For example: \n"
+                ">>> from pycontrails.models.humidity_scaling import ConstantHumidityScaling\n"
+                f">>> {type(self).__name__}(met=met, ..., humidity_scaling=ConstantHumidityScaling(rhi_adj=0.99))"  # noqa: E501
+            )
+
+        # Ensure humidity_scaling q_method matches parent model
+        elif humidity_scaling is not None:
+            # Some humidity scaling models use the interpolation_q_method parameter to determine
+            # which parameters to use for scaling. Ensure that both models are consistent.
+            parent_q = self.params["interpolation_q_method"]
+            if humidity_scaling.params["interpolation_q_method"] != parent_q:
                 warnings.warn(
-                    "Met data appears to have originated from ECMWF and no humidity "
-                    "scaling is enabled. For ECMWF data, consider using one of "
-                    "'ConstantHumidityScaling', 'ExponentialBoostHumidityScaling', or "
-                    "'ExponentialBoostLatitudeCorrectionHumidityScaling'. For example: \n"
-                    ">>> from pycontrails.models import ConstantHumidityScaling\n"
-                    f">>> {type(self).__name__}(met=met, ..., humidity_scaling=ConstantHumidityScaling(rhi_adj=0.99))"  # noqa: E501
+                    f"Model {type(self).__name__} uses interpolation_q_method={parent_q} but "
+                    f"humidity_scaling model {type(humidity_scaling).__name__} uses "
+                    f"interpolation_q_method={humidity_scaling.params['interpolation_q_method']}. "
+                    "Overriding humidity_scaling interpolation_q_method to match parent model."
                 )
+                humidity_scaling.params["interpolation_q_method"] = parent_q
 
     def __repr__(self) -> str:
         params = getattr(self, "params", {})
@@ -257,19 +276,21 @@ class Model(ABC):
         if self.met is None:
             return
 
-        if hasattr(self, "met_variables"):
-            # Try to verify met_variables
-            try:
-                self.met.ensure_vars(self.met_variables)
-            except KeyError as e1:
-                # If that fails, try to verify processed_met_variables
-                if hasattr(self, "processed_met_variables"):
-                    try:
-                        self.met.ensure_vars(self.processed_met_variables)
-                    except KeyError as e2:
-                        raise e2 from e1
-                else:
-                    raise e1
+        if not hasattr(self, "met_variables"):
+            return
+
+        # Try to verify met_variables
+        try:
+            self.met.ensure_vars(self.met_variables)
+        except KeyError as e1:
+            # If that fails, try to verify processed_met_variables
+            if hasattr(self, "processed_met_variables"):
+                try:
+                    self.met.ensure_vars(self.processed_met_variables)
+                except KeyError as e2:
+                    raise e2 from e1
+            else:
+                raise e1
 
     def _load_params(self, params: dict[str, Any] | None = None, **params_kwargs: Any) -> None:
         """Load parameters to model :attr:`params`.
