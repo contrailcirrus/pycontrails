@@ -331,14 +331,14 @@ def _load_sigmoid_coef(q_method: str | None) -> _SigmoidCoefficients:
         )
     if q_method == "cubic-spline":
         return _SigmoidCoefficients(
-            a1=0.05699870357308205,
-            a2=0.9341796835600861,
-            a3=1.7135444711133285,
-            a4=35.8943767461318,
-            b1=1.4708683273258494,
-            b2=1.4312402236821724,
-            b3=0.5584457489433758,
-            b4=21.548669457023447,
+            a1=0.056999,
+            a2=0.93418,
+            a3=1.7135,
+            a4=35.894,
+            b1=1.4709,
+            b2=1.4312,
+            b3=0.55845,
+            b4=21.549,
         )
     raise NotImplementedError(f"Unsupported q_method: {q_method}")
 
