@@ -87,6 +87,11 @@ def buffer_and_clean(
         polygon = polygon.buffer(buffer / 10.0, quad_segs=1)
         assert polygon.is_valid, "Fail to make polygon valid after buffer"
 
+    if isinstance(polygon, shapely.MultiPolygon):
+        # In this case, there is often one large polygon and several small polygons
+        # Just extract the largest polygon, ignoring the others
+        polygon = max(polygon.geoms, key=lambda x: x.area)
+
     # Remove all interior rings
     if polygon.interiors:
         polygon = shapely.Polygon(polygon.exterior)
