@@ -1111,7 +1111,9 @@ class MetDataset(MetBase):
         # clean up input into coords
         coords: dict[str, np.ndarray] = {}
         for key, val in input_data.items():
-            val = np.asarray(val)
+            dtype = "datetime64[ns]" if key == "time" else COORD_DTYPE
+            val = np.asarray(val, dtype=dtype)
+
             if val.ndim == 0:
                 val = val.reshape(1)
             elif val.ndim > 1:
@@ -1120,12 +1122,6 @@ class MetDataset(MetBase):
             val = np.sort(val)
             if val.size == 0:
                 raise ValueError(f"Coordinate {key} must be nonempty.")
-
-            # Check dtypes
-            if key == "time":
-                val = val.astype("datetime64[ns]", copy=False)
-            else:
-                val = val.astype(COORD_DTYPE, copy=False)
 
             coords[key] = val
 
