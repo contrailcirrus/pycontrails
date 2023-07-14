@@ -577,6 +577,8 @@ class Model(ABC):
         else:
             variables = variable
 
+        q_method = self.params["interpolation_q_method"]
+
         for var in variables:
             # If var is a tuple of options, check if at least one of them exists in source
             if isinstance(var, tuple):
@@ -600,13 +602,6 @@ class Model(ABC):
                 interpolate_met(self.met, self.source, met_key, **self.interp_kwargs)
                 continue
 
-            if self.params["interpolation_q_method"] is not None:
-                raise NotImplementedError(
-                    "Experimental 'q_method' parameter only supported when source "
-                    "is a GeoVectorDataset."
-                )
-
-            # set MetDataset
             if not isinstance(self.source, MetDataset):
                 raise TypeError(f"Unknown source type: {type(self.source)}")
 
@@ -621,41 +616,7 @@ class Model(ABC):
                 self.source[met_key] = da.sel(self.source.coords)
 
             except KeyError:
-                # This call to DataArray.interp was added in pycontrails 0.28.1
-                # For arbitrary grids, use xr.DataArray.interp
-                # Extract certain parameters to pass into interp
-                kwargs = {
-                    "method": self.params["interpolation_method"],
-                    "kwargs": {
-                        "bounds_error": self.params["interpolation_bounds_error"],
-                        "fill_value": self.params["interpolation_fill_value"],
-                    },
-                    "assume_sorted": True,
-                }
-                # Correct dtype if promoted
-                # Somewhat of a pain: dask believes the dtype is float32, but
-                # when it is actually computed, it comes out as float64
-                # Call load() here to smooth over this issue
-                # https://github.com/pydata/xarray/issues/4770
-                # There is also an issue in which xarray assumes non-singleton
-                # dimensions. This causes issues when the ``da`` variable has
-                # a scalar dimension, or the ``self.source`` variable coincides
-                # with an edge of the ``da`` variable. For now, we try an additional
-                # sel over just the time dimension, which is the most common case.
-                # This stuff isn't so well unit tested in pycontrails, and the xarray
-                # and scipy interpolate conventions are always changing, so more
-                # issues may arise here in the future.
-                coords = self.source.coords
-                try:
-                    da = da.sel(time=coords["time"])
-                except KeyError:
-                    pass
-                else:
-                    del coords["time"]
-
-                interped = da.interp(coords, **kwargs).load()
-                interped = interped.astype(da.dtype, copy=False)
-                self.source[met_key] = interped
+                self.source[met_key] = _interp_grid_to_grid(da, self.source, self.params, q_method)
 
     # Following python implementation
     # https://github.com/python/cpython/blob/618b7a8260bb40290d6551f24885931077309590/Lib/collections/__init__.py#L231
@@ -716,6 +677,55 @@ class Model(ABC):
         """Cleanup indices artifacts if ``params["interpolation_use_indices"]`` is True."""
         if self.params["interpolation_use_indices"] and isinstance(self.source, GeoVectorDataset):
             self.source._invalidate_indices()
+
+
+def _interp_grid_to_grid(
+    da: xr.DataArray, source: MetDataset, params: dict[str, Any], q_method: str
+) -> xr.DataArray:
+    # This call to DataArray.interp was added in pycontrails 0.28.1
+    # For arbitrary grids, use xr.DataArray.interp
+    # Extract certain parameters to pass into interp
+    interp_kwargs = {
+        "method": params["interpolation_method"],
+        "kwargs": {
+            "bounds_error": params["interpolation_bounds_error"],
+            "fill_value": params["interpolation_fill_value"],
+        },
+        "assume_sorted": True,
+    }
+    # Correct dtype if promoted
+    # Somewhat of a pain: dask believes the dtype is float32, but
+    # when it is actually computed, it comes out as float64
+    # Call load() here to smooth over this issue
+    # https://github.com/pydata/xarray/issues/4770
+    # There is also an issue in which xarray assumes non-singleton
+    # dimensions. This causes issues when the ``da`` variable has
+    # a scalar dimension, or the ``self.source`` variable coincides
+    # with an edge of the ``da`` variable. For now, we try an additional
+    # sel over just the time dimension, which is the most common case.
+    # This stuff isn't so well unit tested in pycontrails, and the xarray
+    # and scipy interpolate conventions are always changing, so more
+    # issues may arise here in the future.
+    coords = source.coords
+    try:
+        da = da.sel(time=coords["time"])
+    except KeyError:
+        pass
+    else:
+        del coords["time"]
+
+    if q_method is None:
+        return da.interp(coords, **interp_kwargs).load().astype(da.dtype, copy=False)
+    if q_method == "cubic-spline":
+        ppoly = _load_spline()
+
+        da = da.assign_coords(level=ppoly(da["level"]))
+        level0 = coords.pop("level")
+        coords["level"] = ppoly(level0)
+        interped = da.interp(coords, **interp_kwargs).load().astype(da.dtype, copy=False)
+        return interped.assign_coords(level=level0)
+
+    raise NotImplementedError(f"Unsupported q_method: {q_method}")
 
 
 def _raise_missing_met_var(var: MetVariable | Sequence[MetVariable]) -> NoReturn:
