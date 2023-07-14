@@ -1112,18 +1112,18 @@ class MetDataset(MetBase):
         coords: dict[str, np.ndarray] = {}
         for key, val in input_data.items():
             dtype = "datetime64[ns]" if key == "time" else COORD_DTYPE
-            val = np.asarray(val, dtype=dtype)
+            arr: np.ndarray = np.asarray(val, dtype=dtype)  # type: ignore[call-overload]
 
-            if val.ndim == 0:
-                val = val.reshape(1)
-            elif val.ndim > 1:
+            if arr.ndim == 0:
+                arr = arr.reshape(1)
+            elif arr.ndim > 1:
                 raise ValueError(f"{key} has too many dimensions")
 
-            val = np.sort(val)
-            if val.size == 0:
+            arr = np.sort(arr)
+            if arr.size == 0:
                 raise ValueError(f"Coordinate {key} must be nonempty.")
 
-            coords[key] = val
+            coords[key] = arr
 
         return cls(xr.Dataset({}, coords=coords))
 
