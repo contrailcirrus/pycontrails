@@ -616,7 +616,9 @@ class Model(ABC):
                 self.source[met_key] = da.sel(self.source.coords)
 
             except KeyError:
-                self.source[met_key] = _interp_grid_to_grid(da, self.source, self.params, q_method)
+                self.source[met_key] = _interp_grid_to_grid(
+                    met_key, da, self.source, self.params, q_method
+                )
 
     # Following python implementation
     # https://github.com/python/cpython/blob/618b7a8260bb40290d6551f24885931077309590/Lib/collections/__init__.py#L231
@@ -680,7 +682,11 @@ class Model(ABC):
 
 
 def _interp_grid_to_grid(
-    da: xr.DataArray, source: MetDataset, params: dict[str, Any], q_method: str
+    met_key: str,
+    da: xr.DataArray,
+    source: MetDataset,
+    params: dict[str, Any],
+    q_method: str,
 ) -> xr.DataArray:
     # This call to DataArray.interp was added in pycontrails 0.28.1
     # For arbitrary grids, use xr.DataArray.interp
@@ -714,8 +720,9 @@ def _interp_grid_to_grid(
     else:
         del coords["time"]
 
-    if q_method is None:
+    if q_method is None or met_key not in ("q", "specific_humidity"):
         return da.interp(coords, **interp_kwargs).load().astype(da.dtype, copy=False)
+
     if q_method == "cubic-spline":
         ppoly = _load_spline()
 
