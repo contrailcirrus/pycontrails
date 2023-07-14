@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.44.3 (unreleased)
+
+### Fixes
+
+- Extend `Models.set_source_met` to allow `interpolation_q_method="cubic-spline"` when working with `MetDataset` source (ie, so-called gridded models). Previously a `NotImplementedError` was raised.
+
 ## v0.44.2
 
 ### Fixes
