@@ -573,3 +573,26 @@ def test_issr_source_grid_different_resolution(met_issr: MetDataset, in_bounds: 
 
     with pytest.raises(ValueError, match="221"):
         model.eval(source, interpolation_bounds_error=True)
+
+
+@pytest.mark.filterwarnings("ignore:Met data appears to have originated from ECMWF")
+@pytest.mark.parametrize("q_method", [None, "cubic-spline"])
+def test_ISSR_grid_variable_q_method(met_issr: MetDataset, q_method: None | str) -> None:
+    """Test ISSR model with variable q_method."""
+
+    source = MetDataset.from_coords(
+        longitude=met_issr.coords["longitude"],
+        latitude=met_issr.coords["latitude"],
+        level=[240, 250, 260],  # different from met_issr
+        time=met_issr.coords["time"],
+    )
+
+    model = ISSR(met_issr, interpolation_q_method=q_method)
+    out = model.eval(source)
+
+    assert isinstance(out, MetDataArray)
+    if q_method is None:
+        assert out.data.mean().item() == pytest.approx(0.16805, abs=1e-5)
+    else:
+        assert q_method == "cubic-spline"
+        assert out.data.mean().item() == pytest.approx(0.15555, abs=1e-5)
