@@ -1215,7 +1215,7 @@ class Cocip(Model):
 
         # Fill missing values for ef and contrail_age per conventions
         # Mean, max, and min radiative values are *not* filled with 0
-        df["ef"] = df["ef"].fillna(0)
+        df["ef"] = df["ef"].fillna(0.0)
         df["contrail_age"] = df["contrail_age"].fillna(np.timedelta64(0, "ns"))
 
         # cocip flag for each waypoint
@@ -1229,7 +1229,7 @@ class Cocip(Model):
         # create new Flight / Fleet output from dataframe with flight attrs
 
         self.source = type(self.source)(df, attrs=self.source.attrs, copy=False)
-        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0).sum())
+        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0.0).sum())
 
     def _fill_empty_flight_results(self, return_list_flight: bool) -> Flight | list[Flight]:
         """Fill empty results into flight / fleet and return.
@@ -2212,7 +2212,7 @@ def calc_timestep_contrail_evolution(
     # here as well. It's somewhat of a hack, but it ensures nonzero contrail_age
     # is consistent with nonzero EF.
     contrail_2["ef"] = energy_forcing_2
-    contrail_2["age"][energy_forcing_2 == 0] = np.timedelta64(0, "ns")
+    contrail_2["age"][energy_forcing_2 == 0.0] = np.timedelta64(0, "ns")
 
     # filter contrail_2 by persistent waypoints, if any continuous segments are left
     logger.debug(
