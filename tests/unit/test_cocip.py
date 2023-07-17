@@ -672,7 +672,7 @@ def test_contrail_contrail_overlapping_effects() -> None:
 
 @pytest.fixture
 def fleet(met: MetDataset) -> Fleet:
-    """Create a fleet within the bounds of ``met``."""
+    """Create a ``Fleet`` within the bounds of ``met``."""
     ds = met.data
     lon0 = ds["longitude"].min().item()
     lon1 = ds["longitude"].max().item()
@@ -716,6 +716,10 @@ def test_cocip_contrail_contrail_overlapping(
     fleet: Fleet,
     contrail_contrail_overlapping: bool,
 ) -> None:
+    """Test ``Cocip`` with and without contrail-contrail overlapping.
+
+    Confirm the results are different.
+    """
     params = {
         "dt_integration": np.timedelta64(5, "m"),
         "max_age": np.timedelta64(4, "h"),
