@@ -10,7 +10,6 @@ References
 from __future__ import annotations
 
 import dataclasses
-import itertools
 
 import numpy as np
 import numpy.typing as npt
@@ -992,7 +991,9 @@ def contrail_contrail_overlap_radiative_effects(
 
     # Account for contrail overlapping starting from bottom to top layers
     altitude_layers = np.arange(min_altitude_m, max_altitude_m + 1.0, dz_overlap_m)
-    for alt_layer0, alt_layer1 in itertools.pairwise(altitude_layers):
+
+    # TODO: replace zip with itertools.pairwise after we drop python3.9 support
+    for alt_layer0, alt_layer1 in zip(altitude_layers, altitude_layers[1:]):
         is_in_layer = (altitude >= alt_layer0) & (altitude < alt_layer1)
 
         # Get contrail waypoints at current altitude layer
