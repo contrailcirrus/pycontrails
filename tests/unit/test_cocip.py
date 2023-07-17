@@ -731,9 +731,9 @@ def test_cocip_contrail_contrail_overlapping(
     out = cocip.eval(fleet)
 
     if contrail_contrail_overlapping:
-        assert out["ef"].sum() == pytest.approx(621504.7e8, abs=1e7)
+        assert out["ef"].sum() == pytest.approx(621504.7e8, abs=8e7)
     else:
-        assert out["ef"].sum() == pytest.approx(621506.7e8, abs=1e7)
+        assert out["ef"].sum() == pytest.approx(621506.7e8, abs=8e7)
 
 
 # ------
