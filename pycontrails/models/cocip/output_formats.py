@@ -872,7 +872,7 @@ def time_slice_statistics(
             "engine_efficiency",
             "nvpm_ei_n",
             "sac",
-            "persistent_1"
+            "persistent_1",
         )
     )
     contrails.ensure_vars(

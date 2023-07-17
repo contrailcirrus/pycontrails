@@ -2284,8 +2284,11 @@ def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:
         xr.Dataset or xr.DataArray to downselect
     bbox : tuple[float, ...]
         Tuple of coordinates defining a spatial bounding box in WGS84 coordinates.
-        For 2D queries, tuple is ``(west, south, east, north)``.
-        For 3D queries, tuple is ``(west, south, min-level, east, north, max-level)``.
+
+        - For 2D queries, ``bbox`` takes the form ``(west, south, east, north)``
+        - For 3D queries, ``bbox`` takes the form
+          ``(west, south, min-level, east, north, max-level)``
+
         with level defined in [:math:`hPa`].
 
     Returns
@@ -2296,7 +2299,7 @@ def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:
     Raises
     ------
     ValueError
-        If parameter `bbox` has wrong length.
+        If parameter ``bbox`` has wrong length.
     """
     if len(bbox) == 4:
         west, south, east, north = bbox
