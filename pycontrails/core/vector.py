@@ -879,7 +879,7 @@ class VectorDataset:
         return True
 
     def broadcast_attrs(self, keys: str | Iterable[str], overwrite: bool = False) -> None:
-        """Attach values from `keys` in :attr:`attrs` onto :attr:`data`.
+        """Attach values from ``keys`` in :attr:`attrs` onto :attr:`data`.
 
         If possible, use ``dtype = np.float32`` when broadcasting. If not possible,
         use whatever ``dtype`` is inferred from the data by :func:`numpy.full`.
