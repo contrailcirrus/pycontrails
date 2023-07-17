@@ -1780,7 +1780,7 @@ class GeoVectorDataset(VectorDataset):
         self,
         *,
         agg: dict[str, str],
-        spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
+        spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
         spatial_grid_res: float = 0.5,
     ) -> xr.Dataset:
         """
@@ -1799,7 +1799,7 @@ def vector_to_lon_lat_grid(
     vector: GeoVectorDataset,
     *,
     agg: dict[str, str],
-    spatial_bbox: tuple[float, float, float, float] = (-180, -90, 180, 90),
+    spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
     spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
     r"""
@@ -1810,9 +1810,11 @@ def vector_to_lon_lat_grid(
     vector: GeoVectorDataset
         Contains the longitude, latitude and variables for aggregation.
     agg: dict[str, str]
-        Variable name and the function selected for aggregation, i.e. {"segment_length": "sum"}.
+        Variable name and the function selected for aggregation,
+        i.e. ``{"segment_length": "sum"}``.
     spatial_bbox: tuple[float, float, float, float]
-        Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
+        Spatial bounding box, ``(lon_min, lat_min, lon_max, lat_max)``, [:math:`\deg`].
+        By default, the entire globe is used.
     spatial_grid_res: float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -1820,6 +1822,36 @@ def vector_to_lon_lat_grid(
     -------
     xr.Dataset
         Aggregated variables in a longitude-latitude grid.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(234)
+    >>> vector = GeoVectorDataset(
+    ...     longitude=rng.uniform(-10, 10, 10000),
+    ...     latitude=rng.uniform(-10, 10, 10000),
+    ...     altitude=np.zeros(10000),
+    ...     time=np.zeros(10000).astype("datetime64[ns]"),
+    ... )
+    >>> vector["foo"] = rng.uniform(0, 1, 10000)
+    >>> ds = vector.to_lon_lat_grid(agg={"foo": "sum"}, spatial_bbox=(-10, -10, 9.5, 9.5))
+    >>> da = ds["foo"]
+    >>> da.coords
+    Coordinates:
+      * longitude  (longitude) float64 -10.0 -9.5 -9.0 -8.5 -8.0 ... 8.0 8.5 9.0 9.5
+      * latitude   (latitude) float64 -10.0 -9.5 -9.0 -8.5 -8.0 ... 8.0 8.5 9.0 9.5
+
+    >>> da.values.round(2)
+    array([[2.23, 0.67, 1.29, ..., 4.66, 3.91, 1.93],
+           [4.1 , 3.84, 1.34, ..., 3.24, 1.71, 4.55],
+           [0.78, 3.25, 2.33, ..., 3.78, 2.93, 2.33],
+           ...,
+           [1.97, 3.02, 1.84, ..., 2.37, 3.87, 2.09],
+           [3.74, 1.6 , 4.01, ..., 4.6 , 4.27, 3.4 ],
+           [2.97, 0.12, 1.33, ..., 3.54, 0.74, 2.59]])
+
+    >>> da.sum().item() == vector["foo"].sum()
+    True
+
     """
     vector.ensure_vars(agg)
     df = vector.select(["longitude", "latitude", *agg], copy=False).dataframe
