@@ -261,7 +261,7 @@ class Flight(GeoVectorDataset):
 
     @overrides
     def copy(self) -> Flight:
-        return Flight(data=self.data, attrs=self.attrs, fuel=self.fuel, copy=True)
+        return type(self)(data=self.data, attrs=self.attrs, fuel=self.fuel, copy=True)
 
     @property
     def time_start(self) -> pd.Timestamp:
