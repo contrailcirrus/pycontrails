@@ -878,7 +878,12 @@ class VectorDataset:
 
         return True
 
-    def broadcast_attrs(self, keys: str | Iterable[str], overwrite: bool = False) -> None:
+    def broadcast_attrs(
+        self,
+        keys: str | Iterable[str],
+        overwrite: bool = False,
+        raise_error: bool = True,
+    ) -> None:
         """Attach values from ``keys`` in :attr:`attrs` onto :attr:`data`.
 
         If possible, use ``dtype = np.float32`` when broadcasting. If not possible,
@@ -890,6 +895,8 @@ class VectorDataset:
             Keys to broadcast
         overwrite : bool, optional
             If True, overwrite existing values in :attr:`data`. By default False.
+        raise_error : bool, optional
+            Raise KeyError if :attr:`self.attrs` does not contain some of ``keys``.
 
         Raises
         ------
@@ -904,7 +911,9 @@ class VectorDataset:
             try:
                 scalar = self.attrs[key]
             except KeyError as exc:
-                raise KeyError(f"{type(self)} does not contain attr `{key}`") from exc
+                if raise_error:
+                    raise KeyError(f"{type(self)} does not contain attr `{key}`") from exc
+                continue
 
             if key in self.data and not overwrite:
                 warnings.warn(
