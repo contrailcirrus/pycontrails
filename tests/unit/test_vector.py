@@ -256,7 +256,7 @@ def test_vector_repr() -> None:
     assert "long_val" * 10 not in out
 
 
-def test_warning_on_set(random_path: VectorDataset) -> None:
+def test_warning_on_set() -> None:
     """Test the warning on __setitem__() and set_attr()"""
 
     # should not warn on empty and the same value object
@@ -540,7 +540,7 @@ def test_coord_intersect_met(met_issr: MetDataset) -> None:
     assert not gvds.coords_intersect_met(met_issr).any()
 
 
-def test_broadcast_attrs(random_path: VectorDataset):
+def test_broadcast_attrs(random_path: VectorDataset) -> None:
     """Test method `broadcast_attrs`."""
     path = random_path.copy()
 
@@ -561,7 +561,7 @@ def test_broadcast_attrs(random_path: VectorDataset):
     assert np.all(path["test"] == "newattr")
 
 
-def test_broadcast_numeric(random_path: VectorDataset):
+def test_broadcast_numeric(random_path: VectorDataset) -> None:
     """Test method `broadcast_numeric_attrs`."""
     path = random_path.copy()
     assert path.attrs is not random_path.attrs
@@ -596,7 +596,7 @@ def test_broadcast_numeric(random_path: VectorDataset):
     assert "numeric_ignored" not in path
 
 
-def test_vector_copy(random_path: VectorDataset):
+def test_vector_copy(random_path: VectorDataset) -> None:
     """Confirm various "copy" patterns work as expected."""
     # Without copying, the resulting array is a view of the original array
     df = random_path.to_dataframe(copy=False)
@@ -637,7 +637,7 @@ def test_vector_copy(random_path: VectorDataset):
     assert not np.may_share_memory(random_path5["a"], random_path["a"])
 
 
-def test_bad_time(random_geo_path: VectorDataset):
+def test_bad_time(random_geo_path: VectorDataset) -> None:
     """Test that bad time data is handled correctly."""
     data = random_geo_path.copy().data
 
@@ -672,7 +672,7 @@ def test_bad_time(random_geo_path: VectorDataset):
     assert vector["time"].dtype == np.dtype("datetime64[ns]")
 
 
-def test_vector_from_array_like():
+def test_vector_from_array_like() -> None:
     """Confirm a Vector instance can be instanted from data castable to array."""
     data = {
         "a": [0, 1 / 3, 2 / 3],
@@ -685,7 +685,7 @@ def test_vector_from_array_like():
         assert isinstance(vector[k], np.ndarray)
 
 
-def test_vector_set_item_array_like():
+def test_vector_set_item_array_like() -> None:
     """Confirm __setitem__ correctly casts lists to arrays."""
     data = {
         "a": np.linspace(0, 1, 3),
@@ -710,13 +710,21 @@ def test_vector_set_item_array_like():
     assert vector["d"] is d
 
 
-def test_vector_to_lon_lat_grid():
+def test_vector_to_lon_lat_grid() -> None:
     """Ensure that the aggregated outputs are consistent with the inputs."""
-    fl = pd.read_json(get_static_path("cocip-flight-output2.json"), orient="records")
-    vector = GeoVectorDataset(
-        fl[["longitude", "latitude", "altitude", "time", "segment_length", "ef"]].copy(), copy=False
-    )
-    ds_out = vector.to_lon_lat_grid(agg={"segment_length": "sum", "ef": "sum"})
-    assert ds_out["ef"].sum() == pytest.approx(fl["ef"].sum())
-    assert ds_out["segment_length"].sum() == pytest.approx(fl["segment_length"].sum())
-    assert np.count_nonzero(ds_out["ef"]) == 15
+    df = pd.read_json(get_static_path("cocip-flight-output2.json"), orient="records")
+    df = df[["longitude", "latitude", "altitude", "time", "segment_length", "ef"]]
+    vector = GeoVectorDataset(df)
+
+    ds = vector.to_lon_lat_grid(agg={"segment_length": "sum", "ef": "sum"})
+    assert "segment_length" in ds
+    assert "ef" in ds
+
+    assert ds["segment_length"].shape == (721, 361)
+    assert ds["ef"].shape == (721, 361)
+
+    assert ds["segment_length"].sum() == pytest.approx(df["segment_length"].sum())
+    assert ds["ef"].sum() == pytest.approx(df["ef"].sum())
+
+    assert np.count_nonzero(ds["segment_length"]) == 90
+    assert np.count_nonzero(ds["ef"]) == 15
