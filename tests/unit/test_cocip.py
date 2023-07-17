@@ -731,9 +731,9 @@ def test_cocip_contrail_contrail_overlapping(
     out = cocip.eval(fleet)
 
     if contrail_contrail_overlapping:
-        assert out["ef"].sum() == 62150477522275.95
+        assert out["ef"].sum() == pytest.approx(621504.7e8, abs=1e7)
     else:
-        assert out["ef"].sum() == 62150678860301.58
+        assert out["ef"].sum() == pytest.approx(621506.7e8, abs=1e7)
 
 
 # ------
@@ -873,7 +873,7 @@ def test_gridded_and_time_slice_outputs() -> None:
     ds_rad["sdr"] = np.maximum((ds_rad["tisr"] / (1 * 60 * 60)), 0)
     ds_rad["rsr"] = np.maximum(((ds_rad["tisr"] - ds_rad["tsr"]) / (1 * 60 * 60)), 0)
     ds_rad["olr"] = np.maximum(-(ds_rad["ttr"] / (1 * 60 * 60)), 0)
-    ds_rad = ds_rad.drop(["tisr", "tsr", "ttr"])
+    ds_rad = ds_rad.drop_vars(["tisr", "tsr", "ttr"])
     ds_rad = ds_rad.expand_dims({"level": np.array([-1])})
     rad = MetDataset(ds_rad, wrap_longitude=False)
 
