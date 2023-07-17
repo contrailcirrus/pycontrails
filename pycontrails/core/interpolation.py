@@ -459,7 +459,7 @@ def interp(
     offset = t[0]
     t = _floatize_time(t, offset)
 
-    single_level = z.size == 1 and z.item() == -1
+    single_level = z.size == 1 and z.item() == -1.0
     points: tuple[npt.NDArray[np.float_], ...]
     if single_level:
         values = da.values.squeeze(axis=2)
