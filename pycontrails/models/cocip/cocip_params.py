@@ -178,13 +178,13 @@ class CocipParams(ModelParams):
     #:  .. versionadded:: 0.28.9
     radiative_heating_effects: bool = False
 
-    #: Radiative effects due to contrail-contrail overlapping
+    #: Experimental. Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
     #: due to contrail-contrail overlapping.
     #: .. versionadded:: 0.45
     contrail_contrail_overlapping: bool = False
 
-    #: Contrail-contrail overlapping altitude interval
+    #: Experimental. Contrail-contrail overlapping altitude interval
     #: If :attr:`contrail_contrail_overlapping` is set to True, contrails will be grouped into
     #: altitude intervals, and all contrails within each altitude interval are treated as one
     #: contrail layer where they do not overlap.
