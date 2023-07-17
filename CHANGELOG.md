@@ -1,11 +1,28 @@
 
 # Changelog
 
-## v0.44.3 (unreleased)
+## v0.45.0
+
+Add experimental support for simulating radiative effects due to contrail-contrail overlap.
+
+### Features
+
+- Support simulating contrail contrail overlap when running the `Cocip` model with a `Fleet` source. The `contrail_contrail_overlapping` and `dz_overlap_m` parameters govern the overlap calculation. This mode of calculation is still experimental and may change in future releases.
+- Rewrite the `pycontrails.models.cocip.output` modules into a single `pycontrails.cocip.output_formats` module. The new module supports flight waypoint summary statistics, contrail waypoints summary statistics, gridded outputs, and time-slice outputs.
+- Add new `GeoVectorDataset.to_lon_lat_grid` method. This method can be thought of as a partial inverse to the `MetDataset.to_vector` method. The current implementation is brittle and may be revised in a future release.
 
 ### Fixes
 
 - Extend `Models.set_source_met` to allow `interpolation_q_method="cubic-spline"` when working with `MetDataset` source (ie, so-called gridded models). Previously a `NotImplementedError` was raised.
+- Ensure the `Flight.copy` implementation works with `Fleet` instances as well.
+- Avoid looping over `keys` twice in `VectorDataset.broadcast_attrs`. This is a slight performance enhancement.
+- Fix `Fleet` signature for compatibility with `Flight`.
+- Fix a few hard-coded assumptions in broadcasting aircraft performance and emissions when running `Cocip` with a `Fleet` source. The previous implementation did not consider the possibility of aircraft performance variables on `Flight.data` and `Flight.attrs` separately.
+
+### Internals
+
+- Add optional `raise_error` parameter to the `VectorDataset.broadcast_attrs` method.
+- Update `Fleet` internals.
 
 ## v0.44.2
 
