@@ -11,7 +11,7 @@ from overrides import overrides
 
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, JetA
-from pycontrails.core.vector import GeoVectorDataset
+from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorDataset
 
 
 class Fleet(Flight):
@@ -22,7 +22,11 @@ class Fleet(Flight):
 
     def __init__(
         self,
-        data: dict[str, npt.ArrayLike] | None = None,
+        data: dict[str, npt.ArrayLike]
+        | pd.DataFrame
+        | VectorDataDict
+        | VectorDataset
+        | None = None,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,
@@ -72,8 +76,8 @@ class Fleet(Flight):
         """
         try:
             flight_id = self["flight_id"]
-        except KeyError:
-            raise KeyError("Expect `flight_id` in Fleet data.") from None
+        except KeyError as exc:
+            raise KeyError("Expect 'flight_id' key in Fleet data.") from exc
 
         # Some pandas groupby magic to ensure flights are arranged in blocks
         df = pd.DataFrame({"flight_id": flight_id}).reset_index()
@@ -121,8 +125,7 @@ class Fleet(Flight):
             A `Fleet` instance made from concatenating the :class:`Flight`
             instances in ``seq``.
         """
-        if attrs is None:
-            attrs = {}
+        attrs = attrs or {}
         if "fl_attrs" in attrs:
             raise ValueError("Parameter 'attrs' cannot contain 'fl_attrs' key.")
         attrs["fl_attrs"] = {}
@@ -134,6 +137,7 @@ class Fleet(Flight):
         else:
             seq = list(seq)
 
+        assert seq, "Cannot create Fleet from empty sequence."
         for fl in seq:
             cls._validate_fl(fl, seq[0].fuel, attrs, broadcast_numeric)
 
