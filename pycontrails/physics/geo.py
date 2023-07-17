@@ -861,7 +861,7 @@ def _dt_to_float_seconds(dt: np.ndarray | np.timedelta64, dtype: npt.DTypeLike) 
 
 
 def spatial_bounding_box(
-    longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np.float_], *, buffer: float = 1.0
+    longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np.float_], buffer: float = 1.0
 ) -> tuple[float, float, float, float]:
     r"""
     Construct rectangular spatial bounding box from a set of waypoints.
@@ -879,6 +879,14 @@ def spatial_bounding_box(
     -------
     tuple[float, float, float, float]
         Spatial bounding box, ``(lon_min, lat_min, lon_max, lat_max)``, [:math:`\deg`]
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(654321)
+    >>> lon = rng.uniform(-180, 180, size=30)
+    >>> lat = rng.uniform(-90, 90, size=30)
+    >>> spatial_bounding_box(lon, lat)
+    (-168.0, -77.0, 155.0, 82.0)
     """
     lon_min = max(np.floor(np.min(longitude) - buffer), -180.0)
     lon_max = min(np.ceil(np.max(longitude) + buffer), 179.99)
@@ -889,7 +897,6 @@ def spatial_bounding_box(
 
 def domain_surface_area(
     spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
-    *,
     spatial_grid_res: float = 0.5,
 ) -> float:
     r"""
@@ -898,7 +905,7 @@ def domain_surface_area(
     Parameters
     ----------
     spatial_bbox : tuple[float, float, float, float]
-        Spatial bounding box, `(lon_min, lat_min, lon_max, lat_max)`, [:math:`\deg`]
+        Spatial bounding box, ``(lon_min, lat_min, lon_max, lat_max)``, [:math:`\deg`]
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
 
@@ -908,24 +915,28 @@ def domain_surface_area(
         Domain surface area, [:math:`m^{2}`]
     """
     assert spatial_grid_res > 0.01
-    lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
-    lat_coords = np.arange(spatial_bbox[1], spatial_bbox[3] + 0.01, spatial_grid_res)
-    da_surface_area = grid_surface_area(lon_coords, lat_coords)
+    west, south, east, north = spatial_bbox
+    longitude = np.arange(west, east + 0.01, spatial_grid_res)
+    latitude = np.arange(south, north + 0.01, spatial_grid_res)
+
+    da_surface_area = grid_surface_area(longitude, latitude)
     return np.nansum(da_surface_area)
 
 
 def grid_surface_area(
-    lon_coords: npt.NDArray[np.float_], lat_coords: npt.NDArray[np.float_]
+    longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np.float_]
 ) -> xr.DataArray:
     r"""
     Calculate surface area that is covered by each pixel in a longitude-latitude grid.
 
     Parameters
     ----------
-    lon_coords: npt.NDArray[np.float_]
-        Longitude coordinates in a longitude-latitude grid, [:math:`\deg`]
-    lat_coords: npt.NDArray[np.float_]
-        Latitude coordinates in a longitude-latitude grid, [:math:`\deg`]
+    longitude: npt.NDArray[np.float_]
+        Longitude coordinates in a longitude-latitude grid, [:math:`\deg`].
+        Must be in ascending order.
+    latitude: npt.NDArray[np.float_]
+        Latitude coordinates in a longitude-latitude grid, [:math:`\deg`].
+        Must be in ascending order.
 
     Returns
     -------
@@ -937,24 +948,25 @@ def grid_surface_area(
     - https://www.pmel.noaa.gov/maillists/tmap/ferret_users/fu_2004/msg00023.html
     """
     # Ensure that grid spacing is uniform
-    d_lon = np.diff(lon_coords)
-    if np.all(d_lon == d_lon[0]) is False:
-        raise ValueError("Longitude grid spacing is not uniform. ")
+    d_lon = np.diff(longitude)
+    d_lon0 = d_lon[0]
+    if np.any(d_lon != d_lon0):
+        raise ValueError("Longitude grid spacing is not uniform.")
 
-    d_lat = np.diff(lat_coords)
-    if np.all(d_lat == d_lat[0]) is False:
-        raise ValueError("Latitude grid spacing is not uniform. ")
+    d_lat = np.diff(latitude)
+    d_lat0 = d_lat[0]
+    if np.all(d_lat != d_lat[0]):
+        raise ValueError("Latitude grid spacing is not uniform.")
 
-    lon_2d, lat_2d = np.meshgrid(lon_coords, lat_coords)
-    area_lat_btm = _area_between_latitude_and_north_pole(lat_2d - np.abs(d_lat[0]))
+    _, lat_2d = np.meshgrid(longitude, latitude)
+
+    area_lat_btm = _area_between_latitude_and_north_pole(lat_2d - d_lat0)
     area_lat_top = _area_between_latitude_and_north_pole(lat_2d)
-    area = (np.abs(d_lon[0]) / 360.0) * (area_lat_btm - area_lat_top)
+
+    area = (d_lon0 / 360.0) * (area_lat_btm - area_lat_top)
     area[area < 0.0] = np.nan  # Prevent negative values at -90 degree latitude slice
-    return xr.DataArray(
-        area.T,
-        dims=["longitude", "latitude"],
-        coords={"longitude": lon_coords, "latitude": lat_coords},
-    )
+
+    return xr.DataArray(area.T, coords={"longitude": longitude, "latitude": latitude})
 
 
 def _area_between_latitude_and_north_pole(
