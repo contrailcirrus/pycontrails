@@ -584,16 +584,8 @@ class Cocip(Model):
             self._process_emissions()
 
         # STEP 7: Ensure that flight has the required variables defined as attrs or columns
-        self.source.ensure_vars(
-            (
-                "flight_id",
-                "engine_efficiency",
-                "fuel_flow",
-                "aircraft_mass",
-                "nvpm_ei_n",
-                "wingspan",
-            )
-        )
+        self.source.ensure_vars(_emissions_variables())
+
 
     def _process_emissions(self) -> None:
         """Process flight emissions.
@@ -621,11 +613,9 @@ class Cocip(Model):
             logger.debug("Separately running emissions on each flight in fleet")
             fls = [_eval_emissions(emissions, fl) for fl in fls]
 
-            # Need to be careful here -- broadcast_numeric has already been called once,
-            # and so data already contains numeric variables attached before bada_flight.eval
-            # called. So we just handpick additional attributes to broadcast
+            # Broadcast numeric AP and emissions variables back to Fleet.data
             for fl in fls:
-                fl.broadcast_attrs("wingspan")
+                fl.broadcast_attrs(_emissions_variables(), raise_error=False)
 
             # Convert back to fleet
             attrs = self.source.attrs
@@ -2248,9 +2238,20 @@ def calc_timestep_contrail_evolution(
     if final_contrail:
         calc_continuous(final_contrail)
         continuous = final_contrail["continuous"]
-        final_contrail["ef"][~continuous] = 0
+        final_contrail["ef"][~continuous] = 0.0
         final_contrail["age"][~continuous] = np.timedelta64(0, "ns")
     return final_contrail
+
+
+def _emissions_variables() -> tuple[str, ...]:
+    """Return variables required for emissions calculation."""
+    return (
+        "engine_efficiency",
+        "fuel_flow",
+        "aircraft_mass",
+        "nvpm_ei_n",
+        "wingspan",
+    )
 
 
 def _contrail_contrail_overlapping(
