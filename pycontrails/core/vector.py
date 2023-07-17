@@ -1778,8 +1778,8 @@ class GeoVectorDataset(VectorDataset):
     # ------------
     def to_lon_lat_grid(
         self,
-        *,
         agg: dict[str, str],
+        *,
         spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
         spatial_grid_res: float = 0.5,
     ) -> xr.Dataset:
@@ -1797,8 +1797,8 @@ class GeoVectorDataset(VectorDataset):
 
 def vector_to_lon_lat_grid(
     vector: GeoVectorDataset,
-    *,
     agg: dict[str, str],
+    *,
     spatial_bbox: tuple[float, float, float, float] = (-180.0, -90.0, 180.0, 90.0),
     spatial_grid_res: float = 0.5,
 ) -> xr.Dataset:
@@ -1833,7 +1833,7 @@ def vector_to_lon_lat_grid(
     ...     time=np.zeros(10000).astype("datetime64[ns]"),
     ... )
     >>> vector["foo"] = rng.uniform(0, 1, 10000)
-    >>> ds = vector.to_lon_lat_grid(agg={"foo": "sum"}, spatial_bbox=(-10, -10, 9.5, 9.5))
+    >>> ds = vector.to_lon_lat_grid({"foo": "sum"}, spatial_bbox=(-10, -10, 9.5, 9.5))
     >>> da = ds["foo"]
     >>> da.coords
     Coordinates:
@@ -1853,26 +1853,26 @@ def vector_to_lon_lat_grid(
     True
 
     """
-    vector.ensure_vars(agg)
-    df = vector.select(["longitude", "latitude", *agg], copy=False).dataframe
+    df = vector.select(("longitude", "latitude", *agg), copy=False).dataframe
 
     # Create longitude and latitude coordinates
-    assert spatial_grid_res > 0.01
-    lon_coords = np.arange(spatial_bbox[0], spatial_bbox[2] + 0.01, spatial_grid_res)
-    lat_coords = np.arange(spatial_bbox[1], spatial_bbox[3] + 0.01, spatial_grid_res)
+    assert spatial_grid_res > 0.01, "spatial_grid_res must be greater than 0.01"
+    west, south, east, north = spatial_bbox
+    lon_coords = np.arange(west, east + 0.01, spatial_grid_res)
+    lat_coords = np.arange(south, north + 0.01, spatial_grid_res)
+    shape = lon_coords.size, lat_coords.size
 
     # Convert vector to lon-lat grid
-    df["idx_lon"] = np.searchsorted(lon_coords, df["longitude"]) - 1
-    df["idx_lat"] = np.searchsorted(lat_coords, df["latitude"]) - 1
+    idx_lon = np.searchsorted(lon_coords, df["longitude"]) - 1
+    idx_lat = np.searchsorted(lat_coords, df["latitude"]) - 1
 
-    out = dict()
-    df_agg = df.groupby(["idx_lon", "idx_lat"]).agg(agg)
+    df_agg = df.groupby([idx_lon, idx_lat]).agg(agg)
+    index = df_agg.index.get_level_values(0), df_agg.index.get_level_values(1)
 
-    for var_name in agg:
-        arr = np.zeros((lon_coords.size, lat_coords.size))
-        arr[df_agg.index.get_level_values(0), df_agg.index.get_level_values(1)] = df_agg[var_name]
-        out[var_name] = xr.DataArray(
-            coords={"longitude": lon_coords, "latitude": lat_coords}, data=arr
-        )
+    out = xr.Dataset(coords={"longitude": lon_coords, "latitude": lat_coords})
+    for name, col in df_agg.items():
+        arr = np.zeros(shape, dtype=col.dtype)
+        arr[index] = col
+        out[name] = (("longitude", "latitude"), arr)
 
-    return xr.Dataset(out)
+    return out
