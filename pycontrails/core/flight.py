@@ -803,7 +803,7 @@ class Flight(GeoVectorDataset):
             raise ValueError(f'Unknown `fill_method`. Supported  methods: {", ".join(methods)}')
 
         # STEP 1: Prepare DataFrame on which we'll perform resampling
-        df = self.to_dataframe()
+        df = self.dataframe
 
         # put altitude on dataframe if its not already there
         if "altitude" not in df:
@@ -811,7 +811,7 @@ class Flight(GeoVectorDataset):
 
         # always drop level
         if "level" in df:
-            df.drop(columns="level", inplace=True)
+            df = df.drop(columns="level")
 
         # drop all cols except time/lon/lat/alt
         if drop:
@@ -824,10 +824,10 @@ class Flight(GeoVectorDataset):
                 df = pd.concat([df, filled])
 
         # STEP 3: Set the time index, and sort it
-        df = df.set_index("time").sort_index()
+        df = df.set_index("time", verify_integrity=True).sort_index()
 
         # STEP 4: Some adhoc code for dealing with antimeridian.
-        # Idea: A flight likel crosses the antimeridian if
+        # Idea: A flight likely crosses the antimeridian if
         #   `min_pos > 90` and `max_neg < -90`
         # This is not foolproof: it assumes the full trajectory will not
         # span more than 180 longitude degrees. There could be flights that
@@ -838,13 +838,14 @@ class Flight(GeoVectorDataset):
         # then shift back to their original position.
         lon = df["longitude"].to_numpy()
         sign_ = np.sign(lon)
-        min_pos = np.min(lon[sign_ == 1], initial=np.inf)
-        max_neg = np.max(lon[sign_ == -1], initial=-np.inf)
-        if (180 - min_pos) + (180 + max_neg) < 180 and min_pos < np.inf and max_neg > -np.inf:
+        min_pos = np.min(lon[sign_ == 1.0], initial=np.inf)
+        max_neg = np.max(lon[sign_ == -1.0], initial=-np.inf)
+
+        if (180.0 - min_pos) + (180.0 + max_neg) < 180.0 and min_pos < np.inf and max_neg > -np.inf:
             # In this case, we believe the flight crosses the antimeridian
             shift = min_pos
             # So we shift the longitude "chart"
-            df["longitude"] = (df["longitude"] - shift) % 360
+            df["longitude"] = (df["longitude"] - shift) % 360.0
         else:
             shift = None
 
@@ -858,7 +859,7 @@ class Flight(GeoVectorDataset):
         if shift is not None:
             # We need to translate back to the original chart here
             df["longitude"] += shift
-            df["longitude"] = ((df["longitude"] + 180) % 360) - 180
+            df["longitude"] = ((df["longitude"] + 180.0) % 360.0) - 180.0
 
         # STEP 7: Interpolate nan values in altitude
         if df["altitude"].isna().any():
