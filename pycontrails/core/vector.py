@@ -894,32 +894,30 @@ class VectorDataset:
         Raises
         ------
         KeyError
-            Not all `keys` found in :attr:`attrs`.
+            Not all ``keys`` found in :attr:`attrs`.
         """
         if isinstance(keys, str):
-            keys = [keys]
-        else:
-            keys = list(keys)  # necessary since we iterate over it twice
+            keys = (keys,)
 
         # Validate everything up front to avoid partial broadcasting
         for key in keys:
-            if key not in self.attrs:
-                raise KeyError(f"{type(self)} does not contain attr `{key}`")
+            try:
+                scalar = self.attrs[key]
+            except KeyError as exc:
+                raise KeyError(f"{type(self)} does not contain attr `{key}`") from exc
 
-        # Do the broadcasting
-        for attr in keys:
-            if attr in self.data and not overwrite:
+            if key in self.data and not overwrite:
                 warnings.warn(
-                    f"Found duplicate key {attr} in attrs and data. "
+                    f"Found duplicate key {key} in attrs and data. "
                     "Set `overwrite=True` parameter to force overwrite."
                 )
+                continue
+
+            min_dtype = np.min_scalar_type(scalar)
+            if np.can_cast(min_dtype, np.float32):
+                self.data.update({key: np.full(self.size, scalar, dtype=np.float32)})
             else:
-                scalar = self.attrs[attr]
-                min_dtype = np.min_scalar_type(scalar)
-                if np.can_cast(min_dtype, np.float32):
-                    self.data.update({attr: np.full(self.size, scalar, dtype=np.float32)})
-                else:
-                    self.data.update({attr: np.full(self.size, scalar)})
+                self.data.update({key: np.full(self.size, scalar)})
 
     def broadcast_numeric_attrs(
         self, ignore_keys: str | Iterable[str] | None = None, overwrite: bool = False
