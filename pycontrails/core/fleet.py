@@ -253,10 +253,6 @@ class Fleet(Flight):
             for flight_id, df in grouped
         ]
 
-    @overrides
-    def copy(self) -> Fleet:
-        return Fleet(data=self.data, attrs=self.attrs, fuel=self.fuel, copy=True)
-
     ###################################
     # Flight methods involving segments
     ###################################
