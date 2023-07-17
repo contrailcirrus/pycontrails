@@ -53,10 +53,7 @@ class Fleet(Flight):
 
         # set fuel for ALL FLIGHTS
         # NOTE: We could also set fuel for each flight via the `fl_attrs` attribute
-        if fuel is None:
-            self.fuel = JetA()
-        else:
-            self.fuel = fuel
+        self.fuel = fuel or JetA()
 
         self.final_waypoints = self.calc_final_waypoints()
 
@@ -219,9 +216,10 @@ class Fleet(Flight):
             If `fuel` is incompatible with other flights.
         """
         # Validate and cache attrs
-        if "flight_id" not in fl.attrs:
-            raise KeyError("Each flight must have `flight_id` in its `attrs`.")
-        flight_id = fl.attrs["flight_id"]
+        try:
+            flight_id = fl.attrs["flight_id"]
+        except KeyError as exc:
+            raise KeyError("Each flight must have `flight_id` in its `attrs`.") from exc
 
         if flight_id in attrs["fl_attrs"]:
             raise ValueError(f"Duplicate `flight_id` {flight_id} found.")
@@ -256,7 +254,7 @@ class Fleet(Flight):
         # Simply use fl.data.keys() to check for consistency.
         data_keys = fl.data.keys()
         if attrs["data_keys"] is None:
-            attrs["data_keys"] = set(data_keys)
+            attrs["data_keys"] = data_keys
         elif attrs["data_keys"] != data_keys:
             raise ValueError(
                 f"Inconsistent data keys {attrs['data_keys']}  and {data_keys} found among flights."
@@ -293,6 +291,10 @@ class Fleet(Flight):
             Flight(df, attrs=self.attrs["fl_attrs"][flight_id], copy=copy)
             for flight_id, df in grouped
         ]
+
+    @overrides
+    def copy(self) -> Fleet:
+        return Fleet(data=self.data, attrs=self.attrs, fuel=self.fuel, copy=True)
 
     ###################################
     # Flight methods involving segments
