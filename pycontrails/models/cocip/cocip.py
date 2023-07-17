@@ -586,7 +586,6 @@ class Cocip(Model):
         # STEP 7: Ensure that flight has the required variables defined as attrs or columns
         self.source.ensure_vars(_emissions_variables())
 
-
     def _process_emissions(self) -> None:
         """Process flight emissions.
 
@@ -2259,7 +2258,10 @@ def _contrail_contrail_overlapping(
 ) -> GeoVectorDataset:
     """Mutate ``contrail`` to account for contrail-contrail overlapping effects."""
 
-    tmp = radiative_forcing.contrail_contrail_overlap_radiative_effects(
+    if not contrail:
+        return contrail
+
+    contrail = radiative_forcing.contrail_contrail_overlap_radiative_effects(
         contrail,
         habit_distributions=params["habit_distributions"],
         radius_threshold_um=params["radius_threshold_um"],
@@ -2269,12 +2271,12 @@ def _contrail_contrail_overlapping(
     )
 
     contrail.update(
-        rsr=tmp["rsr_overlap"],
-        olr=tmp["olr_overlap"],
-        tau_cirrus=tmp["tau_cirrus_overlap"],
-        rf_sw=tmp["rf_sw_overlap"],
-        rf_lw=tmp["rf_lw_overlap"],
-        rf_net=tmp["rf_net_overlap"],
+        rsr=contrail.data.pop("rsr_overlap"),
+        olr=contrail.data.pop("olr_overlap"),
+        tau_cirrus=contrail.data.pop("tau_cirrus_overlap"),
+        rf_sw=contrail.data.pop("rf_sw_overlap"),
+        rf_lw=contrail.data.pop("rf_lw_overlap"),
+        rf_net=contrail.data.pop("rf_net_overlap"),
     )
 
     return contrail
