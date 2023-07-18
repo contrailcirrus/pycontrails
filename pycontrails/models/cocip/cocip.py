@@ -936,9 +936,8 @@ class Cocip(Model):
         calc_radiative_properties(self._downwash_contrail, self.params)
 
         contrail_contrail_overlapping = self.params["contrail_contrail_overlapping"]
-        if contrail_contrail_overlapping:
-            if not isinstance(self.source, Fleet):
-                warnings.warn("Contrail-Contrail Overlapping is only valid for Fleet mode.")
+        if contrail_contrail_overlapping and not isinstance(self.source, Fleet):
+            warnings.warn("Contrail-Contrail Overlapping is only valid for Fleet mode.")
 
         # Complete iteration at time_idx - 2
         for time_idx, time_end in enumerate(self.timesteps[:-1]):
