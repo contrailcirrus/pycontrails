@@ -228,9 +228,7 @@ class DiskCacheStore(CacheStore):
     def listdir(self, path: str = "") -> list[str]:
         path = self.path(path)
         iter_ = pathlib.Path(path).iterdir()
-        out = [str(f.relative_to(path)) for f in iter_]
-        out.sort()
-        return out
+        return sorted(str(f.relative_to(path)) for f in iter_)
 
     @overrides
     def path(self, cache_path: str) -> str:
@@ -247,7 +245,7 @@ class DiskCacheStore(CacheStore):
     @overrides
     def exists(self, cache_path: str) -> bool:
         disk_path = pathlib.Path(self.path(cache_path))
-        return disk_path.is_dir() or disk_path.is_file()
+        return disk_path.exists()
 
     def put(self, data_path: str | pathlib.Path, cache_path: str | None = None) -> str:
         """Save data to the local cache store.
@@ -617,7 +615,7 @@ class GCPCacheStore(CacheStore):
     def exists(self, cache_path: str) -> bool:
         # see if file is in the mirror disk cache
         if self._disk_cache.exists(cache_path):
-            return self._disk_cache.exists(cache_path)
+            return True
 
         bucket_path = self.path(cache_path)
         blob = self._bucket.blob(bucket_path)
