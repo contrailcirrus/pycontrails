@@ -893,6 +893,12 @@ def _prepare_q(
         Transformed levels for interpolation.
     """
     da = mda.data
+    if not da._in_memory:
+        # XXX: It's unclear where this should go. If we wait too long to load,
+        # we may need to reload into memory on each call to intersect_met.
+        # If we load here, we only load once, but we may load data that is
+        # never used. For now, we load here.
+        da.load()
 
     if q_method == "log-q-log-p":
         return _prepare_q_log_q_log_p(da, level, log_applied)
@@ -908,9 +914,6 @@ def _prepare_q(
 def _prepare_q_log_q_log_p(
     da: xr.DataArray, level: npt.NDArray[np.float_], log_applied: bool
 ) -> tuple[MetDataArray, npt.NDArray[np.float_]]:
-    if not da._in_memory:
-        da.load()
-
     da = da.assign_coords(level=np.log(da["level"]))
 
     if not log_applied:
