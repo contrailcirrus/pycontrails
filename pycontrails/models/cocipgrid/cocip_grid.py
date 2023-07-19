@@ -1101,7 +1101,7 @@ def find_initial_contrail_regions(
 
     filt = sac_ == 1.0
     logger.debug(
-        "Fraction of grid points satisfying the SAC: %s / %s.",
+        "Fraction of grid points satisfying the SAC: %s / %s",
         filt.sum(),
         vector.size,
     )
@@ -1327,7 +1327,7 @@ def find_initial_persistent_contrails(
 
     logger.debug(
         "Fraction of grid points with persistent initial contrails: %s / %s",
-        persistent_1.sum(),
+        int(persistent_1.sum()),
         contrail.size,
     )
 
@@ -1531,7 +1531,7 @@ def calc_evolve_one_step(
 
     # Filter by persistent
     logger.debug(
-        "Fraction of gridpoints surviving: %s / %s",
+        "Fraction of grid points surviving: %s / %s",
         np.sum(persistent),
         next_contrail.size,
     )
@@ -1544,7 +1544,7 @@ def calc_evolve_one_step(
 def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
     """Calculate BADA-derived fuel and emissions data.
 
-    The BADA database to use (BADA3 or BADA4) is determined by the `bada_priority`
+    The BADA database to use (BADA3 or BADA4) is determined by the ``bada_priority``
     parameter.
 
     This function mutates the ``vector`` parameter in-place by setting keys:
