@@ -1488,7 +1488,7 @@ class MetDataArray(MetBase):
         # Load if necessary
         if not self.in_memory:
             self._check_memory("Interpolation over")
-            self.data = self.data.load()
+            self.data.load()
 
         # Convert all inputs to 1d arrays
         # Not validating against ndim >= 2
