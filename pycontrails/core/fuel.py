@@ -101,11 +101,11 @@ class SAFBlend(Fuel):
 
         # We take the default values for Jet-A and modify them for a custom blend
         base_fuel = JetA()
-        self.q_fuel = base_fuel.q_fuel + (10700 * self.pct_blend)
+        self.q_fuel = base_fuel.q_fuel + (10700.0 * self.pct_blend)
         self.hydrogen_content = base_fuel.hydrogen_content + 0.015 * self.pct_blend
         self.ei_co2 = base_fuel.ei_co2
         self.ei_h2o = base_fuel.ei_h2o * (self.hydrogen_content / base_fuel.hydrogen_content)
-        self.ei_so2 = base_fuel.ei_so2 * (1 - self.pct_blend / 100)
+        self.ei_so2 = base_fuel.ei_so2 * (1.0 - self.pct_blend / 100.0)
         self.ei_sulphates = self.ei_so2 / 0.98 * 0.02
         self.ei_oc = base_fuel.ei_oc
 
