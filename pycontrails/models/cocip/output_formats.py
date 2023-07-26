@@ -24,7 +24,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
-from tqdm import tqdm
 
 from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.vector import GeoVectorDataset, vector_to_lon_lat_grid
@@ -1584,6 +1583,11 @@ def contrails_to_hi_res_grid(
     tails_t.index = heads_t.index
 
     # Aggregate contrail segments to a high resolution longitude-latitude grid
+    try:
+        from tqdm.auto import tqdm
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError("Install the 'tqdm' package") from exc
+
     for i in tqdm(heads_t.index[:2000]):
         contrail_segment = GeoVectorDataset(
             pd.concat([heads_t[cols_req].loc[i], tails_t[cols_req].loc[i]], axis=1).T, copy=True

@@ -203,7 +203,7 @@ class Fleet(Flight):
 
         # Expand data
         if broadcast_numeric:
-            fl.broadcast_numeric_attrs(ignore_keys=["load_factor"])
+            fl.broadcast_numeric_attrs()
         if "waypoint" not in fl:
             fl["waypoint"] = np.arange(fl.size)
         if "flight_id" not in fl:

@@ -36,10 +36,10 @@ c_pd: float = 1004.0  # 1005.7?
 #: Isobaric heat capacity of water vapor :math:`[J \ kg^{-1} \ K^{-1}]`
 c_pv: float = 1870.0
 
-#: Molecular mass of dry air :math:`[kg \ mol^{-1}]`
+#: Molar mass of dry air :math:`[kg \ mol^{-1}]`
 M_d: float = 28.9647e-3
 
-#: Molecular mass of water :math:`[kg \ mol^{-1}]`
+#: Molar mass of water :math:`[kg \ mol^{-1}]`
 M_v: float = 18.0153e-3
 
 #: Ratio of heat capacities, TODO: which heat capacities?
