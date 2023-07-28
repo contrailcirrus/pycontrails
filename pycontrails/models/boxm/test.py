@@ -24,8 +24,8 @@ photol_idx, L, M, N = np.array(consts).T
 # Initialise coord arrays
 longitude = np.arange(-180, 180, 10)
 latitude = np.arange(-90, 90, 10)
-level = np.arange(0, 9, 1)
-gm_time = [datetime.datetime(2000, 6, 1, h, 0) for h in range(0, 12)] # always GMT!
+level = np.array([1013, 912, 810, 709, 607, 505, 404, 302, 201, 100])
+gm_time = [datetime.datetime(2000, 6, 1, h, 0) for h in range(0, 10)] # always GMT!
 photol_params = photol_idx
 photol_coeffs = np.arange(1, 96 + 1) # from Fortran indexing (1 to 96)
 therm_coeffs = np.arange(1, 510 + 1) # from Fortran indexing (1 to 510)
@@ -45,19 +45,11 @@ era5 = ERA5(
                 "w",
                 "z"
         ],
-        pressure_levels=[1000, 925, 800, 700, 600, 500, 400, 300, 200, 100, 50]
+        pressure_levels=[1000, 925, 800, 700, 600, 500, 400, 300, 200, 100] 
 )
 
 # Initialise MetDataset
 met = era5.open_metdataset()
-print(met)
-
-# Interpolate to model grid
-met_regrid = met.interpolate(   
-        latitude=latitude,
-        longitude=longitude,
-
-)
 
 # chem MetDataset
 chem = xr.Dataset(
@@ -93,22 +85,68 @@ chem = xr.Dataset(
     }
 )
 
+# Interpolate to model grid
+met.data = met.data.interp_like(chem.DJ).transpose("latitude", "longitude", "level", "time")
+
+print(type(met.data))
+print(type(met))
+
+t_df = pd.DataFrame(met["air_temperature"].data[:, :, 9, 1])
+
+
 # test zenith function
-sza = zenith(chem) * 180 / np.pi
-chem["sza"] = sza
+def test_zenith(chem):
+        sza = zenith(chem) * 180 / np.pi
+        chem["sza"] = sza
 
-pys = np.zeros((18, 36, 12))
-pyc = np.zeros((18, 36, 12))
+        pys = np.zeros((18, 36, 12))
+        pyc = np.zeros((18, 36, 12))
 
-for t, date in enumerate(chem.gm_time.values):
-        date_dt = date.astype(datetime.datetime) / 1e9
-        date_dt = datetime.datetime.utcfromtimestamp(date_dt).replace(tzinfo=datetime.timezone.utc)
+        for t, date in enumerate(chem.gm_time.values):
+                date_dt = date.astype(datetime.datetime) / 1e9
+                date_dt = datetime.datetime.utcfromtimestamp(date_dt).replace(tzinfo=datetime.timezone.utc)
+                
+                for i, lat in enumerate(range(-90, 90, 10)):
+                        for j, lon in enumerate(range(-180, 180, 10)):
+                                pys[i, j, t] = (90 - get_altitude(lat, lon, date_dt))
+                                theta_rad = orbital_position(date)
+                                pyc[i, j, t] = np.degrees(np.arccos(cosine_solar_zenith_angle(lon, lat, date, theta_rad)))
         
-        for i, lat in enumerate(range(-90, 90, 10)):
-                for j, lon in enumerate(range(-180, 180, 10)):
-                        pys[i, j, t] = (90 - get_altitude(lat, lon, date_dt))
-                        theta_rad = orbital_position(date)
-                        pyc[i, j, t] = np.degrees(np.arccos(cosine_solar_zenith_angle(lon, lat, date, theta_rad)))
+        
+        return chem, pys, pyc
+
+# test chemco function
+def test_chemco(chem):
+        return chem
+
+# test photol function
+def test_photol(chem):
+        
+        J = photol(chem)
+        print(J)
+        print(chem["J"])
+        #chem["J"] = J
+
+        J_df = pd.DataFrame(J[:, :, 0, 1])
+        return chem, J_df
+
+
+# test deriv function
+def test_deriv(chem):
+        return chem
+
+# test boxm.py
+
+# Carry out tests
+chem, pys, pyc = test_zenith(chem)
+
+test_chemco(chem)
+
+chem, J_df = test_photol(chem)
+
+test_deriv(chem)
+
+# Create dfs for better visual display
 pys_df = pd.DataFrame(pys[:, :, 5])
 pyc_df = pd.DataFrame(pyc[:, :, 5])
 sza_df = pd.DataFrame(sza[:, :, 5])
@@ -117,25 +155,12 @@ diff = pys_df - sza_df
 diff2 = pyc_df - pys_df
 perc_diff = diff / pys_df * 100
 
-
-# test photol function
-J = photol(chem)
-print(J.shape)
-
-J_df = pd.DataFrame(J[:, :, 0, 1])
-
-# with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
-#     display(sza_df)
+with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
+     display(t_df)
+     display(sza_df)
 #     display(pys_df)
 #     display(pyc_df)
 #     display(diff)
 #     display(diff2)
 #     #display(perc_diff)
-#     display(J_df)
-
-
-# test chemco function
-
-# test deriv function
-
-# test boxm.py
+     display(J_df)

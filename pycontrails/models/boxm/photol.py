@@ -19,17 +19,21 @@ def photol(chem: MetDataset):
     # Extract the constants
     idx, L, M, N = np.array(consts).T
 
-    print(chem.sza)
+    #print(chem.sza)
 
     # Reshape sza to have a third dimension
     sza_J = chem.sza.expand_dims(dim={'photol_params': idx}, axis=3)
     print(sza_J[:, :, 0, 1])
     # If sza is greater than 90 degrees, set J to zero
-    condition = (sza_J < np.pi / 2)
+    condition = (np.radians(sza_J) < np.pi / 2)
     J = np.where(condition, L * (np.cos(np.radians(sza_J))**M) * np.exp(-N / np.cos(np.radians(sza_J))), 0)
+   
+    #print(J.shape)
+    #print(chem.DJ.shape)
 
     # Calculate photol rate coeffs DJ
-    print(chem.DJ.shape)
+    
+    
 
     # #    Photol Reaction (1) O3 = O1D                                                           
     # DJ[1] = J[1]                             
