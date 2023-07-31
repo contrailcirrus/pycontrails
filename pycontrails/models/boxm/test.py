@@ -9,6 +9,7 @@ import datetime
 from IPython.display import display
 from zenith import zenith
 from photol import photol
+from chemco import chemco
 from pycontrails.physics.geo import cosine_solar_zenith_angle, orbital_position
 from pycontrails.datalib.ecmwf import ERA5
 
@@ -24,7 +25,7 @@ photol_idx, L, M, N = np.array(consts).T
 # Initialise coord arrays
 longitude = np.arange(-180, 180, 10)
 latitude = np.arange(-90, 90, 10)
-level = np.array([1013, 912, 810, 709, 607, 505, 404, 302, 201, 100])
+level = np.array([1013, 1000, 810, 709, 607, 505, 404, 302, 201, 100])
 gm_time = [datetime.datetime(2000, 6, 1, h, 0) for h in range(0, 10)] # always GMT!
 photol_params = photol_idx
 photol_coeffs = np.arange(1, 96 + 1) # from Fortran indexing (1 to 96)
@@ -38,7 +39,7 @@ species = np.arange(1, 220 + 1) # from Fortran indexing (1 to 220)
 era5 = ERA5(
         time=(gm_time[0], gm_time[-1]),
         variables=[
-                "air_temperature",
+                "t",
                 "q",
                 "u",
                 "v",
@@ -47,9 +48,6 @@ era5 = ERA5(
         ],
         pressure_levels=[1000, 925, 800, 700, 600, 500, 400, 300, 200, 100] 
 )
-
-# Initialise MetDataset
-met = era5.open_metdataset()
 
 # chem MetDataset
 chem = xr.Dataset(
@@ -85,13 +83,19 @@ chem = xr.Dataset(
     }
 )
 
+# Initialise MetDataset
+met = era5.open_metdataset()
+
 # Interpolate to model grid
 met.data = met.data.interp_like(chem.DJ).transpose("latitude", "longitude", "level", "time")
 
 print(type(met.data))
 print(type(met))
 
-t_df = pd.DataFrame(met["air_temperature"].data[:, :, 9, 1])
+t_df = pd.DataFrame(met["air_temperature"].data[:, :, 1, 1])
+met["air_pressure"] = met.broadcast_coords("air_pressure")
+print(met["air_pressure"].shape)
+p_df = pd.DataFrame(met["air_pressure"].data[:, :, 1, 1])
 
 
 # test zenith function
@@ -116,8 +120,9 @@ def test_zenith(chem):
         return chem, pys, pyc
 
 # test chemco function
-def test_chemco(chem):
-        return chem
+def test_chemco(met, chem):
+        rho_d = chemco(met, chem)
+        return chem, rho_d
 
 # test photol function
 def test_photol(chem):
@@ -125,11 +130,9 @@ def test_photol(chem):
         J = photol(chem)
         print(J)
         print(chem["J"])
-        #chem["J"] = J
 
-        J_df = pd.DataFrame(J[:, :, 0, 1])
+        J_df = pd.DataFrame(J[:, :, 1, 1])
         return chem, J_df
-
 
 # test deriv function
 def test_deriv(chem):
@@ -140,27 +143,32 @@ def test_deriv(chem):
 # Carry out tests
 chem, pys, pyc = test_zenith(chem)
 
-test_chemco(chem)
+chem, rho_d = test_chemco(met, chem)
+print(met)
+print(chem)
+rho_df = pd.DataFrame(rho_d[:, :, 1, 1])
+#chem, J_df = test_photol(chem)
 
-chem, J_df = test_photol(chem)
-
-test_deriv(chem)
+#test_deriv(chem)
 
 # Create dfs for better visual display
 pys_df = pd.DataFrame(pys[:, :, 5])
 pyc_df = pd.DataFrame(pyc[:, :, 5])
-sza_df = pd.DataFrame(sza[:, :, 5])
+sza_df = pd.DataFrame(chem.sza[:, :, 5])
 
 diff = pys_df - sza_df 
 diff2 = pyc_df - pys_df
 perc_diff = diff / pys_df * 100
 
 with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
-     display(t_df)
-     display(sza_df)
-#     display(pys_df)
-#     display(pyc_df)
-#     display(diff)
-#     display(diff2)
-#     #display(perc_diff)
-     display(J_df)
+        display(t_df)
+        display(p_df)
+        display(sza_df)
+        display(rho_df)
+        print(rho_df.mean())
+#       display(pys_df)
+#       display(pyc_df)
+#       display(diff)
+#       display(diff2)
+#       display(perc_diff)
+#       display(J_df)

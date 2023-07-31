@@ -1,3 +1,12 @@
+import numpy as np
+import pandas as pd
+import xarray as xr
+from datetime import datetime, timedelta
+from pycontrails import MetDataset, MetDataArray, MetVariable
+from pycontrails.physics import geo, thermo, units
+
+
+
 # This function calculates the thermal rate coeffs for deriv
 
 # INPUTS: Temp, M, H2O
@@ -7,9 +16,14 @@
 # Complex rate coeffs e.g: K170 = 5.00D-30*((TEMP/298)**(-1.5))*M
 # List of all reactions e.g: RC(#) = 5.60D-34*O2*N2*((TEMP/300)**(-2.6))
 
-def chemco(temp, M, H2O):
-    RC = 1
-    return RC
+def chemco(met, chem):
+    print(met.variables)
+    temp = met["air_temperature"].data
+    pressure = met["air_pressure"].data
+
+    rho_d = thermo.rho_d(temp, pressure)
+
+    return rho_d
 
 #       SUBROUTINE CHEMCO(RC,TEMP,M,O2,H2O,RO2,MOM,BR01)
 # C----------------------------------------------------------------------
