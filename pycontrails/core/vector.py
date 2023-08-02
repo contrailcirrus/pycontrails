@@ -609,6 +609,7 @@ class VectorDataset:
         cls: Type[VectorDatasetType],
         vectors: Sequence[VectorDataset],
         infer_attrs: bool = True,
+        fill_value: float | None = None,
     ) -> VectorDatasetType:
         """Sum a list of :class:`VectorDataset` instances.
 
@@ -618,6 +619,9 @@ class VectorDataset:
             List of :class:`VectorDataset` instances to concatenate.
         infer_attrs : bool, optional
             If True, infer attributes from the first VectorDataset in the list.
+        fill_value : float, optional
+            Fill value to use when concatenating arrays, by default None, which raises an error
+            if incompatible keys are found.
 
         Returns
         -------
@@ -651,13 +655,24 @@ class VectorDataset:
         """
         if not vectors:
             return cls()
-        keys = vectors[0].data.keys()
-        for v in vectors[1:]:
-            if v.data.keys() != keys:
-                raise KeyError("Summands have incompatible keys.")
+
+        keys: Iterable[str]
+        if fill_value is None:
+            keys = vectors[0].data.keys()
+            for v in vectors[1:]:
+                if v.data.keys() != keys:
+                    raise KeyError("Summands have incompatible keys.")
+        else:
+            keys = set().union(*[v.data.keys() for v in vectors])
+
+        def _get(k: str, v: VectorDataset) -> np.ndarray:
+            try:
+                return v[k]
+            except KeyError:
+                return np.full(v.size, fill_value)
 
         def concat(key: str) -> np.ndarray:
-            values = [v[key] for v in vectors]
+            values = [_get(key, v) for v in vectors]
             return np.concatenate(values)
 
         data = {key: concat(key) for key in keys}
