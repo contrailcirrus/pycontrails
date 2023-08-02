@@ -411,7 +411,7 @@ def test_geovector_init() -> None:
     df["time"] = time
     for col in ["time", "latitude", "longitude"]:
         data = df.drop(col, axis=1)
-        with pytest.raises(KeyError, match="Missing required data keys:"):
+        with pytest.raises(KeyError, match="GeoVectorDataset requires all of the following"):
             GeoVectorDataset(data=data)
 
     # fail with different lengths
@@ -453,14 +453,13 @@ def test_geovector_init() -> None:
     altitude = np.linspace(11000, 11500, 100)
     level = np.linspace(250, 300, 100)
 
-    # See TODO in vector regarding level/altitude
-    # with pytest.warns(Warning, match="contains both `level` and `altitude` keys"):
-    #     gvds = GeoVectorDataset(
-    #         longitude=longitude, latitude=latitude, level=level, altitude=altitude, time=time
-    #     )
-
-    match = "GeoVectorDataset requires either `level` or `altitude` or `altitude_ft` data key"
-    with pytest.raises(KeyError, match=match):
+    with pytest.raises(
+        KeyError,
+        match=(
+            "GeoVectorDataset requires at least one of the following keys: altitude, level,"
+            " altitude_ft"
+        ),
+    ):
         gvds = GeoVectorDataset(longitude=longitude, latitude=latitude, time=time)
 
 
