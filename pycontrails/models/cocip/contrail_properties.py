@@ -1214,8 +1214,7 @@ def plume_temporal_evolution(
     """
     # Convert dt to seconds value and use dtype of other variables
     dtype = np.result_type(width_t1, depth_t1, sigma_yz_t1, dsn_dz_t1, diffuse_h_t1, diffuse_v_t1)
-    dt_s = np.empty(width_t1.shape, dtype=dtype)
-    np.divide(dt, np.timedelta64(1, "s"), out=dt_s)
+    dt_s = units.dt_to_float_seconds(dt, dtype)
 
     sigma_yy = 0.125 * width_t1**2
     sigma_zz = 0.125 * depth_t1**2
@@ -1405,8 +1404,7 @@ def new_ice_particle_number(
     """
     # Convert dt to seconds value and use dtype of other variables
     dtype = np.result_type(n_ice_per_m_t1, dn_dt_agg, dn_dt_turb, seg_ratio)
-    dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(dtype)
+    dt_s = units.dt_to_float_seconds(dt, dtype)
 
     n_ice_per_m_t1 = np.maximum(n_ice_per_m_t1, 0.0)
 
@@ -1527,6 +1525,5 @@ def mean_energy_flux_per_m(
     --------
     :func:`mean_radiative_flux_per_m`
     """
-    dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(rad_flux_per_m.dtype, copy=False)
+    dt_s = units.dt_to_float_seconds(dt, rad_flux_per_m.dtype)
     return rad_flux_per_m * dt_s
