@@ -752,7 +752,7 @@ def advect_longitude(
     """
     # Use the same dtype as longitude, latitude, and u_wind
     dtype = np.result_type(longitude, latitude, u_wind)
-    dt_s = _dt_to_float_seconds(dt, dtype)
+    dt_s = units.dt_to_float_seconds(dt, dtype)
 
     distance_m = u_wind * dt_s
 
@@ -792,7 +792,7 @@ def advect_latitude(
     """
     # Use the same dtype as latitude and v_wind
     dtype = np.result_type(latitude, v_wind)
-    dt_s = _dt_to_float_seconds(dt, dtype)
+    dt_s = units.dt_to_float_seconds(dt, dtype)
 
     distance_m = v_wind * dt_s
 
@@ -829,30 +829,10 @@ def advect_level(
     ArrayLike
         New pressure level, [:math:`hPa`]
     """
-    dt_s = _dt_to_float_seconds(dt, level.dtype)
+    dt_s = units.dt_to_float_seconds(dt, level.dtype)
     velocity = vertical_velocity + rho_air * terminal_fall_speed * constants.g
 
     return (level * 100.0 + (dt_s * velocity)) / 100.0
-
-
-def _dt_to_float_seconds(dt: np.ndarray | np.timedelta64, dtype: npt.DTypeLike) -> np.ndarray:
-    """Convert a time delta to seconds as a float with specified ``dtype`` precision.
-
-    Parameters
-    ----------
-    dt : np.ndarray
-        Time delta for each waypoint
-    dtype : np.dtype
-        Data type of the output array
-
-    Returns
-    -------
-    np.ndarray
-        Time delta in seconds as a float
-    """
-    out = np.empty(dt.shape, dtype=dtype)
-    np.divide(dt, np.timedelta64(1, "s"), out=out)
-    return out
 
 
 # ---------------
