@@ -873,7 +873,7 @@ def vertical_diffusivity(
     air_temperature: npt.NDArray[np.float_],
     dT_dz: npt.NDArray[np.float_],
     depth_eff: npt.NDArray[np.float_],
-    terminal_fall_speed: npt.NDArray[np.float_],
+    terminal_fall_speed: npt.NDArray[np.float_] | float,
     sedimentation_impact_factor: npt.NDArray[np.float_] | float,
     eff_heat_rate: npt.NDArray[np.float_] | None,
 ) -> npt.NDArray[np.float_]:
@@ -1166,7 +1166,7 @@ def plume_temporal_evolution(
     diffuse_v_t1: npt.NDArray[np.float_],
     seg_ratio: npt.NDArray[np.float_] | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-    max_contrail_depth: float,
+    max_contrail_depth: float | None,
 ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     """
     Calculate the temporal evolution of the contrail plume parameters.
@@ -1199,8 +1199,9 @@ def plume_temporal_evolution(
         See :func:`segment_length_ratio`.
     dt : npt.NDArray[np.timedelta64] | np.timedelta64
         integrate contrails with time steps of dt, [:math:`s`]
-    max_contrail_depth: float
-        Constrain maximum contrail depth to prevent unrealistic values, [:math:`m`]
+    max_contrail_depth: float | None
+        Constrain maximum contrail depth to prevent unrealistic values, [:math:`m`].
+        If None is passed, the maximum contrail depth is not constrained.
 
     Returns
     -------
@@ -1213,11 +1214,11 @@ def plume_temporal_evolution(
     """
     # Convert dt to seconds value and use dtype of other variables
     dtype = np.result_type(width_t1, depth_t1, sigma_yz_t1, dsn_dz_t1, diffuse_h_t1, diffuse_v_t1)
-    dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(dtype, copy=False)
+    dt_s = np.empty(width_t1.shape, dtype=dtype)
+    np.divide(dt, np.timedelta64(1, "s"), out=dt_s)
 
-    sigma_yy = 0.125 * (width_t1**2)
-    sigma_zz = 0.125 * (depth_t1**2)
+    sigma_yy = 0.125 * width_t1**2
+    sigma_zz = 0.125 * depth_t1**2
 
     # Convert from max_contrail_depth to an upper bound for diffuse_v_t1
     # All three terms involve the diffuse_v_t1 variable, so we need to
@@ -1226,9 +1227,10 @@ def plume_temporal_evolution(
     # covariance matrix (positive definite). In particular, for downstream
     # calculations, we required that
     #   sigma_yy_t2 * sigma_zz_t2 - sigma_yz_t2**2 >= 0
-    max_sigma_zz = 0.125 * max_contrail_depth**2
-    max_diffuse_v = (max_sigma_zz - sigma_zz) / (2.0 * dt_s)
-    diffuse_v_t1 = np.minimum(diffuse_v_t1, max_diffuse_v)
+    if max_contrail_depth is not None:
+        max_sigma_zz = 0.125 * max_contrail_depth**2
+        max_diffuse_v = (max_sigma_zz - sigma_zz) / (2.0 * dt_s)
+        diffuse_v_t1 = np.minimum(diffuse_v_t1, max_diffuse_v)
 
     # Avoid some redundant calculations
     dsn_dz_t1_2 = dsn_dz_t1**2
