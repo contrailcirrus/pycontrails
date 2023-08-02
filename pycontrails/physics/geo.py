@@ -802,8 +802,8 @@ def advect_latitude(
 def advect_level(
     level: ArrayLike,
     vertical_velocity: ArrayLike,
-    rho_air: ArrayLike,
-    terminal_fall_speed: ArrayLike,
+    rho_air: ArrayLike | float,
+    terminal_fall_speed: ArrayLike | float,
     dt: np.ndarray | np.timedelta64,
 ) -> ArrayLike:
     r"""Calculate the pressure level of a particle after time ``dt``.
