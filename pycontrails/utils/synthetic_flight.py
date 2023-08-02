@@ -400,7 +400,7 @@ class SyntheticFlight:
         lon = src_lon
         lat = src_lat
         time = start_time
-        active = np.ones_like(lon).astype(bool)
+        active = np.ones(lon.shape, dtype=bool)
 
         while active.sum():
             lons.append(np.where(active, lon, np.nan))
