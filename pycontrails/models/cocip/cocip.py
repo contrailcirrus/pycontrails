@@ -712,8 +712,9 @@ class Cocip(Model):
         wingspan = self._sac_flight.get_data_or_attr("wingspan")
 
         # get the pressure level `dz_m` lower than element pressure
-        air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, self.params["dz_m"])
-        level_lower = air_pressure_lower / 100
+        dz_m = self.params["dz_m"]
+        air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+        level_lower = air_pressure_lower / 100.0
 
         # get full met grid or flight data interpolated to the pressure level `p_dz`
         interp_kwargs = self.interp_kwargs
@@ -748,12 +749,12 @@ class Cocip(Model):
             air_pressure,
             air_temperature_lower,
             air_pressure_lower,
-            self.params["dz_m"],
+            dz_m,
         )
 
         # wind shear
         ds_dz = self._sac_flight["ds_dz"] = wind_shear.wind_shear(
-            u_wind, u_wind_lower, v_wind, v_wind_lower, self.params["dz_m"]
+            u_wind, u_wind_lower, v_wind, v_wind_lower, dz_m
         )
 
         # Initial contrail width, depth and downward displacement
