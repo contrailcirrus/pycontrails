@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 from datetime import datetime, timedelta
 from pycontrails import MetDataset, MetDataArray, MetVariable
+from pycontrails.physics import geo, thermo, units
 
 def zenith(chem: MetDataset):    
 

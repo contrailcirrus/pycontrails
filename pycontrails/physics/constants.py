@@ -81,6 +81,13 @@ T_lapse_rate: float = -0.0065
 #: From :cite:`UOSRMLSolar` citing :cite:`paltridgeRadiativeProcessesMeteorology1976`
 solar_constant: float = 1361.0
 
+# ---------
+# Chemistry
+# ---------
+
+# Avogadro's number
+N_A: float = 6.02214076e23
+
 # ----
 # Fuel
 # ----

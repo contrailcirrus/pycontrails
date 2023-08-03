@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from datetime import datetime, timedelta
-import pytz
 from pycontrails import MetDataset, MetDataArray, MetVariable
+from pycontrails.physics import geo, thermo, units
 
 # Calculate photolysis rate coeffs for deriv
 
@@ -19,7 +19,6 @@ def photol(chem: MetDataset):
     # Extract the constants
     idx, L, M, N = np.array(consts).T
 
-    #print(chem.sza)
 
     # Reshape sza to have a third dimension
     sza_J = chem.sza.expand_dims(dim={'photol_params': idx}, axis=3)
@@ -28,9 +27,7 @@ def photol(chem: MetDataset):
     condition = (np.radians(sza_J) < np.pi / 2)
     J = np.where(condition, L * (np.cos(np.radians(sza_J))**M) * np.exp(-N / np.cos(np.radians(sza_J))), 0)
    
-    #print(J.shape)
-    #print(chem.DJ.shape)
-
+    
     # Calculate photol rate coeffs DJ
     
     
