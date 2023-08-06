@@ -15,7 +15,7 @@ def zenith(chem: MetDataset):
     # # For each timestep, calculate zenith for each grid cell in a vectorised way
     _, lon_mesh = xr.broadcast(chem.local_time, chem.longitude)
     _, lat_mesh = xr.broadcast(chem.local_time, chem.latitude)
-    _, gm_time_mesh = xr.broadcast(chem.local_time, chem.gm_time)
+    _, time_mesh = xr.broadcast(chem.local_time, chem.time)
 
    
     # Calculate the offset from UTC based on the longitude
@@ -23,7 +23,7 @@ def zenith(chem: MetDataset):
     offsets = offsets * 3600  # Convert to seconds
     delta = offsets.astype('timedelta64[s]')
 
-    chem["local_time"] = gm_time_mesh + delta
+    chem["local_time"] = time_mesh + delta
     #local_time, lat_mesh = xr.broadcast(local_time, chem.latitude)
     
 

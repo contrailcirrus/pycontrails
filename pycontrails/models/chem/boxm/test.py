@@ -26,11 +26,11 @@ photol_idx, L, M, N = np.array(consts).T
 longitude = np.arange(-180, 180, 10)
 latitude = np.arange(-90, 90, 10)
 level = np.array([1013, 912, 810, 709, 607, 505, 404, 302, 201, 100])
-gm_time = [datetime.datetime(2000, 6, 1, h, 0) for h in range(0, 10)] # always GMT!
+time = [datetime.datetime(2000, 6, 1, h, 0) for h in range(0, 10)] # always GMT!
 photol_params = photol_idx
 photol_coeffs = np.arange(1, 96 + 1) # from Fortran indexing (1 to 96)
 therm_coeffs = np.arange(1, 510 + 1) # from Fortran indexing (1 to 510)
-species = ['O1D', 'O', 'OH', 'NO2', 'NO3', 'O3', 'N2O5', 'NO', 'HO2', 'H2', 'CO', 
+species = [ 'O1D', 'O', 'OH', 'NO2', 'NO3', 'O3', 'N2O5', 'NO', 'HO2', 'H2', 'CO', 
            'H2O2', 'HONO', 'HNO3', 'HO2NO2', 'SO2', 'SO3', 'HSO3', 'NA', 'SA', 
            'CH4', 'CH3O2', 'C2H6', 'C2H5O2', 'C3H8', 'IC3H7O2', 'RN10O2', 'NC4H10', 
            'RN13O2', 'C2H4', 'HOCH2CH2O2', 'C3H6', 'RN9O2', 'TBUT2ENE', 'RN12O2', 
@@ -68,7 +68,7 @@ species = ['O1D', 'O', 'OH', 'NO2', 'NO3', 'O3', 'N2O5', 'NO', 'HO2', 'H2', 'CO'
 
 # Import ERA5 pressure level data
 era5 = ERA5(
-        time=(gm_time[0], gm_time[-1]),
+        time=(time[0], time[-1]),
         variables=[
                 "t",
                 "q",
@@ -84,37 +84,35 @@ era5 = ERA5(
 chem = xr.Dataset(
     {
         
-        "local_time": (["latitude", "longitude", "gm_time"],
-                np.zeros((len(latitude), len(longitude), len(gm_time)))),
-        "sza": (["latitude", "longitude", "gm_time"], 
-                np.zeros((len(latitude), len(longitude), len(gm_time)))),
-        "J": (["latitude", "longitude", "gm_time", "photol_params"], 
-                np.zeros((len(latitude), len(longitude), len(gm_time), len(photol_params)))),
-        "DJ": (["latitude", "longitude", "level", "gm_time", "photol_coeffs"], 
-                np.zeros((len(latitude), len(longitude), len(level), len(gm_time), len(photol_coeffs)))),
-        "RC": (["latitude", "longitude", "level", "gm_time", "therm_coeffs"],
-                np.zeros((len(latitude), len(longitude), len(level), len(gm_time), len(therm_coeffs)))),
-        "Y": (["latitude", "longitude", "level", "gm_time", "species"], 
-                np.zeros((len(latitude), len(longitude), len(level), len(gm_time), len(species)))),
-        "EM": (["latitude", "longitude", "level", "gm_time", "species"],
-                np.zeros((len(latitude), len(longitude), len(level), len(gm_time), len(species)))),
-        "FL": (["latitude", "longitude", "level", "gm_time", "species"],
-                np.zeros((len(latitude), len(longitude), len(level), len(gm_time), len(species)))),
+        "local_time": (["latitude", "longitude", "time"],
+                np.zeros((len(latitude), len(longitude), len(time)))),
+        "sza": (["latitude", "longitude", "time"], 
+                np.zeros((len(latitude), len(longitude), len(time)))),
+        "J": (["latitude", "longitude", "time", "photol_params"], 
+                np.zeros((len(latitude), len(longitude), len(time), len(photol_params)))),
+        "DJ": (["latitude", "longitude", "level", "time", "photol_coeffs"], 
+                np.zeros((len(latitude), len(longitude), len(level), len(time), len(photol_coeffs)))),
+        "RC": (["latitude", "longitude", "level", "time", "therm_coeffs"],
+                np.zeros((len(latitude), len(longitude), len(level), len(time), len(therm_coeffs)))),
+        "Y": (["latitude", "longitude", "level", "time", "species"], 
+                np.zeros((len(latitude), len(longitude), len(level), len(time), len(species)))),
+        "EM": (["latitude", "longitude", "level", "time", "species"],
+                np.zeros((len(latitude), len(longitude), len(level), len(time), len(species)))),
+        "FL": (["latitude", "longitude", "level", "time", "species"],
+                np.zeros((len(latitude), len(longitude), len(level), len(time), len(species)))),
 
     },
     coords={
         "latitude": latitude,
         "longitude": longitude, 
         "level": level,
-        "gm_time": gm_time,
+        "time": time,
         "photol_params": photol_params,
         "photol_coeffs": photol_coeffs,
         "therm_coeffs": therm_coeffs,
         "species": species,
     }
 )
-
-print(chem.Y.isel(level=1, gm_time=1).sel(species='O').shape)
 
 # Initialise MetDataset
 met = era5.open_metdataset()
@@ -136,7 +134,7 @@ def test_zenith(chem):
         pys = np.zeros((18, 36, 12))
         pyc = np.zeros((18, 36, 12))
 
-        for t, date in enumerate(chem.gm_time.values):
+        for t, date in enumerate(chem.time.values):
                 date_dt = date.astype(datetime.datetime) / 1e9
                 date_dt = datetime.datetime.utcfromtimestamp(date_dt).replace(tzinfo=datetime.timezone.utc)
                 
@@ -174,11 +172,11 @@ chem, pys, pyc = test_zenith(chem)
 chem, rho_d, M, H2O, O2, N2 = test_chemco(met, chem)
 # print(met)
 # print(chem)
-print(rho_d)
-print(M)
-print(H2O)
-print(O2)
-print(N2)
+# print(rho_d)
+# print(M)
+# print(H2O)
+# print(O2)
+# print(N2)
 
 #rho_df = pd.DataFrame(rho_d[:, :, 1, 1])
 #chem, J_df = test_photol(chem)
