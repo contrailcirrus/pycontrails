@@ -147,7 +147,7 @@ def test_cocip(
     flight_cocip1: Flight,
     drop_aircraft_performance: bool,
     bada_model: AircraftPerformance,
-):
+) -> None:
     """Confirm CoCiP maintains float32 precision."""
     # Convert flight_cocip1 dtypes to float32
     # Grab all the keys up front to avoid mutating while iterating

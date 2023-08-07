@@ -822,7 +822,7 @@ def test_cast_to_vector(flight_fake: Flight) -> None:
 
     # Casting up
     lon = v1.data.pop("longitude")
-    with pytest.raises(KeyError, match="Missing required data keys"):
+    with pytest.raises(KeyError, match="GeoVectorDataset requires all of the following"):
         GeoVectorDataset(v1)
 
     v1["longitude"] = lon

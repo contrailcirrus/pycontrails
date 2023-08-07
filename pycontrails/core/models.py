@@ -419,45 +419,44 @@ class Model(ABC):
         ...
 
     def _get_source(self, source: ModelInput) -> SourceType:
-        # Turn Fleet into Flight
+        """Construct :attr:`source` from ``source`` parameter."""
+
+        # Fallback to met coordinates if source is None
+        if source is None:
+            self.met = self.require_met()
+
+            # Return dataset with the same coords as self.met, but empty data_vars
+            return MetDataset(xr.Dataset(coords=self.met.data.coords))
+
+        # Turn Sequence into Fleet
         if isinstance(source, Sequence):
             # TODO: fix type guard here
             return Fleet.from_seq(source, copy=self.params["copy_source"])
 
-        if isinstance(source, GeoVectorDataset):
-            if self.params["copy_source"]:
-                source = source.copy()
+        # Raise error if source is not a MetDataset or GeoVectorDataset
+        if not isinstance(source, (MetDataset, GeoVectorDataset)):
+            raise TypeError(f"Unable to handle input eval data {source}")
 
-            if isinstance(source, Flight):
-                if "flight_id" not in source:
-                    # if flight_id in attrs, broadcast
-                    if "flight_id" in source.attrs:
-                        source.broadcast_attrs("flight_id")
+        if self.params["copy_source"]:
+            source = source.copy()
 
-                    # if no flight_id exists, add one as 0
-                    else:
-                        warnings.warn(
-                            "Source flight does not contain `flight_id` data or attr. "
-                            "Adding `flight_id` of 0"
-                        )
-                        source["flight_id"] = np.zeros(len(source), dtype=int)
-
+        if not isinstance(source, Flight):
             return source
 
-        if isinstance(source, (MetDataset, GeoVectorDataset)):
-            if self.params["copy_source"]:
-                source = source.copy()
+        # Ensure flight_id is present on Flight instances
+        # Either broadcast from attrs or add as 0
+        if "flight_id" not in source:
+            if "flight_id" in source.attrs:
+                source.broadcast_attrs("flight_id")
 
-            return source
+            else:
+                warnings.warn(
+                    "Source flight does not contain `flight_id` data or attr. "
+                    "Adding `flight_id` of 0"
+                )
+                source["flight_id"] = np.zeros(len(source), dtype=int)
 
-        # fall back on met data
-        if source is None:
-            self.met = self.require_met()
-
-            # create a dataset with the same coords as self.met, but empty data_vars
-            return MetDataset(xr.Dataset(coords=self.met.data.coords))
-
-        raise TypeError(f"Unable to handle input eval data {source}")
+        return source
 
     def set_source(self, source: ModelInput = None) -> None:
         """Attach original or copy of input ``source`` to :attr:`source`.

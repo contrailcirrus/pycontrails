@@ -225,7 +225,7 @@ def _empty_vector_dict(keys: Iterable[str]) -> VectorDataDict:
     VectorDataDict
         Empty :class:`VectorDataDict` instance.
     """
-    keys = keys or set()
+    keys = keys or ()
     data = VectorDataDict({key: np.array([]) for key in keys})
 
     # The default dtype is float64
@@ -609,6 +609,7 @@ class VectorDataset:
         cls: Type[VectorDatasetType],
         vectors: Sequence[VectorDataset],
         infer_attrs: bool = True,
+        fill_value: float | None = None,
     ) -> VectorDatasetType:
         """Sum a list of :class:`VectorDataset` instances.
 
@@ -618,6 +619,9 @@ class VectorDataset:
             List of :class:`VectorDataset` instances to concatenate.
         infer_attrs : bool, optional
             If True, infer attributes from the first VectorDataset in the list.
+        fill_value : float, optional
+            Fill value to use when concatenating arrays, by default None, which raises an error
+            if incompatible keys are found.
 
         Returns
         -------
@@ -651,13 +655,24 @@ class VectorDataset:
         """
         if not vectors:
             return cls()
-        keys = vectors[0].data.keys()
-        for v in vectors[1:]:
-            if v.data.keys() != keys:
-                raise KeyError("Summands have incompatible keys.")
+
+        keys: Iterable[str]
+        if fill_value is None:
+            keys = vectors[0].data.keys()
+            for v in vectors[1:]:
+                if v.data.keys() != keys:
+                    raise KeyError("Summands have incompatible keys.")
+        else:
+            keys = set().union(*[v.data.keys() for v in vectors])
+
+        def _get(k: str, v: VectorDataset) -> np.ndarray:
+            try:
+                return v[k]
+            except KeyError:
+                return np.full(v.size, fill_value)
 
         def concat(key: str) -> np.ndarray:
-            values = [v[key] for v in vectors]
+            values = [_get(key, v) for v in vectors]
             return np.concatenate(values)
 
         data = {key: concat(key) for key in keys}
@@ -1081,7 +1096,7 @@ class GeoVectorDataset(VectorDataset):
     time : npt.ArrayLike, optional
         Time data.
         Expects an array of DatetimeLike values,
-        or array that can proccessed with :meth:`pd.to_datetime`.
+        or array that can processed with :meth:`pd.to_datetime`.
         Defaults to None.
     attrs : dict[Hashable, Any] | AttrDict, optional
         Additional properties as a dictionary.
@@ -1100,11 +1115,10 @@ class GeoVectorDataset(VectorDataset):
     """
 
     #: Required keys for creating GeoVectorDataset
-    required_keys: set[str] = {
-        "latitude",
-        "longitude",
-        "time",
-    }
+    required_keys = "longitude", "latitude", "time"
+
+    #: At least one of these vertical-coordinate keys must also be included
+    vertical_keys = "altitude", "level", "altitude_ft"
 
     def __init__(
         self,
@@ -1131,12 +1145,12 @@ class GeoVectorDataset(VectorDataset):
             and level is None
             and time is None
         ):
-            keys = self.required_keys.union(["altitude"])
+            keys = *self.required_keys, "altitude"
             data = _empty_vector_dict(keys)
 
         super().__init__(data=data, attrs=attrs, copy=copy, **attrs_kwargs)
 
-        # using the self[key] syntax specifically to run qc on assigment
+        # using the self[key] syntax specifically to run qc on assignment
         if longitude is not None:
             self["longitude"] = np.array(longitude, copy=copy)
 
@@ -1152,27 +1166,18 @@ class GeoVectorDataset(VectorDataset):
         if level is not None:
             self["level"] = np.array(level, copy=copy)
 
-        # warn if level and altitude are both defined
-        if "level" not in self and "altitude" not in self and "altitude_ft" not in self:
+        # Confirm that input has required keys
+        if not all(key in self for key in self.required_keys):
             raise KeyError(
-                f"{self.__class__.__name__} requires either "
-                "`level` or `altitude` or `altitude_ft` data key"
+                f"{self.__class__.__name__} requires all of the following keys: "
+                f"{', '.join(self.required_keys)}"
             )
 
-        # TODO: do we want to throw a warning if both level and altitude are specified?
-        # This is the default behavior in Cocip
-        # elif "level" in self and "altitude" in self:
-        #     warnings.warn(
-        #         f"{self.__class__.__name__} contains both `level` and `altitude` keys. "
-        #         "This can result in ambiguous behavior."
-        #     )
-
-        # confirm that input dataframe has required columns
-        if not self.required_keys.issubset(self):
-            missing_keys = self.required_keys.difference(self)
+        # Confirm that input has at least one vertical key
+        if not any(key in self for key in self.vertical_keys):
             raise KeyError(
-                f"Missing required data keys: {missing_keys}. "
-                f"Use {self.__class__.__name__}.create_empty() to create an empty dataset."
+                f"{self.__class__.__name__} requires at least one of the following keys: "
+                f"{', '.join(self.vertical_keys)}"
             )
 
         # Parse time: If time is not np.datetime64, we try to coerce it to be
@@ -1317,7 +1322,7 @@ class GeoVectorDataset(VectorDataset):
         constants = {}
 
         # get constant data values that are not nan
-        for key in set(self.data) - self.required_keys:
+        for key in set(self).difference(self.required_keys):
             unique = np.unique(self[key])
             if len(unique) == 1 and (isinstance(unique[0], str) or ~np.isnan(unique[0])):
                 constants[key] = unique[0]
@@ -1748,8 +1753,7 @@ class GeoVectorDataset(VectorDataset):
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
     ) -> GeoVectorDatasetType:
-        keys = cls.required_keys.union(keys or set())
-        keys.add("altitude")
+        keys = *cls.required_keys, "altitude", *(keys or ())
         return super().create_empty(keys, attrs, **attrs_kwargs)
 
     def to_geojson_points(self) -> dict[str, Any]:
