@@ -1442,7 +1442,7 @@ def calc_evolve_one_step(
         diffuse_v_t1=diffuse_v_t1,
         seg_ratio=seg_ratio_t12,
         dt=params["dt_integration"],
-        max_contrail_depth=params["max_contrail_depth"],
+        max_depth=params["max_depth"],
     )
 
     width_t2, depth_t2 = contrail_properties.new_contrail_dimensions(sigma_yy_t2, sigma_zz_t2)

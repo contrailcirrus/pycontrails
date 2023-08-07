@@ -2093,7 +2093,7 @@ def calc_timestep_contrail_evolution(
         diffuse_v_1,
         seg_ratio_2,
         dt,
-        max_contrail_depth=params["max_contrail_depth"],
+        max_depth=params["max_depth"],
     )
     width_2, depth_2 = contrail_properties.new_contrail_dimensions(sigma_yy_2, sigma_zz_2)
 

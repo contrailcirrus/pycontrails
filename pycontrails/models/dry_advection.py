@@ -17,13 +17,32 @@ from pycontrails.physics import geo, thermo
 class DryAdvectionParams(models.ModelParams):
     """Parameters for the :class:`DryAdvection` model."""
 
+    #: Apply Euler's method with a fixed step size of ``dt_integration``. Advected waypoints
+    #: are interpolated against met data once each ``dt_integration``.
     dt_integration: np.timedelta64 = np.timedelta64(30, "m")
+
+    #: Max age of contrail evolution.
     max_age: np.timedelta64 = np.timedelta64(20, "h")
-    width: float | None = 100.0
-    depth: float | None = 100.0
-    max_depth: float | None = 1000.0
+
+    #: Difference in altitude between top and bottom layer for stratification calculations,
+    #: [:math:`m`]. Used to approximate derivative of "lagrangian_tendency_of_air_pressure" layer.
     dz_m: float = 200.0
-    azimuth: float | None = 0.0
+
+    #: Upper bound for evolved plume depth, constraining it to realistic values.
+    max_depth: float | None = 1500.0
+
+    #: Initial plume width, [:math:`m`]. Overridden by "width" key on :attr:`source`.
+    # If None, only pointwise advection is simulated without wind shear effects.
+    initial_width: float | None = 100.0
+
+    #: Initial plume depth, [:math:`m`]. Overridden by "depth" key on :attr:`source`.
+    # If None, only pointwise advection is simulated without wind shear effects.
+    initial_depth: float | None = 100.0
+
+    #: Initial plume direction, [:math:`m`]. Only used if "cos_a" and "sin_a" keys are
+    #: not included on :attr:`source`.
+    # If None, only pointwise advection is simulated without wind shear effects.
+    initial_azimuth: float | None = 0.0
 
 
 class DryAdvection(models.Model):
@@ -33,6 +52,9 @@ class DryAdvection(models.Model):
     long_name = "Advection without sedimentation"
     met_variables = AirTemperature, EastwardWind, NorthwardWind, VerticalVelocity
     default_params = DryAdvectionParams
+
+    met: MetDataset
+    met_required = True
 
     @overload
     def eval(self, source: None = None, **params: Any) -> NoReturn:
@@ -67,10 +89,18 @@ class DryAdvection(models.Model):
         dt = self.params["dt_integration"]
         n_steps = self.params["max_age"] // dt
         dz_m = self.params["dz_m"]
+        max_depth = self.params["max_depth"]
 
         evolved = []
         for _ in range(n_steps):
-            vector = _evolve_one_step(self.met, vector, dz_m, dt, **interp_kwargs)
+            vector = _evolve_one_step(
+                self.met,
+                vector,
+                dz_m=dz_m,
+                dt=dt,
+                max_depth=max_depth,
+                **interp_kwargs,
+            )
             evolved.append(vector)
             if not np.any(vector.coords_intersect_met(self.met)):
                 break
@@ -89,13 +119,13 @@ def _prepare_source(vector: GeoVectorDataset, params: dict[str, Any]) -> GeoVect
         try:
             vector.broadcast_attrs("width")
         except KeyError:
-            vector["width"] = np.full_like(vector["longitude"], params["width"])
+            vector["width"] = np.full_like(vector["longitude"], params["initial_width"])
 
     if "depth" not in vector:
         try:
             vector.broadcast_attrs("depth")
         except KeyError:
-            vector["depth"] = np.full_like(vector["longitude"], params["depth"])
+            vector["depth"] = np.full_like(vector["longitude"], params["initial_depth"])
 
     return vector
 
@@ -103,7 +133,9 @@ def _prepare_source(vector: GeoVectorDataset, params: dict[str, Any]) -> GeoVect
 def _evolve_one_step(
     met: MetDataset,
     vector: GeoVectorDataset,
+    *,
     dz_m: float,
+    max_depth: float | None,
     dt: np.timedelta64,
     **interp_kwargs: Any,
 ) -> GeoVectorDataset:
@@ -211,7 +243,7 @@ def _evolve_one_step(
         diffuse_v,
         seg_ratio=1.0,
         dt=dt,
-        max_contrail_depth=None,
+        max_depth=max_depth,
     )
     width_2, depth_2 = contrail_properties.new_contrail_dimensions(sigma_yy_2, sigma_zz_2)
 
