@@ -29,7 +29,7 @@ from pycontrails.core.models import Model, ModelParams
 from pycontrails.datalib import ecmwf
 
 class Plumes(MetDataset):
-    """Compute emissions concentrations in eulerian grid format, based on input flight trajectories."""
+    """Compute emissions concentrations in eulerian grid format, based on input flight emissions data (emissions.py)."""
     name = "plumes"
     long_name = "Plume dispersion model"
     met_variables = (

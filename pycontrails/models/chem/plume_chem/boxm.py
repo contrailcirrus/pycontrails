@@ -91,8 +91,8 @@ class BoxModel(Model):
         
         Parameters
         ----------
-        source : GeoVectorDataset | MetDataset | None, optional
-            Input GeoVectorDataset
+        source : MetDataset | None, optional
+            Input MetDataset
             If None, evaluates at the :attr:`met` grid points.
         **params : Any
             Overwrite model parameters before eval
