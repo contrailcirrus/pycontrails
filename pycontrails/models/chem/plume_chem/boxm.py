@@ -15,9 +15,6 @@ from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataArray, MetDataset, standardize_variables
 from pycontrails.core.met_var import (
     AirTemperature,
-    EastwardWind,
-    Geopotential,
-    NorthwardWind,
     RelativeHumidity,
     SpecificHumidity,
     AirPressure
@@ -54,8 +51,11 @@ class BoxModel(Model):
         AirPressure,
         ecmwf.CloudAreaFractionInLayer
     )
+    
+    # Set default parameters as BoxModelParams
+    default_params = BoxModelParams
 
-    # Met, chem and rad data is not optional
+    # Met, chem data is not optional
     met: MetDataset
     chem: MetDataset
     met_required = True
@@ -76,11 +76,9 @@ class BoxModel(Model):
 
         super().__init__(met, params=params, **params_kwargs)
         
-        shift_radiation_time = self.params["shift_radiation_time"]
-        met, rad = process_met_datasets(met, rad, shift_radiation_time)
-
         self.met = met
-        self.rad = rad
+        self.chem = chem
+
 
     # ----------
     # Public API
@@ -112,6 +110,10 @@ class BoxModel(Model):
 
         self.update_params(params)
         self.set_source(source)
+        self.source = self.require_source_type(MetDataset)
+
+        self.calc_timesteps()
+
 
         
     def deriv(self):

@@ -237,7 +237,7 @@ def chemco(met, chem):
     
     # Reaction (2) O = O3                                                             
     chem["RC"].loc[:, :, :, ts, 2] = 6.00e-34*O2*O2*((temp/300)**-2.6)
-
+    
     # Reaction (3) O + O3 =                                                           
     chem["RC"].loc[:, :, :, ts, 3] = 8.00e-12*np.exp(-2060/temp)         
 
