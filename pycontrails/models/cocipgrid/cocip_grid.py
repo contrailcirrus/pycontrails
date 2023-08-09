@@ -523,7 +523,7 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
 
         lons = vector["longitude"]
         lats = vector["latitude"]
-        dist = segment_length / 2
+        dist = segment_length / 2.0
 
         # These should probably not be included in model input ... so
         # we'll get a warning if they get overwritten

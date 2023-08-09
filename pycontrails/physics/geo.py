@@ -728,7 +728,10 @@ def orbital_correction_for_solar_hour_angle(theta_rad: ArrayLike) -> ArrayLike:
 
 
 def advect_longitude(
-    longitude: ArrayLike, latitude: ArrayLike, u_wind: ArrayLike, dt: np.ndarray | np.timedelta64
+    longitude: ArrayLike,
+    latitude: ArrayLike,
+    u_wind: ArrayLike,
+    dt: npt.NDArray[np.timedelta64] | np.timedelta64,
 ) -> ArrayLike:
     r"""Calculate the longitude of a particle after time `dt` caused by advection due to wind.
 
@@ -761,7 +764,9 @@ def advect_longitude(
 
 
 def advect_latitude(
-    latitude: ArrayLike, v_wind: ArrayLike, dt: np.ndarray | np.timedelta64
+    latitude: ArrayLike,
+    v_wind: ArrayLike,
+    dt: npt.NDArray[np.timedelta64] | np.timedelta64,
 ) -> ArrayLike:
     r"""Calculate the latitude of a particle after time ``dt`` caused by advection due to wind.
 
@@ -804,7 +809,7 @@ def advect_level(
     vertical_velocity: ArrayLike,
     rho_air: ArrayLike | float,
     terminal_fall_speed: ArrayLike | float,
-    dt: np.ndarray | np.timedelta64,
+    dt: npt.NDArray[np.timedelta64] | np.timedelta64,
 ) -> ArrayLike:
     r"""Calculate the pressure level of a particle after time ``dt``.
 
