@@ -6,6 +6,7 @@ from typing import Any, NoReturn, overload
 import numpy as np
 
 from pycontrails.core import models
+from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind, VerticalVelocity
 from pycontrails.core.vector import GeoVectorDataset
@@ -33,16 +34,15 @@ class DryAdvectionParams(models.ModelParams):
 
     #: Initial plume width, [:math:`m`]. Overridden by "width" key on :attr:`source`.
     # If None, only pointwise advection is simulated without wind shear effects.
-    initial_width: float | None = 100.0
+    width: float | None = 100.0
 
     #: Initial plume depth, [:math:`m`]. Overridden by "depth" key on :attr:`source`.
     # If None, only pointwise advection is simulated without wind shear effects.
-    initial_depth: float | None = 100.0
+    depth: float | None = 100.0
 
-    #: Initial plume direction, [:math:`m`]. Only used if "cos_a" and "sin_a" keys are
-    #: not included on :attr:`source`.
+    #: Initial plume direction, [:math:`m`]. Overridden by "azimuth" key on :attr:`source`.
     # If None, only pointwise advection is simulated without wind shear effects.
-    initial_azimuth: float | None = 0.0
+    azimuth: float | None = 0.0
 
 
 class DryAdvection(models.Model):
@@ -81,9 +81,11 @@ class DryAdvection(models.Model):
         """
         self.update_params(params)
         self.set_source(source)
-        self.source = self.require_source_type(GeoVectorDataset)
+        self.source: GeoVectorDataset = self.require_source_type(GeoVectorDataset)
 
-        vector = _prepare_source(self.source, self.params)
+        self._prepare_source()
+        vector = self.source
+
         interp_kwargs = self.interp_kwargs
 
         dt = self.params["dt_integration"]
@@ -107,42 +109,64 @@ class DryAdvection(models.Model):
 
         return GeoVectorDataset.sum(evolved, fill_value=np.nan)
 
+    def _prepare_source(self) -> None:
+        """Prepare :attr:`source` vector for advection by adding derived variables."""
 
-def _prepare_source(vector: GeoVectorDataset, params: dict[str, Any]) -> GeoVectorDataset:
-    """Prepare vector for advection."""
+        if "azimuth" not in self.source:
+            if isinstance(self.source, Flight):
+                pointwise_only = False
+                self.source["azimuth"] = self.source.segment_azimuth()
+            else:
+                try:
+                    self.source.broadcast_attrs("azimuth")
+                except KeyError:
+                    if (azimuth := self.params["azimuth"]) is not None:
+                        pointwise_only = False
+                        self.source["azimuth"] = np.full_like(self.source["longitude"], azimuth)
+                    else:
+                        pointwise_only = True
+                else:
+                    pointwise_only = False
+        else:
+            pointwise_only = False
 
-    # TODO: head, tail
-    if "sigma_yz" not in vector:
-        vector["sigma_yz"] = np.zeros_like(vector["longitude"])
+        if "sigma_yz" not in self.source:
+            self.source["sigma_yz"] = np.zeros_like(self.source["longitude"])
 
-    if "width" not in vector:
-        try:
-            vector.broadcast_attrs("width")
-        except KeyError:
-            vector["width"] = np.full_like(vector["longitude"], params["initial_width"])
+        if "width" not in self.source:
+            try:
+                self.source.broadcast_attrs("width")
+            except KeyError:
+                if (width := self.params["width"]) is not None:
+                    if pointwise_only:
+                        raise ValueError("Cannot specify 'width' without specifying 'azimuth'.")
+                    self.source["width"] = np.full_like(self.source["longitude"], width)
 
-    if "depth" not in vector:
-        try:
-            vector.broadcast_attrs("depth")
-        except KeyError:
-            vector["depth"] = np.full_like(vector["longitude"], params["initial_depth"])
+        if "depth" not in self.source:
+            try:
+                self.source.broadcast_attrs("depth")
+            except KeyError:
+                if (depth := self.params["depth"]) is not None:
+                    if pointwise_only:
+                        raise ValueError("Cannot specify 'depth' without specifying 'azimuth'.")
+                    self.source["depth"] = np.full_like(self.source["longitude"], depth)
 
-    return vector
 
-
-def _evolve_one_step(
+def _perform_interp_for_step(
     met: MetDataset,
     vector: GeoVectorDataset,
-    *,
     dz_m: float,
-    max_depth: float | None,
-    dt: np.timedelta64,
     **interp_kwargs: Any,
-) -> GeoVectorDataset:
+) -> None:
+    """Perform all interpolation required for one step of advection."""
+
+    vector.setdefault("level", vector.level)
+    air_pressure = vector.setdefault("air_pressure", vector.air_pressure)
+
     air_temperature = models.interpolate_met(met, vector, "air_temperature", **interp_kwargs)
-    v_wind = models.interpolate_met(met, vector, "northward_wind", "v_wind", **interp_kwargs)
-    u_wind = models.interpolate_met(met, vector, "eastward_wind", "u_wind", **interp_kwargs)
-    vertical_velocity = models.interpolate_met(
+    models.interpolate_met(met, vector, "northward_wind", "v_wind", **interp_kwargs)
+    models.interpolate_met(met, vector, "eastward_wind", "u_wind", **interp_kwargs)
+    models.interpolate_met(
         met,
         vector,
         "lagrangian_tendency_of_air_pressure",
@@ -150,13 +174,16 @@ def _evolve_one_step(
         **interp_kwargs,
     )
 
-    level = vector.level
-    air_pressure = vector.air_pressure
+    az = vector.get("azimuth")
+    if az is None:
+        # Early exit for pointwise only simulation
+        return
 
     air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+    vector["air_pressure_lower"] = air_pressure_lower
     level_lower = air_pressure_lower / 100.0
 
-    u_wind_lower = models.interpolate_met(
+    models.interpolate_met(
         met,
         vector,
         "eastward_wind",
@@ -164,7 +191,7 @@ def _evolve_one_step(
         level=level_lower,
         **interp_kwargs,
     )
-    v_wind_lower = models.interpolate_met(
+    models.interpolate_met(
         met,
         vector,
         "northward_wind",
@@ -172,28 +199,80 @@ def _evolve_one_step(
         level=level_lower,
         **interp_kwargs,
     )
-    air_temperature_lower = models.interpolate_met(
+    models.interpolate_met(
         met,
         vector,
         "air_temperature",
+        "air_temperature_lower",
         level=level_lower,
         **interp_kwargs,
     )
 
-    latitude = vector["latitude"]
-    longitude = vector["longitude"]
+    lons = vector["longitude"]
+    lats = vector["latitude"]
+    dist = 1000.0
 
-    # FIXME: azimuth
-    cos_a = 1.0
-    sin_a = 0.0
+    # These should probably not be included in model input ... so
+    # we'll get a warning if they get overwritten
+    longitude_head, latitude_head = geo.forward_azimuth(lons=lons, lats=lats, az=az, dist=dist)
+    longitude_tail, latitude_tail = geo.forward_azimuth(lons=lons, lats=lats, az=az, dist=-dist)
+    vector["longitude_head"] = longitude_head
+    vector["latitude_head"] = latitude_head
+    vector["longitude_tail"] = longitude_tail
+    vector["latitude_tail"] = latitude_tail
+
+    for met_key in ("eastward_wind", "northward_wind"):
+        vector_key = f"{met_key}_head"
+        models.interpolate_met(
+            met,
+            vector,
+            met_key,
+            vector_key,
+            **interp_kwargs,
+            longitude=longitude_head,
+            latitude=latitude_head,
+        )
+
+        vector_key = f"{met_key}_tail"
+        models.interpolate_met(
+            met,
+            vector,
+            met_key,
+            vector_key,
+            **interp_kwargs,
+            longitude=longitude_tail,
+            latitude=latitude_tail,
+        )
+
+
+def _calc_geometry(
+    vector: GeoVectorDataset,
+    dz_m: float,
+    dt: np.timedelta64,
+    max_depth: float | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Calculate geometry of evolved plume."""
+
+    u_wind = vector["u_wind"]
+    v_wind = vector["v_wind"]
+    u_wind_lower = vector["u_wind_lower"]
+    v_wind_lower = vector["v_wind_lower"]
+
+    air_temperature = vector["air_temperature"]
+    air_temperature_lower = vector["air_temperature_lower"]
+    air_pressure = vector["air_pressure"]
+    air_pressure_lower = vector["air_pressure_lower"]
+
+    ds_dz = wind_shear.wind_shear(u_wind, u_wind_lower, v_wind, v_wind_lower, dz_m)
+
+    azimuth = vector["azimuth"]
+    latitude = vector["latitude"]
+    cos_a, sin_a = geo.azimuth_to_direction(azimuth, latitude)
 
     width = vector["width"]
     depth = vector["depth"]
     sigma_yz = vector["sigma_yz"]
 
-    ds_dz = wind_shear.wind_shear(u_wind, u_wind_lower, v_wind, v_wind_lower, dz_m)
-
-    # wind shear normal
     dsn_dz = wind_shear.wind_shear_normal(
         u_wind_top=u_wind,
         u_wind_btm=u_wind_lower,
@@ -203,14 +282,6 @@ def _evolve_one_step(
         sin_a=sin_a,
         dz=dz_m,
     )
-
-    # shear_enhancement = wind_shear.wind_shear_enhancement_factor(
-    #     contrail_depth=depth,
-    #     effective_vertical_resolution=effective_vertical_resolution,
-    #     wind_shear_enhancement_exponent=wind_shear_enhancement_exponent,
-    # )
-    # ds_dz = ds_dz * shear_enhancement
-    # dsn_dz = dsn_dz * shear_enhancement
 
     dT_dz = thermo.T_potential_gradient(
         air_temperature,
@@ -247,19 +318,74 @@ def _evolve_one_step(
     )
     width_2, depth_2 = contrail_properties.new_contrail_dimensions(sigma_yy_2, sigma_zz_2)
 
+    longitude_head = vector["longitude_head"]
+    latitude_head = vector["latitude_head"]
+    longitude_tail = vector["longitude_tail"]
+    latitude_tail = vector["latitude_tail"]
+    u_wind_head = vector["eastward_wind_head"]
+    v_wind_head = vector["northward_wind_head"]
+    u_wind_tail = vector["eastward_wind_tail"]
+    v_wind_tail = vector["northward_wind_tail"]
+
+    longitude_head_t2 = geo.advect_longitude(
+        longitude=longitude_head, latitude=latitude_head, u_wind=u_wind_head, dt=dt
+    )
+    latitude_head_t2 = geo.advect_latitude(latitude=latitude_head, v_wind=v_wind_head, dt=dt)
+
+    longitude_tail_t2 = geo.advect_longitude(
+        longitude=longitude_tail, latitude=latitude_tail, u_wind=u_wind_tail, dt=dt
+    )
+    latitude_tail_t2 = geo.advect_latitude(latitude=latitude_tail, v_wind=v_wind_tail, dt=dt)
+
+    azimuth_2 = geo.azimuth(
+        lons0=longitude_head_t2,
+        lats0=latitude_head_t2,
+        lons1=longitude_tail_t2,
+        lats1=latitude_tail_t2,
+    )
+
+    return azimuth_2, width_2, depth_2, sigma_yz_2
+
+
+def _evolve_one_step(
+    met: MetDataset,
+    vector: GeoVectorDataset,
+    *,
+    dz_m: float,
+    max_depth: float | None,
+    dt: np.timedelta64,
+    **interp_kwargs: Any,
+) -> GeoVectorDataset:
+    _perform_interp_for_step(met, vector, dz_m, **interp_kwargs)
+    u_wind = vector["u_wind"]
+    v_wind = vector["v_wind"]
+    vertical_velocity = vector["vertical_velocity"]
+
+    latitude = vector["latitude"]
+    longitude = vector["longitude"]
+    azimuth = vector.get("azimuth")
+
     longitude_2 = geo.advect_longitude(longitude, latitude, u_wind, dt)
     latitude_2 = geo.advect_latitude(latitude, v_wind, dt)
-    level_2 = geo.advect_level(level, vertical_velocity, 0.0, 0.0, dt=dt)
+    level_2 = geo.advect_level(vector.level, vertical_velocity, 0.0, 0.0, dt=dt)
 
-    return GeoVectorDataset(
-        {
-            "longitude": longitude_2,
-            "latitude": latitude_2,
-            "level": level_2,
-            "time": vector["time"] + dt,
-            "sigma_yz": sigma_yz_2,
-            "width": width_2,
-            "depth": depth_2,
-        },
+    out = GeoVectorDataset(
+        longitude=longitude_2,
+        latitude=latitude_2,
+        level=level_2,
+        time=vector["time"] + dt,
         copy=False,
     )
+
+    if azimuth is None:
+        # Early exit for "pointwise only" simulation
+        return out
+
+    # Attach geometry to output vector
+    azimuth_2, width_2, depth_2, sigma_yz_2 = _calc_geometry(vector, dz_m, dt, max_depth)
+    out["azimuth"] = azimuth_2
+    out["width"] = width_2
+    out["depth"] = depth_2
+    out["sigma_yz"] = sigma_yz_2
+
+    return out

@@ -510,6 +510,11 @@ class Flight(GeoVectorDataset):
         -------
         npt.NDArray[np.float_]
             Array of azimuths.
+
+        See Also
+        --------
+        :meth:`segment_angle`
+        :func:`geo.forward_azimuth`
         """
         lon = self["longitude"]
         lat = self["latitude"]
