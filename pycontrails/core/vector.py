@@ -661,7 +661,9 @@ class VectorDataset:
             keys = vectors[0].data.keys()
             for v in vectors[1:]:
                 if v.data.keys() != keys:
-                    raise KeyError("Summands have incompatible keys.")
+                    diff = set(v.data.keys()).symmetric_difference(keys)
+                    raise KeyError(f"Summands have incompatible keys. Difference: {diff}")
+
         else:
             keys = set().union(*[v.data.keys() for v in vectors])
 
