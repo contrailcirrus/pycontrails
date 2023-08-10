@@ -48,7 +48,33 @@ class DryAdvectionParams(models.ModelParams):
 
 
 class DryAdvection(models.Model):
-    """Simulate "dry advection" of a plume with an elliptical cross section."""
+    """Simulate "dry advection" of a plume with an elliptical cross section.
+
+    The model simulates both horizontal and vertical advection of a weightless
+    plume without any sedimentation effects.
+
+    .. versionadded:: 0.46.0
+
+    This model has two distinct modes of operation:
+
+    - **Pointwise only**: If ``azimuth`` is None, then the model will only advect
+        points without any wind shear effects. This mode is useful for testing
+        the advection algorithm itself, and for simulating the evolution of
+        a single point.
+    - **Wind shear effects**: If ``azimuth`` is not None, then the model will
+        advect points with wind shear effects. At each time step, the model
+        will evolve the plume geometry according to diffusion and wind shear
+        effects. This mode is also used in :class:`CocipGrid` and :class:`Cocip`.
+
+    Parameters
+    ----------
+    met : MetDataset
+        Meteorological data.
+    params : dict[str, Any]
+        Model parameters. See :class:`DryAdvectionParams` for details.
+    **kwargs : Any
+        Additional parameters passed as keyword arguments.
+    """
 
     name = "dry_advection"
     long_name = "Advection without sedimentation"
@@ -57,6 +83,7 @@ class DryAdvection(models.Model):
 
     met: MetDataset
     met_required = True
+    source: GeoVectorDataset
 
     @overload
     def eval(self, source: None = None, **params: Any) -> NoReturn:
@@ -83,7 +110,7 @@ class DryAdvection(models.Model):
         """
         self.update_params(params)
         self.set_source(source)
-        self.source: GeoVectorDataset = self.require_source_type(GeoVectorDataset)
+        self.source = self.require_source_type(GeoVectorDataset)
 
         self._prepare_source()
         vector = self.source
@@ -112,7 +139,17 @@ class DryAdvection(models.Model):
         return GeoVectorDataset.sum(evolved, fill_value=np.nan)
 
     def _prepare_source(self) -> None:
-        """Prepare :attr:`source` vector for advection by adding derived variables."""
+        r"""Prepare :attr:`source` vector for advection by wind-shear-derived variables.
+
+        This method adds the following variables to :attr:`source` if the `"azimuth"`
+        parameter is not None:
+
+        - ``azimuth``: Initial plume direction, measured in clockwise direction from
+          true north, [:math:`\deg`].
+        - ``width``: Initial plume width, [:math:`m`].
+        - ``depth``: Initial plume depth, [:math:`m`].
+        - ``sigma_yz``: All zeros for cross-term term in covariance matrix of plume.
+        """
 
         if "azimuth" not in self.source:
             if isinstance(self.source, Flight):
@@ -132,26 +169,24 @@ class DryAdvection(models.Model):
         else:
             pointwise_only = False
 
+        for key in ("width", "depth"):
+            if key in self.source:
+                continue
+            if key in self.source.attrs:
+                self.source.broadcast_attrs(key)
+                continue
+
+            val = self.params[key]
+            if val is None and not pointwise_only:
+                raise ValueError(f"If '{key}' is None, then 'azimuth' must also be None.")
+
+            if val is not None and pointwise_only:
+                raise ValueError(f"Cannot specify '{key}' without specifying 'azimuth'.")
+
+            self.source[key] = np.full_like(self.source["longitude"], val)
+
         if "sigma_yz" not in self.source:
             self.source["sigma_yz"] = np.zeros_like(self.source["longitude"])
-
-        if "width" not in self.source:
-            try:
-                self.source.broadcast_attrs("width")
-            except KeyError:
-                if (width := self.params["width"]) is not None:
-                    if pointwise_only:
-                        raise ValueError("Cannot specify 'width' without specifying 'azimuth'.")
-                    self.source["width"] = np.full_like(self.source["longitude"], width)
-
-        if "depth" not in self.source:
-            try:
-                self.source.broadcast_attrs("depth")
-            except KeyError:
-                if (depth := self.params["depth"]) is not None:
-                    if pointwise_only:
-                        raise ValueError("Cannot specify 'depth' without specifying 'azimuth'.")
-                    self.source["depth"] = np.full_like(self.source["longitude"], depth)
 
 
 def _perform_interp_for_step(
@@ -253,7 +288,7 @@ def _calc_geometry(
     dt: np.timedelta64,
     max_depth: float | None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Calculate geometry of evolved plume."""
+    """Calculate wind-shear-derived geometry of evolved plume."""
 
     u_wind = vector["u_wind"]
     v_wind = vector["v_wind"]
@@ -358,6 +393,8 @@ def _evolve_one_step(
     dt: np.timedelta64,
     **interp_kwargs: Any,
 ) -> GeoVectorDataset:
+    """Evolve plume geometry by one step."""
+
     _perform_interp_for_step(met, vector, dz_m, **interp_kwargs)
     u_wind = vector["u_wind"]
     v_wind = vector["v_wind"]
@@ -365,7 +402,6 @@ def _evolve_one_step(
 
     latitude = vector["latitude"]
     longitude = vector["longitude"]
-    azimuth = vector.get("azimuth")
 
     longitude_2 = geo.advect_longitude(longitude, latitude, u_wind, dt)
     latitude_2 = geo.advect_latitude(latitude, v_wind, dt)
@@ -379,11 +415,12 @@ def _evolve_one_step(
         copy=False,
     )
 
+    azimuth = vector.get("azimuth")
     if azimuth is None:
         # Early exit for "pointwise only" simulation
         return out
 
-    # Attach geometry to output vector
+    # Attach wind-shear-derived geometry to output vector
     azimuth_2, width_2, depth_2, sigma_yz_2 = _calc_geometry(vector, dz_m, dt, max_depth)
     out["azimuth"] = azimuth_2
     out["width"] = width_2
