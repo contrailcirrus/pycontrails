@@ -620,8 +620,8 @@ class VectorDataset:
         infer_attrs : bool, optional
             If True, infer attributes from the first VectorDataset in the list.
         fill_value : float, optional
-            Fill value to use when concatenating arrays, by default None, which raises an error
-            if incompatible keys are found.
+            Fill value to use when concatenating arrays. By default None, which raises
+            an error if incompatible keys are found.
 
         Returns
         -------
