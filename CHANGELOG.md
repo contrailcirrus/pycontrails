@@ -3,6 +3,13 @@
 
 ## v0.46.0 (unreleased)
 
+Support "dry advection" simulation.
+
+### Features
+
+- Add new `DryAdvection` model to simulate sediment-free advection of an aircraft's exhaust plume. This model is experimental and may change in future releases. By default, the current implementation simulates plume geometry as a cylinder with an elliptical cross section (the same geometry assumed in CoCiP). Wind shear perturbs the ellipse azimuth, width, and depth over the plume evolution. The `DryAdvection` model may also be used to simulate advection without wind-shear effects by setting the model parameters `azimuth`, `width`, and `depth` to None.
+- Add optional `fill_value` parameter to `VectorDataset.sum`.
+
 ### Fixes
 
 - (#80) Fix unit error in `wake_vortex.turbulent_kinetic_energy_dissipation_rate`. This fix affects the estimate of wake vortex max downward displacement and slightly changes `Cocip` predictions.
@@ -14,6 +21,9 @@
 - Improve docstrings in `wake_vortex` module
 - Rename `wake_vortex` functions to remove `get_` prefix at the start of each function name.
 - Add pytest command line parameter `--regenerate-results` to regenerate static test fixture results. Automate in make recipe `make pytest-regenerate-results`.
+- Update handling of `GeoVectorDataset.required_keys` the `GeoVectorDataset` constructor. Add class variable `GeoVectorDataset.vertical_keys` for handing the vertical dimension.
+- Rename `CocipParam.max_contrail_depth` -> `CocipParam.max_depth`.
+- Add `units.dt_to_float_seconds` function to convert `np.timedelta64` to `float` seconds.
 
 ## v0.45.0
 
