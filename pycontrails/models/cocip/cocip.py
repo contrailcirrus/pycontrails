@@ -713,7 +713,7 @@ class Cocip(Model):
 
         # get the pressure level `dz_m` lower than element pressure
         dz_m = self.params["dz_m"]
-        air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+        air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
         level_lower = air_pressure_lower / 100.0
 
         # get full met grid or flight data interpolated to the pressure level `p_dz`
@@ -1558,7 +1558,7 @@ def calc_timestep_meteorology(
     interpolate_met(met, contrail, "tau_cirrus", **interp_kwargs)
 
     # get the pressure level `dz_m` lower than element pressure
-    air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, params["dz_m"])
+    air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, params["dz_m"])
 
     # get meteorology at contrail waypoints interpolated at the pressure level `air_pressure_lower`
     level_lower = air_pressure_lower / 100  # Pa -> hPa
