@@ -77,7 +77,7 @@ class DryAdvection(models.Model):
     """
 
     name = "dry_advection"
-    long_name = "Advection without sedimentation"
+    long_name = "Emission plume advection without sedimentation"
     met_variables = AirTemperature, EastwardWind, NorthwardWind, VerticalVelocity
     default_params = DryAdvectionParams
 
