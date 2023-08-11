@@ -49,7 +49,7 @@ class DryAdvectionParams(models.ModelParams):
 
 
 class DryAdvection(models.Model):
-    """Simulate "dry advection" of a plume with an elliptical cross section.
+    """Simulate "dry advection" of an emissions plume with an elliptical cross section.
 
     The model simulates both horizontal and vertical advection of a weightless
     plume without any sedimentation effects.
