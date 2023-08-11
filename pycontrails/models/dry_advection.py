@@ -216,7 +216,7 @@ def _perform_interp_for_step(
         # Early exit for pointwise only simulation
         return
 
-    air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+    air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
     vector["air_pressure_lower"] = air_pressure_lower
     level_lower = air_pressure_lower / 100.0
 

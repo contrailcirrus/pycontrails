@@ -708,7 +708,7 @@ def run_interpolators(
     # Interpolation at lower level
     air_temperature = vector["air_temperature"]
     air_pressure = vector.air_pressure
-    air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+    air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
     lower_level = air_pressure_lower / 100.0
 
     # Advect at lower_level
@@ -1732,7 +1732,7 @@ def calc_wind_shear(
     u_wind = contrail["eastward_wind"]
     v_wind = contrail["northward_wind"]
 
-    air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+    air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
     air_temperature_lower = contrail["air_temperature_lower"]
     u_wind_lower = contrail["eastward_wind_lower"]
     v_wind_lower = contrail["northward_wind_lower"]

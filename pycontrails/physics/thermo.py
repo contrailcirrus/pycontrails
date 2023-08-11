@@ -331,7 +331,7 @@ def rhi(q: ArrayScalarLike, T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScal
 # --------------
 
 
-def p_dz(T: ArrayScalarLike, p: ArrayScalarLike, dz: float) -> ArrayScalarLike:
+def pressure_dz(T: ArrayScalarLike, p: ArrayScalarLike, dz: float) -> ArrayScalarLike:
     r"""Calculate the pressure altitude ``dz`` meters below input pressure.
 
     Returns surface pressure if the calculated pressure altitude is greater
