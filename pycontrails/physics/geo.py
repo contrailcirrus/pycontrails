@@ -770,7 +770,7 @@ def advect_longitude(
     """
     # Use the same dtype as longitude, latitude, and u_wind
     dtype = np.result_type(longitude, latitude, u_wind)
-    dt_s = units.dt_to_float_seconds(dt, dtype)
+    dt_s = units.dt_to_seconds(dt, dtype)
 
     distance_m = u_wind * dt_s
 
@@ -812,7 +812,7 @@ def advect_latitude(
     """
     # Use the same dtype as latitude and v_wind
     dtype = np.result_type(latitude, v_wind)
-    dt_s = units.dt_to_float_seconds(dt, dtype)
+    dt_s = units.dt_to_seconds(dt, dtype)
 
     distance_m = v_wind * dt_s
 
@@ -849,7 +849,7 @@ def advect_level(
     ArrayLike
         New pressure level, [:math:`hPa`]
     """
-    dt_s = units.dt_to_float_seconds(dt, level.dtype)
+    dt_s = units.dt_to_seconds(dt, level.dtype)
     velocity = vertical_velocity + rho_air * terminal_fall_speed * constants.g
 
     return (level * 100.0 + (dt_s * velocity)) / 100.0
