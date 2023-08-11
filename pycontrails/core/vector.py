@@ -668,6 +668,8 @@ class VectorDataset:
             keys = set().union(*[v.data.keys() for v in vectors])
 
         def _get(k: str, v: VectorDataset) -> np.ndarray:
+            # Could also use VectorDataset.get() here, but we want to avoid creating
+            # an unused array if the key is present in the VectorDataset.
             try:
                 return v[k]
             except KeyError:
