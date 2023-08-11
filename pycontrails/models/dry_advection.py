@@ -114,27 +114,39 @@ class DryAdvection(models.Model):
         self.source = self.require_source_type(GeoVectorDataset)
 
         self._prepare_source()
-        vector = self.source
 
         interp_kwargs = self.interp_kwargs
 
-        dt = self.params["dt_integration"]
-        n_steps = self.params["max_age"] // dt
+        dt_integration = self.params["dt_integration"]
+        max_age = self.params["max_age"]
         dz_m = self.params["dz_m"]
         max_depth = self.params["max_depth"]
 
+        source_time = self.source["time"]
+        t0 = source_time.min()
+        t1 = source_time.max()
+        timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
+
+        vector = None
+
         evolved = []
-        for _ in range(n_steps):
+        for t in timesteps:
+            filt = (source_time < t) & (source_time >= t - dt_integration)
+            vector = self.source.filter(filt) + vector
             vector = _evolve_one_step(
                 self.met,
                 vector,
+                t,
                 dz_m=dz_m,
-                dt=dt,
                 max_depth=max_depth,
                 **interp_kwargs,
             )
+
+            filt = (vector["age"] <= max_age) & vector.coords_intersect_met(self.met)
+            vector = vector.filter(filt)
+
             evolved.append(vector)
-            if not np.any(vector.coords_intersect_met(self.met)):
+            if not vector and np.all(source_time < t):
                 break
 
         return GeoVectorDataset.sum(evolved, fill_value=np.nan)
@@ -145,12 +157,20 @@ class DryAdvection(models.Model):
         This method adds the following variables to :attr:`source` if the `"azimuth"`
         parameter is not None:
 
+        - ``age``: Age of plume.
         - ``azimuth``: Initial plume direction, measured in clockwise direction from
           true north, [:math:`\deg`].
         - ``width``: Initial plume width, [:math:`m`].
         - ``depth``: Initial plume depth, [:math:`m`].
         - ``sigma_yz``: All zeros for cross-term term in covariance matrix of plume.
         """
+
+        self.source.setdefault("level", self.source.level)
+        self.source = GeoVectorDataset(
+            self.source.select(("longitude", "latitude", "level", "time"), copy=False)
+        )
+
+        self.source["age"] = np.full(self.source.size, np.timedelta64(0, "ns"))
 
         if "azimuth" not in self.source:
             if isinstance(self.source, Flight):
@@ -388,10 +408,10 @@ def _calc_geometry(
 def _evolve_one_step(
     met: MetDataset,
     vector: GeoVectorDataset,
+    t: np.datetime64,
     *,
     dz_m: float,
     max_depth: float | None,
-    dt: np.timedelta64,
     **interp_kwargs: Any,
 ) -> GeoVectorDataset:
     """Evolve plume geometry by one step."""
@@ -404,17 +424,21 @@ def _evolve_one_step(
     latitude = vector["latitude"]
     longitude = vector["longitude"]
 
-    longitude_2 = geo.advect_longitude(longitude, latitude, u_wind, dt)
-    latitude_2 = geo.advect_latitude(latitude, v_wind, dt)
-    level_2 = geo.advect_level(vector.level, vertical_velocity, 0.0, 0.0, dt=dt)
+    dt = t - vector["time"]
+    longitude_2 = geo.advect_longitude(longitude, latitude, u_wind, dt)  # type: ignore[arg-type]
+    latitude_2 = geo.advect_latitude(latitude, v_wind, dt)  # type: ignore[arg-type]
+    level_2 = geo.advect_level(
+        vector.level, vertical_velocity, 0.0, 0.0, dt  # type: ignore[arg-type]
+    )
 
     out = GeoVectorDataset(
         longitude=longitude_2,
         latitude=latitude_2,
         level=level_2,
-        time=vector["time"] + dt,
+        time=np.full(longitude_2.shape, t),
         copy=False,
     )
+    out["age"] = vector["age"] + dt
 
     azimuth = vector.get("azimuth")
     if azimuth is None:
@@ -422,7 +446,9 @@ def _evolve_one_step(
         return out
 
     # Attach wind-shear-derived geometry to output vector
-    azimuth_2, width_2, depth_2, sigma_yz_2 = _calc_geometry(vector, dz_m, dt, max_depth)
+    azimuth_2, width_2, depth_2, sigma_yz_2 = _calc_geometry(
+        vector, dz_m, dt, max_depth  # type: ignore[arg-type]
+    )
     out["azimuth"] = azimuth_2
     out["width"] = width_2
     out["depth"] = depth_2
