@@ -449,10 +449,10 @@ def lbs_to_kg(lbs: ArrayScalarLike) -> ArrayScalarLike:
     return lbs * 0.45359
 
 
-def dt_to_float_seconds(
+def dt_to_seconds(
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-    dtype: npt.DTypeLike,
-) -> np.ndarray:
+    dtype: npt.DTypeLike = np.float64,
+) -> npt.NDArray[np.float_]:
     """Convert a time delta to seconds as a float with specified ``dtype`` precision.
 
     Parameters

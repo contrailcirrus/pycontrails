@@ -23,7 +23,7 @@ Support "dry advection" simulation.
 - Add pytest command line parameter `--regenerate-results` to regenerate static test fixture results. Automate in make recipe `make pytest-regenerate-results`.
 - Update handling of `GeoVectorDataset.required_keys` the `GeoVectorDataset` constructor. Add class variable `GeoVectorDataset.vertical_keys` for handing the vertical dimension.
 - Rename `CocipParam.max_contrail_depth` -> `CocipParam.max_depth`.
-- Add `units.dt_to_float_seconds` function to convert `np.timedelta64` to `float` seconds.
+- Add `units.dt_to_seconds` function to convert `np.timedelta64` to `float` seconds.
 
 ## v0.45.0
 

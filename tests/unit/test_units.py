@@ -139,7 +139,7 @@ def test_mach_tas(rng: np.random.Generator):
             "m_to_longitude_distance",
             "tas_to_mach_number",
             "mach_number_to_tas",
-            "dt_to_float_seconds",
+            "dt_to_seconds",
         ]
         and not name.startswith("_")
     ],
