@@ -24,11 +24,12 @@ class DryAdvectionParams(models.ModelParams):
     #: are interpolated against met data once each ``dt_integration``.
     dt_integration: np.timedelta64 = np.timedelta64(30, "m")
 
-    #: Max age of contrail evolution.
+    #: Max age of plume evolution.
     max_age: np.timedelta64 = np.timedelta64(20, "h")
 
     #: Difference in altitude between top and bottom layer for stratification calculations,
-    #: [:math:`m`]. Used to approximate derivative of "lagrangian_tendency_of_air_pressure" layer.
+    #: [:math:`m`]. Used to approximate derivative of "lagrangian_tendency_of_air_pressure"
+    #: (upward component of air velocity) with respect to altitude.
     dz_m: float = 200.0
 
     #: Upper bound for evolved plume depth, constraining it to realistic values.
