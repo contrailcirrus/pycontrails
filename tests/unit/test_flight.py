@@ -320,7 +320,7 @@ def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[
 
     fl3 = fl2.resample_and_fill("10S")
     assert fl3.max_time_gap == pd.Timedelta("10S")
-    assert np.all(np.diff(fl3.data["time"]) == pd.Timedelta("10S"))
+    assert np.all(np.diff(fl3.data["time"][1:-1]) == pd.Timedelta("10S"))
     assert set(fl3.data.keys()) == {"time", "latitude", "longitude", "altitude"}
 
 
@@ -330,8 +330,8 @@ def test_resampling(fl: Flight, flight_meridian: Flight) -> None:
     # flight with more waypoints will waver more, and have longer length
     assert len(fl2) > len(fl3)
 
-    # fl2 has 60 times more data
-    assert abs(len(fl3) - len(fl2) / 60) <= 1
+    # fl2 has 60 times more data excluding endpoints
+    assert abs(len(fl3) - 2 - (len(fl2) - 2) / 60) <= 1
 
     # at large threshold, geodesics are not calculated
     fl4 = fl.resample_and_fill("1T", "linear")

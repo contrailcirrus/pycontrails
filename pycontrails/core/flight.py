@@ -853,6 +853,7 @@ class Flight(GeoVectorDataset):
         # Save altitudes to copy over - these just get rounded down in time.
         # Also get target sample indices
         df_alt = df.resample(freq).first()
+        freq_class = df_alt.index.freq
         index = df_alt.index
         df_alt = df_alt[~np.isnan(df_alt["latitude"])]
 
@@ -862,8 +863,8 @@ class Flight(GeoVectorDataset):
         )
         df_freq.index.name = "time"
 
-        overlap = list(set(df_freq.index).intersection(set(df.index)))
-        df_freq = df_freq.drop(overlap)
+        overlap = set(df_freq.index).intersection(set(df.index))
+        df_freq = df_freq.drop(list(overlap))
         df_freq = pd.concat([df, df_freq]).sort_index()
 
         # STEP 6: Linearly interpolate small horizontal gaps and account
@@ -871,10 +872,23 @@ class Flight(GeoVectorDataset):
         keys = ["latitude", "longitude"]
         df_freq.loc[:, keys] = df_freq.loc[:, keys].interpolate(method="time")
 
-        # Remove entires that are not on target sample points
-        df = df.drop(list(overlap))
-        df = df_freq.drop(df.index)
-        df.index.freq = index.freq
+        # Remove entires that are not on target sample points,
+        # but leave first and last waypoints
+        overlap.add(df.index[0])
+        overlap.add(df.index[-1])
+        iset = set(df.index)
+        iset = iset.difference(overlap)
+        df_freq = df_freq.drop(list(iset))
+
+        # If first waypoint of flight did not occur on sample period, we will have
+        # an index before the first waypoint, remove it, but save altitude
+        if df_freq.index[0] < df.index[0]:
+            df_freq = df_freq.drop(df_freq.index[0])
+            alt_start = df_alt["altitude"].iloc[0]
+            df_freq["altitude"].iloc[0] = alt_start
+            df_alt = df_alt.drop(df_alt.index[0])
+
+        df = df_freq
 
         # Copy over altitudes
         df["altitude"][df_alt.index] = df_alt["altitude"]
@@ -886,7 +900,7 @@ class Flight(GeoVectorDataset):
 
         # STEP 7: Interpolate nan values in altitude
         if df["altitude"].isna().any():
-            df_freq = df.index.freq.delta.to_numpy()
+            df_freq = freq_class.delta.to_numpy()
             new_alt = _altitude_interpolation(df["altitude"].to_numpy(), nominal_rocd, df_freq)
             _verify_altitude(new_alt, nominal_rocd, df_freq)
             df["altitude"] = new_alt
