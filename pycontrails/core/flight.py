@@ -1196,16 +1196,16 @@ class Flight(GeoVectorDataset):
         >>> # Intersect and attach
         >>> fl["air_temperature"] = fl.intersect_met(met['air_temperature'])
         >>> fl["air_temperature"]
-        array([235.94658, 235.55774, 235.56766, ..., 234.59956, 234.60406,
+        array([235.94658, 235.55746, 235.56711, ..., 234.59918, 234.60388,
                234.60846], dtype=float32)
 
         >>> # Length (in meters) of waypoints whose temperature exceeds 236K
         >>> fl.length_met("air_temperature", threshold=236)
-        3587431.887...
+        3589705.998...
 
         >>> # Proportion (with respect to distance) of waypoints whose temperature exceeds 236K
         >>> fl.proportion_met("air_temperature", threshold=236)
-        0.576076...
+        0.576441...
         """
         if key not in self.data:
             raise KeyError(f"Column {key} does not exist in data.")
