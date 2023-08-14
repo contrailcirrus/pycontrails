@@ -850,12 +850,35 @@ class Flight(GeoVectorDataset):
             shift = None
 
         # STEP 5: Resample flight to freq
-        df = df.resample(freq).first()
+        # Save altitudes to copy over - these just get rounded down in time.
+        # Also get target sample indices
+        df_alt = df.resample(freq).first()
+        index = df_alt.index
+        df_alt = df_alt[~np.isnan(df_alt["latitude"])]
+
+        # Build new data frame with target indices and merge with original dataframe
+        df_freq = pd.DataFrame(
+            index=index, columns=["longitude", "latitude", "altitude"], dtype=np.float64
+        )
+        df_freq.index.name = "time"
+
+        overlap = list(set(df_freq.index).intersection(set(df.index)))
+        df_freq = df_freq.drop(overlap)
+        df_freq = pd.concat([df, df_freq]).sort_index()
 
         # STEP 6: Linearly interpolate small horizontal gaps and account
         # for previous longitude shift.
         keys = ["latitude", "longitude"]
-        df.loc[:, keys] = df.loc[:, keys].interpolate(method="linear")
+        df_freq.loc[:, keys] = df_freq.loc[:, keys].interpolate(method="time")
+
+        # Remove entires that are not on target sample points
+        df = df.drop(list(overlap))
+        df = df_freq.drop(df.index)
+        df.index.freq = index.freq
+
+        # Copy over altitudes
+        df["altitude"][df_alt.index] = df_alt["altitude"]
+
         if shift is not None:
             # We need to translate back to the original chart here
             df["longitude"] += shift
