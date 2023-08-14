@@ -52,7 +52,9 @@ class DryAdvection(models.Model):
     """Simulate "dry advection" of an emissions plume with an elliptical cross section.
 
     The model simulates both horizontal and vertical advection of a weightless
-    plume without any sedimentation effects.
+    plume without any sedimentation effects. Unlike :class:`Cocip`, humidity is
+    not considered, and radiative forcing is not simulated. The model is
+    therefore useful simulating plume advection and dispersion itself.
 
     .. versionadded:: 0.46.0
 
@@ -313,13 +315,13 @@ def _calc_geometry(
 
     u_wind = vector["u_wind"]
     v_wind = vector["v_wind"]
-    u_wind_lower = vector["u_wind_lower"]
-    v_wind_lower = vector["v_wind_lower"]
+    u_wind_lower = vector.data.pop("u_wind_lower")
+    v_wind_lower = vector.data.pop("v_wind_lower")
 
     air_temperature = vector["air_temperature"]
-    air_temperature_lower = vector["air_temperature_lower"]
+    air_temperature_lower = vector.data.pop("air_temperature_lower")
     air_pressure = vector["air_pressure"]
-    air_pressure_lower = vector["air_pressure_lower"]
+    air_pressure_lower = vector.data.pop("air_pressure_lower")
 
     ds_dz = wind_shear.wind_shear(u_wind, u_wind_lower, v_wind, v_wind_lower, dz_m)
 
@@ -376,14 +378,14 @@ def _calc_geometry(
     )
     width_2, depth_2 = contrail_properties.new_contrail_dimensions(sigma_yy_2, sigma_zz_2)
 
-    longitude_head = vector["longitude_head"]
-    latitude_head = vector["latitude_head"]
-    longitude_tail = vector["longitude_tail"]
-    latitude_tail = vector["latitude_tail"]
-    u_wind_head = vector["eastward_wind_head"]
-    v_wind_head = vector["northward_wind_head"]
-    u_wind_tail = vector["eastward_wind_tail"]
-    v_wind_tail = vector["northward_wind_tail"]
+    longitude_head = vector.data.pop("longitude_head")
+    latitude_head = vector.data.pop("latitude_head")
+    longitude_tail = vector.data.pop("longitude_tail")
+    latitude_tail = vector.data.pop("latitude_tail")
+    u_wind_head = vector.data.pop("eastward_wind_head")
+    v_wind_head = vector.data.pop("northward_wind_head")
+    u_wind_tail = vector.data.pop("eastward_wind_tail")
+    v_wind_tail = vector.data.pop("northward_wind_tail")
 
     longitude_head_t2 = geo.advect_longitude(
         longitude=longitude_head, latitude=latitude_head, u_wind=u_wind_head, dt=dt
