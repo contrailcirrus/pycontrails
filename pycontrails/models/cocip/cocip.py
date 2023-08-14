@@ -1561,7 +1561,7 @@ def calc_timestep_meteorology(
     air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, params["dz_m"])
 
     # get meteorology at contrail waypoints interpolated at the pressure level `air_pressure_lower`
-    level_lower = air_pressure_lower / 100  # Pa -> hPa
+    level_lower = air_pressure_lower / 100.0  # Pa -> hPa
 
     # if met is already interpolated, this will automatically skip interpolation
     air_temperature_lower = interpolate_met(
