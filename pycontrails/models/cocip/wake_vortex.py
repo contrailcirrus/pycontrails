@@ -57,14 +57,14 @@ def max_downward_displacement(
 
     rho_air = thermo.rho_d(air_temperature, air_pressure)
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
-    t_0 = get_effective_time_scale(wingspan, true_airspeed, aircraft_mass_arr, rho_air)
+    t_0 = effective_time_scale(wingspan, true_airspeed, aircraft_mass_arr, rho_air)
 
-    dz_max_strong = get_downward_displacement_strongly_stratified(
+    dz_max_strong = downward_displacement_strongly_stratified(
         wingspan, true_airspeed, aircraft_mass_arr, rho_air, n_bv
     )
 
     is_weakly_stratified = n_bv * t_0 < 0.8
-    dz_max_weak = get_downward_displacement_weakly_stratified(
+    dz_max_weak = downward_displacement_weakly_stratified(
         wingspan=wingspan_arr[is_weakly_stratified],
         true_airspeed=true_airspeed[is_weakly_stratified],
         aircraft_mass=aircraft_mass_arr[is_weakly_stratified],
@@ -81,7 +81,7 @@ def max_downward_displacement(
     return dz_max_strong
 
 
-def get_effective_time_scale(
+def effective_time_scale(
     wingspan: npt.NDArray[np.float_] | float,
     true_airspeed: npt.NDArray[np.float_],
     aircraft_mass: npt.NDArray[np.float_] | float,
@@ -118,7 +118,7 @@ def get_effective_time_scale(
     return c * wingspan**3 * rho_air * true_airspeed / (aircraft_mass * constants.g)
 
 
-def get_downward_displacement_strongly_stratified(
+def downward_displacement_strongly_stratified(
     wingspan: npt.NDArray[np.float_] | float,
     true_airspeed: npt.NDArray[np.float_],
     aircraft_mass: npt.NDArray[np.float_] | float,
@@ -158,7 +158,7 @@ def get_downward_displacement_strongly_stratified(
     return (c * aircraft_mass * constants.g) / (wingspan**2 * rho_air * true_airspeed * n_bv)
 
 
-def get_downward_displacement_weakly_stratified(
+def downward_displacement_weakly_stratified(
     wingspan: npt.NDArray[np.float_] | float,
     true_airspeed: npt.NDArray[np.float_],
     aircraft_mass: npt.NDArray[np.float_] | float,
@@ -209,7 +209,7 @@ def get_downward_displacement_weakly_stratified(
     ----------
     - :cite:`schumannContrailCirrusPrediction2012`
     """
-    b_0 = get_wake_vortex_separation(wingspan)
+    b_0 = wake_vortex_separation(wingspan)
     dz_max = np.maximum(dz_max_strong, 10.0)
     shear_enhancement_factor = wind_shear.wind_shear_enhancement_factor(
         dz_max, effective_vertical_resolution, wind_shear_enhancement_exponent
@@ -222,7 +222,7 @@ def get_downward_displacement_weakly_stratified(
     return b_0 * (7.68 * (1 - 4.07 * epsn_st + 5.67 * epsn_st**2) * (0.79 - n_bv * t_0) + 1.88)
 
 
-def get_wake_vortex_separation(
+def wake_vortex_separation(
     wingspan: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_] | float:
     """
