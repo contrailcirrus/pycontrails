@@ -99,6 +99,8 @@ class DryAdvection(models.Model):
     def eval(self, source: GeoVectorDataset | None = None, **params: Any) -> GeoVectorDataset:
         """Simulate dry advection (no sedimentation) of arbitrary points.
 
+        Like :class:`Cocip`, this model adds a "waypoint" column to the :attr:`source`.
+
         Parameters
         ----------
         source : GeoVectorDataset
@@ -171,6 +173,9 @@ class DryAdvection(models.Model):
         self.source = GeoVectorDataset(
             self.source.select(("longitude", "latitude", "level", "time"), copy=False)
         )
+
+        # Get waypoint index if not already set
+        self.source.setdefault("waypoint", np.arange(self.source.size))
 
         self.source["age"] = np.full(self.source.size, np.timedelta64(0, "ns"))
 
@@ -441,6 +446,7 @@ def _evolve_one_step(
         copy=False,
     )
     out["age"] = vector["age"] + dt
+    out["waypoint"] = vector["waypoint"]
 
     azimuth = vector.get("azimuth")
     if azimuth is None:
