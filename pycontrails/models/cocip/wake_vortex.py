@@ -264,13 +264,18 @@ def turbulent_kinetic_energy_dissipation_rate(
 
     Notes
     -----
-    See eq. (37) in :cite:`schumannContrailCirrusPrediction2012`.
+    - See eq. (37) in :cite:`schumannContrailCirrusPrediction2012`.
+    - In a personal correspondence, Schumann identified a print error in Eq. (37) of the 2012 paper
+        where the shear term should not be squared.
+    - The correct equation is listed in Eq. (13) of Schumann & Gerz (1995)
 
     References
     ----------
     - :cite:`schumannContrailCirrusPrediction2012`
+    - Schumann, U. and Gerz, T., 1995. Turbulent mixing in stably stratified shear flows.
+        Journal of Applied Meteorology and Climatology, 34(1), pp.33-48.
     """
-    return 0.5 * 0.1**2 * (ds_dz * shear_enhancement_factor) ** 2
+    return 0.5 * 0.1**2 * (ds_dz * shear_enhancement_factor)
 
 
 def normalized_dissipation_rate(
