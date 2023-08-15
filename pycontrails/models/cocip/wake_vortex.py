@@ -277,7 +277,7 @@ def turbulent_kinetic_energy_dissipation_rate(
     - Schumann, U. and Gerz, T., 1995. Turbulent mixing in stably stratified shear flows.
         Journal of Applied Meteorology and Climatology, 34(1), pp.33-48.
     """
-    return 0.5 * 0.1**2 * (ds_dz * shear_enhancement_factor)
+    return 0.5 * 0.1**2 * (ds_dz * shear_enhancement_factor**2)
 
 
 def normalized_dissipation_rate(
