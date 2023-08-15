@@ -202,7 +202,7 @@ class Model(ABC):
             and originates_from_ecmwf(self.met)
         ):
             warnings.warn(
-                "Met data appears to have originated from ECMWF and no humidity "
+                "\nMet data appears to have originated from ECMWF and no humidity "
                 "scaling is enabled. For ECMWF data, consider using one of: \n"
                 " - 'ConstantHumidityScaling'\n"
                 " - 'ExponentialBoostHumidityScaling'\n"

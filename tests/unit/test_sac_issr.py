@@ -575,7 +575,7 @@ def test_issr_source_grid_different_resolution(met_issr: MetDataset, in_bounds: 
         model.eval(source, interpolation_bounds_error=True)
 
 
-@pytest.mark.filterwarnings("ignore:Met data appears to have originated from ECMWF")
+@pytest.mark.filterwarnings(r"ignore:\sMet data appears to have originated from ECMWF")
 @pytest.mark.parametrize("q_method", [None, "cubic-spline"])
 def test_ISSR_grid_variable_q_method(met_issr: MetDataset, q_method: None | str) -> None:
     """Test ISSR model with variable q_method."""
