@@ -239,10 +239,12 @@ class IFS(datalib.MetDataSource):
 
     def _calc_geopotential(self, ds: xr.Dataset) -> xr.DataArray:
         warnings.warn(
-            "The geopotential calculation implementation may assume the underlying grid "
-            "starts at ground level. This may not be the case for IFS data. It may be "
-            "better to use geometric height (altitude) instead of geopotential for downstream "
-            "applications (tau cirrus, etc.).",
+            (
+                "The geopotential calculation implementation may assume the underlying grid "
+                "starts at ground level. This may not be the case for IFS data. It may be "
+                "better to use geometric height (altitude) instead of geopotential for downstream "
+                "applications (tau cirrus, etc.)."
+            ),
             UserWarning,
         )
 
