@@ -7,11 +7,14 @@
 
 #### Features
 
+- Add optional `keep_original_index` parameter to the `Flight.resample_and_fill` method. If `True`, the time original index is preserved in the output in addition to the new time index obtained by resampling.
+
 #### Fixes
 
 - (#80) Fix unit inconsistency in `wake_vortex.turbulent_kinetic_energy_dissipation_rate`.
   This fix affects the estimate of wake vortex max downward displacement and
   slightly change `Cocip` outputs.
+- Change the implementation of `Flight.resample_and_fill` so that the Updates so that the the interpolation is linear in time. The pandas `DataFrame.resample` method resamples a time series, but does not perform any interpolation. Instead it takes existing data points and floors their time index to the next lowest sample point. This can cause wonky flight waypoint data, especially for shorter waypoint segments.
 
 #### Internals
 
