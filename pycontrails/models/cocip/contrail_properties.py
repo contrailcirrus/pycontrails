@@ -614,7 +614,9 @@ def contrail_vertices(
 
 
 def plume_effective_cross_sectional_area(
-    width: npt.NDArray[np.float_], depth: npt.NDArray[np.float_], sigma_yz: npt.NDArray[np.float_]
+    width: npt.NDArray[np.float_],
+    depth: npt.NDArray[np.float_],
+    sigma_yz: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_]:
     """
     Calculate the effective cross-sectional area of the contrail plume (``area_eff``).

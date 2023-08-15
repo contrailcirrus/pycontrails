@@ -213,8 +213,15 @@ class DryAdvection(models.Model):
 
             self.source[key] = np.full_like(self.source["longitude"], val)
 
-        if "sigma_yz" not in self.source:
-            self.source["sigma_yz"] = np.zeros_like(self.source["longitude"])
+        if pointwise_only:
+            return
+
+        self.source["sigma_yz"] = np.zeros_like(self.source["longitude"])
+        width = self.source["width"]
+        depth = self.source["depth"]
+        self.source["area_eff"] = contrail_properties.plume_effective_cross_sectional_area(
+            width, depth, sigma_yz=0.0
+        )
 
 
 def _perform_interp_for_step(
@@ -315,7 +322,7 @@ def _calc_geometry(
     dz_m: float,
     dt: np.timedelta64,
     max_depth: float | None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Calculate wind-shear-derived geometry of evolved plume."""
 
     u_wind = vector["u_wind"]
@@ -337,6 +344,7 @@ def _calc_geometry(
     width = vector["width"]
     depth = vector["depth"]
     sigma_yz = vector["sigma_yz"]
+    area_eff = vector["area_eff"]
 
     dsn_dz = wind_shear.wind_shear_normal(
         u_wind_top=u_wind,
@@ -356,7 +364,6 @@ def _calc_geometry(
         dz_m,
     )
 
-    area_eff = contrail_properties.plume_effective_cross_sectional_area(width, depth, sigma_yz)
     depth_eff = contrail_properties.plume_effective_depth(width, area_eff)
 
     diffuse_h = contrail_properties.horizontal_diffusivity(ds_dz, depth)
@@ -382,6 +389,9 @@ def _calc_geometry(
         max_depth=max_depth,
     )
     width_2, depth_2 = contrail_properties.new_contrail_dimensions(sigma_yy_2, sigma_zz_2)
+    area_eff_2 = contrail_properties.plume_effective_cross_sectional_area(
+        width_2, depth_2, sigma_yz_2
+    )
 
     longitude_head = vector.data.pop("longitude_head")
     latitude_head = vector.data.pop("latitude_head")
@@ -409,7 +419,7 @@ def _calc_geometry(
         lats1=latitude_head_t2,
     )
 
-    return azimuth_2, width_2, depth_2, sigma_yz_2
+    return azimuth_2, width_2, depth_2, sigma_yz_2, area_eff_2
 
 
 def _evolve_one_step(
@@ -454,12 +464,13 @@ def _evolve_one_step(
         return out
 
     # Attach wind-shear-derived geometry to output vector
-    azimuth_2, width_2, depth_2, sigma_yz_2 = _calc_geometry(
+    azimuth_2, width_2, depth_2, sigma_yz_2, area_eff_2 = _calc_geometry(
         vector, dz_m, dt, max_depth  # type: ignore[arg-type]
     )
     out["azimuth"] = azimuth_2
     out["width"] = width_2
     out["depth"] = depth_2
     out["sigma_yz"] = sigma_yz_2
+    out["area_eff"] = area_eff_2
 
     return out
