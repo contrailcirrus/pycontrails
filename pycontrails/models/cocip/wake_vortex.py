@@ -39,7 +39,9 @@ def max_downward_displacement(
         Difference in wind speed over dz in the atmosphere, [:math:`m s^{-1} / m`]
     air_pressure : npt.NDArray[np.float_]
         pressure altitude at each waypoint, [:math:`Pa`]
-    effective_vertical_resolution, wind_shear_enhancement_exponent: float
+    effective_vertical_resolution: float
+        Passed through to :func:`wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
+    wind_shear_enhancement_exponent: npt.NDArray[np.float_] | float
         Passed through to :func:`wind_shear.wind_shear_enhancement_factor`
 
     Returns
@@ -104,7 +106,7 @@ def effective_time_scale(
     Returns
     -------
     npt.NDArray[np.float_]
-        Wake vortex effective time scale
+        Wake vortex effective time scale, [:math:`s`]
 
     Notes
     -----
@@ -144,7 +146,7 @@ def downward_displacement_strongly_stratified(
     Returns
     -------
     npt.NDArray[np.float_]
-        Maximum contrail downward displacement, strongly stratified conditions.
+        Maximum contrail downward displacement, strongly stratified conditions, [:math:`m`]
 
     Notes
     -----
@@ -190,16 +192,16 @@ def downward_displacement_weakly_stratified(
     ds_dz : npt.NDArray[np.float_]
         Difference in wind speed over dz in the atmosphere, [:math:`m s^{-1} / m`]
     t_0 : npt.NDArray[np.float_]
-        Wake vortex effective time scale
+        Wake vortex effective time scale, [:math:`s`]
     effective_vertical_resolution: float
-        Passed through to :func:`wind_shear.wind_shear_enhancement_factor`
+        Passed through to :func:`wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
     wind_shear_enhancement_exponent: npt.NDArray[np.float_] | float
         Passed through to :func:`wind_shear.wind_shear_enhancement_factor`
 
     Returns
     -------
     npt.NDArray[np.float_]
-        Maximum contrail downward displacement, weakly/stably stratified conditions.
+        Maximum contrail downward displacement, weakly/stably stratified conditions, [:math:`m`]
 
     Notes
     -----
@@ -260,7 +262,7 @@ def turbulent_kinetic_energy_dissipation_rate(
     Returns
     -------
     npt.NDArray[np.float_]
-        turbulent kinetic energy dissipation rate
+        turbulent kinetic energy dissipation rate, [:math:`m^{2} s^{-3}`]
 
     Notes
     -----
@@ -291,7 +293,7 @@ def normalized_dissipation_rate(
     Parameters
     ----------
     epsilon: npt.NDArray[np.float_]
-        turbulent kinetic energy dissipation rate
+        turbulent kinetic energy dissipation rate, [:math:`m^{2} s^{-3}`]
     wingspan : npt.NDArray[np.float_] | float
         aircraft wingspan, [:math:`m`]
     true_airspeed : npt.NDArray[np.float_]
@@ -367,6 +369,6 @@ def initial_contrail_depth(
     Returns
     -------
     npt.NDArray[np.float_]
-        Initial contrail depth [m]
+        Initial contrail depth, [:math:`m`]
     """
     return dz_max * initial_wake_vortex_depth
