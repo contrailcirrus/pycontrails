@@ -111,16 +111,25 @@ class BoxModel(Model):
         self.set_source(source)
         self.source = self.require_source_type(MetDataset)
 
-        self.calc_timesteps()
+        #self.calc_timesteps()
 
-        # Interpolate met to model grid
-        self.met.data = self.met.data.interp_like(source).transpose("latitude", "longitude", "level", "time")
+        # Interpolate met to chem grid
+        self.met.data = self.met.data.interp_like(self.chem.data).transpose("latitude", "longitude", "level", "time")
 
-        # Interpolate chem to model grid
-        self.chem.data = self.chem.data.interp_like(source).transpose("latitude", "longitude", "level", "time")
-
+        # Interpolate emi to chem grid
+        self.source.data = self.source.data.interp_like(self.chem.data).transpose("latitude", "longitude", "level", "time")
         
-    def deriv(self):
+        # Calculate zenith angles for all boxes at all timesteps (does not require iteration)
+        self._zenith(ts)
+
+        # Calculate chemical concentrations and flux rates for each timestep (requires iteration)
+        for ts in self.timesteps:
+
+           # Calculate mass of organic particulate material and mass of organic aerosol
+           self.calc_aerosol(ts)
+            
+    def _deriv(self):
+        return
     # This function calculate concentrations and flux rates for each of the chemical species
 
     # INPUTS: Y(#), RC(#), DJ(#), EM(#), FL(#), chem_ts, 
@@ -138,7 +147,7 @@ class BoxModel(Model):
     # Y[i]_(n+1) = boxm(Y[i]_n - EM[i]_n + EM[i]_(n+1))
 
 
-    def chemco(self):
+    def _chemco(self):
         # This function calculates the thermal rate coeffs for deriv
         met = self.met
         chem = self.chem
@@ -1886,7 +1895,8 @@ class BoxModel(Model):
         chem["RC"].loc[:, :, :, ts, 510] = KOUT3442 	
 
 
-    def photol(self):
+    def _photol(self):
+        return
         
     # Calculate photolysis rate coeffs for deriv
     
@@ -1895,7 +1905,7 @@ class BoxModel(Model):
     
     # e.g: DJ(46) = J(53)*(1-BR01)
 
-    def zenith(self):
+    def _zenith(self):
 
         met = self.met
         chem = self.chem
@@ -1905,7 +1915,6 @@ class BoxModel(Model):
         _, lat_mesh = xr.broadcast(chem.local_time, chem.latitude)
         _, time_mesh = xr.broadcast(chem.local_time, chem.time)
 
-    
         # Calculate the offset from UTC based on the longitude
         offsets = (lon_mesh / 15)  # Each hour corresponds to 15 degrees of longitude
         offsets = offsets * 3600  # Convert to seconds
@@ -1949,5 +1958,22 @@ class BoxModel(Model):
         
         lha = (2*np.pi * (secday/86400 - 0.5))
 
-        chem.sza = np.arccos(np.cos(np.radians(lat_mesh))*np.cos(d)*np.cos(lha) + np.sin(np.radians(lat_mesh))*np.sin(d))
+        self.chem["sza"] = np.arccos(np.cos(np.radians(lat_mesh))*np.cos(d)*np.cos(lha) + np.sin(np.radians(lat_mesh))*np.sin(d))
 
+    # Method to calc aerosol masses
+    def calc_aerosol(params, chem, ts):
+    
+        # Get array of concs for this timestep
+        Y = chem["Y"].loc[:, :, :, ts, :]
+
+        # Calculate secondary organic aerosol mass
+        soa = Y[:, :, :, 204] * 3.574E-10 + Y[:, :, :, 205] * 3.574E-10 + Y[:, :, :, 206] * 3.059E-10 + \
+            + Y[:, :, :, 208] * 3.093E-10 + Y[:, :, :, 209] * 3.093E-10 + Y[:, :, :, 210] * 3.325E-10 + \
+            + Y[:, :, :, 211] * 4.072E-10 + Y[:, :, :, 212] * 2.860E-10 + Y[:, :, :, 213] * 3.391E-10 + \
+            + Y[:, :, :, 214] * 2.310E-10 + Y[:, :, :, 215] * 2.543E-10 + Y[:, :, :, 216] * 1.628E-10 + \
+            + Y[:, :, :, 219] * 2.493E-10
+        
+        # Calculate organic matter mass
+        mom = Y[:, :, :, 218] +  params["bgoam"] + soa
+        
+        return soa, mom
