@@ -1402,24 +1402,24 @@ def _sg_filter(
 def _altitude_interpolation(
     altitude: npt.NDArray[np.float_], nominal_rocd: float, freq: np.timedelta64
 ) -> npt.NDArray[np.float_]:
-    """Interpolate nan values in `altitude` array.
+    """Interpolate nan values in ``altitude`` array.
 
-    Suppose each group of consecutive nan values is enclosed by `a0` and `a1` with
-    corresponding time values `t0` and `t1` respectively. This function immediately
-    climbs or descends starting at `t0` (depending on the sign of `a1 - a0`). Once
-    the filled altitude values reach the terminal value `a1`, the remaining nans
-    are filled with `a1.
+    Suppose each group of consecutive nan values is enclosed by ``a0`` and ``a1`` with
+    corresponding time values ``t0`` and ``t1`` respectively. This function immediately
+    climbs or descends starting at ``t0`` (depending on the sign of ``a1 - a0``). Once
+    the filled altitude values reach the terminal value ``a1``, the remaining nans
+    are filled with ``a1``.
 
     Parameters
     ----------
     altitude : npt.NDArray[np.float_]
         Array of altitude values containing nan values. This function will raise
-        an error if `altitude` does not contain nan values. Moreover, this function
-        assumes the initial and final entries in `altitude` are not nan.
+        an error if ``altitude`` does not contain nan values. Moreover, this function
+        assumes the initial and final entries in ``altitude`` are not nan.
     nominal_rocd : float
         Nominal rate of climb/descent, in m/s
     freq : np.timedelta64
-        Frequency of time index associated to `altitude`.
+        Frequency of time index associated to ``altitude``.
 
     Returns
     -------
@@ -1428,14 +1428,18 @@ def _altitude_interpolation(
     """
     # Determine nan state of altitude
     isna = np.isnan(altitude)
-    start_na = ~isna[:-1] & isna[1:]
-    start_na = np.append(start_na, False)
-    end_na = isna[:-1] & ~isna[1:]
-    end_na = np.insert(end_na, 0, False)
+
+    start_na = np.empty(altitude.size, dtype=bool)
+    start_na[:-1] = ~isna[:-1] & isna[1:]
+    start_na[-1] = False
+
+    end_na = np.empty(altitude.size, dtype=bool)
+    end_na[0] = False
+    end_na[1:] = isna[:-1] & ~isna[1:]
 
     # And get the size of each group of consecutive nan values
-    start_na_idxs = start_na.nonzero()[0]
-    end_na_idxs = end_na.nonzero()[0]
+    start_na_idxs = np.flatnonzero(start_na)
+    end_na_idxs = np.flatnonzero(end_na)
     na_group_size = end_na_idxs - start_na_idxs
 
     # Form array of cumulative altitude values if the flight were to climb
@@ -1465,7 +1469,7 @@ def _altitude_interpolation(
     sign = pd.Series(sign).fillna(method="ffill")
 
     # And return the mess
-    return np.where(sign == 1, fill_climb, fill_descent)
+    return np.where(sign == 1.0, fill_climb, fill_descent)
 
 
 def _verify_altitude(
@@ -1485,7 +1489,7 @@ def _verify_altitude(
     dalt = np.diff(altitude)
     dt = freq / np.timedelta64(1, "s")
     rocd = np.abs(dalt / dt)
-    if np.any(rocd > 2 * nominal_rocd):
+    if np.any(rocd > 2.0 * nominal_rocd):
         warnings.warn(
             "Rate of climb/descent values greater than nominal "
             f"({nominal_rocd} m/s) after altitude interpolation"
