@@ -857,58 +857,24 @@ class Flight(GeoVectorDataset):
         # STEP 5: Resample flight to freq
         # Save altitudes to copy over - these just get rounded down in time.
         # Also get target sample indices
-        df_alt = df.resample(freq).first()
-        freq_class = df_alt.index.freq
-        index = df_alt.index
-        df_alt = df_alt[~np.isnan(df_alt["latitude"])]
-
-        # Build new data frame with target indices and merge with original dataframe
-        df_freq = pd.DataFrame(
-            index=index, columns=["longitude", "latitude", "altitude"], dtype=np.float64
-        )
-        df_freq.index.name = "time"
-
-        overlap = set(df_freq.index).intersection(set(df.index))
-        df_freq = df_freq.drop(list(overlap))
-        df_freq = pd.concat([df, df_freq]).sort_index()
-
-        # STEP 6: Linearly interpolate small horizontal gaps and account
-        # for previous longitude shift.
-        keys = ["latitude", "longitude"]
-        df_freq.loc[:, keys] = df_freq.loc[:, keys].interpolate(method="time")
-
-        # Remove entires that are not on target sample points,
-        # but leave first and last waypoints
-        overlap.add(df.index[0])
-        overlap.add(df.index[-1])
-        iset = set(df.index)
-        iset = iset.difference(overlap)
-        df_freq = df_freq.drop(list(iset))
-
-        # If first waypoint of flight did not occur on sample period, we will have
-        # an index before the first waypoint, remove it, but save altitude
-        if df_freq.index[0] < df.index[0]:
-            df_freq = df_freq.drop(df_freq.index[0])
-            alt_start = df_alt["altitude"].iloc[0]
-            df_freq["altitude"].iloc[0] = alt_start
-            df_alt = df_alt.drop(df_alt.index[0])
-
-        df = df_freq
-
-        # Copy over altitudes
-        df["altitude"][df_alt.index] = df_alt["altitude"]
+        df, t = _resample_to_freq(df, freq)
 
         if shift is not None:
             # We need to translate back to the original chart here
             df["longitude"] += shift
             df["longitude"] = ((df["longitude"] + 180.0) % 360.0) - 180.0
 
-        # STEP 7: Interpolate nan values in altitude
+        # STEP 6: Interpolate nan values in altitude
         if df["altitude"].isna().any():
-            df_freq = freq_class.delta.to_numpy()
+            df_freq = pd.Timedelta(freq).to_numpy()
             new_alt = _altitude_interpolation(df["altitude"].to_numpy(), nominal_rocd, df_freq)
             _verify_altitude(new_alt, nominal_rocd, df_freq)
             df["altitude"] = new_alt
+
+        # Remove original index if requested
+        if not keep_original_index:
+            filt = df.index.isin(t)
+            df = df.loc[filt]
 
         # finally reset index
         df = df.reset_index()
@@ -1000,7 +966,7 @@ class Flight(GeoVectorDataset):
 
         # For default geodesic_threshold, we expect gap_indices to be very
         # sparse (so the for loop below is cheap)
-        gap_indices = np.nonzero(segs > geodesic_threshold)[0]
+        gap_indices = np.flatnonzero(segs > geodesic_threshold)
         if not np.any(gap_indices):
             # For most flights, gap_indices is empty. It's more performant
             # to exit now rather than build an empty DataFrame below.
