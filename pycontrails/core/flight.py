@@ -726,6 +726,7 @@ class Flight(GeoVectorDataset):
         geodesic_threshold: float = 100e3,
         nominal_rocd: float = constants.nominal_rocd,
         drop: bool = True,
+        keep_original_index: bool = False,
     ) -> Flight:
         """Resample and fill flight trajectory with geodesics and linear interpolation.
 
@@ -753,6 +754,10 @@ class Flight(GeoVectorDataset):
             Defaults to ``True``, dropping all keys outside of "time", "latitude",
             "longitude" and "altitude". If set to False, the extra keys will be
             kept but filled with ``nan`` or ``None`` values, depending on the data type.
+        keep_original_index : bool, optional
+            Keep the original index of the :class:`Flight` in addition to the new
+            resampled index. Defaults to ``False``.
+            .. versionadded:: 0.45.2
 
         Returns
         -------
