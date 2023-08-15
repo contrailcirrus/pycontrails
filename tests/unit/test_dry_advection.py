@@ -45,7 +45,7 @@ def test_dry_advection(
     if azimuth is None:
         assert len(out.data) == 11
     else:
-        assert len(out.data) == 15
+        assert len(out.data) == 16
 
     # Pin some values to ensure that the model is working as expected
     abs = 0.1
@@ -75,7 +75,7 @@ def test_compare_dry_advection_to_cocip(
     assert df1["level"].notna().all()
     assert df1["time"].notna().all()
 
-    assert df1.shape == (208, 15)
+    assert df1.shape == (208, 16)
     df1_sl = df1.query("time == '2019-01-01T01:25'")
 
     model = Cocip(
