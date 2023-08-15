@@ -49,6 +49,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 
 [project.optional-dependencies]
 # All non-development dependencies
+# Only dependencies that work on all python versions
 complete = [
     "pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,vis,zarr]",
 ]
