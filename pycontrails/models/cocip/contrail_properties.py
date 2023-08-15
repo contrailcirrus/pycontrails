@@ -630,7 +630,7 @@ def plume_effective_cross_sectional_area(
         contrail width at each waypoint, [:math:`m`]
     depth : npt.NDArray[np.float_]
         contrail depth at each waypoint, [:math:`m`]
-    sigma_yz : npt.NDArray[np.float_]
+    sigma_yz : npt.NDArray[np.float_] | float
         temporal evolution of the contrail plume parameters
 
     Returns
@@ -1286,7 +1286,7 @@ def new_contrail_dimensions(
 def new_effective_area_from_sigma(
     sigma_yy: npt.NDArray[np.float_],
     sigma_zz: npt.NDArray[np.float_],
-    sigma_yz: npt.NDArray[np.float_],
+    sigma_yz: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_]:
     """
     Calculate effective cross-sectional area of contrail plume (``area_eff``) from sigma parameters.
@@ -1302,7 +1302,7 @@ def new_effective_area_from_sigma(
     sigma_zz : npt.NDArray[np.float_]
         element zz, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
-    sigma_yz : npt.NDArray[np.float_]
+    sigma_yz : npt.NDArray[np.float_] | float
         element yz, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
 
