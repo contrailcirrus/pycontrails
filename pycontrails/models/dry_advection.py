@@ -403,10 +403,10 @@ def _calc_geometry(
     latitude_tail_t2 = geo.advect_latitude(latitude=latitude_tail, v_wind=v_wind_tail, dt=dt)
 
     azimuth_2 = geo.azimuth(
-        lons0=longitude_head_t2,
-        lats0=latitude_head_t2,
-        lons1=longitude_tail_t2,
-        lats1=latitude_tail_t2,
+        lons0=longitude_tail_t2,
+        lats0=latitude_tail_t2,
+        lons1=longitude_head_t2,
+        lats1=latitude_head_t2,
     )
 
     return azimuth_2, width_2, depth_2, sigma_yz_2

@@ -43,16 +43,16 @@ def test_dry_advection(
     assert out["age"].max() == np.timedelta64(1, "h")
 
     if azimuth is None:
-        assert len(out.data) == 10
+        assert len(out.data) == 11
     else:
-        assert len(out.data) == 14
+        assert len(out.data) == 15
 
     # Pin some values to ensure that the model is working as expected
     abs = 0.1
     if azimuth in (0.0, 180.0):
-        assert np.nanmean(out["width"]) == pytest.approx(489.3, abs=abs)
+        assert np.nanmean(out["width"]) == pytest.approx(1018.5, abs=abs)
     elif azimuth in (90.0, 270.0):
-        assert np.nanmean(out["width"]) == pytest.approx(481.4, abs=abs)
+        assert np.nanmean(out["width"]) == pytest.approx(763.9, abs=abs)
     else:
         assert "width" not in out
 
@@ -75,7 +75,7 @@ def test_compare_dry_advection_to_cocip(
     assert df1["level"].notna().all()
     assert df1["time"].notna().all()
 
-    assert df1.shape == (208, 14)
+    assert df1.shape == (208, 15)
     df1_sl = df1.query("time == '2019-01-01T01:25'")
 
     model = Cocip(
