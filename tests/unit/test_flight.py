@@ -324,33 +324,48 @@ def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[
     assert set(fl3.data.keys()) == {"time", "latitude", "longitude", "altitude"}
 
 
-def test_resampling(fl: Flight, flight_meridian: Flight) -> None:
+def test_resampling_10s(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with 10s resampling."""
     fl2 = fl.resample_and_fill("10S")
-    fl3 = fl.resample_and_fill("10T")
-    # flight with more waypoints will waver more, and have longer length
-    assert len(fl2) > len(fl3)
+    assert len(fl2) == 889
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="10S").floor("10S")[1:]
+    np.testing.assert_array_equal(fl2["time"], expected)
 
-    # fl2 has 60 times more data excluding endpoints
-    assert abs(len(fl3) - 2 - (len(fl2) - 2) / 60) <= 1
 
+def test_resampling_10t(fl: Flight, flight_meridian: Flight) -> None:
+    """Test Flight.resample_and_fill() with 10T resampling."""
+    fl2 = fl.resample_and_fill("10T")
+    assert len(fl2) == 14
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="10T").floor("10T")[1:]
+    np.testing.assert_array_equal(fl2["time"], expected)
+
+
+def test_resample_large_geodesic_threshold(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with large geodesic threshold."""
     # at large threshold, geodesics are not calculated
-    fl4 = fl.resample_and_fill("1T", "linear")
-    fl5 = fl.resample_and_fill("1T", "geodesic", 1000e3)
-    assert fl4 == fl5
+    fl2 = fl.resample_and_fill("1T", "linear")
+    fl3 = fl.resample_and_fill("1T", "geodesic", 1000e3)
+    assert fl2 == fl3
 
-    # test resample over the meridian
-    # all resampled waypoints should be < 1 deg of longitude apart on [0, 360] scale
-    fl6 = flight_meridian.resample_and_fill("1T")
-    assert np.all(np.abs(np.diff(fl6["longitude"] % 360)) < 1)
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="1T").floor("1T")[1:]
+    np.testing.assert_array_equal(fl3["time"], expected)
 
-    fl7 = flight_meridian.resample_and_fill("3T")
-    assert np.all(np.abs(np.diff(fl7["longitude"] % 360)) < 1)
 
-    fl8 = flight_meridian.resample_and_fill("5T")
-    assert np.all(np.abs(np.diff(fl8["longitude"] % 360)) < 2)
+@pytest.mark.parametrize("freq", ["1T", "3T", "5T"])
+def test_resample_over_meridian(flight_meridian: Flight, freq: str) -> None:
+    """Test Flight.resample_and_fill() over the meridian."""
+    fl2 = flight_meridian.resample_and_fill(freq)
+    bound = 2.0 if freq == "5T" else 1.0
+    assert np.all(np.abs(np.diff(fl2["longitude"] % 360.0)) < bound)
+
+    expected = pd.date_range(flight_meridian.time_start, flight_meridian.time_end, freq=freq).floor(
+        freq
+    )[1:]
+    np.testing.assert_array_equal(fl2["time"], expected)
 
 
 def test_geodesic_interpolation(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with geodesic interpolation."""
     fl2 = fl.resample_and_fill("1T", "geodesic", geodesic_threshold=1e3)
     fl3 = fl.resample_and_fill("1T", "geodesic", geodesic_threshold=200e3)
     # fine geodesic interpolation will beat linear interpolation for minimizing spherical distance
@@ -359,7 +374,22 @@ def test_geodesic_interpolation(fl: Flight) -> None:
         fl.resample_and_fill(fill_method="nearest")
 
 
+def test_resample_keep_original(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with keep_original_index=True."""
+    fl2 = fl.resample_and_fill("1T", keep_original_index=True)
+    assert len(fl2) == 401
+    assert np.all(np.diff(fl2["time"]) > np.timedelta64(0, "ns"))  # monotonically increasing
+
+    fl3 = fl.resample_and_fill("1T", keep_original_index=False)
+    assert len(fl3) == 148
+    assert np.all(np.diff(fl3["time"]) > np.timedelta64(0, "ns"))  # monotonically increasing
+
+    assert len(fl) + len(fl3) == len(fl2) + 1  # 1 duplicate time
+
+
 def test_altitude_interpolation(fl: Flight) -> None:
+    """Check the ROCD of the interpolated altitude."""
+
     # check default flight
     fl1 = fl.resample_and_fill("10S")
     fl2 = fl.resample_and_fill("10T")
