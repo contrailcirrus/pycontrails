@@ -1772,3 +1772,48 @@ def fit_altitude(
     altitude_ft = scipy.signal.savgol_filter(altitude_ft, sg_window, sg_polyorder)
 
     return altitude_ft
+
+
+def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
+    """Resample a DataFrame to a given frequency.
+
+    This function is used to resample a DataFrame to a given frequency. The new
+    index will include all the original index values and the new esampled-to-freq
+    index values. The "longitude" and "latitude" columns will be linearly interpolated
+    to the new index values.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame to resample. Assumed to have a :class:`pd.DatetimeIndex`
+        and "longitude" and "latitude" columns.
+    freq : str
+        Frequency to resample to. See :func:`pd.DataFrame.resample` for
+        valid frequency strings.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DatetimeIndex]
+        Resampled DataFrame and the new index.
+    """
+
+    # Manually create a new index that includes all the original index values
+    # and the resampled-to-freq index values.
+    t0 = df.index[0]
+    t1 = df.index[-1]
+    t = pd.date_range(t0, t1, freq=freq).floor(freq)
+    if t[0] < t0:
+        t = t[1:]
+
+    concat_arr = np.concatenate([df.index, t])
+    concat_arr = np.unique(concat_arr)
+    concat_index = pd.DatetimeIndex(concat_arr, name="time", copy=False)
+
+    out = pd.DataFrame(index=concat_index, columns=df.columns, dtype=float)
+    out.loc[df.index] = df
+
+    # Linearly interpolate small horizontal gap
+    coords = ["longitude", "latitude"]
+    out.loc[:, coords] = out.loc[:, coords].interpolate(method="index")
+
+    return out, t
