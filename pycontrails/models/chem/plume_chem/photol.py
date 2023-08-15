@@ -29,8 +29,6 @@ def photol(chem: MetDataset):
    
     
     # Calculate photol rate coeffs DJ
-    
-    
 
     # #    Photol Reaction (1) O3 = O1D                                                           
     # DJ[1] = J[1]                             
