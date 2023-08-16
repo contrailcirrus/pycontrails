@@ -1087,14 +1087,14 @@ def test_cocip_filtering(fl: Flight, met: MetDataset, rad: MetDataset):
     cocip = Cocip(**params)
     cocip.eval(fl)
     assert cocip._sac_flight.size == 18
-    assert cocip._downwash_flight.size == 10
+    assert cocip._downwash_flight.size == 11
     assert len(cocip.contrail) == 0
 
     cocip = Cocip(**params, filter_sac=False)
     with pytest.warns(UserWarning, match="Manually overriding SAC filter"):
         cocip.eval(fl)
     assert cocip._sac_flight.size == 20
-    assert cocip._downwash_flight.size == 10
+    assert cocip._downwash_flight.size == 11
     assert len(cocip.contrail) == 0
 
     cocip = Cocip(**params, filter_initially_persistent=False)

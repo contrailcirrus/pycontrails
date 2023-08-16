@@ -727,4 +727,4 @@ def test_vector_to_lon_lat_grid() -> None:
     assert ds["ef"].sum() == pytest.approx(df["ef"].sum())
 
     assert np.count_nonzero(ds["segment_length"]) == 90
-    assert np.count_nonzero(ds["ef"]) == 15
+    assert np.count_nonzero(ds["ef"]) == 16
