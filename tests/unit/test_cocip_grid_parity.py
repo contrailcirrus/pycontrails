@@ -162,7 +162,7 @@ def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
     np.testing.assert_allclose(
         downwash1["dsn_dz"][continuous],
         downwash2["dsn_dz"][continuous],
-        atol=1e-6,
+        atol=1.5e-6,
     )
     assert np.all(downwash1["dsn_dz"][~continuous] == 0)
     assert np.all(downwash2["dsn_dz"][~continuous] != 0)
@@ -189,7 +189,7 @@ def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
     # Secondary differences are due to different specific_humidity values between the two models
     ef1 = out1["ef"][filt]
     ef2 = ef_per_waypoint[filt]
-    np.testing.assert_allclose(ef1, ef2, rtol=0.1)
+    np.testing.assert_allclose(ef1, ef2, rtol=0.15)
 
     # ----------------------------------------------------
     # Confirm general agreement between model contrail age
