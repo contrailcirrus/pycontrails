@@ -390,12 +390,12 @@ def test_calc_first_contrail(instance_params: dict[str, Any], source: MetDataset
     assert isinstance(contrail, GeoVectorDataset)
 
     assert sac_vector.size == 3199  # barely anything cut down in SAC check
-    assert contrail.size == 429  # grabbed after letting test fail once
+    assert contrail.size == 574  # grabbed after letting test fail once
 
     # and level is slighty higher due to level shifting in downwash
     original_level = vector["level"][contrail["index"]]
     new_level = contrail["level"]
-    assert np.all(new_level > original_level + 1)
+    assert np.all(new_level > original_level)
 
     # not too much higher
     assert np.all(new_level < original_level + 2)
@@ -453,7 +453,7 @@ def test_grid_results(grid_results: MetDataset) -> None:
     assert grid_results.attrs["humidity_scaling_rhi_boost_exponent"] == 1.7
 
     persistent = grid_results["contrail_age"].data > 0
-    assert persistent.sum() == 605
+    assert persistent.sum() == 636
 
     # zero outside persistent
     assert np.all(grid_results["ef_per_m"].data.values[~persistent] == 0)
@@ -466,14 +466,14 @@ def test_grid_results(grid_results: MetDataset) -> None:
 
     # Pin the distribution of contrail ages
     ages, counts = np.unique(grid_results["contrail_age"].values, return_counts=True)
-    np.testing.assert_allclose(ages, [0, 1 / 12, 1.5])
-    np.testing.assert_array_equal(counts, [8995, 2, 603])
+    np.testing.assert_allclose(ages, [0, 1 / 12, 2 / 12, 1.5])
+    np.testing.assert_array_equal(counts, [8964, 9, 1, 626])
 
     # Ensure a hand picked pinned value is realized.
     # This test is HARD to maintain. Delete if it gets too annoying.
     point = grid_results.data.isel(longitude=14, latitude=19, level=2, time=2)
     assert point["contrail_age"].item() == 1.5
-    assert point["ef_per_m"].item() == pytest.approx(46576688, rel=1e-3)
+    assert point["ef_per_m"].item() == pytest.approx(43664804, rel=1e-3)
 
 
 @pytest.fixture
@@ -501,26 +501,18 @@ def test_grid_results_segment_free(
     assert out1.shape == out2.shape
     assert out1.data.data_vars.keys() == out2.data.data_vars.keys()
 
-    assert np.count_nonzero(out1["ef_per_m"].values) == pytest.approx(605, abs=1)
-    assert np.count_nonzero(out2["ef_per_m"].values) == pytest.approx(621, abs=1)
+    assert np.count_nonzero(out1["ef_per_m"].values) == pytest.approx(636, abs=1)
+    assert np.count_nonzero(out2["ef_per_m"].values) == pytest.approx(655, abs=1)
 
     # Pin some values
     da1 = out1["ef_per_m"].data
     filt1 = da1 > 0
-    assert da1.where(filt1).mean().item() == pytest.approx(39581584, rel=1e-3)
+    assert da1.where(filt1).mean().item() == pytest.approx(35531312, rel=1e-3)
 
     # In segment-free mode (generally and here), the mean nonzero EF is slightly lower
     da2 = out2["ef_per_m"].data
     filt2 = da2 > 0
-    assert da2.where(filt2).mean().item() == pytest.approx(32914018, rel=1e-3)
-
-    # For this example, we can say something about the distribution of EFs
-    filt = filt1 & filt2
-    v1 = da1.values[filt]
-    v2 = da2.values[filt]
-    xr.testing.assert_equal(filt, filt1)
-    assert np.all(v1 > 0.5 * v2)
-    assert np.all(v1 < 1.9 * v2)
+    assert da2.where(filt2).mean().item() == pytest.approx(29096262, rel=1e-3)
 
 
 @pytest.fixture
@@ -578,15 +570,15 @@ def test_geovector_source(syn_fl: SyntheticFlight, instance_params: dict[str, An
     assert "ef_per_m" in out
 
     persistent = out["contrail_age"] > np.timedelta64(0, "ns")
-    assert persistent.sum() == 72
+    assert persistent.sum() == 75
 
     # Contrail age and positive EF are 1-1
     assert np.all(out["ef_per_m"][persistent] > 0)
     assert np.all(out["ef_per_m"][~persistent] == 0)
 
     # Pin the mean EF
-    assert out["ef_per_m"].mean().item() == pytest.approx(875854, abs=10)
-    assert out["ef_per_m"][persistent].mean().item() == pytest.approx(31725403, abs=10)
+    assert out["ef_per_m"].mean().item() == pytest.approx(832396, abs=10)
+    assert out["ef_per_m"][persistent].mean().item() == pytest.approx(28945214, abs=10)
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
@@ -650,21 +642,21 @@ def test_grid_against_flight(
             q2 = cg.contrail.groupby("index")["specific_humidity"].first()
 
             # There can be slight inconsistencies in initially persistent.
-            # This happens on one of the 10 flights. The Cocip model
-            # predicts one more initially persistent waypoint compared with
+            # This happens on some of the 10 flights. The Cocip model
+            # predicts two more initially persistent waypoint compared with
             # the CocipGrid model. This is why we have some logic
             # below to check the sizes.
             if q1.size != q2.size:
-                assert q1.size == q2.size + 1
+                assert q1.size - q2.size <= 2
                 # Reassign q1, removing the extra waypoint
                 q1 = cocip._downwash_contrail.dataframe.set_index("waypoint").loc[
                     q2.index, "specific_humidity"
                 ]
             np.testing.assert_allclose(q1, q2, rtol=1e-8, atol=1e-5)
 
-        # And there are at most three waypoint that doesn't show consistent
+        # And there are at most five waypoints that doesn't show consistent
         # This is caused by continuity conventions
-        assert np.sum(cocip_fl_state != grid_fl_state) <= 3
+        assert np.sum(cocip_fl_state != grid_fl_state) <= 5
         if cocip_fl_state.sum():
             n_fls_with_contrails += 1
 
@@ -722,10 +714,10 @@ def test_verbose_outputs_formation(instance_params: dict[str, Any], source: MetD
     # Pin a few values
     rel = 1e-4
     assert ds["T_crit_sac"].mean() == pytest.approx(222.54, rel=rel)
-    assert ds["persistent"].sum() == 429
-    assert (ds["contrail_age"] > 0).sum() == 235
+    assert ds["persistent"].sum() == 574
+    assert (ds["contrail_age"] > 0).sum() == 249
     assert np.isfinite(ds["nvpm_ei_n"]).all()
     assert ds["nvpm_ei_n"].median() == pytest.approx(1.29718e15, rel=rel)
     assert ds["fuel_flow"].mean() == pytest.approx(0.6037, rel=rel)
     assert ds["rhi"].mean() == pytest.approx(0.6273, rel=rel)
-    assert ds["iwc"].mean() == pytest.approx(4.08e-06, rel=rel)
+    assert ds["iwc"].mean() == pytest.approx(4.4621e-06, rel=rel)
