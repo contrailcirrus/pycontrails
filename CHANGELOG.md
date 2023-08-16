@@ -1,13 +1,14 @@
 
 # Changelog
 
-## v0.46.0 (unreleased)
+## v0.46.0
 
 Support "dry advection" simulation.
 
 ### Features
 
 - Add new `DryAdvection` model to simulate sediment-free advection of an aircraft's exhaust plume. This model is experimental and may change in future releases. By default, the current implementation simulates plume geometry as a cylinder with an elliptical cross section (the same geometry assumed in CoCiP). Wind shear perturbs the ellipse azimuth, width, and depth over the plume evolution. The `DryAdvection` model may also be used to simulate advection without wind-shear effects by setting the model parameters `azimuth`, `width`, and `depth` to None.
+- Add new [Dry Advection example notebook](https://py.contrails.org/examples/advection.html) highlighting the new `DryAdvection` model and comparing it to the `Cocip` model.
 - Add optional `fill_value` parameter to `VectorDataset.sum`.
 
 ### Fixes
@@ -24,6 +25,7 @@ Support "dry advection" simulation.
 - Update handling of `GeoVectorDataset.required_keys` the `GeoVectorDataset` constructor. Add class variable `GeoVectorDataset.vertical_keys` for handing the vertical dimension.
 - Rename `CocipParam.max_contrail_depth` -> `CocipParam.max_depth`.
 - Add `units.dt_to_seconds` function to convert `np.timedelta64` to `float` seconds.
+- Rename `thermo.p_dz` -> `thermo.pressure_dz`.
 
 ## v0.45.0
 
