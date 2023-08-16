@@ -18,7 +18,7 @@ help:
 # versions of python
 pip-install:
 	pip install -U pip wheel
-	pip install -e ".[ecmwf,gcp,gfs,jupyter,pwlf,vis,zarr]"
+	pip install -e ".[complete]"
 
 	# these still must be installed manually for Python < 3.10
 	# -pip install -e ".[open3d]"
