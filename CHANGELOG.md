@@ -1,26 +1,19 @@
 
 # Changelog
 
-## v0.46.0
+## v0.46.0 (unreleased)
 
-#### Breaking changes
+### Fixes
 
-#### Features
+- (#80) Fix unit error in `wake_vortex.turbulent_kinetic_energy_dissipation_rate`. This fix affects the estimate of wake vortex max downward displacement and slightly changes `Cocip` predictions.
+- Change the implementation of `Flight.resample_and_fill` so that lat-lon interpolation is linear in time. Previously, the timestamp associated to a waypoint was floored according to the resampling frequency without updating the position accordingly. This caused errors in segment calculations (e.g., true airspeed).
+
+### Internals
 
 - Add optional `keep_original_index` parameter to the `Flight.resample_and_fill` method. If `True`, the time original index is preserved in the output in addition to the new time index obtained by resampling.
-
-#### Fixes
-
-- (#80) Fix unit inconsistency in `wake_vortex.turbulent_kinetic_energy_dissipation_rate`.
-  This fix affects the estimate of wake vortex max downward displacement and
-  slightly change `Cocip` outputs.
-- Change the implementation of `Flight.resample_and_fill` so that the Updates so that the the interpolation is linear in time. The pandas `DataFrame.resample` method resamples a time series, but does not perform any interpolation. Instead it takes existing data points and floors their time index to the next lowest sample point. This can cause wonky flight waypoint data, especially for shorter waypoint segments.
-
-#### Internals
-
 - Improve docstrings in `wake_vortex` module
 - Rename `wake_vortex` functions to remove `get_` prefix at the start of each function name.
-- Add pytest command line parameter `--regenerate-results` to regenerate static test fixture results. Automated in make recipe `make pytest-regenerate-results`.
+- Add pytest command line parameter `--regenerate-results` to regenerate static test fixture results. Automate in make recipe `make pytest-regenerate-results`.
 
 ## v0.45.0
 
