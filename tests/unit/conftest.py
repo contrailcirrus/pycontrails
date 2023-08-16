@@ -22,27 +22,19 @@ DISK_CACHE_DIR = cache._get_user_cache_dir()
 
 
 # Add command line option for re-generating static output data
-def pytest_addoption(parser) -> None:
+def pytest_addoption(parser: pytest.Parser) -> None:
     """Add command line option to regenerate static test results."""
     parser.addoption(
-        "--regenerate-results", action="store_true", help="Regenerate static test results"
+        "--regenerate-results",
+        action="store",
+        default=False,
+        help="Regenerate static test results",
     )
 
 
 @pytest.fixture
-def regenerate_results(request) -> bool:
-    """Regenerate static test results in tests that use them.
-
-    Parameters
-    ----------
-    request : TYPE
-        Description
-
-    Returns
-    -------
-    bool
-        True to regenerate results
-    """
+def regenerate_results(request: pytest.FixtureRequest) -> bool:
+    """Regenerate static test results in tests that use them."""
     return request.config.getoption("--regenerate-results")
 
 
