@@ -454,7 +454,7 @@ def test_eval_no_ef(cocip_no_ef: Cocip) -> None:
     assert cocip_no_ef.source["persistent_1"][-1] == 0
 
 
-def test_eval_persistent(cocip_persistent: Cocip) -> None:
+def test_eval_persistent(cocip_persistent: Cocip, regenerate_results: bool) -> None:
     """Confirm pinned values of `cocip_persistent` fixture."""
     assert cocip_persistent.timesteps.size == 11
 
@@ -464,21 +464,23 @@ def test_eval_persistent(cocip_persistent: Cocip) -> None:
     assert np.nansum(cocip_persistent.source["cocip"]) > 0
     assert cocip_persistent.contrail is not None
 
-    # # output json when algorithm has been adjusted
-    # cocip_persistent.source.dataframe.to_json(
-    #     get_static_path("cocip-flight-output.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
-    # cocip_persistent.contrail.to_json(
-    #     get_static_path("cocip-contrail-output.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
+    # output json when algorithm has been adjusted
+    # controlled by command line option --regenerate-results
+    if regenerate_results:
+        cocip_persistent.source.dataframe.to_json(
+            get_static_path("cocip-flight-output.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
+        cocip_persistent.contrail.to_json(
+            get_static_path("cocip-contrail-output.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
 
     flight_output = pd.read_json(get_static_path("cocip-flight-output.json"), orient="records")
     contrail_output = pd.read_json(get_static_path("cocip-contrail-output.json"), orient="records")
@@ -512,7 +514,7 @@ def test_eval_persistent(cocip_persistent: Cocip) -> None:
     )
 
 
-def test_eval_persistent2(cocip_persistent2: Cocip) -> None:
+def test_eval_persistent2(cocip_persistent2: Cocip, regenerate_results: bool) -> None:
     """Confirm pinned values of ``cocip_persistent2`` fixture."""
     assert cocip_persistent2.timesteps.size == 16
 
@@ -525,21 +527,23 @@ def test_eval_persistent2(cocip_persistent2: Cocip) -> None:
     assert np.sum(cocip_persistent2.source["cocip"]) > 0
     assert cocip_persistent2.contrail is not None
 
-    # # output json when algorithm has been adjusted
-    # cocip_persistent2.source.dataframe.to_json(
-    #     get_static_path("cocip-flight-output2.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
-    # cocip_persistent2.contrail.to_json(
-    #     get_static_path("cocip-contrail-output2.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
+    # output json when algorithm has been adjusted
+    # controlled by command line option --regenerate-results
+    if regenerate_results:
+        cocip_persistent2.source.dataframe.to_json(
+            get_static_path("cocip-flight-output2.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
+        cocip_persistent2.contrail.to_json(
+            get_static_path("cocip-contrail-output2.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
 
     # confirm all discontinuous waypoints have an "ef" of 0 and an age of 0
     continuous = cocip_persistent2.contrail["continuous"].to_numpy()
@@ -925,7 +929,7 @@ def test_gridded_and_time_slice_outputs() -> None:
     np.testing.assert_allclose(t_slice_stats["total_contrail_ef"], ds["ef"].sum(), rtol=1)
 
 
-def test_contrail_edges(cocip_persistent: Cocip) -> None:
+def test_contrail_edges(cocip_persistent: Cocip, regenerate_results: bool) -> None:
     """Test contrail edges methods."""
     df_contrail = cocip_persistent.contrail
     assert df_contrail is not None
@@ -944,9 +948,11 @@ def test_contrail_edges(cocip_persistent: Cocip) -> None:
     )
 
     # summary json output for comparison
-    # df_contrail[["lon_edge_l", "lat_edge_l", "lon_edge_r", "lat_edge_r"]].to_json(
-    #     get_static_path("cocip-output-contrail-edges.json"), indent=2, orient="records"
-    # )
+    # controlled by command line option --regenerate-results
+    if regenerate_results:
+        df_contrail[["lon_edge_l", "lat_edge_l", "lon_edge_r", "lat_edge_r"]].to_json(
+            get_static_path("cocip-output-contrail-edges.json"), indent=2, orient="records"
+        )
 
     # load summary json output for comparison
     df_contrail_previous = pd.read_json(get_static_path("cocip-output-contrail-edges.json"))

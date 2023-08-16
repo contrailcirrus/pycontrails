@@ -80,6 +80,9 @@ mypy:
 pytest:
 	pytest tests/unit
 
+pytest-regenerate-results:
+	pytest tests/unit --regenerate-results
+
 pytest-cov:
 	pytest \
 		-v \

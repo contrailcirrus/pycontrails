@@ -20,9 +20,30 @@ from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
 # find default cache dir for testing
 DISK_CACHE_DIR = cache._get_user_cache_dir()
 
-################################
-# Fixtures in "static" directory
-################################
+
+# Add command line option for re-generating static output data
+def pytest_addoption(parser) -> None:
+    """Add command line option to regenerate static test results."""
+    parser.addoption(
+        "--regenerate-results", action="store_true", help="Regenerate static test results"
+    )
+
+
+@pytest.fixture
+def regenerate_results(request) -> bool:
+    """Regenerate static test results in tests that use them.
+
+    Parameters
+    ----------
+    request : TYPE
+        Description
+
+    Returns
+    -------
+    bool
+        True to regenerate results
+    """
+    return request.config.getoption("--regenerate-results")
 
 
 def get_static_path(filename: str | pathlib.Path) -> pathlib.Path:
