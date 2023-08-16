@@ -1,6 +1,24 @@
 
 # Changelog
 
+## v0.46.0
+
+#### Breaking changes
+
+#### Features
+
+#### Fixes
+
+- (#80) Fix unit inconsistency in `wake_vortex.turbulent_kinetic_energy_dissipation_rate`.
+  This fix affects the estimate of wake vortex max downward displacement and
+  slightly change `Cocip` outputs.
+
+#### Internals
+
+- Improve docstrings in `wake_vortex` module
+- Rename `wake_vortex` functions to remove `get_` prefix at the start of each function name.
+- Add pytest command line parameter `--regenerate-results` to regenerate static test fixture results. Automated in make recipe `make pytest-regenerate-results`.
+
 ## v0.45.0
 
 Add experimental support for simulating radiative effects due to contrail-contrail overlap.
