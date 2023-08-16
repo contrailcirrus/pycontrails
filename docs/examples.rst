@@ -32,6 +32,7 @@ Launch ``jupyter lab`` to run these notebooks interactively:
    examples/ISSR
    examples/SAC
    examples/CoCiP
+   examples/advection
    examples/ACCF
 
 .. toctree::
