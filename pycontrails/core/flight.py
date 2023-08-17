@@ -732,6 +732,7 @@ class Flight(GeoVectorDataset):
         nominal_rocd: float = constants.nominal_rocd,
         drop: bool = True,
         keep_original_index: bool = False,
+        climb_descend_at_end: bool = False,
     ) -> Flight:
         """Resample and fill flight trajectory with geodesics and linear interpolation.
 
@@ -763,6 +764,10 @@ class Flight(GeoVectorDataset):
             Keep the original index of the :class:`Flight` in addition to the new
             resampled index. Defaults to ``False``.
             .. versionadded:: 0.45.2
+        climb_or_descend_at_end : bool
+            If true, the climb or descent will be placed at the end of each segment
+            rather than the start. Default is false (climb or descent immediately).
+
 
         Returns
         -------
@@ -872,7 +877,9 @@ class Flight(GeoVectorDataset):
         # STEP 6: Interpolate nan values in altitude
         if df["altitude"].isna().any():
             df_freq = pd.Timedelta(freq).to_numpy()
-            new_alt = _altitude_interpolation(df["altitude"].to_numpy(), nominal_rocd, df_freq)
+            new_alt = _altitude_interpolation(
+                df["altitude"].to_numpy(), nominal_rocd, df_freq, climb_descend_at_end
+            )
             _verify_altitude(new_alt, nominal_rocd, df_freq)
             df["altitude"] = new_alt
 
@@ -1376,7 +1383,10 @@ def _sg_filter(
 
 
 def _altitude_interpolation(
-    altitude: npt.NDArray[np.float_], nominal_rocd: float, freq: np.timedelta64
+    altitude: npt.NDArray[np.float_],
+    nominal_rocd: float,
+    freq: np.timedelta64,
+    climb_or_descend_at_end: bool = False,
 ) -> npt.NDArray[np.float_]:
     """Interpolate nan values in ``altitude`` array.
 
@@ -1396,6 +1406,9 @@ def _altitude_interpolation(
         Nominal rate of climb/descent, in m/s
     freq : np.timedelta64
         Frequency of time index associated to ``altitude``.
+    climb_or_descend_at_end : bool
+        If true, the climb or descent will be placed at the end of each segment
+        rather than the start. Default is false (climb or descent immediately).
 
     Returns
     -------
@@ -1420,7 +1433,11 @@ def _altitude_interpolation(
 
     # Form array of cumulative altitude values if the flight were to climb
     # at nominal_rocd over each group of nan
-    cumalt_list = [np.arange(1, size, dtype=float) for size in na_group_size]
+
+    if climb_or_descend_at_end:
+        cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
+    else:
+        cumalt_list = [np.arange(1, size, dtype=float) for size in na_group_size]
     cumalt = np.concatenate(cumalt_list)
     cumalt = cumalt * nominal_rocd * freq / np.timedelta64(1, "s")
 
@@ -1436,8 +1453,12 @@ def _altitude_interpolation(
     # Construct altitude values if the flight were to climb / descent throughout
     # group of consecutive nan values. The call to np.minimum / np.maximum cuts
     # the climb / descent off at the terminal altitude of the nan group
-    fill_climb = np.minimum(s_ff + nominal_fill, s_bf)
-    fill_descent = np.maximum(s_ff - nominal_fill, s_bf)
+    if climb_or_descend_at_end:
+        fill_climb = np.maximum(s_ff, s_bf - nominal_fill)
+        fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
+    else:
+        fill_climb = np.minimum(s_ff + nominal_fill, s_bf)
+        fill_descent = np.maximum(s_ff - nominal_fill, s_bf)
 
     # Explicitly determine if the flight is in a climb or descent state
     sign = np.full_like(altitude, np.nan)
