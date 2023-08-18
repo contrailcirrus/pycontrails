@@ -261,7 +261,7 @@ def test_ps_nominal_grid(aircraft_type: str) -> None:
     assert list(ds.dims) == ["level"]
     assert list(ds) == ["aircraft_mass", "engine_efficiency", "fuel_flow"]
     assert ds.attrs["aircraft_type"] == aircraft_type
-    assert 0.7 < ds.attrs["mach_num"] < 0.8
+    assert 0.7 < ds.attrs["mach_number"] < 0.8
 
 
 def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
@@ -316,3 +316,15 @@ def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
     assert ds["aircraft_mass"].min() == pytest.approx(53000, abs=abs)
     assert ds["aircraft_mass"].max() == pytest.approx(68000, abs=abs)
     assert ds["aircraft_mass"].mean() == pytest.approx(61000, abs=abs)
+
+
+def test_ps_grid_raises(met_era5_fake: MetDataset) -> None:
+    """Confirm that the PSGrid model raises error if the aircraft_mass model param is not None."""
+
+    model = PSGrid(met_era5_fake)
+    with pytest.raises(ValueError, match="The 'aircraft_mass' parameter must be None."):
+        model.eval(aircraft_mass=60000)
+
+    model = PSGrid(met_era5_fake, aircraft_mass=60000)
+    with pytest.raises(ValueError, match="The 'aircraft_mass' parameter must be None."):
+        model.eval()
