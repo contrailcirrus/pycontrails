@@ -47,8 +47,11 @@ class PSGrid(AircraftPerformanceGrid):
     name = "PSGrid"
     long_name = "Poll-Schumann Aircraft Performance evaluated at arbitrary points"
     met_variables = (AirTemperature,)
-
     default_params = AircraftPerformanceGridParams
+
+    met: MetDataset
+    met_required = True
+    source: GeoVectorDataset
 
     @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
@@ -91,12 +94,16 @@ class PSGrid(AircraftPerformanceGrid):
         aircraft_type = self.source.attrs.get("aircraft_type", self.params["aircraft_type"])
         fuel = self.get_source_param("fuel")
         q_fuel = fuel.q_fuel
+        mach_number = self.get_source_param("mach_number")
+        if self.params["aircraft_mass"] is not None:
+            raise ValueError("The 'aircraft_mass' parameter must be None.")
 
         if isinstance(self.source, MetDataset):
             ds = ps_nominal_grid(
                 aircraft_type,
                 air_temperature=self.source.data["air_temperature"],
                 q_fuel=q_fuel,
+                mach_number=mach_number,
             )
             return MetDataset(ds)
 
@@ -105,6 +112,7 @@ class PSGrid(AircraftPerformanceGrid):
             level=self.source.level,
             air_temperature=self.source["air_temperature"],
             q_fuel=q_fuel,
+            mach_number=mach_number,
         )
         self.source.setdefault("aircraft_mass", ds["aircraft_mass"])
         self.source.setdefault("fuel_flow", ds["fuel_flow"])
@@ -117,7 +125,7 @@ class _PerfVariables:
     atyp_param: PSAircraftEngineParams
     air_pressure: npt.NDArray[np.float_] | float
     air_temperature: npt.NDArray[np.float_] | float
-    mach_num: npt.NDArray[np.float_] | float
+    mach_number: npt.NDArray[np.float_] | float
     q_fuel: float
 
 
@@ -127,23 +135,23 @@ def _nominal_perf(aircraft_mass: ArrayOrFloat, perf: _PerfVariables) -> Aircraft
     atyp_param = perf.atyp_param
     air_pressure = perf.air_pressure
     air_temperature = perf.air_temperature
-    mach_num = perf.mach_num
+    mach_number = perf.mach_number
     q_fuel = perf.q_fuel
 
     theta = 0.0
     dv_dt = 0.0
 
     rn = ps_model.reynolds_number(
-        atyp_param.wing_surface_area, mach_num, air_temperature, air_pressure
+        atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure
     )
 
     c_lift = ps_model.lift_coefficient(
-        atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_num, theta
+        atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, theta
     )
     c_f = ps_model.skin_friction_coefficient(rn)
     c_drag_0 = ps_model.zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
     e_ls = ps_model.oswald_efficiency_factor(c_drag_0, atyp_param)
-    c_drag_w = ps_model.wave_drag_coefficient(mach_num, c_lift, atyp_param)
+    c_drag_w = ps_model.wave_drag_coefficient(mach_number, c_lift, atyp_param)
     c_drag = ps_model.airframe_drag_coefficient(
         c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio
     )
@@ -151,15 +159,15 @@ def _nominal_perf(aircraft_mass: ArrayOrFloat, perf: _PerfVariables) -> Aircraft
     thrust = ps_model.thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, theta)
 
     c_t = ps_model.engine_thrust_coefficient(
-        thrust, mach_num, air_pressure, atyp_param.wing_surface_area
+        thrust, mach_number, air_pressure, atyp_param.wing_surface_area
     )
 
-    engine_efficiency = ps_model.overall_propulsion_efficiency(mach_num, c_t, atyp_param)
+    engine_efficiency = ps_model.overall_propulsion_efficiency(mach_number, c_t, atyp_param)
 
     fuel_flow = ps_model.fuel_mass_flow_rate(
         air_pressure,
         air_temperature,
-        mach_num,
+        mach_number,
         c_t,
         engine_efficiency,
         atyp_param.wing_surface_area,
@@ -276,9 +284,13 @@ def ps_nominal_grid(
     level: npt.NDArray[np.float_] | None = None,
     air_temperature: xr.DataArray | npt.NDArray[np.float_] | None = None,
     q_fuel: float = JetA.q_fuel,
-    mach_num: float | None = None,
+    mach_number: float | None = None,
 ) -> xr.Dataset:
     """Calculate the nominal performance grid for a given aircraft type.
+
+    This function is similar to the :class:`PSGrid` model, but it doesn't require
+    meteorological data. Instead, the ambient air temperature can be computed from
+    the ISA model or passed as an argument.
 
     Parameters
     ----------
@@ -295,7 +307,7 @@ def ps_nominal_grid(
         dimensional with the same shape as the ``level`` argument.
     q_fuel : float, optional
         The fuel heating value, by default :attr:`JetA.q_fuel`
-    mach_num : float | None, optional
+    mach_number : float | None, optional
         The Mach number. If None (default), the PS design Mach number is used.
 
     Returns
@@ -315,7 +327,7 @@ def ps_nominal_grid(
     >>> # Compute nominal aircraft performance assuming ISA conditions
     >>> # and the design Mach number
     >>> perf = ps_nominal_grid("A320", level=level)
-    >>> perf.attrs["mach_num"]
+    >>> perf.attrs["mach_number"]
     0.753
 
     >>> perf.to_dataframe()
@@ -333,7 +345,7 @@ def ps_nominal_grid(
     290.0   71817.627308           0.315763   0.689795
 
     >>> # Now compute it for a higher Mach number
-    >>> perf = ps_nominal_grid("A320", level=level, mach_num=0.78)
+    >>> perf = ps_nominal_grid("A320", level=level, mach_number=0.78)
     >>> perf.to_dataframe()
            aircraft_mass  engine_efficiency  fuel_flow
     level
@@ -354,13 +366,13 @@ def ps_nominal_grid(
 
     aircraft_engine_params = ps_model.load_aircraft_engine_params()
     atyp_param = aircraft_engine_params[aircraft_type]
-    mach_num = mach_num or atyp_param.m_des
+    mach_number = mach_number or atyp_param.m_des
 
     perf = _PerfVariables(
         atyp_param=atyp_param,
         air_pressure=air_pressure,
         air_temperature=air_temperature,
-        mach_num=mach_num,
+        mach_number=mach_number,
         q_fuel=q_fuel,
     )
 
@@ -386,7 +398,7 @@ def ps_nominal_grid(
 
     attrs = {
         "aircraft_type": aircraft_type,
-        "mach_num": mach_num,
+        "mach_number": mach_number,
         "q_fuel": q_fuel,
     }
 
