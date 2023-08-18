@@ -5,11 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 
 import pycontrails.models.ps_model.ps_model as ps
-from pycontrails.core import Flight
-from pycontrails.physics.jet import minimum_fuel_flow_rate_at_cruise
-from pycontrails.physics.units import ft_to_pl, knots_to_m_per_s, m_to_T_isa
+from pycontrails.core import Flight, GeoVectorDataset, MetDataset
+from pycontrails.models.ps_model import PSGrid, ps_nominal_grid
+from pycontrails.physics import jet, units
 
 from .conftest import get_static_path
 
@@ -42,7 +43,7 @@ def test_ps_model() -> None:
     mach_number = np.array([0.753, 0.753])
     air_temperature = np.array([220.79, 216.65])
     altitude_ft = np.array([34000.0, 41450.0])
-    air_pressure = ft_to_pl(altitude_ft) * 100.0
+    air_pressure = units.ft_to_pl(altitude_ft) * 100.0
     aircraft_mass = np.array([58800.0, 58800.0])
     climb_angle = np.array([0.0, 0.0])
     dv_dt = np.array([0.0, 0.0])
@@ -144,7 +145,7 @@ def test_normalised_aircraft_performance_curves() -> None:
     f_thrust = np.arange(10000.0, 60000.0, 500)
     mach_num = np.ones_like(f_thrust) * 0.750
     altitude_ft = np.ones_like(f_thrust) * 40000.0
-    air_pressure = ft_to_pl(altitude_ft) * 100.0
+    air_pressure = units.ft_to_pl(altitude_ft) * 100.0
 
     # Extract aircraft properties for aircraft type
     ps_model = ps.PSModel()
@@ -178,8 +179,8 @@ def test_total_fuel_burn(load_factor: float) -> None:
     attrs = {"flight_id": "1", "aircraft_type": "A320", "load_factor": load_factor}
     flight = Flight(df_flight.iloc[:100], attrs=attrs)
 
-    flight["air_temperature"] = m_to_T_isa(flight["altitude"])
-    flight["true_airspeed"] = knots_to_m_per_s(flight["speed"])
+    flight["air_temperature"] = units.m_to_T_isa(flight["altitude"])
+    flight["true_airspeed"] = units.knots_to_m_per_s(flight["speed"])
 
     # Aircraft performance model
     ps_model = ps.PSModel()
@@ -204,7 +205,7 @@ def test_fuel_clipping() -> None:
     fuel_flow_est = np.array([3.05, 4.13, 5.20, 0.02, 0.03])
     altitude_ft = np.ones_like(fuel_flow_est) * 35000
     air_temperature = np.ones_like(fuel_flow_est) * 220
-    air_pressure = ft_to_pl(altitude_ft) * 100
+    air_pressure = units.ft_to_pl(altitude_ft) * 100
     mach_num = np.ones_like(fuel_flow_est) * 0.75
 
     fuel_flow_corrected = ps.correct_fuel_flow(
@@ -217,7 +218,7 @@ def test_fuel_clipping() -> None:
         atyp_param.ff_max_sls,
     )
 
-    min_fuel_flow = minimum_fuel_flow_rate_at_cruise(atyp_param.ff_idle_sls, altitude_ft)
+    min_fuel_flow = jet.minimum_fuel_flow_rate_at_cruise(atyp_param.ff_idle_sls, altitude_ft)
     assert np.all(
         (fuel_flow_corrected < atyp_param.ff_max_sls) & (fuel_flow_corrected >= min_fuel_flow)
     )
@@ -232,7 +233,7 @@ def test_zero_tas_waypoints() -> None:
     attrs = {"flight_id": "1", "aircraft_type": "A320"}
     flight = Flight(df_flight.iloc[:100], attrs=attrs)
 
-    flight["air_temperature"] = m_to_T_isa(flight["altitude"])
+    flight["air_temperature"] = units.m_to_T_isa(flight["altitude"])
     flight["true_airspeed"] = flight.segment_groundspeed()
     assert flight["true_airspeed"][47] == 0.0
 
@@ -246,3 +247,72 @@ def test_zero_tas_waypoints() -> None:
         assert np.isnan(out[key][47])
         assert np.all(np.isfinite(out[key][:47]))
         assert np.all(np.isfinite(out[key][48:-1]))
+
+
+@pytest.mark.filterwarnings("ignore:some failed to converge")
+@pytest.mark.parametrize("aircraft_type", ["A320", "A333", "B737", "B753"])
+def test_ps_nominal_grid(aircraft_type: str) -> None:
+    """Test the ps_nominal_grid function assuming the ISA temperature."""
+    altitude_ft = np.arange(27000, 44000, 1000, dtype=float)
+    level = units.ft_to_pl(altitude_ft)
+    ds = ps_nominal_grid(aircraft_type, level=level)
+    assert isinstance(ds, xr.Dataset)
+
+    assert list(ds.dims) == ["level"]
+    assert list(ds) == ["aircraft_mass", "engine_efficiency", "fuel_flow"]
+    assert ds.attrs["aircraft_type"] == aircraft_type
+    assert 0.7 < ds.attrs["mach_num"] < 0.8
+
+
+def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
+    """Test the PSGrid model with a vector source."""
+
+    model = PSGrid(met_era5_fake)
+    vector = GeoVectorDataset(
+        longitude=[3, 5, 8],
+        latitude=[13, 21, 34],
+        level=[160, 170, 180],
+        time=[met_era5_fake.data.time.values[0]] * 3,
+    )
+    out = model.eval(vector)
+    assert isinstance(out, GeoVectorDataset)
+    assert out.size == 3
+    assert out.dataframe.shape == (3, 8)
+    assert list(out) == [
+        "longitude",
+        "latitude",
+        "time",
+        "level",
+        "air_temperature",
+        "aircraft_mass",
+        "fuel_flow",
+        "engine_efficiency",
+    ]
+
+
+def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
+    """Test the PSGrid model with source=None."""
+
+    model = PSGrid(met_era5_fake)
+    out = model.eval()
+    assert isinstance(out, MetDataset)
+
+    ds = out.data
+    assert ds.dims == met_era5_fake.data.dims
+    assert list(ds) == ["aircraft_mass", "engine_efficiency", "fuel_flow"]
+
+    # Pin some output values
+    abs = 1e-2
+    assert ds["fuel_flow"].min() == pytest.approx(0.54, abs=abs)
+    assert ds["fuel_flow"].max() == pytest.approx(0.71, abs=abs)
+    assert ds["fuel_flow"].mean() == pytest.approx(0.63, abs=abs)
+
+    abs = 1e-3
+    assert ds["engine_efficiency"].min() == pytest.approx(0.274, abs=abs)
+    assert ds["engine_efficiency"].max() == pytest.approx(0.288, abs=abs)
+    assert ds["engine_efficiency"].mean() == pytest.approx(0.284, abs=abs)
+
+    abs = 1e3
+    assert ds["aircraft_mass"].min() == pytest.approx(53000, abs=abs)
+    assert ds["aircraft_mass"].max() == pytest.approx(68000, abs=abs)
+    assert ds["aircraft_mass"].mean() == pytest.approx(61000, abs=abs)
