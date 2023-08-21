@@ -596,9 +596,9 @@ class Cocip(Model):
         """
         logger.debug("Processing flight emissions")
 
-        # Call Emissions and the aircraft performance model as needed
-        # NOTE: None of these sub-model actually do any interpolation -- self.source already has
-        # all of the required met variables attached. Therefore, we don't need to worry about
+        # Call aircraft performance and Emissions models as needed
+        # NOTE: None of these sub-models actually do any met interpolation -- self.source already
+        # has all of the required met variables attached. Therefore, we don't need to worry about
         # being consistent with passing in Cocip's interp_kwargs and humidity_scaling into
         # the sub-models.
         emissions = Emissions()
@@ -1428,7 +1428,7 @@ def _eval_emissions(emissions: Emissions, flight: Flight) -> Flight:
     emissions_outputs = "nvpm_ei_n"
     if flight.ensure_vars(emissions_outputs, False):
         return flight
-    return emissions.eval(source=flight, copy_source=False)
+    return emissions.eval(source=flight, copy_source=False)  # type: ignore[return-value]
 
 
 def calc_continuous(contrail: GeoVectorDataset) -> None:
