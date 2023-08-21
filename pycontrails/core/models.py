@@ -623,7 +623,7 @@ class Model(ABC):
     # https://github.com/python/cpython/blob/618b7a8260bb40290d6551f24885931077309590/Lib/collections/__init__.py#L231
     __marker = object()
 
-    def get_source_param(self, key: str, default: Any = __marker) -> Any:
+    def get_source_param(self, key: str, default: Any = __marker, *, set_attr: bool = True) -> Any:
         """Get source data with default set by parameter key.
 
         Retrieves data with the following hierarchy:
@@ -639,8 +639,11 @@ class Model(ABC):
         ----------
         key : str
             Key to retrieve
-        default : Any
+        default : Any, optional
             Default value if key is not found.
+        set_attr : bool, optional
+            If True (default), set :attr:`source.attrs[key]` to :attr:`params[key]` if found.
+            This allows for better post model evaluation tracking.
 
         Returns
         -------
@@ -664,8 +667,8 @@ class Model(ABC):
 
         out = self.params.get(key, marker)
         if out is not marker:
-            # Set parameter to source attr for better post model evaluation tracking
-            self.source.attrs[key] = out
+            if set_attr:
+                self.source.attrs[key] = out
 
             return out
 
