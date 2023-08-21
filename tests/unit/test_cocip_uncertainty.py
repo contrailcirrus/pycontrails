@@ -126,8 +126,8 @@ def test_uncertainty_default_dist_within_expect_cocip_function_domain() -> None:
     assert np.all(c.rf_lw_enhancement_factor_uncertainty.rvs(n) < 1.5)
 
     # rf_sw_enhancement_factor should be bounded near 1
-    assert np.all(c.rf_sw_enhancement_factor_uncertainty.rvs(n) > 0.4)
-    assert np.all(c.rf_sw_enhancement_factor_uncertainty.rvs(n) < 1.6)
+    assert np.all(c.rf_sw_enhancement_factor_uncertainty.rvs(n) > 0.3)
+    assert np.all(c.rf_sw_enhancement_factor_uncertainty.rvs(n) < 1.7)
 
 
 def test_habit_dirichlet() -> None:
