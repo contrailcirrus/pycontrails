@@ -10,7 +10,6 @@ from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import Cocip
 from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.humidity_scaling import ExponentialBoostHumidityScaling
-from pycontrails.utils.synthetic_flight import SyntheticFlight
 from tests import BADA4_PATH
 
 # Found by running big for-loop over many seeds
@@ -60,6 +59,8 @@ def fl(met: MetDataset, request) -> Flight:
         "level": np.array([250]),
         "time": np.array([met["time"].values[0], met["time"].values[6]]),
     }
+
+    SyntheticFlight = pytest.importorskip("pycontrails.utils.synthetic_flight").SyntheticFlight
 
     syn = SyntheticFlight(
         bounds,

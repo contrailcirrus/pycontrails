@@ -15,7 +15,6 @@ from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.cocipgrid import cocip_grid as cg_module
 from pycontrails.models.humidity_scaling import ExponentialBoostHumidityScaling
 from pycontrails.models.ps_model import PSGrid
-from pycontrails.utils.synthetic_flight import SyntheticFlight
 from tests import BADA4_PATH
 
 
@@ -554,7 +553,7 @@ def test_grid_results_segment_free(
 
 
 @pytest.fixture
-def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> SyntheticFlight:
+def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> "SyntheticFlight":  # noqa: F821
     """Return synthetic flight."""
     t_start = source.data["time"].values[0]
     t_stop = t_start + np.timedelta64(120, "m")
@@ -564,6 +563,8 @@ def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> SyntheticFlig
         "level": source.data["level"].values,
         "time": np.array([t_start, t_stop]),
     }
+    SyntheticFlight = pytest.importorskip("pycontrails.utils.synthetic_flight").SyntheticFlight
+
     return SyntheticFlight(
         seed=5,
         bada4_path=BADA4_PATH,
@@ -574,7 +575,7 @@ def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> SyntheticFlig
     )
 
 
-def test_reasonable_syn_fl(syn_fl: SyntheticFlight, met_cocip1) -> None:
+def test_reasonable_syn_fl(syn_fl: "SyntheticFlight", met_cocip1) -> None:  # noqa: F821
     """Check that syn_fl fixture is reasonable."""
     for _ in range(100):
         fl = syn_fl()
@@ -589,7 +590,7 @@ def test_reasonable_syn_fl(syn_fl: SyntheticFlight, met_cocip1) -> None:
 
 
 def test_geovector_source(
-    syn_fl: SyntheticFlight,
+    syn_fl: "SyntheticFlight",  # noqa: F821
     instance_params: dict[str, Any],
     bada_grid_model: AircraftPerformanceGrid,
 ) -> None:
@@ -623,7 +624,7 @@ def test_geovector_source(
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
 def test_grid_against_flight(
-    syn_fl: SyntheticFlight,
+    syn_fl: "SyntheticFlight",  # noqa: F821
     instance_params: dict[str, Any],
     met_cocip1: MetDataset,
     rad_cocip1: MetDataset,

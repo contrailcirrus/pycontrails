@@ -1,5 +1,7 @@
 """Support for the Poll-Schumann (PS) theoretical aircraft performance over a grid."""
 
+from __future__ import annotations
+
 import dataclasses
 from typing import Any, NoReturn, overload
 
