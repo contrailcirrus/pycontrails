@@ -15,13 +15,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from pycontrails.core import flight
 from pycontrails.core.flight import Flight
-from pycontrails.core.fuel import SAFBlend
+from pycontrails.core.fuel import Fuel, SAFBlend
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
+from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.emissions import black_carbon, ffm2
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, jet, units
@@ -78,7 +78,7 @@ class Emissions(Model):
     met_variables = AirTemperature, SpecificHumidity
     default_params = EmissionsParams
 
-    source: Flight
+    source: GeoVectorDataset
 
     def __init__(
         self,
@@ -93,14 +93,14 @@ class Emissions(Model):
         self.default_engines = load_default_aircraft_engine_mapping()
 
     @overload
-    def eval(self, source: Flight, **params: Any) -> Flight:
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
         ...
 
     @overload
     def eval(self, source: None = None, **params: Any) -> NoReturn:
         ...
 
-    def eval(self, source: Flight | None = None, **params: Any) -> Flight:
+    def eval(self, source: GeoVectorDataset | None = None, **params: Any) -> GeoVectorDataset:
         """Calculate the emissions data for ``source``.
 
         Parameter ``source`` must contain each of the variables:
@@ -109,54 +109,42 @@ class Emissions(Model):
             - true_airspeed
             - fuel_flow
 
-        In addition, ``source.attrs`` should contain variables
-            - engine_uid
-            - n_engine
-
-        If 'engine_uid' is not provided in the flight attribute or not available in the ICAO EDB,
+        If 'engine_uid' is not provided in ``source.attrs`` or not available in the ICAO EDB,
         constant emission indices will be assumed for NOx, CO, HC, and nvPM mass and number.
 
         The computed pollutants include carbon dioxide (CO2), nitrogen oxide (NOx),
         carbon monoxide (CO), hydrocarbons (HC), non-volatile particulate matter
         (nvPM) mass and number, sulphur oxides (SOx), sulphates (S) and organic carbon (OC).
 
+        .. versionchanged:: 0.47.0
+            Support GeoVectorDataset for the ``source`` parameter.
+
         Parameters
         ----------
-        source : Flight
+        source : GeoVectorDataset
             Flight to evaluate
         **params : Any
             Overwrite model parameters before eval
 
         Returns
         -------
-        Flight
+        GeoVectorDataset
             Flight with attached emissions data
-
-        Raises
-        ------
-        AttributeError
-            Raised if :attr:`fuel` on ``flight`` is incompatible with the model parameter "fuel".
-        KeyError
-            Raised if ``flight`` already contains "thrust_setting" or "nvpm_ei_n" variables.
         """
         self.update_params(params)
         self.set_source(source)
-        self.source = self.require_source_type(Flight)
+        self.source = self.require_source_type(GeoVectorDataset)
 
         # Set air_temperature and specific_humidity if not already set
-        scale_humidity = (self.params["humidity_scaling"] is not None) and (
-            "specific_humidity" not in self.source
-        )
+        humidity_scaling = self.params["humidity_scaling"]
+        scale_humidity = humidity_scaling is not None and "specific_humidity" not in self.source
         self.set_source_met()
 
         # Only enhance humidity if it wasn't already present on source
         if scale_humidity:
-            self.params["humidity_scaling"].eval(self.source, copy_source=False)
+            humidity_scaling.eval(self.source, copy_source=False)
 
-        # Ensure that flight has the required variables defined as attrs or columns
-        # We could support calculating true_airspeed in the same way as done by BADAFlight
-        # Right now, the pathway to using this model is by chaining with BADAFlight,
-        # so we don't need to support it yet.
+        # Ensure that flight has the required AP variables
         self.source.ensure_vars(("true_airspeed", "fuel_flow"))
 
         engine_uid = self.source.attrs.get("engine_uid")
@@ -329,25 +317,42 @@ class Emissions(Model):
         if "nvpm_ei_n" in self.source and "nvpm_ei_m" in self.source:
             return  # early exit if values already exist
 
-        if (edb_nvpm := self.edb_engine_nvpm.get(engine_uid)) is not None:  # type: ignore[arg-type]
-            nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_edb(edb_nvpm)
-        elif (edb_gaseous := self.edb_engine_gaseous.get(engine_uid)) is not None:  # type: ignore[arg-type]  # noqa: E501
-            nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_sac(edb_gaseous)
+        if isinstance(self.source, Flight):
+            fuel = self.source.fuel
+        else:
+            try:
+                fuel = self.source.attrs["fuel"]
+            except KeyError as exc:
+                raise KeyError(
+                    "If running 'Emissions' with a 'GeoVectorDataset' as source, "
+                    "the fuel type must be provided in the attributes. "
+                ) from exc
+
+        edb_nvpm = self.edb_engine_nvpm.get(engine_uid) if engine_uid else None
+        edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
+
+        if edb_nvpm is not None:
+            nvpm_data = self._nvpm_emission_indices_edb(edb_nvpm, fuel)
+        elif edb_gaseous is not None:
+            nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
         else:
             if engine_uid is not None:
                 warnings.warn(
                     f"Cannot find 'engine_uid' {engine_uid} in EDB. "
                     "A constant emissions will be used."
                 )
-            nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_constant()
+            nvpm_data = self._nvpm_emission_indices_constant()
+
+        nvpm_data_source, nvpm_ei_m, nvpm_ei_n = nvpm_data
 
         # Adjust nvPM emission indices if SAF is used.
-        if isinstance(self.source.fuel, SAFBlend) and self.source.fuel.pct_blend:
+        if isinstance(fuel, SAFBlend) and fuel.pct_blend:
+            thrust_setting = self.source["thrust_setting"]
             pct_eim_reduction = black_carbon.nvpm_mass_ei_pct_reduction_due_to_saf(
-                self.source.fuel.hydrogen_content, self.source["thrust_setting"]
+                fuel.hydrogen_content, thrust_setting
             )
             pct_ein_reduction = black_carbon.nvpm_number_ei_pct_reduction_due_to_saf(
-                self.source.fuel.hydrogen_content, self.source["thrust_setting"]
+                fuel.hydrogen_content, thrust_setting
             )
 
             nvpm_ei_m *= 1.0 + pct_eim_reduction / 100.0
@@ -358,7 +363,7 @@ class Emissions(Model):
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
 
     def _nvpm_emission_indices_edb(
-        self, edb_nvpm: EDBnvpm
+        self, edb_nvpm: EDBnvpm, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]:
         """Calculate emission indices for nvPM mass and number.
 
@@ -368,6 +373,8 @@ class Emissions(Model):
         ----------
         edb_nvpm : EDBnvpm
             EDB nvPM data.
+        fuel : Fuel
+            Fuel type.
 
         Returns
         -------
@@ -391,11 +398,11 @@ class Emissions(Model):
             air_temperature=self.source["air_temperature"],
             air_pressure=self.source.air_pressure,
             thrust_setting=self.source["thrust_setting"],
-            q_fuel=self.source.fuel.q_fuel,
+            q_fuel=fuel.q_fuel,
         )
 
     def _nvpm_emission_indices_sac(
-        self, edb_gaseous: EDBGaseous
+        self, edb_gaseous: EDBGaseous, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]:
         """Calculate EIs for nvPM mass and number assuming the profile of single annular combustors.
 
@@ -406,6 +413,8 @@ class Emissions(Model):
         ----------
         edb_gaseous : EDBGaseous
             EDB gaseous data
+        fuel : Fuel
+            Fuel type.
 
         Returns
         -------
@@ -438,7 +447,7 @@ class Emissions(Model):
             air_temperature=air_temperature,
             thrust_setting=thrust_setting,
             fuel_flow_per_engine=fuel_flow_per_engine,
-            hydrogen_content=self.source.fuel.hydrogen_content,
+            hydrogen_content=fuel.hydrogen_content,
         )
         nvpm_gmd = nvpm_geometric_mean_diameter_sac(
             edb_gaseous,
@@ -446,7 +455,7 @@ class Emissions(Model):
             true_airspeed=true_airspeed,
             air_temperature=air_temperature,
             thrust_setting=thrust_setting,
-            q_fuel=self.source.fuel.q_fuel,
+            q_fuel=fuel.q_fuel,
         )
         nvpm_ei_n = black_carbon.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
@@ -484,9 +493,10 @@ class Emissions(Model):
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
 
     def _total_pollutant_emissions(self) -> None:
-        # Required variables
-        # FIXME: These two variables are already calculated in BADA models
-        dt_sec = flight.segment_duration(self.source["time"], dtype=self.source.altitude_ft.dtype)
+        if not isinstance(self.source, Flight):
+            return
+
+        dt_sec = self.source.segment_duration(self.source.altitude_ft.dtype)
         fuel_burn = jet.fuel_burn(self.source.get_data_or_attr("fuel_flow"), dt_sec)
 
         # TODO: these currently overwrite values and will throw warnings
