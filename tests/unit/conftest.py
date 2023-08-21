@@ -13,7 +13,7 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore, Flight, MetDataArray, MetDataset
 from pycontrails.core import cache, met, met_var
-from pycontrails.core.aircraft_performance import AircraftPerformance
+from pycontrails.core.aircraft_performance import AircraftPerformance, AircraftPerformanceGrid
 from pycontrails.datalib.ecmwf import ERA5
 from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
 
@@ -377,18 +377,28 @@ def flight_fake() -> Flight:
 
 @pytest.fixture
 def bada_model() -> AircraftPerformance:
-    """Construct generic BADAFlight model."""
+    """Construct generic ``BADAFlight`` trajectory AP model."""
 
     BADAFlight = pytest.importorskip("pycontrails.ext.bada").BADAFlight
 
     if not BADA_AVAILABLE:
         pytest.skip("BADA data not available")
 
-    params = {
-        "bada3_path": BADA3_PATH,
-        "bada4_path": BADA4_PATH,
-    }
+    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH}
     return BADAFlight(params=params)
+
+
+@pytest.fixture
+def bada_grid_model() -> AircraftPerformanceGrid:
+    """Construct generic ``BADAGrid`` gridded AP model."""
+
+    BADAGrid = pytest.importorskip("pycontrails.ext.bada").BADAGrid
+
+    if not BADA_AVAILABLE:
+        pytest.skip("BADA data not available")
+
+    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH}
+    return BADAGrid(params=params)
 
 
 @pytest.fixture
