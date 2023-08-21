@@ -13,6 +13,7 @@ from pycontrails.core.aircraft_performance import (
     AircraftPerformanceGridData,
     AircraftPerformanceGridParams,
 )
+from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import JetA
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature
@@ -50,7 +51,6 @@ class PSGrid(AircraftPerformanceGrid):
     default_params = AircraftPerformanceGridParams
 
     met: MetDataset
-    met_required = True
     source: GeoVectorDataset
 
     @overload
@@ -91,14 +91,34 @@ class PSGrid(AircraftPerformanceGrid):
         self.require_source_type((GeoVectorDataset, MetDataset))
         self.set_source_met()
 
-        aircraft_type = self.source.attrs.get("aircraft_type", self.params["aircraft_type"])
-        fuel = self.get_source_param("fuel")
+        # Check some assumptions
+        if "true_airspeed" in self.source or "true_airspeed" in self.source.attrs:
+            raise NotImplementedError(
+                "PSGrid currently only supports setting a 'mach_number' parameter."
+            )
+        if self.get_source_param("aircraft_mass", set_attr=False) is not None:
+            raise NotImplementedError("The 'aircraft_mass' parameter must be None.")
+        if isinstance(self.source, Flight):
+            raise TypeError("PSGrid doesn't support Flight objects as source data. Use PSModel.")
+
+        # Extract the relevant source data
+        try:
+            aircraft_type = self.source.attrs["aircraft_type"]
+        except KeyError:
+            aircraft_type = self.params["aircraft_type"]
+            self.source.attrs["aircraft_type"] = aircraft_type
+        fuel = self.source.attrs.get("fuel", self.params["fuel"])
         q_fuel = fuel.q_fuel
-        mach_number = self.get_source_param("mach_number")
-        if self.params["aircraft_mass"] is not None:
-            raise ValueError("The 'aircraft_mass' parameter must be None.")
+        mach_number = self.get_source_param("mach_number", set_attr=False)
 
         if isinstance(self.source, MetDataset):
+            if "fuel_flow" in self.source:
+                raise NotImplementedError("PSGrid doesn't support custom 'fuel_flow' values.")
+            if "engine_efficiency" in self.source:
+                raise NotImplementedError(
+                    "PSGrid doesn't support custom 'engine_efficiency' values."
+                )
+
             ds = ps_nominal_grid(
                 aircraft_type,
                 air_temperature=self.source.data["air_temperature"],
@@ -107,16 +127,24 @@ class PSGrid(AircraftPerformanceGrid):
             )
             return MetDataset(ds)
 
+        air_temperature = self.source["air_temperature"]
         ds = ps_nominal_grid(
             aircraft_type,
             level=self.source.level,
-            air_temperature=self.source["air_temperature"],
+            air_temperature=air_temperature,
             q_fuel=q_fuel,
             mach_number=mach_number,
         )
+
+        # Set the source data
         self.source.setdefault("aircraft_mass", ds["aircraft_mass"])
         self.source.setdefault("fuel_flow", ds["fuel_flow"])
         self.source.setdefault("engine_efficiency", ds["engine_efficiency"])
+        mach_number = self.source.attrs.setdefault("mach_number", ds.attrs["mach_number"])
+        self.source["true_airspeed"] = units.mach_number_to_tas(mach_number, air_temperature)
+        self.source.attrs.setdefault("wingspan", ds.attrs["wingspan"])
+        self.source.attrs.setdefault("n_engine", ds.attrs["n_engine"])
+
         return self.source
 
 
@@ -400,6 +428,8 @@ def ps_nominal_grid(
         "aircraft_type": aircraft_type,
         "mach_number": mach_number,
         "q_fuel": q_fuel,
+        "wingspan": atyp_param.wing_span,
+        "n_engine": atyp_param.n_engine,
     }
 
     if isinstance(fuel_flow, xr.DataArray):
