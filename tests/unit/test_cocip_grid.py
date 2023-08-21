@@ -8,18 +8,15 @@ import numpy as np
 import pytest
 import xarray as xr
 
-try:
-    from pycontrails.models.cocipgrid import CocipGrid
-except ImportError:
-    pytest.skip("CocipGrid not available", allow_module_level=True)
-
 from pycontrails import GeoVectorDataset, MetDataset
-from pycontrails.core.aircraft_performance import AircraftPerformance
+from pycontrails.core.aircraft_performance import AircraftPerformance, AircraftPerformanceGrid
 from pycontrails.models.cocip import Cocip
+from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.cocipgrid import cocip_grid as cg_module
 from pycontrails.models.humidity_scaling import ExponentialBoostHumidityScaling
+from pycontrails.models.ps_model import PSGrid
 from pycontrails.utils.synthetic_flight import SyntheticFlight
-from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
+from tests import BADA4_PATH
 
 
 @pytest.fixture
@@ -53,8 +50,6 @@ def instance_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> dict[str,
         "max_age": np.timedelta64(90, "m"),
         # keep low to ensure update_met_slices actually gets called
         "met_slice_dt": np.timedelta64(1, "h"),
-        "bada3_path": BADA3_PATH,
-        "bada4_path": BADA4_PATH,
         # explicitly raise error if we advect too far
         "interpolation_bounds_error": True,
         "target_split_size": 1000,
@@ -63,6 +58,7 @@ def instance_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> dict[str,
     }
 
 
+@pytest.fixture
 def test_init_contrail_grid_minimal_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> None:
     """Check that `CocipGrid` can be instantiated with a minimal set of parameters."""
     gc = CocipGrid(
@@ -283,25 +279,62 @@ def test_generate_new_grid_vectors(
     np.testing.assert_array_almost_equal(lon_concat, source.data["longitude"].values, decimal=5)
 
 
+def test_cocip_grid_ps_ap_model(source: MetDataset, instance_params: dict[str, Any]) -> None:
+    """Test CocipGrid with the PSGrid aircraft performance model.
+
+    This test serves as a smoke test to ensure an error is not raised when using the PSGrid
+    aircraft performance model.
+    """
+    gc = CocipGrid(**instance_params, aircraft_performance=PSGrid())
+    out = gc.eval(source)
+
+    assert isinstance(out, MetDataset)
+    assert out.attrs["ap_model"] == "PSGrid"
+
+    # Pin the proportion of grid cells producing persistent contrails
+    assert out.data["ef_per_m"].astype(bool).mean().item() == 0.0775
+
+
+@pytest.fixture
+def grid_results(
+    instance_params: dict[str, Any],
+    bada_grid_model: AircraftPerformanceGrid,
+) -> MetDataset:
+    """Run `CocipGrid` on three distinct times."""
+    t_step = np.timedelta64(20, "m")
+    start_time = np.datetime64("2019-01-01")
+    source = CocipGrid.create_source(
+        level=[220, 230, 240, 250],
+        time=np.arange(start_time, start_time + np.timedelta64(1, "h"), t_step),
+        longitude=np.linspace(-35, -25, 40),
+        latitude=np.linspace(51, 57, 20),
+    )
+
+    gc = CocipGrid(**instance_params)
+    return gc.eval(source=source, aircraft_performance=bada_grid_model)
+
+
 ##############################################################
 # NOTE: No tests below here will run unless BADA is available.
 ##############################################################
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 @pytest.mark.parametrize("aircraft_type", ["B737", "A320", "A359", "B772"])
 @pytest.mark.parametrize("bada_priority", [3, 4])
 def test_calc_emissions(
     instance_params: dict[str, Any],
     aircraft_type: str,
+    bada_grid_model: AircraftPerformanceGrid,
     bada_priority: int,
     source: MetDataset,
 ) -> None:
     """Test `calc_emissions` function."""
+    bada_grid_model.params["bada_priority"] = bada_priority
+
     instance_params["aircraft_type"] = aircraft_type
     # must be larger than 3200 so that all meshes are together
     instance_params["target_split_size"] = 5000
-    instance_params["bada_priority"] = bada_priority
+    instance_params["aircraft_performance"] = bada_grid_model
 
     gc = CocipGrid(**instance_params)
     gc.set_source(source)
@@ -310,26 +343,42 @@ def test_calc_emissions(
     vector = next(gc._generate_new_vectors(filt))
 
     met = instance_params["met"]
-    # air_temperature need for calc_emissions
+
+    # Variables air_temperature and specific_humidity are needed for calc_emissions
     vector["air_temperature"] = vector.intersect_met(met["air_temperature"], bounds_error=True)
+    vector["specific_humidity"] = vector.intersect_met(met["specific_humidity"], bounds_error=True)
 
     cg_module.calc_emissions(vector, gc.params)
-    keys = [
+    keys = (
         "air_temperature",
+        "aircraft_mass",
+        "thrust",
+        "thrust_setting",
         "true_airspeed",
         "engine_efficiency",
         "fuel_flow",
         "nvpm_ei_n",
         "head_tail_dt",
-    ]
+    )
     vector.ensure_vars(keys)
 
-    assert "wingspan" in gc.params
-    assert "aircraft_mass" in gc.params
+    keys = (
+        "wingspan",
+        "n_engine",
+        "bada_model",
+        "fuel",
+        "max_mach",
+        "segment_length",
+        "aircraft_type",
+        "engine_uid",
+    )
+    for key in keys:
+        assert key in vector.attrs
+
     if bada_priority == 3:
-        assert gc.params["bada_model"] == "BADA3"
+        assert vector.attrs["bada_model"] == "BADA3"
     else:
-        assert gc.params["bada_model"] == "BADA4"
+        assert vector.attrs["bada_model"] == "BADA4"
 
     # Ensure not seeing crazy fluctuations in true_airspeed and fuel_flow
     # AND check that values are also non-constant
@@ -345,10 +394,16 @@ def test_calc_emissions(
     assert np.std(ff) < 0.05
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
-def test_calc_first_contrail(instance_params: dict[str, Any], source: MetDataset) -> None:
-    """Test `calc_first_contrail` method, which is called early in in `eval`."""
+def test_calc_first_contrail(
+    instance_params: dict[str, Any],
+    source: MetDataset,
+    bada_grid_model: AircraftPerformanceGrid,
+) -> None:
+    """Test the `calc_first_contrail` method, which is called early in `eval`."""
+
     instance_params["target_split_size"] = 5000
+    instance_params["aircraft_performance"] = bada_grid_model
+
     gc = CocipGrid(**instance_params)
     gc.set_source(source)
     filt = np.array([True])
@@ -401,23 +456,6 @@ def test_calc_first_contrail(instance_params: dict[str, Any], source: MetDataset
     assert np.all(new_level < original_level + 2)
 
 
-@pytest.fixture
-def grid_results(instance_params: dict[str, Any]) -> MetDataset:
-    """Run `CocipGrid` on three distinct times."""
-    t_step = np.timedelta64(20, "m")
-    start_time = np.datetime64("2019-01-01")
-    source = CocipGrid.create_source(
-        level=[220, 230, 240, 250],
-        time=np.arange(start_time, start_time + np.timedelta64(1, "h"), t_step),
-        longitude=np.linspace(-35, -25, 40),
-        latitude=np.linspace(51, 57, 20),
-    )
-
-    gc = CocipGrid(**instance_params)
-    return gc.eval(source=source)
-
-
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 def test_grid_results(grid_results: MetDataset) -> None:
     """Test `grid_results` fixture.
 
@@ -445,7 +483,7 @@ def test_grid_results(grid_results: MetDataset) -> None:
     # convert contrail_age to n_steps_with_persistent
     assert grid_results.attrs["dt_integration"] == "5 minutes"
     assert grid_results.attrs["max_age"] == "90 minutes"
-    assert grid_results.attrs["bada_model"] == "BADA4"
+    assert grid_results.attrs["ap_model"] == "BADAGrid"
     assert grid_results.attrs["aircraft_type"] == "B737"
     assert grid_results.attrs["humidity_scaling_name"] == "exponential_boost"
     assert grid_results.attrs["humidity_scaling_formula"]
@@ -480,16 +518,16 @@ def test_grid_results(grid_results: MetDataset) -> None:
 def grid_results_segment_free(
     instance_params: dict[str, Any],
     grid_results: MetDataset,
+    bada_grid_model: AircraftPerformanceGrid,
 ) -> tuple[MetDataset, MetDataset]:
     """Run `CocipGrid` on skeleton of `grid_results` in a segment-free mode."""
     source = MetDataset.from_coords(**grid_results.coords)
     instance_params["azimuth"] = None
     instance_params["segment_length"] = None
-    gc = CocipGrid(**instance_params)
+    gc = CocipGrid(**instance_params, aircraft_performance=bada_grid_model)
     return grid_results, gc.eval(source)
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 def test_grid_results_segment_free(
     grid_results_segment_free: tuple[MetDataset, MetDataset],
 ) -> None:
@@ -536,7 +574,6 @@ def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> SyntheticFlig
     )
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 def test_reasonable_syn_fl(syn_fl: SyntheticFlight, met_cocip1) -> None:
     """Check that syn_fl fixture is reasonable."""
     for _ in range(100):
@@ -551,8 +588,11 @@ def test_reasonable_syn_fl(syn_fl: SyntheticFlight, met_cocip1) -> None:
         assert np.all(tas[:-1] > 220)
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
-def test_geovector_source(syn_fl: SyntheticFlight, instance_params: dict[str, Any]) -> None:
+def test_geovector_source(
+    syn_fl: SyntheticFlight,
+    instance_params: dict[str, Any],
+    bada_grid_model: AircraftPerformanceGrid,
+) -> None:
     """Test `CocipGrid`  with GeoVectorDataset source."""
     # Call synthetic flight many times to create some random data.
     fls = [syn_fl() for _ in range(100)]
@@ -562,7 +602,7 @@ def test_geovector_source(syn_fl: SyntheticFlight, instance_params: dict[str, An
     assert source.size == 2608
 
     # Run the model
-    gc = CocipGrid(**instance_params)
+    gc = CocipGrid(**instance_params, aircraft_performance=bada_grid_model)
     out = gc.eval(source)
     assert isinstance(out, GeoVectorDataset)
     assert out.size == source.size
@@ -582,7 +622,6 @@ def test_geovector_source(syn_fl: SyntheticFlight, instance_params: dict[str, An
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 def test_grid_against_flight(
     syn_fl: SyntheticFlight,
     instance_params: dict[str, Any],
@@ -602,11 +641,6 @@ def test_grid_against_flight(
         "interpolation_bounds_error": True,
     }
 
-    # create the aircraft performance model from BADAFlight
-    from pycontrails.ext.bada import BADAFlight
-
-    bada_model = BADAFlight(bada4_path=instance_params["bada4_path"])
-
     # expect some persistent contrails
     n_fls_with_contrails = 0
 
@@ -622,11 +656,16 @@ def test_grid_against_flight(
         cocip_fl = cocip.eval(fl)
         cocip_fl_state = cocip_fl["cocip"].astype(bool)
 
+        fl["engine_efficiency"] = cocip_fl["engine_efficiency"]
+        fl["fuel_flow"] = cocip_fl["fuel_flow"]
+        fl["aircraft_mass"] = cocip_fl["aircraft_mass"]
+        fl.attrs["wingspan"] = cocip_fl.attrs["wingspan"]
+        fl.attrs["n_engine"] = cocip_fl.attrs["n_engine"]
+
         cg = CocipGrid(
             met=met_cocip1,
             rad=rad_cocip1,
             **params,
-            bada4_path=instance_params["bada4_path"],
             verbose_outputs_formation="specific_humidity",
             verbose_outputs_evolution=True,
         )
@@ -663,12 +702,15 @@ def test_grid_against_flight(
     assert n_fls_with_contrails == 8  # and we saw lots of persistent contrails
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
-def test_verbose_outputs_sac(instance_params: dict[str, Any], source: MetDataset):
+def test_verbose_outputs_sac(
+    instance_params: dict[str, Any],
+    source: MetDataset,
+    bada_grid_model: AircraftPerformanceGrid,
+) -> None:
     """Confirm the verbose_outputs parameter works with "sac" variable."""
     instance_params["verbose_outputs_formation"] = ["sac", "sdr"]
 
-    model = CocipGrid(**instance_params)
+    model = CocipGrid(**instance_params, aircraft_performance=bada_grid_model)
     with pytest.warns(UserWarning, match="verbose_outputs"):
         ds = model.eval(source=source).data
 
@@ -680,11 +722,14 @@ def test_verbose_outputs_sac(instance_params: dict[str, Any], source: MetDataset
     assert ds["sac"].sum() == 3199  # agrees with test_calc_first_contrail
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
-def test_verbose_outputs_formation(instance_params: dict[str, Any], source: MetDataset):
+def test_verbose_outputs_formation(
+    instance_params: dict[str, Any],
+    source: MetDataset,
+    bada_grid_model: AircraftPerformanceGrid,
+) -> None:
     """Confirm each verbose_outputs parameter is attached to results."""
     instance_params["verbose_outputs_formation"] = True
-    model = CocipGrid(**instance_params)
+    model = CocipGrid(**instance_params, aircraft_performance=bada_grid_model)
     out = model.eval(source=source)
 
     expected = {

@@ -6,21 +6,16 @@ import numpy as np
 import pytest
 import xarray as xr
 
-try:
-    from pycontrails.models.cocipgrid import CocipGrid
-except ImportError:
-    pytest.skip("CocipGrid not available", allow_module_level=True)
-
 from pycontrails import MetDataset
+from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 from pycontrails.models.issr import ISSR
 from pycontrails.models.pcr import PCR
+from pycontrails.models.ps_model import PSGrid
 from pycontrails.models.sac import SAC
 from pycontrails.utils import temp
-from tests import BADA3_PATH
 
 
-@pytest.mark.skipif(not BADA3_PATH.is_dir(), reason="BADA3 not available")
 @pytest.mark.parametrize("model", [SAC, ISSR, CocipGrid, PCR])
 def test_model_output_to_netcdf(met_cocip1: MetDataset, rad_cocip1: MetDataset, model: type):
     """Ensure gridded output can be written to netCDF.
@@ -28,11 +23,11 @@ def test_model_output_to_netcdf(met_cocip1: MetDataset, rad_cocip1: MetDataset, 
     This was a problem in 0.28.0 with humidity scaling metadata.
     """
     kwargs = {"met": met_cocip1, "humidity_scaling": ConstantHumidityScaling()}
-    if issubclass(model, CocipGrid):
+    if model is CocipGrid:
         kwargs["rad"] = rad_cocip1
         kwargs["max_age"] = np.timedelta64(4, "h")
         kwargs["interpolation_bounds_error"] = True
-        kwargs["bada3_path"] = BADA3_PATH
+        kwargs["aircraft_performance"] = PSGrid()
 
     instance = model(**kwargs)
 

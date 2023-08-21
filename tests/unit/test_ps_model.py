@@ -277,7 +277,7 @@ def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
     out = model.eval(vector)
     assert isinstance(out, GeoVectorDataset)
     assert out.size == 3
-    assert out.dataframe.shape == (3, 8)
+    assert out.dataframe.shape == (3, 9)
     assert list(out) == [
         "longitude",
         "latitude",
@@ -287,7 +287,16 @@ def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
         "aircraft_mass",
         "fuel_flow",
         "engine_efficiency",
+        "true_airspeed",
     ]
+
+    assert out.attrs == {
+        "crs": "EPSG:4326",
+        "aircraft_type": "B737",
+        "mach_number": 0.758,
+        "wingspan": 34.296122229779854,
+        "n_engine": 2,
+    }
 
 
 def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
@@ -322,9 +331,9 @@ def test_ps_grid_raises(met_era5_fake: MetDataset) -> None:
     """Confirm that the PSGrid model raises error if the aircraft_mass model param is not None."""
 
     model = PSGrid(met_era5_fake)
-    with pytest.raises(ValueError, match="The 'aircraft_mass' parameter must be None."):
+    with pytest.raises(NotImplementedError, match="The 'aircraft_mass' parameter must be None."):
         model.eval(aircraft_mass=60000)
 
     model = PSGrid(met_era5_fake, aircraft_mass=60000)
-    with pytest.raises(ValueError, match="The 'aircraft_mass' parameter must be None."):
+    with pytest.raises(NotImplementedError, match="The 'aircraft_mass' parameter must be None."):
         model.eval()
