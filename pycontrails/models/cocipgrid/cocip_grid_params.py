@@ -6,22 +6,13 @@ import dataclasses
 
 import numpy as np
 
+from pycontrails.core.aircraft_performance import AircraftPerformanceGrid
 from pycontrails.core.fuel import Fuel, JetA
-
-# from pycontrails.models.aircraft_performance import AircraftPerformanceGrid
 from pycontrails.models.cocip.cocip_params import CocipParams
-
-try:
-    from pycontrails.ext.bada import BADAParams
-except ImportError as e:
-    raise ImportError(
-        'CocipGrid requires BADA extension. Install with `pip install "pycontrails-bada @'
-        ' git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"`'
-    ) from e
 
 
 @dataclasses.dataclass
-class CocipGridParams(CocipParams, BADAParams):
+class CocipGridParams(CocipParams):
     """Default parameters for :class:`CocipGrid`."""
 
     # ---------
@@ -67,16 +58,13 @@ class CocipGridParams(CocipParams, BADAParams):
     #: Fuel type
     fuel: Fuel = dataclasses.field(default_factory=JetA)
 
-    #: ICAO code designating simulated aircraft type. Needed to query BADA database.
+    #: ICAO code designating simulated aircraft type. Needed for the
+    #: :attr:`aircraft_performance` and :class:`Emissions` models.
     aircraft_type: str = "B737"
 
     #: Engine unique identification number for the ICAO Aircraft Emissions Databank (EDB)
-    #: If None, the assumed engine_uid from BADA is used.
+    #: If None, an assumed engine_uid is used in :class:`Emissions`.
     engine_uid: str | None = None
-
-    #: Nominal aircraft wingspan [:math:`m`].
-    #: By default, use nominal value derived from BADA.
-    wingspan: float | None = None
 
     #: Navigation bearing [:math:`\deg`] measured in clockwise direction from
     #: true north, by default 0.0.
@@ -94,28 +82,47 @@ class CocipGridParams(CocipParams, BADAParams):
     #: .. versionadded 0.32.2::
     dsn_dz_factor: float = 0.0
 
-    #: Nominal aircraft mass [:math:`kg`].
-    #: By default, use nominal value derived from BADA.
+    #: --------------------
+    #: Aircraft Performance
+    #: --------------------
+
+    #: Aircraft wingspan, [:math:`m`]. If included in :attr:`CocipGrid.source``,
+    #: this parameter is unused. Otherwise, if this parameter is None, the
+    #: :attr:`aircraft_performance` model is used to estimate the wingspan.
+    wingspan: float | None = None
+
+    #: Nominal aircraft mass, [:math:`kg`]. If included in :attr:`CocipGrid.source``,
+    #: this parameter is unused. Otherwise, if this parameter is None, the
+    #: :attr:`aircraft_performance` model is used to estimate the aircraft mass.
     aircraft_mass: float | None = None
 
-    #: Cruising true airspeed [:math:`m * s^{-1}`].
-    #: By default, use nominal value derived from BADA.
+    #: Cruising true airspeed, [:math:`m * s^{-1}`]. If included in :attr:`CocipGrid.source``,
+    #: this parameter is unused. Otherwise, if this parameter is None, the
+    #: :attr:`aircraft_performance` model is used to estimate the true airspeed.
     true_airspeed: float | None = None
 
-    #: Nominal engine efficiency, [:math:`0 - 1`].
-    #: By default, use values derived from BADA.
+    #: Nominal engine efficiency, [:math:`0 - 1`]. If included in :attr:`CocipGrid.source``,
+    #: this parameter is unused. Otherwise, if this parameter is None, the
+    #: :attr:`aircraft_performance` model is used to estimate the engine efficiency.
     engine_efficiency: float | None = None
 
-    #: Nominal fuel flow, [:math:`kg s^{-1}`].
-    #: By default, use values derived from BADA.
+    #: Nominal fuel flow, [:math:`kg s^{-1}`]. If included in :attr:`CocipGrid.source``,
+    #: this parameter is unused. Otherwise, if this parameter is None, the
+    #: :attr:`aircraft_performance` model is used to estimate the fuel flow.
     fuel_flow: float | None = None
 
-    #: Nominal thrust, [:math:`N`].
-    #: By default, use values derived from BADA.
-    thrust: float | None = None
-
-    # #: Aircraft performance model
-    # aircraft_performance: AircraftPerformanceGrid | None = None
+    #: Aircraft performance model. Required unless ``source`` or ``params``
+    #: provide all of the following variables:
+    #: - wingspan
+    #: - true_airspeed (or mach_number)
+    #: - fuel_flow
+    #: - engine_efficiency
+    #: - aircraft_mass
+    #:
+    #: If None and :attr:`CocipGrid.source` or :class:`CocipGridParams` do not provide
+    #: the above variables, a ValueError is raised. See :class:`PSGrid` for an open-source
+    #: implementation of a :class:`AircraftPerformanceGrid` model.
+    aircraft_performance: AircraftPerformanceGrid | None = None
 
     # ------------
     # Model output
