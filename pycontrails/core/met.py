@@ -707,7 +707,7 @@ class MetDataset(MetBase):
     def __setitem__(
         self,
         key: Hashable | list[Hashable] | Mapping,
-        value: MetDataArray | xr.DataArray | np.ndarray | xr.Variable,
+        value: Any,
     ) -> None:
         """Shortcut to set data variable on :attr:`data`.
 
@@ -717,7 +717,7 @@ class MetDataset(MetBase):
         ----------
         key : Hashable | list[Hashable] | Mapping
             Variable name
-        value : MetDataArray | ArrayLike | xr.Variable
+        value : Any
             Value to set to variable names
 
         See Also

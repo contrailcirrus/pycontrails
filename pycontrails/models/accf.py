@@ -268,7 +268,7 @@ class ACCF(Model):
             if isinstance(self.source, GeoVectorDataset):
                 self.source[key] = self.source.intersect_met(maCCFs[key])
             else:
-                self.source[key] = (maCCFs.dim_order, arr.data)  # type: ignore
+                self.source[key] = (maCCFs.dim_order, arr.data)
 
             # Tag output with additional attrs when source is MetDataset
             if isinstance(self.source, MetDataset):
