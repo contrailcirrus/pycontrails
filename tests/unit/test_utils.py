@@ -243,7 +243,8 @@ def test_type_guard(met_cocip1: MetDataset) -> None:
     # returns object
     a = "test"
     b = type_guard(a, (str, int))
-    assert a is b and isinstance(b, str)
+    assert a is b
+    assert isinstance(b, str)
 
     with pytest.raises(ValueError, match="must be of type"):
         type_guard("str", int)

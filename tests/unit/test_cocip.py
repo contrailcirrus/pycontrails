@@ -38,25 +38,25 @@ from pycontrails.models.humidity_scaling import (
 from .conftest import get_static_path
 
 
-@pytest.fixture
+@pytest.fixture()
 def met(met_cocip1: MetDataset) -> MetDataset:
     """Rename fixture `met_cocip1` from conftest."""
     return met_cocip1
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad(rad_cocip1: MetDataset) -> MetDataset:
     """Rename fixture `rad_cocip1` from conftest."""
     return rad_cocip1
 
 
-@pytest.fixture
+@pytest.fixture()
 def fl(flight_cocip1: Flight) -> Flight:
     """Rename fixture `cocip_fl` from conftest."""
     return flight_cocip1
 
 
-@pytest.fixture
+@pytest.fixture()
 def cocip_no_ef(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     """Return `Cocip` instance evaluated on modified `fl`."""
     fl.update(longitude=np.linspace(-29, -32, 20))
@@ -80,7 +80,7 @@ def cocip_no_ef(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     return cocip
 
 
-@pytest.fixture
+@pytest.fixture()
 def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     """Return `Cocip` instance evaluated on modified `fl`."""
     fl.update(longitude=np.linspace(-29, -32, 20))
@@ -108,7 +108,7 @@ def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     return cocip
 
 
-@pytest.fixture
+@pytest.fixture()
 def cocip_persistent2(
     flight_cocip2: Flight, met_cocip2: MetDataset, rad_cocip2: MetDataset
 ) -> Cocip:
@@ -674,7 +674,7 @@ def test_contrail_contrail_overlapping_effects() -> None:
     #: `rf_sw` and `rf_lw`
 
 
-@pytest.fixture
+@pytest.fixture()
 def fleet(met: MetDataset) -> Fleet:
     """Create a ``Fleet`` within the bounds of ``met``."""
     ds = met.data

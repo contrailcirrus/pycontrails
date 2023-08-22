@@ -18,7 +18,7 @@ from pycontrails.models.ps_model import PSGrid
 from tests import BADA4_PATH
 
 
-@pytest.fixture
+@pytest.fixture()
 def source() -> MetDataset:
     """Return common source for `CocipGrid` model evaluation."""
     return CocipGrid.create_source(
@@ -32,7 +32,7 @@ def source() -> MetDataset:
     )
 
 
-@pytest.fixture
+@pytest.fixture()
 def instance_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> dict[str, Any]:
     """Return common parameters for `CocipGrid` model instances.
 
@@ -57,7 +57,6 @@ def instance_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> dict[str,
     }
 
 
-@pytest.fixture
 def test_init_contrail_grid_minimal_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> None:
     """Check that `CocipGrid` can be instantiated with a minimal set of parameters."""
     gc = CocipGrid(
@@ -294,7 +293,7 @@ def test_cocip_grid_ps_ap_model(source: MetDataset, instance_params: dict[str, A
     assert out.data["ef_per_m"].astype(bool).mean().item() == 0.0775
 
 
-@pytest.fixture
+@pytest.fixture()
 def grid_results(
     instance_params: dict[str, Any],
     bada_grid_model: AircraftPerformanceGrid,
@@ -513,7 +512,7 @@ def test_grid_results(grid_results: MetDataset) -> None:
     assert point["ef_per_m"].item() == pytest.approx(43664804, rel=1e-3)
 
 
-@pytest.fixture
+@pytest.fixture()
 def grid_results_segment_free(
     instance_params: dict[str, Any],
     grid_results: MetDataset,
@@ -552,7 +551,7 @@ def test_grid_results_segment_free(
     assert da2.where(filt2).mean().item() == pytest.approx(29096262, rel=1e-3)
 
 
-@pytest.fixture
+@pytest.fixture()
 def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> "SyntheticFlight":  # noqa: F821
     """Return synthetic flight."""
     t_start = source.data["time"].values[0]

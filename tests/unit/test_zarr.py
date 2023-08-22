@@ -19,7 +19,7 @@ if ZARR_STORE is None:
     pytest.skip("Zarr store not available from environment variable", allow_module_level=True)
 
 
-@pytest.fixture
+@pytest.fixture()
 def ds() -> xr.Dataset:
     """Open the Zarr store as an xarray Dataset."""
     return xr.open_zarr(ZARR_STORE)  # using default chunks="auto" for dask interop

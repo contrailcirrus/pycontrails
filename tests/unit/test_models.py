@@ -194,8 +194,10 @@ def test_model_grid_init(met_era5_fake: MetDataset) -> None:
     model = ModelTestGrid(met=met_era5_fake)
     assert model.name == "grid"
     assert model.long_name == "my grid model"
-    assert "param1" in model.params and model.params["param1"] == "param1"
-    assert "param2" in model.params and model.params["param2"] == 1
+    assert "param1" in model.params
+    assert model.params["param1"] == "param1"
+    assert "param2" in model.params
+    assert model.params["param2"] == 1
 
     # override params via `params` dict and kwargs
     model = ModelTestGrid(met=met_era5_fake, params={"param1": "new_param1"}, param2=2)
@@ -228,7 +230,8 @@ def test_model_met_not_copied(met_era5_fake: MetDataset) -> None:
     assert grid_model.met is met_era5_fake
 
     met_era5_fake.data = met_era5_fake.data.rename({"air_temperature": "renamed"})
-    assert "air_temperature" not in grid_model.met.data and "renamed" in grid_model.met.data
+    assert "air_temperature" not in grid_model.met.data
+    assert "renamed" in grid_model.met.data
 
 
 def test_model_met_grid_eval(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
@@ -242,7 +245,8 @@ def test_model_met_grid_eval(met_era5_fake: MetDataset, flight_fake: Flight) -> 
     for k in grid_model.source.coords:
         np.testing.assert_array_equal(grid_model.source.coords[k], grid_model.met.coords[k])
 
-    assert "temp" in grid_model.source and "air_temperature" not in grid_model.source
+    assert "temp" in grid_model.source
+    assert "air_temperature" not in grid_model.source
     assert np.all(grid_model.source["temp"].values == met_era5_fake.data["air_temperature"].values)
     assert np.all(out.data.values == met_era5_fake.data["air_temperature"].values)
 
@@ -270,14 +274,12 @@ def test_model_flight_params() -> None:
     assert params_dict["param2"] == 1
 
     # default interpolation parameters
-    assert "interpolation_method" in params_dict and params_dict["interpolation_method"] == "linear"
-    assert (
-        "interpolation_bounds_error" in params_dict
-        and params_dict["interpolation_bounds_error"] is False
-    )
-    assert "interpolation_fill_value" in params_dict and np.isnan(
-        params_dict["interpolation_fill_value"]
-    )
+    assert "interpolation_method" in params_dict
+    assert params_dict["interpolation_method"] == "linear"
+    assert "interpolation_bounds_error" in params_dict
+    assert params_dict["interpolation_bounds_error"] is False
+    assert "interpolation_fill_value" in params_dict
+    assert np.isnan(params_dict["interpolation_fill_value"])
 
     # default met params
     assert params_dict["downselect_met"] is True
@@ -294,13 +296,14 @@ def test_model_flight_init(met_era5_fake: MetDataset) -> None:
     model = ModelTestFlight(met_era5_fake)
     assert model.name == "flight"
     assert model.long_name == "my flight model"
-    assert "param1" in model.params and model.params["param1"] == "param1"
-    assert "param2" in model.params and model.params["param2"] == 1
+    assert "param1" in model.params
+    assert model.params["param1"] == "param1"
+    assert "param2" in model.params
+    assert model.params["param2"] == 1
 
     # default params get set
-    assert (
-        "interpolation_method" in model.params and model.params["interpolation_method"] == "linear"
-    )
+    assert "interpolation_method" in model.params
+    assert model.params["interpolation_method"] == "linear"
 
     # override params via `params` dict and kwargs
     model = ModelTestFlight(
@@ -335,7 +338,8 @@ def test_model_flight_met_not_copied(met_era5_fake: MetDataset) -> None:
     assert flight_model.met is met_era5_fake
 
     met_era5_fake.data = met_era5_fake.data.rename({"air_temperature": "renamed"})
-    assert "air_temperature" not in flight_model.met.data and "renamed" in flight_model.met.data
+    assert "air_temperature" not in flight_model.met.data
+    assert "renamed" in flight_model.met.data
 
 
 def test_model_flight_eval(met_era5_fake: MetDataset, flight_fake: Flight) -> None:

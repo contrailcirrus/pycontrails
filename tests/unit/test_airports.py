@@ -18,7 +18,7 @@ else:
     offline = False
 
 
-@pytest.fixture
+@pytest.fixture()
 def airport_database() -> pd.DataFrame:
     """Download copy of airport database."""
     return airports.global_airport_database()
@@ -70,7 +70,7 @@ def test_invalid_altitude(airport_database: pd.DataFrame) -> None:
     latitude = 51.6
     altitude = 5000
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"Altitude \(5000 m\) is too high"):
         airports.find_nearest_airport(airport_database, longitude, latitude, altitude)
 
 

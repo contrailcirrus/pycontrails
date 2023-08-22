@@ -44,7 +44,7 @@ def assign_random_t_and_q(vector: GeoVectorDataset, rng: np.random.Generator) ->
     return vector
 
 
-@pytest.fixture
+@pytest.fixture()
 def vector(rng: np.random.Generator) -> GeoVectorDataset:
     """Create vector on which to run humidity scaling."""
     n = 100
@@ -238,7 +238,7 @@ def test_scalers_pass_nan_through(vector: GeoVectorDataset, scaler_cls: type) ->
         assert np.isfinite(vector["specific_humidity"][66])
 
 
-@pytest.fixture
+@pytest.fixture()
 def custom() -> VectorDataset:
     """Create custom VectorDataset for testing ExponentialBoostLatitudeCorrectionHumidityScaling."""
     # Data from Roger: uncorrected and correct RHi values
@@ -302,7 +302,7 @@ def ensemble_q(met_issr: MetDataset) -> list[MetDataArray]:
     return q_ens
 
 
-@pytest.fixture
+@pytest.fixture()
 def ensemble_vector(met_issr: MetDataset) -> GeoVectorDataset:
     """Construct a vector in bounds of the ensemble."""
 
