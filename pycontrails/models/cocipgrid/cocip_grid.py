@@ -1861,7 +1861,8 @@ def advect(
 
     if dt_tail is None or dt_head is None:
         assert _is_segment_free_mode(contrail)
-        assert dt_tail is None and dt_head is None
+        assert dt_tail is None
+        assert dt_head is None
         return GeoVectorDataset(data, attrs=contrail.attrs, copy=True)
 
     longitude_head = contrail["longitude_head"]
