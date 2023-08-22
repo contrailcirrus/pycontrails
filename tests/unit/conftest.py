@@ -32,7 +32,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-@pytest.fixture
+@pytest.fixture()
 def regenerate_results(request: pytest.FixtureRequest) -> bool:
     """Regenerate static test results in tests that use them."""
     return request.config.getoption("--regenerate-results")
@@ -209,7 +209,7 @@ def met_issr(met_ecmwf_pl_path: str) -> MetDataset:
     return MetDataset(ds)
 
 
-@pytest.fixture
+@pytest.fixture()
 def met_cocip1() -> MetDataset:
     """ERA5 Meteorology to run cocip with ``flight_cocip1``.
 
@@ -221,7 +221,7 @@ def met_cocip1() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad_cocip1() -> MetDataset:
     """ERA5 radiation data to run cocip with ``flight_cocip1``.
 
@@ -247,21 +247,21 @@ def rad_cocip1_module_scope() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def met_cocip2() -> MetDataset:
     """ERA5 meteorology to run cocip with ``flight-cocip2.csv``."""
     _path = get_static_path("met-era5-cocip2.nc")
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad_cocip2() -> MetDataset:
     """ERA5 radiation data to run cocip with ``flight-cocip2.csv``."""
     _path = get_static_path("rad-era5-cocip2.nc")
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def met_gfs() -> MetDataset:
     """
     Load GFS met example.
@@ -272,7 +272,7 @@ def met_gfs() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad_gfs() -> MetDataset:
     """
     Load GFS rad example.
@@ -283,7 +283,7 @@ def rad_gfs() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture(scope="function")  # keep function scoped
+@pytest.fixture()  # keep function scoped
 def met_era5_fake() -> MetDataset:
     """Create a fake ERA5 MetDataset."""
     shape = (360, 181, 7, 4)
@@ -308,7 +308,7 @@ def met_era5_fake() -> MetDataset:
     return MetDataset(ds)
 
 
-@pytest.fixture
+@pytest.fixture()
 def flight_cocip1() -> Flight:
     """Keep at function scope (default)."""
     # demo synthetic flight
@@ -333,7 +333,7 @@ def flight_cocip1() -> Flight:
     return Flight(df, attrs=attrs)
 
 
-@pytest.fixture
+@pytest.fixture()
 def flight_cocip2() -> Flight:
     """Test flight for cocip outputs.
 
@@ -358,7 +358,7 @@ def flight_meridian() -> Flight:
     return Flight(df)
 
 
-@pytest.fixture(scope="function")  # keep function scoped
+@pytest.fixture()  # keep function scoped
 def flight_fake() -> Flight:
     """Fake Flight fixture."""
     n_waypoints = 500
@@ -375,7 +375,7 @@ def flight_fake() -> Flight:
     return Flight(df, attrs=dict(destination="SLC", flight_id="abcde"))
 
 
-@pytest.fixture
+@pytest.fixture()
 def bada_model() -> AircraftPerformance:
     """Construct generic ``BADAFlight`` trajectory AP model."""
 
@@ -388,7 +388,7 @@ def bada_model() -> AircraftPerformance:
     return BADAFlight(params=params)
 
 
-@pytest.fixture
+@pytest.fixture()
 def bada_grid_model() -> AircraftPerformanceGrid:
     """Construct generic ``BADAGrid`` gridded AP model."""
 
@@ -401,7 +401,7 @@ def bada_grid_model() -> AircraftPerformanceGrid:
     return BADAGrid(params=params)
 
 
-@pytest.fixture
+@pytest.fixture()
 def polygon_bug() -> MetDataArray:
     """Read the polygon bug example."""
     _path = get_static_path("polygon-bug.nc")

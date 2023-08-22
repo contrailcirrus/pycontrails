@@ -41,7 +41,7 @@ def test_GFSForecast_init() -> None:
     assert gfs.forecast_time == datetime(2022, 3, 1, 18)
 
     # unsupported pressure levels
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Input time bounds must have length"):
         GFSForecast(time=[], variables=[], pressure_levels=[17, 18, 19])
 
     # grid strings

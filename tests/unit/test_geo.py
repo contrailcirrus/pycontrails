@@ -12,7 +12,7 @@ from pycontrails.physics import constants, geo
 from .conftest import get_static_path
 
 
-@pytest.fixture
+@pytest.fixture()
 def rand_geo_data():
     rng = np.random.default_rng(1234)
     n_pts = 100000
@@ -23,7 +23,7 @@ def rand_geo_data():
     return {"lons": lons, "lats": lats, "az": az, "dist": dist}
 
 
-@pytest.fixture
+@pytest.fixture()
 def geod() -> pyproj.Geod:
     return pyproj.Geod(a=constants.radius_earth)
 
@@ -92,7 +92,8 @@ def test_segment_angle(geod: pyproj.Geod):
     latitude = np.cumsum(latitude)
 
     # stays within bounds
-    assert latitude.max() < 90 and latitude.min() > -90
+    assert latitude.max() < 90
+    assert latitude.min() > -90
 
     sin, cos = geo.segment_angle(longitude, latitude)
     assert np.isnan(cos[-1])

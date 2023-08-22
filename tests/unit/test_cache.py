@@ -62,11 +62,13 @@ class TestDiskCacheStore:
         _cache = DiskCacheStore(cache_dir=f"{DISK_CACHE_DIR}/test", allow_clear=True)
         _cache.clear()
         size = _cache.size
-        assert isinstance(size, float) and size == 0
+        assert isinstance(size, float)
+        assert size == 0
 
         _cache.put("README.md")
         size = _cache.size
-        assert isinstance(size, float) and size > 0
+        assert isinstance(size, float)
+        assert size > 0
 
         assert _cache.listdir() == ["README.md"]
 
@@ -207,10 +209,8 @@ class TestGCPCacheStore:
         _disk_cache = DiskCacheStore(cache_dir=f"{DISK_CACHE_DIR}/{CACHE_DIR}")
         _cache = GCPCacheStore(bucket=BUCKET, disk_cache=_disk_cache)
         assert _cache.bucket == BUCKET
-        assert (
-            ".gcp" not in _cache._disk_cache.cache_dir
-            and f"{CACHE_DIR}" in _cache._disk_cache.cache_dir
-        )
+        assert ".gcp" not in _cache._disk_cache.cache_dir
+        assert f"{CACHE_DIR}" in _cache._disk_cache.cache_dir
 
     def test_cache_size(self) -> None:
         _cache = GCPCacheStore(
@@ -218,11 +218,13 @@ class TestGCPCacheStore:
         )
         _cache._dangerous_clear(confirm=True)
         size = _cache.size
-        assert isinstance(size, float) and size == 0
+        assert isinstance(size, float)
+        assert size == 0
 
         _cache.put("README.md")
         size = _cache.size
-        assert isinstance(size, float) and size > 0
+        assert isinstance(size, float)
+        assert size > 0
 
     def test_cache_allow_clear(self) -> None:
         """Only allowed through _dangerous_clear."""

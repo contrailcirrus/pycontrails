@@ -168,7 +168,8 @@ def test_normalised_aircraft_performance_curves() -> None:
     i_max = np.argmax(eta_over_eta_b)
 
     # Global maximum of `eta_over_eta_b` should occur where `c_t_over_c_t_eta_b` is equal to 1
-    assert (c_t_over_c_t_eta_b[i_max] > 0.99) and (c_t_over_c_t_eta_b[i_max] < 1.01)
+    assert c_t_over_c_t_eta_b[i_max] > 0.99
+    assert c_t_over_c_t_eta_b[i_max] < 1.01
 
 
 @pytest.mark.parametrize("load_factor", [0.5, 0.6, 0.7, 0.8])

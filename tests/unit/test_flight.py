@@ -147,10 +147,14 @@ def test_flight_properties(fl: Flight) -> None:
 
     # test coords
     assert isinstance(fl.coords, dict)
-    assert "longitude" in fl.coords and fl.coords["longitude"] is fl.data["longitude"]
-    assert "latitude" in fl.coords and fl.coords["latitude"] is fl.data["latitude"]
-    assert "time" in fl.coords and fl.coords["time"] is fl.data["time"]
-    assert "level" in fl.coords and np.all(fl.coords["level"] == fl.level)
+    assert "longitude" in fl.coords
+    assert fl.coords["longitude"] is fl.data["longitude"]
+    assert "latitude" in fl.coords
+    assert fl.coords["latitude"] is fl.data["latitude"]
+    assert "time" in fl.coords
+    assert fl.coords["time"] is fl.data["time"]
+    assert "level" in fl.coords
+    assert np.all(fl.coords["level"] == fl.level)
 
 
 def test_flight_hashable(fl: Flight) -> None:
@@ -162,15 +166,20 @@ def test_flight_empty() -> None:
     fl = Flight.create_empty(attrs=dict(equip="A359"))
 
     assert isinstance(fl.data, dict)
-    assert "longitude" in fl.data and len(fl.data["longitude"]) == 0
-    assert "latitude" in fl.data and len(fl.data["latitude"]) == 0
-    assert "altitude" in fl.data and len(fl.data["altitude"]) == 0
-    assert "time" in fl.data and len(fl.data["time"]) == 0
+    assert "longitude" in fl.data
+    assert len(fl.data["longitude"]) == 0
+    assert "latitude" in fl.data
+    assert len(fl.data["latitude"]) == 0
+    assert "altitude" in fl.data
+    assert len(fl.data["altitude"]) == 0
+    assert "time" in fl.data
+    assert len(fl.data["time"]) == 0
     assert len(fl.air_pressure) == 0
     assert len(fl.level) == 0
 
     assert fl.attrs["crs"] == "EPSG:4326"
-    assert isinstance(fl.constants, dict) and fl.constants == fl.attrs
+    assert isinstance(fl.constants, dict)
+    assert fl.constants == fl.attrs
 
     assert not fl
 
@@ -451,7 +460,8 @@ def test_altitude_interpolation(fl: Flight) -> None:
     fl_alt["extrakey"] = np.linspace(0, 10, 10)
     fl_alt["level"] = fl_alt.level
     fl16 = fl_alt.resample_and_fill("1T", drop=False)
-    assert "extrakey" in fl16 and np.any(np.isnan(fl16["extrakey"]))
+    assert "extrakey" in fl16
+    assert np.any(np.isnan(fl16["extrakey"]))
     assert "level" not in fl16
 
     fl17 = fl_alt.resample_and_fill("1T")
@@ -568,7 +578,7 @@ def test_antimeridian_jump() -> None:
     df["longitude"] = [-177, -179, 179, -178]
     fl = Flight(df)
     # jumps antimeridian twice
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Only implemented for trajectories jumping"):
         fl.to_geojson_multilinestring("issr", split_antimeridian=True)
 
 
@@ -599,7 +609,8 @@ def test_segment_properties(fl: Flight, rng: np.random.Generator) -> None:
     # segment ground airspeed
     segment_groundspeed = fl.segment_groundspeed()
     assert len(segment_groundspeed) == len(fl)
-    assert np.nanmin(segment_groundspeed) > 0 and np.nanmax(segment_groundspeed) <= 300
+    assert np.nanmin(segment_groundspeed) > 0
+    assert np.nanmax(segment_groundspeed) <= 300
     assert np.isnan(segment_groundspeed[-1])
 
     # segment true airspeed

@@ -12,7 +12,7 @@ from pycontrails.models.dry_advection import DryAdvection
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 
 
-@pytest.fixture
+@pytest.fixture()
 def source(met_cocip1: MetDataset) -> GeoVectorDataset:
     """Return a GeoVectorDataset."""
 

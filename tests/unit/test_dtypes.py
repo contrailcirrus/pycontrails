@@ -17,7 +17,7 @@ from pycontrails.models.sac import SAC
 from pycontrails.physics import units
 
 
-@pytest.fixture
+@pytest.fixture()
 def met(met_ecmwf_pl_path: str) -> MetDataset:
     """Create a MetDataset for testing."""
     ds1 = xr.open_dataset(met_ecmwf_pl_path)

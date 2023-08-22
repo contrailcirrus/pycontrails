@@ -207,7 +207,8 @@ def test_vector_attrs(random_path: VectorDataset) -> None:
     # setdefault has special behavior to overwrite None
     vds.attrs["none"] = None
     default = vds.attrs.setdefault("none", "value")
-    assert vds.attrs["none"] == "value" and default == "value"
+    assert vds.attrs["none"] == "value"
+    assert default == "value"
 
 
 def test_vector_not_dict_like(random_path: VectorDataset) -> None:

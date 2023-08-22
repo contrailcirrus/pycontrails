@@ -48,11 +48,11 @@ def test_ERA5_time_input() -> None:
     assert era5.timesteps == [datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 1)]
 
     # throw ValueError for length == 0
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Input time bounds must have length"):
         ERA5(time=[], variables=["vo"], pressure_levels=[200])
 
     # throw ValueError for length > 2
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Input time bounds must have length"):
         ERA5(
             time=[datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0)],
             variables=["vo"],
@@ -107,7 +107,7 @@ def test_ERA5_time_input() -> None:
 
 def test_ERA5_inputs() -> None:
     """Test ERA5 __init__."""
-    with pytest.raises(ValueError):  # bad pressure levels
+    with pytest.raises(ValueError, match="Input time bounds must have length"):
         ERA5(time=[], variables=[], pressure_levels=[17, 18, 19])
 
     e1 = ERA5(time=datetime(2000, 1, 1), variables="vo", pressure_levels=200)
@@ -192,7 +192,8 @@ def test_ERA5_pressure_levels(met_ecmwf_pl_path: str, override_cache: DiskCacheS
     assert 300 in era5.pressure_levels
     assert AirTemperature in era5.pressure_level_variables
     assert AirTemperature in era5.supported_variables
-    assert isinstance(era5._cachepaths[0], str) and "2019" in era5._cachepaths[0]
+    assert isinstance(era5._cachepaths[0], str)
+    assert "2019" in era5._cachepaths[0]
 
     # load
     era5 = ERA5(
@@ -210,7 +211,8 @@ def test_ERA5_pressure_levels(met_ecmwf_pl_path: str, override_cache: DiskCacheS
     assert met.data["relative_humidity"].attrs["long_name"] == "Relative humidity"
     assert met.data["relative_humidity"].attrs.get("_pycontrails_modified", False)
     assert met.data["relative_humidity"].attrs["units"] == "[0 - 1]"
-    assert 250 in met.data["level"] and 200 not in met.data["level"]
+    assert 250 in met.data["level"]
+    assert 200 not in met.data["level"]
     assert met.data.longitude.min().values == -160
 
     # consistency
@@ -232,7 +234,8 @@ def test_ERA5_single_levels(met_ecmwf_sl_path: str, override_cache: DiskCacheSto
     # properties
     assert SurfacePressure in era5.single_level_variables
     assert SurfacePressure in era5.supported_variables
-    assert isinstance(era5._cachepaths[0], str) and "2019" in era5._cachepaths[0]
+    assert isinstance(era5._cachepaths[0], str)
+    assert "2019" in era5._cachepaths[0]
 
     # load
     era5 = ERA5(time=times, variables=variables, paths=met_ecmwf_sl_path, cachestore=override_cache)
@@ -242,7 +245,8 @@ def test_ERA5_single_levels(met_ecmwf_sl_path: str, override_cache: DiskCacheSto
     # preprocess
     assert met.data.attrs["pycontrails_version"] == "0.34.0"
     assert "surface_air_pressure" in met.data
-    assert -1 in met.data["level"] and 200 not in met.data["level"]
+    assert -1 in met.data["level"]
+    assert 200 not in met.data["level"]
     assert met.data.longitude.min().values == -160
 
     # consistency
@@ -319,7 +323,8 @@ def test_ERA5_paths_without_time(
     )
     metpl = era5pl.open_metdataset()
     ds = xr.open_dataset(met_ecmwf_pl_path)  # open manually for comparison
-    assert era5pl.timesteps and len(era5pl.timesteps) == len(ds["time"])
+    assert era5pl.timesteps
+    assert len(era5pl.timesteps) == len(ds["time"])
     assert (metpl.data["time"].values == ds["time"].values).all()
 
     # allow cache to be None
@@ -392,7 +397,8 @@ def test_ERA5_dataset(met_ecmwf_pl_path: str, met_ecmwf_sl_path: str) -> None:
     metpl = era5pl.open_metdataset(dataset=dspl)
 
     assert metpl.data.attrs["pycontrails_version"] == "0.34.0"
-    assert 250 in metpl.data["level"].values and 300 in metpl.data["level"].values
+    assert 250 in metpl.data["level"].values
+    assert 300 in metpl.data["level"].values
 
     dssl = xr.open_dataset(met_ecmwf_sl_path)
     era5sl = ERA5(time=times, variables=["surface_air_pressure"])
@@ -441,7 +447,7 @@ def test_HRES_repr() -> None:
 
 def test_HRES_inputs() -> None:
     """Test HRES time parsing."""
-    with pytest.raises(ValueError):  # bad pressure levels
+    with pytest.raises(ValueError, match="Input time bounds must have length"):
         HRES(time=[], variables=[], pressure_levels=[17, 18, 19])
 
     times = (datetime(2019, 5, 31, 2, 29), datetime(2019, 5, 31, 4, 29))
@@ -506,13 +512,13 @@ def test_HRES_dissemination_filename() -> None:
     assert forecast_time_str == "A1S12010600120106011"
 
     # forecast time error
+    forecast_time = datetime(2022, 12, 1, 2)
+    timestep = datetime(2022, 12, 1, 6)
     with pytest.raises(ValueError, match="hour 0, 6, 12"):
-        forecast_time = datetime(2022, 12, 1, 2)
-        timestep = datetime(2022, 12, 1, 6)
-        forecast_time_str = get_forecast_filename(forecast_time, timestep)
+        get_forecast_filename(forecast_time, timestep)
 
     # timestep before forecast
+    forecast_time = datetime(2022, 12, 2, 0)
+    timestep = datetime(2022, 12, 1, 6)
     with pytest.raises(ValueError, match="timestep must be on or after forecast time"):
-        forecast_time = datetime(2022, 12, 2, 0)
-        timestep = datetime(2022, 12, 1, 6)
-        forecast_time_str = get_forecast_filename(forecast_time, timestep)
+        get_forecast_filename(forecast_time, timestep)
