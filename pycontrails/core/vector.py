@@ -1094,6 +1094,9 @@ class GeoVectorDataset(VectorDataset):
     altitude : npt.ArrayLike, optional
         Altitude data, [:math:`m`].
         Defaults to None.
+    altitude_ft : npt.ArrayLike, optional
+        Altitude data, [:math:`ft`].
+        Defaults to None.
     level : npt.ArrayLike, optional
         Level data, [:math:`hPa`].
         Defaults to None.
@@ -1134,6 +1137,7 @@ class GeoVectorDataset(VectorDataset):
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,
+        altitude_ft: npt.ArrayLike | None = None,
         level: npt.ArrayLike | None = None,
         time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | AttrDict | None = None,
@@ -1166,8 +1170,17 @@ class GeoVectorDataset(VectorDataset):
 
         if altitude is not None:
             self["altitude"] = np.array(altitude, copy=copy)
-
-        if level is not None:
+            if altitude_ft is not None or level is not None:
+                warnings.warn(
+                    "Altitude data provided. Ignoring altitude_ft and level inputs.",
+                )
+        elif altitude_ft is not None:
+            self["altitude_ft"] = np.array(altitude_ft, copy=copy)
+            if level is not None:
+                warnings.warn(
+                    "Altitude_ft data provided. Ignoring level input.",
+                )
+        elif level is not None:
             self["level"] = np.array(level, copy=copy)
 
         # Confirm that input has required keys

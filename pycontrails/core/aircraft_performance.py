@@ -527,10 +527,12 @@ class AircraftPerformanceGrid(Model):
     """
 
     @overload
+    @abc.abstractmethod
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
         ...
 
     @overload
+    @abc.abstractmethod
     def eval(self, source: MetDataset | None = None, **params: Any) -> MetDataset:
         ...
 
