@@ -1,6 +1,29 @@
 
 # Changelog
 
+## v0.47.0
+
+Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a grid.
+
+### Breaking changes
+
+- Move the `pycontrails.models.aircraft_performance` module to `pycontrails.core.aircraft_performance`.
+
+### Features
+
+- Implement the `PSGrid` model. For a given aircraft type and position, this model computes optimal aircraft performance at cruise conditions. In particular, this model can be used to estimate fuel flow, engine efficiency, and aircraft mass at cruise. In particular, the `PSGrid` model can now be used in conjunction with `CocipGrid` to simulate contrail formation over a grid.
+- Refactor the `Emissions` model so that `Emissions.eval` runs with `source: GeoVectorDataset`. Previously, the `eval` method required a `Flight` instance for the `source` parameter. This change allows the `Emissions` model to run more seamlessly as a sub-model of a gridded model (ie, `CocipGrid`),
+- No longer require `pycontrails-bada` to import or run the `CocipGrid` model. Instead, the `CocipGridParams.aircraft_performance` parameter can be set to any `AircraftPerformanceGrid` instance. This allows the `CocipGrid` model to run with any aircraft performance model that implements the `AircraftPerformanceGrid` interface.
+
+### Internals
+
+- Add optional `climb_descend_at_end` parameter to the `Flight.resample_and_fill` method. If True, the climb or descent will be placed at the end of each segment rather than the start.
+- Define `AircraftPerformanceGridParams`, `AircraftPerformanceGrid`, and `AircraftPerformanceGridData` abstract interfaces for gridded aircraft performance models.
+- Add `set_attr` parameter to `Models.get_source_param`.
+- Better handle `source`, `source.attrs`, and `params` customizations in `CocipGrid`.
+- Include additional classes and functions in the `pycontrails.models.emissions` module.
+- Hardcode the paths to the static data files used in the `Emissions` and `PSModel` models. Previously these were configurable by model parameters.
+
 ## v0.46.0
 
 Support "dry advection" simulation.
