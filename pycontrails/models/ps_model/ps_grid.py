@@ -28,6 +28,14 @@ from pycontrails.utils.types import ArrayOrFloat
 # mypy: disable-error-code = type-var
 
 
+@dataclasses.dataclass
+class PSGridParams(AircraftPerformanceGridParams):
+    """Parameters for :class:`PSGrid`."""
+
+    #: Passed into :func:`ps_nominal_grid`
+    maxiter: int = 10
+
+
 class PSGrid(AircraftPerformanceGrid):
     """Compute nominal Poll-Schumann aircraft performance over a grid.
 
@@ -50,7 +58,7 @@ class PSGrid(AircraftPerformanceGrid):
     name = "PSGrid"
     long_name = "Poll-Schumann Aircraft Performance evaluated at arbitrary points"
     met_variables = (AirTemperature,)
-    default_params = AircraftPerformanceGridParams
+    default_params = PSGridParams
 
     met: MetDataset
     source: GeoVectorDataset
@@ -126,6 +134,7 @@ class PSGrid(AircraftPerformanceGrid):
                 air_temperature=self.source.data["air_temperature"],
                 q_fuel=q_fuel,
                 mach_number=mach_number,
+                maxiter=self.params["maxiter"],
             )
             return MetDataset(ds)
 
@@ -136,6 +145,7 @@ class PSGrid(AircraftPerformanceGrid):
             air_temperature=air_temperature,
             q_fuel=q_fuel,
             mach_number=mach_number,
+            maxiter=self.params["maxiter"],
         )
 
         # Set the source data
@@ -315,6 +325,7 @@ def ps_nominal_grid(
     air_temperature: xr.DataArray | npt.NDArray[np.float_] | None = None,
     q_fuel: float = JetA.q_fuel,
     mach_number: float | None = None,
+    maxiter: int = PSGridParams.maxiter,
 ) -> xr.Dataset:
     """Calculate the nominal performance grid for a given aircraft type.
 
@@ -339,6 +350,8 @@ def ps_nominal_grid(
         The fuel heating value, by default :attr:`JetA.q_fuel`
     mach_number : float | None, optional
         The Mach number. If None (default), the PS design Mach number is used.
+    maxiter : int, optional
+        Passed into :func:`scipy.optimize.newton`.
 
     Returns
     -------
@@ -417,6 +430,7 @@ def ps_nominal_grid(
         x0=x0,
         tol=1.0,
         disp=False,
+        maxiter=maxiter,
     )
 
     aircraft_mass.clip(min=min_mass, max=max_mass, out=aircraft_mass)
