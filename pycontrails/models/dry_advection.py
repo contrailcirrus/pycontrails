@@ -89,11 +89,15 @@ class DryAdvection(models.Model):
     source: GeoVectorDataset
 
     @overload
-    def eval(self, source: None = None, **params: Any) -> NoReturn:
+    def eval(self, source: Flight, **params: Any) -> Flight:
         ...
 
     @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
+        ...
+
+    @overload
+    def eval(self, source: None = ..., **params: Any) -> NoReturn:
         ...
 
     def eval(self, source: GeoVectorDataset | None = None, **params: Any) -> GeoVectorDataset:

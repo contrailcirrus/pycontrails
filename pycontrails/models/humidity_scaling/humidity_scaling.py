@@ -878,11 +878,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         ...
 
     @overload
-    def eval(self, source: MetDataset, **params: Any) -> NoReturn:
-        ...
-
-    @overload
-    def eval(self, source: None = ..., **params: Any) -> NoReturn:
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> NoReturn:
         ...
 
     def eval(

@@ -66,7 +66,7 @@ class SAC(Model):
         ...
 
     @overload
-    def eval(self, source: MetDataset | None = None, **params: Any) -> MetDataArray:
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataArray:
         ...
 
     def eval(

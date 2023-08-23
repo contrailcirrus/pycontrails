@@ -300,9 +300,8 @@ class Cocip(Model):
     def eval(self, source: Sequence[Flight], **params: Any) -> list[Flight]:
         ...
 
-    # This is only included for type consistency with parent. This will raise.
     @overload
-    def eval(self, source: None = None, **params: Any) -> NoReturn:
+    def eval(self, source: None = ..., **params: Any) -> NoReturn:
         ...
 
     def eval(
@@ -1428,7 +1427,7 @@ def _eval_emissions(emissions: Emissions, flight: Flight) -> Flight:
     emissions_outputs = "nvpm_ei_n"
     if flight.ensure_vars(emissions_outputs, False):
         return flight
-    return emissions.eval(source=flight, copy_source=False)  # type: ignore[return-value]
+    return emissions.eval(source=flight, copy_source=False)
 
 
 def calc_continuous(contrail: GeoVectorDataset) -> None:

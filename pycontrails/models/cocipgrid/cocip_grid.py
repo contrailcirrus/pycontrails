@@ -131,7 +131,7 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         ...
 
     @overload
-    def eval(self, source: None = None, **params: Any) -> NoReturn:
+    def eval(self, source: None = ..., **params: Any) -> NoReturn:
         ...
 
     def eval(

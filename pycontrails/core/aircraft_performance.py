@@ -69,7 +69,7 @@ class AircraftPerformance(Model):
 
     @abc.abstractmethod
     @overload
-    def eval(self, source: None = None, **params: Any) -> NoReturn:
+    def eval(self, source: None = ..., **params: Any) -> NoReturn:
         ...
 
     @abc.abstractmethod
@@ -533,7 +533,7 @@ class AircraftPerformanceGrid(Model):
 
     @overload
     @abc.abstractmethod
-    def eval(self, source: MetDataset | None = None, **params: Any) -> MetDataset:
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataset:
         ...
 
     @abc.abstractmethod

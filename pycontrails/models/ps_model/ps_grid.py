@@ -68,7 +68,7 @@ class PSGrid(AircraftPerformanceGrid):
         ...
 
     @overload
-    def eval(self, source: MetDataset | None = None, **params: Any) -> MetDataset:
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataset:
         ...
 
     def eval(
