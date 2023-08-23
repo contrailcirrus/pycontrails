@@ -5,6 +5,7 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import pytest
 
@@ -57,8 +58,8 @@ def random_geo_path() -> GeoVectorDataset:
         return GeoVectorDataset(data=data, attrs=attrs, copy=False)
 
 
-def test_vector_init() -> None:
-    """VectorDataset __init__."""
+def test_vector_init_dict() -> None:
+    """VectorDataset.__init__."""
 
     # test constructor
     data = {
@@ -78,6 +79,10 @@ def test_vector_init() -> None:
 
     assert vds.attrs is not attrs
     assert vds.attrs["test"] == attrs["test"]
+
+
+def test_vector_init_dictlike() -> None:
+    """VectorDataset.__init__."""
 
     # it will acceptVectorDataDict/AttrDict input, but still copy
     data = VectorDataDict(
@@ -346,88 +351,185 @@ def test_sort() -> None:
     assert np.all(sorted_vds["c"] == np.array([1, 10, 3, 2]))
 
 
-def test_geovector_init() -> None:
-    """Test GeoVectorDataset.__init__()."""
+@pytest.fixture()
+def coords() -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
+    """Return coordinates for testing."""
+
     longitude = np.linspace(0, 50, 100)
     latitude = np.linspace(0, 10, 100)
     time = pd.date_range("2019-01-01 00:00:00", "2019-01-01 02:00:00", periods=100)
+    return longitude, latitude, time
 
-    # with altitude
+
+def test_geovector_init_altitude(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with altitude."""
+
+    longitude, latitude, time = coords
     altitude = np.linspace(11000, 11500, 100)
+
     gvds = GeoVectorDataset(longitude=longitude, latitude=latitude, altitude=altitude, time=time)
+
     assert gvds["longitude"] is not longitude
     assert gvds["latitude"] is not latitude
     assert gvds["altitude"] is not altitude
     assert gvds["time"] is not time
-    assert np.all(gvds["longitude"] == longitude)
-    assert np.all(gvds["latitude"] == latitude)
-    assert np.all(gvds["altitude"] == altitude)
-    assert np.all(gvds["time"] == time)
-    assert "level" not in gvds
 
-    # with level
+    np.testing.assert_array_equal(gvds["longitude"], longitude)
+    np.testing.assert_array_equal(gvds["latitude"], latitude)
+    np.testing.assert_array_equal(gvds["altitude"], altitude)
+    np.testing.assert_array_equal(gvds["time"], time)
+
+    assert "level" not in gvds
+    assert "altitude_ft" not in gvds
+
+
+def test_geovector_init_level(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with level."""
+
+    longitude, latitude, time = coords
     level = np.linspace(250, 300, 100)
+
     gvds = GeoVectorDataset(longitude=longitude, latitude=latitude, level=level, time=time)
+
     assert gvds["longitude"] is not longitude
     assert gvds["latitude"] is not latitude
     assert gvds["level"] is not level
     assert gvds["time"] is not time
-    assert np.all(gvds["longitude"] == longitude)
-    assert np.all(gvds["latitude"] == latitude)
-    assert np.all(gvds["level"] == level)
-    assert np.all(gvds["time"] == time)
-    assert "altitude" not in gvds
 
-    # dataframe
+    np.testing.assert_array_equal(gvds["longitude"], longitude)
+    np.testing.assert_array_equal(gvds["latitude"], latitude)
+    np.testing.assert_array_equal(gvds["level"], level)
+    np.testing.assert_array_equal(gvds["time"], time)
+
+    assert "altitude" not in gvds
+    assert "altitude_ft" not in gvds
+
+
+def test_geovector_init_altitude_ft(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with altitude_ft."""
+
+    longitude, latitude, time = coords
+    altitude_ft = np.linspace(25000, 40000, 100)
+
+    gvds = GeoVectorDataset(
+        longitude=longitude, latitude=latitude, altitude_ft=altitude_ft, time=time
+    )
+
+    assert gvds["longitude"] is not longitude
+    assert gvds["latitude"] is not latitude
+    assert gvds["altitude_ft"] is not altitude_ft
+    assert gvds["time"] is not time
+
+    np.testing.assert_array_equal(gvds["longitude"], longitude)
+    np.testing.assert_array_equal(gvds["latitude"], latitude)
+    np.testing.assert_array_equal(gvds["altitude_ft"], altitude_ft)
+    np.testing.assert_array_equal(gvds["time"], time)
+
+    assert "altitude" not in gvds
+    assert "level" not in gvds
+
+
+def test_geovector_init_redundant(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with redundant keys."""
+
+    longitude, latitude, time = coords
+    altitude = np.linspace(11000, 11500, 100)
+    altitude_ft = np.linspace(25000, 40000, 100)
+
+    with pytest.warns(UserWarning, match="Altitude data provided. Ignoring altitude_ft"):
+        gvds = GeoVectorDataset(
+            longitude=longitude,
+            latitude=latitude,
+            altitude=altitude,
+            altitude_ft=altitude_ft,
+            time=time,
+        )
+
+    np.testing.assert_array_equal(gvds["longitude"], longitude)
+    np.testing.assert_array_equal(gvds["latitude"], latitude)
+    np.testing.assert_array_equal(gvds["altitude"], altitude)
+    np.testing.assert_array_equal(gvds["time"], time)
+
+    assert "altitude_ft" not in gvds
+
+
+def test_geovector_init_dataframe(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with DataFrame."""
+
+    longitude, latitude, time = coords
+
     df = pd.DataFrame()
     df["longitude"] = longitude
     df["latitude"] = latitude
     df["altitude"] = 11000
     df["time"] = time
+
     gvds = GeoVectorDataset(data=df)
     assert gvds["longitude"] is not longitude
     assert gvds["latitude"] is not latitude
-    assert gvds["altitude"] is not altitude
     assert gvds["time"] is not time
-    assert np.all(gvds["longitude"] == longitude)
-    assert np.all(gvds["latitude"] == latitude)
-    assert np.all(gvds["altitude"] == 11000)
-    assert np.all(gvds["time"] == time)
+
+    np.testing.assert_array_equal(gvds["longitude"], longitude)
+    np.testing.assert_array_equal(gvds["latitude"], latitude)
+    np.testing.assert_array_equal(gvds["altitude"], np.full(100, 11000))
+    np.testing.assert_array_equal(gvds["time"], time)
+
+
+def test_geovector_init_mixed(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with mixed input."""
+
+    longitude, latitude, time = coords
+    altitude = np.linspace(11000, 11500, 100)
 
     # mixed
     df = pd.DataFrame()
     df["longitude"] = longitude
     df["latitude"] = latitude
-    gvds = GeoVectorDataset(data=df, altitude=altitude, time=time)
-    assert np.all(gvds["longitude"] == longitude)
-    assert np.all(gvds["latitude"] == latitude)
-    assert np.all(gvds["altitude"] == altitude)
-    assert np.all(gvds["time"] == time)
 
-    # required keys
+    gvds = GeoVectorDataset(data=df, altitude=altitude, time=time)
+
+    np.testing.assert_array_equal(gvds["longitude"], longitude)
+    np.testing.assert_array_equal(gvds["latitude"], latitude)
+    np.testing.assert_array_equal(gvds["altitude"], altitude)
+    np.testing.assert_array_equal(gvds["time"], time)
+
+
+def test_geovector_init_fail_required(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with missing required keys."""
+
+    longitude, latitude, time = coords
     df = pd.DataFrame()
     df["longitude"] = longitude
     df["latitude"] = latitude
-    df["altitude"] = altitude
+    df["altitude"] = 12345
     df["time"] = time
     for col in ["time", "latitude", "longitude"]:
         data = df.drop(col, axis=1)
         with pytest.raises(KeyError, match="GeoVectorDataset requires all of the following"):
             GeoVectorDataset(data=data)
 
+
+def test_geovector_init_fail_incompatible() -> None:
+    """Test GeoVectorDataset.__init__() with incompatible lengths."""
+
     # fail with different lengths
     longitude = np.array([0, 1, 2])
     latitude = np.array([0, 1])
     altitude = np.array([11000, 11200])
     time = pd.date_range("2019-01-01 00:00:00", "2019-01-01 02:00:00", periods=2)
+
+    with pytest.raises(ValueError, match="Incompatible array sizes: 2 and 3"):
+        GeoVectorDataset(longitude=longitude, latitude=latitude, altitude=altitude, time=time)
+
     df = pd.DataFrame()
     df["longitude"] = longitude
+
     with pytest.raises(ValueError, match="Incompatible array sizes: 2 and 3"):
-        gvds = GeoVectorDataset(
-            longitude=longitude, latitude=latitude, altitude=altitude, time=time
-        )
-    with pytest.raises(ValueError, match="Incompatible array sizes: 2 and 3"):
-        gvds = GeoVectorDataset(data=df, latitude=latitude, altitude=altitude, time=time)
+        GeoVectorDataset(data=df, latitude=latitude, altitude=altitude, time=time)
+
+
+def test_geovector_init_warns_convert_time() -> None:
+    """Ensure GeoVectorDataset.__init__() warns when time is not np.datetime64."""
 
     # parse time
     longitude = np.array([0, 1])
@@ -447,12 +549,11 @@ def test_geovector_init() -> None:
     assert np.all(gvds["latitude"] == latitude)
     assert np.all(gvds["altitude"] == altitude)
 
-    # level / altitude keys
-    longitude = np.linspace(0, 50, 100)
-    latitude = np.linspace(0, 10, 100)
-    time = pd.date_range("2019-01-01 00:00:00", "2019-01-01 02:00:00", periods=100)
-    altitude = np.linspace(11000, 11500, 100)
-    level = np.linspace(250, 300, 100)
+
+def test_geovector_init_fail_required_altitude(coords: tuple) -> None:
+    """Test GeoVectorDataset.__init__() with missing required altitude keys."""
+
+    longitude, latitude, time = coords
 
     with pytest.raises(
         KeyError,
@@ -461,7 +562,23 @@ def test_geovector_init() -> None:
             " altitude_ft"
         ),
     ):
-        gvds = GeoVectorDataset(longitude=longitude, latitude=latitude, time=time)
+        GeoVectorDataset(longitude=longitude, latitude=latitude, time=time)
+
+
+def test_geovector_init_dtype():
+    """Ensure GeoVectorDataset.__init__() coerces to float."""
+
+    longitude = np.array([0, 1, 2], dtype=np.int32)
+    latitude = np.array([0, 1, 2], dtype=np.int32)
+    altitude = np.array([11000, 11200, 11300], dtype=np.int32)
+    time = pd.date_range("2019-01-01 00:00:00", "2019-01-01 02:00:00", periods=3)
+
+    gvds = GeoVectorDataset(longitude=longitude, latitude=latitude, altitude=altitude, time=time)
+
+    assert gvds["longitude"].dtype == np.float64
+    assert gvds["latitude"].dtype == np.float64
+    assert gvds["altitude"].dtype == np.float64
+    assert gvds["time"].dtype == np.dtype("datetime64[ns]")
 
 
 def test_geovector_empty() -> None:
@@ -485,29 +602,6 @@ def test_geovector_empty() -> None:
         time=pd.date_range("2019-01-01 00:00:00", "2019-01-01 02:00:00", periods=100),
     )
     assert gv.size == 100
-
-
-def test_geovector_properties() -> None:
-    """Test GeoVectorDataset @property()."""
-    longitude = np.linspace(0, 50, 100)
-    latitude = np.linspace(0, 10, 100)
-    altitude = np.linspace(11000, 11500, 100)
-    time = pd.date_range("2019-01-01 00:00:00", "2019-01-01 02:00:00", periods=100)
-
-    gvds = GeoVectorDataset(longitude=longitude, latitude=latitude, altitude=altitude, time=time)
-    assert gvds
-
-    level = np.linspace(250, 300, 100)
-    gvds = GeoVectorDataset(longitude=longitude, latitude=latitude, level=level, time=time)
-    assert gvds["longitude"] is not longitude
-    assert gvds["latitude"] is not latitude
-    assert gvds["level"] is not level
-    assert gvds["time"] is not time
-    assert np.all(gvds["longitude"] == longitude)
-    assert np.all(gvds["latitude"] == latitude)
-    assert np.all(gvds["level"] == level)
-    assert np.all(gvds["time"] == time)
-    assert "altitude" not in gvds
 
 
 def test_coord_intersect_met(met_issr: MetDataset) -> None:
