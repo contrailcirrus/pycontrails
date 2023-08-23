@@ -1350,7 +1350,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        indices: interpolation.RGIArtifacts | None = None,
+        indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[False] = ...,
     ) -> npt.NDArray[np.float_]:
         ...
@@ -1367,7 +1367,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        indices: interpolation.RGIArtifacts | None = None,
+        indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[True],
     ) -> tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]:
         ...
