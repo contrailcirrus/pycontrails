@@ -1,5 +1,7 @@
 """Simulate aircraft performance using empirical historical data."""
 
+from __future__ import annotations
+
 import dataclasses
 from typing import Any, NoReturn, overload
 
