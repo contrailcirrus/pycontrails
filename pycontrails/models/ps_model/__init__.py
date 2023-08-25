@@ -5,11 +5,11 @@ from pycontrails.models.ps_model.ps_aircraft_params import (
     load_aircraft_engine_params,
 )
 from pycontrails.models.ps_model.ps_grid import PSGrid, ps_nominal_grid
-from pycontrails.models.ps_model.ps_model import PSModel, PSModelParams
+from pycontrails.models.ps_model.ps_model import PSFlight, PSFlightParams
 
 __all__ = [
-    "PSModel",
-    "PSModelParams",
+    "PSFlight",
+    "PSFlightParams",
     "PSAircraftEngineParams",
     "PSGrid",
     "load_aircraft_engine_params",

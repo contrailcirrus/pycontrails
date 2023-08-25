@@ -128,8 +128,8 @@ Aircraft Performance
     :toctree: api/
 
     core.aircraft_performance
-    models.ps_model.PSModelParams
-    models.ps_model.PSModel
+    models.ps_model.PSFlightParams
+    models.ps_model.PSFlight
     models.ps_model.PSGrid
     models.ps_model.PSAircraftEngineParams
     models.ps_model.ps_nominal_grid

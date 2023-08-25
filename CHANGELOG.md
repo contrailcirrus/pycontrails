@@ -8,6 +8,7 @@ Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a gri
 ### Breaking changes
 
 - Move the `pycontrails.models.aircraft_performance` module to `pycontrails.core.aircraft_performance`.
+- Rename `PSModel` -> `PSFlight`.
 
 ### Fixes
 
@@ -29,7 +30,7 @@ Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a gri
 - Add `set_attr` parameter to `Models.get_source_param`.
 - Better handle `source`, `source.attrs`, and `params` customizations in `CocipGrid`.
 - Include additional classes and functions in the `pycontrails.models.emissions` module.
-- Hardcode the paths to the static data files used in the `Emissions` and `PSModel` models. Previously these were configurable by model parameters.
+- Hardcode the paths to the static data files used in the `Emissions` and `PSFlight` models. Previously these were configurable by model parameters.
 - Add `altitude_ft` parameter to the `GeoVectorDataset` constructor. Warn if at least two of `altitude_ft`, `altitude`, and `level` are provided.
 - Allow instantiation of `Model` instances with `params: ModelParams`. Previously, the `params` parameter was required to be a `dict`. The current implementation checks that the `params` parameter is either a `dict` or has type `default_params` on the `Model` class.
 
@@ -87,7 +88,7 @@ Add experimental support for simulating radiative effects due to contrail-contra
 ### Fixes
 
 - Narrow type hints on the ABC `AircraftPerformance` model. The `AircraftPerformance.eval` method requires a `Flight` object for the `source` parameter.
-- In `PSModel.eval`, explicitly set any aircraft performance data at waypoints with zero true airspeed to `np.nan`. This avoids numpy `RuntimeWarning`s without affecting the results.
+- In `PSFlight.eval`, explicitly set any aircraft performance data at waypoints with zero true airspeed to `np.nan`. This avoids numpy `RuntimeWarning`s without affecting the results.
 - Fix corner-case in the `polygon.buffer_and_clean` function in which the polygon created by buffering the `opencv` contour is not valid. Now a second attempt to buffer the polygon is made with a smaller buffer distance.
 - Ignore RuntimeError raised in `scipy.optimize.newton` if the maximum number of iterations is reached before convergence. This is a workaround for occasional false positive convergence warnings. The pycontrails use-case may be related to [this GitHub issue](https://github.com/scipy/scipy/issues/8904).
 - Update the `Models.__init__` warnings when `humidity_scaling` is not provided. The previous warning provided an outdated code example.
@@ -203,7 +204,7 @@ Support for the [Poll-Schumann aircraft performance model](https://doi.org/10.10
 
 - Use `ruff` in place of `pydocstyle` for linting docstrings.
 - Use `ruff` in place of `isort` for sorting imports.
-- Update the `AircraftPerformance` template based on the patterns used in the new `PSModel` class. This may change again in the future.
+- Update the `AircraftPerformance` template based on the patterns used in the new `PSFlight` class. This may change again in the future.
 
 ## v0.43.0
 

@@ -16,7 +16,7 @@ from .conftest import get_static_path
 
 
 def test_aircraft_type_coverage() -> None:
-    ps_model = ps.PSModel()
+    ps_model = ps.PSFlight()
 
     # There are currently 53 aircraft types supported by the PS model
     assert len(ps_model.aircraft_engine_params) == 53
@@ -49,7 +49,7 @@ def test_ps_model() -> None:
     dv_dt = np.array([0.0, 0.0])
 
     # Extract aircraft properties for aircraft type
-    ps_model = ps.PSModel()
+    ps_model = ps.PSFlight()
     atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
 
     # Test Reynolds Number
@@ -148,7 +148,7 @@ def test_normalised_aircraft_performance_curves() -> None:
     air_pressure = units.ft_to_pl(altitude_ft) * 100.0
 
     # Extract aircraft properties for aircraft type
-    ps_model = ps.PSModel()
+    ps_model = ps.PSFlight()
     atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
     mach_num_design_opt = atyp_param.m_des
 
@@ -184,7 +184,7 @@ def test_total_fuel_burn(load_factor: float) -> None:
     flight["true_airspeed"] = units.knots_to_m_per_s(flight["speed"])
 
     # Aircraft performance model
-    ps_model = ps.PSModel()
+    ps_model = ps.PSFlight()
     out = ps_model.eval(flight)
 
     if load_factor == 0.5:
@@ -199,7 +199,7 @@ def test_total_fuel_burn(load_factor: float) -> None:
 
 def test_fuel_clipping() -> None:
     """Check the ps.correct_fuel_flow function."""
-    ps_model = ps.PSModel()
+    ps_model = ps.PSFlight()
     atyp_param = ps_model.aircraft_engine_params["A320"]
 
     # Erroneous fuel flow data
@@ -226,7 +226,7 @@ def test_fuel_clipping() -> None:
 
 
 def test_zero_tas_waypoints() -> None:
-    """Confirm the PSModel gracefully handles waypoints with zero true airspeed."""
+    """Confirm the PSFlight gracefully handles waypoints with zero true airspeed."""
     df_flight = pd.read_csv(get_static_path("flight.csv"))
     df_flight["longitude"].iat[48] = df_flight["longitude"].iat[47]
     df_flight["latitude"].iat[48] = df_flight["latitude"].iat[47]
@@ -239,10 +239,10 @@ def test_zero_tas_waypoints() -> None:
     assert flight["true_airspeed"][47] == 0.0
 
     # Aircraft performance model
-    ps_model = ps.PSModel()
+    ps_model = ps.PSFlight()
     out = ps_model.eval(flight)
 
-    # Confirm the PSModel sets NaN values for the zero TAS waypoint
+    # Confirm the PSFlight sets NaN values for the zero TAS waypoint
     keys = "fuel_flow", "engine_efficiency", "thrust"
     for key in keys:
         assert np.isnan(out[key][47])

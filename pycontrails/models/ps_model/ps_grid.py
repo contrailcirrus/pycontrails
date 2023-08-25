@@ -117,7 +117,7 @@ class PSGrid(AircraftPerformanceGrid):
         if isinstance(self.source, Flight):
             warnings.warn(
                 "The 'PSGrid' model is not intended to support 'Flight' objects as 'source' "
-                "data. Instead, use the 'PSModel'."
+                "data. Instead, use the 'PSFlight' model."
             )
 
         # Extract the relevant source data

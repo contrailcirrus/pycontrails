@@ -30,15 +30,15 @@ from pycontrails.utils.types import ArrayOrFloat
 
 
 @dataclasses.dataclass
-class PSModelParams(AircraftPerformanceParams):
-    """Default parameters for :class:`PSModel`."""
+class PSFlightParams(AircraftPerformanceParams):
+    """Default parameters for :class:`PSFlight`."""
 
     #: Clip the ratio of the overall propulsion efficiency to the maximum propulsion
     #: efficiency to always exceed this value.
     eta_over_eta_b_min: float | None = 0.5
 
 
-class PSModel(AircraftPerformance):
+class PSFlight(AircraftPerformance):
     """Simulate aircraft performance using Poll-Schumann (PS) model.
 
     References
@@ -51,11 +51,11 @@ class PSModel(AircraftPerformance):
     descent and holding. Aero. J., submitted.
     """
 
-    name = "PSModel"
+    name = "PSFlight"
     long_name = "Poll-Schumann Aircraft Performance Model"
     met_variables = (AirTemperature,)
     optional_met_variables = EastwardWind, NorthwardWind
-    default_params = PSModelParams
+    default_params = PSFlightParams
 
     aircraft_engine_params: Mapping[str, PSAircraftEngineParams]
 
