@@ -102,15 +102,12 @@ class Fleet(Flight):
         copy: bool = True,
         attrs: dict[str, Any] | None = None,
     ) -> Fleet:
-        """Instantiate a `Fleet` instance from an iterable of Flight.
-
-        The entire sequence ``seq`` is cast to a list, and so it's preferable for
-        the parameter ``seq`` to come in as a list.
+        """Instantiate a :class:`Fleet` instance from an iterable of :class:`Flight`.
 
         Parameters
         ----------
         seq : Iterable[Flight]
-            An iterable of `Flight` instances.
+            An iterable of :class:`Flight` instances.
         broadcast_numeric : bool, optional
             If True, broadcast numeric attributes to data variables.
         copy : bool, optional
@@ -123,7 +120,8 @@ class Fleet(Flight):
         -------
         Fleet
             A `Fleet` instance made from concatenating the :class:`Flight`
-            instances in ``seq``.
+            instances in ``seq``. The fuel type is taken from the first :class:`Flight`
+            in ``seq``.
         """
         attrs = attrs or {}
         if "fl_attrs" in attrs:
@@ -134,18 +132,19 @@ class Fleet(Flight):
 
         if copy:
             seq = [fl.copy() for fl in seq]
-        else:
+        elif not isinstance(seq, (list, tuple)):
             seq = list(seq)
 
         assert seq, "Cannot create Fleet from empty sequence."
+        fuel = seq[0].fuel
         for fl in seq:
-            cls._validate_fl(fl, seq[0].fuel, attrs, broadcast_numeric)
+            cls._validate_fl(fl, fuel, attrs, broadcast_numeric)
 
         # Surprisingly, it's faster to call np.concatenate on each variable
         # separately then it is to call pd.concat on the sequence of fl.dataframe.
         # We do this concatenation below.
         data = {var: np.concatenate([fl[var] for fl in seq]) for var in attrs["data_keys"]}
-        return cls(data=data, attrs=attrs, copy=False)
+        return cls(data=data, attrs=attrs, copy=False, fuel=fuel)
 
     @staticmethod
     def _validate_fl(
@@ -170,11 +169,11 @@ class Fleet(Flight):
         Raises
         ------
         KeyError
-            `fl` does not have a `flight_id` in :attr:`attrs`.
+            ``fl`` does not have a ``flight_id`` key in :attr:`attrs`.
         ValueError
-            If `flight_id` is duplicated or incompatible CRS found.
+            If ``flight_id`` is duplicated or incompatible CRS found.
         AttributeError
-            If `fuel` is incompatible with other flights.
+            If ``fuel`` is incompatible with other flights.
         """
         # Validate and cache attrs
         try:
@@ -188,7 +187,7 @@ class Fleet(Flight):
 
         # Verify fuel type is consistent across flights
         if fl.fuel != fuel:
-            raise AttributeError(
+            raise ValueError(
                 f"Fuel type on Flight {flight_id} ({fl.fuel.fuel_name}) "
                 f"is not inconsistent with previous flights ({fuel.fuel_name}). "
                 "The `fuel` attributes must be consistent between flights in a Fleet."
