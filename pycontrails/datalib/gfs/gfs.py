@@ -401,7 +401,7 @@ class GFSForecast(datalib.MetDataSource):
         if dataset is not None:
             raise NotImplementedError("GFS data source does not support passing local dataset")
 
-        elif self.paths is not None:
+        if self.paths is not None:
             raise NotImplementedError("GFS data source does not support passing local paths")
 
             # TODO: This should work but i have type issues
@@ -413,24 +413,21 @@ class GFSForecast(datalib.MetDataSource):
             #     self._open_gfs_dataset(filepath, t)
 
         # load from cache or download
-        else:
-            if self.cachestore is None:
-                raise ValueError("Cachestore is required to download data")
+        if self.cachestore is None:
+            raise ValueError("Cachestore is required to download data")
 
-            # confirm files are downloaded any remote (AWS, of Cache)
-            self.download(**xr_kwargs)
+        # confirm files are downloaded any remote (AWS, of Cache)
+        self.download(**xr_kwargs)
 
-            # ensure all files are guaranteed to be available locally here
-            # this would download a file from a remote (e.g. GCP) cache
-            disk_cachepaths = [self.cachestore.get(f) for f in self._cachepaths]
+        # ensure all files are guaranteed to be available locally here
+        # this would download a file from a remote (e.g. GCP) cache
+        disk_cachepaths = [self.cachestore.get(f) for f in self._cachepaths]
 
-            # run MetDataset constructor
-            ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
+        # run MetDataset constructor
+        ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
 
-            # TODO: corner case
-            # If any files are already cached, they will not have the version attached
-            if "pycontrails_version" not in ds.attrs:
-                ds.attrs["pycontrails_version"] = pycontrails.__version__
+        # If any files are already cached, they will not have the version attached
+        ds.attrs.setdefault("pycontrails_version", pycontrails.__version__)
 
         # run the same GFS-specific processing on the dataset
         mds = self._process_dataset(ds, **kwargs)
