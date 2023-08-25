@@ -57,9 +57,11 @@ check-licenses:
 # Extensions
 # -----------
 
+PYCONTRAILS_BADA_DIR = ../pycontrails-bada
+
 dev-pycontrails-bada:
-	git clone git@github.com:contrailcirrus/pycontrails-bada.git ../pycontrails-bada
-	cd ../pycontrails-bada && make dev-install
+	git -C $(PYCONTRAILS_BADA_DIR) pull || git clone git@github.com:contrailcirrus/pycontrails-bada.git $(PYCONTRAILS_BADA_DIR)
+	cd $(PYCONTRAILS_BADA_DIR) && make dev-install
 
 # -----------
 # QC, Test
