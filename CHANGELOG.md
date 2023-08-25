@@ -20,6 +20,7 @@ Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a gri
 - Refactor the `Emissions` model so that `Emissions.eval` runs with `source: GeoVectorDataset`. Previously, the `eval` method required a `Flight` instance for the `source` parameter. This change allows the `Emissions` model to run more seamlessly as a sub-model of a gridded model (ie, `CocipGrid`),
 - No longer require `pycontrails-bada` to import or run the `CocipGrid` model. Instead, the `CocipGridParams.aircraft_performance` parameter can be set to any `AircraftPerformanceGrid` instance. This allows the `CocipGrid` model to run with any aircraft performance model that implements the `AircraftPerformanceGrid` interface.
 - Add experimental `EmpiricalAircraftPerformanceGrid` model.
+- Add convenience `GeoVectorDataset.T_isa` method to compute the ISA temperature at each point.
 
 ### Internals
 

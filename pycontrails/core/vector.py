@@ -1413,6 +1413,20 @@ class GeoVectorDataset(VectorDataset):
         ret.attrs.update(crs=crs)
         return ret
 
+    def T_isa(self) -> npt.NDArray[np.float_]:
+        """Calculate the ICAO standard atmosphere temperature at each point.
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            ISA temperature, [:math:`K`]
+
+        See Also
+        --------
+        :func:`pycontrails.physics.units.m_to_T_isa`
+        """
+        return units.m_to_T_isa(self.altitude)
+
     # ------------
     # Met
     # ------------
