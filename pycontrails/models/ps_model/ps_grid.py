@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import warnings
 from typing import Any, NoReturn, overload
 
 import numpy as np
@@ -114,7 +115,10 @@ class PSGrid(AircraftPerformanceGrid):
         if self.get_source_param("aircraft_mass", set_attr=False) is not None:
             raise NotImplementedError("The 'aircraft_mass' parameter must be None.")
         if isinstance(self.source, Flight):
-            raise TypeError("PSGrid doesn't support Flight objects as source data. Use PSModel.")
+            warnings.warn(
+                "The 'PSGrid' model is not intended to support 'Flight' objects as 'source' "
+                "data. Instead, use the 'PSModel'."
+            )
 
         # Extract the relevant source data
         try:
