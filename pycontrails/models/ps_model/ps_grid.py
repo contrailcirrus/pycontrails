@@ -81,6 +81,10 @@ class PSGrid(AircraftPerformanceGrid):
         source : MetDataset or GeoVectorDataset, optional
             The source data to use for the evaluation. If None, the source is taken
             from the :attr:`met` attribute of the :class:`PSGrid` instance.
+            The aircraft type is taken from ``source.attrs["aircraft_type]``. If this field
+            is not present, ``params["aircraft_type"]`` is used instead. See the
+            static CSV file :file:`ps-aircraft-params-20230517.csv` for a list of supported
+            aircraft types.
         **params : Any
             Override the default parameters of the :class:`PSGrid` instance.
 
@@ -88,9 +92,10 @@ class PSGrid(AircraftPerformanceGrid):
         -------
         GeoVectorDataset or MetDataset
             The source data with the following variables added:
-            - aircraft_mass
-            - fuel_flow
-            - engine_efficiency
+
+                - aircraft_mass
+                - fuel_flow
+                - engine_efficiency
 
         See Also
         --------
@@ -117,6 +122,7 @@ class PSGrid(AircraftPerformanceGrid):
         except KeyError:
             aircraft_type = self.params["aircraft_type"]
             self.source.attrs["aircraft_type"] = aircraft_type
+
         fuel = self.source.attrs.get("fuel", self.params["fuel"])
         q_fuel = fuel.q_fuel
         mach_number = self.get_source_param("mach_number", set_attr=False)
@@ -408,7 +414,15 @@ def ps_nominal_grid(
     air_pressure = level * 100.0
 
     aircraft_engine_params = ps_model.load_aircraft_engine_params()
-    atyp_param = aircraft_engine_params[aircraft_type]
+
+    try:
+        atyp_param = aircraft_engine_params[aircraft_type]
+    except KeyError as exc:
+        raise KeyError(
+            f"The aircraft type {aircraft_type} is not currently supported by the PS model. "
+            f"Available aircraft types are: {list(aircraft_engine_params)}"
+        ) from exc
+
     mach_number = mach_number or atyp_param.m_des
 
     perf = _PerfVariables(

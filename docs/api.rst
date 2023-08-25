@@ -127,7 +127,7 @@ Aircraft Performance
 .. autosummary::
     :toctree: api/
 
-    models.aircraft_performance
+    core.aircraft_performance
     models.ps_model.PSModelParams
     models.ps_model.PSModel
     models.ps_model.PSGrid
