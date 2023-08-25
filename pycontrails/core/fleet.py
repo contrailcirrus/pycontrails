@@ -249,7 +249,7 @@ class Fleet(Flight):
         """
         grouped = self.dataframe.groupby("flight_id", sort=False)
         return [
-            Flight(df, attrs=self.attrs["fl_attrs"][flight_id], copy=copy)
+            Flight(df, attrs=self.attrs["fl_attrs"][flight_id], fuel=self.fuel, copy=copy)
             for flight_id, df in grouped
         ]
 
