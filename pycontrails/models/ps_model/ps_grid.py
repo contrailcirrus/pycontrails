@@ -447,6 +447,9 @@ def ps_nominal_grid(
         maxiter=maxiter,
     )
 
+    # scipy.optimize.newton promotes float32 to float64
+    aircraft_mass = aircraft_mass.astype(x0.dtype, copy=False)
+
     aircraft_mass.clip(min=min_mass, max=max_mass, out=aircraft_mass)
 
     output = _nominal_perf(aircraft_mass, perf)
