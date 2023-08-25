@@ -1585,9 +1585,9 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
     """Calculate aircraft performance (AP) and emissions data.
 
     This function mutates the ``vector`` parameter in-place by setting keys:
-        - "true_airspeed": computed by the AP model
-        - "engine_efficiency": computed by the AP model
-        - "fuel_flow": computed by the AP model
+        - "true_airspeed": computed by the aircraft performance model
+        - "engine_efficiency": computed by the aircraft performance model
+        - "fuel_flow": computed by the aircraft performance model
         - "nvpm_ei_n": computed by the :class:`Emissions` model
         - "head_tail_dt"
 
