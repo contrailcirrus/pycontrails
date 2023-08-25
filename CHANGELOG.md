@@ -30,6 +30,7 @@ Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a gri
 - Include additional classes and functions in the `pycontrails.models.emissions` module.
 - Hardcode the paths to the static data files used in the `Emissions` and `PSModel` models. Previously these were configurable by model parameters.
 - Add `altitude_ft` parameter to the `GeoVectorDataset` constructor. Warn if at least two of `altitude_ft`, `altitude`, and `level` are provided.
+- Allow instantiation of `Model` instances with `params: ModelParams`. Previously, the `params` parameter was required to be a `dict`. The current implementation checks that the `params` parameter is either a `dict` or has type `default_params` on the `Model` class.
 
 ## v0.46.0
 
