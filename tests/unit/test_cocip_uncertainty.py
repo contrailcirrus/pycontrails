@@ -6,8 +6,7 @@ import numpy as np
 import pytest
 from scipy.stats.distributions import rv_frozen
 
-from pycontrails.models.cocip import CocipParams
-from pycontrails.models.cocip.cocip_uncertainty import CocipUncertaintyParams, habit_dirichlet
+from pycontrails.models.cocip import CocipParams, CocipUncertaintyParams, habit_dirichlet
 
 seeds = [None, 1, 2, 3, 5, 8]
 
