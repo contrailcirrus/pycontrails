@@ -175,7 +175,7 @@ class Model(ABC):
     def __init__(
         self,
         met: MetDataset | None = None,
-        params: dict[str, Any] | None = None,
+        params: ModelParams | dict[str, Any] | None = None,
         **params_kwargs: Any,
     ) -> None:
         # Load base params, override default and user params
@@ -292,19 +292,22 @@ class Model(ABC):
             else:
                 raise e1
 
-    def _load_params(self, params: dict[str, Any] | None = None, **params_kwargs: Any) -> None:
+    def _load_params(
+        self, params: ModelParams | dict[str, Any] | None = None, **params_kwargs: Any
+    ) -> None:
         """Load parameters to model :attr:`params`.
 
         Load order:
 
-        1. :attr:`default_params` instantiated as dict
+        1. If ``params`` is a :attr:`default_params` instance, use as is. Otherwise
+           instantiate as :attr:`default_params`.
         2. ``params`` input dict
         3. ``params_kwargs`` override keys in params
 
         Parameters
         ----------
         params : dict[str, Any], optional
-            Model parameter dictionary.
+            Model parameter dictionary or :attr:`default_params` instance.
             Defaults to {}
         **params_kwargs : Any
             Override keys in ``params`` with keyword arguments.
@@ -314,7 +317,17 @@ class Model(ABC):
         KeyError
             Unknown parameter passed into model
         """
-        self.params = self.default_params().as_dict()
+        if isinstance(params, self.default_params):
+            base_params = params
+            params = None
+        elif isinstance(params, ModelParams):
+            raise TypeError(
+                f"Model parameters must be of type {self.default_params.__name__} or dict"
+            )
+        else:
+            base_params = self.default_params()
+
+        self.params = base_params.as_dict()
         self.update_params(params, **params_kwargs)
 
     @abstractmethod
