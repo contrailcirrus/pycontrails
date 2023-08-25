@@ -11,7 +11,8 @@ Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a gri
 
 ### Fixes
 
-- Use the instance fuel attribute in the `Fleet.to_flight_list` method. Previously, the default `JetA` fuel was always used.
+- Use the instance `fuel` attribute in the `Fleet.to_flight_list` method. Previously, the default `JetA` fuel was always used.
+- Ensure the `Fleet.fuel` attribute is inferred from the underlying sequence of flights in the `Fleet.from_seq` method.
 
 ### Features
 
