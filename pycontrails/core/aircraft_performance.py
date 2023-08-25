@@ -547,5 +547,8 @@ class AircraftPerformanceGrid(Model):
 class AircraftPerformanceGridData(Generic[ArrayOrFloat]):
     """Store the computed aircraft performance metrics for nominal cruise conditions."""
 
+    #: Fuel mass flow rate, [:math:`kg s^{-1}`]
     fuel_flow: ArrayOrFloat
+
+    #: Engine efficiency, [:math:`0-1`]
     engine_efficiency: ArrayOrFloat
