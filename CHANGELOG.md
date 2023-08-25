@@ -9,6 +9,10 @@ Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a gri
 
 - Move the `pycontrails.models.aircraft_performance` module to `pycontrails.core.aircraft_performance`.
 
+### Fixes
+
+- Use the instance fuel attribute in the `Fleet.to_flight_list` method. Previously, the default `JetA` fuel was always used.
+
 ### Features
 
 - Implement the `PSGrid` model. For a given aircraft type and position, this model computes optimal aircraft performance at cruise conditions. In particular, this model can be used to estimate fuel flow, engine efficiency, and aircraft mass at cruise. In particular, the `PSGrid` model can now be used in conjunction with `CocipGrid` to simulate contrail formation over a grid.
