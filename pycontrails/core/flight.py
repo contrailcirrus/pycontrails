@@ -79,6 +79,8 @@ class Flight(GeoVectorDataset):
     altitude : npt.ArrayLike, optional
         Flight trajectory waypoint altitude, [:math:`m`].
         Defaults to None.
+    altitude_ft : npt.ArrayLike, optional
+        Flight trajectory waypoint altitude, [:math:`ft`].
     level : npt.ArrayLike, optional
         Flight trajectory waypoint pressure level, [:math:`hPa`].
         Defaults to None.
@@ -187,9 +189,12 @@ class Flight(GeoVectorDataset):
         | VectorDataDict
         | VectorDataset
         | None = None,
+        *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,
+        altitude_ft: npt.ArrayLike | None = None,
+        level: npt.ArrayLike | None = None,
         time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
@@ -202,6 +207,8 @@ class Flight(GeoVectorDataset):
             longitude=longitude,
             latitude=latitude,
             altitude=altitude,
+            altitude_ft=altitude_ft,
+            level=level,
             time=time,
             attrs=attrs,
             copy=copy,

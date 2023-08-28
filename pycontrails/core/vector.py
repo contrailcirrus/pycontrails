@@ -89,9 +89,7 @@ class VectorDataDict(Dict[str, np.ndarray]):
     _size: int
 
     def __init__(self, data: dict[str, np.ndarray] | None = None, **kwargs: np.ndarray) -> None:
-        if data is None:
-            data = {}
-
+        data = data or {}
         super().__init__(data, **kwargs)
 
         # validate any arrays, first one defines size()
@@ -271,6 +269,7 @@ class VectorDataset:
         | VectorDataDict
         | VectorDataset
         | None = None,
+        *,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
         **attrs_kwargs: Any,
@@ -1134,6 +1133,7 @@ class GeoVectorDataset(VectorDataset):
         | VectorDataDict
         | VectorDataset
         | None = None,
+        *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,

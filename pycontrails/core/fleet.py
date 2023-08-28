@@ -15,9 +15,9 @@ from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorData
 
 
 class Fleet(Flight):
-    """Data structure for holding a sequence of `Flight` instances.
+    """Data structure for holding a sequence of :class:`Flight` instances.
 
-    Flight waypoints are merged into a single `Flight`-like object.
+    Flight waypoints are merged into a single ``Flight``-like object.
     """
 
     def __init__(
@@ -27,9 +27,11 @@ class Fleet(Flight):
         | VectorDataDict
         | VectorDataset
         | None = None,
+        *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,
+        altitude_ft: npt.ArrayLike | None = None,
         level: npt.ArrayLike | None = None,
         time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | None = None,
@@ -45,6 +47,7 @@ class Fleet(Flight):
             longitude=longitude,
             latitude=latitude,
             altitude=altitude,
+            altitude_ft=altitude_ft,
             level=level,
             time=time,
             attrs=attrs,
