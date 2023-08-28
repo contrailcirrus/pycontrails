@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import dataclasses
 import warnings
-from typing import Any, NoReturn, overload
+from typing import Any, overload
 
 import numpy as np
 import numpy.typing as npt
 import scipy.optimize
 import xarray as xr
+import xarray.core.coordinates as xrcc
 
 from pycontrails.core.aircraft_performance import (
     AircraftPerformanceGrid,
@@ -278,34 +279,10 @@ def _estimate_mass_extremes(
     return min_mass, max_mass
 
 
-@overload
-def _parse_variables(
-    level: npt.NDArray[np.float_],
-    air_temperature: npt.NDArray[np.float_] | None,
-) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
-    ...
-
-
-@overload
-def _parse_variables(
-    level: npt.NDArray[np.float_],
-    air_temperature: xr.DataArray,
-) -> NoReturn:
-    ...
-
-
-@overload
-def _parse_variables(
-    level: None,
-    air_temperature: xr.DataArray,
-) -> tuple[xr.DataArray, xr.DataArray]:
-    ...
-
-
 def _parse_variables(
     level: npt.NDArray[np.float_] | None,
     air_temperature: xr.DataArray | npt.NDArray[np.float_] | None,
-) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]] | tuple[xr.DataArray, xr.DataArray]:
+) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     """Parse the level and air temperature arguments."""
 
     if isinstance(air_temperature, xr.DataArray):
@@ -313,7 +290,8 @@ def _parse_variables(
             raise ValueError("If 'air_temperature' is a DataArray, 'level' must be None")
 
         level_da = air_temperature["level"]
-        return xr.broadcast(level_da, air_temperature)  # type: ignore[return-value]
+        air_temperature, level_da = xr.broadcast(air_temperature, level_da)
+        return np.asarray(level_da), np.asarray(air_temperature)
 
     if air_temperature is None:
         if level is None:
@@ -413,7 +391,15 @@ def ps_nominal_grid(
     280.0   71758.561934           0.323248   0.713689
     290.0   71737.199210           0.322395   0.723033
     """
-    level, air_temperature = _parse_variables(level, air_temperature)  # type: ignore[arg-type]
+    coords: dict[str, Any] | xrcc.DataArrayCoordinates
+    if isinstance(air_temperature, xr.DataArray):
+        dims = air_temperature.dims
+        coords = air_temperature.coords
+    else:
+        dims = ("level",)
+        coords = {"level": level}
+
+    level, air_temperature = _parse_variables(level, air_temperature)
 
     air_pressure = level * 100.0
 
@@ -469,22 +455,12 @@ def ps_nominal_grid(
         "n_engine": atyp_param.n_engine,
     }
 
-    if isinstance(fuel_flow, xr.DataArray):
-        return xr.Dataset(
-            {
-                "aircraft_mass": (fuel_flow.dims, aircraft_mass),
-                "engine_efficiency": (fuel_flow.dims, engine_efficiency),
-                "fuel_flow": fuel_flow,
-            },
-            attrs=attrs,
-        )
-
     return xr.Dataset(
         {
-            "aircraft_mass": ("level", aircraft_mass),
-            "engine_efficiency": ("level", engine_efficiency),
-            "fuel_flow": ("level", fuel_flow),
+            "aircraft_mass": (dims, aircraft_mass),
+            "engine_efficiency": (dims, engine_efficiency),
+            "fuel_flow": (dims, fuel_flow),
         },
-        coords={"level": level},
+        coords=coords,
         attrs=attrs,
     )

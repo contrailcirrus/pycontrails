@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.47.1 (unreleased)
+
+### Fixes
+
+- Fix bug in `PSGrid` in which the `met` data was assumed to be already loaded into memory. This caused errors when running `PSGrid` with a `MetDataset` source.
+
 ## v0.47.0
 
 Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a grid.
