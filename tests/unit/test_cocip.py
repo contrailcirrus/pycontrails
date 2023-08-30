@@ -173,13 +173,17 @@ def test_cocip_processes_met(met: MetDataset, rad: MetDataset) -> None:
 
     # met starts without tau_cirrus
     assert "tau_cirrus" not in met
+    met_copy = met.copy()
+    met_chunked = met.copy()
+    met_chunked.data = met_chunked.data.chunk(2)
+    met_chunked_copy = met_chunked.copy()
     q = met["specific_humidity"].values.copy()
 
     cocip = Cocip(met=met, rad=rad, humidity_scaling=ExponentialBoostHumidityScaling())
 
-    # tau_cirrus added to met in __init__
+    # tau_cirrus not added to met in __init__ since it isn't dask-backed
     assert cocip.met is met
-    assert "tau_cirrus" in met
+    assert "tau_cirrus" not in met
 
     # specific humidity no longer modified on met
     np.testing.assert_array_equal(q, met["specific_humidity"].values)
@@ -187,6 +191,34 @@ def test_cocip_processes_met(met: MetDataset, rad: MetDataset) -> None:
     # There is not longer any issue in instantiating another model
     another_cocip = Cocip(met=met, rad=rad, humidity_scaling=ExponentialBoostHumidityScaling())
     assert another_cocip.met is met
+
+    cocip_3 = Cocip(met=met_chunked, rad=rad, humidity_scaling=ExponentialBoostHumidityScaling())
+
+    # tau_cirrus is added to met when it is dask-backed
+    assert cocip_3.met is met_chunked
+    assert "tau_cirrus" in met_chunked
+
+    cocip_4 = Cocip(
+        met=met_chunked_copy,
+        rad=rad,
+        humidity_scaling=ExponentialBoostHumidityScaling(),
+        compute_tau_cirrus_in_model_init=False,
+    )
+
+    # tau_cirrus is not added to met when it is dask-backed but the param is False
+    assert cocip_4.met is met_chunked_copy
+    assert "tau_cirrus" not in met_chunked_copy
+
+    cocip_5 = Cocip(
+        met=met_copy,
+        rad=rad,
+        humidity_scaling=ExponentialBoostHumidityScaling(),
+        compute_tau_cirrus_in_model_init=True,
+    )
+
+    # tau_cirrus is added to met when it is not dask-backed but the param is True
+    assert cocip_5.met is met_copy
+    assert "tau_cirrus" in met_copy
 
 
 def test_cocip_processes_rad(met: MetDataset, rad: MetDataset) -> None:

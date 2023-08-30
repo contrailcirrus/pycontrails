@@ -92,6 +92,13 @@ class ModelParams:
     #: Call :meth:`_verify_met` on model instantiation
     verify_met: bool = True
 
+    #: Compute ``"tau_cirrus"`` variable in pressure-level met data during model
+    #: initialization. Must be one of ``"auto"``, ``True``, or ``False``. If set to
+    #: ``"auto"``, ``"tau_cirrus"`` will be computed during model initialization
+    #: iff the met data is dask-backed. Otherwise, it will be computed during model
+    #: evaluation after the met data is downselected.
+    compute_tau_cirrus_in_model_init: bool | str = "auto"
+
     #: Downselect input MetDataset to region around ``source``, if input.
     downselect_met: bool = True
 
