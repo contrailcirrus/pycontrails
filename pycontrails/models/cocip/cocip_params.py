@@ -92,6 +92,13 @@ class CocipParams(ModelParams):
     # Downselect met
     # --------------
 
+    #: Compute ``"tau_cirrus"`` variable in pressure-level met data during model
+    #: initialization. Must be one of ``"auto"``, ``True``, or ``False``. If set to
+    #: ``"auto"``, ``"tau_cirrus"`` will be computed during model initialization
+    #: iff the met data is dask-backed. Otherwise, it will be computed during model
+    #: evaluation after the met data is downselected.
+    compute_tau_cirrus_in_model_init: bool | str = "auto"
+
     #: Met longitude [WGS84] buffer for Cocip evolution.
     met_longitude_buffer: tuple[float, float] = (10.0, 10.0)
 
