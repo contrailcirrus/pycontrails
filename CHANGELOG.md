@@ -6,6 +6,7 @@
 ### Fixes
 
 - Fix bug in `PSGrid` in which the `met` data was assumed to be already loaded into memory. This caused errors when running `PSGrid` with a `MetDataset` source.
+- Fix bug (#86) in which `Cocip.eval` loses the `source` fuel type. Instead of instantiating a new `Flight` or `Fleet` instance with the default fuel type, the `Cocip._bundle_results` method now overwrites the `self.source.data` attribute with the bundled predictions.
 
 ## v0.47.0
 
