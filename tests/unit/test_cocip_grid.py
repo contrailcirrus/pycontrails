@@ -211,7 +211,7 @@ def test_init_avoid_double_process(instance_params: dict[str, Any]) -> None:
     met = instance_params["met"].copy()
     assert "tau_cirrus" not in met
 
-    gc1 = CocipGrid(**instance_params)
+    gc1 = CocipGrid(compute_tau_cirrus_in_model_init=True, **instance_params)
 
     # The only change to met is the tau cirrus variable
     for var in met:

@@ -279,7 +279,8 @@ class Cocip(Model):
         super().__init__(met, params=params, **params_kwargs)
 
         shift_radiation_time = self.params["shift_radiation_time"]
-        met, rad = process_met_datasets(met, rad, shift_radiation_time)
+        compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
+        met, rad = process_met_datasets(met, rad, compute_tau_cirrus, shift_radiation_time)
 
         self.met = met
         self.rad = rad
@@ -372,6 +373,8 @@ class Cocip(Model):
         logger.debug("Downselect met for Cocip initialization")
         buffer = 0, self.params["met_level_buffer"][1]
         met = self.source.downselect_met(self.met, copy=False, level_buffer=buffer)
+        # Add tau_cirrus if it doesn't exist already.
+        met = add_tau_cirrus(met)
 
         # Prepare flight for model
         self._process_flight(met)
@@ -920,6 +923,7 @@ class Cocip(Model):
         }
         logger.debug("Downselect met for start of Cocip evolution")
         met = self._downwash_contrail.downselect_met(self.met, **buffers, copy=False)
+        met = add_tau_cirrus(met)
         rad = self._downwash_contrail.downselect_met(self.rad, **buffers, copy=False)
 
         calc_continuous(self._downwash_contrail)
@@ -992,6 +996,7 @@ class Cocip(Model):
             if time_end > met.variables["time"].values[-1]:
                 logger.debug("Downselect met at time_end %s within Cocip evolution", time_end)
                 met = latest_contrail.downselect_met(self.met, **buffers, copy=False)
+                met = add_tau_cirrus(met)
             if time_end > rad.variables["time"].values[-1]:
                 logger.debug("Downselect rad at time_end %s within Cocip evolution", time_end)
                 rad = latest_contrail.downselect_met(self.rad, **buffers, copy=False)
@@ -1274,6 +1279,7 @@ class Cocip(Model):
 def process_met_datasets(
     met: MetDataset,
     rad: MetDataset,
+    compute_tau_cirrus: bool | str = "auto",
     shift_radiation_time: np.timedelta64 | None = None,
 ) -> tuple[MetDataset, MetDataset]:
     """Process and verify ERA5 data for :class:`Cocip` and :class:`CocipGrid`.
@@ -1293,6 +1299,9 @@ def process_met_datasets(
         Met pressure-level data
     rad : MetDataset
         Rad single-level data
+    compute_tau_cirrus : bool | str
+        Whether to add ``"tau_cirrus"`` variable to pressure-level met data. If set to
+        ``"auto"``, ``"tau_cirrus"`` will be computed iff the met data is dask-backed.
     shift_radiation_time : np.timedelta64 | None
         Shift the time dimension of radiation data to account for accumulated values.
         If not specified, the default value from :class:`CocipGridParams` will be used.
@@ -1300,7 +1309,7 @@ def process_met_datasets(
     Returns
     -------
     met : MetDataset
-        Met data with "tau_cirrus" variable attached.
+        Met data, possibly with "tau_cirrus" variable attached.
     rad : MetDataset
         Rad data with time shifted to account for accumulated values.
     """
@@ -1310,9 +1319,20 @@ def process_met_datasets(
             "Specific humidity enhancement of the raw specific humidity values in "
             "the underlying met data is deprecated."
         )
+    if isinstance(compute_tau_cirrus, str) and compute_tau_cirrus != "auto":
+        raise ValueError(
+            "Parameter ``compute_tau_cirrus`` must be one of"
+            f" True, False, or 'auto'. Found {compute_tau_cirrus}."
+        )
     if "tau_cirrus" not in met.data:
         met.ensure_vars(Cocip.met_variables)
-        met.data["tau_cirrus"] = tau_cirrus.tau_cirrus(met)
+        if (
+            compute_tau_cirrus == "auto"
+            and met.data["specific_humidity"].chunks is not None
+            or isinstance(compute_tau_cirrus, bool)
+            and compute_tau_cirrus
+        ):
+            met = add_tau_cirrus(met)
     else:
         met.ensure_vars(Cocip.processed_met_variables)
 
@@ -1330,6 +1350,24 @@ def process_met_datasets(
         rad = _process_rad(rad, shift_radiation_time)
 
     return met, rad
+
+
+def add_tau_cirrus(met: MetDataset) -> MetDataset:
+    """Add "tau_cirrus" variable to weather data if it does not exist already.
+
+    Parameters
+    ----------
+    met : MetDataset
+        Met pressure-level data.
+
+    Returns
+    -------
+    met : MetDataset
+        Met data with "tau_cirrus" variable attached.
+    """
+    if "tau_cirrus" not in met.data:
+        met.data["tau_cirrus"] = tau_cirrus.tau_cirrus(met)
+    return met
 
 
 def _process_rad(rad: MetDataset, shift_radiation_time: np.timedelta64) -> MetDataset:

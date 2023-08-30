@@ -107,7 +107,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self.validate_time_params()
 
         shift_radiation_time = self.params["shift_radiation_time"]
-        met, rad = cocip.process_met_datasets(met, rad, shift_radiation_time)
+        compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
+        met, rad = cocip.process_met_datasets(met, rad, compute_tau_cirrus, shift_radiation_time)
 
         self.met = met
         self.rad = rad
@@ -207,6 +208,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self.set_source(source)
 
         self.met, self.rad = _downselect_met(self.source, self.met, self.rad, self.params)
+        # Add tau_cirrus if it doesn't exist already.
+        self.met = cocip.add_tau_cirrus(self.met)
         self._check_met_source_overlap()
 
         # Save humidity scaling type to output attrs
