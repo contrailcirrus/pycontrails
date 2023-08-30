@@ -203,9 +203,11 @@ class VectorDataDict(Dict[str, np.ndarray]):
         """
         if arr.ndim != 1:
             raise ValueError("All np.arrays must have dimension 1.")
-        if getattr(self, "_size", 0) != 0:
-            if arr.size != self._size:
-                raise ValueError(f"Incompatible array sizes: {arr.size} and {self._size}.")
+
+        size = getattr(self, "_size", 0)
+        if size != 0:
+            if arr.size != size:
+                raise ValueError(f"Incompatible array sizes: {arr.size} and {size}.")
         else:
             self._size = arr.size
 
@@ -274,64 +276,48 @@ class VectorDataset:
         copy: bool = True,
         **attrs_kwargs: Any,
     ) -> None:
+        # Set data
+        # --------
+
         # Casting from one VectorDataset type to another
         # e.g., flight = Flight(...); vector = VectorDataset(flight)
         if isinstance(data, VectorDataset):
             attrs = {**data.attrs, **(attrs or {})}
-            data = data.data
+            if copy:
+                self.data = VectorDataDict({k: v.copy() for k, v in data.data.items()})
+            else:
+                self.data = data.data
 
-        if data is None:
+        elif data is None:
             self.data = VectorDataDict()
 
         elif isinstance(data, pd.DataFrame):
+            attrs = {**data.attrs, **(attrs or {})}
+
             # Take extra caution with a time column
-
-            if "time" in data:
+            try:
                 time = data["time"]
-
-                if not hasattr(time, "dt"):
-                    # If the time column is a string, we try to convert it to a datetime
-                    # If it fails (for example, a unix integer time), we raise an error
-                    # and let the user figure it out.
-                    try:
-                        time = pd.to_datetime(time)
-                    except ValueError:
-                        raise ValueError(
-                            "The 'time' field must hold datetime-like values. "
-                            'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
-                            "with the appropriate unit."
-                        )
-
-                # If the time column contains a timezone, the call to `to_numpy`
-                # will convert it to an array of object. We do not want this, so
-                # we raise an error in this case. Timezone issues are complicated,
-                # and so it is better for the user to handle them rather than try
-                # to address them here.
-                if time.dt.tz is not None:
-                    raise ValueError(
-                        "The 'time' field must be timezone naive. "
-                        "This can be achieved with: "
-                        'data["time"] = data["time"].dt.tz_localize(None)'
-                    )
-
-                data = {col: ser.to_numpy(copy=copy) for col, ser in data.items() if col != "time"}
-                data["time"] = time.to_numpy(copy=copy)
+            except KeyError:
+                self.data = VectorDataDict({k: v.to_numpy(copy=copy) for k, v in data.items()})
             else:
-                data = {col: ser.to_numpy(copy=copy) for col, ser in data.items()}
+                time = _handle_time_column(time)
+                data = {k: v.to_numpy(copy=copy) for k, v in data.items() if k != "time"}
+                data["time"] = time.to_numpy(copy=copy)
+                self.data = VectorDataDict(data)
 
-            self.data = VectorDataDict(data)
-
-        elif isinstance(data, VectorDataDict) and not copy:
-            self.data = data
+        elif isinstance(data, VectorDataDict):
+            if copy:
+                self.data = VectorDataDict({k: v.copy() for k, v in data.items()})
+            else:
+                self.data = data
 
         # For anything else, we assume it is a dictionary of array-like and attach it
-        # This doesn't quite work for casting one VectorDataset to another subclass
-        # (we don't support .items() here), but we could easily accommodate that if
-        # needed
         else:
             self.data = VectorDataDict({k: np.array(v, copy=copy) for k, v in data.items()})
 
-        # set attributes
+        # Set attributes
+        # --------------
+
         if attrs is None:
             self.attrs = AttrDict()
 
@@ -364,19 +350,19 @@ class VectorDataset:
         return self.data[key]
 
     def get(self, key: str, default_value: Any = None) -> Any:
-        """Get values from :attr:`data` with default_value if `key` not in `data`.
+        """Get values from :attr:`data` with ``default_value`` if ``key`` not in :attr:`data`.
 
         Parameters
         ----------
         key : str
             Key to get from :attr:`data`
         default_value : Any, optional
-            Return `default_value` if `key` not in :attr:`data`, by default `None`
+            Return ``default_value`` if `key` not in :attr:`data`, by default ``None``
 
         Returns
         -------
         Any
-            Values at :attr:`data[key]` or `default_value`
+            Values at :attr:`data[key]` or ``default_value``
         """
         return self.data.get(key, default_value)
 
@@ -1918,3 +1904,32 @@ def vector_to_lon_lat_grid(
         out[name] = (("longitude", "latitude"), arr)
 
     return out
+
+
+def _handle_time_column(time: pd.Series) -> pd.Series:
+    if not hasattr(time, "dt"):
+        # If the time column is a string, we try to convert it to a datetime
+        # If it fails (for example, a unix integer time), we raise an error
+        # and let the user figure it out.
+        try:
+            return pd.to_datetime(time)
+        except ValueError as exc:
+            raise ValueError(
+                "The 'time' field must hold datetime-like values. "
+                'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
+                "with the appropriate unit."
+            ) from exc
+
+    # If the time column contains a timezone, the call to `to_numpy`
+    # will convert it to an array of object. We do not want this, so
+    # we raise an error in this case. Timezone issues are complicated,
+    # and so it is better for the user to handle them rather than try
+    # to address them here.
+    if time.dt.tz is not None:
+        raise ValueError(
+            "The 'time' field must be timezone naive. "
+            "This can be achieved with: "
+            'data["time"] = data["time"].dt.tz_localize(None)'
+        )
+
+    return time
