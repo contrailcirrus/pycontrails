@@ -293,6 +293,10 @@ class Cocip(Model):
     # ----------
 
     @overload
+    def eval(self, source: Fleet, **params: Any) -> Fleet:
+        ...
+
+    @overload
     def eval(self, source: Flight, **params: Any) -> Flight:
         ...
 
@@ -1211,14 +1215,13 @@ class Cocip(Model):
         # -1 if negative EF, 0 if no EF, 1 if positive EF,
         # or NaN for outside of domain of flight waypoints that don't persist
         df["cocip"] = np.sign(df["ef"])
+        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0.0).sum())
 
         # reset the index
         df = df.reset_index()
 
-        # create new Flight / Fleet output from dataframe with flight attrs
-
-        self.source = type(self.source)(df, attrs=self.source.attrs, copy=False)
-        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0.0).sum())
+        # Reassign to source
+        self.source.data = VectorDataDict({k: v.to_numpy() for k, v in df.items()})
 
     def _fill_empty_flight_results(self, return_list_flight: bool) -> Flight | list[Flight]:
         """Fill empty results into flight / fleet and return.
@@ -2037,7 +2040,7 @@ def calc_timestep_contrail_evolution(
     level_2 = geo.advect_level(level_1, vertical_velocity_1, rho_air_1, terminal_fall_speed_1, dt)
     altitude_2 = units.pl_to_m(level_2)
 
-    data = VectorDataDict(
+    contrail_2 = GeoVectorDataset(
         {
             "waypoint": waypoint_2,
             "flight_id": contrail_1["flight_id"],
@@ -2048,9 +2051,9 @@ def calc_timestep_contrail_evolution(
             "latitude": latitude_2,
             "altitude": altitude_2,
             "level": level_2,
-        }
+        },
+        copy=False,
     )
-    contrail_2 = GeoVectorDataset(data, copy=False)
 
     # Update cumulative radiative heating energy absorbed by the contrail
     # This will always be zero if radiative_heating_effects is not activated in cocip_params
