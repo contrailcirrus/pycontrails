@@ -14,6 +14,7 @@ import pandas as pd
 from pycontrails.core import coordinates
 from pycontrails.core.met import MetDataset
 from pycontrails.core.vector import GeoVectorDataset
+from pycontrails.models.cocip import cocip
 
 if TYPE_CHECKING:
     import tqdm
@@ -321,6 +322,7 @@ class CocipTimeHandlingMixin:
 
         # If data is already loaded into memory, calling load will not waste memory
         met_slice = MetDataset(xr_met_slice, copy=False)
+        met_slice = cocip.add_tau_cirrus(met_slice)
         rad_slice = MetDataset(xr_rad_slice, copy=False)
 
         if pbar is not None:
