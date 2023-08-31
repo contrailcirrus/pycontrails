@@ -35,6 +35,11 @@
       "affiliation": "DLR",
       "name": "Christiane Voigt",
       "type": "Researcher"
+    },
+    {
+      "name": "Tharun Sankar",
+      "affiliation": "Google Research",
+      "type": "Researcher"
     }
   ]
 }
