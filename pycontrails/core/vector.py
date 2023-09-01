@@ -79,8 +79,6 @@ class VectorDataDict(Dict[str, np.ndarray]):
     ----------
     data : dict[str, np.ndarray], optional
         Dictionary input
-    **kwargs : np.ndarray
-        Keyword arguments, override values in ``data``
     """
 
     __slots__ = ("_size",)
@@ -88,11 +86,10 @@ class VectorDataDict(Dict[str, np.ndarray]):
     #: Length of the data
     _size: int
 
-    def __init__(self, data: dict[str, np.ndarray] | None = None, **kwargs: np.ndarray) -> None:
-        data = data or {}
-        super().__init__(data, **kwargs)
+    def __init__(self, data: dict[str, np.ndarray] | None = None) -> None:
+        super().__init__(data or {})
 
-        # validate any arrays, first one defines size()
+        # validate any arrays, first one defines _size attribute
         for arr in self.values():
             self._validate_array(arr)
 
