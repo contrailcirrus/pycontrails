@@ -12,6 +12,7 @@
 ### Internals
 
 - Add `compute_tau_cirrus_in_model_init` parameter to `CocipParams`. This controls whether to compute the cirrus optical depth in `Cocip.__init__` or `Cocip.eval`. When set to `"auto"` (the default), the `tau_cirrus` is computed in `Cocip.__init__` if and only if the `met` parameter is dask-backed.
+- Change data requirements for the `EmpiricalGrid` aircraft performance model.
 
 ## v0.47.0
 

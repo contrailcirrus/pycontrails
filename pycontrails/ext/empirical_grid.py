@@ -8,7 +8,6 @@ from typing import Any, NoReturn, overload
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from pandas.core.groupby import DataFrameGroupBy
 
 from pycontrails.core.aircraft_performance import (
     AircraftPerformanceGrid,
@@ -25,12 +24,14 @@ class EmpiricalGridParams(AircraftPerformanceGridParams):
     #: Random state to use for sampling
     random_state: int | np.random.Generator | None = None
 
-    #: Empirical data to use for sampling. Must have columns:
+    #: Empirical data to use for sampling. Must include columns:
     #: - altitude_ft
     #: - true_airspeed
     #: - aircraft_mass
     #: - fuel_flow
     #: - engine_efficiency
+    #: - aircraft_type
+    #: - wingspan
     #: If None, an error will be raised at runtime.
     data: pd.DataFrame | None = None
 
@@ -53,7 +54,14 @@ class EmpiricalGrid(AircraftPerformanceGrid):
     source: GeoVectorDataset
     default_params = EmpiricalGridParams
 
-    variables = "true_airspeed", "aircraft_mass", "fuel_flow", "engine_efficiency"
+    variables = (
+        "true_airspeed",
+        "aircraft_mass",
+        "fuel_flow",
+        "engine_efficiency",
+        "aircraft_type",
+        "wingspan",
+    )
 
     @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
@@ -87,41 +95,39 @@ class EmpiricalGrid(AircraftPerformanceGrid):
         self.require_source_type(GeoVectorDataset)
 
         altitude_ft = self.source.altitude_ft.copy()
-        altitude_ft.round(-3, out=altitude_ft)
-        dtype = altitude_ft.dtype
+        altitude_ft.round(-3, out=altitude_ft)  # round to flight levels
 
-        # Take only the columns that are not already in the source
-        columns = sorted(set(self.variables).difference(self.source))
-
-        # Initialize the variables in the source with NaNs
-        self.source.update({k: np.full(len(self.source), np.nan, dtype=dtype) for k in columns})
-
-        # Fill the variables with sampled data
-        self._sample(altitude_ft, columns)
+        # Fill the source with sampled data at each flight level
+        self._sample(altitude_ft)
 
         return self.source
 
-    def _get_grouped(self, columns: list[str]) -> DataFrameGroupBy:
-        """Group the data by altitude and return the groupby object."""
+    def _query_data(self) -> pd.DataFrame:
+        """Query ``self.params["data"]`` for the source aircraft type."""
 
-        df = self.params["data"]
-        if df is None:
+        # Take only the columns that are not already in the source
+        columns = sorted(set(self.variables).difference(self.source))
+        data = self.params["data"]
+        if data is None:
             raise ValueError("No data provided")
 
-        try:
-            df = df[["altitude_ft"] + columns]
-        except KeyError as e:
-            raise ValueError(f"Column {e} not in data") from e
+        aircraft_type = self.source.attrs.get("aircraft_type", self.params["aircraft_type"])
+        data = data.query(f"aircraft_type == '{aircraft_type}'")
+        assert not data.empty, f"No data for aircraft type: {aircraft_type}"
 
         # Round to flight levels
-        df["altitude_ft"] = df["altitude_ft"].round(-3)
-        return df.groupby("altitude_ft")
+        data.loc[:, "altitude_ft"] = data["altitude_ft"].round(-3)
 
-    def _sample(self, altitude_ft: npt.NDArray[np.float_], columns: list[str]) -> None:
+        return data[["altitude_ft"] + columns].drop(columns=["aircraft_type"])
+
+    def _sample(self, altitude_ft: npt.NDArray[np.float_]) -> None:
         """Sample the data and update the source."""
 
-        grouped = self._get_grouped(columns)  # move to init if the groupby is expensive
+        df = self._query_data()
+        grouped = df.groupby("altitude_ft")
         rng = self.params["random_state"]
+
+        other = {k: np.full_like(altitude_ft, np.nan) for k in df}
 
         for altitude, group in grouped:
             filt = altitude_ft == altitude
@@ -131,4 +137,6 @@ class EmpiricalGrid(AircraftPerformanceGrid):
 
             sample = group.sample(n=n, replace=True, random_state=rng)
             for k, v in sample.items():
-                self.source[k][filt] = v
+                other[k][filt] = v
+
+        self.source.update(other)  # type: ignore[arg-type]
