@@ -126,7 +126,7 @@ class ModelTestFlightMissingRequiredVariables(Model):
 
 def test_model_needs_names(met_era5_fake: MetDataset) -> None:
     """Model requires name properties defined."""
-    with pytest.raises(TypeError, match="abstract methods long_name, name"):
+    with pytest.raises(TypeError, match="Can't instantiate abstract class"):
         ModelTestNoName(met_era5_fake)  # type: ignore[abstract]
 
 

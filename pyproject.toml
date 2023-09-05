@@ -1,13 +1,18 @@
 # https://setuptools.readthedocs.io/en/latest/
 [build-system]
-requires = ["setuptools", "setuptools_scm", "wheel", "cython", "oldest-supported-numpy"]
+requires = [
+    "setuptools",
+    "setuptools_scm",
+    "wheel",
+    "cython",
+    "oldest-supported-numpy; python_version<'3.12'",
+    "numpy>=1.26.0b1; python_version>='3.12'",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pycontrails"
-authors = [
-    {name = "Breakthrough Energy", email = "py@contrails.org"},
-]
+authors = [{ name = "Breakthrough Energy", email = "py@contrails.org" }]
 description = "Python library for modeling aviation climate impacts"
 keywords = ["contrails", "climate", "aviation", "geospatial"]
 # https://pypi.org/classifiers/
@@ -27,8 +32,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 requires-python = ">=3.9"
-license = {text = "Apache-2.0"}
-readme = {file = "README.md", content-type = "text/markdown"}
+license = { text = "Apache-2.0" }
+readme = { file = "README.md", content-type = "text/markdown" }
 
 dependencies = [
     "dask>=2022.3",
@@ -50,9 +55,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 [project.optional-dependencies]
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = [
-    "pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,vis,zarr]",
-]
+complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -103,11 +106,7 @@ ecmwf = [
 ]
 
 # Google Cloud Platform caching interface
-gcp = [
-    "google-cloud-storage>=2.1",
-    "platformdirs>=3.0",
-    "tqdm>=4.61",
-]
+gcp = ["google-cloud-storage>=2.1", "platformdirs>=3.0", "tqdm>=4.61"]
 
 # GFS datalib interfaces
 gfs = [
@@ -119,20 +118,13 @@ gfs = [
 ]
 
 # Jupyter notebook and lab interface
-jupyter = [
-    "ipywidgets>=7.6",
-    "jupyterlab>=2.2",
-]
+jupyter = ["ipywidgets>=7.6", "jupyterlab>=2.2"]
 
 # Polyhedra contruction methods
-open3d = [
-    "open3d>=0.14",
-]
+open3d = ["open3d>=0.14"]
 
 # Piecewise linear fitting for flight smoothing
-pwlf = [
-    "pwlf>=2.2.1",
-]
+pwlf = ["pwlf>=2.2.1"]
 
 # Polygon construction methods and plotting support 
 vis = [
@@ -145,10 +137,7 @@ vis = [
 ]
 
 # Load data from remote Zarr stores
-zarr = [
-    "fsspec>=2022.7.1",
-    "zarr>=2.12",
-]
+zarr = ["fsspec>=2022.7.1", "zarr>=2.12"]
 
 # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 [tool.setuptools]
@@ -207,11 +196,7 @@ preview = true
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
 [tool.pytest.ini_options]
-doctest_optionflags = [
-    "ELLIPSIS",
-    "NORMALIZE_WHITESPACE",
-    "NUMBER"
-]
+doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE", "NUMBER"]
 filterwarnings = [
     "error::UserWarning",
     "error::RuntimeWarning",
@@ -225,11 +210,7 @@ testpaths = ["tests/unit"]
 # license check
 # https://github.com/abduhbm/dep-license
 [tool.deplic]
-banned = [
-    "AGPL-3.0",
-    "GPL",
-    "AGPL",
-]
+banned = ["AGPL-3.0", "GPL", "AGPL"]
 
 # RST linter
 # https://github.com/pycqa/doc8
@@ -239,7 +220,7 @@ ignore-path = [
     "docs/changelog.rst",
     "docs/contributing.rst",
     "docs/api/*",
-    "docs/_build/*"
+    "docs/_build/*",
 ]
 
 # Python linter
@@ -249,7 +230,17 @@ ignore-path = [
 [tool.ruff]
 select = ["D", "E", "F", "I", "PL", "PT"]
 line-length = 100
-ignore = ["E402", "D105", "D202", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLW2901"]
+ignore = [
+    "E402",
+    "D105",
+    "D202",
+    "PLR2004",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "PLW2901",
+]
 
 [tool.ruff.per-file-ignores]
 "docs/conf.py" = ["E501"]
