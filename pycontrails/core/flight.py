@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pyproj
 import scipy.signal
 from overrides import overrides
 
@@ -531,6 +530,14 @@ class Flight(GeoVectorDataset):
         lons2 = lon[1:]
         lats2 = lat[1:]
 
+        try:
+            import pyproj
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "The 'segment_azimuth' method requires the 'pyproj' package. "
+                "Install with 'pip install pyproj'."
+            ) from exc
+
         geod = pyproj.Geod(a=constants.radius_earth)
         az, *_ = geod.inv(lons1, lats1, lons2, lats2)
 
@@ -990,6 +997,14 @@ class Flight(GeoVectorDataset):
             # For most flights, gap_indices is empty. It's more performant
             # to exit now rather than build an empty DataFrame below.
             return None
+
+        try:
+            import pyproj
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "The '_geodesic_interpolation' method requires the 'pyproj' package. "
+                "Install with 'pip install pyproj'."
+            ) from exc
 
         geod = pyproj.Geod(ellps="WGS84")
         longitudes: list[float] = []

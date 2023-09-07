@@ -11,7 +11,6 @@ from typing import Any, Dict, Generator, Iterable, Iterator, Sequence, Type, Typ
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pyproj
 import xarray as xr
 from overrides import overrides
 
@@ -1384,6 +1383,13 @@ class GeoVectorDataset(VectorDataset):
             Converted dataset with new coordinate reference system.
             :attr:`attrs["crs"]` reflects new crs.
         """
+        try:
+            import pyproj
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Transforming CRS requires the 'pyproj' module. Install with 'pip install pyproj'."
+            ) from exc
+
         transformer = pyproj.Transformer.from_crs(self.attrs["crs"], crs, always_xy=True)
         lon, lat = transformer.transform(self["longitude"], self["latitude"])
 
