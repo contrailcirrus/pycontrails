@@ -6,7 +6,7 @@ requires = [
     "wheel",
     "cython",
     "oldest-supported-numpy; python_version<'3.12'",
-    "numpy>=1.26.0b1; python_version>='3.12'",
+    "numpy>=1.26.0rc1; python_version>='3.12'",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -40,7 +40,6 @@ dependencies = [
     "numpy>=1.22",
     "overrides>=6.1",
     "pandas>=1.4",
-    "pyproj>=3.5",
     "scipy>=1.10",
     "xarray>=2022.3",
 ]
@@ -55,7 +54,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 [project.optional-dependencies]
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,vis,zarr]"]
+complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,pyproj,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -125,6 +124,9 @@ open3d = ["open3d>=0.14"]
 
 # Piecewise linear fitting for flight smoothing
 pwlf = ["pwlf>=2.2.1"]
+
+# Geospatial coordinate transformations
+pyproj = ["pyproj>=3.5"]
 
 # Polygon construction methods and plotting support 
 vis = [
