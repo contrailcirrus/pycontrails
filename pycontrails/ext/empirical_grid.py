@@ -106,7 +106,7 @@ class EmpiricalGrid(AircraftPerformanceGrid):
         """Query ``self.params["data"]`` for the source aircraft type."""
 
         # Take only the columns that are not already in the source
-        columns = sorted(set(self.variables).difference(self.source))
+        columns = [v for v in self.variables if v not in self.source]
         data = self.params["data"]
         if data is None:
             raise ValueError("No data provided")
@@ -118,7 +118,7 @@ class EmpiricalGrid(AircraftPerformanceGrid):
         # Round to flight levels
         data.loc[:, "altitude_ft"] = data["altitude_ft"].round(-3)
 
-        return data[["altitude_ft"] + columns].drop(columns=["aircraft_type"])
+        return data[["altitude_ft", *columns]].drop(columns=["aircraft_type"])
 
     def _sample(self, altitude_ft: npt.NDArray[np.float_]) -> None:
         """Sample the data and update the source."""
@@ -127,7 +127,9 @@ class EmpiricalGrid(AircraftPerformanceGrid):
         grouped = df.groupby("altitude_ft")
         rng = self.params["random_state"]
 
-        other = {k: np.full_like(altitude_ft, np.nan) for k in df}
+        source = self.source
+        for k in df:
+            source[k] = np.full_like(altitude_ft, np.nan)
 
         for altitude, group in grouped:
             filt = altitude_ft == altitude
@@ -137,6 +139,4 @@ class EmpiricalGrid(AircraftPerformanceGrid):
 
             sample = group.sample(n=n, replace=True, random_state=rng)
             for k, v in sample.items():
-                other[k][filt] = v
-
-        self.source.update(other)  # type: ignore[arg-type]
+                source[k][filt] = v
