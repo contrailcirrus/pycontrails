@@ -119,7 +119,7 @@ def clean(messages: pd.DataFrame) -> pd.DataFrame:
     ]
 
     for _, gp in rows_with_any_missing_callsigns.groupby("icao_address", sort=False):
-        mdf.loc[gp.index, "callsign"] = gp["callsign"].fillna(method="ffill").fillna(method="bfill")
+        mdf.loc[gp.index, "callsign"] = gp["callsign"].ffill().bfill()
 
     # Remove messages with erroneous "on_ground" indicator
     filt = mdf["on_ground"] & (
