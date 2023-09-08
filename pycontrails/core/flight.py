@@ -1469,8 +1469,8 @@ def _altitude_interpolation(
 
     # Use pandas to forward and backfill altitude values
     s = pd.Series(altitude)
-    s_ff = s.fillna(method="ffill")
-    s_bf = s.fillna(method="backfill")
+    s_ff = s.ffill()
+    s_bf = s.bfill()
 
     # Construct altitude values if the flight were to climb / descent throughout
     # group of consecutive nan values. The call to np.minimum / np.maximum cuts
@@ -1485,7 +1485,7 @@ def _altitude_interpolation(
     # Explicitly determine if the flight is in a climb or descent state
     sign = np.full_like(altitude, np.nan)
     sign[~isna] = np.sign(np.diff(altitude[~isna], append=np.nan))
-    sign = pd.Series(sign).fillna(method="ffill")
+    sign = pd.Series(sign).ffill()
 
     # And return the mess
     return np.where(sign == 1.0, fill_climb, fill_descent)
