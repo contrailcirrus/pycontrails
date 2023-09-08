@@ -146,7 +146,7 @@ class ECMWFAPI(datalib.MetDataSource):
             # put each hourly file into cache
             cache_path = [
                 self.create_cachepath(
-                    datetime.datetime.fromtimestamp(tg.tolist() / 1e9, datetime.UTC)
+                    datetime.datetime.fromtimestamp(tg.tolist() / 1e9, datetime.timezone.utc)
                 )
                 for tg in time_group
             ]
