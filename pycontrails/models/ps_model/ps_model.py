@@ -97,12 +97,10 @@ class PSFlight(AircraftPerformance):
         return False
 
     @overload
-    def eval(self, source: Flight, **params: Any) -> Flight:
-        ...
+    def eval(self, source: Flight, **params: Any) -> Flight: ...
 
     @overload
-    def eval(self, source: None = ..., **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
     @overrides
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:

@@ -64,12 +64,10 @@ class EmpiricalGrid(AircraftPerformanceGrid):
     )
 
     @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset | None = ..., **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> NoReturn: ...
 
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any

@@ -58,8 +58,7 @@ complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,pyproj,vis,zarr]"]
 
 # Development dependencies
 dev = [
-    "black>=22",
-    "black[jupyter]",
+    "black[jupyter]>=23.9",
     "dep_license",
     "fastparquet>=0.8",
     "ipdb>=0.13",

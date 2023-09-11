@@ -182,16 +182,13 @@ class ACCF(Model):
         self.ds_sur = None
 
     @overload
-    def eval(self, source: Flight, **params: Any) -> Flight:
-        ...
+    def eval(self, source: Flight, **params: Any) -> Flight: ...
 
     @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataArray:
-        ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataArray: ...
 
     def eval(
         self, source: GeoVectorDataset | Flight | MetDataset | None = None, **params: Any

@@ -98,16 +98,13 @@ class HumidityScaling(models.Model):
         """
 
     @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset, **params: Any) -> MetDataset:
-        ...
+    def eval(self, source: MetDataset, **params: Any) -> MetDataset: ...
 
     @overload
-    def eval(self, source: None = ..., **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
@@ -874,12 +871,10 @@ class HistogramMatchingWithEckel(HumidityScaling):
                 pass
 
     @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset | None = ..., **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> NoReturn: ...
 
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any

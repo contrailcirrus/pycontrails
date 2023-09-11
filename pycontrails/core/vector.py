@@ -1663,8 +1663,7 @@ class GeoVectorDataset(VectorDataset):
         level_buffer: tuple[float, float] = ...,
         time_buffer: tuple[np.timedelta64, np.timedelta64] = ...,
         copy: bool = ...,
-    ) -> met_module.MetDataset:
-        ...
+    ) -> met_module.MetDataset: ...
 
     @overload
     def downselect_met(
@@ -1676,8 +1675,7 @@ class GeoVectorDataset(VectorDataset):
         level_buffer: tuple[float, float] = ...,
         time_buffer: tuple[np.timedelta64, np.timedelta64] = ...,
         copy: bool = ...,
-    ) -> met_module.MetDataArray:
-        ...
+    ) -> met_module.MetDataArray: ...
 
     def downselect_met(
         self,

@@ -124,16 +124,13 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self._target_dtype = np.result_type(*self.met.data.values())
 
     @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset, **params: Any) -> MetDataset:
-        ...
+    def eval(self, source: MetDataset, **params: Any) -> MetDataset: ...
 
     @overload
-    def eval(self, source: None = ..., **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any

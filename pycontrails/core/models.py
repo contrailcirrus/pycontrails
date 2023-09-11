@@ -420,16 +420,13 @@ class Model(ABC):
         return type_guard(getattr(self, "source", None), type_, f"Source must be of type {type_}")
 
     @overload
-    def _get_source(self, source: MetDataset | None) -> MetDataset:
-        ...
+    def _get_source(self, source: MetDataset | None) -> MetDataset: ...
 
     @overload
-    def _get_source(self, source: GeoVectorDataset) -> GeoVectorDataset:
-        ...
+    def _get_source(self, source: GeoVectorDataset) -> GeoVectorDataset: ...
 
     @overload
-    def _get_source(self, source: Sequence[Flight]) -> Fleet:
-        ...
+    def _get_source(self, source: Sequence[Flight]) -> Fleet: ...
 
     def _get_source(self, source: ModelInput) -> SourceType:
         """Construct :attr:`source` from ``source`` parameter."""

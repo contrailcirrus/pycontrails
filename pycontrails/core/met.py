@@ -1352,8 +1352,7 @@ class MetDataArray(MetBase):
         localize: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[False] = ...,
-    ) -> npt.NDArray[np.float_]:
-        ...
+    ) -> npt.NDArray[np.float_]: ...
 
     @overload
     def interpolate(
@@ -1369,8 +1368,7 @@ class MetDataArray(MetBase):
         localize: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[True],
-    ) -> tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]:
-        ...
+    ) -> tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]: ...
 
     def interpolate(
         self,
@@ -1856,8 +1854,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = ...,
         output_vertex_normals: bool = ...,
         closed: bool = ...,
-    ) -> dict:
-        ...
+    ) -> dict: ...
 
     @overload
     def to_polyhedra(
@@ -1871,8 +1868,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = ...,
         output_vertex_normals: bool = ...,
         closed: bool = ...,
-    ) -> "o3d.geometry.TriangleMesh":
-        ...
+    ) -> "o3d.geometry.TriangleMesh": ...
 
     def to_polyhedra(
         self,

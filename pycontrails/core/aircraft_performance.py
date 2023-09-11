@@ -64,13 +64,11 @@ class AircraftPerformance(Model):
 
     @abc.abstractmethod
     @overload
-    def eval(self, source: Flight, **params: Any) -> Flight:
-        ...
+    def eval(self, source: Flight, **params: Any) -> Flight: ...
 
     @abc.abstractmethod
     @overload
-    def eval(self, source: None = ..., **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
     @abc.abstractmethod
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
@@ -528,13 +526,11 @@ class AircraftPerformanceGrid(Model):
 
     @overload
     @abc.abstractmethod
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
     @abc.abstractmethod
-    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataset:
-        ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataset: ...
 
     @abc.abstractmethod
     def eval(
