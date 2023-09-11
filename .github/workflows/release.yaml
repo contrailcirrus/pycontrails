@@ -6,7 +6,7 @@ on:
   release:
     types:
       - published
-  
+
   workflow_dispatch:
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.15
       env:
-        CIBW_BUILD: cp39-* cp310-* cp311-*
+        CIBW_BUILD: cp39-* cp310-* cp311-* cp312-*
         CIBW_SKIP: '*-win32 *-manylinux_i686 *-musllinux*'
         CIBW_BUILD_VERBOSITY: 3
         CIBW_ARCHS_MACOS: x86_64 arm64
