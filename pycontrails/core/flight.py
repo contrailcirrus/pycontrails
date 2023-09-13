@@ -1419,10 +1419,11 @@ def _altitude_interpolation(
     """Interpolate nan values in ``altitude`` array.
 
     Suppose each group of consecutive nan values is enclosed by ``a0`` and ``a1`` with
-    corresponding time values ``t0`` and ``t1`` respectively. This function immediately
-    climbs or descends starting at ``t0`` (depending on the sign of ``a1 - a0``). Once
-    the filled altitude values reach the terminal value ``a1``, the remaining nans
-    are filled with ``a1``.
+    corresponding time values ``t0`` and ``t1`` respectively. For segments under two hours,
+    this function immediately climbs  starting at ``t0``, or for descents, descents at the end
+    the segment so ``a1`` is met at ``t1``. For segments greater than two hours, a descent will
+    still occur at the end of the segment, but climbs will start halfway between ``t0`` and
+    ``t1``.
 
     Parameters
     ----------
@@ -1459,7 +1460,11 @@ def _altitude_interpolation(
     end_na_idxs = np.flatnonzero(end_na)
     na_group_size = end_na_idxs - start_na_idxs
 
+    s = pd.Series(altitude)
+
     if climb_or_descend_at_end:
+        # This is essentially the old logic - always climb or descend at end of a segment
+        # regardless of segment length
         cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
         cumalt = np.concatenate(cumalt_list)
         cumalt = cumalt * nominal_rocd * freq / np.timedelta64(1, "s")
@@ -1469,7 +1474,6 @@ def _altitude_interpolation(
         nominal_fill[isna] = cumalt
 
         # Use pandas to forward and backfill altitude values
-        s = pd.Series(altitude)
         s_ff = s.ffill()
         s_bf = s.bfill()
 
@@ -1487,17 +1491,20 @@ def _altitude_interpolation(
         # And return the mess
         return np.where(sign == 1.0, fill_climb, fill_descent)
 
-    # Use pandas to forward and backfill altitude values
-    s = pd.Series(altitude)
-
+    # Check to see if we have gaps greater than two hours
     step_threshold = 120.0 * freq / np.timedelta64(1, "m")
     step_groups = na_group_size > step_threshold
     if np.any(step_groups):
+        # If there are gaps greater than two hours, step through one by one
         for i, step_group in enumerate(step_groups):
+            # Skip short segments and segments that do not climb
             if not step_group:
                 continue
             if altitude[start_na_idxs[i]] >= altitude[end_na_idxs[i]]:
                 continue
+
+            # We have a long climbing segment.  Keep first half of segment at the starting
+            # altitude, then climb at mid point. Adjust indicies computed before accordingly
             is_odd = na_group_size[i] % 2
             na_group_size[i] = math.floor(na_group_size[i] / 2)
             nan_fill_size = na_group_size[i] + is_odd
@@ -1505,6 +1512,7 @@ def _altitude_interpolation(
             s[start_na_idxs[i] : start_na_idxs[i] + nan_fill_size + 1] = s[start_na_idxs[i]]
             start_na_idxs[i] += nan_fill_size
 
+    # Use pandas to forward and backfill altitude values
     s_ff = s.ffill()
     s_bf = s.bfill()
 
