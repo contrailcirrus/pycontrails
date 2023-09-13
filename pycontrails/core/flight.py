@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import math
 import warnings
 from typing import TYPE_CHECKING, Any
 
@@ -1458,13 +1459,64 @@ def _altitude_interpolation(
     end_na_idxs = np.flatnonzero(end_na)
     na_group_size = end_na_idxs - start_na_idxs
 
-    # Form array of cumulative altitude values if the flight were to climb
-    # at nominal_rocd over each group of nan
-
     if climb_or_descend_at_end:
         cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
-    else:
-        cumalt_list = [np.arange(1, size, dtype=float) for size in na_group_size]
+        cumalt = np.concatenate(cumalt_list)
+        cumalt = cumalt * nominal_rocd * freq / np.timedelta64(1, "s")
+
+        # Expand cumalt to the full size of altitude
+        nominal_fill = np.zeros_like(altitude)
+        nominal_fill[isna] = cumalt
+
+        # Use pandas to forward and backfill altitude values
+        s = pd.Series(altitude)
+        s_ff = s.ffill()
+        s_bf = s.bfill()
+
+        # Construct altitude values if the flight were to climb / descent throughout
+        # group of consecutive nan values. The call to np.minimum / np.maximum cuts
+        # the climb / descent off at the terminal altitude of the nan group
+        fill_climb = np.maximum(s_ff, s_bf - nominal_fill)
+        fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
+
+        # Explicitly determine if the flight is in a climb or descent state
+        sign = np.full_like(altitude, np.nan)
+        sign[~isna] = np.sign(np.diff(altitude[~isna], append=np.nan))
+        sign = pd.Series(sign).ffill()
+
+        # And return the mess
+        return np.where(sign == 1.0, fill_climb, fill_descent)
+
+    # Use pandas to forward and backfill altitude values
+    s = pd.Series(altitude)
+
+    step_threshold = 120.0 * freq / np.timedelta64(1, "m")
+    step_groups = na_group_size > step_threshold
+    if np.any(step_groups):
+        for i, step_group in enumerate(step_groups):
+            if not step_group:
+                continue
+            if altitude[start_na_idxs[i]] >= altitude[end_na_idxs[i]]:
+                continue
+            is_odd = na_group_size[i] % 2
+            na_group_size[i] = math.floor(na_group_size[i] / 2)
+            nan_fill_size = na_group_size[i] + is_odd
+            isna[start_na_idxs[i] : start_na_idxs[i] + nan_fill_size + 1] = False
+            s[start_na_idxs[i] : start_na_idxs[i] + nan_fill_size + 1] = s[start_na_idxs[i]]
+            start_na_idxs[i] += nan_fill_size
+
+    s_ff = s.ffill()
+    s_bf = s.bfill()
+
+    # Form array of cumulative altitude values if the flight were to climb
+    # at nominal_rocd over each group of nan
+    cumalt_list = []
+    for i, size in enumerate(na_group_size):
+        if altitude[start_na_idxs[i]] <= altitude[end_na_idxs[i]]:
+            cumalt_list.append(np.arange(1, size, dtype=float))
+        else:
+            cumalt_list.append(np.flip(np.arange(1, size, dtype=float)))
+
     cumalt = np.concatenate(cumalt_list)
     cumalt = cumalt * nominal_rocd * freq / np.timedelta64(1, "s")
 
@@ -1472,24 +1524,15 @@ def _altitude_interpolation(
     nominal_fill = np.zeros_like(altitude)
     nominal_fill[isna] = cumalt
 
-    # Use pandas to forward and backfill altitude values
-    s = pd.Series(altitude)
-    s_ff = s.ffill()
-    s_bf = s.bfill()
-
     # Construct altitude values if the flight were to climb / descent throughout
     # group of consecutive nan values. The call to np.minimum / np.maximum cuts
     # the climb / descent off at the terminal altitude of the nan group
-    if climb_or_descend_at_end:
-        fill_climb = np.maximum(s_ff, s_bf - nominal_fill)
-        fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
-    else:
-        fill_climb = np.minimum(s_ff + nominal_fill, s_bf)
-        fill_descent = np.maximum(s_ff - nominal_fill, s_bf)
+    fill_climb = np.minimum(s_ff + nominal_fill, s_bf)
+    fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
 
     # Explicitly determine if the flight is in a climb or descent state
     sign = np.full_like(altitude, np.nan)
-    sign[~isna] = np.sign(np.diff(altitude[~isna], append=np.nan))
+    sign[~isna] = np.sign(np.diff(s[~isna], append=np.nan))
     sign = pd.Series(sign).ffill()
 
     # And return the mess

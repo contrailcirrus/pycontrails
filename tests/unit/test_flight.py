@@ -468,6 +468,45 @@ def test_altitude_interpolation(fl: Flight) -> None:
     assert "extrakey" not in fl17
 
 
+def test_step_climb_interpolation(fl: Flight) -> None:
+    """Check the ROCD of the interpolated altitude."""
+
+    def _check_rocd(_fl: Flight, nominal_rocd: float = constants.nominal_rocd) -> np.bool_:
+        """Check rate of climb/descent."""
+        dt = np.diff(_fl["time"], append=np.datetime64("NaT")) / np.timedelta64(1, "s")
+        dalt = np.diff(_fl.altitude, append=np.nan)
+        rocd = np.abs(dalt / dt)
+        return np.all(rocd[:-1] < 2 * nominal_rocd)
+
+    # test more aggresive altitude interpolation
+    fl_alt = Flight(
+        longitude=np.linspace(0, 10, 5),
+        latitude=np.linspace(0, 10, 5),
+        time=pd.DatetimeIndex(
+            [
+                "1/1/2020 10:00:00",
+                "1/1/2020 11:00:00",
+                "1/1/2020 15:00:00",
+                "1/1/2020 16:00:00",
+                "1/1/2020 20:00:00",
+            ]
+        ),
+        altitude=np.array([0, 5000, 10000, 9000, 5000]),
+    )
+
+    fl1 = fl_alt.resample_and_fill()
+    assert _check_rocd(fl1)
+    # The first segment's climb should be at the start
+    assert fl1["altitude"][1] > 0
+    # The second segment's climb should be in the middle
+    assert abs(fl1["altitude"][61] - 5000.0) < 1e-9
+    assert abs(fl1["altitude"][180] - 5000.0) < 1e-9
+    assert fl1["altitude"][181] > 5000.0
+    # Both descent's should happen at end of segment
+    assert abs(fl1["altitude"][301] - 10000.0) < 1e-9
+    assert abs(fl1["altitude"][361] - 9000.0) < 1e-9
+
+
 def test_geojson_methods(fl: Flight, rng: np.random.Generator) -> None:
     d1 = fl.to_geojson_points()
     assert d1["type"] == "FeatureCollection"
