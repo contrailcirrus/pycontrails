@@ -375,12 +375,14 @@ def test_resample_over_meridian(flight_meridian: Flight, freq: str) -> None:
 
 def test_geodesic_interpolation(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with geodesic interpolation."""
-    fl2 = fl.resample_and_fill("1T", "geodesic", geodesic_threshold=1e3)
-    fl3 = fl.resample_and_fill("1T", "geodesic", geodesic_threshold=200e3)
+    fl_alt = Flight(fl.dataframe)
+    fl_alt["altitude"][:] = 10000.0
+    fl2 = fl_alt.resample_and_fill("1T", "geodesic", geodesic_threshold=1e3)
+    fl3 = fl_alt.resample_and_fill("1T", "geodesic", geodesic_threshold=200e3)
     # fine geodesic interpolation will beat linear interpolation for minimizing spherical distance
     assert fl2.length < fl3.length
     with pytest.raises(ValueError, match="Unknown `fill_method`"):
-        fl.resample_and_fill(fill_method="nearest")
+        fl_alt.resample_and_fill(fill_method="nearest")
 
 
 def test_resample_keep_original(fl: Flight) -> None:
