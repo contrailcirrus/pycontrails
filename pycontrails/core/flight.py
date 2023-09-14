@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import enum
 import logging
-import math
 import warnings
 from typing import TYPE_CHECKING, Any
 
@@ -1462,7 +1461,7 @@ def _altitude_interpolation(
         # regardless of segment length
         cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
         cumalt = np.concatenate(cumalt_list)
-        cumalt = cumalt * nominal_rocd * freq / np.timedelta64(1, "s")
+        cumalt = cumalt * nominal_rocd * (freq / np.timedelta64(1, "s"))
 
         # Expand cumalt to the full size of altitude
         nominal_fill = np.zeros_like(altitude)
@@ -1500,8 +1499,7 @@ def _altitude_interpolation(
 
             # We have a long climbing segment.  Keep first half of segment at the starting
             # altitude, then climb at mid point. Adjust indicies computed before accordingly
-            is_odd = na_group_size[i] % 2
-            na_group_size[i] = math.floor(na_group_size[i] / 2)
+            na_group_size[i], is_odd = divmod(na_group_size[i], 2)
             nan_fill_size = na_group_size[i] + is_odd
             isna[start_na_idxs[i] : start_na_idxs[i] + nan_fill_size + 1] = False
             s[start_na_idxs[i] : start_na_idxs[i] + nan_fill_size + 1] = s[start_na_idxs[i]]
@@ -1514,14 +1512,14 @@ def _altitude_interpolation(
     # Form array of cumulative altitude values if the flight were to climb
     # at nominal_rocd over each group of nan
     cumalt_list = []
-    for i, size in enumerate(na_group_size):
-        if altitude[start_na_idxs[i]] <= altitude[end_na_idxs[i]]:
+    for start_na_idx, end_na_idx, size in zip(start_na_idxs, end_na_idxs, na_group_size):
+        if altitude[start_na_idx] <= altitude[end_na_idx]:
             cumalt_list.append(np.arange(1, size, dtype=float))
         else:
             cumalt_list.append(np.flip(np.arange(1, size, dtype=float)))
 
     cumalt = np.concatenate(cumalt_list)
-    cumalt = cumalt * nominal_rocd * freq / np.timedelta64(1, "s")
+    cumalt = cumalt * nominal_rocd * (freq / np.timedelta64(1, "s"))
 
     # Expand cumalt to the full size of altitude
     nominal_fill = np.zeros_like(altitude)
