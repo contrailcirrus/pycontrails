@@ -75,7 +75,11 @@ black:
 
 black-check:
 	black pycontrails --check
-	
+
+# https://taplo.tamasfe.dev/
+taplo:
+	taplo format pyproject.toml --option indent_string='    '
+
 mypy:
 	mypy pycontrails
 
