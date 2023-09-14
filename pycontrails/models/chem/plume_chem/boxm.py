@@ -1946,9 +1946,7 @@ class BoxModel(Model):
 
         spec_hum = met["specific_humidity"].data.sel(time=ts)
 
-        
-        
-
+      
     def _zenith(self):
         """Calculate zenith angle for each grid cell and timestep"""
 
