@@ -501,12 +501,12 @@ def test_step_climb_interpolation(fl: Flight) -> None:
     # The first segment's climb should be at the start
     assert fl1["altitude"][1] > 0
     # The second segment's climb should be in the middle
-    assert abs(fl1["altitude"][61] - 5000.0) < 1e-9
-    assert abs(fl1["altitude"][180] - 5000.0) < 1e-9
+    assert fl1["altitude"][61] == pytest.approx(5000.0, abs=1e-9)
+    assert fl1["altitude"][180] == pytest.approx(5000.0, abs=1e-9)
     assert fl1["altitude"][181] > 5000.0
     # Both descent's should happen at end of segment
-    assert abs(fl1["altitude"][301] - 10000.0) < 1e-9
-    assert abs(fl1["altitude"][361] - 9000.0) < 1e-9
+    assert fl1["altitude"][301] == pytest.approx(10000.0, abs=1e-9)
+    assert fl1["altitude"][361] == pytest.approx(9000.0, abs=1e-9)
 
 
 def test_geojson_methods(fl: Flight, rng: np.random.Generator) -> None:
