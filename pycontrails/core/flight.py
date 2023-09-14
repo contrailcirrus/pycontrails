@@ -1454,36 +1454,119 @@ def _altitude_interpolation(
     end_na_idxs = np.flatnonzero(end_na)
     na_group_size = end_na_idxs - start_na_idxs
 
-    s = pd.Series(altitude)
-
     if climb_or_descend_at_end:
-        # This is essentially the old logic - always climb or descend at end of a segment
-        # regardless of segment length
-        cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
-        cumalt = np.concatenate(cumalt_list)
-        cumalt = cumalt * nominal_rocd * (freq / np.timedelta64(1, "s"))
+        return _altitude_interpolation_climb_descend_end(
+            altitude, na_group_size, nominal_rocd, freq, isna
+        )
 
-        # Expand cumalt to the full size of altitude
-        nominal_fill = np.zeros_like(altitude)
-        nominal_fill[isna] = cumalt
+    return _altitude_interpolation_climb_descend_middle(
+        altitude, start_na_idxs, end_na_idxs, na_group_size, freq, nominal_rocd, isna
+    )
 
-        # Use pandas to forward and backfill altitude values
-        s_ff = s.ffill()
-        s_bf = s.bfill()
 
-        # Construct altitude values if the flight were to climb / descent throughout
-        # group of consecutive nan values. The call to np.minimum / np.maximum cuts
-        # the climb / descent off at the terminal altitude of the nan group
-        fill_climb = np.maximum(s_ff, s_bf - nominal_fill)
-        fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
+def _altitude_interpolation_climb_descend_end(
+    altitude: npt.NDArray[np.float_],
+    na_group_size: npt.NDArray[np.intp],
+    nominal_rocd: float,
+    freq: np.timedelta64,
+    isna: npt.NDArray[np.bool_],
+) -> npt.NDArray[np.float_]:
+    """Interpolate altitude values by placing climbs/descents at end of nan sequences.
 
-        # Explicitly determine if the flight is in a climb or descent state
-        sign = np.full_like(altitude, np.nan)
-        sign[~isna] = np.sign(np.diff(altitude[~isna], append=np.nan))
-        sign = pd.Series(sign).ffill()
+    The segment will remain at constant elevation until the end of the segment where
+    it will climb or descend at a constant rocd based on `nominal_rocd`, reaching the
+    target altitude at the end of the segment.
 
-        # And return the mess
-        return np.where(sign == 1.0, fill_climb, fill_descent)
+    Parameters
+    ----------
+    altitude : npt.NDArray[np.float_]
+        Array of altitude values containing nan values. This function will raise
+        an error if ``altitude`` does not contain nan values. Moreover, this function
+        assumes the initial and final entries in ``altitude`` are not nan.
+    na_group_size : npt.NDArray[np.intp]
+        Array of the length of each consecutive sequence of nan values within the
+        array provided to input parameter `altitude`.
+    nominal_rocd : float
+        Nominal rate of climb/descent, in m/s
+    freq : np.timedelta64
+        Frequency of time index associated to ``altitude``.
+    isna : npt.NDArray[np.bool_]
+        Array of boolean values indicating whether or not each entry in `altitude`
+        is nan-valued.
+    -------
+    npt.NDArray[np.float_]
+        Altitude after nan values have been filled
+    """
+    cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
+    cumalt = np.concatenate(cumalt_list)
+    cumalt = cumalt * nominal_rocd * (freq / np.timedelta64(1, "s"))
+
+    # Expand cumalt to the full size of altitude
+    nominal_fill = np.zeros_like(altitude)
+    nominal_fill[isna] = cumalt
+
+    # Use pandas to forward and backfill altitude values
+    s = pd.Series(altitude)
+    s_ff = s.ffill()
+    s_bf = s.bfill()
+
+    # Construct altitude values if the flight were to climb / descent throughout
+    # group of consecutive nan values. The call to np.minimum / np.maximum cuts
+    # the climb / descent off at the terminal altitude of the nan group
+    fill_climb = np.maximum(s_ff, s_bf - nominal_fill)
+    fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
+
+    # Explicitly determine if the flight is in a climb or descent state
+    sign = np.full_like(altitude, np.nan)
+    sign[~isna] = np.sign(np.diff(altitude[~isna], append=np.nan))
+    sign = pd.Series(sign).ffill()
+
+    # And return the mess
+    return np.where(sign == 1.0, fill_climb, fill_descent)
+
+
+def _altitude_interpolation_climb_descend_middle(
+    altitude: npt.NDArray[np.float_],
+    start_na_idxs: npt.NDArray[np.intp],
+    end_na_idxs: npt.NDArray[np.intp],
+    na_group_size: npt.NDArray[np.intp],
+    freq: np.timedelta64,
+    nominal_rocd: float,
+    isna: npt.NDArray[np.bool_],
+) -> npt.NDArray[np.float_]:
+    """Interpolate nan altitude values based on step-climb logic.
+
+    For short segments, the climb will be placed at the begining of the segment. For
+    long climbs (greater than two hours) the climb will be placed in the middle. For
+    all descents, the descent will be placed at the end of the segment.
+
+    Parameters
+    ----------
+    altitude : npt.NDArray[np.float_]
+        Array of altitude values containing nan values. This function will raise
+        an error if ``altitude`` does not contain nan values. Moreover, this function
+        assumes the initial and final entries in ``altitude`` are not nan.
+    start_na_idxs : npt.NDArray[np.intp]
+        Array of indices of the array `altitude` that correspond to the last non-nan-
+        valued index before a sequence of consequtive nan values.
+    end_na_idxs : npt.NDArray[np.intp]
+        Array of indices of the array `altitude` that correspond to the first non-nan-
+        valued index after a sequence of consequtive nan values.
+    na_group_size : npt.NDArray[np.intp]
+        Array of the length of each consecutive sequence of nan values within the
+        array provided to input parameter `altitude`.
+    nominal_rocd : float
+        Nominal rate of climb/descent, in m/s
+    freq : np.timedelta64
+        Frequency of time index associated to ``altitude``.
+    isna : npt.NDArray[np.bool_]
+        Array of boolean values indicating whether or not each entry in `altitude`
+        is nan-valued.
+    -------
+    npt.NDArray[np.float_]
+        Altitude after nan values have been filled
+    """
+    s = pd.Series(altitude)
 
     # Check to see if we have gaps greater than two hours
     step_threshold = 120.0 * freq / np.timedelta64(1, "m")
