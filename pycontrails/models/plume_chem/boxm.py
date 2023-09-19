@@ -22,23 +22,7 @@ from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.datalib import ecmwf
 from pycontrails.physics import geo, thermo, units, constants
-
-@dataclass
-class BoxModelParams(ModelParams):
-    """Default trajectory model parameters."""
-    lat_bound: tuple[float, float] | None = None
-    lon_bound: tuple[float, float] | None = None
-    alt_bound: tuple[float, float] | None = None
-    start_date: str = "2021-01-01"
-    start_time: str = "00:00:00"
-    chem_ts: int = 60 # seconds between chemistry calculations
-    disp_ts: int = 300 # seconds between dispersion calculations
-    runtime: int = 24 # hours model runtime
-    horiz_res: float = 0.25 # degrees
-    bgoam: float = 0.7 # background organic aerosol mass
-    microgna: float = 0.0 # microgram of nitrate aerosol
-    microgsa: float = 0.0 # microgram of sulfate aerosol
-    
+   
 
 class BoxModel(Model):
     """Compute chemical concentrations along a trajectory."""
@@ -48,12 +32,9 @@ class BoxModel(Model):
         AirTemperature,
         SpecificHumidity,
         RelativeHumidity,
-        AirPressure,
-        #ecmwf.CloudAreaFractionInLayer
+        AirPressure
     )
     
-    # Set default parameters as BoxModelParams
-    default_params = BoxModelParams
 
     # Met, chem data is not optional
     met: MetDataset
@@ -145,7 +126,7 @@ class BoxModel(Model):
     # -------------
 
             
-    def _deriv(self):
+    def _deriv(self, ts):
         """Calculate the derivative of the chemical concentrations and flux rates."""
         # This function calculate concentrations and flux rates for each of the chemical species
 
@@ -1950,7 +1931,6 @@ class BoxModel(Model):
     def _zenith(self):
         """Calculate zenith angle for each grid cell and timestep"""
 
-        met = self.met
         chem = self.chem
 
         # For each timestep, calculate zenith for each grid cell in a vectorised way
