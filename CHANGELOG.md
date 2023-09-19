@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.47.2 (unreleased)
+
+### Fixes
+
+- Use the experimental version number parameter `E` in `pycontrails.ecmwf.hres.get_forecast_filename`. Update the logic involved in setting the dissemination data stream indicator `S`.
+
 ## v0.47.1
 
 ### Fixes
