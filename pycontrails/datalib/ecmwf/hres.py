@@ -36,22 +36,28 @@ if TYPE_CHECKING:
 
 
 def get_forecast_filename(
-    forecast_time: datetime, timestep: datetime, cc: str = "A1", S: str = "D", E: str = "1"
+    forecast_time: datetime,
+    timestep: datetime,
+    cc: str = "A1",
+    S: str | None = None,
+    E: str = "1",
 ) -> str:
     """Create forecast filename from ECMWF dissemination products.
 
-    The following dissemination filename convention is used for the
-    transmission of ECMWF dissemination products:
+    See `ECMWF Dissemination <https://confluence.ecmwf.int/x/0EykDQ>`_ for more information::
 
-    ```ccSMMDDHHIImmddhhiiE`` where:
+        The following dissemination filename convention is used for the
+        transmission of ECMWF dissemination products:
 
-        cc is Dissemination stream name
-        S is dissemination data stream indicator
-        MMDDHHII is month, day, hour and minute on which the products are based
-        mmddhhii is month, day, hour and minute on which the products are valid at
-            ddhhii is set to “______” for Seasonal Forecasting System products
-            ii is set to 01 for high resolution forecast time step zero, type=fc, step=0
-        E is the Experiment Version Number’ (as EXPVER in MARS, normally 1)
+        ccSMMDDHHIImmddhhiiE where:
+
+            cc is Dissemination stream name
+            S is dissemination data stream indicator
+            MMDDHHII is month, day, hour and minute on which the products are based
+            mmddhhii is month, day, hour and minute on which the products are valid at
+                ddhhii is set to “______” for Seasonal Forecasting System products
+                ii is set to 01 for high resolution forecast time step zero, type=fc, step=0
+            E is the Experiment Version Number' (as EXPVER in MARS, normally 1)
 
     Parameters
     ----------
@@ -63,8 +69,8 @@ def get_forecast_filename(
         Dissemination stream name.
         Defaults to "A1"
     S : str, optional
-        Dissemination data stream indicator.
-        Defaults to "D"
+        Dissemination data stream indicator. If None, S is set to "S" for 6 or 18 hour forecast
+        and "D" for 0 or 12 hour forecast.
     E : str, optional
         Experiment Version Number.
         Defaults to "1"
@@ -77,26 +83,26 @@ def get_forecast_filename(
     Raises
     ------
     ValueError
+        If ``forecast_time`` is not on a synoptic hour (00, 06, 12, 18)
+        If ``timestep`` is before ``forecast_time``
     """
 
-    if forecast_time.hour not in [0, 6, 12, 18]:
+    if forecast_time.hour % 6 != 0:
         raise ValueError("Forecast time must have hour 0, 6, 12, or 18")
 
     if timestep < forecast_time:
         raise ValueError("Forecast timestep must be on or after forecast time")
 
-    forecast_time_str = forecast_time.strftime("%m%d%H%M")
-    if forecast_time.hour in [6, 18]:
-        S = "S"
+    if S is None:
+        S = "D" if forecast_time.hour in (0, 12) else "S"
 
+    forecast_time_str = forecast_time.strftime("%m%d%H%M")
     timestep_str = timestep.strftime("%m%d%H")
-    ii = "00"
 
     # for some reason "ii" is set to 01 for the first forecast timestep
-    if forecast_time == timestep:
-        ii = "01"
+    ii = "01" if forecast_time == timestep else "00"
 
-    return f"{cc}{S}{forecast_time_str}{timestep_str}{ii}1"
+    return f"{cc}{S}{forecast_time_str}{timestep_str}{ii}{E}"
 
 
 class HRES(ECMWFAPI):
