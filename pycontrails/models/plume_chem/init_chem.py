@@ -53,6 +53,9 @@ class ChemDataset(MetBase):
                 # Calculate local time and zenith angle
                 self._zenith()
 
+                # Get species data
+                self._get_species()
+
                 # # Calculate photolysis rate constants
                 # self._photolysis()
 
@@ -181,14 +184,14 @@ class ChemDataset(MetBase):
         def _get_species(self):
                 """Get species from species data files"""
                 chem = self.data
-                for s in chem.species:
-                        for t in chem.local_time:
-                                for l in chem.level:
-                                        for lat in chem.latitude:
-                                                for lon in chem.longitude:
-                                                        chem["Y"].loc[lat, lon, l, t, s] = np.loadtxt(f"Y_{s}.txt")
-                        chem["Y"]
-                return species
+                for s in chem.species.values[0:10]:
+                        for time_idx, ts in enumerate(chem.time.values):
+                                month = ts.astype('datetime64[M]').astype(int) % 12 + 1
+                                #print(month)
+                                for level_idx, l in enumerate(chem.level.values):
+                                        #print(time_idx, ts, level_idx, l, s)
+                                        chem["Y"].loc[:, :, l, ts, s] = np.loadtxt("species/" + s + "_MONTH_" + str(month) + "_LEVEL_" + str(level_idx + 1) + ".csv", delimiter=",")
+
         
         
         @property

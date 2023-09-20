@@ -59,28 +59,28 @@ chem = ChemDataset(
 
 chem.open_chemdataset()
 
-print(chem.data)
+print(chem.data["Y"])
 
-# Initialise box model with met and chem data
-boxm = BoxModel(met, chem)
+# # Initialise box model with met and chem data
+# boxm = BoxModel(met, chem)
 
-# Import emissions data from dry advection
+# # Import emissions data from dry advection
 
-# Convert dry advection to emissions dataset
-emi = xr.Dataset(
-    {
-        "EM": (["latitude", "longitude", "level", "time", "species"],
-                np.zeros((len(latitude), len(longitude), len(level), len(time), len(species)))),
-    },
-    coords={
-        "latitude": latitude,
-        "longitude": longitude, 
-        "level": level,
-        "time": time,
-        "species": species,
-    }
-)
+# # Convert dry advection to emissions dataset
+# emi = xr.Dataset(
+#     {
+#         "EM": (["latitude", "longitude", "level", "time", "species"],
+#                 np.zeros((len(latitude), len(longitude), len(level), len(time), len(species)))),
+#     },
+#     coords={
+#         "latitude": latitude,
+#         "longitude": longitude, 
+#         "level": level,
+#         "time": time,
+#         "species": species,
+#     }
+# )
 
-# Run box model
-boxm.eval(source=emi)
+# # Run box model
+# boxm.eval(source=emi)
 
