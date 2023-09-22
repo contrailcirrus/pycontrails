@@ -7,6 +7,11 @@
 
 - Use the experimental version number parameter `E` in `pycontrails.ecmwf.hres.get_forecast_filename`. Update the logic involved in setting the dissemination data stream indicator `S`.
 
+### Internals
+
+- Provide consistent `ModuleNotFoundError` messages when optional dependencies are not installed.
+- Move the `synthetic_flight` module into the `pycontrails.ext` namespace.
+
 ## v0.47.1
 
 ### Fixes

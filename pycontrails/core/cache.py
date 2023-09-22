@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import pathlib
@@ -14,20 +15,23 @@ logger = logging.getLogger(__name__)
 
 from overrides import overrides
 
+from pycontrails.utils import dependencies
+
 # optional imports
 if TYPE_CHECKING:
     import google
 
 
+@functools.cache
 def _get_user_cache_dir() -> str:
     try:
         import platformdirs
     except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(
-            "Using the pycontrails CacheStore requires the 'platformdirs' package. "
-            "This can be installed with 'pip install pycontrails[ecmwf]' or "
-            "'pip install platformdirs'."
-        ) from e
+        dependencies.raise_module_not_found_error(
+            name="cache module",
+            package_name="platformdirs",
+            module_not_found_error=e,
+        )
     return platformdirs.user_cache_dir("pycontrails")
 
 
@@ -468,10 +472,11 @@ class GCPCacheStore(CacheStore):
         try:
             from google.cloud import storage
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "GCPCache requires the `google-cloud-storage` module, which can be installed "
-                "using `pip install pycontrails[gcp]`"
-            ) from e
+            dependencies.raise_module_not_found_error(
+                name="GCPCacheStore class",
+                package_name="google-cloud-storage",
+                module_not_found_error=e,
+            )
 
         if "https://" in cache_dir:
             raise ValueError(
@@ -830,11 +835,12 @@ def _upload_with_progress(blob: Any, disk_path: str, timeout: int, chunk_size: i
     try:
         from tqdm.auto import tqdm
     except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(
-            "Method `put` requires the `tqdm` module, which can be installed using "
-            "`pip install pycontrails[gcp]`. "
-            "Alternatively, set instance attribute `show_progress=False`."
-        ) from e
+        dependencies.raise_module_not_found_error(
+            name="_upload_with_progress function",
+            package_name="tqdm",
+            module_not_found_error=e,
+            pycontrails_optional_package="gcp",
+        )
 
     # minimal possible chunk_size to allow nice progress bar
     blob.chunk_size = chunk_size
@@ -852,13 +858,23 @@ def _download_with_progress(
 
     try:
         from google.resumable_media.requests import ChunkedDownload
+    except ModuleNotFoundError as e:
+        dependencies.raise_module_not_found_error(
+            name="_download_with_progress function",
+            package_name="google-cloud-storage",
+            module_not_found_error=e,
+            pycontrails_optional_package="gcp",
+        )
+
+    try:
         from tqdm.auto import tqdm
     except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(
-            "Method `get` requires the `tqdm` and `google-cloud-storage` modules, "
-            "which can be installed using `pip install pycontrails[gcp]`. "
-            "Alternatively, set instance attribute `show_progress=False`."
-        ) from e
+        dependencies.raise_module_not_found_error(
+            name="_download_with_progress function",
+            package_name="tqdm",
+            module_not_found_error=e,
+            pycontrails_optional_package="gcp",
+        )
 
     blob = gcp_cache._bucket.get_blob(gcp_path)
     url = blob._get_download_url(gcp_cache._client)

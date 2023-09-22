@@ -14,16 +14,29 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
+from pycontrails.utils import dependencies
+
 try:
     import cv2
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="polygon module",
+        package_name="opencv-python",
+        module_not_found_error=exc,
+        pycontrails_optional_package="vis",
+    )
+
+try:
     import shapely
     import shapely.geometry
     import shapely.validation
 except ModuleNotFoundError as exc:
-    raise ModuleNotFoundError(
-        "This module requires the 'opencv-python' and 'shapely' packages. "
-        "These can be installed with 'pip install pycontrails[vis]'."
-    ) from exc
+    dependencies.raise_module_not_found_error(
+        name="polygon module",
+        package_name="shapely",
+        module_not_found_error=exc,
+        pycontrails_optional_package="vis",
+    )
 
 
 def buffer_and_clean(

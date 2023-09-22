@@ -21,6 +21,7 @@ from pycontrails.core.met_var import (
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.datalib import ecmwf
+from pycontrails.utils import dependencies
 
 WideBodyJets = {
     "A332",
@@ -143,14 +144,6 @@ class ACCF(Model):
         params: dict[str, Any] = {},
         **params_kwargs: Any,
     ) -> None:
-        try:
-            import climaccf  # noqa: F401
-        except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "Requires the climaccf package which can be installed"
-                "using pip install pycontrails[accf]"
-            ) from e
-
         # Normalize ECMWF variables
         met = standardize_variables(met, self.met_variables)
 
@@ -213,8 +206,15 @@ class ACCF(Model):
         NotImplementedError
             Raises if input ``source`` is not supported.
         """
-
-        from climaccf.accf import GeTaCCFs
+        try:
+            from climaccf.accf import GeTaCCFs
+        except ModuleNotFoundError as e:
+            dependencies.raise_module_not_found_error(
+                name="ACCF.eval method",
+                package_name="climaccf",
+                module_not_found_error=e,
+                pycontrails_optional_package="accf",
+            )
 
         self.update_params(params)
         self.set_source(source)

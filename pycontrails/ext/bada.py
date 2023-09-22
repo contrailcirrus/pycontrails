@@ -22,8 +22,8 @@ try:
 
 except ImportError as e:
     raise ImportError(
-        'Failed to import `pycontrails-bada` extension. Install with `pip install "pycontrails-bada'
-        ' @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"`'
+        "Failed to import the 'pycontrails-bada' package. Install with 'pip install"
+        ' "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"\'.'
     ) from e
 else:
     __all__ = [
