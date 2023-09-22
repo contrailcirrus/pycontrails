@@ -60,7 +60,7 @@ def fl(met: MetDataset, request) -> Flight:
         "time": np.array([met["time"].values[0], met["time"].values[6]]),
     }
 
-    SyntheticFlight = pytest.importorskip("pycontrails.utils.synthetic_flight").SyntheticFlight
+    SyntheticFlight = pytest.importorskip("pycontrails.ext.synthetic_flight").SyntheticFlight
 
     syn = SyntheticFlight(
         bounds,

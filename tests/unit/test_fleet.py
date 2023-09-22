@@ -7,7 +7,7 @@ from pycontrails import Flight
 from pycontrails.core.fleet import Fleet
 
 try:
-    from pycontrails.utils.synthetic_flight import SyntheticFlight
+    from pycontrails.ext.synthetic_flight import SyntheticFlight
 except ImportError:
     pytest.skip("SyntheticFlight not available", allow_module_level=True)
 
