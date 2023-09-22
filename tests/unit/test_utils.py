@@ -11,7 +11,7 @@ import pytest
 import xarray as xr
 
 try:
-    from pycontrails.utils.synthetic_flight import SAMPLE_AIRCRAFT_TYPES, SyntheticFlight
+    from pycontrails.ext.synthetic_flight import SAMPLE_AIRCRAFT_TYPES, SyntheticFlight
 except ImportError:
     synthetic_flight_unavailable = True
     SAMPLE_AIRCRAFT_TYPES = []
