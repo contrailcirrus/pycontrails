@@ -6,6 +6,7 @@
 ### Fixes
 
 - Use the experimental version number parameter `E` in `pycontrails.ecmwf.hres.get_forecast_filename`. Update the logic involved in setting the dissemination data stream indicator `S`.
+- Changes the behavior of `_altitude_interpolation` method that is called within  `resample_and_fill`. Step climbs will be placed in long segments. Descents will always occur at the end of segments.
 
 ### Internals
 
