@@ -30,6 +30,7 @@ from pycontrails.datalib.gfs.variables import (
     TOAUpwardShortwaveRadiation,
     Visibility,
 )
+from pycontrails.utils import dependencies
 from pycontrails.utils.temp import temp_file
 from pycontrails.utils.types import DatetimeLike
 
@@ -135,12 +136,23 @@ class GFSForecast(datalib.MetDataSource):
     ):
         try:
             import boto3
+        except ModuleNotFoundError as e:
+            dependencies.raise_module_not_found_error(
+                name="GFSForecast class",
+                package_name="boto3",
+                module_not_found_error=e,
+                pycontrails_optional_package="gfs",
+            )
+
+        try:
             import botocore
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "`gfs` module dependencies are missing. "
-                "Please install all required dependencies using `pip install -e .[gfs]`"
-            ) from e
+            dependencies.raise_module_not_found_error(
+                name="GFSForecast class",
+                package_name="botocore",
+                module_not_found_error=e,
+                pycontrails_optional_package="gfs",
+            )
 
         # inputs
         self.paths = paths
@@ -650,11 +662,12 @@ def _download_with_progress(
     try:
         from tqdm import tqdm
     except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(
-            "Download with progress requires the `tqdm` module, "
-            "which can be installed using `pip install pycontrails[gfs]`. "
-            "Alternatively, set instance attribute `show_progress=False`."
-        ) from e
+        dependencies.raise_module_not_found_error(
+            name="_download_with_progress function",
+            package_name="tqdm",
+            module_not_found_error=e,
+            pycontrails_optional_package="gfs",
+        )
 
     meta = client.head_object(Bucket=bucket, Key=key)
     filesize = meta["ContentLength"]

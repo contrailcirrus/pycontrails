@@ -31,8 +31,8 @@ from pycontrails.models.cocip.contrail_properties import contrail_edges, plume_m
 from pycontrails.models.cocip.radiative_forcing import albedo
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.tau_cirrus import tau_cirrus
-from pycontrails.physics import geo, units
-from pycontrails.physics.thermo import rho_d
+from pycontrails.physics import geo, thermo, units
+from pycontrails.utils import dependencies
 
 # -----------------------
 # Flight waypoint outputs
@@ -920,7 +920,7 @@ def time_slice_statistics(
         * flight_waypoints["segment_length"]
     )
     contrails["pressure"] = units.m_to_pl(contrails["altitude"])
-    contrails["rho_air"] = rho_d(contrails["air_temperature"], contrails["pressure"])
+    contrails["rho_air"] = thermo.rho_d(contrails["air_temperature"], contrails["pressure"])
     contrails["plume_mass_per_m"] = plume_mass_per_distance(
         contrails["area_eff"], contrails["rho_air"]
     )
@@ -1586,7 +1586,11 @@ def contrails_to_hi_res_grid(
     try:
         from tqdm.auto import tqdm
     except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError("Install the 'tqdm' package") from exc
+        dependencies.raise_module_not_found_error(
+            name="contrails_to_hi_res_grid function",
+            package_name="tqdm",
+            module_not_found_error=exc,
+        )
 
     for i in tqdm(heads_t.index[:2000]):
         contrail_segment = GeoVectorDataset(

@@ -15,6 +15,7 @@ from pycontrails.core import coordinates
 from pycontrails.core.met import MetDataset
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.cocip import cocip
+from pycontrails.utils import dependencies
 
 if TYPE_CHECKING:
     import tqdm
@@ -159,13 +160,13 @@ class CocipTimeHandlingMixin:
 
         try:
             from tqdm.auto import tqdm
-        except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                f"Running model {type(self).__name__}  with parameter "
-                "show_progress=True requires the 'tqdm' module, which can be "
-                "installed with 'pip install tqdm'. "
-                "Alternatively, set model parameter 'show_progress=False'."
-            ) from e
+        except ModuleNotFoundError as exc:
+            dependencies.raise_module_not_found_error(
+                name="CocipGrid.init_pbar method",
+                package_name="tqdm",
+                module_not_found_error=exc,
+                extra="Alternatively, set model parameter 'show_progress=False'.",
+            )
 
         estimate = self._estimate_runtime()
 

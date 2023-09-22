@@ -27,7 +27,7 @@ from pycontrails.datalib.ecmwf.variables import (
     TopNetSolarRadiation,
     TopNetThermalRadiation,
 )
-from pycontrails.utils.iteration import chunk_list
+from pycontrails.utils import dependencies, iteration
 from pycontrails.utils.temp import temp_file
 from pycontrails.utils.types import DatetimeLike
 
@@ -271,10 +271,12 @@ class HRES(ECMWFAPI):
         try:
             from ecmwfapi import ECMWFService
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "Some `ecmwf` module dependencies are missing. "
-                "Please install all required dependencies using `pip install -e .[ecmwf]`"
-            ) from e
+            dependencies.raise_module_not_found_error(
+                name="HRES class",
+                package_name="ecmwf-api-client",
+                module_not_found_error=e,
+                pycontrails_optional_package="ecmwf",
+            )
 
         # constants
         # ERA5 now delays creating the server attribute until it is needed to download
@@ -596,7 +598,7 @@ class HRES(ECMWFAPI):
 
         # download in sets of 24
         if len(steps) > 24:
-            for _steps in chunk_list(steps, 24):
+            for _steps in iteration.chunk_list(steps, 24):
                 self._download_file(_steps)
         elif len(steps) > 0:
             self._download_file(steps)

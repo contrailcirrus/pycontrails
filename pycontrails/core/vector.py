@@ -17,6 +17,7 @@ from overrides import overrides
 from pycontrails.core import coordinates, interpolation
 from pycontrails.core import met as met_module
 from pycontrails.physics import units
+from pycontrails.utils import dependencies
 from pycontrails.utils import json as json_module
 
 logger = logging.getLogger(__name__)
@@ -1386,9 +1387,12 @@ class GeoVectorDataset(VectorDataset):
         try:
             import pyproj
         except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "Transforming CRS requires the 'pyproj' module. Install with 'pip install pyproj'."
-            ) from exc
+            dependencies.raise_module_not_found_error(
+                name="GeoVectorDataset.transform_crs method",
+                package_name="pyproj",
+                module_not_found_error=exc,
+                pycontrails_optional_package="pyproj",
+            )
 
         transformer = pyproj.Transformer.from_crs(self.attrs["crs"], crs, always_xy=True)
         lon, lat = transformer.transform(self["longitude"], self["latitude"])

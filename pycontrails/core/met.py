@@ -36,6 +36,7 @@ from pycontrails.core import vector as vector_module
 from pycontrails.core.cache import CacheStore, DiskCacheStore
 from pycontrails.core.met_var import AirPressure, Altitude, MetVariable
 from pycontrails.physics import units
+from pycontrails.utils import dependencies
 from pycontrails.utils import temp as temp_module
 
 logger = logging.getLogger(__name__)
@@ -1942,18 +1943,22 @@ class MetDataArray(MetBase):
         try:
             from skimage import measure
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "This method requires the `skimage` module from scikit-learn, which can be "
-                "installed using `pip install pycontrails[vis]`"
-            ) from e
+            dependencies.raise_module_not_found_error(
+                name="MetDataArray.to_polyhedra method",
+                package_name="scikit-image",
+                pycontrails_optional_package="vis",
+                module_not_found_error=e,
+            )
 
         try:
             import open3d as o3d
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "This method requires the `open3d` module, which can be installed "
-                "with `pip install pycontrails[open3d]` or `pip install open3d`."
-            ) from e
+            dependencies.raise_module_not_found_error(
+                name="MetDataArray.to_polyhedra method",
+                package_name="open3d",
+                pycontrails_optional_package="open3d",
+                module_not_found_error=e,
+            )
 
         if len(self.data["level"]) == 1:
             raise ValueError(

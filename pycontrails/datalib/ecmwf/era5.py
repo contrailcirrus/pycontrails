@@ -28,6 +28,7 @@ from pycontrails.datalib.ecmwf.variables import (
     TopNetSolarRadiation,
     TopNetThermalRadiation,
 )
+from pycontrails.utils import dependencies
 from pycontrails.utils.temp import temp_file
 
 if TYPE_CHECKING:
@@ -497,10 +498,12 @@ class ERA5(ECMWFAPI):
                 try:
                     import cdsapi
                 except ModuleNotFoundError as e:
-                    raise ModuleNotFoundError(
-                        "Some `ecmwf` module dependencies are missing. "
-                        "Please install all required dependencies using `pip install -e .[ecmwf]`"
-                    ) from e
+                    dependencies.raise_module_not_found_error(
+                        name="ERA5._download_file method",
+                        package_name="cdsapi",
+                        module_not_found_error=e,
+                        pycontrails_optional_package="ecmwf",
+                    )
 
                 try:
                     self.cds = cdsapi.Client(url=self.url, key=self.key)

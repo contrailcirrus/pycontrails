@@ -16,6 +16,7 @@ from overrides import overrides
 from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.vector import AttrDict, GeoVectorDataset, VectorDataDict, VectorDataset
 from pycontrails.physics import constants, geo, units
+from pycontrails.utils import dependencies
 
 logger = logging.getLogger(__name__)
 
@@ -533,10 +534,12 @@ class Flight(GeoVectorDataset):
         try:
             import pyproj
         except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "The 'segment_azimuth' method requires the 'pyproj' package. "
-                "Install with 'pip install pyproj'."
-            ) from exc
+            dependencies.raise_module_not_found_error(
+                name="Flight.segment_azimuth method",
+                package_name="pyproj",
+                module_not_found_error=exc,
+                pycontrails_optional_package="pyproj",
+            )
 
         geod = pyproj.Geod(a=constants.radius_earth)
         az, *_ = geod.inv(lons1, lats1, lons2, lats2)
@@ -1001,10 +1004,12 @@ class Flight(GeoVectorDataset):
         try:
             import pyproj
         except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "The '_geodesic_interpolation' method requires the 'pyproj' package. "
-                "Install with 'pip install pyproj'."
-            ) from exc
+            dependencies.raise_module_not_found_error(
+                name="Flight._geodesic_interpolation method",
+                package_name="pyproj",
+                module_not_found_error=exc,
+                pycontrails_optional_package="pyproj",
+            )
 
         geod = pyproj.Geod(ellps="WGS84")
         longitudes: list[float] = []
@@ -1138,11 +1143,11 @@ class Flight(GeoVectorDataset):
         try:
             import traffic.core
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "This requires the 'traffic' module, which can be installed using "
-                "'pip install traffic'. See the installation documentation at "
-                "https://traffic-viz.github.io/installation.html for more information."
-            ) from e
+            dependencies.raise_module_not_found_error(
+                name="Flight.to_traffic method",
+                package_name="traffic",
+                module_not_found_error=e,
+            )
 
         return traffic.core.Flight(
             self.to_dataframe(copy=True).rename(columns={"time": "timestamp"})
@@ -1767,11 +1772,14 @@ def fit_altitude(
     """
     try:
         import pwlf
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError(
-            "The 'fit_altitude' function requires the 'pwlf' package."
-            "This can be installed with 'pip install pwlf'."
+    except ModuleNotFoundError as e:
+        dependencies.raise_module_not_found_error(
+            name="fit_altitude function",
+            package_name="pwlf",
+            module_not_found_error=e,
+            pycontrails_optional_package="pwlf",
         )
+
     for i in range(1, max_segments):
         m2 = pwlf.PiecewiseLinFit(elapsed_time, altitude_ft)
         r = m2.fitfast(i, pop)
