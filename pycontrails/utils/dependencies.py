@@ -1,5 +1,7 @@
 """Raise ``ModuleNotFoundError`` when dependencies are not met."""
 
+from __future__ import annotations
+
 from typing import NoReturn
 
 
