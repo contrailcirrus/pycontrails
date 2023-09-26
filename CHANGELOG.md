@@ -1,12 +1,17 @@
 
 # Changelog
 
-## v0.47.2 (unreleased)
+## v0.47.2
+
+### Features
+
+- New experimental `GOES` interface for downloading and visualizing GOES-16 satellite imagery.
+- Build python 3.12 wheels for Linux, macOS, and Windows on release. This is in addition to the existing python 3.9, 3.10, and 3.11 wheels.
 
 ### Fixes
 
 - Use the experimental version number parameter `E` in `pycontrails.ecmwf.hres.get_forecast_filename`. Update the logic involved in setting the dissemination data stream indicator `S`.
-- Changes the behavior of `_altitude_interpolation` method that is called within  `resample_and_fill`. Step climbs will be placed in long segments. Descents will always occur at the end of segments.
+- Change the behavior of `_altitude_interpolation` method that is called within  `resample_and_fill`. Step climbs are now placed in the middle of long flight segments. Descents continue to occur at the end of segments.
 
 ### Internals
 
