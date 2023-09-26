@@ -236,10 +236,10 @@ class DiskCacheStore(CacheStore):
 
     @overrides
     def path(self, cache_path: str) -> str:
-        if str(cache_path).startswith(str(self.cache_dir)):
+        if cache_path.startswith(self.cache_dir):
             disk_path = pathlib.Path(cache_path)
         else:
-            disk_path = pathlib.Path(self.cache_dir) / pathlib.Path(cache_path)
+            disk_path = pathlib.Path(self.cache_dir) / cache_path
 
         # make sure full path to parents exist
         disk_path.parent.mkdir(parents=True, exist_ok=True)

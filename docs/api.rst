@@ -69,6 +69,15 @@ GFS
     datalib.gfs.variables
 
 
+GOES
+""""
+
+.. autosummary::
+    :toctree: api/
+
+    datalib.goes
+
+
 Models
 ------
 
