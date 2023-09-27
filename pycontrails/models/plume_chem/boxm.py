@@ -10,8 +10,10 @@ import datetime
 import xarray as xr
 
 import pycontrails
+from pycontrails.core import datalib
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataArray, MetDataset, standardize_variables
+from init_chem import ChemDataset
 from pycontrails.core.met_var import (
     AirTemperature,
     RelativeHumidity,
@@ -38,7 +40,7 @@ class BoxModel(Model):
 
     # Met, chem data is not optional
     met: MetDataset
-    chem: MetDataset
+    chem: ChemDataset
     met_required = True
 
     timesteps: npt.NDArray[np.datetime64]
@@ -60,9 +62,12 @@ class BoxModel(Model):
         self.met = met
         self.chem = chem
 
+        self.met = self.require_source_type(MetDataset)
+        self.chem = self.require_source_type(ChemDataset)
+
         self.met["air_pressure"] = self.met.broadcast_coords("air_pressure")
 
-        self.timesteps = self.chem["time"].data.values
+        self.timesteps = self.chem.data["time"].values
 
     # ----------
     # Public API
@@ -2000,3 +2005,18 @@ class BoxModel(Model):
         # Calculate organic matter mass
         self.chem["mom"].data.loc[:, :, :, ts] = Y.sel(species='EMPOA') +  self.params["bgoam"] + self.chem["soa"].data.loc[:, :, :, ts]
 
+    # ----------------
+    # Output functions
+    # ----------------
+
+def init_chem(
+        lon_bounds: tuple[float, float] | None, 
+        lat_bounds: tuple[float, float] | None,
+        time: datalib.TimeInput | None,
+        grid: float,
+) -> MetDataset:
+        """Initialise a MetDataset for holding chemistry, with background species data attached"""
+        longitude = np.arange(lat_bounds[0], lat_bounds[1], grid_chem)
+        latitude = np.arange(lon_bounds[0], lon_bounds[1], grid_chem)
+        bg_chem_pressure_levels = np.array([962, 861, 759, 658, 556, 454, 353, 251, 150.5])
+        timesteps = datalib.parse_timesteps(time, freq=ts_chem)

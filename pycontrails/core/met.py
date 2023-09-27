@@ -50,7 +50,6 @@ DatasetType = TypeVar("DatasetType", xr.Dataset, "MetDataset")
 
 COORD_DTYPE = np.float64
 
-
 class MetBase(ABC, Generic[XArrayType]):
     """Abstract class for building Meteorology Data handling classes.
 
@@ -571,7 +570,6 @@ class MetBase(ABC, Generic[XArrayType]):
             If ``data`` is based on a Zarr group.
         """
         return _is_zarr(self.data)
-
 
 class MetDataset(MetBase):
     """Meteorological dataset with multiple variables.
