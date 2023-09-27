@@ -308,7 +308,7 @@ class HRES(ECMWFAPI):
         # set specific forecast time is requested
         if forecast_time is not None:
             forecast_time_pd = pd.to_datetime(forecast_time)
-            if forecast_time_pd.hour not in [0, 6, 12, 18]:
+            if forecast_time_pd.hour % 6:
                 raise ValueError("Forecast hour must be on one of 00, 06, 12, 18")
 
             self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 6)
