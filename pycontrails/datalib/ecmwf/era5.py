@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import collections
 import hashlib
 import logging
 import os
@@ -152,60 +153,52 @@ class ERA5(ECMWFAPI):
         variables: datalib.VariableInput,
         pressure_levels: datalib.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
-        timestep_freq: str = "1H",
+        timestep_freq: str | None = None,
         product_type: str = "reanalysis",
-        grid: float = 0.25,
+        grid: float | None = None,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         url: str | None = None,
         key: str | None = None,
     ):
-        # inputs
+        # Parse and set each parameter to the instance
+
         self.product_type = product_type
+
         if cachestore is self.__marker:
             cachestore = cache.DiskCacheStore()
         self.cachestore = cachestore
+
         self.paths = paths
-        self.url = url or os.environ.get("CDSAPI_URL", None)
-        self.key = key or os.environ.get("CDSAPI_KEY", None)
+
+        self.url = url or os.getenv("CDSAPI_URL")
+        self.key = key or os.getenv("CDSAPI_KEY")
 
         if time is None and paths is None:
-            raise ValueError("Time input is required when paths is None")
+            raise ValueError("The parameter 'time' must be defined if 'paths' is None")
 
-        product_types = ("reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread")
-        if product_type not in product_types:
+        supported = {"reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread"}
+        if product_type not in supported:
             raise ValueError(
                 f"Unknown product_type {product_type}. "
-                f"Currently support product types: {', '.join(product_types)}"
+                f"Currently support product types: {', '.join(supported)}"
             )
 
-        if product_type == "reanalysis":
-            grid_min = 0.25
+        if grid is None:
+            grid = 0.25 if product_type == "reanalysis" else 0.5
         else:
-            grid_min = 0.5
-
-        msg = (
-            f"The smallest resolution available through the CDS API is {grid_min} degrees. "
-            f"Your downloaded data will have resolution {grid}, but it is a reinterpolation "
-            f"of the {grid_min} degree data. The same interpolation can be achieved "
-            "directly with `xarray`."
-        )
-
-        # process inputs
-        if "ensemble" in product_type:
-            # If using a nonstandard product and default timestep_freq, override default
-            if timestep_freq == "1H":
-                timestep_freq = "3H"
-
-            # And taking the same procedure for grid
-            if grid == 0.25:
-                grid = 0.5
-            elif grid < 0.5:
-                warnings.warn(msg)
-
-        elif grid < 0.25:
-            warnings.warn(msg)
-
+            grid_min = 0.25 if product_type == "reanalysis" else 0.5
+            if grid < grid_min:
+                warnings.warn(
+                    f"The smallest resolution available through the CDS API is {grid_min} degrees. "
+                    f"Your downloaded data will have resolution {grid}, but it is a "
+                    f"reinterpolation of the {grid_min} degree data. The same interpolation can be "
+                    "achieved directly with xarray."
+                )
         self.grid = grid
+
+        if timestep_freq is None:
+            timestep_freq = "1H" if product_type == "reanalysis" else "3H"
+
         self.timesteps = datalib.parse_timesteps(time, freq=timestep_freq)
         self.pressure_levels = datalib.parse_pressure_levels(
             pressure_levels, self.supported_pressure_levels
@@ -213,9 +206,8 @@ class ERA5(ECMWFAPI):
         self.variables = datalib.parse_variables(variables, self.supported_variables)
 
         # ensemble_mean, etc - time is only available on the 0, 3, 6, etc
-        if "ensemble" in product_type:
-            if {t.hour for t in self.timesteps} - {0, 3, 6, 9, 12, 15, 18, 21}:
-                raise NotImplementedError("Ensemble products only support every three hours")
+        if product_type.startswith("ensemble") and any(t.hour % 3 for t in self.timesteps):
+            raise NotImplementedError("Ensemble products only support every three hours")
 
     def __repr__(self) -> str:
         base = super().__repr__()
@@ -354,17 +346,15 @@ class ERA5(ECMWFAPI):
 
     @overrides
     def download_dataset(self, times: list[datetime]) -> None:
-        download_times: dict[datetime, list[datetime]] = {}
+        download_times: dict[datetime, list[datetime]] = collections.defaultdict(list)
         for t in times:
             unique_day = datetime(t.year, t.month, t.day)
-            download_times.setdefault(unique_day, [])
-
             download_times[unique_day].append(t)
 
         # download data file for each unique day
         LOG.debug(f"Downloading ERA5 dataset for times {times}")
-        for unique_day in download_times:
-            self._download_file(download_times[unique_day])
+        for times_for_day in download_times.values():
+            self._download_file(times_for_day)
 
     @overrides
     def open_metdataset(
@@ -409,10 +399,7 @@ class ERA5(ECMWFAPI):
         # set minimum for all values to 0
 
         # accumulations are 3 hours for ensembles, 1 hour for reanalysis
-        if "ensemble" in self.product_type:
-            dt_accumulation = 3 * 60 * 60
-        else:
-            dt_accumulation = 60 * 60
+        dt_accumulation = 60 * 60 if self.product_type == "reanalysis" else 3 * 60 * 60
 
         for key in (
             TOAIncidentSolarRadiation.standard_name,
@@ -492,24 +479,9 @@ class ERA5(ECMWFAPI):
         with ExitStack() as stack:
             # hold downloaded file in named temp file
             cds_temp_filename = stack.enter_context(temp_file())
-
             LOG.debug(f"Performing CDS request: {request} to dataset {self.dataset}")
             if not hasattr(self, "cds"):
-                try:
-                    import cdsapi
-                except ModuleNotFoundError as e:
-                    dependencies.raise_module_not_found_error(
-                        name="ERA5._download_file method",
-                        package_name="cdsapi",
-                        module_not_found_error=e,
-                        pycontrails_optional_package="ecmwf",
-                    )
-
-                try:
-                    self.cds = cdsapi.Client(url=self.url, key=self.key)
-                # cdsapi throws base-level Exception
-                except Exception as err:
-                    raise CDSCredentialsNotFound from err
+                self._set_cds()
 
             self.cds.retrieve(self.dataset, request, cds_temp_filename)
 
@@ -522,6 +494,24 @@ class ERA5(ECMWFAPI):
             ds = self._preprocess_era5_dataset(ds)
 
             self.cache_dataset(ds)
+
+    def _set_cds(self) -> None:
+        """Set the cdsapi.Client instance."""
+        try:
+            import cdsapi
+        except ModuleNotFoundError as e:
+            dependencies.raise_module_not_found_error(
+                name="ERA5._set_cds method",
+                package_name="cdsapi",
+                module_not_found_error=e,
+                pycontrails_optional_package="ecmwf",
+            )
+
+        try:
+            self.cds = cdsapi.Client(url=self.url, key=self.key)
+        # cdsapi throws base-level Exception
+        except Exception as err:
+            raise CDSCredentialsNotFound from err
 
     def _preprocess_era5_dataset(self, ds: xr.Dataset) -> xr.Dataset:
         """Process ERA5 data before caching.
@@ -553,4 +543,4 @@ class ERA5(ECMWFAPI):
 
 
 class CDSCredentialsNotFound(Exception):
-    """Raise when CDS credentials are not found by `cdsapi.Client` instance."""
+    """Raise when CDS credentials are not found by :class:`cdsapi.Client` instance."""

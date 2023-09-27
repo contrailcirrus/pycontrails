@@ -279,15 +279,8 @@ def round_hour(time: datetime, hour: int) -> datetime:
     if hour not in range(1, 24):
         raise ValueError("hour must be between [1, 23]")
 
-    hour = np.floor(time.hour / hour) * hour
-    return datetime(
-        time.year,
-        time.month,
-        time.day,
-        int(hour),
-        0,
-        0,
-    )
+    hour = (time.hour // hour) * hour
+    return datetime(time.year, time.month, time.day, hour, 0, 0)
 
 
 class MetDataSource(abc.ABC):
