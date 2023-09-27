@@ -42,6 +42,7 @@ Launch ``jupyter lab`` to run these notebooks interactively:
 
    examples/ECMWF
    examples/GFS
+   examples/GOES
 
 .. toctree::
    :maxdepth: 1
