@@ -54,7 +54,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 [project.optional-dependencies]
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pwlf,pyproj,vis,zarr]"]
+complete = ["pycontrails[ecmwf,gcp,gfs,goes,jupyter,pwlf,pyproj,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -114,6 +114,8 @@ gfs = [
     "platformdirs>=3.0",
     "tqdm>=4.61",
 ]
+
+goes = ["cartopy>=0.22", "gcsfs>=2022.3"]
 
 # Jupyter notebook and lab interface
 jupyter = ["ipywidgets>=7.6", "jupyterlab>=2.2"]
