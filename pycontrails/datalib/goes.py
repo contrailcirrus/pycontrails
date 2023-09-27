@@ -99,6 +99,24 @@ def _check_channels(channels: str | Iterable[str] | None) -> set[str]:
     return channels
 
 
+def _parse_region(region: GOESRegion | str) -> GOESRegion:
+    """Parse region from string."""
+    if isinstance(region, GOESRegion):
+        return region
+
+    region = region.upper().replace(" ", "").replace("_", "")
+
+    if region in ("F", "FULL", "FULLDISK"):
+        return GOESRegion.F
+    if region in ("C", "CONUS", "CONTINENTAL"):
+        return GOESRegion.C
+    if region in ("M1", "MESO1", "MESOSCALE1"):
+        return GOESRegion.M1
+    if region in ("M2", "MESO2", "MESOSCALE2"):
+        return GOESRegion.M2
+    raise ValueError(f"Region must be one of {GOESRegion._member_names_} or their abbreviations")
+
+
 def gcs_goes_path(
     time: datetime.datetime,
     region: GOESRegion,
@@ -312,13 +330,7 @@ class GOES:
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         goes_bucket: str = "gcp-public-data-goes-16",
     ) -> None:
-        if isinstance(region, str):
-            try:
-                region = GOESRegion[region.upper()]
-            except KeyError as e:
-                raise KeyError(f"Region must be one of {GOESRegion._member_names_}") from e
-
-        self.region = region
+        self.region = _parse_region(region)
 
         self.channels = _check_channels(channels)
 
