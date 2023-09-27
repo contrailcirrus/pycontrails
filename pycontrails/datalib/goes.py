@@ -31,6 +31,9 @@ from pycontrails.core import cache
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_CHANNELS = "C11", "C14", "C15"
+
+
 class GOESRegion(enum.Enum):
     """GOES Region of interest.
 
@@ -84,19 +87,57 @@ def _check_time_resolution(t: datetime.datetime, region: GOESRegion) -> datetime
     return t
 
 
-def _check_channels(channels: str | Iterable[str] | None) -> set[str]:
+def _parse_channels(channels: str | Iterable[str] | None) -> set[str]:
     """Check that the channels are valid and return as a set."""
+    if channels is None:
+        return set(DEFAULT_CHANNELS)
+
     if isinstance(channels, str):
         channels = (channels,)
 
     available = {f"C{i:02d}" for i in range(1, 17)}
-    if channels is None:
-        return available
-
     channels = {c.upper() for c in channels}
     if not channels.issubset(available):
         raise ValueError(f"Channels must be in {sorted(available)}")
     return channels
+
+
+def _check_channel_resolution(channels: set[str]) -> None:
+    """Confirm request channels have a common horizontal resolution."""
+    assert channels, "channels must be non-empty"
+
+    # https://www.goes-r.gov/spacesegment/abi.html
+    resolutions = {
+        "C01": 1.0,
+        "C02": 1.0,  # XXX: this actually has a resolution of 0.5 km, but we treat it as 1 km
+        "C03": 1.0,
+        "C04": 2.0,
+        "C05": 1.0,
+        "C06": 2.0,
+        "C07": 2.0,
+        "C08": 2.0,
+        "C09": 2.0,
+        "C10": 2.0,
+        "C11": 2.0,
+        "C12": 2.0,
+        "C13": 2.0,
+        "C14": 2.0,
+        "C15": 2.0,
+        "C16": 2.0,
+    }
+
+    resolutions = {c: resolutions[c] for c in channels}
+    c0, res0 = resolutions.popitem()
+
+    try:
+        c1, res1 = next((c, res) for c, res in resolutions.items() if res != res0)
+    except StopIteration:
+        # All resolutions are the same
+        return
+    raise ValueError(
+        "Channels must have a common horizontal resolution. "
+        f"Channel {c0} has resolution {res0} km and channel {c1} has resolution {res1} km."
+    )
 
 
 def _parse_region(region: GOESRegion | str) -> GOESRegion:
@@ -135,12 +176,12 @@ def gcs_goes_path(
         Time of GOES data.
     region : GOESRegion
         GOES Region of interest.
-    channels : str | Iterable[str] = {"C11", "C13", "C14", "C15"}
+    channels : str | Iterable[str]
         Set of channels or bands for CMIP data. The 16 possible channels are
         represented by the strings "C01" to "C16". For the MIT ash color scheme,
-        set ``channels=["C11", "C14", "C15"]``. By default, all channels are
-        returned.
-
+        set ``channels=("C11", "C14", "C15")``. For the true color scheme,
+        set ``channels=("C01", "C02", "C03")``. By default, the channels
+        required by the MIT ash color scheme are used.
 
     Returns
     -------
@@ -165,7 +206,7 @@ def gcs_goes_path(
      'gcp-public-data-goes-16/ABI-L2-CMIPC/2023/093/02/OR_ABI-L2-CMIPC-M6C13_G16_s20230930211170_e20230930213557_c20230930214065.nc']
 
     >>> t = datetime.datetime(2023, 4, 3, 2, 11)
-    >>> paths = gcs_goes_path(t, GOESRegion.M1)
+    >>> paths = gcs_goes_path(t, GOESRegion.M1, channels="C01")
     >>> pprint(paths)
     ['gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C01_G16_s20230930211249_e20230930211309_c20230930211386.nc',
      'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C02_G16_s20230930211249_e20230930211306_c20230930211373.nc',
@@ -217,7 +258,7 @@ def gcs_goes_path(
     name_prefix = f"OR_{product[:-1]}{region.name}-{mode}"
     name_suffix = f"_G16_s{time_str}*"
 
-    channels = _check_channels(channels)
+    channels = _parse_channels(channels)
 
     # It's faster to run a single glob with C?? then running a glob for
     # each channel. The downside is that we have to filter the results.
@@ -250,8 +291,18 @@ class GOES:
     channels : str | set[str] | None
         Set of channels or bands for CMIP data. The 16 possible channels are
         represented by the strings "C01" to "C16". For the MIT ash color scheme,
-        set ``channels=["C11", "C14", "C15"]``. By default, all channels are
-        used.
+        set ``channels=("C11", "C14", "C15")``. For the true color scheme,
+        set ``channels=("C01", "C02", "C03")``. By default, the channels
+        required by the MIT ash color scheme are used. The channels must have
+        a common horizontal resolution. The resolutions are:
+
+        - C01: 1.0 km
+        - C02: 0.5 km  (treated as 1.0 km)
+        - C03: 1.0 km
+        - C04: 2.0 km
+        - C05: 1.0 km
+        - C06 - C16: 2.0 km
+
     cachestore : cache.CacheStore | None
         Cache store for GOES data. If None, data is downloaded directly into
         memory. By default, a :class:`cache.DiskCacheStore` is used.
@@ -331,8 +382,8 @@ class GOES:
         goes_bucket: str = "gcp-public-data-goes-16",
     ) -> None:
         self.region = _parse_region(region)
-
-        self.channels = _check_channels(channels)
+        self.channels = _parse_channels(channels)
+        _check_channel_resolution(self.channels)
 
         self.goes_bucket = goes_bucket
         self.fs = gcsfs.GCSFileSystem(token="anon")
@@ -429,8 +480,36 @@ class GOES:
                 lpath = lpaths[channel]
                 self.fs.get(rpath, lpath)
 
-        # Open the netcdf files
-        ds = xr.open_mfdataset(lpaths.values(), concat_dim="band", combine="nested")  # type: ignore[arg-type] # noqa: E501
+        # Deal with the different spatial resolutions
+        lpath02 = lpaths.pop("C02", None)
+        kwargs = {
+            "paths": lpaths.values(),
+            "concat_dim": "band",
+            "combine": "nested",
+            "data_vars": ["CMI"],
+            "compat": "override",
+            "coords": "minimal",
+        }
+        if lpath02:
+            ds1 = xr.open_mfdataset(**kwargs)
+            ds2 = xr.open_dataset(lpath02)
+
+            # Average the C02 data to the C01 resolution
+            ds2 = ds2.coarsen(x=2, y=2, boundary="exact").mean()
+
+            # Gut check
+            np.testing.assert_allclose(ds1["x"], ds2["x"], rtol=0.0005)
+            np.testing.assert_allclose(ds1["y"], ds2["y"], rtol=0.0005)
+
+            # Assign the C01 data to the C02 data
+            ds2["x"] = ds1["x"]
+            ds2["y"] = ds1["y"]
+
+            # Finally, combine the datasets
+            ds = xr.concat([ds1, ds2], dim="band")
+        else:
+            ds = xr.open_mfdataset(**kwargs)
+
         da = ds["CMI"]
         da = da.swap_dims({"band": "band_id"}).sortby("band_id")
 
@@ -469,48 +548,98 @@ class GOES:
         return da
 
 
-def extract_goes_data(
+def extract_goes_viz_artifacts(
     da: xr.DataArray,
+    color_scheme: str = "ash",
     ash_convention: str = "MIT",
-) -> tuple[npt.NDArray[np.float32], ccrs.Geostationary, np.ndarray]:
-    """Extract data of interest from GOES DataArray.
+    gamma: float = 2.2,
+) -> tuple[npt.NDArray[np.float32], ccrs.Geostationary, tuple[float, float, float, float]]:
+    """Extract artifacts for visualizing GOES data with the given color scheme.
 
     Parameters
     ----------
     da : xr.DataArray
-        DataArray of GOES data as returned by GOES.get
+        DataArray of GOES data as returned by :meth:`GOES.get`. Must have the channels
+        required by :func:`to_ash`.
+    color_scheme : str = {"ash", "true"}
+        Color scheme to use for visualization.
     ash_convention : str = {"MIT", "standard"}
-        Passed into :func:`to_ash`.
+        Passed into :func:`to_ash`. Only used if ``color_scheme="ash"``.
+    gamma : float = 2.2
+        Passed into :func:`to_true_color`. Only used if ``color_scheme="true"``.
 
     Returns
     -------
     rgb : npt.NDArray[np.float32]
-        3D RGB array of shape ``(height, width, 3)``.
-    proj : ccrs.Geostationary
-        Geostationary projection built from GOES metadata.
-    extent : np.ndarray
-        Extent of GOES data in geostationary projection
+        3D RGB array of shape ``(height, width, 3)``. Any nan values are replaced with 0.
+    src_crs : ccrs.Geostationary
+        The Geostationary projection built from the GOES metadata.
+    src_extent : tuple[float, float, float, float]
+        Extent of GOES data in the Geostationary projection
     """
-    geos = da.attrs["goes_imager_projection"]
-    transform = ccrs.Geostationary(
-        central_longitude=geos["longitude_of_projection_origin"],
-        satellite_height=geos["perspective_point_height"],
-        sweep_axis="x",
-    )
-    rgb = to_ash(da, ash_convention)
+    proj_info = da.attrs["goes_imager_projection"]
+    h = proj_info["perspective_point_height"]
+    lon0 = proj_info["longitude_of_projection_origin"]
+    src_crs = ccrs.Geostationary(central_longitude=lon0, satellite_height=h, sweep_axis="x")
 
-    x = da.x.values
-    y = da.y.values
-    extent = np.array([x.min(), x.max(), y.min(), y.max()])
+    if color_scheme == "true":
+        rgb = to_true_color(da, gamma)
+    elif color_scheme == "ash":
+        rgb = to_ash(da, ash_convention)
+    else:
+        raise ValueError(f"Color scheme must be 'true' or 'ash', not '{color_scheme}'")
 
-    # Multiply by satellite height
-    extent *= geos["perspective_point_height"]
+    np.nan_to_num(rgb, copy=False)
 
-    return rgb, transform, extent
+    x = da["x"].values
+    y = da["y"].values
+
+    # Multiply extremes by the satellite height
+    src_extent = h * x.min(), h * x.max(), h * y.min(), h * y.max()
+
+    return rgb, src_crs, src_extent
+
+
+def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float32]:
+    """Compute 3d RGB array for the true color scheme.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        DataArray of GOES data with channels C01, C02, C03.
+    gamma : float = 2.2
+        Gamma correction for the RGB channels.
+
+    Returns
+    -------
+    npt.NDArray[np.float32]
+        3d RGB array with true color scheme.
+
+    References
+    ----------
+    - `Unidata's true color recipe <https://unidata.github.io/python-gallery/examples/mapping_GOES16_TrueColor.html>`_
+    """
+    red = da.sel(band_id=2).values
+    green = da.sel(band_id=3).values
+    blue = da.sel(band_id=1).values
+
+    red = _clip_and_scale(red, 0.0, 1.0)
+    green = _clip_and_scale(green, 0.0, 1.0)
+    blue = _clip_and_scale(blue, 0.0, 1.0)
+
+    red = red ** (1 / gamma)
+    green = green ** (1 / gamma)
+    blue = blue ** (1 / gamma)
+
+    # Calculate "true" green channel
+    green = 0.45 * red + 0.1 * green + 0.45 * blue
+    green = _clip_and_scale(green, 0.0, 1.0)
+
+    return np.dstack([red, green, blue])
 
 
 def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]:
-    """Compute 3d RGB array.
+    """Compute 3d RGB array for the ASH color scheme.
 
     Parameters
     ----------
@@ -518,6 +647,7 @@ def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]
         DataArray of GOES data with appropriate channels.
     convention : str = {"MIT", "standard"}
         Convention for color space.
+
         - MIT convention requires channels C11, C14, C15
         - Standard convention requires channels C11, C13, C14, C15
 
