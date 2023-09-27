@@ -16,19 +16,35 @@ from __future__ import annotations
 import datetime
 import enum
 import io
-import logging
 from typing import Iterable
 
-import cartopy.crs as ccrs
-import gcsfs
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
 from pycontrails.core import cache
+from pycontrails.utils import dependencies
 
-logger = logging.getLogger(__name__)
+try:
+    import cartopy.crs as ccrs
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="goes module",
+        package_name="cartopy",
+        module_not_found_error=exc,
+        pycontrails_optional_package="goes",
+    )
+
+try:
+    import gcsfs
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="goes module",
+        package_name="gcsfs",
+        module_not_found_error=exc,
+        pycontrails_optional_package="goes",
+    )
 
 
 DEFAULT_CHANNELS = "C11", "C14", "C15"
@@ -208,22 +224,7 @@ def gcs_goes_path(
     >>> t = datetime.datetime(2023, 4, 3, 2, 11)
     >>> paths = gcs_goes_path(t, GOESRegion.M1, channels="C01")
     >>> pprint(paths)
-    ['gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C01_G16_s20230930211249_e20230930211309_c20230930211386.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C02_G16_s20230930211249_e20230930211306_c20230930211373.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C03_G16_s20230930211249_e20230930211309_c20230930211365.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C04_G16_s20230930211249_e20230930211306_c20230930211376.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C05_G16_s20230930211249_e20230930211307_c20230930211376.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C06_G16_s20230930211249_e20230930211313_c20230930211386.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C07_G16_s20230930211249_e20230930211319_c20230930211399.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C08_G16_s20230930211249_e20230930211306_c20230930211375.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C09_G16_s20230930211249_e20230930211312_c20230930211365.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C10_G16_s20230930211249_e20230930211318_c20230930211375.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C11_G16_s20230930211249_e20230930211306_c20230930211376.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C12_G16_s20230930211249_e20230930211312_c20230930211386.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C13_G16_s20230930211249_e20230930211318_c20230930211365.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C14_G16_s20230930211249_e20230930211306_c20230930211375.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C15_G16_s20230930211249_e20230930211312_c20230930211399.nc',
-     'gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C16_G16_s20230930211249_e20230930211321_c20230930211399.nc']
+    ['gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C01_G16_s20230930211249_e20230930211309_c20230930211386.nc']
 
     """
     time = _check_time_resolution(time, region)
