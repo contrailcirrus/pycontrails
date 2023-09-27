@@ -696,12 +696,12 @@ def test_downselect_met(fl: Flight, met_issr: MetDataset) -> None:
     mask = (fl.level < 500) & (fl.level > 150)
     fl = fl.filter(mask)
 
-    assert tuple(met.data.sizes.values()) == (15, 8, 3, 2)
+    assert met.shape == (15, 8, 3, 2)
     met_downselected = fl.downselect_met(met)
 
     # original not mutated
-    assert tuple(met.data.sizes.values()) == (15, 8, 3, 2)
-    assert tuple(met_downselected.data.sizes.values()) == (3, 3, 3, 2)
+    assert met.shape == (15, 8, 3, 2)
+    assert met_downselected.shape == (3, 3, 3, 2)
     assert met_downselected is not met
     # name convenience
     ds = met_downselected.data
