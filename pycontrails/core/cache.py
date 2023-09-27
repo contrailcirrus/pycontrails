@@ -202,11 +202,8 @@ class DiskCacheStore(CacheStore):
         allow_clear: bool = False,
     ):
         if cache_dir is None:
-            # Use a try / except to avoid unnecessary import of platformdirs
-            try:
-                cache_dir = os.environ["PYCONTRAILS_CACHE_DIR"]
-            except KeyError:
-                cache_dir = _get_user_cache_dir()
+            # Avoid unnecessary import of platformdirs (called in _get_user_cache_dir)
+            cache_dir = os.getenv("PYCONTRAILS_CACHE_DIR") or _get_user_cache_dir()
 
         # make sure local cache directory exists
         pathlib.Path(cache_dir).mkdir(parents=True, exist_ok=True)
@@ -306,7 +303,7 @@ class DiskCacheStore(CacheStore):
     def get(self, cache_path: str) -> str:
         """Get data path from the local cache store.
 
-        Alias for :meth:`path()`
+        Alias for :meth:`path`
 
         Parameters
         ----------
