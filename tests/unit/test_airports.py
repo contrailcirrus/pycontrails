@@ -7,15 +7,7 @@ import pandas as pd
 import pytest
 
 from pycontrails.core import airports
-
-try:
-    import requests
-
-    r = requests.head("https://github.com", timeout=10)
-except Exception:
-    offline = True
-else:
-    offline = False
+from tests import OFFLINE
 
 
 @pytest.fixture()
@@ -24,14 +16,14 @@ def airport_database() -> pd.DataFrame:
     return airports.global_airport_database()
 
 
-@pytest.mark.skipif(offline, reason="offline")
+@pytest.mark.skipif(OFFLINE, reason="offline")
 def test_global_airports_database(airport_database: pd.DataFrame) -> None:
     """Ensure that airport database exists."""
     assert "type" in airport_database
     assert "elevation_m" in airport_database
 
 
-@pytest.mark.skipif(offline, reason="offline")
+@pytest.mark.skipif(OFFLINE, reason="offline")
 def test_nearest_airport_identification(airport_database: pd.DataFrame) -> None:
     """Ensure that the nearest airport for a given coordinates is correctly identified."""
     # Somewhere near Singapore Changi Airport (1.36 N, 103.99 E)
@@ -63,7 +55,7 @@ def test_nearest_airport_identification(airport_database: pd.DataFrame) -> None:
     assert airport_icao is None
 
 
-@pytest.mark.skipif(offline, reason="offline")
+@pytest.mark.skipif(OFFLINE, reason="offline")
 def test_invalid_altitude(airport_database: pd.DataFrame) -> None:
     """Ensure that function will not execute if provided altitude is too high."""
     longitude = -1

@@ -3,6 +3,9 @@
 import os
 import pathlib
 
+import requests
+from google.cloud import storage
+
 import pycontrails
 
 # Overwrite any CDS env configuration
@@ -25,3 +28,18 @@ except ModuleNotFoundError:
     OPEN3D_AVAILABLE = False
 else:
     OPEN3D_AVAILABLE = True
+
+
+try:
+    storage.Client()
+except Exception:
+    GCP_CREDENTIALS = False
+else:
+    GCP_CREDENTIALS = True
+
+try:
+    requests.get("https://github.com", timeout=5)
+except Exception:
+    OFFLINE = True
+else:
+    OFFLINE = False

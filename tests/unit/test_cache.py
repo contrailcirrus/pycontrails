@@ -8,27 +8,10 @@ import random
 from datetime import datetime
 
 import pytest
-from google.cloud import storage
 
 from pycontrails import DiskCacheStore, GCPCacheStore
 from pycontrails.core import cache
-
-# see if GCP credentials exist
-try:
-    storage.Client()
-except Exception:
-    gcp_credentials = False
-else:
-    gcp_credentials = True
-
-try:
-    import requests
-
-    r = requests.get("https://github.com", timeout=10)
-except Exception:
-    offline = True
-else:
-    offline = False
+from tests import GCP_CREDENTIALS, OFFLINE
 
 ############
 # Disk Cache Store
@@ -162,8 +145,8 @@ BUCKET = "contrails-301217-unit-test"
 CACHE_DIR = datetime.now().isoformat().replace(":", "-")
 
 
-@pytest.mark.skipif(offline, reason="offline")
-@pytest.mark.skipif(not gcp_credentials, reason="No GCS credentials")
+@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.skipif(not GCP_CREDENTIALS, reason="No GCS credentials")
 class TestGCPCacheStore:
     def test_cache_init(self) -> None:
         # test if default cache exists and is a directory
