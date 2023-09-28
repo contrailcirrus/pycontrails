@@ -71,10 +71,10 @@ ruff: black-check
 	ruff pycontrails tests
 
 black:
-	black pycontrails
+	black pycontrails tests
 
 black-check:
-	black pycontrails --check
+	black pycontrails tests --check
 
 # https://taplo.tamasfe.dev/
 taplo:

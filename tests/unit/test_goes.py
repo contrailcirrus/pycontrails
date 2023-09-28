@@ -9,7 +9,7 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore
 from pycontrails.datalib import goes
-from tests import OFFLINE
+from tests import IS_WINDOWS, OFFLINE
 
 
 @pytest.mark.parametrize(
@@ -58,6 +58,7 @@ def test_channel_resolution(channels: tuple[str, ...], succeed: bool) -> None:
         goes._check_channel_resolution(channels)
 
 
+@pytest.mark.skipif(IS_WINDOWS, reason="cannot easily install h5py on windows")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("t", ["2023-06-15T15:34", "2019-03-14T15:34"])
 def test_goes_get_no_cache_default_channels(t: str) -> None:
@@ -89,6 +90,7 @@ def test_goes_get_no_cache_default_channels(t: str) -> None:
     assert len(src_extent) == 4
 
 
+@pytest.mark.skipif(IS_WINDOWS, reason="cannot easily install h5py on windows")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_goes_get_no_cache_rgb_channels() -> None:
     downloader = goes.GOES(region="m1", cachestore=None, channels=("C01", "C02", "C03"))
