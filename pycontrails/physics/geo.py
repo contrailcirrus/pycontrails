@@ -457,7 +457,7 @@ def solar_direct_radiation(
 
     References
     ----------
-    - :cite:`UOSRMLSolar`
+    - :cite:`uosolarradiationmonitoringlaboratoryUOSRMLSolar2022`
     """
     theta_rad = orbital_position(time)
 
@@ -498,7 +498,7 @@ def solar_constant(theta_rad: ArrayLike) -> ArrayLike:
 
     References
     ----------
-    - :cite:`UOSRMLSolar`
+    - :cite:`uosolarradiationmonitoringlaboratoryUOSRMLSolar2022`
     - :cite:`paltridgeRadiativeProcessesMeteorology1976`
     - :cite:`duffieSolarEngineeringThermal1991`
 
@@ -506,7 +506,7 @@ def solar_constant(theta_rad: ArrayLike) -> ArrayLike:
     -----
     :math:`orbital_effect = (R_{av} / R)^{2}`
     where :math:`R` is the separation of Earth from the sun
-    and :math:`R_{av}`is the mean separation.
+    and :math:`R_{av}` is the mean separation.
     """
     orbital_effect = (
         1.00011
@@ -548,7 +548,7 @@ def cosine_solar_zenith_angle(
 
     References
     ----------
-    - :cite:`wikipediacontributorsSolarZenithAngle2022`
+    - :cite:`wikipediacontributorsSolarZenithAngle2023`
 
     See Also
     --------

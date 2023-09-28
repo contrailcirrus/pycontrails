@@ -78,7 +78,8 @@ T_lapse_rate: float = -0.0065
 
 #: Average incident solar radiation, :math:`[W \ m^{-2}]`
 #: This value can range +/- 3% as the earth orbits the sun.
-#: From :cite:`UOSRMLSolar` citing :cite:`paltridgeRadiativeProcessesMeteorology1976`
+#: From :cite:`uosolarradiationmonitoringlaboratoryUOSRMLSolar2022` citing
+#: :cite:`paltridgeRadiativeProcessesMeteorology1976`
 solar_constant: float = 1361.0
 
 # ----
