@@ -3,6 +3,7 @@
 Resources
 ---------
 
+- `GOES 16/18 on GCP notes <https://console.cloud.google.com/marketplace/product/noaa-public/goes>`_
 - `GOES on AWS notes <https://docs.opendata.aws/noaa-goes16/cics-readme.html>`_
 - `Scan Mode information and timing <https://www.ospo.noaa.gov/Operations/GOES/16/GOES-16%20Scan%20Mode%206.html>`_
 - `Current position of the MESO1 sector <https://www.ospo.noaa.gov/Operations/GOES/east/meso1-img.html>`_
@@ -549,7 +550,7 @@ class GOES:
         return da
 
 
-def extract_goes_viz_artifacts(
+def extract_goes_visualization(
     da: xr.DataArray,
     color_scheme: str = "ash",
     ash_convention: str = "MIT",
@@ -660,7 +661,7 @@ def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]
     References
     ----------
     - `Ash RGB quick guide (the color space and color interpretations) <https://rammb.cira.colostate.edu/training/visit/quick_guides/GOES_Ash_RGB.pdf>`_
-    - `MIT thesis detail use for contrail detection <https://dspace.mit.edu/bitstream/handle/1721.1/124179/1144176218-MIT.pdf?22>`_
+    - :cite:`kulikSatellitebasedDetectionContrails2019`
 
     Examples
     --------
