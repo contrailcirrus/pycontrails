@@ -2,6 +2,7 @@
 
 import os
 import pathlib
+import platform
 
 import requests
 from google.cloud import storage
@@ -20,6 +21,7 @@ BADA3_PATH = BADA_ROOT / "bada3"
 BADA4_PATH = BADA_ROOT / "bada4"
 
 BADA_AVAILABLE = BADA3_PATH.exists() and BADA4_PATH.exists()
+IS_WINDOWS = platform.system() == "Windows"
 
 
 try:
@@ -28,7 +30,6 @@ except ModuleNotFoundError:
     OPEN3D_AVAILABLE = False
 else:
     OPEN3D_AVAILABLE = True
-
 
 try:
     storage.Client()
