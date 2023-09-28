@@ -25,6 +25,7 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.core import cache
+from pycontrails.core.met import XArrayType
 from pycontrails.utils import dependencies
 
 try:
@@ -48,7 +49,14 @@ except ModuleNotFoundError as exc:
     )
 
 
+#: Default channels to use if none are specified. These are the channels
+#: required by the MIT ash color scheme.
 DEFAULT_CHANNELS = "C11", "C14", "C15"
+
+#: The time at which the GOES scan mode changed from mode 3 to mode 6. This
+#: is used to determine the scan time resolution.
+#: See `GOES ABI scan information <https://www.goes-r.gov/users/abiScanModeInfo.html>`_.
+GOES_SCAN_MODE_CHANGE = datetime.datetime(2019, 4, 2, 16)
 
 
 class GOESRegion(enum.Enum):
@@ -78,17 +86,16 @@ def _check_time_resolution(t: datetime.datetime, region: GOESRegion) -> datetime
     if region == GOESRegion.F:
         # Full Disk: Scan times are available every 10 minutes after
         # 2019-04-02 and every 15 minutes before
-        cutoff = datetime.datetime(2019, 4, 2)
-        if t >= cutoff:
+        if t >= GOES_SCAN_MODE_CHANGE:
             if t.minute % 10:
                 raise ValueError(
                     f"Time must be at GOES scan time resolution for {region}. "
-                    f"After {cutoff}, time should be a multiple of 10 minutes."
+                    f"After {GOES_SCAN_MODE_CHANGE}, time should be a multiple of 10 minutes."
                 )
         elif t.minute % 15:
             raise ValueError(
                 f"Time must be at GOES scan time resolution for {region}. "
-                f"Before {cutoff}, time should be a multiple of 15 minutes."
+                f"Before {GOES_SCAN_MODE_CHANGE}, time should be a multiple of 15 minutes."
             )
         return t
 
@@ -119,7 +126,7 @@ def _parse_channels(channels: str | Iterable[str] | None) -> set[str]:
     return channels
 
 
-def _check_channel_resolution(channels: set[str]) -> None:
+def _check_channel_resolution(channels: Iterable[str]) -> None:
     """Confirm request channels have a common horizontal resolution."""
     assert channels, "channels must be non-empty"
 
@@ -190,7 +197,8 @@ def gcs_goes_path(
     Parameters
     ----------
     time : datetime.datetime
-        Time of GOES data.
+        Time of GOES data. This should be a timezone-naive datetime object or an
+        ISO 8601 formatted string.
     region : GOESRegion
         GOES Region of interest.
     channels : str | Iterable[str]
@@ -243,7 +251,7 @@ def gcs_goes_path(
     path_prefix = f"gs://{bucket}/{product}/{year}/{yday}/{hour}/"
 
     # https://www.goes-r.gov/users/abiScanModeInfo.html
-    mode = "M6"
+    mode = "M6" if time >= GOES_SCAN_MODE_CHANGE else "M3"
 
     # Example name pattern
     # OR_ABI-L1b-RadF-M3C02_G16_s20171671145342_e20171671156109_c20171671156144.nc
@@ -267,14 +275,20 @@ def gcs_goes_path(
     rpath = f"{path_prefix}{name_prefix}C??{name_suffix}"
 
     fs = fs or gcsfs.GCSFileSystem(token="anon")
-    rpaths = fs.glob(rpath)
+    rpaths: list[str] = fs.glob(rpath)
 
-    return [rpath for rpath in rpaths if _extract_channel_from_rpath(rpath) in channels]
+    out = [r for r in rpaths if _extract_channel_from_rpath(r) in channels]
+    if not out:
+        raise RuntimeError(f"No data found for {time} in {region} for channels {channels}")
+    return out
 
 
 def _extract_channel_from_rpath(rpath: str) -> str:
-    mode = "M6"
-    return rpath.split(mode)[1][:3]
+    # Split at the separator between product name and mode
+    # This works for both M3 and M6
+    sep = "-M"
+    suffix = rpath.split(sep, maxsplit=1)[1]
+    return suffix[1:4]
 
 
 class GOES:
@@ -445,8 +459,8 @@ class GOES:
         Parameters
         ----------
         time : datetime.datetime | str
-            Time of GOES data. If a string is used, it must be parsable by
-            :class:`pd.Timestamp`.
+            Time of GOES data. This should be a timezone-naive datetime object
+            or an ISO 8601 formatted string.
 
         Returns
         -------
@@ -483,34 +497,23 @@ class GOES:
                 self.fs.get(rpath, lpath)
 
         # Deal with the different spatial resolutions
-        lpath02 = lpaths.pop("C02", None)
         kwargs = {
-            "paths": lpaths.values(),
             "concat_dim": "band",
             "combine": "nested",
             "data_vars": ["CMI"],
             "compat": "override",
             "coords": "minimal",
         }
-        if lpath02:
-            ds1 = xr.open_mfdataset(**kwargs)  # type: ignore[arg-type]
+        if len(lpaths) == 1:
+            ds = xr.open_dataset(lpaths.popitem()[1])
+            ds["CMI"] = ds["CMI"].expand_dims(band=ds["band_id"].values)
+        elif "C02" in lpaths:
+            lpath02 = lpaths.pop("C02")
+            ds1 = xr.open_mfdataset(lpaths.values(), **kwargs)  # type: ignore[arg-type]
             ds2 = xr.open_dataset(lpath02)
-
-            # Average the C02 data to the C01 resolution
-            ds2 = ds2.coarsen(x=2, y=2, boundary="exact").mean()  # type: ignore[attr-defined]
-
-            # Gut check
-            np.testing.assert_allclose(ds1["x"], ds2["x"], rtol=0.0005)
-            np.testing.assert_allclose(ds1["y"], ds2["y"], rtol=0.0005)
-
-            # Assign the C01 data to the C02 data
-            ds2["x"] = ds1["x"]
-            ds2["y"] = ds1["y"]
-
-            # Finally, combine the datasets
-            ds = xr.concat([ds1, ds2], dim="band")
+            ds = _concat_c02(ds1, ds2)
         else:
-            ds = xr.open_mfdataset(**kwargs)  # type: ignore[arg-type]
+            ds = xr.open_mfdataset(lpaths.values(), **kwargs)  # type: ignore[arg-type]
 
         da = ds["CMI"]
         da = da.swap_dims({"band": "band_id"}).sortby("band_id")
@@ -529,25 +532,54 @@ class GOES:
         data = self.fs.cat(rpaths)
 
         if isinstance(data, dict):
-            da_list = []
-            for init_bytes in data.values():
+            da_dict = {}
+            for rpath, init_bytes in data.items():
+                channel = _extract_channel_from_rpath(rpath)
                 ds = xr.open_dataset(io.BytesIO(init_bytes), engine="h5netcdf")
 
                 da = ds["CMI"]
                 da = da.expand_dims(band_id=ds["band_id"].values)
-                da_list.append(da)
+                da_dict[channel] = da
 
-            da = xr.concat(da_list, dim="band_id")
+            if len(da_dict) == 1:  # This might be redundant with the branch below
+                da = da_dict.popitem()[1]
+            elif "C02" in da_dict:
+                da2 = da_dict.pop("C02")
+                da1 = xr.concat(da_dict.values(), dim="band_id")
+                da = _concat_c02(da1, da2)
+            else:
+                da = xr.concat(da_dict.values(), dim="band_id")
+
         else:
             ds = xr.open_dataset(io.BytesIO(data), engine="h5netcdf")
             da = ds["CMI"]
             da = da.expand_dims(band_id=ds["band_id"].values)
+
+        da = da.sortby("band_id")
 
         # Attach some useful attrs -- only using goes_imager_projection currently
         da.attrs["goes_imager_projection"] = ds.goes_imager_projection.attrs
         da.attrs["geospatial_lat_lon_extent"] = ds.geospatial_lat_lon_extent.attrs
 
         return da
+
+
+def _concat_c02(ds1: XArrayType, ds2: XArrayType) -> XArrayType:
+    """Concatenate two datasets with C01 and C02 data."""
+    # Average the C02 data to the C01 resolution
+    ds2 = ds2.coarsen(x=2, y=2, boundary="exact").mean()  # type: ignore[attr-defined]
+
+    # Gut check
+    np.testing.assert_allclose(ds1["x"], ds2["x"], rtol=0.0005)
+    np.testing.assert_allclose(ds1["y"], ds2["y"], rtol=0.0005)
+
+    # Assign the C01 data to the C02 data
+    ds2["x"] = ds1["x"]
+    ds2["y"] = ds1["y"]
+
+    # Finally, combine the datasets
+    dim = "band_id" if "band_id" in ds1.dims else "band"
+    return xr.concat([ds1, ds2], dim=dim)
 
 
 def extract_goes_visualization(
@@ -703,9 +735,7 @@ def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]
     return np.dstack([red, green, blue])
 
 
-def _clip_and_scale(
-    arr: npt.NDArray[np.float32], low: float, high: float
-) -> npt.NDArray[np.float32]:
+def _clip_and_scale(arr: npt.NDArray[np.float_], low: float, high: float) -> npt.NDArray[np.float_]:
     """Clip array and rescale to the interval [0, 1].
 
     Array is first clipped to the interval [low, high] and then linearly rescaled
@@ -716,7 +746,7 @@ def _clip_and_scale(
 
     Parameters
     ----------
-    arr : npt.NDArray[np.float32]
+    arr : npt.NDArray[np.float_]
         Array to clip and scale.
     low : float
         Lower clipping bound.
@@ -725,7 +755,7 @@ def _clip_and_scale(
 
     Returns
     -------
-    npt.NDArray[np.float32]
+    npt.NDArray[np.float_]
         Clipped and scaled array.
     """
     return (arr.clip(low, high) - low) / (high - low)
