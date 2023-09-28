@@ -18,8 +18,8 @@ import cartopy.crs as ccrs
 
 
 # Initialise coord arrays
-lon_bounds = (0, 80)
-lat_bounds = (0, ilat)
+lon_bounds = (-180, 180)
+lat_bounds = (-90, 90)
 alt_bounds = (8000, 12000)
 horiz_res = 0.1
 vert_res = 500
@@ -57,10 +57,14 @@ met = era5.open_metdataset()
 
 
 # Initialise low-res chem xarray dataset, and import species files
-init_chem = CHEM(time=time)
+init_chem = CHEM(
+        time=time,
+        timestep_freq=ts_chem,
+)
 
 # Populate chem dataset with species data
 chem = init_chem.open_chemdataset()
+
 
 # Preprocess function that takes met, chem and disp data and downselects and interpolates it. Also preprocess chem as much as poss.
 met.data = met.data.transpose("latitude", "longitude", "level", "time", ...)
