@@ -493,11 +493,11 @@ class GOES:
             "coords": "minimal",
         }
         if lpath02:
-            ds1 = xr.open_mfdataset(**kwargs)
+            ds1 = xr.open_mfdataset(**kwargs)  # type: ignore[arg-type]
             ds2 = xr.open_dataset(lpath02)
 
             # Average the C02 data to the C01 resolution
-            ds2 = ds2.coarsen(x=2, y=2, boundary="exact").mean()
+            ds2 = ds2.coarsen(x=2, y=2, boundary="exact").mean()  # type: ignore[attr-defined]
 
             # Gut check
             np.testing.assert_allclose(ds1["x"], ds2["x"], rtol=0.0005)
@@ -510,7 +510,7 @@ class GOES:
             # Finally, combine the datasets
             ds = xr.concat([ds1, ds2], dim="band")
         else:
-            ds = xr.open_mfdataset(**kwargs)
+            ds = xr.open_mfdataset(**kwargs)  # type: ignore[arg-type]
 
         da = ds["CMI"]
         da = da.swap_dims({"band": "band_id"}).sortby("band_id")
