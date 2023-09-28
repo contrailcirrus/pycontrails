@@ -207,6 +207,7 @@ filterwarnings = [
     "ignore:'cgi' is deprecated and slated:DeprecationWarning:google.cloud.storage.blob",
     "ignore:Engine 'cfgrib' loading failed:RuntimeWarning:xarray.backends.plugins",
     "ignore:.*IPyNbFile:pytest.PytestRemovedIn8Warning:_pytest.nodes",
+    "ignore:.*pkg_resources:DeprecationWarning",
 ]
 testpaths = ["tests/unit"]
 
