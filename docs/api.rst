@@ -245,8 +245,6 @@ BADA
     :toctree: api/
 
     ext.bada.bada_model
-    ext.bada.bada3
-    ext.bada.bada4
     ext.bada.BADAFlight
     ext.bada.BADAFlightParams
     ext.bada.BADAGrid
