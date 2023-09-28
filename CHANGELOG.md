@@ -6,6 +6,7 @@
 ### Features
 
 - New experimental `GOES` interface for downloading and visualizing GOES-16 satellite imagery.
+- Add new [GOES example notebook](https://py.contrails.org/examples/GOES.html) highlighting the interface.
 - Build python 3.12 wheels for Linux, macOS, and Windows on release. This is in addition to the existing python 3.9, 3.10, and 3.11 wheels.
 
 ### Fixes
