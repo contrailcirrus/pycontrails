@@ -115,7 +115,7 @@ gfs = [
     "tqdm>=4.61",
 ]
 
-goes = ["cartopy>=0.22", "gcsfs>=2022.3"]
+goes = ["cartopy>=0.22", "gcsfs>=2022.3", "h5netcdf>=1.2"]
 
 # Jupyter notebook and lab interface
 jupyter = ["ipywidgets>=7.6", "jupyterlab>=2.2"]
