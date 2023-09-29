@@ -1,6 +1,17 @@
 
 # Changelog
 
+## v0.47.3 (unreleased)
+
+### Fixes
+
+- Strengthen `correct_fuel_flow` in the `PSmodel` to account for descent conditions.
+- Clip the denominator computed in `pycontrails.physics.jet.equivalent_fuel_flow_rate_at_cruise`.
+
+### Internals
+
+- Add `FlightPhase` to the `pycontrails` namespace.
+
 ## v0.47.2
 
 ### Features
