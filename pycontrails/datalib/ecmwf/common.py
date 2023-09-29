@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import datetime
 import logging
 from contextlib import ExitStack
 from typing import Any
@@ -10,6 +9,7 @@ from typing import Any
 LOG = logging.getLogger(__name__)
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from overrides import overrides
 
@@ -145,9 +145,6 @@ class ECMWFAPI(datalib.MetDataSource):
 
             # put each hourly file into cache
             cache_path = [
-                self.create_cachepath(
-                    datetime.datetime.fromtimestamp(tg.tolist() / 1e9, datetime.timezone.utc)
-                )
-                for tg in time_group
+                self.create_cachepath(pd.Timestamp(t).to_pydatetime()) for t in time_group
             ]
             self.cachestore.put_multiple(xarray_temp_filenames, cache_path)
