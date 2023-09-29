@@ -272,6 +272,11 @@ class PSFlight(AircraftPerformance):
         elif isinstance(fuel_flow, (int, float)):
             fuel_flow = np.full_like(true_airspeed, fuel_flow)
 
+        # Flight phase
+        segment_duration = flight.segment_duration(time, dtype=altitude_ft.dtype)
+        rocd = flight.segment_rocd(segment_duration, altitude_ft)
+        flight_phase = flight.segment_phase(rocd, altitude_ft)
+
         if correct_fuel_flow_:
             fuel_flow = correct_fuel_flow(
                 fuel_flow,
@@ -281,6 +286,7 @@ class PSFlight(AircraftPerformance):
                 mach_num,
                 atyp_param.ff_idle_sls,
                 atyp_param.ff_max_sls,
+                flight_phase
             )
 
         if dt_sec is not None:
@@ -910,6 +916,7 @@ def correct_fuel_flow(
     mach_number: ArrayOrFloat,
     fuel_flow_idle_sls: float,
     fuel_flow_max_sls: float,
+    flight_phase: npt.NDArray[np.uint8] | flight.FlightPhase
 ) -> ArrayOrFloat:
     r"""Correct fuel mass flow rate to ensure that they are within operational limits.
 
@@ -929,6 +936,8 @@ def correct_fuel_flow(
         Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
     fuel_flow_max_sls : float
         Fuel mass flow rate at take-off and sea level static conditions, [:math:`kg \ s^{-1}`]
+    flight_phase : npt.NDArray[np.uint8] | flight.FlightPhase
+        Phase state of each waypoint.
 
     Returns
     -------
@@ -942,4 +951,10 @@ def correct_fuel_flow(
         (air_pressure / constants.p_surface),
         mach_number,
     )
+
+    #: Account for descent conditions
+    #: Assume `max_fuel_flow` at descent is not more than 30% of `fuel_flow_max_sls`
+    #: We need this assumption because PTF files are not available in the PS model.
+    descent = flight_phase == flight.FlightPhase.DESCENT
+    max_fuel_flow[descent] = 0.3 * fuel_flow_max_sls
     return np.clip(fuel_flow, min_fuel_flow, max_fuel_flow)
