@@ -1177,9 +1177,10 @@ class MetDataArray(MetBase):
         in the case that `copy=True`. Validation only introduces a very small overhead.
         This parameter should only be set to `False` if working with data derived from an
         existing MetDataset or :class`MetDataArray`. By default `True`.
+    name : Hashable, optional
+        Name of the data variable. If not specified, the name will be set to "met".
     **kwargs
-        If `data` input is not a xr.DataArray, `data` will be passed
-        passed directly to xr.DataArray constructor with these keyword arguments.
+        To be removed in future versions. Passed directly to xr.DataArray constructor.
 
     Examples
     --------
@@ -1218,6 +1219,7 @@ class MetDataArray(MetBase):
         wrap_longitude: bool = False,
         copy: bool = True,
         validate: bool = True,
+        name: Hashable | None = None,
         **kwargs: Any,
     ) -> None:
         # init cache
@@ -1225,6 +1227,10 @@ class MetDataArray(MetBase):
 
         # try to create DataArray out of input data and **kwargs
         if not isinstance(data, xr.DataArray):
+            DeprecationWarning(
+                "Input 'data' must be an xarray DataArray. "
+                "Passing arbitrary kwargs will be removed in future versions."
+            )
             data = xr.DataArray(data, **kwargs)
 
         if copy:
@@ -1237,13 +1243,9 @@ class MetDataArray(MetBase):
             if validate:
                 self._validate_dims()
 
-        # if name is specified in kwargs, overwrite any other name in DataArray
-        if "name" in kwargs:
-            self.data.name = kwargs["name"]
-
-        # if at this point now "name" exists on DataArray, set default
-        if self.data.name is None:
-            self.data.name = "met"
+        # Priority: name > data.name > "met"
+        name = name or self.data.name or "met"
+        self.data.name = name
 
     @property
     def values(self) -> np.ndarray:
