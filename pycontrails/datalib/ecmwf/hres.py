@@ -574,10 +574,8 @@ class HRES(ECMWFAPI):
         step = self.step_offset + self.timesteps.index(t)
 
         # single level or pressure level
-        if self.pressure_levels == [-1]:
-            suffix = f"hressl{self.grid}{self.stream}{self.field_type}"
-        else:
-            suffix = f"hrespl{self.grid}{self.stream}{self.field_type}"
+        levtype = "sl" if self.pressure_levels == [-1] else "pl"
+        suffix = f"hres{levtype}{self.grid}{self.stream}{self.field_type}"
 
         # return cache path
         return self.cachestore.path(f"{datestr}-{step}-{suffix}.nc")
@@ -635,10 +633,7 @@ class HRES(ECMWFAPI):
             # open cache files as xr.Dataset
             ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
 
-            # TODO: corner case
-            # If any files are already cached, they will not have the version attached
-            if "pycontrails_version" not in ds.attrs:
-                ds.attrs["pycontrails_version"] = pycontrails.__version__
+            ds.attrs.setdefault("pycontrails_version", pycontrails.__version__)
 
         # run the same ECMWF-specific processing on the dataset
         mds = self._process_dataset(ds, **kwargs)
@@ -650,11 +645,11 @@ class HRES(ECMWFAPI):
         # the 0th value is set to the 1st value so each time step has a radiation value !!
         dt_accumulation = 60 * 60
 
-        for key in [
+        for key in (
             TOAIncidentSolarRadiation.standard_name,
             TopNetSolarRadiation.standard_name,
             TopNetThermalRadiation.standard_name,
-        ]:
+        ):
             if key in mds.data:
                 if len(mds.data["time"]) < 2:
                     raise RuntimeError(
@@ -755,15 +750,13 @@ class HRES(ECMWFAPI):
             # translate into netcdf from grib
             LOG.debug("Translating file into netcdf")
             mars_temp_nc_filename = stack.enter_context(temp_file())
-            ds = stack.enter_context(xr.open_dataset(mars_temp_grib_filename, engine="cfgrib"))
+            ds = xr.open_dataset(mars_temp_grib_filename, engine="cfgrib")
 
             ##### TODO: do we need to store intermediate netcdf file?
             ds.to_netcdf(path=mars_temp_nc_filename, mode="w")
 
             # open file, edit, and save for each hourly time step
-            ds = stack.enter_context(
-                xr.open_dataset(mars_temp_nc_filename, engine=datalib.NETCDF_ENGINE)
-            )
+            ds = xr.open_dataset(mars_temp_nc_filename, engine=datalib.NETCDF_ENGINE)
             #####
 
             # run preprocessing before cache

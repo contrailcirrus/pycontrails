@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from contextlib import ExitStack
 from typing import Any
 
 LOG = logging.getLogger(__name__)
@@ -14,7 +13,6 @@ import xarray as xr
 from overrides import overrides
 
 from pycontrails.core import datalib, met
-from pycontrails.utils import temp
 
 
 def rad_accumulated_to_average(mds: met.MetDataset, key: str, dt_accumulation: int) -> None:
@@ -136,15 +134,6 @@ class ECMWFAPI(datalib.MetDataSource):
             LOG.debug("Cache is turned off, skipping")
             return
 
-        with ExitStack() as stack:
-            # group by hour and save one dataset for each hour to temp file
-            time_group, datasets = zip(*dataset.groupby("time", squeeze=False))
-
-            xarray_temp_filenames = [stack.enter_context(temp.temp_file()) for _ in time_group]
-            xr.save_mfdataset(datasets, xarray_temp_filenames)
-
-            # put each hourly file into cache
-            cache_path = [
-                self.create_cachepath(pd.Timestamp(t).to_pydatetime()) for t in time_group
-            ]
-            self.cachestore.put_multiple(xarray_temp_filenames, cache_path)
+        for t, ds_t in dataset.groupby("time", squeeze=False):
+            cache_path = self.create_cachepath(pd.Timestamp(t).to_pydatetime())
+            ds_t.to_netcdf(cache_path)
