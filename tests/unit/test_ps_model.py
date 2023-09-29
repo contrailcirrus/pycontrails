@@ -8,7 +8,7 @@ import pytest
 import xarray as xr
 
 import pycontrails.models.ps_model.ps_model as ps
-from pycontrails.core import Flight, GeoVectorDataset, MetDataset
+from pycontrails import Flight, FlightPhase, GeoVectorDataset, MetDataset
 from pycontrails.models.ps_model import PSGrid, ps_nominal_grid
 from pycontrails.physics import jet, units
 
@@ -130,6 +130,7 @@ def test_ps_model() -> None:
         mach_number,
         atyp_param.ff_idle_sls,
         atyp_param.ff_max_sls,
+        FlightPhase.CRUISE,
     )
     np.testing.assert_array_almost_equal(fuel_flow, [0.574, 0.559], decimal=3)
 
@@ -217,6 +218,7 @@ def test_fuel_clipping() -> None:
         mach_num,
         atyp_param.ff_idle_sls,
         atyp_param.ff_max_sls,
+        FlightPhase.CRUISE,
     )
 
     min_fuel_flow = jet.minimum_fuel_flow_rate_at_cruise(atyp_param.ff_idle_sls, altitude_ft)
