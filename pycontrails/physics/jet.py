@@ -272,7 +272,10 @@ def equivalent_fuel_flow_rate_at_cruise(
     ----------
     - :cite:`duboisFuelFlowMethod22006`
     """
-    return fuel_flow_sls / ((theta_amb**3.8 / delta_amb) * np.exp(0.2 * mach_num**2))
+    denom = ((theta_amb**3.8 / delta_amb) * np.exp(0.2 * mach_num**2))
+    denom = np.maximum(denom, 1.0)
+    #: denominator must not be < 1, otherwise `corrected_fuel_flow` > `fuel_flow_max_sls`
+    return fuel_flow_sls / denom
 
 
 def minimum_fuel_flow_rate_at_cruise(
