@@ -518,7 +518,7 @@ class MetDataSource(abc.ABC):
         """
         if times_to_download := self.list_timesteps_not_cached(**xr_kwargs):
             logger.debug(
-                f"Not all files found in cachestore. Downloading times {times_to_download}"
+                "Not all files found in cachestore. Downloading times %s", times_to_download
             )
             self.download_dataset(times_to_download)
         else:
@@ -547,7 +547,7 @@ class MetDataSource(abc.ABC):
     def is_datafile_cached(self, t: datetime, **xr_kwargs: Any) -> bool:
         """Check datafile defined by datetime for variables and pressure levels in class.
 
-        If using a cloud cache store (i.e. :class:`cache.GCPCacheStore`) this is where the datafile
+        If using a cloud cache store (i.e. :class:`cache.GCPCacheStore`), this is where the datafile
         will be mirrored to a local file for access.
 
         Parameters
@@ -575,56 +575,65 @@ class MetDataSource(abc.ABC):
 
         # see if cache data file exists, and if so, get the file + path
         cache_path = self.create_cachepath(t)
-        if self.cachestore.exists(cache_path):
-            logger.debug(f"Cachepath {cache_path} exists, getting from cache.")
-            # If GCP cache is used, this will download file and return the local mirrored path
-            # If the local file already exists, this will return the local path
-            disk_path = self.cachestore.get(cache_path)
+        if not self.cachestore.exists(cache_path):
+            logger.debug("Cachepath %s does not exist in cache", cache_path)
+            return False
 
-            # check if all variables and pressure levels are in that path
-            try:
-                with self.open_dataset(disk_path, **xr_kwargs) as ds:
-                    for var in self.variable_shortnames:
-                        if var not in ds:
-                            logger.warning(
-                                f"Variable {var} not in downloaded dataset. "
-                                f"Found variables: {ds.data_vars}"
-                            )
-                            return False
+        logger.debug("Cachepath %s exists, getting from cache.", cache_path)
 
-                    for pl in self.pressure_levels:
-                        if pl not in ds["level"].values:
-                            logger.warning(
-                                f"Pressure Level {pl} not in downloaded dataset. "
-                                f"Found pressure levels: {ds['level'].values}"
-                            )
-                            return False
+        # If GCP cache is used, this will download file and return the local mirrored path
+        # If the local file already exists, this will return the local path
+        disk_path = self.cachestore.get(cache_path)
 
-                    logger.debug(f"All variables and pressure levels found in {cache_path}")
-                    return True
+        # check if all variables and pressure levels are in that path
+        try:
+            with self.open_dataset(disk_path, **xr_kwargs) as ds:
+                return self._check_is_ds_complete(ds, cache_path)
 
-            except OSError as err:
-                if isinstance(self.cachestore, cache.GCPCacheStore):
-                    # If a GCPCacheStore is used, remove the corrupt file and
-                    # try again.
-                    # If the file is corrupt in the GCP bucket, we'll
-                    # get stuck in an infinite loop here
-                    logger.warning(
-                        "Found corrupt file %s on local disk. Try again to download from %s.",
-                        disk_path,
-                        self.cachestore,
-                    )
-                    self.cachestore.clear_disk(disk_path)
-                    return self.is_datafile_cached(t, **xr_kwargs)
+        except OSError as err:
+            if isinstance(self.cachestore, cache.GCPCacheStore):
+                # If a GCPCacheStore is used, remove the corrupt file and try again.
+                # If the file is corrupt in the bucket, we'll get stuck in an infinite loop here.
+                logger.warning(
+                    "Found corrupt file %s on local disk. Try again to download from %s.",
+                    disk_path,
+                    self.cachestore,
+                    exc_info=err,
+                )
+                self.cachestore.clear_disk(disk_path)
+                return self.is_datafile_cached(t, **xr_kwargs)
 
-                raise OSError(
-                    f"Unable to open NETCDF file at {disk_path} "
-                    "This may be due to a incomplete download. "
-                    f"Consider manually removing {disk_path} and retrying."
-                ) from err
+            raise OSError(
+                "Unable to open NETCDF file at '%s'. "
+                "This may be due to a incomplete download. "
+                "Consider manually removing '%s' and retrying.",
+                disk_path,
+                disk_path,
+            ) from err
 
-        logger.debug(f"Cachepath {cache_path} does not exist in cache")
-        return False
+    def _check_is_ds_complete(self, ds: xr.Dataset, cache_path: str) -> bool:
+        """Check if ``ds`` has all variables and pressure levels defined by the instance."""
+        for var in self.variable_shortnames:
+            if var not in ds:
+                logger.warning(
+                    "Variable %s not in downloaded dataset. Found variables: %s",
+                    var,
+                    ds.data_vars,
+                )
+                return False
+
+        pl = np.asarray(self.pressure_levels)
+        cond = np.isin(pl, ds["level"].values)
+        if not np.all(cond):
+            logger.warning(
+                "Pressure Levels %s not in downloaded dataset. Found pressure levels: %s",
+                pl[~cond].tolist(),
+                ds["level"].values.tolist(),
+            )
+            return False
+
+        logger.debug("All variables and pressure levels found in %s", cache_path)
+        return True
 
     def open_dataset(
         self,
