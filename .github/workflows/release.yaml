@@ -9,6 +9,9 @@ on:
 
   workflow_dispatch:
 
+# https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+permissions: read-all
+
 jobs:
   check-main-test-status:
     runs-on: ubuntu-latest

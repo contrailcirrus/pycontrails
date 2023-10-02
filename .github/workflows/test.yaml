@@ -25,12 +25,13 @@ env:
   PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
   BADA_CACHE_DIR: '${{ github.workspace }}/.cache/bada/'
 
+# https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+permissions: read-all
 
 # This allows a subsequently queued workflow run to interrupt previous runs
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
-
 
 jobs:
   unit-test:
@@ -43,8 +44,7 @@ jobs:
 
     # set from https://github.com/google-github-actions/auth
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      id-token: write
 
     steps:
     - uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
 
     - name: 'Set up Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v1'
-    
+
     # download BADA files for testing
     - name: BADA files
       run: |
