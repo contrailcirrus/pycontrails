@@ -36,9 +36,9 @@ class CHEM():
                         
                 # Extract the constants
                 photol_idx, L, M, N = np.array(consts).T
-                # self.L = L
-                # self.M = M
-                # self.N = N
+                self.L = L
+                self.M = M
+                self.N = N
                 self.photol_params = photol_idx
                 self.photol_coeffs = np.arange(1, 96 + 1) # from Fortran indexing (1 to 96)
                 self.therm_coeffs = np.arange(1, 510 + 1) # from Fortran indexing (1 to 510)
@@ -48,12 +48,13 @@ class CHEM():
                 """Instantiate chemdataset with zeros and apply species data to it. Interpolation (and zenith calcs etc.), will be done later."""
                 
                 # Initialise 5 x 5 chem dataset with all variables, ready for species import.
+
                 ds = self._init_chem()     
                 print(ds)
                 # Get species data for timestep 0, pre-interpolated.
                 self._get_species(ds)
 
-                return ChemDataset(ds)
+                return ChemDataset(ds, self.L, self.M, self.N)
 
         
         def _init_chem(self) -> xr.Dataset:
@@ -98,19 +99,7 @@ class CHEM():
         def _get_species(self, ds: xr.Dataset):
                 """Get species concentrations for initial timestep from species data files. Then interpolate them to chem grid."""
                 chem = ds
-                # bg_chem = xr.DataArray(
-                #         {
-                #                 "Y": (["latitude", "longitude", "level", "species"],
-                #                       np.zeros((len(self.latitude), len(self.longitude), len(self.chem_pressure_levels), len(self.species))))
 
-                #         },
-                #         coords={
-                #         "latitude": self.latitude,
-                #         "longitude": self.longitude, 
-                #         "level": self.chem_pressure_levels,
-                #         "species": self.species,
-                #         }
-                # )
                 for s in chem.species.values:
                         # Find month from first timestep
                         month = self.timesteps[0].month

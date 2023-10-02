@@ -15,12 +15,16 @@ class ChemDataset(MetDataset):
     def __init__(
             self,
             data: xr.Dataset,
+            L, M, N,
             lon_bounds: tuple[float, float] | None = (-180, 180),
             lat_bounds: tuple[float, float] | None = (-90, 90),
             time: datalib.TimeInput | None = None,
             ts_chem: str = "1H",
     ):
         super().__init__(data)
+        self.L = L
+        self.M = M
+        self.N = N
 
     def zenith(self):
         """Calculate zenith angle for each grid cell and timestep"""
@@ -79,7 +83,7 @@ class ChemDataset(MetDataset):
 
     def get_photol_params(self):
                 
-        sza_J = self.data["sza"].expand_dims(dim={'photol_params': self.photol_params}, axis=3)
+        sza_J = self.data["sza"].expand_dims(dim={'photol_params': self.data["photol_params"]}, axis=3)
 
         print(sza_J)
         print(sza_J.shape)

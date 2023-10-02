@@ -13,7 +13,7 @@ import pycontrails
 from pycontrails.core import datalib
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataArray, MetDataset, standardize_variables
-from init_chem import ChemDataset
+from chem import ChemDataset
 from pycontrails.core.met_var import (
     AirTemperature,
     RelativeHumidity,
@@ -55,15 +55,14 @@ class BoxModel(Model):
     ):
         
         # Normalize ECMWF variables
-        met = standardize_variables(met, self.met_variables)
+        #met = standardize_variables(met, self.met_variables)
 
         super().__init__(met, params=params, **params_kwargs)
         
         self.met = met
         self.chem = chem
-
-        self.met = self.require_source_type(MetDataset)
-        self.chem = self.require_source_type(ChemDataset)
+        #self.met = self.require_source_type(MetDataset)
+        #self.chem = self.require_source_type(ChemDataset)
 
         self.met["air_pressure"] = self.met.broadcast_coords("air_pressure")
 
@@ -74,7 +73,7 @@ class BoxModel(Model):
     # ----------
 
     def eval(
-        self, source: MetDataset | None = None, **params: Any
+        self, source: ChemDataset | None = None, **params: Any
     ) -> MetDataset:
         """Evaluate chem on meteorology grid, subject to flight emissions.
         
@@ -89,7 +88,7 @@ class BoxModel(Model):
         Returns
         -------
         MetDataset
-            Returns `np.nan` if interpolating outside meteorology grid.
+            Returns `np.nan` if inte rpolating outside meteorology grid.
 
         Raises
         ------
