@@ -43,11 +43,6 @@ jobs:
         pyversion: ['3.9', '3.10', '3.11']
     runs-on: ${{ matrix.os }}
 
-    # set from https://github.com/google-github-actions/auth
-    permissions:
-      contents: read
-      id-token: write
-
     steps:
     - uses: actions/checkout@v4
       with:

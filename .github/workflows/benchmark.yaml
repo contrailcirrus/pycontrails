@@ -27,11 +27,6 @@ jobs:
   benchmark-test:
     runs-on: ubuntu-latest
 
-    # set from https://github.com/google-github-actions/auth
-    permissions:
-      contents: read
-      id-token: write
-
     steps:
     # https://github.com/easimon/maximize-build-space
     - name: Maximize build space

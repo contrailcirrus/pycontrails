@@ -34,11 +34,6 @@ jobs:
   doc-test:
     runs-on: ubuntu-latest
 
-    # set from https://github.com/google-github-actions/auth
-    permissions:
-      contents: read
-      id-token: write
-
     steps:
     - uses: actions/checkout@v4
       with:
