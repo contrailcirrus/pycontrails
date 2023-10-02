@@ -9,8 +9,9 @@ on:
 
   workflow_dispatch:
 
+# disable all permissions at the top level
 # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
-permissions: read-all
+permissions: {}
 
 jobs:
   check-main-test-status:

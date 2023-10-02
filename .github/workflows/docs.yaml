@@ -18,14 +18,14 @@ on:
 env:
   PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
 
+# disable all permissions at the top level
 # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
-permissions: read-all
+permissions: {}
 
 # Allow one concurrent deployment
 concurrency:
   group: "pages"
   cancel-in-progress: true
-
 
 jobs:
   build:
