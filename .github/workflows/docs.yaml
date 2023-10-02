@@ -18,6 +18,9 @@ on:
 env:
   PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
 
+# https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+permissions: read-all
+
 # Allow one concurrent deployment
 concurrency:
   group: "pages"
@@ -85,7 +88,6 @@ jobs:
 
     # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
     permissions:
-      contents: read
       pages: write
       id-token: write
 
