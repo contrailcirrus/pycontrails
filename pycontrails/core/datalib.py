@@ -175,14 +175,14 @@ def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> l
     else:
         parsed_variables = variables
 
-    # unpack list of supported str values from MetVariables
-    short_names = [v.short_name for v in supported]
-    standard_names = [v.standard_name for v in supported]
-    long_names = [v.long_name for v in supported]
+    # unpack dict of supported str values from supported
+    short_names = {v.short_name: v for v in supported}
+    standard_names = {v.standard_name: v for v in supported}
+    long_names = {v.long_name: v for v in supported}
 
-    # unpack list of support int values from Met Variables
-    ecmwf_ids = [v.ecmwf_id for v in supported]
-    grib1_ids = [v.grib1_id for v in supported]
+    # unpack dict of support int values from supported
+    ecmwf_ids = {v.ecmwf_id: v for v in supported}
+    grib1_ids = {v.grib1_id: v for v in supported}
 
     for var in parsed_variables:
         matched_variable: MetVariable | None = None
@@ -197,7 +197,7 @@ def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> l
             for v in var:
                 # sanity check since we don't support other types as lists
                 if not isinstance(v, MetVariable):
-                    raise ValueError("Variable options must be of type MetVariable.")
+                    raise TypeError("Variable options must be of type MetVariable.")
                 if v in supported:
                     matched_variable = v
                     break
@@ -205,23 +205,23 @@ def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> l
         # int code
         elif isinstance(var, int):
             if var in ecmwf_ids:
-                matched_variable = supported[ecmwf_ids.index(var)]
+                matched_variable = ecmwf_ids[var]
             elif var in grib1_ids:
-                matched_variable = supported[grib1_ids.index(var)]
+                matched_variable = grib1_ids[var]
 
         # string reference
         elif isinstance(var, str):
             if var in short_names:
-                matched_variable = supported[short_names.index(var)]
+                matched_variable = short_names[var]
             elif var in standard_names:
-                matched_variable = supported[standard_names.index(var)]
+                matched_variable = standard_names[var]
             elif var in long_names:
-                matched_variable = supported[long_names.index(var)]
+                matched_variable = long_names[var]
 
         if matched_variable is None:
             raise ValueError(
                 f"{var} is not in supported parameters. "
-                + f"Supported parameters include: {standard_names}"
+                f"Supported parameters include: {standard_names}"
             )
 
         # "replace" copies dataclass
