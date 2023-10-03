@@ -533,7 +533,7 @@ class MetBase(ABC, Generic[XArrayType]):
 
     @property
     def attrs(self) -> dict[Hashable, Any]:
-        """Pass through to `self.data.attrs`."""
+        """Pass through to :attr:`self.data.attrs`."""
         return self.data.attrs
 
     @abstractmethod
