@@ -31,7 +31,7 @@ except ModuleNotFoundError:
     pass
 
 from pycontrails.core.cache import DiskCacheStore, GCPCacheStore
-from pycontrails.core.datalib import MetDataSource
+from pycontrails.core.datalib import MetDataSource, MetSourceMetadata
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight, FlightPhase
 from pycontrails.core.fuel import Fuel, HydrogenFuel, JetA, SAFBlend
@@ -63,6 +63,7 @@ __all__ = [
     "MetDataArray",
     "MetDataset",
     "MetDataSource",
+    "MetSourceMetadata",
     "MetVariable",
     "Model",
     "ModelParams",
