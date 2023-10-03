@@ -70,7 +70,7 @@ class MetVariable:
         ValueError
             If any of the inputs have an unknown :attr:`level_type`.
         """
-        level_types = ["surface", "isobaricInPa", "isobaricInhPa", "nominalTop"]
+        level_types = ("surface", "isobaricInPa", "isobaricInhPa", "nominalTop")
         if self.level_type is not None and self.level_type not in level_types:
             raise ValueError(f"`level_type` must be one of {level_types}")
 
@@ -102,8 +102,8 @@ class MetVariable:
         """
 
         # return only these keys if they are not None
-        keys = ["short_name", "standard_name", "long_name", "units"]
-        return {k: getattr(self, k) for k in keys if getattr(self, k, None) is not None}
+        keys = ("short_name", "standard_name", "long_name", "units")
+        return {k: v for k in keys if (v := getattr(self, k, None)) is not None}
 
 
 # ----
@@ -135,7 +135,7 @@ Altitude = MetVariable(
     amip="ta",
     description=(
         "Altitude is the (geometric) height above the geoid, which is the "
-        "reference  geopotential surface. The geoid is similar to mean sea level."
+        "reference geopotential surface. The geoid is similar to mean sea level."
     ),
 )
 
