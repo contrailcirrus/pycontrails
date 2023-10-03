@@ -80,6 +80,10 @@ black-check:
 taplo:
 	taplo format pyproject.toml --option indent_string='    '
 
+# https://yamllint.readthedocs.io/en/stable/configuration.html
+yamllint:
+	yamllint -d "{extends: default, rules: {line-length: {max: 100}}}" .
+
 mypy:
 	mypy pycontrails
 

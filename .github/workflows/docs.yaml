@@ -1,7 +1,7 @@
 # Build documentation
 # See https://github.com/actions/starter-workflows/blob/main/pages/static.yml for starter
 # https://github.com/actions/starter-workflows/tree/main/pages
-# 
+#
 # Currently hosted at https://py.contrails.org
 name: Docs
 
@@ -32,51 +32,51 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: OS Dependencies
-      run: sudo apt-get install -y pandoc
+      - name: OS Dependencies
+        run: sudo apt-get install -y pandoc
 
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-        cache-dependency-path: pyproject.toml
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
 
-    - name: 'Authenticate to Google Cloud'
-      uses: 'google-github-actions/auth@v1'
-      with:
-        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
 
-    - name: 'Set up Cloud SDK'
-      uses: 'google-github-actions/setup-gcloud@v1'
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
 
-    - name: Install pycontrails (dev)
-      run: make dev-install
+      - name: Install pycontrails (dev)
+        run: make dev-install
 
-    - name: Install pycontrails-bada extension
-      run: |
-        mkdir -p ~/.ssh/ && ssh-keyscan github.com > ~/.ssh/known_hosts
-        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
+      - name: Install pycontrails-bada extension
+        run: |
+          mkdir -p ~/.ssh/ && ssh-keyscan github.com > ~/.ssh/known_hosts
+          gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
 
-    # TODO: Execute notebooks for docs
-    # - name: Execute notebooks
-    #   run: |
-    #     make nb-execute
+      # TODO: Execute notebooks for docs
+      # - name: Execute notebooks
+      #   run: |
+      #     make nb-execute
 
-    - name: Build docs
-      run: |
-        make docs-build
-        ls -la docs/_build/html
+      - name: Build docs
+        run: |
+          make docs-build
+          ls -la docs/_build/html
 
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v2
-      with:
-        path: 'docs/_build/html/'
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: 'docs/_build/html/'
 
   deploy:
     needs: build
@@ -92,6 +92,6 @@ jobs:
       id-token: write
 
     steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v2
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

@@ -44,82 +44,82 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.pyversion }}
-        cache: 'pip'
-        cache-dependency-path: pyproject.toml
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.pyversion }}
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
 
-    - name: Cache mypy and pytest
-      id: cache-test
-      uses: actions/cache@v3
-      with:
-        # Note the caches are specific to branches, so we don't need to specify here
-        # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache
-        key: ${{ runner.os }}-mypy-pytest
-        path: |
-          ${{ github.workspace }}/.mypy_cache
-          ${{ github.workspace }}/.pytest_cache
+      - name: Cache mypy and pytest
+        id: cache-test
+        uses: actions/cache@v3
+        with:
+          # Note the caches are specific to branches, so we don't need to specify here
+          # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache
+          key: ${{ runner.os }}-mypy-pytest
+          path: |
+            ${{ github.workspace }}/.mypy_cache
+            ${{ github.workspace }}/.pytest_cache
 
-    - name: 'Authenticate to Google Cloud'
-      uses: 'google-github-actions/auth@v1'
-      with:
-        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
 
-    - name: 'Set up Cloud SDK'
-      uses: 'google-github-actions/setup-gcloud@v1'
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
 
-    # download BADA files for testing
-    - name: BADA files
-      run: |
-        mkdir -p ${{ env.BADA_CACHE_DIR }}
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
-        gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ env.BADA_CACHE_DIR }}
-        ls -l ${{ env.BADA_CACHE_DIR }}
+      # download BADA files for testing
+      - name: BADA files
+        run: |
+          mkdir -p ${{ env.BADA_CACHE_DIR }}
+          gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
+          gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ env.BADA_CACHE_DIR }}
+          ls -l ${{ env.BADA_CACHE_DIR }}
 
-    - name: Install pycontrails (dev)
-      run: |
-        pip install -U pip wheel
-        pip install -e .[complete,dev,docs] --verbose
+      - name: Install pycontrails (dev)
+        run: |
+          pip install -U pip wheel
+          pip install -e .[complete,dev,docs] --verbose
 
-    # In latest-windows, redirecting stdout to a file uses utf-16 encoding
-    # This gives an error when ssh tries to read the key
-    # Instead don't pre-create the known_hosts file
-    - name: Install pycontrails-bada - windows
-      if: ${{ matrix.os == 'windows-latest' }}
-      run: |
-        mkdir -p $HOME/.ssh/
-        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" --out-file="$HOME/.ssh/id_rsa"
-        pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
-      env:
-        GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
+      # In latest-windows, redirecting stdout to a file uses utf-16 encoding
+      # This gives an error when ssh tries to read the key
+      # Instead don't pre-create the known_hosts file
+      - name: Install pycontrails-bada - windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          mkdir -p $HOME/.ssh/
+          gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" --out-file="$HOME/.ssh/id_rsa"
+          pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
+        env:
+          GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
 
-    - name: Install pycontrails-bada - linux
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        mkdir -p $HOME/.ssh/
-        ssh-keyscan github.com > $HOME/.ssh/known_hosts
-        gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > $HOME/.ssh/id_rsa
-        chmod 600 $HOME/.ssh/id_rsa
-        pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
+      - name: Install pycontrails-bada - linux
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          mkdir -p $HOME/.ssh/
+          ssh-keyscan github.com > $HOME/.ssh/known_hosts
+          gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > $HOME/.ssh/id_rsa
+          chmod 600 $HOME/.ssh/id_rsa
+          pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
 
-    - name: Show environment
-      run: |
-        pwd
-        ls -l .
-        ls -l pycontrails
-        python --version
-        mypy --version
-        pip list
+      - name: Show environment
+        run: |
+          pwd
+          ls -l .
+          ls -l pycontrails
+          python --version
+          mypy --version
+          pip list
 
-    - name: QC & Test
-      run: |
-        pip check
-        black pycontrails --check
-        ruff pycontrails tests
-        mypy pycontrails
-        pytest tests/unit -vv
+      - name: QC & Test
+        run: |
+          pip check
+          black pycontrails --check
+          ruff pycontrails tests
+          mypy pycontrails
+          pytest tests/unit -vv
