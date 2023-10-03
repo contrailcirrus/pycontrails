@@ -1,0 +1,43 @@
+# Run the OpenSSF Security Scorecard
+# https://github.com/ossf/scorecard-action
+
+name: OpenSSF Security Scorecard
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+  schedule:
+    # run every Monday morning at 6:00 AM UTC
+    - cron: "0 6 * * 1"
+
+# disable all permissions at the top level
+# https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+permissions: {}
+
+jobs:
+  run-scorecard:
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run OpenSSF Security Scorecard
+        uses: ossf/scorecard-action@v2
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          publish_results: true
+
+      # required for Code scanning alerts
+      - name: "Upload SARIF results to code scanning"
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results.sarif
