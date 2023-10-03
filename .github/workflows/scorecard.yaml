@@ -32,7 +32,7 @@ jobs:
       - name: Run OpenSSF Security Scorecard
         uses: ossf/scorecard-action@v2.2.0
         with:
-          results_file: scorecard-results.sarif
+          results_file: results.sarif
           results_format: sarif
           publish_results: true
 
