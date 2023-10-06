@@ -15,7 +15,9 @@ class ChemDataset(MetDataset):
     def __init__(
             self,
             data: xr.Dataset,
-            L, M, N,
+            L: float = None,
+            M: float = None, 
+            N: float = None,
             lon_bounds: tuple[float, float] | None = (-180, 180),
             lat_bounds: tuple[float, float] | None = (-90, 90),
             time: datalib.TimeInput | None = None,

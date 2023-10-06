@@ -95,7 +95,6 @@ plt.close(p.figure)
 
 chem.open_chemdataset()
 
-print(chem.data["Y"])
 
 # # Initialise box model with met and chem data
 # boxm = BoxModel(met, chem)
