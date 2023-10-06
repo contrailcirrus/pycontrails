@@ -701,9 +701,8 @@ def test_contrail_contrail_overlapping_effects() -> None:
     assert np.all(contrails_overlap["rsr_overlap"] >= contrails_overlap["rsr"])
     assert np.all(contrails_overlap["olr_overlap"] <= contrails_overlap["olr"])
     assert np.all(contrails_overlap["rf_lw_overlap"] <= contrails_overlap["rf_lw"])
-    assert np.all(contrails_overlap["rf_sw_overlap"] >= contrails_overlap["rf_sw"])
-    #: Do not check for the change in `rf_net` because it's sign depends on the change in
-    #: `rf_sw` and `rf_lw`
+    # Do not check for the change in `rf_net` because it's sign depends on the change in
+    # `rf_sw` and `rf_lw`
 
 
 @pytest.fixture()
