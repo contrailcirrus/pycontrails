@@ -863,9 +863,15 @@ def effective_tau_cirrus(
     npt.NDArray[np.float_]
         Effective optical depth of natural cirrus above the contrail,
         ``n_waypoints x 8`` (habit) columns.
+
+    Notes
+    -----
+    - In a personal correspondence, Dr. Schumann identified a print error in Eq. (11) in
+        :cite:`schumannParametricRadiativeForcing2012`, where the positions of `delta_sc_aps`
+        and `delta_sc` should be swapped. The correct function is presented below.
     """
     tau_cirrus_eff = tau_cirrus / (mue + 1e-6)
-    return np.exp(tau_cirrus * delta_sc) - (tau_cirrus_eff * delta_sc_aps)
+    return np.exp((tau_cirrus * delta_sc_aps) - (tau_cirrus_eff * delta_sc))
 
 
 # -----------------------------
