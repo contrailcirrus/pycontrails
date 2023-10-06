@@ -842,7 +842,8 @@ def effective_tau_cirrus(
     r"""
     Calculate the effective optical depth of natural cirrus above the contrail, ``e_sw``.
 
-    Refer to Eq. (11) of Schumann et al. (2012).
+    Refer to Eq. (11) of :cite:`schumannParametricRadiativeForcing2012`. See Notes for
+    a correction to the equation.
 
     Parameters
     ----------
@@ -867,11 +868,11 @@ def effective_tau_cirrus(
     Notes
     -----
     - In a personal correspondence, Dr. Schumann identified a print error in Eq. (11) in
-        :cite:`schumannParametricRadiativeForcing2012`, where the positions of `delta_sc_aps`
-        and `delta_sc` should be swapped. The correct function is presented below.
+      :cite:`schumannParametricRadiativeForcing2012`, where the positions of ``delta_sc_aps``
+      and ``delta_sc`` should be swapped. The correct function is provided below.
     """
     tau_cirrus_eff = tau_cirrus / (mue + 1e-6)
-    return np.exp((tau_cirrus * delta_sc_aps) - (tau_cirrus_eff * delta_sc))
+    return np.exp(tau_cirrus * delta_sc_aps - tau_cirrus_eff * delta_sc)
 
 
 # -----------------------------
