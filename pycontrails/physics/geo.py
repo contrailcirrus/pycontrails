@@ -836,12 +836,12 @@ def advect_level(
     level : ArrayLike
         Pressure level, [:math:`hPa`]
     vertical_velocity : ArrayLike
-        Vertical velocity, [:math:`m s^{-1}`]
-    rho_air : ArrayLike
+        Vertical velocity, [:math:`Pa s^{-1}`]
+    rho_air : ArrayLike | float
         Air density, [:math:`kg m^{-3}`]
-    terminal_fall_speed : ArrayLike
+    terminal_fall_speed : ArrayLike | float
         Terminal fall speed of the particle, [:math:`m s^{-1}`]
-    dt : np.ndarray
+    dt : npt.NDArray[np.timedelta64] | np.timedelta64
         Time delta for each waypoint
 
     Returns
@@ -850,9 +850,9 @@ def advect_level(
         New pressure level, [:math:`hPa`]
     """
     dt_s = units.dt_to_seconds(dt, level.dtype)
-    velocity = vertical_velocity + rho_air * terminal_fall_speed * constants.g
+    dp_dt = vertical_velocity + rho_air * terminal_fall_speed * constants.g
 
-    return (level * 100.0 + (dt_s * velocity)) / 100.0
+    return (level * 100.0 + (dt_s * dp_dt)) / 100.0
 
 
 # ---------------

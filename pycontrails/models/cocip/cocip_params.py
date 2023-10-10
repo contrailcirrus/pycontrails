@@ -153,7 +153,8 @@ class CocipParams(ModelParams):
     #: Sedimentation impact factor. Denoted by :math:`f_{T}` in eq. (35) of
     #: :cite:`schumannContrailCirrusPrediction2012`.
     #: Schumann describes this as "an important adjustable parameter", and sets
-    #: it to 0.1 in the original publication.
+    #: it to 0.1 in the original publication. In :cite:`schumannAviationinducedCirrusRadiation2013`,
+    #: a value of 0.5 is referenced after comparing CoCiP predictions to observations.
     sedimentation_impact_factor: float = 0.5
 
     #: Default ``nvpm_ei_n`` value if no data provided and emissions calculations fails.

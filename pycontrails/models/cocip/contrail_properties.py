@@ -777,7 +777,8 @@ def ice_particle_terminal_fall_speed(
 
     ``v_t`` is calculated based on a parametric model
     from :cite:`spichtingerModellingCirrusClouds2009`, using inputs of pressure
-    level, ambient temperature and the ice particle volume mean radius.
+    level, ambient temperature and the ice particle volume mean radius. See
+    Table 2 for the model parameters.
 
     Parameters
     ----------
@@ -916,11 +917,12 @@ def vertical_diffusivity(
     Accounts for the turbulence-induced diffusive contrail spreading in the vertical direction.
     See eq. (35) of :cite:`schumannContrailCirrusPrediction2012`.
 
-    The first term in Eq. (35) of Schumann (2012)
+    The first term in Eq. (35) of :cite:`schumannContrailCirrusPrediction2012` is
     (c_V * w'_N^2 / N_BV, where c_V = 0.2 and w'_N^2 = 0.1) is different
     than outlined below. Here, a constant of 0.01 is used when radiative
-    heating effects are not activated. This update comes from Schumann and
-    Graf (2013), which found that the original formulation estimated thinner
+    heating effects are not activated. This update comes from
+    :cite:`schumannAviationinducedCirrusRadiation2013`
+    , which found that the original formulation estimated thinner
     contrails relative to satellite observations. The vertical diffusivity
     was enlarged so that the simulated contrails are more consistent with observations.
     """
