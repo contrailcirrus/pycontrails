@@ -9,6 +9,7 @@
 - Clip the denominator computed in `pycontrails.physics.jet.equivalent_fuel_flow_rate_at_cruise`.
 - Ensure the token used within GitHub workflows has the fewest privileges required. Set top-level permissions to `none` in each workflow file. Remove unnecessary permissions previously used in the `google-github-actions/auth` action.
 - Fix bug in `radiative_forcing.effective_tau_contrail` identified in [#99](https://github.com/contrailcirrus/pycontrails/issues/99).
+- Fix the unit for `vertical_velocity` in `geo.advect_level`.
 
 ### Internals
 

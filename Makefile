@@ -184,6 +184,7 @@ nb-check-links:
 		--check-links-ignore "https://doi.org/10.1021/acs.est.9b05608" \
 		--check-links-ignore "https://doi.org/10.1021/acs.est.2c05781" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
+		--check-links-ignore "https://ourairports.com" \
 		docs/examples docs/tutorials
 
 docs-build: doc8
