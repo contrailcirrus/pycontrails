@@ -16,6 +16,27 @@ TauCirrus = MetVariable(
 )
 
 
+def _geopotential_height(met: MetDataset) -> xr.DataArray:
+    """Extract geopotential height from MetDataset."""
+
+    # Attempt 1: Use geopotential height if available
+    try:
+        return met.data["geopotential_height"]
+    except KeyError:
+        pass
+
+    # Attempt 2: Use geopotential if available
+    try:
+        return met.data["geopotential"] / constants.g
+    except KeyError:
+        pass
+
+    # Attempt 3: Approximate geopotential height from altitude
+    # https://unidata.github.io/MetPy/latest/api/generated/metpy.calc.height_to_geopotential.html
+    altitude = met.data["altitude"]
+    return altitude * constants.radius_earth / (constants.radius_earth + altitude)
+
+
 def tau_cirrus(met: MetDataset) -> xr.DataArray:
     """Calculate the optical depth of NWP cirrus around each pressure level.
 
@@ -41,10 +62,7 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
     of the derivative.
     """
 
-    try:
-        geopotential_height = met.data["geopotential_height"]
-    except KeyError:
-        geopotential_height = met.data["geopotential"] / constants.g
+    geopotential_height = _geopotential_height(met)
 
     # TODO: these are not *quite* the same, though we treat them the same for now
     # ECMWF "specific_cloud_ice_water_content" is mass ice per mass of *moist* air
