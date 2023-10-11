@@ -1540,9 +1540,9 @@ def calc_timestep_geometry(contrail: GeoVectorDataset) -> None:
     # Finally, at the next evolution step, the previous waypoint will accrue
     # a nan value after segment_length is recalculated
 
-    segment_length[~continuous] = 0
-    sin_a[~continuous] = 0
-    cos_a[~continuous] = 0
+    segment_length[~continuous] = 0.0
+    sin_a[~continuous] = 0.0
+    cos_a[~continuous] = 0.0
 
     np.nan_to_num(segment_length, copy=False)
     np.nan_to_num(sin_a, copy=False)
