@@ -789,7 +789,7 @@ class MetDataset(MetBase):
             yield str(key)
 
     def __contains__(self, key: Hashable) -> bool:
-        """Check if key `key` is in :attr:`data`.
+        """Check if key ``key`` is in :attr:`data`.
 
         Parameters
         ----------
@@ -799,7 +799,7 @@ class MetDataset(MetBase):
         Returns
         -------
         bool
-            True if `key` is in :attr:`data`, False otherwise
+            True if ``key`` is in :attr:`data`, False otherwise
         """
         return key in self.data
 

@@ -915,7 +915,7 @@ class Cocip(Model):
         self._downwash_contrail = self._create_downwash_contrail()
         buffers = {
             f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
-            for coord in ["longitude", "latitude", "level"]
+            for coord in ("longitude", "latitude", "level")
         }
         logger.debug("Downselect met for start of Cocip evolution")
         met = self._downwash_contrail.downselect_met(self.met, **buffers, copy=False)
