@@ -1439,7 +1439,9 @@ def _eval_aircraft_performance(
     if aircraft_performance is None:
         raise ValueError(
             "An AircraftPerformance model parameter is required if the flight "
-            f"does not contain the following variables: {aircraft_performance_outputs}"
+            f"does not contain the following variables: {aircraft_performance_outputs}. "
+            "For example, instantiate the Cocip model with "
+            "'Cocip(..., aircraft_performance=PSFlight(...))'."
         )
 
     return aircraft_performance.eval(source=flight, copy_source=False)
