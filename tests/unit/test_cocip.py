@@ -221,7 +221,8 @@ def test_cocip_processes_met(met: MetDataset, rad: MetDataset) -> None:
     assert "tau_cirrus" in met_copy
 
 
-def test_cocip_processes_rad(met: MetDataset, rad: MetDataset) -> None:
+@pytest.mark.parametrize("drop_geopotential", [True, False])
+def test_cocip_processes_rad(met: MetDataset, rad: MetDataset, drop_geopotential: bool) -> None:
     """Check that Cocip seamlessly processes rad data on init."""
 
     # A little HACK to avoid the warning
@@ -229,12 +230,24 @@ def test_cocip_processes_rad(met: MetDataset, rad: MetDataset) -> None:
     del met.attrs["history"]
     assert not originates_from_ecmwf(met)
 
+    if drop_geopotential:
+        met.data = met.data.drop_vars("geopotential")
+
     # rad starts without time shifting
     t0 = pd.date_range("2019", freq="1H", periods=13)
     t1 = t0 + Cocip.default_params.shift_radiation_time
     np.testing.assert_array_equal(rad["time"].values, t0)
     assert "_pycontrails_modified" not in rad["time"].attrs
-    cocip = Cocip(met=met, rad=rad)
+    cocip = Cocip(met=met, rad=rad, compute_tau_cirrus_in_model_init=True)
+
+    # pin values check for tau_cirrus as a way to check that the geopotential
+    # calculation was done correctly
+    assert "tau_cirrus" in met
+    sum_tau_cirrus = float(met.data["tau_cirrus"].sum())
+    if drop_geopotential:
+        assert sum_tau_cirrus == pytest.approx(98.3, rel=0.1)
+    else:
+        assert sum_tau_cirrus == pytest.approx(96.1, rel=0.1)
 
     # time shifted in __init__
     assert cocip.rad is rad

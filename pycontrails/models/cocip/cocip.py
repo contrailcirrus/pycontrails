@@ -93,9 +93,6 @@ class Cocip(Model):
         * - Ice water content
           - ``specific_cloud_ice_water_content``
           - ``ice_water_mixing_ratio``
-        * - Geopotential
-          - ``geopotential``
-          - ``geopotential_height``
 
     .. list-table:: Variable keys for single-level radiation data
         :header-rows: 1
@@ -212,7 +209,6 @@ class Cocip(Model):
         met_var.NorthwardWind,
         met_var.VerticalVelocity,
         (ecmwf.SpecificCloudIceWaterContent, gfs.CloudIceWaterMixingRatio),
-        (met_var.Geopotential, met_var.GeopotentialHeight),
     )
 
     #: Required single-level top of atmosphere radiation variables.
@@ -223,7 +219,7 @@ class Cocip(Model):
     )
 
     #: Minimal set of met variables needed to run the model after pre-processing.
-    #: The intention here is that ``geopotential`` and ``ciwc`` are unnecessary after
+    #: The intention here is that ``ciwc`` is unnecessary after
     #: ``tau_cirrus`` has already been calculated.
     processed_met_variables = (
         met_var.AirTemperature,
@@ -235,7 +231,12 @@ class Cocip(Model):
     )
 
     #: Additional met variables used to support outputs
-    optional_met_variables = ((ecmwf.CloudAreaFractionInLayer, gfs.TotalCloudCoverIsobaric),)
+    #: .. versionchanged:: 0.48.0
+    #:     Moved Geopotential from :attr:`required_met_variables` to :attr:`optional_met_variables`
+    optional_met_variables = (
+        (met_var.Geopotential, met_var.GeopotentialHeight),
+        (ecmwf.CloudAreaFractionInLayer, gfs.TotalCloudCoverIsobaric),
+    )
 
     #: Met data is not optional
     met: MetDataset
@@ -1315,19 +1316,14 @@ def process_met_datasets(
             "Specific humidity enhancement of the raw specific humidity values in "
             "the underlying met data is deprecated."
         )
-    if isinstance(compute_tau_cirrus, str) and compute_tau_cirrus != "auto":
-        raise ValueError(
-            "Parameter ``compute_tau_cirrus`` must be one of"
-            f" True, False, or 'auto'. Found {compute_tau_cirrus}."
-        )
+
+    if compute_tau_cirrus == "auto":
+        # If met data is dask-backed, compute tau_cirrus
+        compute_tau_cirrus = met.data["air_temperature"].chunks is not None
+
     if "tau_cirrus" not in met.data:
         met.ensure_vars(Cocip.met_variables)
-        if (
-            compute_tau_cirrus == "auto"
-            and met.data["specific_humidity"].chunks is not None
-            or isinstance(compute_tau_cirrus, bool)
-            and compute_tau_cirrus
-        ):
+        if compute_tau_cirrus:
             met = add_tau_cirrus(met)
     else:
         met.ensure_vars(Cocip.processed_met_variables)
