@@ -856,6 +856,8 @@ def test_intersect_met_method_linear(met_era5_fake: MetDataset, flight_fake: Fli
 
 
 def test_intersect_other_mets(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
+    """Test the intersect_met method."""
+
     fl = flight_fake.copy()
 
     da = met_era5_fake["specific_humidity"]
@@ -877,13 +879,11 @@ def test_intersect_other_mets(met_era5_fake: MetDataset, flight_fake: Flight) ->
     # 5 geospatial columns, specific_humidity, and meaningless
     assert len(fl.data) == 6
 
-    cruising_altitude_waypoints = fl["altitude"] >= met_era5_fake.data["altitude"].min().item()
+    filt = fl["altitude"] >= met_era5_fake.data["altitude"].min().item()
 
     # altitude is the dominate term in the meaningless column
-    assert (
-        (fl["meaningless"][cruising_altitude_waypoints] > 7500)
-        & (fl["meaningless"][cruising_altitude_waypoints] < 13500)
-    ).all()
+    assert np.all(fl["meaningless"][filt] > 7500.0)
+    assert np.all(fl["meaningless"][filt] < 13500.0)
 
 
 def test_cast_to_vector(flight_fake: Flight) -> None:
@@ -942,3 +942,28 @@ def test_filter_altitude(kernel_size: int) -> None:
 
     # Final waypoint has altitude 40002 +/- 2 ft
     assert altitude_cleaned[-1] == pytest.approx(40002, abs=2.5)
+
+
+@pytest.mark.filterwarnings("ignore:Time data is not np.datetime64:UserWarning")
+def test_resample_and_fill_two_waypoints() -> None:
+    """Confirm that a bug in pycontrails v0.47.2 is fixed.
+
+    In pycontrails v0.47.2, resample_and_fill() would perform a linear
+    interpolation between two waypoints, even if the distance between
+    them was greater than the geodesic_threshold. This test confirms
+    that the bug is fixed.
+    """
+    fl = Flight(
+        longitude=[10, 50],
+        latitude=[30, 40],
+        altitude=[10000, 11000],
+        time=["2023-03-14T00", "2023-03-14T05"],
+    )
+
+    fl = fl.resample_and_fill("1T")
+
+    # Using the variation in the groundspeed as a proxy for the
+    # interpolation method. Linear interpolation gives rise to a much larger
+    # variation in groundspeed than geodesic interpolation.
+    gs = fl.segment_groundspeed()[:-1]
+    np.testing.assert_allclose(gs, 210.0, atol=1.0)
