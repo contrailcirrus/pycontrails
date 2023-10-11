@@ -996,7 +996,7 @@ class Flight(GeoVectorDataset):
         # For default geodesic_threshold, we expect gap_indices to be very
         # sparse (so the for loop below is cheap)
         gap_indices = np.flatnonzero(segs > geodesic_threshold)
-        if not np.any(gap_indices):
+        if gap_indices.size == 0:
             # For most flights, gap_indices is empty. It's more performant
             # to exit now rather than build an empty DataFrame below.
             return None
