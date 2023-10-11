@@ -10,16 +10,16 @@ class MetVariable:
     """Met variable defined using CF, ECMWF, and WMO conventions.
 
     When there is a conflict between CF, ECMWF, and WMO conventions,
-    CF takes precendence, then WMO, then ECMWF.
+    CF takes precedence, then WMO, then ECMWF.
 
     References
     ----------
     - `CF Standard Names, version 77
       <https://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html>`_
     - `ECMWF Parameter Database <https://apps.ecmwf.int/codes/grib/param-db>`_
-    - `NCEP Grib v1 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/on388/table2.html>`
+    - `NCEP Grib v1 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/on388/table2.html>`_
     - `WMO Codes Registry, Grib Edition 2 <https://codes.wmo.int/_grib2>`_
-    - `NCEP Grib v2 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-2.shtml>`
+    - `NCEP Grib v2 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-2.shtml>`_
 
     Used for defining support parameters in a grib-like fashion.
     """  # noqa: E501
