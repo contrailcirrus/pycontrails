@@ -1014,17 +1014,18 @@ class Flight(GeoVectorDataset):
         latitudes: list[float] = []
         times: list[np.ndarray] = []
 
+        longitude = self["longitude"]
+        latitude = self["latitude"]
+        time = self["time"]
+
         for index in gap_indices:
-            lon0, lat0, t0 = (
-                self["longitude"][index],
-                self["latitude"][index],
-                self["time"][index],
-            )
-            lon1, lat1, t1 = (
-                self["longitude"][index + 1],
-                self["latitude"][index + 1],
-                self["time"][index + 1],
-            )
+            lon0 = longitude[index]
+            lat0 = latitude[index]
+            t0 = time[index]
+            lon1 = longitude[index + 1]
+            lat1 = latitude[index + 1]
+            t1 = time[index + 1]
+
             distance = segs[index]
             n_steps = distance // geodesic_threshold  # number of new waypoints to generate
 
@@ -1037,8 +1038,9 @@ class Flight(GeoVectorDataset):
             latitudes.extend(lats)
 
             # + 1 to denominator to stay consistent with geod.npts (only interior points)
-            t_step = (t1 - t0) / (n_steps + 1)
-            # substract 0.5 * t_step to ensure round-off error doesn't put final arange point
+            t_step = (t1 - t0) / (n_steps + 1.0)
+
+            # subtract 0.5 * t_step to ensure round-off error doesn't put final arange point
             # very close to t1
             t_range = np.arange(t0 + t_step, t1 - 0.5 * t_step, t_step)
             times.append(t_range)
