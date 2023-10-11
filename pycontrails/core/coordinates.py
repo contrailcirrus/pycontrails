@@ -5,12 +5,13 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
 def slice_domain(
     domain: np.ndarray,
-    request: np.ndarray | tuple,
+    request: npt.ArrayLike,
     buffer: tuple[float | np.timedelta64, float | np.timedelta64] = (0.0, 0.0),
 ) -> slice:
     """Return slice of ``domain`` containing coordinates overlapping ``request``.
@@ -34,9 +35,8 @@ def slice_domain(
     ----------
     domain : np.ndarray
         Full set of domain values
-    request : np.ndarray | tuple
-        Requested values. Only the min and max values are considered. Either pass in
-        a full array-like object or a tuple of ``(min, max)``.
+    request : npt.ArrayLike
+        Requested values. Only the nanmin and nanmax values are considered.
     buffer : tuple[float | np.timedelta64, float | np.timedelta64], optional
         Extend the domain past the requested coordinates by ``buffer[0]`` on the low side
         and ``buffer[1]`` on the high side.
@@ -89,23 +89,30 @@ def slice_domain(
     if buffer == (None, None):
         return slice(None, None)
 
-    # if the request is nan, then there is nothing to slice
-    if np.isnan(request).all():
+    # Remove nans from request
+    request = np.asarray(request)
+    mask = np.isnan(request)
+    if mask.all():
         return slice(None, None)
+
+    request = request[~mask]
 
     # if the whole domain or request is nan, then there is nothing to slice
     if np.isnan(domain).all():
         raise ValueError("Domain is all nan on request")
 
     # ensure domain is sorted
-    zero: float | np.timedelta64 = 0.0
+    zero: float | np.timedelta64
     if pd.api.types.is_datetime64_dtype(domain.dtype):
         zero = np.timedelta64(0)
+    else:
+        zero = 0.0
 
     if not np.all(np.diff(domain) >= zero):
         raise ValueError("Domain must be sorted in ascending order")
 
-    if np.any(np.asarray(buffer) < zero):
+    buf0, buf1 = buffer
+    if buf0 < zero or buf1 < zero:
         warnings.warn(
             "Found buffer with negative value. This is unexpected "
             "and will reduce the size of the requested domain instead of "
@@ -116,8 +123,8 @@ def slice_domain(
     # get the index of the closest value to request min and max
     # side left returns `i`: domain[i-1] < request <= domain[i]
     # side right returns `i`: domain[i-1] <= request < domain[i]
-    idx_min = np.searchsorted(domain, np.nanmin(request) - buffer[0], side="right") - 1
-    idx_max = np.searchsorted(domain, np.nanmax(request) + buffer[1], side="left") + 1
+    idx_min = np.searchsorted(domain, np.min(request) - buf0, side="right") - 1
+    idx_max = np.searchsorted(domain, np.max(request) + buf1, side="left") + 1
 
     # clip idx_min between [0, len(domain) - 2]
     idx_min = min(len(domain) - 2, max(idx_min, 0))
