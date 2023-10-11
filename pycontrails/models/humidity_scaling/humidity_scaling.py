@@ -570,7 +570,7 @@ class HumidityScalingByLevel(HumidityScaling):
         stratosphere_threshold = kwargs["stratosphere_threshold"]
 
         thresholds = np.array([stratosphere_threshold, mid_troposphere_threshold])
-        xp = units.m_to_pl(constants.h_tropopause * thresholds)  # type: ignore
+        xp = units.m_to_pl(constants.h_tropopause * thresholds)
 
         # np.interp expects a sorted parameter `xp`
         # The calculation will get bungled if this isn't the case
