@@ -1031,6 +1031,87 @@ class MetDataset(MetBase):
             vector.attrs.update({str(k): v for k, v in self.attrs.items()})
         return vector
 
+    def get_provider_attr(self) -> str:
+        """Look up the 'provider' attribute with a custom error message.
+
+        Returns
+        -------
+        str
+            Provider of the data. If not one of 'ECMWF' or 'NCEP',
+            a warning is issued.
+        """
+        try:
+            out = self.attrs["provider"].upper()
+        except KeyError as e:
+            msg = (
+                "Must specify 'provider' attribute on rad dataset. For example, set "
+                "rad.attrs['provider'] = 'ECMWF' for data from ECMWF. Set "
+                "rad.attrs['provider'] = 'NCEP' for GFS."
+            )
+            raise KeyError(msg) from e
+        if out not in ("ECMWF", "NCEP"):
+            warnings.warn(
+                f"Unknown provider {out}. Data may not be processed correctly. "
+                "Contact the pycontrails developers if you believe this is an error."
+            )
+
+        return out
+
+    def get_dataset_attr(self) -> str:
+        """Look up the 'dataset' attribute with a custom error message.
+
+        Returns
+        -------
+        str
+            Dataset of the data. If not one of 'ERA5', 'HRES', 'IFS',
+            or 'GFS', a warning is issued.
+        """
+        try:
+            out = self.attrs["dataset"].upper()
+        except KeyError as e:
+            msg = (
+                "Must specify 'dataset' attribute on rad dataset. For example, set "
+                "rad.attrs['dataset'] = 'ERA5' for ERA5 data. Set "
+                "rad.attrs['dataset'] = 'GFS' for GFS data."
+            )
+            raise KeyError(msg) from e
+
+        if out not in ("ERA5", "HRES", "IFS", "GFS"):
+            warnings.warn(
+                f"Unknown dataset {out}. Data may not be processed correctly. "
+                "Contact the pycontrails developers if you believe this is an error."
+            )
+
+        return out
+
+    def get_product_attr(self) -> str:
+        """Look up the 'product' attribute with a custom error message.
+
+        Returns
+        -------
+        str
+            Product of the data. If not one of 'FORECAST', 'ENSEMBLE', or 'REANALYSIS',
+            a warning is issued.
+
+        """
+        try:
+            out = self.attrs["product"].upper()
+        except KeyError as e:
+            msg = (
+                "Must specify 'product' attribute on rad dataset. For example, set "
+                "rad.attrs['product'] = 'reanalysis' for ERA5 reanalysis data. Set "
+                "rad.attrs['product'] = 'forecast' for GFS data."
+            )
+            raise KeyError(msg) from e
+
+        if out not in ("FORECAST", "ENSEMBLE", "REANALYSIS"):
+            warnings.warn(
+                f"Unknown product {out}. Data may not be processed correctly. "
+                "Contact the pycontrails developers if you believe this is an error."
+            )
+
+        return out
+
     @classmethod
     def from_coords(
         cls,
@@ -2400,9 +2481,12 @@ def originates_from_ecmwf(met: MetDataset | MetDataArray) -> bool:
     - :class:`HRES`
 
     """
-    return met.attrs.get("met_source") in ("ERA5", "HRES") or "ecmwf" in met.attrs.get(
-        "history", ""
-    )
+    if isinstance(met, MetDataset):
+        try:
+            return met.get_provider_attr() == "ECMWF"
+        except KeyError:
+            pass
+    return "ecmwf" in met.attrs.get("history", "")
 
 
 def _load(hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Dataset:
