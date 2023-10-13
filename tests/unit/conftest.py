@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import pathlib
 from datetime import datetime
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -64,13 +65,12 @@ def flight_data() -> pd.DataFrame:
     -------
     pd.DataFrame
     """
-    _path = get_static_path("flight.csv")
-    parse_dates = ["time"]
-    return pd.read_csv(_path, parse_dates=parse_dates)
+    path = get_static_path("flight.csv")
+    return pd.read_csv(path, parse_dates=["time"])
 
 
 @pytest.fixture(scope="session")
-def flight_attrs() -> dict:
+def flight_attrs() -> dict[str, Any]:
     """Load flight metadata from json.
 
     Scoped for the session.
@@ -79,8 +79,8 @@ def flight_attrs() -> dict:
     -------
     dict
     """
-    _path = get_static_path("flight-metadata.json")
-    with open(_path) as f:
+    path = get_static_path("flight-metadata.json")
+    with path.open() as f:
         return json.load(f)
 
 
@@ -149,8 +149,8 @@ def met_accf_pl() -> MetDataset:
     -------
     MetDataset
     """
-    _path = get_static_path("met-accf-pl.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("met-accf-pl.nc")
+    return MetDataset(xr.open_dataset(path))
 
 
 @pytest.fixture(scope="session")
@@ -161,8 +161,8 @@ def met_accf_sl() -> MetDataset:
     -------
     MetDataset
     """
-    _path = get_static_path("met-accf-sl.nc")
-    ds = xr.open_dataset(_path)
+    path = get_static_path("met-accf-sl.nc")
+    ds = xr.open_dataset(path)
     ds = ds.expand_dims("level").assign_coords(level=("level", [-1]))
     return MetDataset(ds)
 
@@ -175,8 +175,8 @@ def met_ecmwf_pl_path() -> str:
     -------
     str
     """
-    _path = get_static_path("met-ecmwf-pl.nc")
-    return str(_path)
+    path = get_static_path("met-ecmwf-pl.nc")
+    return str(path)
 
 
 @pytest.fixture(scope="session")
@@ -187,8 +187,8 @@ def met_ecmwf_sl_path() -> str:
     -------
     str
     """
-    _path = get_static_path("met-ecmwf-sl.nc")
-    return str(_path)
+    path = get_static_path("met-ecmwf-sl.nc")
+    return str(path)
 
 
 @pytest.fixture(scope="session")
@@ -205,7 +205,7 @@ def met_issr(met_ecmwf_pl_path: str) -> MetDataset:
     """
     ds = xr.open_dataset(met_ecmwf_pl_path)
     ds = met.standardize_variables(ds, (met_var.AirTemperature, met_var.SpecificHumidity))
-    ds.attrs["met_source"] = "ERA5"
+    ds.attrs.update(provider="ECMWF", dataset="ERA5", product="reanalysis")
     return MetDataset(ds)
 
 
@@ -217,8 +217,9 @@ def met_cocip1() -> MetDataset:
 
     See tests/fixtures/cocip-met.py for domain and creation of the source data file.
     """
-    _path = get_static_path("met-era5-cocip1.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("met-era5-cocip1.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture()
@@ -229,36 +230,41 @@ def rad_cocip1() -> MetDataset:
 
     See tests/fixtures/cocip-met.py for domain and creation of the source data file.
     """
-    _path = get_static_path("rad-era5-cocip1.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("rad-era5-cocip1.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture(scope="module")
 def met_cocip1_module_scope() -> MetDataset:
     """Create met available at module scope."""
-    _path = get_static_path("met-era5-cocip1.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("met-era5-cocip1.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture(scope="module")
 def rad_cocip1_module_scope() -> MetDataset:
     """Create rad available at module scope."""
-    _path = get_static_path("rad-era5-cocip1.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("rad-era5-cocip1.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture()
 def met_cocip2() -> MetDataset:
     """ERA5 meteorology to run cocip with ``flight-cocip2.csv``."""
-    _path = get_static_path("met-era5-cocip2.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("met-era5-cocip2.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture()
 def rad_cocip2() -> MetDataset:
     """ERA5 radiation data to run cocip with ``flight-cocip2.csv``."""
-    _path = get_static_path("rad-era5-cocip2.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("rad-era5-cocip2.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture()
@@ -268,8 +274,9 @@ def met_gfs() -> MetDataset:
 
     See tests/fixtures/gfs-met.py for domain and creation of the source data file.
     """
-    _path = get_static_path("met-gfs.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("met-gfs.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="NCEP", dataset="GFS", product="forecast")
 
 
 @pytest.fixture()
@@ -279,8 +286,9 @@ def rad_gfs() -> MetDataset:
 
     See tests/fixtures/gfs-met.py for domain and creation of the source data file.
     """
-    _path = get_static_path("rad-gfs.nc")
-    return MetDataset(xr.open_dataset(_path))
+    path = get_static_path("rad-gfs.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="NCEP", dataset="GFS", product="forecast")
 
 
 @pytest.fixture()  # keep function scoped
@@ -339,9 +347,9 @@ def flight_cocip2() -> Flight:
 
     Compatible with ``met_cocip2`` and ``rad_cocip2``.
     """
-    _path = get_static_path("flight-cocip2.csv")
-    parse_dates = ["time"]
-    return Flight(pd.read_csv(_path, parse_dates=parse_dates))
+    path = get_static_path("flight-cocip2.csv")
+    df = pd.read_csv(path, parse_dates=["time"])
+    return Flight(df)
 
 
 @pytest.fixture(scope="session")
@@ -352,9 +360,8 @@ def flight_meridian() -> Flight:
     -------
     pd.DataFrame
     """
-    _path = get_static_path("flight-meridian.csv")
-    parse_dates = ["time"]
-    df = pd.read_csv(_path, parse_dates=parse_dates)
+    path = get_static_path("flight-meridian.csv")
+    df = pd.read_csv(path, parse_dates=["time"])
     return Flight(df)
 
 
@@ -404,6 +411,6 @@ def bada_grid_model() -> AircraftPerformanceGrid:
 @pytest.fixture()
 def polygon_bug() -> MetDataArray:
     """Read the polygon bug example."""
-    _path = get_static_path("polygon-bug.nc")
-    da = xr.open_dataarray(_path)
+    path = get_static_path("polygon-bug.nc")
+    da = xr.open_dataarray(path)
     return MetDataArray(da)
