@@ -21,17 +21,17 @@ from __future__ import annotations
 import logging
 from importlib import metadata
 
-import dask
+import dask.config
 
 # Work around for https://github.com/pydata/xarray/issues/7259
 # Only occurs for xarray 2022.11 and above
 try:
     import netCDF4  # noqa: F401
-except ModuleNotFoundError:
+except ImportError:
     pass
 
 from pycontrails.core.cache import DiskCacheStore, GCPCacheStore
-from pycontrails.core.datalib import MetDataSource, MetSourceMetadata
+from pycontrails.core.datalib import MetDataSource
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight, FlightPhase
 from pycontrails.core.fuel import Fuel, HydrogenFuel, JetA, SAFBlend
@@ -63,7 +63,6 @@ __all__ = [
     "MetDataArray",
     "MetDataset",
     "MetDataSource",
-    "MetSourceMetadata",
     "MetVariable",
     "Model",
     "ModelParams",
