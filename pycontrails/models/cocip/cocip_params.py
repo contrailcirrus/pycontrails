@@ -73,10 +73,6 @@ class CocipParams(ModelParams):
     #: Constant below applies to ECMWF data.
     effective_vertical_resolution: float = 2000.0
 
-    #: Shift the time coordinates of radiation parameters for accumulated values
-    #: TODO: change this to np.timedelta64(0, "m") when we start using other datasets
-    shift_radiation_time: np.timedelta64 = -np.timedelta64(30, "m")
-
     #: Smoothing parameters for true airspeed.
     #: Only used for Flight models.
     #: Passed directly to :func:`scipy.signal.savgol_filter`.
