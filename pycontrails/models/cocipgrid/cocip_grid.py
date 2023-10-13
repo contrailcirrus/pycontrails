@@ -106,12 +106,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         super().__init__(met, params=params, **params_kwargs)
         self.validate_time_params()
 
-        shift_radiation_time = self.params["shift_radiation_time"]
         compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
-        met, rad = cocip.process_met_datasets(met, rad, compute_tau_cirrus, shift_radiation_time)
-
-        self.met = met
-        self.rad = rad
+        self.met, self.rad = cocip.process_met_datasets(met, rad, compute_tau_cirrus)
 
         # Convenience -- only used in `run_interpolators`
         self.params["_interp_kwargs"] = self.interp_kwargs
