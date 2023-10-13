@@ -593,6 +593,10 @@ class MetDataset(MetBase):
         interval ``[-180, 180]``. Defaults to False.
     copy : bool, optional
         Copy data on construction. Defaults to True.
+    attrs : dict[str, Any], optional
+        Attributes to add to :attr:`data.attrs`. Defaults to None.
+    **attrs_kwargs : Any
+        Keyword arguments to add to :attr:`data.attrs`. Defaults to None.
 
     Examples
     --------
@@ -641,9 +645,14 @@ class MetDataset(MetBase):
         cachestore: CacheStore | None = None,
         wrap_longitude: bool = False,
         copy: bool = True,
-    ):
+        attrs: dict[str, Any] | None = None,
+        **attrs_kwargs: Any,
+    ) -> None:
         # init cache
         self.cachestore = cachestore
+
+        data.attrs.update(attrs or {})
+        data.attrs.update(attrs_kwargs)
 
         # if input is already a Dataset, copy into data
         if not isinstance(data, xr.Dataset):
@@ -661,7 +670,7 @@ class MetDataset(MetBase):
             self._validate_dims()
 
     def __getitem__(self, key: Hashable) -> MetDataArray:
-        """Return DataArray of variable `key` cast to a `MetDataArray` object.
+        """Return DataArray of variable ``key`` cast to a :class:`MetDataArray` object.
 
         Parameters
         ----------
@@ -676,7 +685,7 @@ class MetDataset(MetBase):
         Raises
         ------
         KeyError
-            If `key` not found in :attr:`data`
+            If ``key`` not found in :attr:`data`
         """
         try:
             da = self.data[key]
