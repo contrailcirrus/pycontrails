@@ -506,8 +506,17 @@ class MetDataSource(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_met_source_metadata(self) -> MetSourceMetadata:
-        """Return metadata for data source."""
+    def set_met_source_metadata(self, ds: xr.Dataset | MetDataset) -> None:
+        """Set met source metadata on ``ds.attrs``.
+
+        This is called within the :meth:`open_metdataset` method to set metadata
+        on the returned :class:`MetDataset` instance.
+
+        Parameters
+        ----------
+        met : xr.Dataset | MetDataset
+            Dataset to set metadata on. Mutated in place.
+        """
 
     # ----------------------
     # Common utility methods
@@ -669,17 +678,3 @@ class MetDataSource(abc.ABC):
         xr_kwargs.setdefault("parallel", OPEN_IN_PARALLEL)
         xr_kwargs.setdefault("lock", OPEN_WITH_LOCK)
         return xr.open_mfdataset(disk_paths, **xr_kwargs)
-
-
-@dataclasses.dataclass(frozen=True)
-class MetSourceMetadata:
-    """Metadata for a meteorology data source."""
-
-    #: The provider of the data source (e.g. "ECMWF", "NCEP", etc.)
-    provider: str | None = None
-
-    #: The dataset name (e.g. "ERA5", "GFS", etc.)
-    dataset: str | None = None
-
-    #: The product name (e.g. "reanalysis", "forecast", etc.)
-    product: str | None = None
