@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Any, NoReturn, Sequence, overload
+from typing import Any, Literal, NoReturn, Sequence, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -279,12 +279,8 @@ class Cocip(Model):
         # call Model init
         super().__init__(met, params=params, **params_kwargs)
 
-        shift_radiation_time = self.params["shift_radiation_time"]
         compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
-        met, rad = process_met_datasets(met, rad, compute_tau_cirrus, shift_radiation_time)
-
-        self.met = met
-        self.rad = rad
+        self.met, self.rad = process_met_datasets(met, rad, compute_tau_cirrus)
 
         # initialize outputs to None
         self.contrail = None
@@ -1276,8 +1272,7 @@ class Cocip(Model):
 def process_met_datasets(
     met: MetDataset,
     rad: MetDataset,
-    compute_tau_cirrus: bool | str = "auto",
-    shift_radiation_time: np.timedelta64 | None = None,
+    compute_tau_cirrus: bool | Literal["auto"] = "auto",
 ) -> tuple[MetDataset, MetDataset]:
     """Process and verify ERA5 data for :class:`Cocip` and :class:`CocipGrid`.
 
@@ -1290,18 +1285,20 @@ def process_met_datasets(
         of the ``process_met`` parameter. The same approach is also taken
         in :class:`Cocip` in version 0.27.0.
 
+    .. versionchanged:: 0.48.0
+
+        Remove the ``shift_radiation_time`` parameter. This parameter is now
+        inferred from the metadata on the `rad` instance.
+
     Parameters
     ----------
     met : MetDataset
         Met pressure-level data
     rad : MetDataset
         Rad single-level data
-    compute_tau_cirrus : bool | str
+    compute_tau_cirrus : bool | Literal["auto"]
         Whether to add ``"tau_cirrus"`` variable to pressure-level met data. If set to
         ``"auto"``, ``"tau_cirrus"`` will be computed iff the met data is dask-backed.
-    shift_radiation_time : np.timedelta64 | None
-        Shift the time dimension of radiation data to account for accumulated values.
-        If not specified, the default value from :class:`CocipGridParams` will be used.
 
     Returns
     -------
@@ -1328,18 +1325,8 @@ def process_met_datasets(
     else:
         met.ensure_vars(Cocip.processed_met_variables)
 
-    # Deal with rad: check shift_radiation_time
     rad.ensure_vars(Cocip.rad_variables)
-    if "_pycontrails_modified" in rad["time"].attrs:
-        existing_shift = rad["time"].attrs["shift_radiation_time"]  # this is a string
-        if pd.Timedelta(existing_shift) != shift_radiation_time:  # compare timedeltas
-            raise ValueError(
-                "The time coordinate in MetDataset 'rad' has already been "
-                f"scaled by a CoCiP model with 'shift_radiation_time={existing_shift}'. "
-            )
-    else:
-        shift_radiation_time = shift_radiation_time or Cocip.default_params.shift_radiation_time
-        rad = _process_rad(rad, shift_radiation_time)
+    rad = _process_rad(rad)
 
     return met, rad
 
@@ -1362,7 +1349,7 @@ def add_tau_cirrus(met: MetDataset) -> MetDataset:
     return met
 
 
-def _process_rad(rad: MetDataset, shift_radiation_time: np.timedelta64) -> MetDataset:
+def _process_rad(rad: MetDataset) -> MetDataset:
     """Process radiation specific variables for model.
 
     These variables are used to calculate the reflected solar radiation (RSR),
@@ -1375,8 +1362,6 @@ def _process_rad(rad: MetDataset, shift_radiation_time: np.timedelta64) -> MetDa
     ----------
     rad : MetDataset
         Rad single-level data
-    shift_radiation_time : np.timedelta64
-        Shift the time dimension of radiation data to account for accumulated values.
 
     Returns
     -------
@@ -1388,18 +1373,39 @@ def _process_rad(rad: MetDataset, shift_radiation_time: np.timedelta64) -> MetDa
     - https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
     - https://confluence.ecmwf.int/pages/viewpage.action?pageId=155337784
     """  # noqa: E501
-    logger.debug(f"Shifting radiation time dimension by {shift_radiation_time}")
-    if not np.all(np.diff(rad.data["time"]) / 2 == -shift_radiation_time):
+    # If the time coordinate has already been shifted, early return
+    if "shift_radiation_time" in rad["time"].attrs:
+        return rad
+
+    provider = rad.get_provider_attr()
+
+    # Only shift ECMWF data -- exit for anything else
+    # A warning is emitted upstream if the provider is not ECMWF or NCEP
+    if provider != "ECMWF":
+        return rad
+
+    # FIXME: For HRES data, optionally perform rad.data.differentiate("time")
+    # dataset = rad.get_dataset_attr()
+    product = rad.get_product_attr()
+
+    if product == "ENSEMBLE":
+        # FIXME: Is this true for HRES? IFS?
+        shift_radiation_time = -np.timedelta64(90, "m")
+    else:
+        shift_radiation_time = -np.timedelta64(30, "m")
+
+    # Do a final idiot check -- most likely, the time resolution of the data will
+    # agree with the shift_radiation_time. If not, emit a warning.
+    logger.debug("Shifting rad time by %s", shift_radiation_time)
+    rad_time_diff = np.diff(rad.data["time"])
+    if not np.all(rad_time_diff / 2 == -shift_radiation_time):
         warnings.warn(
             f"Shifting radiation time dimension by unexpected interval {shift_radiation_time}. "
-            "If working with ERA5 ensemble members, set "
-            "`shift_radiation_time=-np.timedelta64(90, 'm')`. Otherwise, the "
-            "expected shift is half the time difference consecutive time steps."
+            f"The rad data has metadata indicating it is {product} ECMWF data. "
+            f"This dataset should have time steps of {2 * shift_radiation_time}."
         )
 
     rad.data = rad.data.assign_coords({"time": rad.data["time"] + shift_radiation_time})
-    msg = "Time coordinates adjusted to account for accumulation averaging"
-    rad.data["time"].attrs["_pycontrails_modified"] = msg
     rad.data["time"].attrs["shift_radiation_time"] = str(shift_radiation_time)
 
     return rad

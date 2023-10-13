@@ -12,7 +12,6 @@ import xarray as xr
 
 from pycontrails import Fleet, Flight, MetDataset
 from pycontrails.core.aircraft_performance import AircraftPerformance
-from pycontrails.core.met import originates_from_ecmwf
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.datalib.ecmwf import ERA5
 from pycontrails.models import humidity_scaling as hs
@@ -222,41 +221,56 @@ def test_cocip_processes_met(met: MetDataset, rad: MetDataset) -> None:
 
 
 @pytest.mark.parametrize("drop_geopotential", [True, False])
-def test_cocip_processes_rad(met: MetDataset, rad: MetDataset, drop_geopotential: bool) -> None:
-    """Check that Cocip seamlessly processes rad data on init."""
+def test_cocip_processes_met_geopotential(
+    met: MetDataset, rad: MetDataset, drop_geopotential: bool
+) -> None:
+    """Check that Cocip does not require geopotential data.
 
-    # A little HACK to avoid the warning
-    assert originates_from_ecmwf(met)
-    del met.attrs["history"]
-    assert not originates_from_ecmwf(met)
-
+    This test was added in version 0.48.0 after geopotential data was made optional.
+    """
     if drop_geopotential:
         met.data = met.data.drop_vars("geopotential")
 
-    # rad starts without time shifting
-    t0 = pd.date_range("2019", freq="1H", periods=13)
-    t1 = t0 + Cocip.default_params.shift_radiation_time
-    np.testing.assert_array_equal(rad["time"].values, t0)
-    assert "_pycontrails_modified" not in rad["time"].attrs
-    cocip = Cocip(met=met, rad=rad, compute_tau_cirrus_in_model_init=True)
+    assert "tau_cirrus" not in met
 
-    # pin values check for tau_cirrus as a way to check that the geopotential
+    # Instantiating Cocip mutates met in place by adding tau_cirrus
+    with pytest.warns(UserWarning, match="humidity scaling"):
+        Cocip(met=met, rad=rad, compute_tau_cirrus_in_model_init=True)
+
+    # Pin values for tau_cirrus as a way to check that the geopotential
     # calculation was done correctly
     assert "tau_cirrus" in met
+
     sum_tau_cirrus = float(met.data["tau_cirrus"].sum())
     if drop_geopotential:
         assert sum_tau_cirrus == pytest.approx(98.3, rel=0.1)
     else:
         assert sum_tau_cirrus == pytest.approx(96.1, rel=0.1)
 
-    # time shifted in __init__
+
+def test_cocip_processes_rad(met: MetDataset, rad: MetDataset) -> None:
+    """Check that Cocip seamlessly processes rad data on init."""
+
+    # rad starts without time shifting
+    t0 = pd.date_range("2019", freq="1H", periods=13)
+    np.testing.assert_array_equal(rad["time"].values, t0)
+
+    t1 = t0 - pd.Timedelta(30, "m")
+
+    assert "shift_radiation_time" not in rad["time"].attrs
+    with pytest.warns(UserWarning, match="humidity scaling"):
+        cocip = Cocip(met=met, rad=rad, compute_tau_cirrus_in_model_init=True)
+
+    # rad time shifted in __init__
     assert cocip.rad is rad
-    assert rad["time"].attrs["_pycontrails_modified"]
+    assert "shift_radiation_time" in rad["time"].attrs
     assert rad["time"].attrs["shift_radiation_time"] == "-30 minutes"
     np.testing.assert_array_equal(rad["time"].values, t1)
 
-    # should run again no problem
-    another_cocip = Cocip(met=met, rad=rad)
+    # should run again without issue
+    with pytest.warns(UserWarning, match="humidity scaling"):
+        another_cocip = Cocip(met=met, rad=rad)
+
     assert another_cocip.rad is rad
 
     # radiation not shifted a second time
@@ -264,6 +278,11 @@ def test_cocip_processes_rad(met: MetDataset, rad: MetDataset, drop_geopotential
 
     # drop a required rad variable, get an error
     rad.data = rad.data.drop_vars(["top_net_thermal_radiation"])
+
+    # Delete some attributes to avoid the humidity scaling warning
+    del met.attrs["provider"]
+    del met.attrs["history"]
+
     with pytest.raises(KeyError, match="Dataset does not contain variable"):
         Cocip(met=met, rad=rad)
 
@@ -271,20 +290,15 @@ def test_cocip_processes_rad(met: MetDataset, rad: MetDataset, drop_geopotential
 def test_cocip_processes_rad_with_warnings(met: MetDataset, rad: MetDataset) -> None:
     """Check that Cocip issues warnings for when rad data is different from expected."""
 
-    del met.attrs["history"]  # see test_cocip_processes_rad
+    # Delete some attributes to avoid the humidity scaling warning
+    del met.attrs["provider"]
+    del met.attrs["history"]
 
-    original_time = rad["time"].values.copy()
+    # Downselect rad data to a subset of the expected time range
+    rad.data = rad.data.isel(time=slice(0, 10, 2))
 
     with pytest.warns(UserWarning, match="Shifting radiation time dimension by unexpected"):
-        Cocip(met, rad=rad, shift_radiation_time=np.timedelta64(20, "m"))
-
-    assert "shift_radiation_time" in rad["time"].attrs
-    assert rad["time"].attrs["shift_radiation_time"] == "20 minutes"
-    np.testing.assert_array_equal(original_time + np.timedelta64(20, "m"), rad["time"].values)
-
-    # can't run again using a different time shift (the default)
-    with pytest.raises(ValueError, match="has already been scaled"):
-        Cocip(met, rad)
+        Cocip(met, rad=rad)
 
 
 def test_cocip_time_handling(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
