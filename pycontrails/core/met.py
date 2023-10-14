@@ -1044,9 +1044,9 @@ class MetDataset(MetBase):
             out = self.attrs["provider"].upper()
         except KeyError as e:
             msg = (
-                "Must specify 'provider' attribute on rad dataset. For example, set "
-                "rad.attrs['provider'] = 'ECMWF' for data from ECMWF. Set "
-                "rad.attrs['provider'] = 'NCEP' for GFS."
+                "Specify 'provider' attribute on underlying dataset. For example, set "
+                "attrs['provider'] = 'ECMWF' for data from ECMWF. Set "
+                "attrs['provider'] = 'NCEP' for GFS."
             )
             raise KeyError(msg) from e
         if out not in ("ECMWF", "NCEP"):
@@ -1070,9 +1070,9 @@ class MetDataset(MetBase):
             out = self.attrs["dataset"].upper()
         except KeyError as e:
             msg = (
-                "Must specify 'dataset' attribute on rad dataset. For example, set "
-                "rad.attrs['dataset'] = 'ERA5' for ERA5 data. Set "
-                "rad.attrs['dataset'] = 'GFS' for GFS data."
+                "Specify 'dataset' attribute on underlying dataset. For example, set "
+                "attrs['dataset'] = 'ERA5' for ERA5 data. Set "
+                "attrs['dataset'] = 'GFS' for GFS data."
             )
             raise KeyError(msg) from e
 
@@ -1098,9 +1098,9 @@ class MetDataset(MetBase):
             out = self.attrs["product"].upper()
         except KeyError as e:
             msg = (
-                "Must specify 'product' attribute on rad dataset. For example, set "
-                "rad.attrs['product'] = 'reanalysis' for ERA5 reanalysis data. Set "
-                "rad.attrs['product'] = 'forecast' for GFS data."
+                "Specify 'product' attribute on underlying dataset. For example, set "
+                "attrs['product'] = 'reanalysis' for ERA5 reanalysis data. Set "
+                "attrs['product'] = 'forecast' for GFS data."
             )
             raise KeyError(msg) from e
 
