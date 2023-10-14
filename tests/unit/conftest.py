@@ -34,7 +34,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 @pytest.fixture()
-def regenerate_results(request: pytest.FixtureRequest) -> bool:
+def regenerate_results(request: pytest.FixtureRequest) -> Any:
     """Regenerate static test results in tests that use them."""
     return request.config.getoption("--regenerate-results")
 
