@@ -29,7 +29,7 @@ ArrayScalarLike = TypeVar(
 )
 
 #: Datetime like input (datetime, pd.Timestamp, np.datetime64)
-DatetimeLike = TypeVar("DatetimeLike", datetime, pd.Timestamp, np.datetime64)
+DatetimeLike = TypeVar("DatetimeLike", datetime, pd.Timestamp, np.datetime64, str)
 
 
 def support_arraylike(

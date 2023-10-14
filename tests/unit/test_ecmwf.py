@@ -16,8 +16,8 @@ from pycontrails.datalib.ecmwf.hres import get_forecast_filename
 
 def test_environ_keys() -> None:
     """Test CDS Keys."""
-    assert os.environ.get("CDSAPI_URL") == "FAKE"
-    assert os.environ.get("CDSAPI_KEY") == "FAKE"
+    assert os.environ["CDSAPI_URL"] == "FAKE"
+    assert os.environ["CDSAPI_KEY"] == "FAKE"
 
 
 def test_ECMWF_variables() -> None:
@@ -33,7 +33,7 @@ def test_ECMWF_variables() -> None:
     assert AirTemperature.ecmwf_link == "https://apps.ecmwf.int/codes/grib/param-db?id=130"
 
 
-def test_ERA5_time_input() -> None:
+def test_ERA5_single_time_input() -> None:
     """Test TimeInput parsing."""
     # accept single time
     era5 = ERA5(time=datetime(2019, 5, 31, 0), variables=["vo"], pressure_levels=[200])
@@ -47,6 +47,10 @@ def test_ERA5_time_input() -> None:
     era5 = ERA5(time=[datetime(2019, 5, 31, 0, 29)], variables=["vo"], pressure_levels=[200])
     assert era5.timesteps == [datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 1)]
 
+
+def test_ERA5_time_input_wrong_length() -> None:
+    """Test TimeInput parsing."""
+
     # throw ValueError for length == 0
     with pytest.raises(ValueError, match="Input time bounds must have length"):
         ERA5(time=[], variables=["vo"], pressure_levels=[200])
@@ -59,7 +63,11 @@ def test_ERA5_time_input() -> None:
             pressure_levels=[200],
         )
 
-    # accept (start, end)
+
+def test_ERA5_time_input_two_times() -> None:
+    """Test TimeInput parsing."""
+
+    # accept pair (start, end)
     era5 = ERA5(
         time=(datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 3)),
         variables=["vo"],
@@ -71,6 +79,7 @@ def test_ERA5_time_input() -> None:
         datetime(2019, 5, 31, 2),
         datetime(2019, 5, 31, 3),
     ]
+
     era5 = ERA5(
         time=(datetime(2019, 5, 31, 0, 29), datetime(2019, 5, 31, 2, 40)),
         variables=["vo"],
@@ -82,6 +91,10 @@ def test_ERA5_time_input() -> None:
         datetime(2019, 5, 31, 2),
         datetime(2019, 5, 31, 3),
     ]
+
+
+def test_ERA5_time_input_numpy_pandas() -> None:
+    """Test TimeInput parsing."""
 
     # support alternate types for input
     era5 = ERA5(
@@ -511,6 +524,10 @@ def test_HRES_dissemination_filename() -> None:
     forecast_time_str = get_forecast_filename(forecast_time, timestep)
     assert forecast_time_str == "A1S12010600120106011"
 
+
+def test_HRES_dissemination_filename_errors() -> None:
+    """Test HRES dissemination filename creation errors."""
+
     # forecast time error
     forecast_time = datetime(2022, 12, 1, 2)
     timestep = datetime(2022, 12, 1, 6)
@@ -522,3 +539,62 @@ def test_HRES_dissemination_filename() -> None:
     timestep = datetime(2022, 12, 1, 6)
     with pytest.raises(ValueError, match="timestep must be on or after forecast time"):
         get_forecast_filename(forecast_time, timestep)
+
+
+@pytest.mark.parametrize("variables", ["t", "tsr"])
+@pytest.mark.parametrize("product_type", ["reanalysis", "ensemble_mean", "ensemble_members"])
+def test_era5_set_met_source_metadata(product_type: str, variables: str) -> None:
+    """Test ERA5.set_met_source_metadata method."""
+
+    era5 = ERA5(
+        time=datetime(2000, 1, 1),
+        variables=variables,
+        pressure_levels=200 if variables == "t" else -1,
+        product_type=product_type,
+    )
+
+    ds = xr.Dataset()
+    era5.set_met_source_metadata(ds)
+
+    assert ds.attrs["provider"] == "ECMWF"
+    assert ds.attrs["dataset"] == "ERA5"
+    assert ds.attrs["product"] == product_type.split("_")[0]
+
+
+def test_era5_met_source_open_metdataset(met_ecmwf_pl_path: str) -> None:
+    """Test the met_source attribute on the MetDataset arising from ERA5."""
+    era5 = ERA5(
+        paths=met_ecmwf_pl_path,
+        time=datetime(2019, 5, 31, 5),
+        variables="t",
+        pressure_levels=(300, 250, 225),
+        cachestore=None,
+    )
+    mds = era5.open_metdataset()
+
+    assert mds.get_provider_attr() == "ECMWF"
+    assert mds.get_dataset_attr() == "ERA5"
+    assert mds.get_product_attr() == "REANALYSIS"
+
+
+@pytest.mark.parametrize("variables", ["t", "tsr"])
+@pytest.mark.parametrize("field_type", ["fc", "an", "pf"])
+def test_hres_set_met_source_metadata(field_type: str, variables: str) -> None:
+    """Test HRES.get_met_source_metadata method."""
+
+    era5 = HRES(
+        time=datetime(2000, 1, 1),
+        variables=variables,
+        pressure_levels=200 if variables == "t" else -1,
+        field_type=field_type,
+    )
+
+    ds = xr.Dataset()
+    era5.set_met_source_metadata(ds)
+
+    assert ds.attrs["provider"] == "ECMWF"
+    assert ds.attrs["dataset"] == "HRES"
+    if field_type == "pc":
+        assert ds.attrs["product"] == "ensemble"
+    else:
+        assert ds.attrs["product"] == "forecast"
