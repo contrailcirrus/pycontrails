@@ -1385,17 +1385,18 @@ def _process_rad(rad: MetDataset) -> MetDataset:
         return rad
 
     # FIXME: For HRES data, optionally perform rad.data.differentiate("time")
-    # dataset = rad.get_dataset_attr()
+    dataset = rad.get_dataset_attr()
     product = rad.get_product_attr()
 
-    if product == "ENSEMBLE":
-        # FIXME: Is this true for HRES? IFS?
+    if dataset == "REANALYSIS" and product == "ENSEMBLE":
+        # FIXME: This this the only case where we have three hour accumulation?
         shift_radiation_time = -np.timedelta64(90, "m")
     else:
         shift_radiation_time = -np.timedelta64(30, "m")
 
     # Do a final idiot check -- most likely, the time resolution of the data will
-    # agree with the shift_radiation_time. If not, emit a warning.
+    # agree with the shift_radiation_time. If not, emit a warning. There could be
+    # a false positive here if the data has been downsampled in time.
     logger.debug("Shifting rad time by %s", shift_radiation_time)
     rad_time_diff = np.diff(rad.data["time"])
     if not np.all(rad_time_diff / 2 == -shift_radiation_time):
@@ -1684,8 +1685,8 @@ def calc_shortwave_radiation(
     Raises
     ------
     ValueError
-        If ``rad`` does not contain ``"toa_upward_shortwave_flux"`` or ``"top_net_solar_radiation"``
-        variable.
+        If ``rad`` does not contain ``"toa_upward_shortwave_flux"`` or
+        ``"top_net_solar_radiation"`` variable.
 
     Notes
     -----
@@ -1696,30 +1697,35 @@ def calc_shortwave_radiation(
     --------
     :func:`geo.solar_direct_radiation`
     """
-
     if "sdr" in vector and "rsr" in vector:
-        return None
+        return
 
-    # calculate instantaneous theoretical solar direct radiation based on geo position and time
-    longitude = vector["longitude"]
-    latitude = vector["latitude"]
-    time = vector["time"]
-    vector["sdr"] = geo.solar_direct_radiation(longitude, latitude, time, threshold_cos_sza=0.01)
+    try:
+        sdr = vector["sdr"]
+    except KeyError:
+        # calculate instantaneous theoretical solar direct radiation based on geo position and time
+        longitude = vector["longitude"]
+        latitude = vector["latitude"]
+        time = vector["time"]
+        sdr = geo.solar_direct_radiation(longitude, latitude, time, threshold_cos_sza=0.01)
+        vector["sdr"] = sdr
 
     # GFS contains RSR (toa_upward_shortwave_flux) variable directly
     if "toa_upward_shortwave_flux" in rad:
         interpolate_met(rad, vector, "toa_upward_shortwave_flux", "rsr", **interp_kwargs)
+        return
 
-    # ECMWF contains "top_net_solar_radiation" which is SDR - RSR
-    elif "top_net_solar_radiation" in rad:
-        interpolate_met(rad, vector, "top_net_solar_radiation", **interp_kwargs)
-        vector["rsr"] = np.maximum(vector["sdr"] - vector["top_net_solar_radiation"], 0.0)
-
-    else:
+    if "top_net_solar_radiation" not in rad:
         raise ValueError(
             "'rad' data must contain either 'toa_upward_shortwave_flux' or "
             "'top_net_solar_radiation' (ECMWF) variable."
         )
+
+    # ECMWF contains "top_net_solar_radiation" which is SDR - RSR
+    tnsr = interpolate_met(rad, vector, "top_net_solar_radiation", **interp_kwargs)
+    tnsr = _rad_accumulation_to_average_instantaneous(rad, "top_net_solar_radiation", tnsr)
+
+    vector["rsr"] = np.maximum(sdr - tnsr, 0.0)
 
 
 def calc_outgoing_longwave_radiation(
@@ -1756,15 +1762,15 @@ def calc_outgoing_longwave_radiation(
         return
 
     # ECMWF contains "top_net_thermal_radiation" which is -1 * OLR
-    if "top_net_thermal_radiation" in rad:
-        interpolate_met(rad, vector, "top_net_thermal_radiation", **interp_kwargs)
-        vector["olr"] = np.maximum(-vector["top_net_thermal_radiation"], 0.0)
-        return
+    if "top_net_thermal_radiation" not in rad:
+        raise ValueError(
+            "rad data must contain either 'toa_upward_longwave_flux' "
+            "or 'top_net_thermal_radiation' (ECMWF) variable."
+        )
 
-    raise ValueError(
-        "rad data must contain either 'toa_upward_longwave_flux' "
-        "or 'top_net_thermal_radiation' (ECMWF) variable."
-    )
+    tntr = interpolate_met(rad, vector, "top_net_thermal_radiation", **interp_kwargs)
+    tntr = _rad_accumulation_to_average_instantaneous(rad, "top_net_thermal_radiation", tntr)
+    vector["olr"] = np.maximum(-tntr, 0.0)
 
 
 def calc_radiative_properties(contrail: GeoVectorDataset, params: dict[str, Any]) -> None:
@@ -1999,8 +2005,7 @@ def calc_contrail_properties(
     contrail.update(dn_dt_agg=dn_dt_agg)
     contrail.update(dn_dt_turb=dn_dt_turb)
     if radiative_heating_effects:
-        contrail.update(heat_rate=heat_rate)
-        contrail.update(d_heat_rate=d_heat_rate)
+        contrail.update(heat_rate=heat_rate, d_heat_rate=d_heat_rate)
 
 
 def calc_timestep_contrail_evolution(
@@ -2281,6 +2286,59 @@ def calc_timestep_contrail_evolution(
         final_contrail["ef"][~continuous] = 0.0
         final_contrail["age"][~continuous] = np.timedelta64(0, "ns")
     return final_contrail
+
+
+def _rad_accumulation_to_average_instantaneous(
+    rad: MetDataset,
+    name: str,
+    arr: npt.NDArray[np.float_],
+) -> npt.NDArray[np.float_]:
+    """Convert from radiation accumulation to average instantaneous values.
+
+    .. versionadded:: 0.48.0
+
+    Parameters
+    ----------
+    rad : MetDataset
+        Radiation data
+    name : str
+        Variable name
+    arr : npt.NDArray[np.float_]
+        Array of values already interpolated from ``rad``
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Array of values converted from accumulation to average instantaneous values
+    """
+    mda = rad[name]
+    try:
+        unit = mda.attrs["units"]
+    except KeyError as e:
+        msg = (
+            f"Radiation data contains '{name}' variable "
+            "but units are not specified. Provide units in the "
+            f"rad['{name}'].attrs passed into Cocip."
+        )
+        raise KeyError(msg) from e
+
+    # The unit is already instantaneous
+    if unit == "W m**-2":
+        return arr
+
+    if unit != "J m**-2":
+        msg = f"Unexpected units '{unit}' for '{name}' variable. Expected 'J m**-2' or 'W m**-2'."
+        raise ValueError(msg)
+
+    # Convert from J m**-2 to W m**-2
+    if rad.get_dataset_attr() == "REANALYSIS" and rad.get_product_attr() == "ENSEMBLE":
+        # FIXME: This this the only case where we have three hour accumulation?
+        # FIXME: What is the convention for GFS?
+        n_seconds = 3.0 * 3600.0  # 3 hour interval
+    else:
+        n_seconds = 3600.0  # 1 hour interval
+
+    return arr / n_seconds
 
 
 def _emissions_variables() -> tuple[str, ...]:
