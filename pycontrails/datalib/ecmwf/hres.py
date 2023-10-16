@@ -19,16 +19,9 @@ from overrides import overrides
 import pycontrails
 from pycontrails.core import cache, datalib
 from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.datalib.ecmwf.common import ECMWFAPI, rad_accumulated_to_average
-from pycontrails.datalib.ecmwf.variables import (
-    PRESSURE_LEVEL_VARIABLES,
-    SURFACE_VARIABLES,
-    TOAIncidentSolarRadiation,
-    TopNetSolarRadiation,
-    TopNetThermalRadiation,
-)
-from pycontrails.utils import dependencies, iteration
-from pycontrails.utils.temp import temp_file
+from pycontrails.datalib.ecmwf.common import ECMWFAPI
+from pycontrails.datalib.ecmwf.variables import PRESSURE_LEVEL_VARIABLES, SURFACE_VARIABLES
+from pycontrails.utils import dependencies, iteration, temp
 from pycontrails.utils.types import DatetimeLike
 
 if TYPE_CHECKING:
@@ -300,10 +293,24 @@ class HRES(ECMWFAPI):
         self.variables = datalib.parse_variables(variables, self.supported_variables)
 
         self.grid = datalib.parse_grid(grid, [0.1, 0.25, 0.5, 1])  # lat/lon degree resolution
-        self.stream = stream  # "enfo" = ensemble forecast, "oper" = atmospheric model/HRES
-        self.field_type = (
-            field_type  # forecast (oper), perturbed or control forecast (enfo only), or analysis
-        )
+
+        # "enfo" = ensemble forecast
+        # "oper" = atmospheric model/HRES
+        if stream not in ("oper", "enfo"):
+            msg = "Parameter stream must be 'oper' or 'enfo'"
+            raise ValueError(msg)
+
+        self.stream = stream
+
+        # "fc" = forecast
+        # "pf" = perturbed forecast
+        # "cf" = control forecast
+        # "an" = analysis
+        if field_type not in ("fc", "pf", "cf", "an"):
+            msg = "Parameter field_type must be 'fc', 'pf', 'cf', or 'an'"
+            raise ValueError(msg)
+
+        self.field_type = field_type
 
         # set specific forecast time is requested
         if forecast_time is not None:
@@ -476,14 +483,12 @@ class HRES(ECMWFAPI):
         request = self.generate_mars_request(self.forecast_time, self.steps, request_type="list")
 
         # hold downloaded file in named temp file
-        with temp_file() as mars_temp_filename:
-            LOG.debug(f"Performing MARS request: {request}")
-            self.server.execute(request, mars_temp_filename)
+        with temp.temp_file() as mars_temp_filename:
+            LOG.debug("Performing MARS request: %s", request)
+            self.server.execute(request, target=mars_temp_filename)
 
             with open(mars_temp_filename, "r") as f:
-                txt = f.read()
-
-        return txt
+                return f.read()
 
     def generate_mars_request(
         self,
@@ -528,16 +533,16 @@ class HRES(ECMWFAPI):
             steps = self.steps
 
         # set date/time for file
-        _date = forecast_time.strftime("%Y%m%d")
-        _time = forecast_time.strftime("%H")
+        date = forecast_time.strftime("%Y%m%d")
+        time = forecast_time.strftime("%H")
 
         # make request of mars
         request: dict[str, Any] = {
             "class": "od",  # operational data
             "stream": self.stream,
             "expver": "1",  # production data only
-            "date": _date,
-            "time": _time,
+            "date": date,
+            "time": time,
             "type": self.field_type,
             "param": f"{'/'.join(self.variable_shortnames)}",
             "step": f"{'/'.join([str(s) for s in steps])}",
@@ -638,38 +643,24 @@ class HRES(ECMWFAPI):
         # run the same ECMWF-specific processing on the dataset
         mds = self._process_dataset(ds, **kwargs)
 
-        # convert accumulated radiation values to average instantaneous values
-        # set minimum for all values to 0
-        # !! Note that HRES accumulates from the *start of the forecast*,
-        # so we need to take the diff of each accumulated value
-        # the 0th value is set to the 1st value so each time step has a radiation value !!
-        dt_accumulation = 60 * 60
-
-        for key in (
-            TOAIncidentSolarRadiation.standard_name,
-            TopNetSolarRadiation.standard_name,
-            TopNetThermalRadiation.standard_name,
-        ):
-            if key in mds.data:
-                if len(mds.data["time"]) < 2:
-                    raise RuntimeError(
-                        f"HRES datasets with data variable {key} must have at least two timesteps"
-                        f" to calculate the average instantaneous value of {key}"
-                    )
-
-                # take the difference between time slices
-                dkey_dt = mds.data[key].diff("time")
-
-                # set difference value back to the data model
-                mds.data[key] = dkey_dt
-
-                # set the 0th value of the data to the 1st difference value
-                # TODO: this assumption may not be universally applicable!
-                mds.data[key][dict(time=0)] = dkey_dt[dict(time=0)]
-
-                rad_accumulated_to_average(mds, key, dt_accumulation)
-
+        self.set_met_source_metadata(mds)
         return mds
+
+    @overrides
+    def set_met_source_metadata(self, ds: xr.Dataset | MetDataset) -> None:
+        if self.stream == "oper":
+            product = "forecast"
+        elif self.stream == "enfo":
+            product = "ensemble"
+        else:
+            msg = f"Unknown stream type {self.stream}"
+            raise ValueError(msg)
+
+        ds.attrs.update(
+            provider="ECMWF",
+            dataset="HRES",
+            product=product,
+        )
 
     def _open_and_cache(self, xr_kwargs: dict[str, Any]) -> xr.Dataset:
         """Open and cache :class:`xr.Dataset` from :attr:`self.paths`.
@@ -741,7 +732,7 @@ class HRES(ECMWFAPI):
         # Open ExitStack to control temp_file context manager
         with ExitStack() as stack:
             # hold downloaded file in named temp file
-            mars_temp_grib_filename = stack.enter_context(temp_file())
+            mars_temp_grib_filename = stack.enter_context(temp.temp_file())
 
             # retrieve data from MARS
             LOG.debug(f"Performing MARS request: {request}")
@@ -749,15 +740,7 @@ class HRES(ECMWFAPI):
 
             # translate into netcdf from grib
             LOG.debug("Translating file into netcdf")
-            mars_temp_nc_filename = stack.enter_context(temp_file())
-            ds = xr.open_dataset(mars_temp_grib_filename, engine="cfgrib")
-
-            ##### TODO: do we need to store intermediate netcdf file?
-            ds.to_netcdf(path=mars_temp_nc_filename, mode="w")
-
-            # open file, edit, and save for each hourly time step
-            ds = xr.open_dataset(mars_temp_nc_filename, engine=datalib.NETCDF_ENGINE)
-            #####
+            ds = stack.enter_context(xr.open_dataset(mars_temp_grib_filename, engine="cfgrib"))
 
             # run preprocessing before cache
             ds = self._preprocess_hres_dataset(ds)
