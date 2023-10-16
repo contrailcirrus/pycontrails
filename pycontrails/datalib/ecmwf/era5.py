@@ -21,16 +21,9 @@ from overrides import overrides
 import pycontrails
 from pycontrails.core import cache, datalib
 from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.datalib.ecmwf.common import ECMWFAPI, rad_accumulated_to_average
-from pycontrails.datalib.ecmwf.variables import (
-    PRESSURE_LEVEL_VARIABLES,
-    SURFACE_VARIABLES,
-    TOAIncidentSolarRadiation,
-    TopNetSolarRadiation,
-    TopNetThermalRadiation,
-)
-from pycontrails.utils import dependencies
-from pycontrails.utils.temp import temp_file
+from pycontrails.datalib.ecmwf.common import ECMWFAPI
+from pycontrails.datalib.ecmwf.variables import PRESSURE_LEVEL_VARIABLES, SURFACE_VARIABLES
+from pycontrails.utils import dependencies, temp
 
 if TYPE_CHECKING:
     import cdsapi
@@ -176,7 +169,7 @@ class ERA5(ECMWFAPI):
         if time is None and paths is None:
             raise ValueError("The parameter 'time' must be defined if 'paths' is None")
 
-        supported = {"reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread"}
+        supported = ("reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread")
         if product_type not in supported:
             raise ValueError(
                 f"Unknown product_type {product_type}. "
@@ -388,28 +381,30 @@ class ERA5(ECMWFAPI):
             # run MetDataset constructor
             ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
 
-            # TODO: corner case
             # If any files are already cached, they will not have the version attached
             ds.attrs.setdefault("pycontrails_version", pycontrails.__version__)
 
         # run the same ECMWF-specific processing on the dataset
         mds = self._process_dataset(ds, **kwargs)
 
-        # convert accumulated radiation values to average instantaneous values
-        # set minimum for all values to 0
-
-        # accumulations are 3 hours for ensembles, 1 hour for reanalysis
-        dt_accumulation = 60 * 60 if self.product_type == "reanalysis" else 3 * 60 * 60
-
-        for key in (
-            TOAIncidentSolarRadiation.standard_name,
-            TopNetSolarRadiation.standard_name,
-            TopNetThermalRadiation.standard_name,
-        ):
-            if key in mds.data:
-                rad_accumulated_to_average(mds, key, dt_accumulation)
-
+        self.set_met_source_metadata(mds)
         return mds
+
+    @overrides
+    def set_met_source_metadata(self, ds: xr.Dataset | MetDataset) -> None:
+        if self.product_type == "reanalysis":
+            product = "reanalysis"
+        elif self.product_type.startswith("ensemble"):
+            product = "ensemble"
+        else:
+            msg = f"Unknown product type {self.product_type}"
+            raise ValueError(msg)
+
+        ds.attrs.update(
+            provider="ECMWF",
+            dataset="ERA5",
+            product=product,
+        )
 
     def _open_and_cache(self, xr_kwargs: dict[str, Any]) -> xr.Dataset:
         """Open and cache :class:`xr.Dataset` from :attr:`self.paths`.
@@ -478,7 +473,7 @@ class ERA5(ECMWFAPI):
         # Open ExitStack to control temp_file context manager
         with ExitStack() as stack:
             # hold downloaded file in named temp file
-            cds_temp_filename = stack.enter_context(temp_file())
+            cds_temp_filename = stack.enter_context(temp.temp_file())
             LOG.debug(f"Performing CDS request: {request} to dataset {self.dataset}")
             if not hasattr(self, "cds"):
                 self._set_cds()

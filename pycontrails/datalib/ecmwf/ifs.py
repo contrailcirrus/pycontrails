@@ -27,7 +27,7 @@ class IFS(datalib.MetDataSource):
 
     .. warning::
 
-        This data source is fully implemented.
+        This data source is not fully implemented.
 
     Parameters
     ----------
@@ -186,8 +186,16 @@ class IFS(datalib.MetDataSource):
         # harmonize variable names
         ds = met.standardize_variables(ds, self.variables)
 
-        ds.attrs["met_source"] = type(self).__name__
+        self.set_met_source_metadata(ds)
         return met.MetDataset(ds, **kwargs)
+
+    @overrides
+    def set_met_source_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
+        ds.attrs.update(
+            provider="ECMWF",
+            dataset="IFS",
+            product="forecast",
+        )
 
     @overrides
     def download_dataset(self, times: list[datetime]) -> None:
