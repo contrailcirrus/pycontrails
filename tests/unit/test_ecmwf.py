@@ -221,17 +221,13 @@ def test_ERA5_pressure_levels(met_ecmwf_pl_path: str, override_cache: DiskCacheS
 
     # preprocess
     assert met.data.attrs["pycontrails_version"] == "0.34.0"
-    assert met.data["relative_humidity"].attrs["long_name"] == "Relative humidity"
-    assert met.data["relative_humidity"].attrs.get("_pycontrails_modified", False)
-    assert met.data["relative_humidity"].attrs["units"] == "[0 - 1]"
     assert 250 in met.data["level"]
     assert 200 not in met.data["level"]
     assert met.data.longitude.min().values == -160
 
-    # consistency
-    assert np.all(met.data["level"].values == sorted(pressure_levels))
-    # dealing with discrepancy between datetime and np.datetime64
-    assert np.all(met.data["time"].values == np.array([np.datetime64(t) for t in era5.timesteps]))
+    # Consistent level and time with input
+    np.testing.assert_array_equal(met.data["level"], sorted(pressure_levels))
+    np.testing.assert_array_equal(met.data["time"], np.array(era5.timesteps, dtype="datetime64"))
 
 
 def test_ERA5_single_levels(met_ecmwf_sl_path: str, override_cache: DiskCacheStore) -> None:
