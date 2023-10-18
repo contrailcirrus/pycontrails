@@ -141,9 +141,9 @@ def met_pcc_sl(met_ecmwf_sl_path: str, override_cache: DiskCacheStore) -> MetDat
     return era5.open_metdataset()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def met_accf_pl() -> MetDataset:
-    """Met data (pressure levels) for PCC algorithm testing.
+    """Met data (pressure levels) for ACCF algorithm testing.
 
     Returns
     -------
@@ -154,9 +154,9 @@ def met_accf_pl() -> MetDataset:
     return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def met_accf_sl() -> MetDataset:
-    """Met data (single level) for PCC algorithm testing.
+    """Met data (single level) for ACCF algorithm testing.
 
     Returns
     -------
