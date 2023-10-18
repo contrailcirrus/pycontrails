@@ -270,9 +270,8 @@ class ACCF(Model):
             # skip met variables
             if key in self.short_vars:
                 continue
-            if not isinstance(key, str):
-                continue
 
+            assert isinstance(key, str)
             if isinstance(self.source, GeoVectorDataset):
                 self.source[key] = self.source.intersect_met(maCCFs[key])
             else:
@@ -284,6 +283,7 @@ class ACCF(Model):
                     "description": self.long_name,
                     "pycontrails_version": pycontrails.__version__,
                 }
+                # FIXME
                 if self.met is not None:
                     attrs["met_source"] = self.met.attrs.get("met_source", "unknown")
 
@@ -388,6 +388,7 @@ class ACCF(Model):
 
 def _rad_instantaneous_to_accumulated(ds: xr.Dataset) -> xr.Dataset:
     """Convert instantaneous radiation to accumulated radiation."""
+
     for name, da in ds.items():
         try:
             unit = da.attrs["units"]
