@@ -6,6 +6,8 @@ import warnings
 from dataclasses import dataclass
 from typing import Any, overload
 
+import xarray as xr
+
 import pycontrails
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataArray, MetDataset, standardize_variables
@@ -152,7 +154,11 @@ class ACCF(Model):
     sur_variables = (ecmwf.SurfaceSolarDownwardRadiation, ecmwf.TopNetThermalRadiation)
     default_params = ACCFParams
 
-    short_vars = {v.short_name for v in met_variables + sur_variables}
+    short_vars = {v.short_name for v in (*met_variables, *sur_variables)}
+
+    # This variable won't get used since we are not writing the output
+    # anywhere, but the library will complain if it's not defined
+    path_lib = "./"
 
     def __init__(
         self,
@@ -164,22 +170,18 @@ class ACCF(Model):
         # Normalize ECMWF variables
         met = standardize_variables(met, self.met_variables)
 
-        if surface:
-            surface = standardize_variables(surface, self.sur_variables)
-
         # Ignore humidity scaling warning
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", module="pycontrails.core.models")
             super().__init__(met, params=params, **params_kwargs)
 
         if surface:
-            self.surface = surface.copy()
+            surface = surface.copy()
+            surface = standardize_variables(surface, self.sur_variables)
+            surface.data = _rad_instantaneous_to_accumulated(surface.data)
+            self.surface = surface
 
         self.p_settings = self._get_accf_config()
-
-        # This variable won't get used since we are not writing the output
-        # anywhere, but the library will complain if it's not defined
-        self.path_lib = "./"
 
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
@@ -382,3 +384,29 @@ class ACCF(Model):
             "save_path": "./",
             "save_format": "netCDF",
         }
+
+
+def _rad_instantaneous_to_accumulated(ds: xr.Dataset) -> xr.Dataset:
+    """Convert instantaneous radiation to accumulated radiation."""
+    for name, da in ds.items():
+        try:
+            unit = da.attrs["units"]
+        except KeyError as e:
+            msg = (
+                f"Radiation data contains '{name}' variable "
+                "but units are not specified. Provide units in the "
+                f"rad['{name}'].attrs passed into ACCF."
+            )
+            raise KeyError(msg) from e
+
+        if unit == "J m**-2":
+            continue
+        if unit != "W m**-2":
+            msg = f"Unexpected units '{unit}' for '{name}'. Expected 'J m**-2' or 'W m**-2'."
+            raise ValueError(msg)
+
+        # Convert from W m**-2 to J m**-2
+        da.attrs["units"] = "J m**-2"
+        ds[name] = da * 3600.0
+
+    return ds
