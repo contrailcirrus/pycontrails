@@ -145,7 +145,7 @@ def test_parse_variables() -> None:
         datalib.parse_variables([[EastwardWind, NorthwardWind]], supported=supported)
 
     # raise value error if a str
-    with pytest.raises(ValueError, match="must be of type MetVariable"):
+    with pytest.raises(TypeError, match="must be of type MetVariable"):
         datalib.parse_variables([["eastward_wind", "northward_wind"]], supported=supported)
 
     # by short name
@@ -220,4 +220,4 @@ def test_round_hour() -> None:
     assert rounded == datetime(2022, 12, 7, 17)
 
     with pytest.raises(ValueError, match="must be between"):
-        _ = datalib.round_hour(time, 25)
+        datalib.round_hour(time, 25)
