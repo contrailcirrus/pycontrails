@@ -39,4 +39,9 @@ def test_accf_default(met_accf_pl: MetDataset, met_accf_sl: MetDataset, fl: Flig
     accf = ACCF(met=met_accf_pl, surface=met_accf_sl)
     out = accf.eval(fl)
 
-    assert np.all(np.isfinite(out["aCCF_NOx"]))
+    # Pin some values
+    rel = 0.01
+    assert np.mean(out["olr"]) == pytest.approx(-35.23, rel=rel)
+    assert np.mean(out["aCCF_CO2"]) == pytest.approx(6.94e-16, rel=rel)
+    assert np.mean(out["aCCF_NOx"]) == pytest.approx(1.19e-12, rel=rel)
+    assert np.mean(out["aCCF_Cont"]) == pytest.approx(9.91e-15, rel=rel)
