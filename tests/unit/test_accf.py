@@ -31,10 +31,23 @@ def fl() -> Flight:
     )
 
 
-def test_accf_default(met_accf_pl: MetDataset, met_accf_sl: MetDataset, fl: Flight) -> None:
+@pytest.mark.parametrize("use_watts", [True, False])
+def test_accf_default(
+    met_accf_pl: MetDataset,
+    met_accf_sl: MetDataset,
+    fl: Flight,
+    use_watts: bool,
+) -> None:
     """Test Default accf algorithm."""
 
     pytest.importorskip("climaccf", reason="climaccf package not available")
+
+    for name, da in met_accf_sl.data.items():
+        assert da.attrs["units"] == "J m**-2"
+        if use_watts:
+            da = da / 3600.0
+            da.attrs["units"] = "W m**-2"
+            met_accf_sl.data[name] = da
 
     accf = ACCF(met=met_accf_pl, surface=met_accf_sl)
     out = accf.eval(fl)
