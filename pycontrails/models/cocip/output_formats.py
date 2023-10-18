@@ -15,6 +15,7 @@ This module includes functions to produce additional output formats, including t
         high-resolution contrail cirrus coverage for (5).
             See :func:`natural_cirrus_properties_to_hi_res_grid`.
 """
+
 from __future__ import annotations
 
 import warnings

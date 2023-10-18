@@ -263,11 +263,9 @@ class VectorDataset:
 
     def __init__(
         self,
-        data: dict[str, npt.ArrayLike]
-        | pd.DataFrame
-        | VectorDataDict
-        | VectorDataset
-        | None = None,
+        data: (
+            dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None
+        ) = None,
         *,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
@@ -1111,11 +1109,9 @@ class GeoVectorDataset(VectorDataset):
 
     def __init__(
         self,
-        data: dict[str, npt.ArrayLike]
-        | pd.DataFrame
-        | VectorDataDict
-        | VectorDataset
-        | None = None,
+        data: (
+            dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None
+        ) = None,
         *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,

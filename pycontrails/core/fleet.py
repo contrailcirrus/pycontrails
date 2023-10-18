@@ -22,11 +22,9 @@ class Fleet(Flight):
 
     def __init__(
         self,
-        data: dict[str, npt.ArrayLike]
-        | pd.DataFrame
-        | VectorDataDict
-        | VectorDataset
-        | None = None,
+        data: (
+            dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None
+        ) = None,
         *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,

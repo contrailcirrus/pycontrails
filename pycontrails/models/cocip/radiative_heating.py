@@ -277,12 +277,7 @@ def differential_heating_rate_shortwave(
         * tau_contrail
         * (-RAD_HEAT.d_gamma_s * tau_contrail + tau_eff)
         * (1 / cp_contrail)
-        * (
-            1
-            - RAD_HEAT.dacth * mue
-            + RAD_HEAT.d_gamma * mue**2
-            + (RAD_HEAT.dacth3 - 1) * mue**3
-        )
+        * (1 - RAD_HEAT.dacth * mue + RAD_HEAT.d_gamma * mue**2 + (RAD_HEAT.dacth3 - 1) * mue**3)
         * np.exp(RAD_HEAT.dbcth * tau_cirrus - RAD_HEAT.dccth * tau_cirrus / (mue + 1e-6))
         * np.exp(-RAD_HEAT.dgalbs * tau_contrail * (1 - mue) ** RAD_HEAT.dexalb)
         * mue**RAD_HEAT.draddsw

@@ -787,9 +787,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
 
     eta_over_eta_b_low = (
         10.0 * (1.0 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b
-        + 33.3333
-        * (-1.0 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43)
-        * (c_t_over_c_t_eta_b**2)
+        + 33.3333 * (-1.0 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43) * (c_t_over_c_t_eta_b**2)
         + 37.037 * (1.0 + (sigma - 0.43) - 0.9163 * sigma * 0.43) * (c_t_over_c_t_eta_b**3)
     )
     eta_over_eta_b_hi = (

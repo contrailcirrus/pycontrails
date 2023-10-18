@@ -179,11 +179,7 @@ def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
     # This comment is pasted several places in `pycontrails` -- they should all be
     # addressed at the same time.
     return 100.0 * np.exp(  # type: ignore[return-value]
-        -6096.9385 / T
-        + 16.635794
-        - 0.02711193 * T
-        + 1.673952 * 1e-5 * T**2
-        + 2.433502 * np.log(T)
+        -6096.9385 / T + 16.635794 - 0.02711193 * T + 1.673952 * 1e-5 * T**2 + 2.433502 * np.log(T)
     )
 
 
