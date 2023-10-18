@@ -150,7 +150,8 @@ def met_accf_pl() -> MetDataset:
     MetDataset
     """
     path = get_static_path("met-accf-pl.nc")
-    return MetDataset(xr.open_dataset(path))
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture(scope="session")
@@ -164,7 +165,7 @@ def met_accf_sl() -> MetDataset:
     path = get_static_path("met-accf-sl.nc")
     ds = xr.open_dataset(path)
     ds = ds.expand_dims("level").assign_coords(level=("level", [-1]))
-    return MetDataset(ds)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture(scope="session")

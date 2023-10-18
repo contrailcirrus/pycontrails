@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Any, overload
-
-import xarray as xr
 
 import pycontrails
 from pycontrails.core.flight import Flight
@@ -23,28 +22,46 @@ from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.datalib import ecmwf
 from pycontrails.utils import dependencies
 
-WideBodyJets = {
-    "A332",
-    "A333",
-    "A338",
-    "A339",
-    "A342",
-    "A343",
-    "A345",
-    "A356",
-    "A359",
-    "A388",
-    "B762",
-    "B763",
-    "B764",
-    "B772",
-    "B773",
-    "B778",
-    "B779",
-    "B788",
-    "B789",
-}
-RegionalJets = {"CRJ1", "CRJ2", "CRJ7", "CRJ8", "CRJ9", "CRJX", "E135", "E145", "E170", "E190"}
+
+def wide_body_jets() -> set[str]:
+    """Return a set of wide body jets."""
+    return {
+        "A332",
+        "A333",
+        "A338",
+        "A339",
+        "A342",
+        "A343",
+        "A345",
+        "A356",
+        "A359",
+        "A388",
+        "B762",
+        "B763",
+        "B764",
+        "B772",
+        "B773",
+        "B778",
+        "B779",
+        "B788",
+        "B789",
+    }
+
+
+def regional_jets() -> set[str]:
+    """Return a set of regional jets."""
+    return {
+        "CRJ1",
+        "CRJ2",
+        "CRJ7",
+        "CRJ8",
+        "CRJ9",
+        "CRJX",
+        "E135",
+        "E145",
+        "E170",
+        "E190",
+    }
 
 
 @dataclass
@@ -102,13 +119,16 @@ class ACCF(Model):
     """Compute Algorithmic Climate Change Functions (ACCF).
 
     This class is a wrapper over the DLR / UMadrid library
-    `climaccf <https://github.com/dlr-pa/climaccf>`__,
-    `DOI: 10.5281/zenodo.6977272 <https://doi.org/10.5281/zenodo.6977272>`__
+    `climaccf <https://github.com/dlr-pa/climaccf>`_,
+    `DOI: 10.5281/zenodo.6977272 <https://doi.org/10.5281/zenodo.6977272>`_
 
     Parameters
     ----------
     met : MetDataset
         Dataset containing "air_temperature" and "specific_humidity" variables
+    surface : MetDataset, optional
+        Dataset containing "surface_solar_downward_radiation" and
+        "top_net_thermal_radiation" variables
 
     References
     ----------
@@ -132,16 +152,13 @@ class ACCF(Model):
     sur_variables = (ecmwf.SurfaceSolarDownwardRadiation, ecmwf.TopNetThermalRadiation)
     default_params = ACCFParams
 
-    short_vars = [v.short_name for v in met_variables + sur_variables]
-
-    ds_met: xr.Dataset | None
-    ds_sur: xr.Dataset | None
+    short_vars = {v.short_name for v in met_variables + sur_variables}
 
     def __init__(
         self,
         met: MetDataset,
         surface: MetDataset | None = None,
-        params: dict[str, Any] = {},
+        params: dict[str, Any] | None = None,
         **params_kwargs: Any,
     ) -> None:
         # Normalize ECMWF variables
@@ -150,29 +167,19 @@ class ACCF(Model):
         if surface:
             surface = standardize_variables(surface, self.sur_variables)
 
-        # Surpress warning about humdity scaling because that should be eet
-        # using ACCF config variables for this model
-        try:
-            del met.attrs["history"]
-        except KeyError:
-            pass
+        # Ignore humidity scaling warning
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", module="pycontrails.core.models")
+            super().__init__(met, params=params, **params_kwargs)
 
-        source = met.attrs["met_source"]
-        met.attrs["met_source"] = "not_ecmwf"
-        super().__init__(met, params=params, **params_kwargs)
-        if self.met:
-            self.met.attrs["met_source"] = source
-
-        self._update_accf_config()
         if surface:
             self.surface = surface.copy()
+
+        self.p_settings = self._get_accf_config()
 
         # This variable won't get used since we are not writing the output
         # anywhere, but the library will complain if it's not defined
         self.path_lib = "./"
-
-        self.ds_met = None
-        self.ds_sur = None
 
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
@@ -217,6 +224,9 @@ class ACCF(Model):
             )
 
         self.update_params(params)
+        if params:
+            self.p_settings = self._get_accf_config()
+
         self.set_source(source)
 
         if isinstance(self.source, GeoVectorDataset):
@@ -233,16 +243,15 @@ class ACCF(Model):
                 self.params["horizontal_resolution"] = float(hres)
 
         self.set_source_met()
-        self._update_accf_config()
         self._generate_weather_store()
 
         # check aircraft type and set in config if needed
         if self.params["nox_ei"] != "TTV":
             if isinstance(self.source, Flight):
                 ac = self.source.attrs["aircraft_type"]
-                if ac in WideBodyJets:
+                if ac in wide_body_jets():
                     self.p_settings["ac_type"] = "wide-body"
-                elif ac in RegionalJets:
+                elif ac in regional_jets():
                     self.p_settings["ac_type"] = "regional"
                 else:
                     self.p_settings["ac_type"] = "single-aisle"
@@ -287,31 +296,26 @@ class ACCF(Model):
         # underlying data array, so we need to put them in the expected order.
         # It also needs variables to have the ECMWF short name
         if isinstance(self.met, MetDataset):
-            mt = self.met.data.transpose("time", "level", "latitude", "longitude")
-            if mt is None or isinstance(mt, xr.Dataset):
-                self.ds_met = mt
-
-        if self.ds_met:
-            for var in self.ds_met.data_vars:
-                matching_variable = [v for v in self.met_variables if var == v.standard_name]
-                if matching_variable:
-                    self.ds_met = self.ds_met.rename({var: matching_variable[0].short_name})
+            ds_met = self.met.data.transpose("time", "level", "latitude", "longitude")
+            name_dict = {v.standard_name: v.short_name for v in self.met_variables}
+            ds_met = ds_met.rename(name_dict)
+        else:
+            ds_met = None
 
         if hasattr(self, "surface"):
-            self.ds_sur = self.surface.data.squeeze().transpose("time", "latitude", "longitude")
-            for var in self.ds_sur.data_vars:
-                matching_variable = [v for v in self.sur_variables if var == v.standard_name]
-                if matching_variable:
-                    self.ds_sur = self.ds_sur.rename({var: matching_variable[0].short_name})
+            ds_sur = self.surface.data.squeeze().transpose("time", "latitude", "longitude")
+            name_dict = {v.standard_name: v.short_name for v in self.sur_variables}
+            ds_sur = ds_sur.rename(name_dict)
         else:
-            self.ds_sur = None
+            ds_sur = None
 
         ws = WeatherStore(
-            self.ds_met,
-            self.ds_sur,
+            ds_met,
+            ds_sur,
             ll_resolution=self.p_settings["horizontal_resolution"],
             forecast_step=self.p_settings["forecast_step"],
         )
+
         if self.p_settings["lat_bound"] and self.p_settings["lon_bound"]:
             ws.reduce_domain(
                 {
@@ -319,6 +323,7 @@ class ACCF(Model):
                     "longitude": self.p_settings["lon_bound"],
                 }
             )
+
         self.ds = ws.get_xarray()
         self.variable_names = ws.variable_names
         self.pre_variable_names = ws.pre_variable_names
@@ -329,10 +334,10 @@ class ACCF(Model):
         self.axes = ws.axes
         self.var_xr = ws.var_xr
 
-    def _update_accf_config(self) -> None:
+    def _get_accf_config(self) -> dict[str, Any]:
         # a good portion of these will get ignored since we are not producing an
         # output file, but the library will complain if they aren't defined
-        self.p_settings = {
+        return {
             "lat_bound": self.params["lat_bound"],
             "lon_bound": self.params["lon_bound"],
             "time_bound": None,
