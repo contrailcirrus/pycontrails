@@ -1192,3 +1192,27 @@ def test_originates_from_ecmwf_sparse_binary(sparse_binary: tuple[MetDataArray, 
     ds = da.to_dataset()
     mds = MetDataset(ds)
     assert not originates_from_ecmwf(mds)
+
+
+@pytest.mark.parametrize("provider", ["ECMWF", "NCEP"])
+def test_provider_attr(met_ecmwf_sl_path: str, provider: str) -> None:
+    """Test the `provider_attr` property with a known provider."""
+
+    ds = xr.open_dataset(met_ecmwf_sl_path)
+    mds = MetDataset(ds, provider=provider)
+    assert mds.provider_attr == provider
+
+
+@pytest.mark.parametrize("provider", ["ECWMF", "NOAA"])
+def test_provider_attr_warning(met_ecmwf_sl_path: str, provider: str) -> None:
+    """Test the `provider_attr` property with an unknown provider."""
+
+    ds = xr.open_dataset(met_ecmwf_sl_path)
+    mds = MetDataset(ds)
+
+    with pytest.raises(KeyError, match="Specify 'provider' attribute on underlying dataset."):
+        mds.provider_attr
+
+    mds.attrs["provider"] = provider
+    with pytest.warns(UserWarning, match=f"Unknown provider '{provider}'."):
+        assert mds.provider_attr == provider

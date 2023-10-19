@@ -568,9 +568,9 @@ def test_era5_met_source_open_metdataset(met_ecmwf_pl_path: str) -> None:
     )
     mds = era5.open_metdataset()
 
-    assert mds.get_provider_attr() == "ECMWF"
-    assert mds.get_dataset_attr() == "ERA5"
-    assert mds.get_product_attr() == "REANALYSIS"
+    assert mds.provider_attr == "ECMWF"
+    assert mds.dataset_attr == "ERA5"
+    assert mds.product_attr == "REANALYSIS"
 
 
 @pytest.mark.parametrize("variables", ["t", "tsr"])
