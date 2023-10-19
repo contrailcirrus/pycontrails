@@ -305,12 +305,12 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         else:
             dt_integration_str = str(dt_integration.astype("timedelta64[s]"))
 
+        self.transfer_met_source_attrs()
         attrs: dict[str, Any] = {
             "description": self.long_name,
             "max_age": max_age_str,
             "dt_integration": dt_integration_str,
             "aircraft_type": self.get_source_param("aircraft_type"),
-            "met_source": self.met.attrs.get("met_source", "unknown"),
             "pycontrails_version": pycontrails.__version__,
             **self.source.attrs,  # type: ignore[dict-item]
         }
