@@ -16,20 +16,24 @@ from pycontrails.models.sac import SAC
 from pycontrails.utils import temp
 
 
-@pytest.mark.parametrize("model", [SAC, ISSR, CocipGrid, PCR])
-def test_model_output_to_netcdf(met_cocip1: MetDataset, rad_cocip1: MetDataset, model: type):
+@pytest.mark.parametrize("model_klass", [SAC, ISSR, CocipGrid, PCR])
+def test_model_output_to_netcdf(
+    met_cocip1: MetDataset,
+    rad_cocip1: MetDataset,
+    model_klass: type,
+) -> None:
     """Ensure gridded output can be written to netCDF.
 
     This was a problem in 0.28.0 with humidity scaling metadata.
     """
     kwargs = {"met": met_cocip1, "humidity_scaling": ConstantHumidityScaling()}
-    if model is CocipGrid:
+    if model_klass is CocipGrid:
         kwargs["rad"] = rad_cocip1
         kwargs["max_age"] = np.timedelta64(4, "h")
         kwargs["interpolation_bounds_error"] = True
         kwargs["aircraft_performance"] = PSGrid()
 
-    instance = model(**kwargs)
+    model = model_klass(**kwargs)
 
     coords = met_cocip1.coords
 
@@ -40,29 +44,31 @@ def test_model_output_to_netcdf(met_cocip1: MetDataset, rad_cocip1: MetDataset, 
     coords["level"] = [220, 230]
 
     source = MetDataset.from_coords(**coords)
-    out = instance.eval(source)
+    out = model.eval(source)
 
     with temp.temp_file() as temp_file:
         path = pathlib.Path(temp_file)
 
-        da = out.data
-        if isinstance(instance, CocipGrid):
-            da = da["ef_per_m"]
-            da.attrs.update(out.attrs)
+        ds = out.data
+        assert isinstance(ds, xr.Dataset)
 
-        assert np.all(np.isfinite(da))
+        for da in ds.data_vars.values():
+            assert np.all(np.isfinite(da))
 
-        assert "pycontrails_version" in da.attrs
-        assert "humidity_scaling_name" in da.attrs
+        assert "pycontrails_version" in ds.attrs
+        assert ds.attrs["met_source_provider"] == "ECMWF"
+        assert ds.attrs["met_source_dataset"] == "ERA5"
+        assert ds.attrs["met_source_product"] == "REANALYSIS"
+        assert ds.attrs["humidity_scaling_name"] == "constant_scale"
+        assert ds.attrs["humidity_scaling_formula"] == "rhi -> rhi / rhi_adj"
+        assert ds.attrs["humidity_scaling_rhi_adj"] == 0.97
 
-        assert isinstance(da, xr.DataArray)
-        assert isinstance(da, xr.DataArray)
         assert not path.is_file()
-
-        da.to_netcdf(temp_file)
+        ds.to_netcdf(temp_file)
         assert path.is_file()
+
         assert path.stat().st_size > 10000
 
-        assert da.attrs == xr.open_dataarray(temp_file).attrs
+        assert ds.attrs == xr.open_dataset(temp_file).attrs
 
     assert not path.is_file()
