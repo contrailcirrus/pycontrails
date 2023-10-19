@@ -12,7 +12,7 @@ from typing import Any, overload
 import numpy as np
 
 from pycontrails.core.flight import Flight
-from pycontrails.core.met import MetDataArray, MetDataset
+from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, SpecificHumidity
 from pycontrails.core.models import Model
 from pycontrails.core.vector import GeoVectorDataset
@@ -56,11 +56,11 @@ class PCR(Model):
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataArray: ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataset: ...
 
     def eval(
         self, source: GeoVectorDataset | Flight | MetDataset | None = None, **params: Any
-    ) -> GeoVectorDataset | Flight | MetDataArray:
+    ) -> GeoVectorDataset | Flight | MetDataset:
         """Evaluate potential contrails regions of the :attr:`met` grid.
 
         Parameters
@@ -71,7 +71,7 @@ class PCR(Model):
 
         Returns
         -------
-        GeoVectorDataset | Flight | MetDataArray
+        GeoVectorDataset | Flight | MetDataset
             Returns 1 in potential contrail regions, 0 everywhere else.
             Returns ``np.nan`` if interpolating outside meteorology grid.
         **params : Any
@@ -96,14 +96,7 @@ class PCR(Model):
 
         pcr_ = _pcr_from_issr_and_sac(self.source.data["issr"], self.source.data["sac"])
         self.source["pcr"] = pcr_
-        # Tag output with additional attrs when source is MetDataset
-        if isinstance(self.source, MetDataset):
-            attrs = {**self.source["issr"].attrs, **self.source["sac"].attrs}
-            attrs["description"] = self.long_name
-            self.source["pcr"].attrs.update(attrs)
-            return self.source["pcr"]
 
-        # In GeoVectorDataset case, return source
         return self.source
 
 
