@@ -9,7 +9,7 @@ import numpy as np
 
 import pycontrails
 from pycontrails.core.flight import Flight
-from pycontrails.core.met import MetDataArray, MetDataset
+from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
@@ -78,17 +78,23 @@ class ISSR(Model):
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataArray: ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataset: ...
 
     def eval(
         self, source: GeoVectorDataset | Flight | MetDataset | None = None, **params: Any
-    ) -> GeoVectorDataset | Flight | MetDataArray:
+    ) -> GeoVectorDataset | Flight | MetDataset:
         """Evaluate ice super-saturated regions along flight trajectory or on meteorology grid.
 
         .. versionchanged:: 0.27.0
 
             Humidity scaling now handled automatically. This is controlled by
             model parameter ``humidity_scaling``.
+
+        .. versionchanged:: 0.48.0
+
+            If the ``source`` is a :class:`MetDataset`, the returned object will
+            also be a :class:`MetDataset`. Previous the "issr" :class:`MetDataArray`
+            was returned.
 
         Parameters
         ----------
@@ -100,7 +106,7 @@ class ISSR(Model):
 
         Returns
         -------
-        GeoVectorDataset | Flight | MetDataArray
+        GeoVectorDataset | Flight | MetDataset
             Returns 1 in ISSR, 0 everywhere else.
             Returns `np.nan` if interpolating outside meteorology grid.
 
@@ -117,40 +123,30 @@ class ISSR(Model):
             self.downselect_met()
             self.source.setdefault("air_pressure", self.source.air_pressure)
 
-        scale_humidity = (self.params["humidity_scaling"] is not None) and (
-            "specific_humidity" not in self.source
-        )
+        humidity_scaling = self.params["humidity_scaling"]
+        scale_humidity = humidity_scaling is not None and "specific_humidity" not in self.source
+
         self.set_source_met()
 
         # apply humidity scaling, warn if no scaling is provided for ECMWF data
         if scale_humidity:
-            self.params["humidity_scaling"].eval(self.source, copy_source=False)
+            humidity_scaling.eval(self.source, copy_source=False)
 
-        issr_ = issr(
+        self.source["issr"] = issr(
             air_temperature=self.source.data["air_temperature"],
             specific_humidity=self.source.data["specific_humidity"],
             air_pressure=self.source.data["air_pressure"],
             rhi=self.source.data.get("rhi", None),  # if rhi already known, pass it in
             rhi_threshold=self.params["rhi_threshold"],
         )
-        self.source["issr"] = issr_
 
-        # Tag output with additional attrs when source is MetDataset
-        if isinstance(self.source, MetDataset):
-            attrs: dict[str, Any] = {
-                "description": self.long_name,
-                "pycontrails_version": pycontrails.__version__,
-            }
-            if scale_humidity:
-                for k, v in self.params["humidity_scaling"].description.items():
-                    attrs[f"humidity_scaling_{k}"] = v
-            if self.met is not None:
-                attrs["met_source"] = self.met.attrs.get("met_source", "unknown")
+        # Tag output with additional metadata attrs
+        self.transfer_met_source_attrs()
+        self.source.attrs["pycontrails_version"] = pycontrails.__version__
+        if scale_humidity:
+            for k, v in humidity_scaling.description.items():
+                self.source.attrs[f"humidity_scaling_{k}"] = v
 
-            self.source["issr"].data.attrs.update(attrs)
-            return self.source["issr"]
-
-        # In GeoVectorDataset case, return source
         return self.source
 
 
