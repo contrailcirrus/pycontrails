@@ -595,6 +595,12 @@ class MetDataset(MetBase):
         Copy data on construction. Defaults to True.
     attrs : dict[str, Any], optional
         Attributes to add to :attr:`data.attrs`. Defaults to None.
+        Generally, pycontrails :class:`Models` may use the following attributes:
+
+        - ``provider``: Name of the data provider (e.g. "ECMWF").
+        - ``dataset``: Name of the dataset (e.g. "ERA5").
+        - ``product``: Name of the product type (e.g. "reanalysis").
+
     **attrs_kwargs : Any
         Keyword arguments to add to :attr:`data.attrs`. Defaults to None.
 
@@ -1031,7 +1037,36 @@ class MetDataset(MetBase):
             vector.attrs.update({str(k): v for k, v in self.attrs.items()})
         return vector
 
-    def get_provider_attr(self) -> str:
+    def _get_attr_template(
+        self,
+        name: str,
+        supported: tuple[str, ...],
+        examples: dict[str, str],
+    ) -> str:
+        """Look up an attribute with a custom error message."""
+        try:
+            out = self.attrs[name].upper()
+        except KeyError as e:
+            msg = f"Specify '{name}' attribute on underlying dataset."
+
+            for i, (k, v) in enumerate(examples.items()):
+                if i == 0:
+                    msg = f"{msg} For example, set attrs['{name}'] = '{k}' for {v}."
+                else:
+                    msg = f"{msg} Set attrs['{name}'] = '{k}' for {v}."
+            raise KeyError(msg) from e
+
+        if out not in supported:
+            warnings.warn(
+                f"Unknown {name} '{out}'. Data may not be processed correctly. "
+                f"Known {name}s are {supported}. Contact the pycontrails "
+                "developers if you believe this is an error."
+            )
+
+        return out
+
+    @property
+    def provider_attr(self) -> str:
         """Look up the 'provider' attribute with a custom error message.
 
         Returns
@@ -1040,24 +1075,12 @@ class MetDataset(MetBase):
             Provider of the data. If not one of 'ECMWF' or 'NCEP',
             a warning is issued.
         """
-        try:
-            out = self.attrs["provider"].upper()
-        except KeyError as e:
-            msg = (
-                "Specify 'provider' attribute on underlying dataset. For example, set "
-                "attrs['provider'] = 'ECMWF' for data from ECMWF. Set "
-                "attrs['provider'] = 'NCEP' for GFS."
-            )
-            raise KeyError(msg) from e
-        if out not in ("ECMWF", "NCEP"):
-            warnings.warn(
-                f"Unknown provider {out}. Data may not be processed correctly. "
-                "Contact the pycontrails developers if you believe this is an error."
-            )
+        supported = ("ECMWF", "NCEP")
+        examples = {"ECMWF": "data provided by ECMWF", "NCEP": "GFS data"}
+        return self._get_attr_template("provider", supported, examples)
 
-        return out
-
-    def get_dataset_attr(self) -> str:
+    @property
+    def dataset_attr(self) -> str:
         """Look up the 'dataset' attribute with a custom error message.
 
         Returns
@@ -1066,25 +1089,16 @@ class MetDataset(MetBase):
             Dataset of the data. If not one of 'ERA5', 'HRES', 'IFS',
             or 'GFS', a warning is issued.
         """
-        try:
-            out = self.attrs["dataset"].upper()
-        except KeyError as e:
-            msg = (
-                "Specify 'dataset' attribute on underlying dataset. For example, set "
-                "attrs['dataset'] = 'ERA5' for ERA5 data. Set "
-                "attrs['dataset'] = 'GFS' for GFS data."
-            )
-            raise KeyError(msg) from e
+        supported = ("ERA5", "HRES", "IFS", "GFS")
+        examples = {
+            "ERA5": "ECMWF ERA5 reanalysis data",
+            "HRES": "ECMWF HRES forecast data",
+            "GFS": "NCEP GFS forecast data",
+        }
+        return self._get_attr_template("dataset", supported, examples)
 
-        if out not in ("ERA5", "HRES", "IFS", "GFS"):
-            warnings.warn(
-                f"Unknown dataset {out}. Data may not be processed correctly. "
-                "Contact the pycontrails developers if you believe this is an error."
-            )
-
-        return out
-
-    def get_product_attr(self) -> str:
+    @property
+    def product_attr(self) -> str:
         """Look up the 'product' attribute with a custom error message.
 
         Returns
@@ -1094,23 +1108,12 @@ class MetDataset(MetBase):
             a warning is issued.
 
         """
-        try:
-            out = self.attrs["product"].upper()
-        except KeyError as e:
-            msg = (
-                "Specify 'product' attribute on underlying dataset. For example, set "
-                "attrs['product'] = 'reanalysis' for ERA5 reanalysis data. Set "
-                "attrs['product'] = 'forecast' for GFS data."
-            )
-            raise KeyError(msg) from e
-
-        if out not in ("FORECAST", "ENSEMBLE", "REANALYSIS"):
-            warnings.warn(
-                f"Unknown product {out}. Data may not be processed correctly. "
-                "Contact the pycontrails developers if you believe this is an error."
-            )
-
-        return out
+        supported = ("REANALYSIS", "FORECAST", "ENSEMBLE")
+        examples = {
+            "REANALYSIS": "ECMWF ERA5 reanalysis data",
+            "ENSEMBLE": "ECMWF ERA5 ensemble member data",
+        }
+        return self._get_attr_template("product", supported, examples)
 
     @classmethod
     def from_coords(
@@ -2483,7 +2486,7 @@ def originates_from_ecmwf(met: MetDataset | MetDataArray) -> bool:
     """
     if isinstance(met, MetDataset):
         try:
-            return met.get_provider_attr() == "ECMWF"
+            return met.provider_attr == "ECMWF"
         except KeyError:
             pass
     return "ecmwf" in met.attrs.get("history", "")

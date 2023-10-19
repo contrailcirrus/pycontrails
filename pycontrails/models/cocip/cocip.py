@@ -1377,7 +1377,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
     if "shift_radiation_time" in rad["time"].attrs:
         return rad
 
-    provider = rad.get_provider_attr()
+    provider = rad.provider_attr
 
     # Only shift ECMWF data -- exit for anything else
     # A warning is emitted upstream if the provider is not ECMWF or NCEP
@@ -1385,8 +1385,8 @@ def _process_rad(rad: MetDataset) -> MetDataset:
         return rad
 
     # FIXME: For HRES data, optionally perform rad.data.differentiate("time")
-    dataset = rad.get_dataset_attr()
-    product = rad.get_product_attr()
+    dataset = rad.dataset_attr
+    product = rad.product_attr
 
     if dataset == "REANALYSIS" and product == "ENSEMBLE":
         # FIXME: This this the only case where we have three hour accumulation?
@@ -2331,7 +2331,7 @@ def _rad_accumulation_to_average_instantaneous(
         raise ValueError(msg)
 
     # Convert from J m**-2 to W m**-2
-    if rad.get_dataset_attr() == "REANALYSIS" and rad.get_product_attr() == "ENSEMBLE":
+    if rad.dataset_attr == "REANALYSIS" and rad.product_attr == "ENSEMBLE":
         # FIXME: This this the only case where we have three hour accumulation?
         # FIXME: What is the convention for GFS?
         n_seconds = 3.0 * 3600.0  # 3 hour interval
