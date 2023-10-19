@@ -1388,7 +1388,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
     dataset = rad.dataset_attr
     product = rad.product_attr
 
-    if dataset == "REANALYSIS" and product == "ENSEMBLE":
+    if dataset == "ERA5" and product == "ENSEMBLE":
         # FIXME: This this the only case where we have three hour accumulation?
         shift_radiation_time = -np.timedelta64(90, "m")
     else:
@@ -1403,7 +1403,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
         warnings.warn(
             f"Shifting radiation time dimension by unexpected interval {shift_radiation_time}. "
             f"The rad data has metadata indicating it is {product} ECMWF data. "
-            f"This dataset should have time steps of {2 * shift_radiation_time}."
+            f"This dataset should have time steps of {-2 * shift_radiation_time}."
         )
 
     rad.data = rad.data.assign_coords({"time": rad.data["time"] + shift_radiation_time})
@@ -2331,7 +2331,7 @@ def _rad_accumulation_to_average_instantaneous(
         raise ValueError(msg)
 
     # Convert from J m**-2 to W m**-2
-    if rad.dataset_attr == "REANALYSIS" and rad.product_attr == "ENSEMBLE":
+    if rad.dataset_attr == "ERA5" and rad.product_attr == "ENSEMBLE":
         # FIXME: This this the only case where we have three hour accumulation?
         # FIXME: What is the convention for GFS?
         n_seconds = 3.0 * 3600.0  # 3 hour interval
