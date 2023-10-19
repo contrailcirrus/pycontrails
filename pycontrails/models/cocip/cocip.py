@@ -1711,19 +1711,20 @@ def calc_shortwave_radiation(
         vector["sdr"] = sdr
 
     # GFS contains RSR (toa_upward_shortwave_flux) variable directly
-    if "toa_upward_shortwave_flux" in rad:
-        interpolate_met(rad, vector, "toa_upward_shortwave_flux", "rsr", **interp_kwargs)
+    gfs_key = "toa_upward_shortwave_flux"
+    if gfs_key in rad:
+        interpolate_met(rad, vector, gfs_key, "rsr", **interp_kwargs)
         return
 
-    if "top_net_solar_radiation" not in rad:
-        raise ValueError(
-            "'rad' data must contain either 'toa_upward_shortwave_flux' or "
-            "'top_net_solar_radiation' (ECMWF) variable."
-        )
+    ecmwf_key = "top_net_solar_radiation"
+    if ecmwf_key not in rad:
+        msg = f"'rad' data must contain either '{gfs_key}' or '{ecmwf_key}' (ECMWF) variable."
+        raise ValueError(msg)
 
     # ECMWF contains "top_net_solar_radiation" which is SDR - RSR
-    tnsr = interpolate_met(rad, vector, "top_net_solar_radiation", **interp_kwargs)
-    tnsr = _rad_accumulation_to_average_instantaneous(rad, "top_net_solar_radiation", tnsr)
+    tnsr = interpolate_met(rad, vector, ecmwf_key, **interp_kwargs)
+    tnsr = _rad_accumulation_to_average_instantaneous(rad, ecmwf_key, tnsr)
+    vector.update({ecmwf_key: tnsr})
 
     vector["rsr"] = np.maximum(sdr - tnsr, 0.0)
 
@@ -1757,19 +1758,21 @@ def calc_outgoing_longwave_radiation(
         return None
 
     # GFS contains OLR (toa_upward_longwave_flux) variable directly
-    if "toa_upward_longwave_flux" in rad:
-        interpolate_met(rad, vector, "toa_upward_longwave_flux", "olr", **interp_kwargs)
+    gfs_key = "toa_upward_longwave_flux"
+    if gfs_key in rad:
+        interpolate_met(rad, vector, gfs_key, "olr", **interp_kwargs)
         return
 
     # ECMWF contains "top_net_thermal_radiation" which is -1 * OLR
-    if "top_net_thermal_radiation" not in rad:
-        raise ValueError(
-            "rad data must contain either 'toa_upward_longwave_flux' "
-            "or 'top_net_thermal_radiation' (ECMWF) variable."
-        )
+    ecmwf_key = "top_net_thermal_radiation"
+    if ecmwf_key not in rad:
+        msg = f"'rad' data must contain either '{gfs_key}' or '{ecmwf_key}' (ECMWF) variable."
+        raise ValueError(msg)
 
-    tntr = interpolate_met(rad, vector, "top_net_thermal_radiation", **interp_kwargs)
-    tntr = _rad_accumulation_to_average_instantaneous(rad, "top_net_thermal_radiation", tntr)
+    tntr = interpolate_met(rad, vector, ecmwf_key, **interp_kwargs)
+    tntr = _rad_accumulation_to_average_instantaneous(rad, ecmwf_key, tntr)
+    vector.update({ecmwf_key: tntr})
+
     vector["olr"] = np.maximum(-tntr, 0.0)
 
 
