@@ -692,6 +692,28 @@ class Model(ABC):
         if self.params["interpolation_use_indices"] and isinstance(self.source, GeoVectorDataset):
             self.source._invalidate_indices()
 
+    def transfer_met_source_attrs(self, source: SourceType | None = None) -> None:
+        """Transfer met source metadata from :attr:`met` to ``source``."""
+
+        if self.met is None:
+            return
+
+        source = source or self.source
+        try:
+            source.attrs["met_source_provider"] = self.met.provider_attr
+        except KeyError:
+            pass
+
+        try:
+            source.attrs["met_source_dataset"] = self.met.dataset_attr
+        except KeyError:
+            pass
+
+        try:
+            source.attrs["met_source_product"] = self.met.product_attr
+        except KeyError:
+            pass
+
 
 def _interp_grid_to_grid(
     met_key: str,
