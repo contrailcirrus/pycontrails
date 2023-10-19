@@ -1,0 +1,5 @@
+Deriv testing notes
+- Set up interface between Fortran and Python for deriv subroutine, using f2py directives in the original fortran script.
+- Just set up a test program to see if conversion works, for first equation in deriv (O1D).
+- Need to now think about how to feed in data to f2py deriv method, so that computations can be done there, instead of in original python script.
+- This requires all input arrays to be numpy arrays of correct dimensions. LAT, LON, ALT all need to be specified. Also use "depend" keyword to specify that the size of Y, YP, RC etc. will be determined by the inputs for LAT, LON, ALT etc.

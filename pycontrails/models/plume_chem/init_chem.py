@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
+import glob
+import re
 from datetime import datetime
 
 from pycontrails.core import datalib
@@ -42,7 +44,7 @@ class CHEM():
                 self.photol_params = photol_idx
                 self.photol_coeffs = np.arange(1, 96 + 1) # from Fortran indexing (1 to 96)
                 self.therm_coeffs = np.arange(1, 510 + 1) # from Fortran indexing (1 to 510)
-                self.species = np.loadtxt('species.txt', dtype=str)
+                self.species = np.loadtxt('species_num.txt', dtype=str)
 
         def open_chemdataset(self) -> ChemDataset: 
                 """Instantiate chemdataset with zeros and apply species data to it. Interpolation (and zenith calcs etc.), will be done later."""
@@ -103,13 +105,18 @@ class CHEM():
         def _get_species(self, ds: xr.Dataset):
                 """Get species concentrations for initial timestep from species data files. Then interpolate them to chem grid."""
                 chem = ds
-
+                # get list of all files in species dir
+                files = glob.glob("species/*.csv")
+                files_string = '|'.join(files)                
+                print(files_string)
                 for s in chem.species.values:
                         # Find month from first timestep
                         month = self.timesteps[0].month
                         
-                        for level_idx, l in enumerate(chem.level.values):
-                                chem["Y"].loc[:, :, l, self.timesteps[0], s] = np.loadtxt("species/" + s + "_MONTH_" + str(month) + "_LEVEL_" + str(level_idx + 1) + ".csv", delimiter=",")
-
+                        if re.search("species/" + s + "_", files_string):
+                                for level_idx, l in enumerate(chem.level.values):
+                                        chem["Y"].loc[:, :, l, self.timesteps[0], s] = np.loadtxt("species/" + s + "_MONTH_" + str(month) + "_LEVEL_" + str(level_idx + 1) + ".csv", delimiter=",")
+                        else:
+                                print("No files found for " + s)
                 
         
