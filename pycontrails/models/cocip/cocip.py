@@ -1384,12 +1384,40 @@ def _process_rad(rad: MetDataset) -> MetDataset:
     if provider != "ECMWF":
         return rad
 
-    # FIXME: For HRES data, optionally perform rad.data.differentiate("time")
     dataset = rad.dataset_attr
     product = rad.product_attr
 
-    if dataset == "ERA5" and product == "ENSEMBLE":
-        # FIXME: This this the only case where we have three hour accumulation?
+    if dataset == "HRES":
+        try:
+            hres_accumulated = rad.attrs["hres_accumulated"]
+        except KeyError:
+            msg = (
+                "HRES data must have a boolean 'hres_accumulated' attribute. "
+                "This attribute is used to determine whether the radiation data "
+                "has been accumulated over the time period. This is the case for "
+                "HRES data taken from a common time of forecast with multiple "
+                "forecast steps. If this is not the case, set the "
+                "'hres_accumulated' attribute to False."
+            )
+            raise ValueError(msg)
+        if hres_accumulated:
+            # Keep the original attrs -- we need these later on
+            old_attrs = {k: v.attrs for k, v in rad.data.items()}
+
+            # NOTE: Taking the diff will remove the first time step
+            # This is typically what we want (forecast step 0 is all zeros)
+            # But, if the data has been downselected for a particular Flight / Fleet,
+            # we lose the first time step of the data.
+            rad.data = rad.data.diff("time", label="upper")
+
+            # Add back the original attrs
+            for k, v in rad.data.items():
+                v.attrs = old_attrs[k]
+
+        shift_radiation_time = -np.timedelta64(30, "m")
+
+    elif dataset == "ERA5" and product == "ENSEMBLE":
+        # FIXME: Is this the only case where we have three hour accumulation?
         shift_radiation_time = -np.timedelta64(90, "m")
     else:
         shift_radiation_time = -np.timedelta64(30, "m")
