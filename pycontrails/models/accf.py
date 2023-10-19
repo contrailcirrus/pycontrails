@@ -10,7 +10,7 @@ import xarray as xr
 
 import pycontrails
 from pycontrails.core.flight import Flight
-from pycontrails.core.met import MetDataArray, MetDataset, standardize_variables
+from pycontrails.core.met import MetDataset, standardize_variables
 from pycontrails.core.met_var import (
     AirTemperature,
     EastwardWind,
@@ -190,11 +190,11 @@ class ACCF(Model):
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataArray: ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataset: ...
 
     def eval(
         self, source: GeoVectorDataset | Flight | MetDataset | None = None, **params: Any
-    ) -> GeoVectorDataset | Flight | MetDataArray:
+    ) -> GeoVectorDataset | Flight | MetDataset:
         """Evaluate accfs along flight trajectory or on meteorology grid.
 
         Parameters
@@ -277,19 +277,10 @@ class ACCF(Model):
             else:
                 self.source[key] = (maCCFs.dim_order, arr.data)
 
-            # Tag output with additional attrs when source is MetDataset
-            if isinstance(self.source, MetDataset):
-                attrs: dict[str, Any] = {
-                    "description": self.long_name,
-                    "pycontrails_version": pycontrails.__version__,
-                }
-                # FIXME
-                if self.met is not None:
-                    attrs["met_source"] = self.met.attrs.get("met_source", "unknown")
+        self.transfer_met_source_attrs()
+        self.source.attrs["pycontrails_version"] = pycontrails.__version__
 
-                self.source[key].data.attrs.update(attrs)
-
-        return self.source  # type: ignore[return-value]
+        return self.source
 
     def _generate_weather_store(self) -> None:
         from climaccf.weather_store import WeatherStore
