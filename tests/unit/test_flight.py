@@ -797,7 +797,7 @@ def test_antimeridian_long_cross(direction: str, cross_anti: bool) -> None:
 
 def test_intersect_issr_met(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
     """Test `intersect_met` and `length_met` methods."""
-    issr = ISSR(met_era5_fake).eval()
+    issr = ISSR(met_era5_fake).eval()["issr"]
     fl = flight_fake.copy()
     fl["issr"] = fl.intersect_met(issr)
 
@@ -830,7 +830,7 @@ def test_intersect_met_method_nearest(met_era5_fake: MetDataset, flight_fake: Fl
     fl = flight_fake.copy()
 
     # results agree when calling intersect_met and intersect_model with method='nearest'
-    issr = ISSR(met_era5_fake).eval()
+    issr = ISSR(met_era5_fake).eval()["issr"]
     fl["issr"] = fl.intersect_met(issr, method="nearest", fill_value=0)
 
     # values in issr column are either 0 or 1
@@ -848,7 +848,7 @@ def test_intersect_met_method_linear(met_era5_fake: MetDataset, flight_fake: Fli
     fl = flight_fake.copy()
 
     # results disagree when calling intersect_met and intersect_model with default method='linear'
-    issr = ISSR(met_era5_fake).eval()
+    issr = ISSR(met_era5_fake).eval()["issr"]
     fl["issr"] = fl.intersect_met(issr, method="linear")
 
     # values in fl2 issr column are floating point values

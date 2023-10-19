@@ -83,9 +83,11 @@ def test_issr_sac_grid_output(met_issr: MetDataset, model_class: type, method: s
         humidity_scaling=ConstantHumidityScaling(),
     )
     out = model.eval()
-    assert isinstance(out, MetDataArray)
-    assert out.data.dtype == "float32"
-    assert out.shape == met_issr.shape
+    assert isinstance(out, MetDataset)
+
+    for arr in out.data.values():
+        assert arr.dtype == "float32"
+        assert arr.shape == met_issr.shape
 
 
 @pytest.fixture(scope="module")
