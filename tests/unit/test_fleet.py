@@ -145,10 +145,12 @@ def test_type_of_fleet(syn: SyntheticFlight):
 def test_fleet_numeric_types_to_data(syn: SyntheticFlight):
     """Check that numeric attributes are attached to underlying `Fleet` data."""
     fls = [syn() for _ in range(40)]
+    rng = np.random.default_rng()
     for fl in fls:
-        fl.attrs["numeric1"] = np.random.random()  # not even seeding it
-        fl.attrs["numeric2"] = np.random.randint(5)
+        fl.attrs["numeric1"] = rng.random()
+        fl.attrs["numeric2"] = rng.integers(0, 5).item()
         fl.attrs["non-numeric"] = "contrail"
+
     fleet = Fleet.from_seq(fls)
     fleet.ensure_vars(
         [
@@ -165,9 +167,9 @@ def test_fleet_numeric_types_to_data(syn: SyntheticFlight):
     assert "non-numeric" not in fleet
 
     # Nothing in fleet.attrs is numeric
-    n_keys = len(fleet.data.keys())
+    n_keys = len(fleet.data)
     fleet.broadcast_numeric_attrs()
-    assert len(fleet.data.keys()) == n_keys
+    assert len(fleet.data) == n_keys
 
 
 def test_fleet_true_airspeed(syn: SyntheticFlight):

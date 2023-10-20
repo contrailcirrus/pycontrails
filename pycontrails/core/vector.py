@@ -951,11 +951,11 @@ class VectorDataset:
             ignore_keys = (ignore_keys,)
 
         # Somewhat brittle: Only checking for int or float type
-        numeric_attrs = [
+        numeric_attrs = (
             attr
             for attr, val in self.attrs.items()
             if (isinstance(val, (int, float)) and attr not in ignore_keys)
-        ]
+        )
         self.broadcast_attrs(numeric_attrs, overwrite)
 
     # ------------
