@@ -492,7 +492,7 @@ class VectorDataset:
         return self.size
 
     def _display_attrs(self) -> dict[str, str]:
-        """Return properties used in `repr` constructions`.
+        """Return properties used in `repr` constructions.
 
         Returns
         -------
@@ -515,7 +515,7 @@ class VectorDataset:
         n_keys = len(self.data)
         _repr = f"{class_name} [{n_keys} keys x {self.size} length, {n_attrs} attributes]"
 
-        keys = list(self.data.keys())
+        keys = list(self)
         keys = keys[0:5] + ["..."] + keys[-1:] if len(keys) > 5 else keys
         _repr += f"\n\tKeys: {', '.join(keys)}"
 
@@ -1214,12 +1214,17 @@ class GeoVectorDataset(VectorDataset):
     @overrides
     def _display_attrs(self) -> dict[str, str]:
         try:
-            time0, time1 = np.nanmin(self["time"]), np.nanmax(self["time"])
-            lon0, lon1 = np.nanmin(self["longitude"]), np.nanmax(self["longitude"])
-            lat0, lat1 = np.nanmin(self["latitude"]), np.nanmax(self["latitude"])
-            alt0, alt1 = np.nanmin(self.altitude), np.nanmax(self.altitude)
+            time0 = pd.Timestamp(np.nanmin(self["time"]))
+            time1 = pd.Timestamp(np.nanmax(self["time"]))
+            lon0 = round(np.nanmin(self["longitude"]), 3)
+            lon1 = round(np.nanmax(self["longitude"]), 3)
+            lat0 = round(np.nanmin(self["latitude"]), 3)
+            lat1 = round(np.nanmax(self["latitude"]), 3)
+            alt0 = round(np.nanmin(self.altitude), 1)
+            alt1 = round(np.nanmax(self.altitude), 1)
+
             attrs = {
-                "time": f"[{pd.Timestamp(time0)}, {pd.Timestamp(time1)}]",
+                "time": f"[{time0}, {time1}]",
                 "longitude": f"[{lon0}, {lon1}]",
                 "latitude": f"[{lat0}, {lat1}]",
                 "altitude": f"[{alt0}, {alt1}]",
