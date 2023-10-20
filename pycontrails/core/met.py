@@ -2112,10 +2112,11 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
     # Attempt 2: Examine the dask graph
     darr = ds.variable._data  # dask array in some cases
     try:
-        dask0 = darr.dask[next(iter(darr.dask))]  # first dask instruction
-        return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
+        # Get the first dask instruction
+        dask0 = darr.dask[next(iter(darr.dask))]  # type: ignore[union-attr]
     except AttributeError:
         return False
+    return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
 
 
 def shift_longitude(data: XArrayType) -> XArrayType:
