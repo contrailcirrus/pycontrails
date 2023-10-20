@@ -33,39 +33,41 @@ def test_ISSR_met_source(met_issr: MetDataset) -> None:
         ISSR(met=met_issr)
 
     model = ISSR(met=met_issr, humidity_scaling=ExponentialBoostHumidityScaling())
-    out = model.eval()
+    out1 = model.eval()
 
-    assert isinstance(out, MetDataArray)
-    assert isinstance(out.data, xr.DataArray)
+    assert isinstance(out1, MetDataset)
+    assert isinstance(out1.data, xr.Dataset)
     assert isinstance(model.met, MetDataset)
-    assert out.name == "issr"
+    assert set(out1.data) == {"air_temperature", "specific_humidity", "rhi", "issr"}
+    assert out1["issr"].name == "issr"
 
-    assert out.attrs["humidity_scaling_name"] == "exponential_boost"
-    assert out.attrs["humidity_scaling_formula"] == "rhi -> (rhi / rhi_adj) ^ rhi_boost_exponent"
-    assert out.attrs["humidity_scaling_rhi_adj"] == 0.97
-    assert out.attrs["humidity_scaling_rhi_boost_exponent"] == 1.7
-    assert out.attrs["humidity_scaling_clip_upper"] == 1.7
+    assert out1.attrs["humidity_scaling_name"] == "exponential_boost"
+    assert out1.attrs["humidity_scaling_formula"] == "rhi -> (rhi / rhi_adj) ^ rhi_boost_exponent"
+    assert out1.attrs["humidity_scaling_rhi_adj"] == 0.97
+    assert out1.attrs["humidity_scaling_rhi_boost_exponent"] == 1.7
+    assert out1.attrs["humidity_scaling_clip_upper"] == 1.7
 
-    assert out.attrs["description"] == "Ice super-saturated regions"
-    assert "pycontrails_version" in out.attrs
-    assert "met_source" in out.attrs
+    assert "pycontrails_version" in out1.attrs
+    assert out1.attrs["met_source_provider"] == "ECMWF"
+    assert out1.attrs["met_source_dataset"] == "ERA5"
+    assert out1.attrs["met_source_product"] == "REANALYSIS"
 
     # Pin some counts
-    vals, counts = np.unique(out.data, return_counts=True)
+    vals, counts = np.unique(out1.data["issr"], return_counts=True)
     np.testing.assert_array_equal(vals, [0, 1])
     np.testing.assert_array_equal(counts, [563, 157])
 
     met_copy = met_issr.copy()
     del met_copy.data["air_temperature"]
-    out = model.eval(source=met_copy)
+    out2 = model.eval(source=met_copy)
 
     # Important: if specific_humidity included in model input, it will NOT
     # undergo humidity scaling. This is why the counts below are lower.
-    assert "humidity_scaling" not in out.attrs
-    assert isinstance(out, MetDataArray)
+    assert "humidity_scaling" not in out2.attrs
+    assert isinstance(out2, MetDataset)
 
     # Pin some counts
-    vals, counts = np.unique(out.data, return_counts=True)
+    vals, counts = np.unique(out2.data["issr"], return_counts=True)
     np.testing.assert_array_equal(vals, [0, 1])
     np.testing.assert_array_equal(counts, [587, 133])
 
@@ -79,13 +81,22 @@ def test_SAC_met_source(met_issr: MetDataset) -> None:
     model = SAC(met_issr, humidity_scaling=ConstantHumidityScaling())
     out1 = model.eval()
 
-    assert isinstance(out1, MetDataArray)
-    assert isinstance(out1.data, xr.DataArray)
+    assert isinstance(out1, MetDataset)
+    assert isinstance(out1.data, xr.Dataset)
     assert isinstance(model.met, MetDataset)
-    assert out1.name == "sac"
+    assert set(out1.data) == {
+        "G",
+        "T_sat_liquid",
+        "rhi",
+        "rh_critical_sac",
+        "specific_humidity",
+        "rh",
+        "sac",
+        "air_temperature",
+    }
 
     # Pin some counts
-    vals, counts = np.unique(out1.data, return_counts=True)
+    vals, counts = np.unique(out1.data["sac"], return_counts=True)
     np.testing.assert_array_equal(vals, [0, 1])
     np.testing.assert_array_equal(counts, [351, 369])
 
@@ -94,13 +105,12 @@ def test_SAC_met_source(met_issr: MetDataset) -> None:
     met_copy.data["engine_efficiency"] = 0.35
     out2 = model.eval(source=met_copy)
 
-    assert isinstance(out2, MetDataArray)
-    assert out2.name == "sac"
-    assert np.all(model.source.data["engine_efficiency"].values == 0.35)
+    assert isinstance(out2, MetDataset)
+    assert np.all(out2.data["engine_efficiency"] == 0.35)
 
     # Pin some counts
     # Values are now different because humidity was not scaled
-    vals, counts = np.unique(out2.data, return_counts=True)
+    vals, counts = np.unique(out2.data["sac"], return_counts=True)
     np.testing.assert_array_equal(vals, [0, 1])
     np.testing.assert_array_equal(counts, [340, 380])
 
@@ -112,7 +122,7 @@ def test_SAC_with_nan(met_issr: MetDataset) -> None:
     met.data["specific_humidity"][4, 3, 2, 1] = np.nan
 
     model = SAC(met, humidity_scaling=ExponentialBoostHumidityScaling())
-    out = model.eval()
+    out = model.eval()["sac"]
     np.testing.assert_array_equal(np.nonzero(np.isnan(out.values)), [[4], [3], [2], [1]])
 
     actual = np.unique(out.data)
@@ -129,23 +139,24 @@ def test_PCR_grid(met_issr: MetDataset) -> None:
     model = PCR(met_issr, humidity_scaling=ConstantHumidityScaling())
     out1 = model.eval()
 
-    assert isinstance(out1, MetDataArray)
-    assert isinstance(out1.data, xr.DataArray)
+    assert isinstance(out1, MetDataset)
+    assert isinstance(out1.data, xr.Dataset)
     assert isinstance(model.met, MetDataset)
-    assert out1.name == "pcr"
 
     assert out1.attrs.pop("pycontrails_version")
     assert out1.attrs == {
-        "description": "Persistent contrail regions",
         "humidity_scaling_name": "constant_scale",
         "humidity_scaling_formula": "rhi -> rhi / rhi_adj",
         "humidity_scaling_rhi_adj": 0.97,
-        "met_source": "ERA5",
+        "met_source_provider": "ECMWF",
+        "met_source_dataset": "ERA5",
+        "met_source_product": "REANALYSIS",
         "engine_efficiency": 0.3,
+        "rhi_adj": 0.97,
     }
 
     # Pin some counts
-    vals, counts = np.unique(out1.data, return_counts=True)
+    vals, counts = np.unique(out1.data["pcr"], return_counts=True)
     np.testing.assert_array_equal(vals, [0, 1])
     np.testing.assert_array_equal(counts, [607, 113])
 
@@ -154,18 +165,11 @@ def test_PCR_grid(met_issr: MetDataset) -> None:
     met_copy.data["engine_efficiency"] = 0.35
     out2 = model.eval(source=met_copy)
 
-    assert isinstance(out2, MetDataArray)
-    assert out2.name == "pcr"
-    assert np.all(model.source.data["engine_efficiency"].values == 0.35)
-
-    assert out2.attrs.pop("pycontrails_version")
-    assert out2.attrs == {
-        "description": "Persistent contrail regions",
-        "met_source": "ERA5",
-    }
+    assert isinstance(out2, MetDataset)
+    assert np.all(out2.data["engine_efficiency"] == 0.35)
 
     # Pin some counts
-    vals, counts = np.unique(out2.data, return_counts=True)
+    vals, counts = np.unique(out2.data["pcr"], return_counts=True)
     np.testing.assert_array_equal(vals, [0, 1])
     np.testing.assert_array_equal(counts, [622, 98])
 
@@ -175,7 +179,7 @@ def test_era5_as_expected(met_era5_fake: MetDataset) -> None:
 
     # created with exactly 20% is ISSR
     assert not originates_from_ecmwf(met_era5_fake)
-    issr = ISSR(met=met_era5_fake).eval()
+    issr = ISSR(met=met_era5_fake).eval()["issr"]
     assert isinstance(issr, MetDataArray)
     assert issr.proportion == 0.2
 
@@ -189,7 +193,7 @@ def test_era5_as_expected(met_era5_fake: MetDataset) -> None:
 
     # ISSR and PCR do not completely agree for this data
     # In particular, on levels 150, 175, and 200, the two diverge
-    pcr = PCR(met_era5_fake).eval()
+    pcr = PCR(met_era5_fake).eval()["pcr"]
     assert isinstance(pcr, MetDataArray)
     pcr_low = pcr.data.isel(level=slice(3, None))
     issr_low = issr.data.isel(level=slice(3, None))
@@ -304,14 +308,14 @@ def test_ISSR_flight_fill_value(met_era5_fake: MetDataset, flight_fake: Flight) 
 
     # null result (default fill value)
     out = ISSR(met_era5_fake).eval(source=flight_fake)
-    assert np.isnan(out["issr"][low_altitude_waypoints]).all()
-    assert np.isfinite(out["issr"][~low_altitude_waypoints]).all()
+    assert np.all(np.isnan(out["issr"][low_altitude_waypoints]))
+    assert np.all(np.isfinite(out["issr"][~low_altitude_waypoints]))
 
     # When we pass in a custom fill_value here, we no longer encounter nan
     # keep the interpolation fill value reasonable here; else some of our
     # thermo functions will encounter divide by zero issues
     out2 = ISSR(met_era5_fake, interpolation_fill_value=180).eval(source=flight_fake)
-    assert np.isfinite(out2["issr"]).all()
+    assert np.all(np.isfinite(out2["issr"]))
 
 
 def test_ISSR_flight_interp(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
@@ -319,11 +323,11 @@ def test_ISSR_flight_interp(met_era5_fake: MetDataset, flight_fake: Flight) -> N
 
     # test fake method
     with pytest.raises(ValueError, match="Method 'fake' is not defined"):
-        _ = ISSR(met_era5_fake, interpolation_method="fake").eval(source=flight_fake)
+        ISSR(met_era5_fake, interpolation_method="fake").eval(source=flight_fake)
 
     # test bounds error
     with pytest.raises(ValueError, match="xi is out of bounds"):
-        _ = ISSR(met_era5_fake, interpolation_bounds_error=True).eval(source=flight_fake)
+        ISSR(met_era5_fake, interpolation_bounds_error=True).eval(source=flight_fake)
 
     # default interpolation method is linear
     out2 = ISSR(met_era5_fake).eval(source=flight_fake)
@@ -588,7 +592,7 @@ def test_ISSR_grid_variable_q_method(met_issr: MetDataset, q_method: None | str)
     )
 
     model = ISSR(met_issr, interpolation_q_method=q_method)
-    out = model.eval(source)
+    out = model.eval(source)["issr"]
 
     assert isinstance(out, MetDataArray)
     if q_method is None:

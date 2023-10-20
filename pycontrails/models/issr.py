@@ -56,12 +56,14 @@ class ISSR(Model):
     >>> # Instantiate and run model
     >>> scaling = ConstantHumidityScaling(rhi_adj=0.98)
     >>> model = ISSR(met, humidity_scaling=scaling)
-    >>> issr = model.eval()
-    >>> issr.proportion  # Get proportion of values with ice supersaturation
-    0.114140917963
+    >>> out1 = model.eval()
+    >>> issr1 = out1["issr"]
+    >>> issr1.proportion  # Get proportion of values with ice supersaturation
+    0.114140
 
     >>> # Run with a lower threshold
-    >>> issr2 = ISSR(met, rhi_threshold=0.95, humidity_scaling=scaling).eval()
+    >>> out2 = model.eval(rhi_threshold=0.95)
+    >>> issr2 = out2["issr"]
     >>> issr2.proportion
     0.146647
     """
