@@ -527,16 +527,18 @@ class GFSForecast(datalib.MetDataSource):
         step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
 
         # open file for each variable short name individually
-        ds = xr.Dataset()
+        ds: xr.Dataset | None = None
         for variable in self.variables:
-            # radiation data is not available in the 0th step
-            if step == 0 and variable in [
+            # Radiation data is not available in the 0th step
+            is_radiation_step_zero = step == 0 and variable in (
                 TOAUpwardShortwaveRadiation,
                 TOAUpwardLongwaveRadiation,
-            ]:
+            )
+
+            if is_radiation_step_zero:
                 LOG.debug(
-                    "Radiation data is not provided for the 0th step in GFS. Setting to np.nan"
-                    " using Visibility variable"
+                    "Radiation data is not provided for the 0th step in GFS. "
+                    "Setting to np.nan using Visibility variable"
                 )
                 v = Visibility
             else:
@@ -548,23 +550,22 @@ class GFSForecast(datalib.MetDataSource):
                 engine="cfgrib",
             )
 
-            if not len(ds):
+            if ds is None:
                 ds = tmpds
             else:
                 ds[v.short_name] = tmpds[v.short_name]
 
             # set all radiation data to np.nan in the 0th step
-            if step == 0 and variable in [
-                TOAUpwardShortwaveRadiation,
-                TOAUpwardLongwaveRadiation,
-            ]:
+            if is_radiation_step_zero:
                 ds = ds.rename({Visibility.short_name: variable.short_name})
                 ds[variable.short_name] = np.nan
+
+        assert ds is not None, "No variables were loaded from grib file"
 
         # for pressure levels, need to rename "level" field and downselect
         if self.pressure_levels != [-1]:
             ds = ds.rename({"isobaricInhPa": "level"})
-            ds = ds.sel(dict(level=self.pressure_levels))
+            ds = ds.sel(level=self.pressure_levels)
 
         # for single level, and singular pressure levels, add the level dimension
         if len(self.pressure_levels) == 1:
