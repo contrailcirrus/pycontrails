@@ -387,11 +387,11 @@ class ERA5(ECMWFAPI):
         # run the same ECMWF-specific processing on the dataset
         mds = self._process_dataset(ds, **kwargs)
 
-        self.set_met_source_metadata(mds)
+        self.set_metadata(mds)
         return mds
 
     @overrides
-    def set_met_source_metadata(self, ds: xr.Dataset | MetDataset) -> None:
+    def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         if self.product_type == "reanalysis":
             product = "reanalysis"
         elif self.product_type.startswith("ensemble"):

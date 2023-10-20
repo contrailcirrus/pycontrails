@@ -186,11 +186,11 @@ class IFS(datalib.MetDataSource):
         # harmonize variable names
         ds = met.standardize_variables(ds, self.variables)
 
-        self.set_met_source_metadata(ds)
+        self.set_metadata(ds)
         return met.MetDataset(ds, **kwargs)
 
     @overrides
-    def set_met_source_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
+    def set_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
         ds.attrs.update(
             provider="ECMWF",
             dataset="IFS",
