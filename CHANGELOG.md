@@ -41,6 +41,7 @@ This release includes a number of breaking changes and new features. If upgradin
 - Round unwieldy floating point numbers in `GeoVectorDataset._display_attrs`.
 - Remove the `ecmwflibs` package from the `ecmwf` optional dependencies.
 - Add NPY to `ruff` rules.
+- Add convenience `MetDataset.standardize_variables` method.
 
 ## v0.47.3
 
