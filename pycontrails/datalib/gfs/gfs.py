@@ -514,12 +514,8 @@ class GFSForecast(datalib.MetDataSource):
 
             ds = self._open_gfs_dataset(temp_grib_filename, t)
 
-            # write out data to temp, close grib file
-            temp_nc_filename = stack.enter_context(temp_file())
-            ds.to_netcdf(path=temp_nc_filename, mode="w")
-
-            # put each hourly file into cache
-            self.cachestore.put(temp_nc_filename, self.create_cachepath(t))
+            cache_path = self.create_cachepath(t)
+            ds.to_netcdf(cache_path)
 
     def _open_gfs_dataset(self, filepath: str | pathlib.Path, t: datetime) -> xr.Dataset:
         """Open GFS grib file for one forecast timestep.
