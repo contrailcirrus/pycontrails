@@ -117,7 +117,7 @@ def test_parse_pressure_levels() -> None:
     assert pl == [-1, 200]
 
     # throw error if not supported
-    with pytest.raises(ValueError, match="not a valid pressure level"):
+    with pytest.raises(ValueError, match="Pressure level 300 is not supported."):
         datalib.parse_pressure_levels([100, 200, 300], supported=[100, 200])
 
 
@@ -191,13 +191,8 @@ def test_parse_grid() -> None:
     """Test grid parsing."""
 
     # raise value error if not supported
-    with pytest.raises(ValueError, match="input must be one of"):
+    with pytest.raises(ValueError, match="Grid input 0.3 must be one of"):
         datalib.parse_grid(0.3, supported=[0.25, 0.5])
-
-
-def test_met_datasource() -> None:
-    """Test abstract MetDataSource class."""
-    pass
 
 
 def test_round_hour() -> None:
