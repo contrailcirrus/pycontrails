@@ -398,7 +398,6 @@ def _rad_instantaneous_to_accumulated(ds: xr.Dataset) -> xr.Dataset:
             raise ValueError(msg)
 
         # Convert from W m**-2 to J m**-2
-        da.attrs["units"] = "J m**-2"
-        ds[name] = da * 3600.0
+        ds[name] = da.assign_attrs(units="J m**-2") * 3600.0
 
     return ds
