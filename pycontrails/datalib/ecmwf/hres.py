@@ -648,6 +648,7 @@ class HRES(ECMWFAPI):
             provider="ECMWF",
             dataset="HRES",
             product=product,
+            hres_accumulated=True,
         )
 
     def _open_and_cache(self, xr_kwargs: dict[str, Any]) -> xr.Dataset:
