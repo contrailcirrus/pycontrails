@@ -1115,6 +1115,20 @@ class MetDataset(MetBase):
         }
         return self._get_attr_template("product", supported, examples)
 
+    def standardize_variables(self, variables: Iterable[MetVariable]) -> None:
+        """Standardize variables **in-place**.
+
+        Parameters
+        ----------
+        variables : Iterable[MetVariable]
+            Data source variables
+
+        See Also
+        --------
+        :func:`standardize_variables`
+        """
+        standardize_variables(self, variables)
+
     @classmethod
     def from_coords(
         cls,

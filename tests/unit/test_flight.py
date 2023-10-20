@@ -212,7 +212,7 @@ def test_flight_validate(flight_data: pd.DataFrame) -> None:
         Flight(df)
 
 
-@pytest.mark.filterwarnings("ignore:invalid value encountered in true_divide:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:invalid value encountered in:RuntimeWarning")
 def test_flight_fitting() -> None:
     """Test Flight.fit_altitude()."""
 
