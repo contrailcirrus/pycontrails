@@ -1,7 +1,7 @@
 
 # Changelog
 
-## v0.47.3 (unreleased)
+## v0.47.3
 
 ### Fixes
 
