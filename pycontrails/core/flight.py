@@ -27,12 +27,26 @@ if TYPE_CHECKING:
 
 
 class FlightPhase(enum.IntEnum):
-    """Flight phase enumeration."""
+    """Flight phase enumeration.
 
+    Use :func:`segment_phase` or :meth:`Flight.segment_phase` to determine flight phase.
+    """
+
+    #: Waypoints at which the flight is in a climb phase
     CLIMB = enum.auto()
+
+    #: Waypoints at which the flight is in a cruise phase
     CRUISE = enum.auto()
+
+    #: Waypoints at which the flight is in a descent phase
     DESCENT = enum.auto()
+
+    #: Waypoints at which the flight is not in a climb, cruise, or descent phase.
+    #: In practice, this category is used for waypoints at which the ROCD resembles
+    #: that of a cruise phase, but the altitude is below the minimum cruise altitude.
     LEVEL_FLIGHT = enum.auto()
+
+    #: Waypoints at which the ROCD is not defined.
     NAN = enum.auto()
 
 
@@ -1810,8 +1824,8 @@ def segment_phase(
     cruise = (
         (rocd < threshold_rocd) & (rocd > -threshold_rocd) & (altitude_ft > min_cruise_altitude_ft)
     )
-    climb = ~cruise & (rocd > 0)
-    descent = ~cruise & (rocd < 0)
+    climb = ~cruise & (rocd > 0.0)
+    descent = ~cruise & (rocd < 0.0)
     level_flight = ~(nan | cruise | climb | descent)
 
     phase = np.empty(rocd.shape, dtype=np.uint8)
