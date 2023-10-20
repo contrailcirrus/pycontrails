@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 LOG = logging.getLogger(__name__)
@@ -92,4 +93,10 @@ class ECMWFAPI(datalib.MetDataSource):
 
         for t, ds_t in dataset.groupby("time", squeeze=False):
             cache_path = self.create_cachepath(pd.Timestamp(t).to_pydatetime())
+            if os.path.exists(cache_path):
+                LOG.debug(f"Overwriting existing cache file {cache_path}")
+                # This may raise a PermissionError if the file is already open
+                # If this is the case, the user should explicitly close the file and try again
+                os.remove(cache_path)
+
             ds_t.to_netcdf(cache_path)
