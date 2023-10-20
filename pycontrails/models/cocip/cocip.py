@@ -150,13 +150,13 @@ class Cocip(Model):
 
     **Outputs**
 
-    NaN values may appear in model output. Specifically, `np.nan` values are used to indicate:
+    NaN values may appear in model output. Specifically, ``np.nan`` values are used to indicate:
 
     - Flight waypoint or contrail waypoint is not contained with the :attr:`met` domain.
     - The variable was NOT computed during the model evaluation. For example, at flight waypoints
-      not producing any persistent contrails, "radiative" variables (`rsr`, `olr`, `rf_sw`,
-      `rf_lw`, `rf_net`) are not computed. Consequently, the corresponding values in the output
-      of :meth:`eval` are NaN. One exception to this rule is found on `ef` (energy forcing)
+      not producing any persistent contrails, "radiative" variables (``rsr``, ``olr``, ``rf_sw``,
+      ``rf_lw``, ``rf_net``) are not computed. Consequently, the corresponding values in the output
+      of :meth:`eval` are NaN. One exception to this rule is found on ``ef`` (energy forcing)
       `contrail_age` predictions. For these two "cumulative" variables, waypoints not producing
       any persistent contrails are assigned 0 values.
 
@@ -232,7 +232,7 @@ class Cocip(Model):
 
     #: Additional met variables used to support outputs
     #: .. versionchanged:: 0.48.0
-    #:     Moved Geopotential from :attr:`required_met_variables` to :attr:`optional_met_variables`
+    #: Moved Geopotential from :attr:`required_met_variables` to :attr:`optional_met_variables`
     optional_met_variables = (
         (met_var.Geopotential, met_var.GeopotentialHeight),
         (ecmwf.CloudAreaFractionInLayer, gfs.TotalCloudCoverIsobaric),
@@ -242,22 +242,22 @@ class Cocip(Model):
     met: MetDataset
     met_required = True
 
-    #: Radiation data formatted as a MetDataset at a single pressure level [-1]
+    #: Radiation data formatted as a :class:`MetDataset` at a single pressure level [-1]
     rad: MetDataset
 
     #: Last Flight modeled in :meth:`eval`
     source: Flight | Fleet
 
-    #: List of GeoVectorDataset contrail objects - one for each timestep
+    #: List of :class:`GeoVectorDataset` contrail objects - one for each timestep
     contrail_list: list[GeoVectorDataset]
 
     #: Contrail evolution output from model. Set to None when no contrails are formed.
     contrail: pd.DataFrame | None
 
-    #: xr.Dataset reporesentation of contrail evolution.
+    #: :class:`xr.Dataset` representation of contrail evolution.
     contrail_dataset: xr.Dataset | None
 
-    #: Array of np.datetime64 time steps for contrail evolution
+    #: Array of :class:`np.datetime64` time steps for contrail evolution
     timesteps: npt.NDArray[np.datetime64]
 
     #: Parallel copy of flight waypoints after SAC filter applied
