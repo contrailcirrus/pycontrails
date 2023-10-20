@@ -428,7 +428,7 @@ class GFSForecast(datalib.MetDataSource):
         return self._process_dataset(ds, **kwargs)
 
     @overrides
-    def set_met_source_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
+    def set_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
         ds.attrs.update(
             provider="NCEP",
             dataset="GFS",
@@ -593,7 +593,7 @@ class GFSForecast(datalib.MetDataSource):
 
         kwargs.setdefault("cachestore", self.cachestore)
 
-        self.set_met_source_metadata(ds)
+        self.set_metadata(ds)
         return met.MetDataset(ds, **kwargs)
 
 

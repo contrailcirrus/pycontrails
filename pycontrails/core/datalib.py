@@ -527,7 +527,7 @@ class MetDataSource(abc.ABC):
         """
 
     @abc.abstractmethod
-    def set_met_source_metadata(self, ds: xr.Dataset | MetDataset) -> None:
+    def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         """Set met source metadata on ``ds.attrs``.
 
         This is called within the :meth:`open_metdataset` method to set metadata
@@ -535,7 +535,7 @@ class MetDataSource(abc.ABC):
 
         Parameters
         ----------
-        met : xr.Dataset | MetDataset
+        ds : xr.Dataset | MetDataset
             Dataset to set metadata on. Mutated in place.
         """
 

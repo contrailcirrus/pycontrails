@@ -550,7 +550,7 @@ def test_era5_set_met_source_metadata(product_type: str, variables: str) -> None
     )
 
     ds = xr.Dataset()
-    era5.set_met_source_metadata(ds)
+    era5.set_metadata(ds)
 
     assert ds.attrs["provider"] == "ECMWF"
     assert ds.attrs["dataset"] == "ERA5"
@@ -586,7 +586,7 @@ def test_hres_set_met_source_metadata(field_type: str, variables: str) -> None:
     )
 
     ds = xr.Dataset()
-    era5.set_met_source_metadata(ds)
+    era5.set_metadata(ds)
 
     assert ds.attrs["provider"] == "ECMWF"
     assert ds.attrs["dataset"] == "HRES"
