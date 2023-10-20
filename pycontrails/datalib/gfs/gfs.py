@@ -288,32 +288,6 @@ class GFSForecast(datalib.MetDataSource):
         return hashlib.sha1(bytes(hashstr, "utf-8")).hexdigest()
 
     @property
-    def step_offset(self) -> int:
-        """Difference between :attr:`forecast_time` and first timestep.
-
-        Returns
-        -------
-        int
-            Number of steps to offset in order to retrieve data starting from input time.
-            Returns 0 if :attr:`timesteps` is empty when loading from :attr:`paths`.
-        """
-        if self.timesteps:
-            return int((self.timesteps[0] - self.forecast_time).total_seconds() // 3600)
-
-        return 0
-
-    @property
-    def steps(self) -> list[int]:
-        """Forecast steps from :attr:`forecast_time` corresponding within input :attr:`time`.
-
-        Returns
-        -------
-        list[int]
-            List of forecast steps relative to :attr:`forecast_time`
-        """
-        return [self.step_offset + i for i in range(len(self.timesteps))]
-
-    @property
     def _grid_string(self) -> str:
         """Return filename string for grid spacing."""
         if self.grid == 0.25:
@@ -378,7 +352,7 @@ class GFSForecast(datalib.MetDataSource):
         datestr = self.forecast_time.strftime("%Y%m%d-%H")
 
         # get step relative to forecast forecast_time
-        step = self.step_offset + self.timesteps.index(t)
+        step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
 
         # single level or pressure level
         suffix = f"gfs{'sl' if self.pressure_levels == [-1] else 'pl'}{self.grid}"
@@ -492,7 +466,7 @@ class GFSForecast(datalib.MetDataSource):
             raise ValueError("Cachestore is required to download data")
 
         # construct filenames for each file
-        step = self.step_offset + self.timesteps.index(t)
+        step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
         filename = self.filename(step)
         aws_key = f"{self.forecast_path}/{filename}"
 
@@ -536,7 +510,7 @@ class GFSForecast(datalib.MetDataSource):
         LOG.debug(f"Translating {filepath} for timestep {str(t)} into netcdf")
 
         # get step for timestep
-        step = self.step_offset + self.timesteps.index(t)
+        step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
 
         # open file for each variable short name individually
         ds = xr.Dataset()
