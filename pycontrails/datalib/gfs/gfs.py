@@ -72,8 +72,8 @@ class GFSForecast(datalib.MetDataSource):
         Specify latitude/longitude grid spacing in data.
         Defaults to 0.25.
     forecast_time : `DatetimeLike`, optional
-        Specify forecast run by runtime.
-        Defaults to None.
+        Specify forecast run by runtime. If None (default), the forecast time
+        is set to the 6 hour floor of the first timestep.
     cachestore : :class:`cache.CacheStore` | None, optional
         Cache data store for staging data files.
         Defaults to :class:`cache.DiskCacheStore`.
@@ -199,15 +199,13 @@ class GFSForecast(datalib.MetDataSource):
             self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 6)
 
         # if no specific forecast is requested, set the forecast time using timesteps
-        elif self.timesteps:
+        else:
             # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) for forecast_time
             self.forecast_time = datalib.round_hour(self.timesteps[0], 6)
 
-        # when no forecast_time or time input, forecast_time is defined in _open_and_cache
-
     def __repr__(self) -> str:
         base = super().__repr__()
-        return f"{base}\n\tForecast time: {getattr(self, 'forecast_time', '')}"
+        return f"{base}\n\tForecast time: {self.forecast_time}"
 
     @property
     def supported_pressure_levels(self) -> list[int]:
@@ -299,7 +297,7 @@ class GFSForecast(datalib.MetDataSource):
             return "0p25"
         if self.grid == 0.5:
             return "0p50"
-        if self.grid == 1:
+        if self.grid == 1.0:
             return "1p00"
         raise ValueError(f"Unsupported grid spacing {self.grid}. Must be one of 0.25, 0.5, or 1.0.")
 
