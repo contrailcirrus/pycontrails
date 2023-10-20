@@ -234,15 +234,6 @@ class HRES(ECMWFAPI):
     #: Forecast run time, either specified or assigned by the closest previous forecast run
     forecast_time: datetime
 
-    #: User provided ``ECMWFService`` url
-    url: str | None
-
-    #: User provided ``ECMWFService`` key
-    key: str | None
-
-    #: User provided ``ECMWFService`` email
-    email: str | None
-
     __marker = object()
 
     def __init__(
@@ -271,14 +262,11 @@ class HRES(ECMWFAPI):
                 pycontrails_optional_package="ecmwf",
             )
 
-        # constants
         # ERA5 now delays creating the server attribute until it is needed to download
         # from CDS. We could do the same here.
-        self.url = url
-        self.key = key
-        self.email = email
-        self.server = ECMWFService("mars", url=self.url, key=self.key, email=self.email)
+        self.server = ECMWFService("mars", url=url, key=key, email=email)
         self.paths = paths
+
         if cachestore is self.__marker:
             cachestore = cache.DiskCacheStore()
         self.cachestore = cachestore
