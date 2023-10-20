@@ -1,6 +1,5 @@
 """Test thermo formulas as needed for SAC calculations."""
 
-
 import numpy as np
 import pytest
 
