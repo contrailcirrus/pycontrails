@@ -6,6 +6,7 @@
 .DS_Store
 .idea
 _main_debug.py
+debug.ipynb
 *.swp
 *.swo
 
@@ -55,6 +56,7 @@ docs/examples/airports
 # data
 .ecmwf
 *.nc
+*.grib
 bada/
 
 # docker
