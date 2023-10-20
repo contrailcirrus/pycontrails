@@ -315,7 +315,7 @@ class GFSForecast(datalib.MetDataSource):
         forecast_hour = str(self.forecast_time.hour).zfill(2)
         return f"gfs.{datestr}/{forecast_hour}/atmos"
 
-    def filename(self, step: int) -> str:
+    def filename(self, t: datetime) -> str:
         """Construct grib filename to retrieve from GFS bucket.
 
         String template:
@@ -328,8 +328,8 @@ class GFSForecast(datalib.MetDataSource):
 
         Parameters
         ----------
-        step : int
-            Integer step relative to forecast time
+        t : datetime
+            Timestep to download
 
         Returns
         -------
@@ -340,8 +340,10 @@ class GFSForecast(datalib.MetDataSource):
         ----------
         - https://www.nco.ncep.noaa.gov/pmb/products/gfs/
         """
+        step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
+        step_hour = str(step).zfill(3)
         forecast_hour = str(self.forecast_time.hour).zfill(2)
-        return f"gfs.t{forecast_hour}z.pgrb2.{self._grid_string}.f{str(step).zfill(3)}"
+        return f"gfs.t{forecast_hour}z.pgrb2.{self._grid_string}.f{step_hour}"
 
     @overrides
     def create_cachepath(self, t: datetime) -> str:
@@ -474,8 +476,7 @@ class GFSForecast(datalib.MetDataSource):
             raise ValueError("Cachestore is required to download data")
 
         # construct filenames for each file
-        step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
-        filename = self.filename(step)
+        filename = self.filename(t)
         aws_key = f"{self.forecast_path}/{filename}"
 
         # Open ExitStack to control temp_file context manager
