@@ -22,8 +22,7 @@ def test_GFSForecast_init() -> None:
     times = ("2022-03-01T03:00:00", "2022-03-01T06:30:00")
     gfs = GFSForecast(times, variables=["air_temperature"], pressure_levels=[300, 250])
     assert gfs.forecast_time == datetime(2022, 3, 1, 0)
-    assert gfs.step_offset == 3
-    assert gfs.steps == [3, 4, 5, 6, 7]
+    assert gfs.timesteps == [datetime(2022, 3, 1, h) for h in range(3, 8)]
     assert gfs.variables == [AirTemperature]
     assert gfs.grid == 0.25
 
@@ -49,8 +48,7 @@ def test_GFSForecast_init() -> None:
     gfs = GFSForecast(times, variables=["air_temperature"], pressure_levels=[300, 250], grid=0.5)
     assert gfs.forecast_time == datetime(2022, 3, 1, 0)
     assert gfs.grid == 0.5
-    assert gfs.step_offset == 3
-    assert gfs.steps == [3, 4, 5, 6, 7]
+    assert gfs.timesteps == [datetime(2022, 3, 1, h) for h in range(3, 10, 3)]
     assert gfs.variables == [AirTemperature]
     assert gfs.grid == 0.5
 
@@ -79,21 +77,20 @@ def test_GFSForecast_grid_string() -> None:
     assert gfs._grid_string == "1p00"
 
 
-def test_GFSForecast_steps() -> None:
-    """Test GFSForecast steps property."""
+def test_GFSForecast_timesteps() -> None:
+    """Test GFSForecast timesteps property."""
 
     times = ("2022-03-01T00:00:00", "2022-03-01T03:00:00")
     gfs = GFSForecast(times, variables="t", pressure_levels=[300, 250])
-    assert gfs.steps == [0, 1, 2, 3]
+    assert gfs.timesteps == [datetime(2022, 3, 1, h) for h in range(0, 4)]
 
     times = ("2022-03-01T02:00:00", "2022-03-01T07:00:00")
-    gfs = GFSForecast(times, variables="t", pressure_levels=[300, 250])
-    assert gfs.steps == [2, 3, 4, 5, 6, 7]
+    gfs = GFSForecast(times, variables="t", pressure_levels=[300, 250], grid=1.0)
+    assert gfs.timesteps == [datetime(2022, 3, 1, h) for h in range(0, 10, 3)]
 
-    # from the 06 forecast
-    times = ("2022-03-01T06:00:00", "2022-03-01T08:00:00")
-    gfs = GFSForecast(times, variables="t", pressure_levels=[300, 250])
-    assert gfs.steps == [0, 1, 2]
+    times = ("2022-03-01T02:00:00", "2022-03-01T07:00:00")
+    gfs = GFSForecast(times, variables="t", pressure_levels=[300, 250], grid=0.25)
+    assert gfs.timesteps == [datetime(2022, 3, 1, h) for h in range(2, 8)]
 
 
 def test_GFSForecast_forecast_path() -> None:
@@ -103,21 +100,37 @@ def test_GFSForecast_forecast_path() -> None:
     assert gfs.forecast_path == "gfs.20220301/12/atmos"
 
 
-def test_GFSForecast_filenames() -> None:
+def test_GFSForecast_filenames_0p25() -> None:
     """Test GFSForecast filename construction."""
 
     times = ("2022-03-01T06:00:00", "2022-03-01T08:00:00")
     gfs = GFSForecast(time=times, variables="t", pressure_levels=200)
+    assert len(gfs.timesteps) == 3
 
-    # get filenames
-    filename = gfs.filename(gfs.steps[0])
+    # check filenames
+    filename = gfs.filename(gfs.timesteps[0])
     assert filename == "gfs.t06z.pgrb2.0p25.f000"
 
-    filename = gfs.filename(gfs.steps[1])
+    filename = gfs.filename(gfs.timesteps[1])
     assert filename == "gfs.t06z.pgrb2.0p25.f001"
 
-    filename = gfs.filename(gfs.steps[2])
+    filename = gfs.filename(gfs.timesteps[2])
     assert filename == "gfs.t06z.pgrb2.0p25.f002"
+
+
+def test_GFSForecast_filenames_1p00() -> None:
+    """Test GFSForecast filename construction."""
+
+    times = ("2022-03-01T06:00:00", "2022-03-01T08:00:00")
+    gfs = GFSForecast(time=times, variables="t", pressure_levels=200, grid=1)
+    assert len(gfs.timesteps) == 2
+
+    # check filenames
+    filename = gfs.filename(gfs.timesteps[0])
+    assert filename == "gfs.t06z.pgrb2.1p00.f000"
+
+    filename = gfs.filename(gfs.timesteps[1])
+    assert filename == "gfs.t06z.pgrb2.1p00.f003"
 
 
 def test_GFSForecast_hash() -> None:
