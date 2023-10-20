@@ -58,7 +58,7 @@ def test_model_output_to_netcdf(
         assert "pycontrails_version" in ds.attrs
         assert ds.attrs["met_source_provider"] == "ECMWF"
         assert ds.attrs["met_source_dataset"] == "ERA5"
-        assert ds.attrs["met_source_product"] == "REANALYSIS"
+        assert ds.attrs["met_source_product"] == "reanalysis"
         assert ds.attrs["humidity_scaling_name"] == "constant_scale"
         assert ds.attrs["humidity_scaling_formula"] == "rhi -> rhi / rhi_adj"
         assert ds.attrs["humidity_scaling_rhi_adj"] == 0.97

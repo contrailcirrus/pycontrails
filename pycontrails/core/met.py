@@ -1037,7 +1037,7 @@ class MetDataset(MetBase):
             vector.attrs.update({str(k): v for k, v in self.attrs.items()})
         return vector
 
-    def _get_attr_template(
+    def _get_pycontrails_attr_template(
         self,
         name: str,
         supported: tuple[str, ...],
@@ -1045,7 +1045,7 @@ class MetDataset(MetBase):
     ) -> str:
         """Look up an attribute with a custom error message."""
         try:
-            out = self.attrs[name].upper()
+            out = self.attrs[name]
         except KeyError as e:
             msg = f"Specify '{name}' attribute on underlying dataset."
 
@@ -1077,7 +1077,7 @@ class MetDataset(MetBase):
         """
         supported = ("ECMWF", "NCEP")
         examples = {"ECMWF": "data provided by ECMWF", "NCEP": "GFS data"}
-        return self._get_attr_template("provider", supported, examples)
+        return self._get_pycontrails_attr_template("provider", supported, examples)
 
     @property
     def dataset_attr(self) -> str:
@@ -1095,7 +1095,7 @@ class MetDataset(MetBase):
             "HRES": "ECMWF HRES forecast data",
             "GFS": "NCEP GFS forecast data",
         }
-        return self._get_attr_template("dataset", supported, examples)
+        return self._get_pycontrails_attr_template("dataset", supported, examples)
 
     @property
     def product_attr(self) -> str:
@@ -1104,16 +1104,16 @@ class MetDataset(MetBase):
         Returns
         -------
         str
-            Product of the data. If not one of 'FORECAST', 'ENSEMBLE', or 'REANALYSIS',
+            Product of the data. If not one of 'forecast', 'ensemble', or 'reanalysis',
             a warning is issued.
 
         """
-        supported = ("REANALYSIS", "FORECAST", "ENSEMBLE")
+        supported = ("reanalysis", "forecast", "ensemble")
         examples = {
-            "REANALYSIS": "ECMWF ERA5 reanalysis data",
-            "ENSEMBLE": "ECMWF ERA5 ensemble member data",
+            "reanalysis": "ECMWF ERA5 reanalysis data",
+            "ensemble": "ECMWF ERA5 ensemble member data",
         }
-        return self._get_attr_template("product", supported, examples)
+        return self._get_pycontrails_attr_template("product", supported, examples)
 
     def standardize_variables(self, variables: Iterable[MetVariable]) -> None:
         """Standardize variables **in-place**.

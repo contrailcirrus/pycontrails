@@ -50,7 +50,7 @@ def test_ISSR_met_source(met_issr: MetDataset) -> None:
     assert "pycontrails_version" in out1.attrs
     assert out1.attrs["met_source_provider"] == "ECMWF"
     assert out1.attrs["met_source_dataset"] == "ERA5"
-    assert out1.attrs["met_source_product"] == "REANALYSIS"
+    assert out1.attrs["met_source_product"] == "reanalysis"
 
     # Pin some counts
     vals, counts = np.unique(out1.data["issr"], return_counts=True)
@@ -150,7 +150,7 @@ def test_PCR_grid(met_issr: MetDataset) -> None:
         "humidity_scaling_rhi_adj": 0.97,
         "met_source_provider": "ECMWF",
         "met_source_dataset": "ERA5",
-        "met_source_product": "REANALYSIS",
+        "met_source_product": "reanalysis",
         "engine_efficiency": 0.3,
         "rhi_adj": 0.97,
     }
