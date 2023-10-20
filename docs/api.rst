@@ -35,6 +35,7 @@ Flight & Aircraft
     :toctree: api/
 
     Flight
+    FlightPhase
     Fuel
     JetA
     SAFBlend
