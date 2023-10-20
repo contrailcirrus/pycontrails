@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import pathlib
 from typing import Any
 
 import matplotlib.axes
@@ -213,10 +212,14 @@ def test_flight_validate(flight_data: pd.DataFrame) -> None:
         Flight(df)
 
 
+@pytest.mark.filterwarnings("ignore:invalid value encountered in true_divide:RuntimeWarning")
 def test_flight_fitting() -> None:
+    """Test Flight.fit_altitude()."""
+
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
     df.rename(columns={"altitude_baro": "altitude_ft", "timestamp": "time"}, inplace=True)
     df["time"] = df["time"].dt.tz_localize(None)
+
     flight = Flight(df[df["callsign"] == "BAW506"], drop_duplicated_times=True)
     f_copy = flight.copy()
     smoothed_flight = flight.fit_altitude()
@@ -538,24 +541,11 @@ def test_geojson_methods(fl: Flight, rng: np.random.Generator) -> None:
     assert set(coords1) == set(coords2)
 
 
-# ignoring the warnings that come with traffic
-# NOTE: this does not work on docker, so we skip
-def _is_docker() -> bool:
-    path1 = pathlib.Path("/proc/self/cgroup")
-    path2 = pathlib.Path("/.dockerenv")
-    return (path1.is_file() and any("docker" in line for line in open(path1))) or path2.is_file()
-
-
-def _is_traffic_installed() -> bool:
-    try:
-        import traffic  # noqa: F401
-    except ModuleNotFoundError:
-        return False
-    return True
-
-
-@pytest.mark.skipif(not _is_traffic_installed(), reason="Traffic is no longer optional dependency")
 def test_to_traffic(fl: Flight) -> None:
+    """Test the Flight.to_traffic() method."""
+
+    pytest.importorskip("traffic")
+
     tr = fl.to_traffic()
     # NOTE: tf and fl have inconsistent column names (time and timestamp), so just ensuring
     # the values were copied correctly on tr instantiation.
