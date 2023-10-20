@@ -1,6 +1,47 @@
 
 # Changelog
 
+## v0.48.0
+
+This release includes a number of breaking changes and new features. If upgrading from a previous version of `pycontrails`, please read the changelog carefully. Open an [issue](https://github.com/contrailcirrus/pycontrails/issues) if you experience problems.
+
+### Breaking changes
+
+- When running `Cocip` and other `pycontrails` models, the `met` and `rad` parameter must now contain predefined metadata attributes `provider`, `dataset`, and `product` describing the met source. An error will now be raised in `Cocip` if these attributes are not present.
+- Deprecate passing arbitrary `kwargs` into the `MetDataArray` constructor.
+- No longer convert accumulated radiation data to average instantaneous data in `ERA5` and `HRES` interfaces. This logic is now handled downstream by the model (e.g., `Cocip`). This change allows for more flexibility in the `rad` data passed into the model and avoids unnecessary computation in the `MetDataSource` interfaces.
+- Add new `MetDataSource.set_met_source_metadata` abstract method. This should be called within the implementing class `open_metdataset` method.
+- No longer take a finite difference in the time dimension for HRES radiation data. This is now also handled natively in `Cocip`.
+- No longer convert relative humidity from a percentage to a fraction in `ERA5` and `HRES` interfaces.
+- Require the `HRES` `stream` parameter to be one of `["oper", "enfo"]`. Require the `field_type` parameter to be one of `["fc", "pf", "cf", "an"]`.
+- Remove the `steps` and `step_offset` properties in the `GFSForecast` interface. Now the `timesteps` attribute is the only source of truth for determining AWS S3 keys. Change the `filename` method to take in a `datatime` timestep instead of an `int` step. No longer assign the first step radiation data to the zeroth step.
+- Change the return type of `ISSR.eval`, `SAC.eval`, and `PCR.eval` from `MetDataArray` to `MetDataset`. This is more consistent with the return type of other `pycontrails` models and more closely mirrors the behavior of vector models. Set output `attrs` metadata on the global `MetDataset` instead of the individual `MetDataArray` in each case.
+
+### Features
+
+- Rewrite parts of the `pycontrails.core.datalib` module for higher performance and readability.
+- Add optional `attrs` and `attrs_kwargs` parameters to `MetDataset` constructor. This allows the user to customize the attributes on the underlying `xarray.Dataset` object. This update makes `MetDataset` more consistent with `VectorDataset`.
+- Add three new properties `provider_attr`, `dataset_attr`, and `product_attr` to `MetDataset`. These properties give metadata describing the underlying meterological data source.
+- Add new `Model.transfer_met_source_attrs` method for more consistent handling of met source metadata on the `source` parameter passed into `Model.eval`.
+- No longer require `geopotential` data when computing `tau_cirrus`. If neither `geopotential` nor `geopotential_height` are available, geopotential is approximated from the geometric height. No longer require geopotential on the `met` parameter in `Cocip` or `CocipGrid`.
+- Remove the `Cocip` `shift_radiation_time` parameter. This is now inferred directly from the `rad` metadata. An error is raised if the necessary metadata is not present.
+- Allow `Cocip` to run with both instantaneous (`W m-2`) and accumulated (`J m-2`) radiation data.
+- Allow `Cocip` to run with accumulated ECMWF HRES radiation data.
+
+### Fixes
+
+- Correct radiation unit in the `ACCF` wrapper model [#64]. Both instantaneous (`W m-2`) and accumulated (`J m-2`) radiation data are now supported, and the `ACCF` wrapper will handle each appropriately.
+- Avoid unnecessary writing and reading of temporary files in `ERA5.cache_dataset` and `HRES.cache_dataset`.
+- Fix timestep resolution bug in `GFSForecast`. When the `grid` parameter is 0.5 or 1.0, forecasts are only available every 3 hours. Previously, the `timesteps` property would define an hourly timestep.
+
+### Internals
+
+- Include `name` parameter in `MetDataArray` constructor.
+- Make the `coordinates.slice_domain` function slightly more performant by explicitly dropping nan values from the `request` parameter.
+- Round unwieldy floating point numbers in `GeoVectorDataset._display_attrs`.
+- Remove the `ecmwflibs` package from the `ecmwf` optional dependencies.
+- Add NPY to `ruff` rules.
+
 ## v0.47.3
 
 ### Fixes
