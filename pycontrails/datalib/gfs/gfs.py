@@ -164,12 +164,17 @@ class GFSForecast(datalib.MetDataSource):
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
 
-        self.timesteps = datalib.parse_timesteps(time, freq="1H")
+        # Forecast is available hourly for 0.25 degree grid,
+        # 3 hourly for 0.5 and 1 degree grid
+        # https://www.nco.ncep.noaa.gov/pmb/products/gfs/
+        freq = "1H" if grid == 0.25 else "3H"
+        self.timesteps = datalib.parse_timesteps(time, freq=freq)
+
         self.pressure_levels = datalib.parse_pressure_levels(
             pressure_levels, self.supported_pressure_levels
         )
         self.variables = datalib.parse_variables(variables, self.supported_variables)
-        self.grid = datalib.parse_grid(grid, [0.25, 0.5, 1])
+        self.grid = datalib.parse_grid(grid, (0.25, 0.5, 1))
 
         # note GFS allows unsigned requests (no credentials)
         # https://stackoverflow.com/questions/34865927/can-i-use-boto3-anonymously/34866092#34866092
