@@ -80,16 +80,18 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1H") -> list[dat
     elif len(time) == 1:
         time = (time[0], time[0])
     elif len(time) != 2:
-        raise ValueError("Input time bounds must have length < 2 and > 0")
+        msg = f"Input time bounds must have length < 2 and > 0, got {len(time)}"
+        raise ValueError(msg)
 
     # convert all to pandas Timestamp
     try:
         timestamps = [pd.to_datetime(t) for t in time]
     except ValueError as e:
-        raise ValueError(
-            f"Failed to parse all time inputs with error {e}. Time input "
-            "must be compatible with 'pd.to_datetime()'"
+        msg = (
+            f"Failed to parse time input {time}. "
+            "Time input must be compatible with 'pd.to_datetime()'"
         )
+        raise ValueError(msg) from e
 
     if freq is None:
         daterange = pd.DatetimeIndex([timestamps[0], timestamps[1]])
@@ -129,15 +131,15 @@ def parse_pressure_levels(
         pressure_levels = [pressure_levels]
 
     # Cast array-like to list of ints
-    # Use a new variable to satiate mypy
-    pressure_levels_ = np.asarray(pressure_levels, dtype=int).tolist()
+    out = np.asarray(pressure_levels, dtype=int).tolist()
 
     # ensure pressure levels are valid
-    for pl in pressure_levels_:
-        if supported is not None and pl not in supported:
-            raise ValueError(f"{pl} is not a valid pressure level {supported}")
+    for pl in out:
+        if supported and pl not in supported:
+            msg = f"Pressure level {pl} is not supported. Supported levels: {supported}"
+            raise ValueError(msg)
 
-    return pressure_levels_
+    return out
 
 
 def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> list[MetVariable]:
@@ -185,60 +187,77 @@ def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> l
     grib1_ids = {v.grib1_id: v for v in supported}
 
     for var in parsed_variables:
-        matched_variable: MetVariable | None = None
-
-        if isinstance(var, MetVariable):
-            if var in supported:
-                matched_variable = var
-
-        # list of MetVariable options
-        # here we extract the first MetVariable in var that is supported
-        elif isinstance(var, (list, tuple)):
-            for v in var:
-                # sanity check since we don't support other types as lists
-                if not isinstance(v, MetVariable):
-                    raise TypeError("Variable options must be of type MetVariable.")
-                if v in supported:
-                    matched_variable = v
-                    break
-
-        # int code
-        elif isinstance(var, int):
-            if var in ecmwf_ids:
-                matched_variable = ecmwf_ids[var]
-            elif var in grib1_ids:
-                matched_variable = grib1_ids[var]
-
-        # string reference
-        elif isinstance(var, str):
-            if var in short_names:
-                matched_variable = short_names[var]
-            elif var in standard_names:
-                matched_variable = standard_names[var]
-            elif var in long_names:
-                matched_variable = long_names[var]
-
-        if matched_variable is None:
-            raise ValueError(
-                f"{var} is not in supported parameters. "
-                f"Supported parameters include: {standard_names}"
-            )
+        matched = _find_match(
+            var,
+            supported,
+            ecmwf_ids,  # type: ignore[arg-type]
+            grib1_ids,  # type: ignore[arg-type]
+            short_names,
+            standard_names,
+            long_names,  # type: ignore[arg-type]
+        )
 
         # "replace" copies dataclass
-        met_var_list.append(dataclasses.replace(matched_variable))
+        met_var_list.append(dataclasses.replace(matched))
 
     return met_var_list
 
 
-def parse_grid(grid: float, supported: list[float]) -> float:
+def _find_match(
+    var: VariableInput,
+    supported: list[MetVariable],
+    ecmwf_ids: dict[int, MetVariable],
+    grib1_ids: dict[int, MetVariable],
+    short_names: dict[str, MetVariable],
+    standard_names: dict[str, MetVariable],
+    long_names: dict[str, MetVariable],
+) -> MetVariable:
+    """Find a match for input variable in supported."""
+
+    if isinstance(var, MetVariable):
+        if var in supported:
+            return var
+
+    # list of MetVariable options
+    # here we extract the first MetVariable in var that is supported
+    elif isinstance(var, (list, tuple)):
+        for v in var:
+            # sanity check since we don't support other types as lists
+            if not isinstance(v, MetVariable):
+                msg = "Variable options must be of type MetVariable."
+                raise TypeError(msg)
+            if v in supported:
+                return v
+
+    # int code
+    elif isinstance(var, int):
+        if var in ecmwf_ids:
+            return ecmwf_ids[var]
+        if var in grib1_ids:
+            return grib1_ids[var]
+
+    # string reference
+    elif isinstance(var, str):
+        if var in short_names:
+            return short_names[var]
+        if var in standard_names:
+            return standard_names[var]
+        if var in long_names:
+            return long_names[var]
+
+    msg = f"{var} is not in supported parameters. Supported parameters include: {standard_names}"
+    raise ValueError(msg)
+
+
+def parse_grid(grid: float, supported: Sequence[float]) -> float:
     """Parse input grid spacing.
 
     Parameters
     ----------
     grid : float
         Input grid float
-    supported : list[float]
-        List of support grid values
+    supported : Sequence[float]
+        Sequence of support grid values
 
     Returns
     -------
@@ -251,7 +270,8 @@ def parse_grid(grid: float, supported: list[float]) -> float:
         Raises ValueError when ``grid`` is not in supported
     """
     if grid not in supported:
-        raise ValueError(f"Grid input must be one of {supported}")
+        msg = f"Grid input {grid} must be one of {supported}"
+        raise ValueError(msg)
 
     return grid
 
@@ -277,7 +297,8 @@ def round_hour(time: datetime, hour: int) -> datetime:
         Description
     """
     if hour not in range(1, 24):
-        raise ValueError("hour must be between [1, 23]")
+        msg = f"hour must be between [1, 23], got {hour}"
+        raise ValueError(msg)
 
     hour = (time.hour // hour) * hour
     return datetime(time.year, time.month, time.day, hour, 0, 0)
@@ -616,13 +637,12 @@ class MetDataSource(abc.ABC):
                 self.cachestore.clear_disk(disk_path)
                 return self.is_datafile_cached(t, **xr_kwargs)
 
-            raise OSError(
-                "Unable to open NETCDF file at '%s'. "
+            msg = (
+                f"Unable to open NETCDF file at '{disk_path}'. "
                 "This may be due to a incomplete download. "
-                "Consider manually removing '%s' and retrying.",
-                disk_path,
-                disk_path,
-            ) from err
+                f"Consider manually removing '{disk_path}' and retrying."
+            )
+            raise OSError(msg) from err
 
     def _check_is_ds_complete(self, ds: xr.Dataset, cache_path: str) -> bool:
         """Check if ``ds`` has all variables and pressure levels defined by the instance."""
