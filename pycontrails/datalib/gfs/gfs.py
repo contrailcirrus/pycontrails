@@ -185,7 +185,7 @@ class GFSForecast(datalib.MetDataSource):
         # set specific forecast time is requested
         if forecast_time is not None:
             forecast_time_pd = pd.to_datetime(forecast_time)
-            if forecast_time_pd.hour not in [0, 6, 12, 18]:
+            if forecast_time_pd.hour % 6:
                 raise ValueError("Forecast hour must be on one of 00, 06, 12, 18")
 
             self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 6)
@@ -444,6 +444,14 @@ class GFSForecast(datalib.MetDataSource):
 
         return mds
 
+    @overrides
+    def set_met_source_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
+        ds.attrs.update(
+            provider="NCEP",
+            dataset="GFS",
+            product="forecast",
+        )
+
     def _download_file(self, t: datetime) -> None:
         """Download data file for forecast time and step.
 
@@ -598,15 +606,14 @@ class GFSForecast(datalib.MetDataSource):
             ds = ds.expand_dims({"level": self.pressure_levels})
 
         else:
-            ds = ds.sel(dict(level=self.pressure_levels))
+            ds = ds.sel(level=self.pressure_levels)
 
         # harmonize variable names
         ds = met.standardize_variables(ds, self.variables)
 
-        if "cachestore" not in kwargs:
-            kwargs["cachestore"] = self.cachestore
+        kwargs.setdefault("cachestore", self.cachestore)
 
-        ds.attrs["met_source"] = type(self).__name__
+        self.set_met_source_metadata(ds)
         return met.MetDataset(ds, **kwargs)
 
 
