@@ -428,28 +428,7 @@ class GFSForecast(datalib.MetDataSource):
         ds.attrs.setdefault("pycontrails_version", pycontrails.__version__)
 
         # run the same GFS-specific processing on the dataset
-        mds = self._process_dataset(ds, **kwargs)
-
-        # set TOAUpwardShortwaveRadiation, TOAUpwardLongwaveRadiation step 0 == step 1
-        for key in [
-            TOAUpwardShortwaveRadiation.standard_name,
-            TOAUpwardLongwaveRadiation.standard_name,
-        ]:
-            # if step 0 (forecast time) exists in dimension
-            forecast_time = mds.data["forecast_time"].values
-            if key in mds.data and forecast_time in mds.data["time"]:
-                # make sure this isn't the only time in the dataset
-                if np.all(mds.data["time"].values == forecast_time):
-                    raise RuntimeError(
-                        f"GFS datasets with data variable {key} must have at least one timestep"
-                        f" after the forecast time to estimate the value of {key} at step 0"
-                    )
-
-                # set the 0th value of the data to the 1st value
-                # TODO: this assumption may not be universally applicable!
-                mds.data[key][dict(time=0)] = mds.data[key][dict(time=1)]
-
-        return mds
+        return self._process_dataset(ds, **kwargs)
 
     @overrides
     def set_met_source_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
