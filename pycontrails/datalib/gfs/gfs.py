@@ -88,7 +88,7 @@ class GFSForecast(datalib.MetDataSource):
     >>> from pycontrails.datalib.gfs import GFSForecast
 
     >>> # Store data files to local disk (default behavior)
-    >>> times = ("2022-03-22 00:00:00", "2022-03-22 03:00:00", )
+    >>> times = ("2022-03-22 00:00:00", "2022-03-22 03:00:00")
     >>> gfs = GFSForecast(times, variables="air_temperature", pressure_levels=[300, 250])
     >>> gfs
     GFSForecast
@@ -97,7 +97,15 @@ class GFSForecast(datalib.MetDataSource):
         Pressure levels: [300, 250]
         Grid: 0.25
         Forecast time: 2022-03-22 00:00:00
-        Steps: [0, 1, 2, 3]
+
+    >>> gfs = GFSForecast(times, variables="air_temperature", pressure_levels=[300, 250], grid=0.5)
+    >>> gfs
+    GFSForecast
+        Timesteps: ['2022-03-22 00', '2022-03-22 03']
+        Variables: ['t']
+        Pressure levels: [300, 250]
+        Grid: 0.5
+        Forecast time: 2022-03-22 00:00:00
 
     Notes
     -----
@@ -199,10 +207,7 @@ class GFSForecast(datalib.MetDataSource):
 
     def __repr__(self) -> str:
         base = super().__repr__()
-        return (
-            f"{base}\n\tForecast time: {getattr(self, 'forecast_time', '')}\n\tSteps:"
-            f" {getattr(self, 'steps', '')}"
-        )
+        return f"{base}\n\tForecast time: {getattr(self, 'forecast_time', '')}"
 
     @property
     def supported_pressure_levels(self) -> list[int]:
