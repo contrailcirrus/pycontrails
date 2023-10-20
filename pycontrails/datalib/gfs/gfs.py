@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import pathlib
-from contextlib import ExitStack
+import warnings
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -30,15 +30,14 @@ from pycontrails.datalib.gfs.variables import (
     TOAUpwardShortwaveRadiation,
     Visibility,
 )
-from pycontrails.utils import dependencies
-from pycontrails.utils.temp import temp_file
+from pycontrails.utils import dependencies, temp
 from pycontrails.utils.types import DatetimeLike
 
 # optional imports
 if TYPE_CHECKING:
     import botocore
 
-LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 #: Default GFS AWS bucket
 GFS_FORECAST_BUCKET = "noaa-gfs-bdp-pds"
@@ -368,7 +367,7 @@ class GFSForecast(datalib.MetDataSource):
     @overrides
     def download_dataset(self, times: list[datetime]) -> None:
         # get step relative to forecast forecast_time
-        LOG.debug(
+        logger.debug(
             f"Downloading GFS forecast for forecast time {self.forecast_time} and timesteps {times}"
         )
 
@@ -461,13 +460,10 @@ class GFSForecast(datalib.MetDataSource):
         filename = self.filename(t)
         aws_key = f"{self.forecast_path}/{filename}"
 
-        # Open ExitStack to control temp_file context manager
-        with ExitStack() as stack:
-            # hold downloaded file in named temp file
-            temp_grib_filename = stack.enter_context(temp_file())
-
+        # Hold downloaded file in named temp file
+        with temp.temp_file() as temp_grib_filename:
             # retrieve data from AWS S3
-            LOG.debug(f"Downloading GFS file {filename} from AWS bucket to {temp_grib_filename}")
+            logger.debug(f"Downloading GFS file {filename} from AWS bucket to {temp_grib_filename}")
             if self.show_progress:
                 _download_with_progress(
                     self.client, GFS_FORECAST_BUCKET, aws_key, temp_grib_filename, filename
@@ -498,7 +494,7 @@ class GFSForecast(datalib.MetDataSource):
             GFS dataset
         """
         # translate into netcdf from grib
-        LOG.debug(f"Translating {filepath} for timestep {str(t)} into netcdf")
+        logger.debug(f"Translating {filepath} for timestep {str(t)} into netcdf")
 
         # get step for timestep
         step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
@@ -513,7 +509,7 @@ class GFSForecast(datalib.MetDataSource):
             )
 
             if is_radiation_step_zero:
-                LOG.debug(
+                warnings.warn(
                     "Radiation data is not provided for the 0th step in GFS. "
                     "Setting to np.nan using Visibility variable"
                 )
