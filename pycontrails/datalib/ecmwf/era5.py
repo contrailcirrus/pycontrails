@@ -89,7 +89,7 @@ class ERA5(ECMWFAPI):
     ERA5 parameter list:
     https://confluence.ecmwf.int/pages/viewpage.action?pageId=82870405#ERA5:datadocumentation-Parameterlistings
 
-    All accumulated radiative quantities are converted to average instantaneous quantities.
+    All radiative quantities are accumulated.
     See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
     for more information.
 
