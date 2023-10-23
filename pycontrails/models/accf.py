@@ -181,8 +181,6 @@ class ACCF(Model):
             surface.data = _rad_instantaneous_to_accumulated(surface.data)
             self.surface = surface
 
-        self.p_settings = self._get_accf_config()
-
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
 
@@ -226,9 +224,6 @@ class ACCF(Model):
             )
 
         self.update_params(params)
-        if params:
-            self.p_settings = self._get_accf_config()
-
         self.set_source(source)
 
         if isinstance(self.source, GeoVectorDataset):
@@ -237,31 +232,38 @@ class ACCF(Model):
                 self.surface = self.source.downselect_met(self.surface)
 
         if isinstance(self.source, MetDataset):
-            if self.source["longitude"].size > 1:
-                hres = abs(self.source["longitude"].data[1] - self.source["longitude"].data[0])
-                self.params["horizontal_resolution"] = float(hres)
-            elif self.source["latitude"].size > 1:
-                hres = abs(self.source["latitude"].data[1] - self.source["latitude"].data[0])
+            # Overwrite horizontal resolution to match met
+            longitude = self.source.data["longitude"].values
+            if longitude.size > 1:
+                hres = abs(longitude[1] - longitude[0])
                 self.params["horizontal_resolution"] = float(hres)
 
+            else:
+                latitude = self.source.data["latitude"].values
+                if latitude.size > 1:
+                    hres = abs(latitude[1] - latitude[0])
+                    self.params["horizontal_resolution"] = float(hres)
+
+        p_settings = _get_accf_config(self.params)
+
         self.set_source_met()
-        self._generate_weather_store()
+        self._generate_weather_store(p_settings)
 
         # check aircraft type and set in config if needed
         if self.params["nox_ei"] != "TTV":
             if isinstance(self.source, Flight):
                 ac = self.source.attrs["aircraft_type"]
                 if ac in wide_body_jets():
-                    self.p_settings["ac_type"] = "wide-body"
+                    p_settings["ac_type"] = "wide-body"
                 elif ac in regional_jets():
-                    self.p_settings["ac_type"] = "regional"
+                    p_settings["ac_type"] = "regional"
                 else:
-                    self.p_settings["ac_type"] = "single-aisle"
+                    p_settings["ac_type"] = "single-aisle"
             else:
-                self.p_settings["ac_type"] = "wide-body"
+                p_settings["ac_type"] = "wide-body"
 
         clim_imp = GeTaCCFs(self)
-        clim_imp.get_accfs(**self.p_settings)
+        clim_imp.get_accfs(**p_settings)
         aCCFs, _ = clim_imp.get_xarray()
 
         # assign ACCF outputs to source
@@ -275,14 +277,14 @@ class ACCF(Model):
             if isinstance(self.source, GeoVectorDataset):
                 self.source[key] = self.source.intersect_met(maCCFs[key])
             else:
-                self.source[key] = (maCCFs.dim_order, arr.data)
+                self.source[key] = arr
 
         self.transfer_met_source_attrs()
         self.source.attrs["pycontrails_version"] = pycontrails.__version__
 
         return self.source
 
-    def _generate_weather_store(self) -> None:
+    def _generate_weather_store(self, p_settings: dict[str, Any]) -> None:
         from climaccf.weather_store import WeatherStore
 
         # The library does not call the coordinates by name, it just slices the
@@ -305,15 +307,15 @@ class ACCF(Model):
         ws = WeatherStore(
             ds_met,
             ds_sur,
-            ll_resolution=self.p_settings["horizontal_resolution"],
-            forecast_step=self.p_settings["forecast_step"],
+            ll_resolution=p_settings["horizontal_resolution"],
+            forecast_step=p_settings["forecast_step"],
         )
 
-        if self.p_settings["lat_bound"] and self.p_settings["lon_bound"]:
+        if p_settings["lat_bound"] and p_settings["lon_bound"]:
             ws.reduce_domain(
                 {
-                    "latitude": self.p_settings["lat_bound"],
-                    "longitude": self.p_settings["lon_bound"],
+                    "latitude": p_settings["lat_bound"],
+                    "longitude": p_settings["lon_bound"],
                 }
             )
 
@@ -327,54 +329,55 @@ class ACCF(Model):
         self.axes = ws.axes
         self.var_xr = ws.var_xr
 
-    def _get_accf_config(self) -> dict[str, Any]:
-        # a good portion of these will get ignored since we are not producing an
-        # output file, but the library will complain if they aren't defined
-        return {
-            "lat_bound": self.params["lat_bound"],
-            "lon_bound": self.params["lon_bound"],
-            "time_bound": None,
-            "horizontal_resolution": self.params["horizontal_resolution"],
-            "forecast_step": self.params["forecast_step"],
-            "NOx_aCCF": True,
-            "NOx&inverse_EIs": self.params["nox_ei"],
-            "output_format": "netCDF",
-            "mean": False,
-            "std": False,
-            "merged": self.params["merged"],
-            "aCCF-V": self.params["accf_v"],
-            "efficacy": self.params["efficacy"],
-            "efficacy-option": self.params["efficacy_option"],
-            "emission_scenario": self.params["emission_scenario"],
-            "climate_indicator": self.params["climate_indicator"],
-            "TimeHorizon": self.params["time_horizon"],
-            "ac_type": "wide-body",
-            "sep_ri_rw": self.params["sep_ri_rw"],
-            "PMO": self.params["PMO"],
-            "aCCF-scalingF": {
-                "CH4": self.params["ch4_scaling"],
-                "CO2": self.params["co2_scaling"],
-                "Cont.": self.params["cont_scaling"],
-                "H2O": self.params["h2o_scaling"],
-                "O3": self.params["o3_scaling"],
-            },
-            "PCFA": self.params["pfca"],
-            "PCFA-ISSR": {
-                "rhi_threshold": self.params["issr_rhi_threshold"],
-                "temp_threshold": self.params["issr_temp_threshold"],
-            },
-            "PCFA-SAC": {
-                "EI_H2O": self.params["sac_ei_h2o"],
-                "Q": self.params["sac_q"],
-                "eta": self.params["sac_eta"],
-            },
-            "Chotspots": False,
-            "hotspots_binary": True,
-            "color": "Reds",
-            "geojson": False,
-            "save_path": "./",
-            "save_format": "netCDF",
-        }
+
+def _get_accf_config(params: dict[str, Any]) -> dict[str, Any]:
+    # a good portion of these will get ignored since we are not producing an
+    # output file, but the library will complain if they aren't defined
+    return {
+        "lat_bound": params["lat_bound"],
+        "lon_bound": params["lon_bound"],
+        "time_bound": None,
+        "horizontal_resolution": params["horizontal_resolution"],
+        "forecast_step": params["forecast_step"],
+        "NOx_aCCF": True,
+        "NOx&inverse_EIs": params["nox_ei"],
+        "output_format": "netCDF",
+        "mean": False,
+        "std": False,
+        "merged": params["merged"],
+        "aCCF-V": params["accf_v"],
+        "efficacy": params["efficacy"],
+        "efficacy-option": params["efficacy_option"],
+        "emission_scenario": params["emission_scenario"],
+        "climate_indicator": params["climate_indicator"],
+        "TimeHorizon": params["time_horizon"],
+        "ac_type": "wide-body",
+        "sep_ri_rw": params["sep_ri_rw"],
+        "PMO": params["PMO"],
+        "aCCF-scalingF": {
+            "CH4": params["ch4_scaling"],
+            "CO2": params["co2_scaling"],
+            "Cont.": params["cont_scaling"],
+            "H2O": params["h2o_scaling"],
+            "O3": params["o3_scaling"],
+        },
+        "PCFA": params["pfca"],
+        "PCFA-ISSR": {
+            "rhi_threshold": params["issr_rhi_threshold"],
+            "temp_threshold": params["issr_temp_threshold"],
+        },
+        "PCFA-SAC": {
+            "EI_H2O": params["sac_ei_h2o"],
+            "Q": params["sac_q"],
+            "eta": params["sac_eta"],
+        },
+        "Chotspots": False,
+        "hotspots_binary": True,
+        "color": "Reds",
+        "geojson": False,
+        "save_path": "./",
+        "save_format": "netCDF",
+    }
 
 
 def _rad_instantaneous_to_accumulated(ds: xr.Dataset) -> xr.Dataset:
