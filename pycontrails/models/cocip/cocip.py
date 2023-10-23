@@ -1389,18 +1389,18 @@ def _process_rad(rad: MetDataset) -> MetDataset:
 
     if dataset == "HRES":
         try:
-            hres_accumulated = rad.attrs["hres_accumulated"]
+            radiation_accumulated = rad.attrs["radiation_accumulated"]
         except KeyError:
             msg = (
-                "HRES data must have a boolean 'hres_accumulated' attribute. "
+                "HRES data must have a boolean 'radiation_accumulated' attribute. "
                 "This attribute is used to determine whether the radiation data "
                 "has been accumulated over the time period. This is the case for "
                 "HRES data taken from a common time of forecast with multiple "
                 "forecast steps. If this is not the case, set the "
-                "'hres_accumulated' attribute to False."
+                "'radiation_accumulated' attribute to False."
             )
             raise ValueError(msg)
-        if hres_accumulated:
+        if radiation_accumulated:
             # Keep the original attrs -- we need these later on
             old_attrs = {k: v.attrs for k, v in rad.data.items()}
 
