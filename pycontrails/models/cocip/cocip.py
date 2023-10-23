@@ -1416,8 +1416,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
 
         shift_radiation_time = -np.timedelta64(30, "m")
 
-    elif dataset == "ERA5" and product == "ENSEMBLE":
-        # FIXME: Is this the only case where we have three hour accumulation?
+    elif dataset == "ERA5" and product == "ensemble":
         shift_radiation_time = -np.timedelta64(90, "m")
     else:
         shift_radiation_time = -np.timedelta64(30, "m")
@@ -2362,9 +2361,7 @@ def _rad_accumulation_to_average_instantaneous(
         raise ValueError(msg)
 
     # Convert from J m**-2 to W m**-2
-    if rad.dataset_attr == "ERA5" and rad.product_attr == "ENSEMBLE":
-        # FIXME: This this the only case where we have three hour accumulation?
-        # FIXME: What is the convention for GFS?
+    if rad.dataset_attr == "ERA5" and rad.product_attr == "ensemble":
         n_seconds = 3.0 * 3600.0  # 3 hour interval
     else:
         n_seconds = 3600.0  # 1 hour interval
