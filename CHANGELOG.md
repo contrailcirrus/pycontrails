@@ -42,6 +42,7 @@ This release includes a number of breaking changes and new features. If upgradin
 - Remove the `ecmwflibs` package from the `ecmwf` optional dependencies.
 - Add NPY to `ruff` rules.
 - Add convenience `MetDataset.standardize_variables` method.
+- Remove the `p_settings` attribute on the `ACCF` interface. This is now constructed internally within `ACCF.eval`. Replace the `ACCF._update_accf_config` method with a `_get_accf_config` function.
 
 ## v0.47.3
 
