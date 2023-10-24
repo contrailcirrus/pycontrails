@@ -904,11 +904,10 @@ class Flight(GeoVectorDataset):
             df["longitude"] = ((df["longitude"] + 180.0) % 360.0) - 180.0
 
         # STEP 6: Interpolate nan values in altitude
-        if df["altitude"].isna().any():
+        altitude = df["altitude"].to_numpy()
+        if np.any(np.isnan(altitude)):
             df_freq = pd.Timedelta(freq).to_numpy()
-            new_alt = _altitude_interpolation(
-                df["altitude"].to_numpy(), nominal_rocd, df_freq, climb_descend_at_end
-            )
+            new_alt = _altitude_interpolation(altitude, nominal_rocd, df_freq, climb_descend_at_end)
             _verify_altitude(new_alt, nominal_rocd, df_freq)
             df["altitude"] = new_alt
 
@@ -968,17 +967,18 @@ class Flight(GeoVectorDataset):
         elapsed_time = np.nancumsum(np.roll(seg_dur, 1))
         alt_ft = fit_altitude(
             elapsed_time,
-            np.copy(self.altitude_ft),
-            max_segments,
-            pop,
-            r2_target,
-            max_cruise_rocd,
-            sg_window,
+            self.altitude_ft,
+            max_segments=max_segments,
+            pop=pop,
+            r2_target=r2_target,
+            max_cruise_rocd=max_cruise_rocd,
+            sg_window=sg_window,
+            sg_polyorder=sg_polyorder,
         )
 
-        flight = self.copy()
-        flight.update(altitude_ft=alt_ft)
-        return flight
+        out = self.copy()
+        out.update(altitude_ft=alt_ft)
+        return out
 
     def _geodesic_interpolation(self, geodesic_threshold: float) -> pd.DataFrame | None:
         """Geodesic interpolate between large gaps between waypoints.
@@ -1873,6 +1873,7 @@ def segment_rocd(
 def fit_altitude(
     elapsed_time: npt.NDArray[np.float_],
     altitude_ft: npt.NDArray[np.float_],
+    *,
     max_segments: int = 30,
     pop: int = 3,
     r2_target: float = 0.999,
