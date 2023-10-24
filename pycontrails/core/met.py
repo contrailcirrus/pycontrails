@@ -655,11 +655,9 @@ class MetDataset(MetBase):
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
     ) -> None:
-        # init cache
         self.cachestore = cachestore
 
-        data.attrs.update(attrs or {})
-        data.attrs.update(attrs_kwargs)
+        data.attrs.update(attrs or {}, **attrs_kwargs)
 
         # if input is already a Dataset, copy into data
         if not isinstance(data, xr.Dataset):
