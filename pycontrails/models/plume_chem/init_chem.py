@@ -63,7 +63,7 @@ class CHEM():
                 """Initialise chem dataset with zeros."""
                 return xr.Dataset(
                         {
-                        
+
                         "local_time": (["latitude", "longitude", "time"],
                                 np.zeros((len(self.latitude), len(self.longitude), len(self.timesteps)))),
                         "sza": (["latitude", "longitude", "time"], 

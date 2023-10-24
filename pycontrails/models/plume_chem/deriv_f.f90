@@ -24,25 +24,25 @@ C                     2-DEC-1996  Dick Derwent edited scheme
 C-----------------------------------------------------------------------
       IMPLICIT NONE
 C-----------------------------------------------------------------------
-      INTEGER NC,NR,NE,NIT,I,J,LAT,LON,ALT,TH,PH
-      PARAMETER(NC=220,NR=606,NE=14,NIT=6)
+      INTEGER :: NC,NR,LAT,LON,ALT,TH,PH
+      PARAMETER(NC=220,NR=606)
       DOUBLE PRECISION,ALLOCATABLE :: EM(:,:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE RO2(:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE RC(:,:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE DJ(:,:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE H2O(:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE M(:)
-      DOUBLE PRECISION,ALLOCATABLE O2(:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE Y(:,:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE YP(:,:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE FL(:,:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE P(:,:,:)
-      DOUBLE PRECISION,ALLOCATABLE L(:,:,:)
-      DOUBLE PRECISION DTS
+      DOUBLE PRECISION,ALLOCATABLE :: RO2(:,:,:)
+C      DOUBLE PRECISION,ALLOCATABLE :: RC(:,:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: DJ(:,:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: H2O(:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: M(:)
+      DOUBLE PRECISION,ALLOCATABLE :: O2(:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: Y(:,:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: YP(:,:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: FL(:,:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: P(:,:,:)
+      DOUBLE PRECISION,ALLOCATABLE :: L(:,:,:)
+      DOUBLE PRECISION :: DTS
 
       ALLOCATE(EM(LAT,LON,ALT,NC))
       ALLOCATE(RO2(LAT,LON,ALT))
-      ALLOCATE(RC(LAT,LON,ALT,TH))
+C      ALLOCATE(RC(LAT,LON,ALT,TH))
       ALLOCATE(DJ(LAT,LON,ALT,PH))
       ALLOCATE(H2O(LAT,LON,ALT))
       ALLOCATE(M(ALT))
@@ -53,10 +53,10 @@ C-----------------------------------------------------------------------
       ALLOCATE(P(LAT,LON,ALT))
       ALLOCATE(L(LAT,LON,ALT))
 
-CF2PY INTENT(IN) :: LAT,LON,ALT,TH,PH,EM,RC,DJ,H2O,M,O2,DTS,YP
+CF2PY INTENT(IN) :: LAT,LON,ALT,TH,PH,EM,DJ,H2O,M,O2,DTS,YP
 CF2PY INTENT(OUT) :: RO2
 CF2PY INTENT(INOUT) :: Y,FL
-      CHARACTER*6  CNAMES(NC)
+C      CHARACTER*6  CNAMES(NC)
 C          O1D              Y(  1)
       P(:,:,:) = EM(:,:,:,1)
      &+(DJ(:,:,:,1)*Y(:,:,:,6))                                             
