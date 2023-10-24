@@ -96,13 +96,14 @@ class MetBase(ABC, Generic[XArrayType]):
         for dim in self.dim_order:
             if dim not in self.data.dims:
                 if dim == "level":
-                    raise ValueError(
+                    msg = (
                         f"Meteorology data must contain dimension '{dim}'. "
                         "For single level data, set 'level' coordinate to constant -1 "
                         "using `ds = ds.expand_dims({'level': [-1]})`"
                     )
                 else:
-                    raise ValueError(f"Meteorology data must contain dimension '{dim}'.")
+                    msg = f"Meteorology data must contain dimension '{dim}'."
+                raise ValueError(msg)
 
     def _validate_longitude(self) -> None:
         """Check longitude bounds.
@@ -196,15 +197,15 @@ class MetBase(ABC, Generic[XArrayType]):
 
         dims_tuple = tuple(self.dim_order)
 
-        def _check_da(da: xr.DataArray, key: str | None = None) -> None:
+        def _check_da(da: xr.DataArray, key: Hashable | None = None) -> None:
             if da.dims != dims_tuple:
                 if key is not None:
                     msg = (
-                        "Data dimension not transposed on variable '{key}'. Initiate with"
-                        " `copy=True`."
+                        f"Data dimension not transposed on variable '{key}'. Initiate with"
+                        " 'copy=True'."
                     )
                 else:
-                    msg = "Data dimension not transposed. Initiate with `copy=True`."
+                    msg = "Data dimension not transposed. Initiate with 'copy=True'."
                 raise ValueError(msg)
 
         data = self.data
@@ -212,7 +213,7 @@ class MetBase(ABC, Generic[XArrayType]):
             _check_da(data)
             return
 
-        for key, da in self.data.data_vars.items():
+        for key, da in self.data.items():
             _check_da(da, key)
 
     def _validate_dims(self) -> None:
@@ -872,7 +873,7 @@ class MetDataset(MetBase):
             Raises when dataset does not contain variable in ``vars``
         """
         if isinstance(vars, (MetVariable, str)):
-            vars = [vars]
+            vars = (vars,)
 
         met_keys: list[str] = []
         for variable in vars:
