@@ -714,6 +714,11 @@ class Model(ABC):
         except KeyError:
             pass
 
+        try:
+            source.attrs["met_source_forecast_time"] = self.met.attrs["forecast_time"]
+        except KeyError:
+            pass
+
 
 def _interp_grid_to_grid(
     met_key: str,
