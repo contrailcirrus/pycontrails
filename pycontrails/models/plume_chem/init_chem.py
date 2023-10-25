@@ -73,7 +73,7 @@ class CHEM():
                         "DJ": (["latitude", "longitude", "level", "time", "photol_coeffs"], 
                                 np.zeros((len(self.latitude), len(self.longitude), len(self.chem_pressure_levels), len(self.timesteps), len(self.photol_coeffs)))),
                         "RC": (["latitude", "longitude", "level", "time", "therm_coeffs"],
-                                np.zeros((len(self.latitude), len(self.longitude), len(self.chem_pressure_levels), len(self.timesteps), len(self.therm_coeffs)))),
+                                np.zeros((len(self.latitude), len(self.longitude), len(self.chem_pressure_levels), len(self.timesteps), len(self.therm_coeffs)), dtype=np.float32)),
                         "soa": (["latitude", "longitude", "level", "time"],
                                 np.zeros((len(self.latitude), len(self.longitude), len(self.chem_pressure_levels), len(self.timesteps)))),
                         "mom": (["latitude", "longitude", "level", "time"],

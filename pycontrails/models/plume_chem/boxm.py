@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, overload
 import numpy as np
 import datetime
-import deriv_f
+import boxm_for
 
 import xarray as xr
 
@@ -119,29 +119,43 @@ class BoxModel(Model):
         # Interpolate emi to chem grid
         self.source.data = self.source.data.interp_like(self.chem.data)
 
+        # Assign emissions dataarray to chem dataset
         self.chem["EM"].data = self.source["EM"].data
 
-        print(self.chem)
+        # Export all variables to fortran
+        self.rc = self._f2py_export()
         
         # Calculate chemical concentrations and flux rates for each timestep (requires iteration)
-        for time_idx, ts in enumerate(self.timesteps):
+        # for time_idx, ts in enumerate(self.timesteps):
            
-            print(ts)
-            
+        #     print(ts)
+        
+        #     # Calculate mass of organic particulate material and mass of organic aerosol
+        #     self.calc_aerosol(ts)
 
-            # Calculate mass of organic particulate material and mass of organic aerosol
-            self.calc_aerosol(ts)
+        #     self._chemco(ts)
 
-            self._chemco(ts)
+        #     self._photol(ts)
 
-            self._photol(ts)
-
-            if time_idx != 0:
-                self._deriv(time_idx, ts)
+        #     if time_idx != 0:
+        #         self._deriv(time_idx, ts)
 
     # -------------
     # Model Methods
     # -------------
+
+    def _f2py_export(self):
+        met = self.met
+        chem = self.chem
+        emi = self.source
+
+        print(boxm_for.boxm.__doc__)
+        boxm_for.boxm.rc = None
+        boxm_for.boxm.rc = chem["RC"].data.values
+        print(type(chem["RC"].data.values))
+        print(boxm_for.boxm.rc)
+        boxm_for.boxm.rc = None
+
 
     def _deriv(self, time_idx, ts):
 
