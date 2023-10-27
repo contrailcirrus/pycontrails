@@ -14,7 +14,7 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore, MetDataArray, MetDataset, MetVariable
 from pycontrails.core import cache as cache_module
-from pycontrails.core.met import originates_from_ecmwf, shift_longitude
+from pycontrails.core.met import originates_from_ecmwf, shift_longitude, shift_longitude_reverse
 from pycontrails.datalib.ecmwf import ERA5
 from tests import OPEN3D_AVAILABLE
 
@@ -215,20 +215,55 @@ def test_wrap_longitude(zero_like_da: xr.DataArray, met_ecmwf_pl_path: str) -> N
 def test_shift_longitude(zero_like_da: xr.DataArray) -> None:
     da = zero_like_da.copy()
 
+    # assign random values to all coords
+    da.loc[:] = np.random.rand(*da.shape)  # noqa: NPY002
+
+    # shift coordinates to [0, 360) manually
     lons = da["longitude"].values
     lons[lons < 0] = lons[lons < 0] + 360
-
     da = da.assign_coords(longitude=lons)
     assert np.all(da["longitude"].values >= 0)
 
     da2 = shift_longitude(da)
 
+    # longitude sorted
+    assert np.all(np.diff(da2["longitude"].values) > 0)
+
     # longitude correctly translated
-    assert np.all(da2["longitude"].values <= 180)
+    assert np.all(da2["longitude"].values < 180)
     assert np.all(da2["longitude"].values >= -180)
+
+    # test a few values
+    assert (
+        da.sel({"longitude": 181})[0, 0, 0].values == da2.sel({"longitude": -179})[0, 0, 0].values
+    )
+    assert (
+        da.sel({"longitude": 190})[0, 0, 0].values == da2.sel({"longitude": -170})[0, 0, 0].values
+    )
+
+
+def test_shift_longitude_reverse(zero_like_da: xr.DataArray) -> None:
+    da = zero_like_da.copy()
+
+    # assign random values to all coords
+    da.loc[:] = np.random.rand(*da.shape)  # noqa: NPY002
+
+    da2 = shift_longitude_reverse(da)
 
     # longitude sorted
     assert np.all(np.diff(da2["longitude"].values) > 0)
+
+    # longitude correctly translated
+    assert np.all(da2["longitude"].values < 360.0)
+    assert np.all(da2["longitude"].values >= 0.0)
+
+    # test a few values
+    assert (
+        da.sel({"longitude": -179})[0, 0, 0].values == da2.sel({"longitude": 181})[0, 0, 0].values
+    )
+    assert (
+        da.sel({"longitude": -170})[0, 0, 0].values == da2.sel({"longitude": 190})[0, 0, 0].values
+    )
 
 
 @pytest.fixture()
