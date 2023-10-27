@@ -123,22 +123,24 @@ class BoxModel(Model):
         self.chem["EM"].data = self.source["EM"].data
 
         # Export all variables to fortran
-        self.rc = self._f2py_export()
+        self._f2py_export()
         
         # Calculate chemical concentrations and flux rates for each timestep (requires iteration)
-        # for time_idx, ts in enumerate(self.timesteps):
+        for time_idx, ts in enumerate(self.timesteps):
            
-        #     print(ts)
+            print(time_idx, ts)
         
-        #     # Calculate mass of organic particulate material and mass of organic aerosol
-        #     self.calc_aerosol(ts)
+            # Calculate mass of organic particulate material and mass of organic aerosol
+            self.calc_aerosol(ts)
 
-        #     self._chemco(ts)
+            self._chemco(ts)
 
-        #     self._photol(ts)
+            self._photol(ts)
 
-        #     if time_idx != 0:
-        #         self._deriv(time_idx, ts)
+            if time_idx != 0:
+                self._deriv(time_idx)
+
+        self._f2py_import()
 
     # -------------
     # Model Methods
@@ -147,72 +149,79 @@ class BoxModel(Model):
     def _f2py_export(self):
         met = self.met
         chem = self.chem
-        emi = self.source
-
-        print(boxm_for.boxm.__doc__)
-        boxm_for.boxm.rc = None
-        boxm_for.boxm.rc = chem["RC"].data.values
-        print(type(chem["RC"].data.values))
-        print(boxm_for.boxm.rc)
-        boxm_for.boxm.rc = None
-
-
-    def _deriv(self, time_idx, ts):
 
         N_A = 6.022e23 # Avogadro's number
-
-        met = self.met
-        chem = self.chem
-        dims = chem.data.dims
-
-        temp = met["air_temperature"].data.sel(time=ts)
         
-        pressure = met["air_pressure"].data.sel(time=ts)
-
-        spec_hum = met["specific_humidity"].data.sel(time=ts)
-
         # Get air density from pycontrails physics.thermo script
-        rho_d = thermo.rho_d(temp, pressure)
+        rho_d = thermo.rho_d(met["air_temperature"].data.values, 
+                             met["air_pressure"].data.values)
 
         # Calculate number density of air (M) to feed into box model calcs
         M = (N_A / constants.M_d) * rho_d * 1e-6 # [molecules / cm^3]
 
         # Calculate H2O number concentration to feed into box model calcs
-        H2O = (spec_hum / constants.M_v) * N_A * rho_d * 1e-6 # [molecules / cm^3]
-
-        RO2 = chem["RO2"].data.sel(time=ts)
-
-        LAT = dims["latitude"]
-        LON = dims["longitude"]
-        ALT = dims["level"]
-        TH = dims["therm_coeffs"]
-        PH = dims["photol_coeffs"]
-        
-        YP = chem["Y"].data.sel(time=self.timesteps[time_idx - 1]).values
-        Y = YP
-        EM = chem["EM"].data.sel(time=ts).values
-        RC = chem["RC"].data.sel(time=ts).values
-        DJ = chem["DJ"].data.sel(time=ts).values
-        DTS = self.timesteps[time_idx] - self.timesteps[time_idx - 1]
-        FL = chem["FL"].data.sel(time=ts).values
-        
-        # Calculate number density of air (M) to feed into box model calcs
-        M = (N_A / constants.M_d) * rho_d * 1e-6 # [molecules / cm^3]
-
-        # Calculate H2O number concentration to feed into box model calcs
-        H2O = (spec_hum / constants.M_v) * N_A * rho_d * 1e-6 # [molecules / cm^3]
+        H2O = (met["specific_humidity"].data.values / constants.M_v) * N_A * rho_d * 1e-6 
+        # [molecules / cm^3]
 
         # Calculate O2 and N2 number concs based on M
         O2 = 2.079E-01*M
-        N2 = 7.809E-01*M
+        N2 = 7.809E-01*M        
+
+        # Clear all variables prior to allocation
+        boxm_for.boxm.temp = None
+        boxm_for.boxm.pressure = None
+        boxm_for.boxm.spec_hum = None
+        boxm_for.boxm.m = None
+        boxm_for.boxm.h2o = None
+        boxm_for.boxm.o2 = None
+
+        boxm_for.boxm.y = None
+        #boxm_for.boxm.yp = None
+        boxm_for.boxm.rc = None
+        boxm_for.boxm.dj = None
+        boxm_for.boxm.em = None
+        boxm_for.boxm.fl = None
+
+        boxm_for.boxm.j = None
+        boxm_for.boxm.soa = None
+        boxm_for.boxm.mom = None
+        boxm_for.boxm.br01 = None
+        boxm_for.boxm.ro2 = None
+
+        # Position and time
+        boxm_for.boxm.lat = chem.data.sizes["latitude"]
+        boxm_for.boxm.lon = chem.data.sizes["longitude"]
+        boxm_for.boxm.alt = chem.data.sizes["level"]
+        boxm_for.boxm.dts = 3600
+        # Met variables
+        boxm_for.boxm.temp = met["air_temperature"].data.values
+        boxm_for.boxm.pressure = met["air_pressure"].data.values
+        boxm_for.boxm.spec_hum = met["specific_humidity"].data.values
+        boxm_for.boxm.m = M
+        boxm_for.boxm.h2o = H2O
+        boxm_for.boxm.o2 = O2
+        print("met done")
+
+        # Chem variables
+        boxm_for.boxm.y = chem["Y"].data.values
+        #boxm_for.boxm.yp = chem["YP"].data.values
+        boxm_for.boxm.rc = chem["RC"].data.values
+        boxm_for.boxm.dj = chem["DJ"].data.values
+        boxm_for.boxm.em = chem["EM"].data.values
+        boxm_for.boxm.fl = chem["FL"].data.values
+        print("chem 5d done")
+        boxm_for.boxm.j = chem["J"].data.values
+        boxm_for.boxm.soa = chem["soa"].data.values
+        boxm_for.boxm.mom = chem["mom"].data.values
+        boxm_for.boxm.br01 = chem["BR01"].data.values
+        boxm_for.boxm.ro2 = chem["RO2"].data.values
+
+        print(boxm_for.boxm.__doc__)
 
 
-        FL, Y, RO2 = deriv_f.deriv(RC, FL, DJ, 
-                                   EM, H2O, M, 
-                                   O2, YP, Y, DTS)
-
-        print(Y[:, :, :, 0])
-
+    def _deriv(self, time_idx):
+        boxm_for.boxm.deriv(int(time_idx+1))
+   
 
     def _chemco(self, ts):
         """Calculate the thermal rate coefficients and reaction rates for each timestep."""
@@ -224,9 +233,7 @@ class BoxModel(Model):
         chem = self.chem
 
         temp = met["air_temperature"].data.sel(time=ts)
-        
         pressure = met["air_pressure"].data.sel(time=ts)
-
         spec_hum = met["specific_humidity"].data.sel(time=ts)
 
         # Get air density from pycontrails physics.thermo script
@@ -245,7 +252,7 @@ class BoxModel(Model):
         mom = chem["mom"].data.sel(time=ts)
         RO2 = chem["RO2"].data.sel(time=ts) 
 
-        # SIMPLE RATE COEFFICIENTS                                                                                     
+        # SIMPLE RATE COEFFICIENTS         
         KRO2NO  = 2.54e-12*np.exp(360/temp) 
         KAPNO   = 8.10e-12*np.exp(270/temp) 
         KRO2NO3 = 2.50e-12 
@@ -433,12 +440,6 @@ class BoxModel(Model):
         # Reaction (1) O = O3 
         chem["RC"].data.loc[:, :, :, ts, 1] = 5.60e-34*O2*N2*((temp/300)**-2.6)
     
-        # print(M.loc[0, 0, met["level"].data[7].values].values)
-        # print(temp.loc[0, 0, met["level"].data[7].values].values)
-        # print(O2.loc[0, 0, met["level"].data[7].values].values)
-        # print(N2.loc[0, 0, met["level"].data[7].values].values)
-        # print(chem["RC"].data.loc[0, 0, met["level"].data[7].values, ts, 1].values)
-
         # Reaction (2) O = O3                                                             
         chem["RC"].data.loc[:, :, :, ts, 2] = 6.00e-34*O2*O2*((temp/300)**-2.6)
         
@@ -1973,12 +1974,6 @@ class BoxModel(Model):
         met = self.met
         chem = self.chem
 
-        temp = met["air_temperature"].data.sel(time=ts)
-        
-        pressure = met["air_pressure"].data.sel(time=ts)
-
-        spec_hum = met["specific_humidity"].data.sel(time=ts)
-
         J = chem["J"].data.expand_dims(dim={'level': chem.data["level"]}, axis=2)
         BR01 = chem["BR01"].data.sel(time=ts)
 
@@ -2287,6 +2282,46 @@ class BoxModel(Model):
         # Calculate organic matter mass
         self.chem["mom"].data.loc[:, :, :, ts] = Y.sel(species='EMPOA') +  self.params["bgoam"] + self.chem["soa"].data.loc[:, :, :, ts]
         
+
+    def _f2py_import(self):
+        chem = self.chem
+
+        # Chem variables
+        chem["Y"].data.values = boxm_for.boxm.y
+        #boxm_for.boxm.yp = chem["YP"].data.values
+        chem["RC"].data.values = boxm_for.boxm.rc
+        chem["DJ"].data.values = boxm_for.boxm.dj
+        chem["EM"].data.values = boxm_for.boxm.em
+        chem["FL"].data.values = boxm_for.boxm.fl
+        print("chem 5d done")
+        chem["J"].data.values = boxm_for.boxm.j
+        chem["soa"].data.values = boxm_for.boxm.soa
+        chem["mom"].data.values = boxm_for.boxm.mom
+        chem["BR01"].data.values = boxm_for.boxm.br01
+        chem["RO2"].data.values = boxm_for.boxm.ro2
+
+        # # Deallocate all variables once done to clear memory in Fortran
+        # boxm_for.boxm.temp = None
+        # boxm_for.boxm.pressure = None
+        # boxm_for.boxm.spec_hum = None
+        # boxm_for.boxm.m = None
+        # boxm_for.boxm.h2o = None
+        # boxm_for.boxm.o2 = None
+
+        # boxm_for.boxm.y = None
+        # #boxm_for.boxm.yp = None
+        # boxm_for.boxm.rc = None
+        # boxm_for.boxm.dj = None
+        # boxm_for.boxm.em = None
+        # boxm_for.boxm.fl = None
+
+        # boxm_for.boxm.j = None
+        # boxm_for.boxm.soa = None
+        # boxm_for.boxm.mom = None
+        # boxm_for.boxm.br01 = None
+        # boxm_for.boxm.ro2 = None
+
+
     # ----------------
     # Output functions
     # ----------------

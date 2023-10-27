@@ -94,7 +94,7 @@ class ChemDataset(MetDataset):
         self.data["J"] = (("latitude", "longitude", "time", "photol_params"), np.where(
                 condition, 
                 self.L * (np.cos(np.radians(sza_J))**self.M) * np.exp(-self.N / np.cos(np.radians(sza_J))), 0)
-        )
+                )
 
 
         
