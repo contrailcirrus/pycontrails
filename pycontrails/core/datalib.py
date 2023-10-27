@@ -342,8 +342,7 @@ class MetDataSource(abc.ABC):
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float | None = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @property
     def hash(self) -> str:

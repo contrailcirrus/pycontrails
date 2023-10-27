@@ -182,16 +182,13 @@ class ACCF(Model):
         self.ds_sur = None
 
     @overload
-    def eval(self, source: Flight, **params: Any) -> Flight:
-        ...
+    def eval(self, source: Flight, **params: Any) -> Flight: ...
 
     @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset | None = None, **params: Any) -> MetDataArray:
-        ...
+    def eval(self, source: MetDataset | None = ..., **params: Any) -> MetDataArray: ...
 
     def eval(
         self, source: GeoVectorDataset | Flight | MetDataset | None = None, **params: Any
@@ -268,7 +265,7 @@ class ACCF(Model):
             if isinstance(self.source, GeoVectorDataset):
                 self.source[key] = self.source.intersect_met(maCCFs[key])
             else:
-                self.source[key] = (maCCFs.dim_order, arr.data)  # type: ignore
+                self.source[key] = (maCCFs.dim_order, arr.data)
 
             # Tag output with additional attrs when source is MetDataset
             if isinstance(self.source, MetDataset):

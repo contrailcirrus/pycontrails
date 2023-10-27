@@ -447,3 +447,26 @@ def lbs_to_kg(lbs: ArrayScalarLike) -> ArrayScalarLike:
         mass, kilograms [:math:`kg`]
     """
     return lbs * 0.45359
+
+
+def dt_to_seconds(
+    dt: npt.NDArray[np.timedelta64] | np.timedelta64,
+    dtype: npt.DTypeLike = np.float64,
+) -> npt.NDArray[np.float_]:
+    """Convert a time delta to seconds as a float with specified ``dtype`` precision.
+
+    Parameters
+    ----------
+    dt : np.ndarray
+        Time delta for each waypoint
+    dtype : np.dtype
+        Data type of the output array
+
+    Returns
+    -------
+    np.ndarray
+        Time delta in seconds as a float
+    """
+    out = np.empty(dt.shape, dtype=dtype)
+    np.divide(dt, np.timedelta64(1, "s"), out=out)
+    return out

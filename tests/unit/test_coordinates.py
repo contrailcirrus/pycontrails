@@ -136,7 +136,8 @@ def test_intersect_domain() -> None:
     domain = np.arange(-10, 10, 1.0)
     mask = coordinates.intersect_domain(domain, request)
     assert mask.any()
-    assert not mask[0:10].any() and not mask[31:40].any()
+    assert not mask[0:10].any()
+    assert not mask[31:40].any()
 
     domain = np.arange(10, 30, 1.0)
     mask = coordinates.intersect_domain(domain, request)
@@ -156,4 +157,6 @@ def test_intersect_domain() -> None:
 
     domain = np.arange(-30, 0, 1.0)
     mask = coordinates.intersect_domain(domain, request_unsorted)
-    assert mask[6:8].all() and not mask[0:6].any() and not mask[8].any()
+    assert mask[6:8].all()
+    assert not mask[0:6].any()
+    assert not mask[8].any()

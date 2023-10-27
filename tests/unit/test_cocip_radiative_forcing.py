@@ -161,10 +161,10 @@ def test_override_habit_distributions() -> None:
     assert habit_weights[1, 2] == pytest.approx(0.3)
     assert habit_weights[1, 1] != 0.3
 
+    habit_distributions[1, 2] = 1
     with pytest.raises(ValueError, match="distributions must sum to 1"):
-        habit_distributions[1, 2] = 1
         radiative_forcing.habit_weights(r_vol_um, habit_distributions, radius_threshold_um)
 
+    habit_distributions[1, 2] = 0.3
     with pytest.raises(ValueError, match="number of rows in"):
-        habit_distributions[1, 2] = 0.3
         radiative_forcing.habit_weights(r_vol_um, habit_distributions, np.array([5, 10]))

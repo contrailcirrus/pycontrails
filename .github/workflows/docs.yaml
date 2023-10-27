@@ -32,7 +32,7 @@ jobs:
     - name: OS Dependencies
       run: sudo apt-get install -y pandoc
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -71,7 +71,7 @@ jobs:
         ls -la docs/_build/html
 
     - name: Upload artifact
-      uses: actions/upload-pages-artifact@v1
+      uses: actions/upload-pages-artifact@v2
       with:
         path: 'docs/_build/html/'
 

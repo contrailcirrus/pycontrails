@@ -14,7 +14,7 @@ import numpy.typing as npt
 
 from pycontrails.core import flight
 from pycontrails.physics import constants, units
-from pycontrails.utils.types import ArrayScalarLike
+from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ def overall_propulsion_efficiency(
     F_thrust: npt.NDArray[np.float_],
     fuel_flow: npt.NDArray[np.float_],
     q_fuel: float,
-    is_descent: npt.NDArray[np.bool_] | None,
+    is_descent: npt.NDArray[np.bool_] | bool | None,
     threshold: float = 0.5,
 ) -> npt.NDArray[np.float_]:
     r"""Calculate the overall propulsion efficiency (OPE).
@@ -363,17 +363,17 @@ def reserve_fuel_requirements(
 # -------------
 
 
-def aircraft_weight(aircraft_mass: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+def aircraft_weight(aircraft_mass: ArrayOrFloat) -> ArrayOrFloat:
     """Calculate the aircraft weight at each waypoint.
 
     Parameters
     ----------
-    aircraft_mass : npt.NDArray[np.float_]
+    aircraft_mass : ArrayOrFloat
         Aircraft mass, [:math:`kg`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Aircraft weight, [:math:`N`]
     """
     return aircraft_mass * constants.g

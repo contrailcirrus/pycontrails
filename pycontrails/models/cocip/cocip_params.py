@@ -10,8 +10,8 @@ import dataclasses
 import numpy as np
 import numpy.typing as npt
 
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.models import ModelParams
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.humidity_scaling import HumidityScaling
 
@@ -61,11 +61,12 @@ class CocipParams(ModelParams):
     #: Set to ``False`` when input Flight includes emissions data.
     process_emissions: bool = True
 
-    #: Integrate initial_contrails with time steps of dt
+    #: Apply Euler's method with a fixed step size of ``dt_integration``. Advected waypoints
+    #: are interpolated against met data once each ``dt_integration``.
     dt_integration: np.timedelta64 = np.timedelta64(30, "m")
 
-    #: Difference in altitude between top and bottom layer for stratification calculations (m)
-    #: Used to approximate derivative of "lagrangian_tendency_of_air_pressure" layer
+    #: Difference in altitude between top and bottom layer for stratification calculations,
+    #: [:math:`m`]. Used to approximate derivative of "lagrangian_tendency_of_air_pressure" layer.
     dz_m: float = 200.0
 
     #: Vertical resolution (m) associated to met data.
@@ -90,6 +91,13 @@ class CocipParams(ModelParams):
     # --------------
     # Downselect met
     # --------------
+
+    #: Compute ``"tau_cirrus"`` variable in pressure-level met data during model
+    #: initialization. Must be one of ``"auto"``, ``True``, or ``False``. If set to
+    #: ``"auto"``, ``"tau_cirrus"`` will be computed during model initialization
+    #: iff the met data is dask-backed. Otherwise, it will be computed during model
+    #: evaluation after the met data is downselected.
+    compute_tau_cirrus_in_model_init: bool | str = "auto"
 
     #: Met longitude [WGS84] buffer for Cocip evolution.
     met_longitude_buffer: tuple[float, float] = (10.0, 10.0)
@@ -163,11 +171,11 @@ class CocipParams(ModelParams):
     #: particles for newer engines, [:math:`kg^{-1}`]
     min_ice_particle_number_nvpm_ei_n: float = 1e13
 
-    #: Upper bound for contrail plume depth, constraining it to realistic values
+    #: Upper bound for contrail plume depth, constraining it to realistic values.
     #: CoCiP only uses the ambient conditions at the mid-point of the Gaussian plume,
     #: and the edges could be in subsaturated conditions and sublimate. Important when
     #: :attr:`radiative_heating_effects` is enabled.
-    max_contrail_depth: float = 1500.0
+    max_depth: float = 1500.0
 
     #: Experimental. Radiative heating effects on contrail cirrus properties.
     #: Terrestrial and solar radiances warm the contrail ice particles and cause

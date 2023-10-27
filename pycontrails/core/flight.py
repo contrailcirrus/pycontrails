@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pyproj
 import scipy.signal
 from overrides import overrides
 
@@ -79,6 +78,8 @@ class Flight(GeoVectorDataset):
     altitude : npt.ArrayLike, optional
         Flight trajectory waypoint altitude, [:math:`m`].
         Defaults to None.
+    altitude_ft : npt.ArrayLike, optional
+        Flight trajectory waypoint altitude, [:math:`ft`].
     level : npt.ArrayLike, optional
         Flight trajectory waypoint pressure level, [:math:`hPa`].
         Defaults to None.
@@ -187,9 +188,12 @@ class Flight(GeoVectorDataset):
         | VectorDataDict
         | VectorDataset
         | None = None,
+        *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,
+        altitude_ft: npt.ArrayLike | None = None,
+        level: npt.ArrayLike | None = None,
         time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
@@ -202,6 +206,8 @@ class Flight(GeoVectorDataset):
             longitude=longitude,
             latitude=latitude,
             altitude=altitude,
+            altitude_ft=altitude_ft,
+            level=level,
             time=time,
             attrs=attrs,
             copy=copy,
@@ -510,6 +516,11 @@ class Flight(GeoVectorDataset):
         -------
         npt.NDArray[np.float_]
             Array of azimuths.
+
+        See Also
+        --------
+        :meth:`segment_angle`
+        :func:`geo.forward_azimuth`
         """
         lon = self["longitude"]
         lat = self["latitude"]
@@ -518,6 +529,14 @@ class Flight(GeoVectorDataset):
         lats1 = lat[:-1]
         lons2 = lon[1:]
         lats2 = lat[1:]
+
+        try:
+            import pyproj
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "The 'segment_azimuth' method requires the 'pyproj' package. "
+                "Install with 'pip install pyproj'."
+            ) from exc
 
         geod = pyproj.Geod(a=constants.radius_earth)
         az, *_ = geod.inv(lons1, lats1, lons2, lats2)
@@ -726,6 +745,8 @@ class Flight(GeoVectorDataset):
         geodesic_threshold: float = 100e3,
         nominal_rocd: float = constants.nominal_rocd,
         drop: bool = True,
+        keep_original_index: bool = False,
+        climb_descend_at_end: bool = False,
     ) -> Flight:
         """Resample and fill flight trajectory with geodesics and linear interpolation.
 
@@ -753,6 +774,14 @@ class Flight(GeoVectorDataset):
             Defaults to ``True``, dropping all keys outside of "time", "latitude",
             "longitude" and "altitude". If set to False, the extra keys will be
             kept but filled with ``nan`` or ``None`` values, depending on the data type.
+        keep_original_index : bool, optional
+            Keep the original index of the :class:`Flight` in addition to the new
+            resampled index. Defaults to ``False``.
+            .. versionadded:: 0.45.2
+        climb_or_descend_at_end : bool
+            If true, the climb or descent will be placed at the end of each segment
+            rather than the start. Default is false (climb or descent immediately).
+
 
         Returns
         -------
@@ -791,11 +820,11 @@ class Flight(GeoVectorDataset):
         4    0.000000       0.0       0.0 2020-01-01 00:40:00
         5    0.000000       0.0       0.0 2020-01-01 00:50:00
         6    0.000000       0.0       0.0 2020-01-01 01:00:00
-        7    8.928571       0.0       0.0 2020-01-01 01:10:00
-        8   16.964286       0.0       0.0 2020-01-01 01:20:00
-        9   25.892857       0.0       0.0 2020-01-01 01:30:00
-        10  33.928571       0.0       0.0 2020-01-01 01:40:00
-        11  41.964286       0.0       0.0 2020-01-01 01:50:00
+        7    8.333333       0.0       0.0 2020-01-01 01:10:00
+        8   16.666667       0.0       0.0 2020-01-01 01:20:00
+        9   25.000000       0.0       0.0 2020-01-01 01:30:00
+        10  33.333333       0.0       0.0 2020-01-01 01:40:00
+        11  41.666667       0.0       0.0 2020-01-01 01:50:00
         12  50.000000       0.0       0.0 2020-01-01 02:00:00
         """
         methods = "geodesic", "linear"
@@ -850,23 +879,28 @@ class Flight(GeoVectorDataset):
             shift = None
 
         # STEP 5: Resample flight to freq
-        df = df.resample(freq).first()
+        # Save altitudes to copy over - these just get rounded down in time.
+        # Also get target sample indices
+        df, t = _resample_to_freq(df, freq)
 
-        # STEP 6: Linearly interpolate small horizontal gaps and account
-        # for previous longitude shift.
-        keys = ["latitude", "longitude"]
-        df.loc[:, keys] = df.loc[:, keys].interpolate(method="linear")
         if shift is not None:
             # We need to translate back to the original chart here
             df["longitude"] += shift
             df["longitude"] = ((df["longitude"] + 180.0) % 360.0) - 180.0
 
-        # STEP 7: Interpolate nan values in altitude
+        # STEP 6: Interpolate nan values in altitude
         if df["altitude"].isna().any():
-            df_freq = df.index.freq.delta.to_numpy()
-            new_alt = _altitude_interpolation(df["altitude"].to_numpy(), nominal_rocd, df_freq)
+            df_freq = pd.Timedelta(freq).to_numpy()
+            new_alt = _altitude_interpolation(
+                df["altitude"].to_numpy(), nominal_rocd, df_freq, climb_descend_at_end
+            )
             _verify_altitude(new_alt, nominal_rocd, df_freq)
             df["altitude"] = new_alt
+
+        # Remove original index if requested
+        if not keep_original_index:
+            filt = df.index.isin(t)
+            df = df.loc[filt]
 
         # finally reset index
         df = df.reset_index()
@@ -958,11 +992,19 @@ class Flight(GeoVectorDataset):
 
         # For default geodesic_threshold, we expect gap_indices to be very
         # sparse (so the for loop below is cheap)
-        gap_indices = np.nonzero(segs > geodesic_threshold)[0]
+        gap_indices = np.flatnonzero(segs > geodesic_threshold)
         if not np.any(gap_indices):
             # For most flights, gap_indices is empty. It's more performant
             # to exit now rather than build an empty DataFrame below.
             return None
+
+        try:
+            import pyproj
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "The '_geodesic_interpolation' method requires the 'pyproj' package. "
+                "Install with 'pip install pyproj'."
+            ) from exc
 
         geod = pyproj.Geod(ellps="WGS84")
         longitudes: list[float] = []
@@ -1159,16 +1201,16 @@ class Flight(GeoVectorDataset):
         >>> # Intersect and attach
         >>> fl["air_temperature"] = fl.intersect_met(met['air_temperature'])
         >>> fl["air_temperature"]
-        array([235.94658, 235.55774, 235.56766, ..., 234.59956, 234.60406,
+        array([235.94658, 235.55746, 235.56711, ..., 234.59918, 234.60388,
                234.60846], dtype=float32)
 
         >>> # Length (in meters) of waypoints whose temperature exceeds 236K
         >>> fl.length_met("air_temperature", threshold=236)
-        3587431.887...
+        3589705.998...
 
         >>> # Proportion (with respect to distance) of waypoints whose temperature exceeds 236K
         >>> fl.proportion_met("air_temperature", threshold=236)
-        0.576076...
+        0.576441...
         """
         if key not in self.data:
             raise KeyError(f"Column {key} does not exist in data.")
@@ -1363,26 +1405,32 @@ def _sg_filter(
 
 
 def _altitude_interpolation(
-    altitude: npt.NDArray[np.float_], nominal_rocd: float, freq: np.timedelta64
+    altitude: npt.NDArray[np.float_],
+    nominal_rocd: float,
+    freq: np.timedelta64,
+    climb_or_descend_at_end: bool = False,
 ) -> npt.NDArray[np.float_]:
-    """Interpolate nan values in `altitude` array.
+    """Interpolate nan values in ``altitude`` array.
 
-    Suppose each group of consecutive nan values is enclosed by `a0` and `a1` with
-    corresponding time values `t0` and `t1` respectively. This function immediately
-    climbs or descends starting at `t0` (depending on the sign of `a1 - a0`). Once
-    the filled altitude values reach the terminal value `a1`, the remaining nans
-    are filled with `a1.
+    Suppose each group of consecutive nan values is enclosed by ``a0`` and ``a1`` with
+    corresponding time values ``t0`` and ``t1`` respectively. This function immediately
+    climbs or descends starting at ``t0`` (depending on the sign of ``a1 - a0``). Once
+    the filled altitude values reach the terminal value ``a1``, the remaining nans
+    are filled with ``a1``.
 
     Parameters
     ----------
     altitude : npt.NDArray[np.float_]
         Array of altitude values containing nan values. This function will raise
-        an error if `altitude` does not contain nan values. Moreover, this function
-        assumes the initial and final entries in `altitude` are not nan.
+        an error if ``altitude`` does not contain nan values. Moreover, this function
+        assumes the initial and final entries in ``altitude`` are not nan.
     nominal_rocd : float
         Nominal rate of climb/descent, in m/s
     freq : np.timedelta64
-        Frequency of time index associated to `altitude`.
+        Frequency of time index associated to ``altitude``.
+    climb_or_descend_at_end : bool
+        If true, the climb or descent will be placed at the end of each segment
+        rather than the start. Default is false (climb or descent immediately).
 
     Returns
     -------
@@ -1391,19 +1439,27 @@ def _altitude_interpolation(
     """
     # Determine nan state of altitude
     isna = np.isnan(altitude)
-    start_na = ~isna[:-1] & isna[1:]
-    start_na = np.append(start_na, False)
-    end_na = isna[:-1] & ~isna[1:]
-    end_na = np.insert(end_na, 0, False)
+
+    start_na = np.empty(altitude.size, dtype=bool)
+    start_na[:-1] = ~isna[:-1] & isna[1:]
+    start_na[-1] = False
+
+    end_na = np.empty(altitude.size, dtype=bool)
+    end_na[0] = False
+    end_na[1:] = isna[:-1] & ~isna[1:]
 
     # And get the size of each group of consecutive nan values
-    start_na_idxs = start_na.nonzero()[0]
-    end_na_idxs = end_na.nonzero()[0]
+    start_na_idxs = np.flatnonzero(start_na)
+    end_na_idxs = np.flatnonzero(end_na)
     na_group_size = end_na_idxs - start_na_idxs
 
     # Form array of cumulative altitude values if the flight were to climb
     # at nominal_rocd over each group of nan
-    cumalt_list = [np.arange(1, size, dtype=float) for size in na_group_size]
+
+    if climb_or_descend_at_end:
+        cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
+    else:
+        cumalt_list = [np.arange(1, size, dtype=float) for size in na_group_size]
     cumalt = np.concatenate(cumalt_list)
     cumalt = cumalt * nominal_rocd * freq / np.timedelta64(1, "s")
 
@@ -1413,22 +1469,26 @@ def _altitude_interpolation(
 
     # Use pandas to forward and backfill altitude values
     s = pd.Series(altitude)
-    s_ff = s.fillna(method="ffill")
-    s_bf = s.fillna(method="backfill")
+    s_ff = s.ffill()
+    s_bf = s.bfill()
 
     # Construct altitude values if the flight were to climb / descent throughout
     # group of consecutive nan values. The call to np.minimum / np.maximum cuts
     # the climb / descent off at the terminal altitude of the nan group
-    fill_climb = np.minimum(s_ff + nominal_fill, s_bf)
-    fill_descent = np.maximum(s_ff - nominal_fill, s_bf)
+    if climb_or_descend_at_end:
+        fill_climb = np.maximum(s_ff, s_bf - nominal_fill)
+        fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
+    else:
+        fill_climb = np.minimum(s_ff + nominal_fill, s_bf)
+        fill_descent = np.maximum(s_ff - nominal_fill, s_bf)
 
     # Explicitly determine if the flight is in a climb or descent state
     sign = np.full_like(altitude, np.nan)
     sign[~isna] = np.sign(np.diff(altitude[~isna], append=np.nan))
-    sign = pd.Series(sign).fillna(method="ffill")
+    sign = pd.Series(sign).ffill()
 
     # And return the mess
-    return np.where(sign == 1, fill_climb, fill_descent)
+    return np.where(sign == 1.0, fill_climb, fill_descent)
 
 
 def _verify_altitude(
@@ -1448,7 +1508,7 @@ def _verify_altitude(
     dalt = np.diff(altitude)
     dt = freq / np.timedelta64(1, "s")
     rocd = np.abs(dalt / dt)
-    if np.any(rocd > 2 * nominal_rocd):
+    if np.any(rocd > 2.0 * nominal_rocd):
         warnings.warn(
             "Rate of climb/descent values greater than nominal "
             f"({nominal_rocd} m/s) after altitude interpolation"
@@ -1731,3 +1791,48 @@ def fit_altitude(
     altitude_ft = scipy.signal.savgol_filter(altitude_ft, sg_window, sg_polyorder)
 
     return altitude_ft
+
+
+def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
+    """Resample a DataFrame to a given frequency.
+
+    This function is used to resample a DataFrame to a given frequency. The new
+    index will include all the original index values and the new esampled-to-freq
+    index values. The "longitude" and "latitude" columns will be linearly interpolated
+    to the new index values.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame to resample. Assumed to have a :class:`pd.DatetimeIndex`
+        and "longitude" and "latitude" columns.
+    freq : str
+        Frequency to resample to. See :func:`pd.DataFrame.resample` for
+        valid frequency strings.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DatetimeIndex]
+        Resampled DataFrame and the new index.
+    """
+
+    # Manually create a new index that includes all the original index values
+    # and the resampled-to-freq index values.
+    t0 = df.index[0]
+    t1 = df.index[-1]
+    t = pd.date_range(t0, t1, freq=freq).floor(freq)
+    if t[0] < t0:
+        t = t[1:]
+
+    concat_arr = np.concatenate([df.index, t])
+    concat_arr = np.unique(concat_arr)
+    concat_index = pd.DatetimeIndex(concat_arr, name="time", copy=False)
+
+    out = pd.DataFrame(index=concat_index, columns=df.columns, dtype=float)
+    out.loc[df.index] = df
+
+    # Linearly interpolate small horizontal gap
+    coords = ["longitude", "latitude"]
+    out.loc[:, coords] = out.loc[:, coords].interpolate(method="index")
+
+    return out, t

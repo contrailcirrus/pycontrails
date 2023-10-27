@@ -175,7 +175,7 @@ class Model(ABC):
     def __init__(
         self,
         met: MetDataset | None = None,
-        params: dict[str, Any] | None = None,
+        params: ModelParams | dict[str, Any] | None = None,
         **params_kwargs: Any,
     ) -> None:
         # Load base params, override default and user params
@@ -202,7 +202,7 @@ class Model(ABC):
             and originates_from_ecmwf(self.met)
         ):
             warnings.warn(
-                "Met data appears to have originated from ECMWF and no humidity "
+                "\nMet data appears to have originated from ECMWF and no humidity "
                 "scaling is enabled. For ECMWF data, consider using one of: \n"
                 " - 'ConstantHumidityScaling'\n"
                 " - 'ExponentialBoostHumidityScaling'\n"
@@ -292,19 +292,22 @@ class Model(ABC):
             else:
                 raise e1
 
-    def _load_params(self, params: dict[str, Any] | None = None, **params_kwargs: Any) -> None:
+    def _load_params(
+        self, params: ModelParams | dict[str, Any] | None = None, **params_kwargs: Any
+    ) -> None:
         """Load parameters to model :attr:`params`.
 
         Load order:
 
-        1. :attr:`default_params` instantiated as dict
+        1. If ``params`` is a :attr:`default_params` instance, use as is. Otherwise
+           instantiate as :attr:`default_params`.
         2. ``params`` input dict
         3. ``params_kwargs`` override keys in params
 
         Parameters
         ----------
         params : dict[str, Any], optional
-            Model parameter dictionary.
+            Model parameter dictionary or :attr:`default_params` instance.
             Defaults to {}
         **params_kwargs : Any
             Override keys in ``params`` with keyword arguments.
@@ -314,7 +317,17 @@ class Model(ABC):
         KeyError
             Unknown parameter passed into model
         """
-        self.params = self.default_params().as_dict()
+        if isinstance(params, self.default_params):
+            base_params = params
+            params = None
+        elif isinstance(params, ModelParams):
+            raise TypeError(
+                f"Model parameters must be of type {self.default_params.__name__} or dict"
+            )
+        else:
+            base_params = self.default_params()
+
+        self.params = base_params.as_dict()
         self.update_params(params, **params_kwargs)
 
     @abstractmethod
@@ -407,16 +420,13 @@ class Model(ABC):
         return type_guard(getattr(self, "source", None), type_, f"Source must be of type {type_}")
 
     @overload
-    def _get_source(self, source: MetDataset | None) -> MetDataset:
-        ...
+    def _get_source(self, source: MetDataset | None) -> MetDataset: ...
 
     @overload
-    def _get_source(self, source: GeoVectorDataset) -> GeoVectorDataset:
-        ...
+    def _get_source(self, source: GeoVectorDataset) -> GeoVectorDataset: ...
 
     @overload
-    def _get_source(self, source: Sequence[Flight]) -> Fleet:
-        ...
+    def _get_source(self, source: Sequence[Flight]) -> Fleet: ...
 
     def _get_source(self, source: ModelInput) -> SourceType:
         """Construct :attr:`source` from ``source`` parameter."""
@@ -623,7 +633,7 @@ class Model(ABC):
     # https://github.com/python/cpython/blob/618b7a8260bb40290d6551f24885931077309590/Lib/collections/__init__.py#L231
     __marker = object()
 
-    def get_source_param(self, key: str, default: Any = __marker) -> Any:
+    def get_source_param(self, key: str, default: Any = __marker, *, set_attr: bool = True) -> Any:
         """Get source data with default set by parameter key.
 
         Retrieves data with the following hierarchy:
@@ -639,8 +649,11 @@ class Model(ABC):
         ----------
         key : str
             Key to retrieve
-        default : Any
+        default : Any, optional
             Default value if key is not found.
+        set_attr : bool, optional
+            If True (default), set :attr:`source.attrs[key]` to :attr:`params[key]` if found.
+            This allows for better post model evaluation tracking.
 
         Returns
         -------
@@ -664,8 +677,8 @@ class Model(ABC):
 
         out = self.params.get(key, marker)
         if out is not marker:
-            # Set parameter to source attr for better post model evaluation tracking
-            self.source.attrs[key] = out
+            if set_attr:
+                self.source.attrs[key] = out
 
             return out
 

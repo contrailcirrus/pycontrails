@@ -158,7 +158,7 @@ def test_pl_path_to_met_dataset(met_ecmwf_pl_path: str, wrap_longitude: bool):
 
 
 @pytest.mark.parametrize(
-    "lon,lat,match",
+    ("lon", "lat", "match"),
     [
         (np.linspace(-200, 200, 10), np.linspace(-100, 100, 10), "Latitude values must"),
         (np.linspace(-400, 200, 10), np.linspace(-80, 80, 10), "Shift to WGS84"),
@@ -231,7 +231,7 @@ def test_shift_longitude(zero_like_da: xr.DataArray) -> None:
     assert np.all(np.diff(da2["longitude"].values) > 0)
 
 
-@pytest.fixture
+@pytest.fixture()
 def zero_like_da() -> xr.DataArray:
     return xr.DataArray(
         data=0.0,
@@ -271,7 +271,7 @@ def sparse_binary(zero_like_da: xr.DataArray, request: Any) -> tuple[MetDataArra
     return MetDataArray(da), request.param
 
 
-@pytest.fixture
+@pytest.fixture()
 def island_binary(zero_like_da: xr.DataArray) -> MetDataArray:
     # create 9 x 9 island
 
@@ -281,7 +281,7 @@ def island_binary(zero_like_da: xr.DataArray) -> MetDataArray:
     return MetDataArray(da)
 
 
-@pytest.fixture
+@pytest.fixture()
 def antimeridian_binary(zero_like_da: xr.DataArray) -> MetDataArray:
     # create 9 x 9 island spanning antimeridian
 
@@ -319,12 +319,12 @@ def _generate_waypoints(
     return _x, _y, _z, _t
 
 
-@pytest.fixture
+@pytest.fixture()
 def pl_path_to_doubled_time_mds(met_ecmwf_pl_path: str) -> MetDataset:
     return MetDataset(xr.open_dataset(met_ecmwf_pl_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def sl_path_to_tripled_time_mds(met_ecmwf_sl_path: str) -> MetDataset:
     """Triple the number of time variables in the Dataset sitting at `met_ecmwf_sl_path`."""
     ds1 = xr.open_dataset(met_ecmwf_sl_path)
@@ -363,7 +363,7 @@ def test_met_values_property(zero_like_da: xr.DataArray, met_ecmwf_pl_path: str)
 
 
 @pytest.mark.parametrize(
-    "values, dimension",
+    ("values", "dimension"),
     [
         ((-211, 53, 250, np.datetime64("2019-05-31T05:30")), 0),
         ((26, -112, 250, np.datetime64("2019-05-31T05:30")), 1),
@@ -452,19 +452,21 @@ def test_interpolate_antimeridian_binary(antimeridian_binary: MetDataArray) -> N
 def test_bad_interpolate(island_binary: MetDataArray) -> None:
     assert len(island_binary.interpolate(5, 5, 200, np.datetime64("2019-05-31T05:00:00"))) == 1
 
-    with pytest.raises(ValueError):
+    match = "One of the requested xi is out of bounds in dimension"
+
+    with pytest.raises(ValueError, match=match):
         island_binary.interpolate(
             200, 5, 200, np.datetime64("2019-05-31T05:00:00"), bounds_error=True
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         island_binary.interpolate(
             5, 100, 200, np.datetime64("2019-05-31T05:00:00"), bounds_error=True
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         island_binary.interpolate(
             5, 5, 600, np.datetime64("2019-05-31T05:00:00"), bounds_error=True
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         island_binary.interpolate(
             5, 5, 200, np.datetime64("2021-05-31T05:00:00"), bounds_error=True
         )
@@ -575,7 +577,8 @@ def test_polygon_sparse_binary(
     assert isinstance(coords, list)
 
     # multipolygons are arrays of Polygons
-    assert len(coords) == 1 and len(coords[0])
+    assert len(coords) == 1
+    assert len(coords[0])
     coords = coords[0][0]
 
     # polygon closes in on itself
@@ -596,7 +599,7 @@ def test_polygon_sparse_binary(
     assert json.dumps(geojson)
 
 
-@pytest.fixture
+@pytest.fixture()
 def island_slice(island_binary: MetDataArray) -> MetDataArray:
     # every (level, time) slice of island_binary is identical -- just grab one
     return MetDataArray(island_binary.data.isel(level=[0], time=[0]))
@@ -608,7 +611,8 @@ def test_polygon_island_binary(island_slice: MetDataArray) -> None:
     # contains a single polygon
     coords = geojson["geometry"]["coordinates"]
     assert isinstance(coords, list)
-    assert len(coords) == 1 and len(coords[0]) == 1
+    assert len(coords) == 1
+    assert len(coords[0]) == 1
     coords = coords[0][0]
 
     # polygon closes in on itself
@@ -624,7 +628,7 @@ def test_polygon_island_binary(island_slice: MetDataArray) -> None:
             assert component in [-4.5, -4, 4, 4.5]
 
 
-@pytest.mark.parametrize("interiors", (True, False))
+@pytest.mark.parametrize("interiors", [True, False])
 def test_nested_polygons(zero_like_da: xr.DataArray, interiors: bool) -> None:
     """This test shows that we *dont* currently support deeply nested polygons.
 
@@ -803,7 +807,8 @@ def test_save_load(met_ecmwf_pl_path: str, met_era5_fake: MetDataset) -> None:
     assert _cache.exists(f"{mds.hash}-0.nc")
 
     mds2 = MetDataset.load(mds.hash, cachestore=_cache)
-    assert "new" in mds2 and np.all(mds2.data["new"].values == 1)
+    assert "new" in mds2
+    assert np.all(mds2.data["new"].values == 1)
 
     # met data array version
     mda = MetDataArray(mds.data["t"], cachestore=_cache)
@@ -820,7 +825,8 @@ def test_save_load(met_ecmwf_pl_path: str, met_era5_fake: MetDataset) -> None:
     # save multiple time slices separately - dataset
     mds = met_era5_fake.copy()
     mds.cachestore = _cache
-    assert not _cache.exists(f"{mds.hash}-0.nc") and not _cache.exists(f"{mds.hash}-1.nc")
+    assert not _cache.exists(f"{mds.hash}-0.nc")
+    assert not _cache.exists(f"{mds.hash}-1.nc")
     mds.save()
 
     assert _cache.exists(f"{mds.hash}-0.nc")
@@ -835,7 +841,8 @@ def test_save_load(met_ecmwf_pl_path: str, met_era5_fake: MetDataset) -> None:
     mda = MetDataArray(met_era5_fake.data["air_temperature"])
     mda.cachestore = _cache
     assert mda.hash != mds.hash
-    assert not _cache.exists(f"{mda.hash}-0.nc") and not _cache.exists(f"{mda.hash}-1.nc")
+    assert not _cache.exists(f"{mda.hash}-0.nc")
+    assert not _cache.exists(f"{mda.hash}-1.nc")
     mda.save()
 
     assert _cache.exists(f"{mda.hash}-0.nc")
@@ -1019,7 +1026,8 @@ def test_met_variable() -> None:
     NewParam = MetVariable(ecmwf_id=829, standard_name="new-param", short_name="wt", units="n")
     assert isinstance(NewParam, MetVariable)
     assert NewParam.short_name == "wt"
-    assert NewParam.ecmwf_link is not None and "grib/param-db?id=829" in NewParam.ecmwf_link
+    assert NewParam.ecmwf_link is not None
+    assert "grib/param-db?id=829" in NewParam.ecmwf_link
 
     NewParam2 = MetVariable(standard_name="new-param2", short_name="wt", units="n")
     assert NewParam2.ecmwf_link is None
@@ -1034,8 +1042,10 @@ def test_met_variable() -> None:
     # should have attrs property
     NewParam = MetVariable(ecmwf_id=829, standard_name="new-param", short_name="wt", units="n")
     attrs = NewParam.attrs
-    assert "standard_name" in attrs and attrs["standard_name"] == "new-param"
-    assert "short_name" in attrs and attrs["short_name"] == "wt"
+    assert "standard_name" in attrs
+    assert attrs["standard_name"] == "new-param"
+    assert "short_name" in attrs
+    assert attrs["short_name"] == "wt"
     assert "long_name" not in attrs
     assert "ecmwf_id" not in attrs
 

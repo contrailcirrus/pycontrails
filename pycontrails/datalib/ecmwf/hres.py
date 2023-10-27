@@ -596,28 +596,6 @@ class HRES(ECMWFAPI):
             self._download_file(steps)
 
     @overrides
-    def cache_dataset(self, dataset: xr.Dataset) -> None:
-        if self.cachestore is None:
-            LOG.debug("Cache is turned off, skipping")
-            return
-
-        with ExitStack() as stack:
-            # group by hour and save one dataset for each hour to temp file
-            time_group, datasets = zip(*dataset.groupby("time", squeeze=False))
-
-            xarray_temp_filenames = [stack.enter_context(temp_file()) for _ in time_group]
-            xr.save_mfdataset(datasets, xarray_temp_filenames)
-
-            # put each hourly file into cache
-            self.cachestore.put_multiple(
-                xarray_temp_filenames,
-                [
-                    self.create_cachepath(datetime.utcfromtimestamp(tg.tolist() / 1e9))
-                    for tg in time_group
-                ],
-            )
-
-    @overrides
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,

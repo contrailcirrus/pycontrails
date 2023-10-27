@@ -614,7 +614,9 @@ def contrail_vertices(
 
 
 def plume_effective_cross_sectional_area(
-    width: npt.NDArray[np.float_], depth: npt.NDArray[np.float_], sigma_yz: npt.NDArray[np.float_]
+    width: npt.NDArray[np.float_],
+    depth: npt.NDArray[np.float_],
+    sigma_yz: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_]:
     """
     Calculate the effective cross-sectional area of the contrail plume (``area_eff``).
@@ -628,7 +630,7 @@ def plume_effective_cross_sectional_area(
         contrail width at each waypoint, [:math:`m`]
     depth : npt.NDArray[np.float_]
         contrail depth at each waypoint, [:math:`m`]
-    sigma_yz : npt.NDArray[np.float_]
+    sigma_yz : npt.NDArray[np.float_] | float
         temporal evolution of the contrail plume parameters
 
     Returns
@@ -1166,7 +1168,11 @@ def plume_temporal_evolution(
     diffuse_v_t1: npt.NDArray[np.float_],
     seg_ratio: npt.NDArray[np.float_] | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
+<<<<<<< HEAD
     max_contrail_depth: float | None,
+=======
+    max_depth: float | None,
+>>>>>>> upstream/main
 ) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     """
     Calculate the temporal evolution of the contrail plume parameters.
@@ -1199,9 +1205,15 @@ def plume_temporal_evolution(
         See :func:`segment_length_ratio`.
     dt : npt.NDArray[np.timedelta64] | np.timedelta64
         integrate contrails with time steps of dt, [:math:`s`]
+<<<<<<< HEAD
     max_contrail_depth: float | None
         Constrain maximum contrail depth to prevent unrealistic values, [:math:`m`].
         If None is passed, the maximum contrail depth is not constrained.
+=======
+    max_depth: float | None
+        Constrain maximum plume depth to prevent unrealistic values, [:math:`m`].
+        If None is passed, the maximum plume depth is not constrained.
+>>>>>>> upstream/main
 
     Returns
     -------
@@ -1214,21 +1226,30 @@ def plume_temporal_evolution(
     """
     # Convert dt to seconds value and use dtype of other variables
     dtype = np.result_type(width_t1, depth_t1, sigma_yz_t1, dsn_dz_t1, diffuse_h_t1, diffuse_v_t1)
+<<<<<<< HEAD
     dt_s = np.empty(width_t1.shape, dtype=dtype)
     np.divide(dt, np.timedelta64(1, "s"), out=dt_s)
+=======
+    dt_s = units.dt_to_seconds(dt, dtype)
+>>>>>>> upstream/main
 
     sigma_yy = 0.125 * width_t1**2
     sigma_zz = 0.125 * depth_t1**2
 
-    # Convert from max_contrail_depth to an upper bound for diffuse_v_t1
+    # Convert from max_depth to an upper bound for diffuse_v_t1
     # All three terms involve the diffuse_v_t1 variable, so we need to
     # calculate the max value for diffuse_v_t1 and apply it to all three terms.
     # If we don't do this, we violate the some mathematical constraints of the
     # covariance matrix (positive definite). In particular, for downstream
     # calculations, we required that
     #   sigma_yy_t2 * sigma_zz_t2 - sigma_yz_t2**2 >= 0
+<<<<<<< HEAD
     if max_contrail_depth is not None:
         max_sigma_zz = 0.125 * max_contrail_depth**2
+=======
+    if max_depth is not None:
+        max_sigma_zz = 0.125 * max_depth**2
+>>>>>>> upstream/main
         max_diffuse_v = (max_sigma_zz - sigma_zz) / (2.0 * dt_s)
         diffuse_v_t1 = np.minimum(diffuse_v_t1, max_diffuse_v)
 
@@ -1285,7 +1306,7 @@ def new_contrail_dimensions(
 def new_effective_area_from_sigma(
     sigma_yy: npt.NDArray[np.float_],
     sigma_zz: npt.NDArray[np.float_],
-    sigma_yz: npt.NDArray[np.float_],
+    sigma_yz: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_]:
     """
     Calculate effective cross-sectional area of contrail plume (``area_eff``) from sigma parameters.
@@ -1301,7 +1322,7 @@ def new_effective_area_from_sigma(
     sigma_zz : npt.NDArray[np.float_]
         element zz, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
-    sigma_yz : npt.NDArray[np.float_]
+    sigma_yz : npt.NDArray[np.float_] | float
         element yz, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
 
@@ -1405,8 +1426,7 @@ def new_ice_particle_number(
     """
     # Convert dt to seconds value and use dtype of other variables
     dtype = np.result_type(n_ice_per_m_t1, dn_dt_agg, dn_dt_turb, seg_ratio)
-    dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(dtype)
+    dt_s = units.dt_to_seconds(dt, dtype)
 
     n_ice_per_m_t1 = np.maximum(n_ice_per_m_t1, 0.0)
 
@@ -1527,6 +1547,5 @@ def mean_energy_flux_per_m(
     --------
     :func:`mean_radiative_flux_per_m`
     """
-    dt_s = dt / np.timedelta64(1, "s")
-    dt_s = dt_s.astype(rad_flux_per_m.dtype, copy=False)
+    dt_s = units.dt_to_seconds(dt, rad_flux_per_m.dtype)
     return rad_flux_per_m * dt_s

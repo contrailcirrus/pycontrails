@@ -47,7 +47,7 @@ jobs:
       id-token: 'write'
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -87,7 +87,7 @@ jobs:
     - name: Install pycontrails (dev)
       run: |
         pip install -U pip wheel
-        pip install -e .[dev,docs,ecmwf,gcp,gfs,jupyter,pwlf,vis,zarr] --verbose
+        pip install -e .[complete,dev,docs] --verbose
 
     # In latest-windows, redirecting stdout to a file uses utf-16 encoding
     # This gives an error when ssh tries to read the key

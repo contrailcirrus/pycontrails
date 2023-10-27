@@ -18,7 +18,7 @@ help:
 # versions of python
 pip-install:
 	pip install -U pip wheel
-	pip install -e ".[ecmwf,gcp,gfs,jupyter,vis,zarr]"
+	pip install -e ".[complete]"
 
 	# these still must be installed manually for Python < 3.10
 	# -pip install -e ".[open3d]"
@@ -57,9 +57,11 @@ check-licenses:
 # Extensions
 # -----------
 
+PYCONTRAILS_BADA_DIR = ../pycontrails-bada
+
 dev-pycontrails-bada:
-	git clone git@github.com:contrailcirrus/pycontrails-bada.git ../pycontrails-bada
-	cd ../pycontrails-bada && make dev-install
+	git -C $(PYCONTRAILS_BADA_DIR) pull || git clone git@github.com:contrailcirrus/pycontrails-bada.git $(PYCONTRAILS_BADA_DIR)
+	cd $(PYCONTRAILS_BADA_DIR) && make dev-install
 
 # -----------
 # QC, Test
@@ -73,12 +75,19 @@ black:
 
 black-check:
 	black pycontrails --check
-	
+
+# https://taplo.tamasfe.dev/
+taplo:
+	taplo format pyproject.toml --option indent_string='    '
+
 mypy:
 	mypy pycontrails
 
 pytest:
 	pytest tests/unit
+
+pytest-regenerate-results:
+	pytest tests/unit --regenerate-results
 
 pytest-cov:
 	pytest \

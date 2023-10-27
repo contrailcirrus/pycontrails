@@ -13,16 +13,29 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore, Flight, MetDataArray, MetDataset
 from pycontrails.core import cache, met, met_var
+from pycontrails.core.aircraft_performance import AircraftPerformance, AircraftPerformanceGrid
 from pycontrails.datalib.ecmwf import ERA5
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
 
 # find default cache dir for testing
 DISK_CACHE_DIR = cache._get_user_cache_dir()
 
-################################
-# Fixtures in "static" directory
-################################
+
+# Add command line option for re-generating static output data
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Add command line option to regenerate static test results."""
+    parser.addoption(
+        "--regenerate-results",
+        action="store",
+        default=False,
+        help="Regenerate static test results",
+    )
+
+
+@pytest.fixture()
+def regenerate_results(request: pytest.FixtureRequest) -> bool:
+    """Regenerate static test results in tests that use them."""
+    return request.config.getoption("--regenerate-results")
 
 
 def get_static_path(filename: str | pathlib.Path) -> pathlib.Path:
@@ -196,7 +209,7 @@ def met_issr(met_ecmwf_pl_path: str) -> MetDataset:
     return MetDataset(ds)
 
 
-@pytest.fixture
+@pytest.fixture()
 def met_cocip1() -> MetDataset:
     """ERA5 Meteorology to run cocip with ``flight_cocip1``.
 
@@ -208,7 +221,7 @@ def met_cocip1() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad_cocip1() -> MetDataset:
     """ERA5 radiation data to run cocip with ``flight_cocip1``.
 
@@ -234,21 +247,21 @@ def rad_cocip1_module_scope() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def met_cocip2() -> MetDataset:
     """ERA5 meteorology to run cocip with ``flight-cocip2.csv``."""
     _path = get_static_path("met-era5-cocip2.nc")
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad_cocip2() -> MetDataset:
     """ERA5 radiation data to run cocip with ``flight-cocip2.csv``."""
     _path = get_static_path("rad-era5-cocip2.nc")
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def met_gfs() -> MetDataset:
     """
     Load GFS met example.
@@ -259,7 +272,7 @@ def met_gfs() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad_gfs() -> MetDataset:
     """
     Load GFS rad example.
@@ -270,7 +283,7 @@ def rad_gfs() -> MetDataset:
     return MetDataset(xr.open_dataset(_path))
 
 
-@pytest.fixture(scope="function")  # keep function scoped
+@pytest.fixture()  # keep function scoped
 def met_era5_fake() -> MetDataset:
     """Create a fake ERA5 MetDataset."""
     shape = (360, 181, 7, 4)
@@ -295,7 +308,7 @@ def met_era5_fake() -> MetDataset:
     return MetDataset(ds)
 
 
-@pytest.fixture
+@pytest.fixture()
 def flight_cocip1() -> Flight:
     """Keep at function scope (default)."""
     # demo synthetic flight
@@ -320,7 +333,7 @@ def flight_cocip1() -> Flight:
     return Flight(df, attrs=attrs)
 
 
-@pytest.fixture
+@pytest.fixture()
 def flight_cocip2() -> Flight:
     """Test flight for cocip outputs.
 
@@ -345,7 +358,7 @@ def flight_meridian() -> Flight:
     return Flight(df)
 
 
-@pytest.fixture(scope="function")  # keep function scoped
+@pytest.fixture()  # keep function scoped
 def flight_fake() -> Flight:
     """Fake Flight fixture."""
     n_waypoints = 500
@@ -362,23 +375,33 @@ def flight_fake() -> Flight:
     return Flight(df, attrs=dict(destination="SLC", flight_id="abcde"))
 
 
-@pytest.fixture
+@pytest.fixture()
 def bada_model() -> AircraftPerformance:
-    """Construct generic BADAFlight model."""
+    """Construct generic ``BADAFlight`` trajectory AP model."""
 
     BADAFlight = pytest.importorskip("pycontrails.ext.bada").BADAFlight
 
     if not BADA_AVAILABLE:
         pytest.skip("BADA data not available")
 
-    params = {
-        "bada3_path": BADA3_PATH,
-        "bada4_path": BADA4_PATH,
-    }
+    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH}
     return BADAFlight(params=params)
 
 
-@pytest.fixture
+@pytest.fixture()
+def bada_grid_model() -> AircraftPerformanceGrid:
+    """Construct generic ``BADAGrid`` gridded AP model."""
+
+    BADAGrid = pytest.importorskip("pycontrails.ext.bada").BADAGrid
+
+    if not BADA_AVAILABLE:
+        pytest.skip("BADA data not available")
+
+    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH}
+    return BADAGrid(params=params)
+
+
+@pytest.fixture()
 def polygon_bug() -> MetDataArray:
     """Read the polygon bug example."""
     _path = get_static_path("polygon-bug.nc")

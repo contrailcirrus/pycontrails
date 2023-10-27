@@ -366,26 +366,6 @@ class ERA5(ECMWFAPI):
             self._download_file(download_times[unique_day])
 
     @overrides
-    def cache_dataset(self, dataset: xr.Dataset) -> None:
-        if self.cachestore is None:
-            LOG.debug("Cache is turned off, skipping")
-            return
-
-        with ExitStack() as stack:
-            # group by hour and save one dataset for each hour to temp file
-            time_group, datasets = zip(*dataset.groupby("time", squeeze=False))
-
-            xarray_temp_filenames = [stack.enter_context(temp_file()) for _ in time_group]
-            xr.save_mfdataset(datasets, xarray_temp_filenames)
-
-            # put each hourly file into cache
-            cache_path = [
-                self.create_cachepath(datetime.utcfromtimestamp(tg.tolist() / 1e9))
-                for tg in time_group
-            ]
-            self.cachestore.put_multiple(xarray_temp_filenames, cache_path)
-
-    @overrides
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,

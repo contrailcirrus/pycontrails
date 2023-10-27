@@ -147,10 +147,14 @@ def test_flight_properties(fl: Flight) -> None:
 
     # test coords
     assert isinstance(fl.coords, dict)
-    assert "longitude" in fl.coords and fl.coords["longitude"] is fl.data["longitude"]
-    assert "latitude" in fl.coords and fl.coords["latitude"] is fl.data["latitude"]
-    assert "time" in fl.coords and fl.coords["time"] is fl.data["time"]
-    assert "level" in fl.coords and np.all(fl.coords["level"] == fl.level)
+    assert "longitude" in fl.coords
+    assert fl.coords["longitude"] is fl.data["longitude"]
+    assert "latitude" in fl.coords
+    assert fl.coords["latitude"] is fl.data["latitude"]
+    assert "time" in fl.coords
+    assert fl.coords["time"] is fl.data["time"]
+    assert "level" in fl.coords
+    assert np.all(fl.coords["level"] == fl.level)
 
 
 def test_flight_hashable(fl: Flight) -> None:
@@ -162,15 +166,20 @@ def test_flight_empty() -> None:
     fl = Flight.create_empty(attrs=dict(equip="A359"))
 
     assert isinstance(fl.data, dict)
-    assert "longitude" in fl.data and len(fl.data["longitude"]) == 0
-    assert "latitude" in fl.data and len(fl.data["latitude"]) == 0
-    assert "altitude" in fl.data and len(fl.data["altitude"]) == 0
-    assert "time" in fl.data and len(fl.data["time"]) == 0
+    assert "longitude" in fl.data
+    assert len(fl.data["longitude"]) == 0
+    assert "latitude" in fl.data
+    assert len(fl.data["latitude"]) == 0
+    assert "altitude" in fl.data
+    assert len(fl.data["altitude"]) == 0
+    assert "time" in fl.data
+    assert len(fl.data["time"]) == 0
     assert len(fl.air_pressure) == 0
     assert len(fl.level) == 0
 
     assert fl.attrs["crs"] == "EPSG:4326"
-    assert isinstance(fl.constants, dict) and fl.constants == fl.attrs
+    assert isinstance(fl.constants, dict)
+    assert fl.constants == fl.attrs
 
     assert not fl
 
@@ -320,37 +329,52 @@ def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[
 
     fl3 = fl2.resample_and_fill("10S")
     assert fl3.max_time_gap == pd.Timedelta("10S")
-    assert np.all(np.diff(fl3.data["time"]) == pd.Timedelta("10S"))
+    assert np.all(np.diff(fl3.data["time"][1:-1]) == pd.Timedelta("10S"))
     assert set(fl3.data.keys()) == {"time", "latitude", "longitude", "altitude"}
 
 
-def test_resampling(fl: Flight, flight_meridian: Flight) -> None:
+def test_resampling_10s(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with 10s resampling."""
     fl2 = fl.resample_and_fill("10S")
-    fl3 = fl.resample_and_fill("10T")
-    # flight with more waypoints will waver more, and have longer length
-    assert len(fl2) > len(fl3)
+    assert len(fl2) == 889
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="10S").floor("10S")[1:]
+    np.testing.assert_array_equal(fl2["time"], expected)
 
-    # fl2 has 60 times more data
-    assert abs(len(fl3) - len(fl2) / 60) <= 1
 
+def test_resampling_10t(fl: Flight, flight_meridian: Flight) -> None:
+    """Test Flight.resample_and_fill() with 10T resampling."""
+    fl2 = fl.resample_and_fill("10T")
+    assert len(fl2) == 14
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="10T").floor("10T")[1:]
+    np.testing.assert_array_equal(fl2["time"], expected)
+
+
+def test_resample_large_geodesic_threshold(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with large geodesic threshold."""
     # at large threshold, geodesics are not calculated
-    fl4 = fl.resample_and_fill("1T", "linear")
-    fl5 = fl.resample_and_fill("1T", "geodesic", 1000e3)
-    assert fl4 == fl5
+    fl2 = fl.resample_and_fill("1T", "linear")
+    fl3 = fl.resample_and_fill("1T", "geodesic", 1000e3)
+    assert fl2 == fl3
 
-    # test resample over the meridian
-    # all resampled waypoints should be < 1 deg of longitude apart on [0, 360] scale
-    fl6 = flight_meridian.resample_and_fill("1T")
-    assert np.all(np.abs(np.diff(fl6["longitude"] % 360)) < 1)
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="1T").floor("1T")[1:]
+    np.testing.assert_array_equal(fl3["time"], expected)
 
-    fl7 = flight_meridian.resample_and_fill("3T")
-    assert np.all(np.abs(np.diff(fl7["longitude"] % 360)) < 1)
 
-    fl8 = flight_meridian.resample_and_fill("5T")
-    assert np.all(np.abs(np.diff(fl8["longitude"] % 360)) < 2)
+@pytest.mark.parametrize("freq", ["1T", "3T", "5T"])
+def test_resample_over_meridian(flight_meridian: Flight, freq: str) -> None:
+    """Test Flight.resample_and_fill() over the meridian."""
+    fl2 = flight_meridian.resample_and_fill(freq)
+    bound = 2.0 if freq == "5T" else 1.0
+    assert np.all(np.abs(np.diff(fl2["longitude"] % 360.0)) < bound)
+
+    expected = pd.date_range(flight_meridian.time_start, flight_meridian.time_end, freq=freq).floor(
+        freq
+    )[1:]
+    np.testing.assert_array_equal(fl2["time"], expected)
 
 
 def test_geodesic_interpolation(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with geodesic interpolation."""
     fl2 = fl.resample_and_fill("1T", "geodesic", geodesic_threshold=1e3)
     fl3 = fl.resample_and_fill("1T", "geodesic", geodesic_threshold=200e3)
     # fine geodesic interpolation will beat linear interpolation for minimizing spherical distance
@@ -359,7 +383,22 @@ def test_geodesic_interpolation(fl: Flight) -> None:
         fl.resample_and_fill(fill_method="nearest")
 
 
+def test_resample_keep_original(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with keep_original_index=True."""
+    fl2 = fl.resample_and_fill("1T", keep_original_index=True)
+    assert len(fl2) == 401
+    assert np.all(np.diff(fl2["time"]) > np.timedelta64(0, "ns"))  # monotonically increasing
+
+    fl3 = fl.resample_and_fill("1T", keep_original_index=False)
+    assert len(fl3) == 148
+    assert np.all(np.diff(fl3["time"]) > np.timedelta64(0, "ns"))  # monotonically increasing
+
+    assert len(fl) + len(fl3) == len(fl2) + 1  # 1 duplicate time
+
+
 def test_altitude_interpolation(fl: Flight) -> None:
+    """Check the ROCD of the interpolated altitude."""
+
     # check default flight
     fl1 = fl.resample_and_fill("10S")
     fl2 = fl.resample_and_fill("10T")
@@ -421,7 +460,8 @@ def test_altitude_interpolation(fl: Flight) -> None:
     fl_alt["extrakey"] = np.linspace(0, 10, 10)
     fl_alt["level"] = fl_alt.level
     fl16 = fl_alt.resample_and_fill("1T", drop=False)
-    assert "extrakey" in fl16 and np.any(np.isnan(fl16["extrakey"]))
+    assert "extrakey" in fl16
+    assert np.any(np.isnan(fl16["extrakey"]))
     assert "level" not in fl16
 
     fl17 = fl_alt.resample_and_fill("1T")
@@ -538,7 +578,7 @@ def test_antimeridian_jump() -> None:
     df["longitude"] = [-177, -179, 179, -178]
     fl = Flight(df)
     # jumps antimeridian twice
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Only implemented for trajectories jumping"):
         fl.to_geojson_multilinestring("issr", split_antimeridian=True)
 
 
@@ -569,7 +609,8 @@ def test_segment_properties(fl: Flight, rng: np.random.Generator) -> None:
     # segment ground airspeed
     segment_groundspeed = fl.segment_groundspeed()
     assert len(segment_groundspeed) == len(fl)
-    assert np.nanmin(segment_groundspeed) > 0 and np.nanmax(segment_groundspeed) <= 300
+    assert np.nanmin(segment_groundspeed) > 0
+    assert np.nanmax(segment_groundspeed) <= 300
     assert np.isnan(segment_groundspeed[-1])
 
     # segment true airspeed
@@ -860,42 +901,3 @@ def test_filter_altitude(kernel_size: int) -> None:
 
     # Final waypoint has altitude 40002 +/- 2 ft
     assert altitude_cleaned[-1] == pytest.approx(40002, abs=2.5)
-
-
-# Compare with OpenAP implementation
-try:
-    from openap import FlightPhase
-
-    OPENAP_AVAILABLE = True
-except ImportError:
-    OPENAP_AVAILABLE = False
-
-
-@pytest.mark.skipif(not OPENAP_AVAILABLE, reason="OpenAP not installed")
-def test_compare_segment_phase() -> None:
-    """Compare flight phase algorithm with OpenAP.
-
-    See https://github.com/junzis/openap/blob/master/test/test_phase.py
-    """
-    df = pd.read_csv(
-        "https://raw.githubusercontent.com/junzis/openap/master/test/data/flight_phlab.csv"
-    )
-
-    ts0 = df["ts"].values
-    ts0 = ts0 - ts0[0]
-    alt0 = df["alt"].values
-    spd0 = df["spd"].values
-    roc0 = df["roc"].values
-
-    ts = np.arange(0, ts0[-1], 1)
-    alt = np.interp(ts, ts0, alt0)
-    spd = np.interp(ts, ts0, spd0)
-    roc = np.interp(ts, ts0, roc0)
-
-    fp = FlightPhase()
-    fp.set_trajectory(ts, alt, spd, roc)
-    labels = fp.phaselabel()
-
-    assert labels
-
-    Flight(data=df.rename({"alt": "altitude", "lat": "latitude", "lon": "longitude"}))

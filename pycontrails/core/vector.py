@@ -11,7 +11,6 @@ from typing import Any, Dict, Generator, Iterable, Iterator, Sequence, Type, Typ
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pyproj
 import xarray as xr
 from overrides import overrides
 
@@ -79,8 +78,6 @@ class VectorDataDict(Dict[str, np.ndarray]):
     ----------
     data : dict[str, np.ndarray], optional
         Dictionary input
-    **kwargs : np.ndarray
-        Keyword arguments, override values in ``data``
     """
 
     __slots__ = ("_size",)
@@ -88,13 +85,10 @@ class VectorDataDict(Dict[str, np.ndarray]):
     #: Length of the data
     _size: int
 
-    def __init__(self, data: dict[str, np.ndarray] | None = None, **kwargs: np.ndarray) -> None:
-        if data is None:
-            data = {}
+    def __init__(self, data: dict[str, np.ndarray] | None = None) -> None:
+        super().__init__(data or {})
 
-        super().__init__(data, **kwargs)
-
-        # validate any arrays, first one defines size()
+        # validate any arrays, first one defines _size attribute
         for arr in self.values():
             self._validate_array(arr)
 
@@ -205,9 +199,11 @@ class VectorDataDict(Dict[str, np.ndarray]):
         """
         if arr.ndim != 1:
             raise ValueError("All np.arrays must have dimension 1.")
-        if getattr(self, "_size", 0) != 0:
-            if arr.size != self._size:
-                raise ValueError(f"Incompatible array sizes: {arr.size} and {self._size}.")
+
+        size = getattr(self, "_size", 0)
+        if size != 0:
+            if arr.size != size:
+                raise ValueError(f"Incompatible array sizes: {arr.size} and {size}.")
         else:
             self._size = arr.size
 
@@ -271,68 +267,53 @@ class VectorDataset:
         | VectorDataDict
         | VectorDataset
         | None = None,
+        *,
         attrs: dict[str, Any] | AttrDict | None = None,
         copy: bool = True,
         **attrs_kwargs: Any,
     ) -> None:
+        # Set data
+        # --------
+
         # Casting from one VectorDataset type to another
         # e.g., flight = Flight(...); vector = VectorDataset(flight)
         if isinstance(data, VectorDataset):
             attrs = {**data.attrs, **(attrs or {})}
-            data = data.data
+            if copy:
+                self.data = VectorDataDict({k: v.copy() for k, v in data.data.items()})
+            else:
+                self.data = data.data
 
-        if data is None:
+        elif data is None:
             self.data = VectorDataDict()
 
         elif isinstance(data, pd.DataFrame):
+            attrs = {**data.attrs, **(attrs or {})}
+
             # Take extra caution with a time column
-
-            if "time" in data:
+            try:
                 time = data["time"]
-
-                if not hasattr(time, "dt"):
-                    # If the time column is a string, we try to convert it to a datetime
-                    # If it fails (for example, a unix integer time), we raise an error
-                    # and let the user figure it out.
-                    try:
-                        time = pd.to_datetime(time)
-                    except ValueError:
-                        raise ValueError(
-                            "The 'time' field must hold datetime-like values. "
-                            'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
-                            "with the appropriate unit."
-                        )
-
-                # If the time column contains a timezone, the call to `to_numpy`
-                # will convert it to an array of object. We do not want this, so
-                # we raise an error in this case. Timezone issues are complicated,
-                # and so it is better for the user to handle them rather than try
-                # to address them here.
-                if time.dt.tz is not None:
-                    raise ValueError(
-                        "The 'time' field must be timezone naive. "
-                        "This can be achieved with: "
-                        'data["time"] = data["time"].dt.tz_localize(None)'
-                    )
-
-                data = {col: ser.to_numpy(copy=copy) for col, ser in data.items() if col != "time"}
-                data["time"] = time.to_numpy(copy=copy)
+            except KeyError:
+                self.data = VectorDataDict({k: v.to_numpy(copy=copy) for k, v in data.items()})
             else:
-                data = {col: ser.to_numpy(copy=copy) for col, ser in data.items()}
+                time = _handle_time_column(time)
+                data = {k: v.to_numpy(copy=copy) for k, v in data.items() if k != "time"}
+                data["time"] = time.to_numpy(copy=copy)
+                self.data = VectorDataDict(data)
 
-            self.data = VectorDataDict(data)
-
-        elif isinstance(data, VectorDataDict) and not copy:
-            self.data = data
+        elif isinstance(data, VectorDataDict):
+            if copy:
+                self.data = VectorDataDict({k: v.copy() for k, v in data.items()})
+            else:
+                self.data = data
 
         # For anything else, we assume it is a dictionary of array-like and attach it
-        # This doesn't quite work for casting one VectorDataset to another subclass
-        # (we don't support .items() here), but we could easily accommodate that if
-        # needed
         else:
             self.data = VectorDataDict({k: np.array(v, copy=copy) for k, v in data.items()})
 
-        # set attributes
+        # Set attributes
+        # --------------
+
         if attrs is None:
             self.attrs = AttrDict()
 
@@ -365,19 +346,19 @@ class VectorDataset:
         return self.data[key]
 
     def get(self, key: str, default_value: Any = None) -> Any:
-        """Get values from :attr:`data` with default_value if `key` not in `data`.
+        """Get values from :attr:`data` with ``default_value`` if ``key`` not in :attr:`data`.
 
         Parameters
         ----------
         key : str
             Key to get from :attr:`data`
         default_value : Any, optional
-            Return `default_value` if `key` not in :attr:`data`, by default `None`
+            Return ``default_value`` if `key` not in :attr:`data`, by default ``None``
 
         Returns
         -------
         Any
-            Values at :attr:`data[key]` or `default_value`
+            Values at :attr:`data[key]` or ``default_value``
         """
         return self.data.get(key, default_value)
 
@@ -620,8 +601,13 @@ class VectorDataset:
         infer_attrs : bool, optional
             If True, infer attributes from the first VectorDataset in the list.
         fill_value : float, optional
+<<<<<<< HEAD
             Fill value to use when concatenating arrays, by default None, which raises an error
             if incompatible keys are found.
+=======
+            Fill value to use when concatenating arrays. By default None, which raises
+            an error if incompatible keys are found.
+>>>>>>> upstream/main
 
         Returns
         -------
@@ -661,11 +647,22 @@ class VectorDataset:
             keys = vectors[0].data.keys()
             for v in vectors[1:]:
                 if v.data.keys() != keys:
+<<<<<<< HEAD
                     raise KeyError("Summands have incompatible keys.")
+=======
+                    diff = set(v).symmetric_difference(keys)
+                    raise KeyError(f"Summands have incompatible keys. Difference: {diff}")
+
+>>>>>>> upstream/main
         else:
             keys = set().union(*[v.data.keys() for v in vectors])
 
         def _get(k: str, v: VectorDataset) -> np.ndarray:
+<<<<<<< HEAD
+=======
+            # Could also use VectorDataset.get() here, but we want to avoid creating
+            # an unused array if the key is present in the VectorDataset.
+>>>>>>> upstream/main
             try:
                 return v[k]
             except KeyError:
@@ -1090,6 +1087,9 @@ class GeoVectorDataset(VectorDataset):
     altitude : npt.ArrayLike, optional
         Altitude data, [:math:`m`].
         Defaults to None.
+    altitude_ft : npt.ArrayLike, optional
+        Altitude data, [:math:`ft`].
+        Defaults to None.
     level : npt.ArrayLike, optional
         Level data, [:math:`hPa`].
         Defaults to None.
@@ -1127,9 +1127,11 @@ class GeoVectorDataset(VectorDataset):
         | VectorDataDict
         | VectorDataset
         | None = None,
+        *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
         altitude: npt.ArrayLike | None = None,
+        altitude_ft: npt.ArrayLike | None = None,
         level: npt.ArrayLike | None = None,
         time: npt.ArrayLike | None = None,
         attrs: dict[str, Any] | AttrDict | None = None,
@@ -1162,8 +1164,17 @@ class GeoVectorDataset(VectorDataset):
 
         if altitude is not None:
             self["altitude"] = np.array(altitude, copy=copy)
-
-        if level is not None:
+            if altitude_ft is not None or level is not None:
+                warnings.warn(
+                    "Altitude data provided. Ignoring altitude_ft and level inputs.",
+                )
+        elif altitude_ft is not None:
+            self["altitude_ft"] = np.array(altitude_ft, copy=copy)
+            if level is not None:
+                warnings.warn(
+                    "Altitude_ft data provided. Ignoring level input.",
+                )
+        elif level is not None:
             self["level"] = np.array(level, copy=copy)
 
         # Confirm that input has required keys
@@ -1384,6 +1395,13 @@ class GeoVectorDataset(VectorDataset):
             Converted dataset with new coordinate reference system.
             :attr:`attrs["crs"]` reflects new crs.
         """
+        try:
+            import pyproj
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Transforming CRS requires the 'pyproj' module. Install with 'pip install pyproj'."
+            ) from exc
+
         transformer = pyproj.Transformer.from_crs(self.attrs["crs"], crs, always_xy=True)
         lon, lat = transformer.transform(self["longitude"], self["latitude"])
 
@@ -1395,6 +1413,20 @@ class GeoVectorDataset(VectorDataset):
         ret.update(longitude=lon, latitude=lat)
         ret.attrs.update(crs=crs)
         return ret
+
+    def T_isa(self) -> npt.NDArray[np.float_]:
+        """Calculate the ICAO standard atmosphere temperature at each point.
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            ISA temperature, [:math:`K`]
+
+        See Also
+        --------
+        :func:`pycontrails.physics.units.m_to_T_isa`
+        """
+        return units.m_to_T_isa(self.altitude)
 
     # ------------
     # Met
@@ -1643,8 +1675,7 @@ class GeoVectorDataset(VectorDataset):
         level_buffer: tuple[float, float] = ...,
         time_buffer: tuple[np.timedelta64, np.timedelta64] = ...,
         copy: bool = ...,
-    ) -> met_module.MetDataset:
-        ...
+    ) -> met_module.MetDataset: ...
 
     @overload
     def downselect_met(
@@ -1656,8 +1687,7 @@ class GeoVectorDataset(VectorDataset):
         level_buffer: tuple[float, float] = ...,
         time_buffer: tuple[np.timedelta64, np.timedelta64] = ...,
         copy: bool = ...,
-    ) -> met_module.MetDataArray:
-        ...
+    ) -> met_module.MetDataArray: ...
 
     def downselect_met(
         self,
@@ -1887,3 +1917,32 @@ def vector_to_lon_lat_grid(
         out[name] = (("longitude", "latitude"), arr)
 
     return out
+
+
+def _handle_time_column(time: pd.Series) -> pd.Series:
+    if not hasattr(time, "dt"):
+        # If the time column is a string, we try to convert it to a datetime
+        # If it fails (for example, a unix integer time), we raise an error
+        # and let the user figure it out.
+        try:
+            return pd.to_datetime(time)
+        except ValueError as exc:
+            raise ValueError(
+                "The 'time' field must hold datetime-like values. "
+                'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
+                "with the appropriate unit."
+            ) from exc
+
+    # If the time column contains a timezone, the call to `to_numpy`
+    # will convert it to an array of object. We do not want this, so
+    # we raise an error in this case. Timezone issues are complicated,
+    # and so it is better for the user to handle them rather than try
+    # to address them here.
+    if time.dt.tz is not None:
+        raise ValueError(
+            "The 'time' field must be timezone naive. "
+            "This can be achieved with: "
+            'data["time"] = data["time"].dt.tz_localize(None)'
+        )
+
+    return time

@@ -11,7 +11,7 @@ from pycontrails.core import interpolation as interp_mod
 from pycontrails.core import models as models_mod
 
 
-@pytest.fixture
+@pytest.fixture()
 def mda(met_pcc_pl: MetDataset) -> MetDataArray:
     """Return a MetDataArray for interpolation."""
     assert isinstance(met_pcc_pl, MetDataset)
@@ -323,7 +323,7 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str) -> None:
     assert rmse == pytest.approx(3.3319390877860893, rel=1e-10)
 
 
-@pytest.fixture
+@pytest.fixture()
 def arbitrary_coords() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     longitude = np.array([-55, -43, -55, -21, -17, -18], dtype=np.float32)
     latitude = np.array([12, 17, -8, -44, 22, 23], dtype=np.float32)

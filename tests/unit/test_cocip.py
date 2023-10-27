@@ -11,11 +11,11 @@ import pytest
 import xarray as xr
 
 from pycontrails import Fleet, Flight, MetDataset
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.met import originates_from_ecmwf
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.datalib.ecmwf import ERA5
 from pycontrails.models import humidity_scaling as hs
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import (
     Cocip,
     CocipFlightParams,
@@ -38,25 +38,25 @@ from pycontrails.models.humidity_scaling import (
 from .conftest import get_static_path
 
 
-@pytest.fixture
+@pytest.fixture()
 def met(met_cocip1: MetDataset) -> MetDataset:
     """Rename fixture `met_cocip1` from conftest."""
     return met_cocip1
 
 
-@pytest.fixture
+@pytest.fixture()
 def rad(rad_cocip1: MetDataset) -> MetDataset:
     """Rename fixture `rad_cocip1` from conftest."""
     return rad_cocip1
 
 
-@pytest.fixture
+@pytest.fixture()
 def fl(flight_cocip1: Flight) -> Flight:
     """Rename fixture `cocip_fl` from conftest."""
     return flight_cocip1
 
 
-@pytest.fixture
+@pytest.fixture()
 def cocip_no_ef(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     """Return `Cocip` instance evaluated on modified `fl`."""
     fl.update(longitude=np.linspace(-29, -32, 20))
@@ -80,7 +80,7 @@ def cocip_no_ef(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     return cocip
 
 
-@pytest.fixture
+@pytest.fixture()
 def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     """Return `Cocip` instance evaluated on modified `fl`."""
     fl.update(longitude=np.linspace(-29, -32, 20))
@@ -108,7 +108,7 @@ def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     return cocip
 
 
-@pytest.fixture
+@pytest.fixture()
 def cocip_persistent2(
     flight_cocip2: Flight, met_cocip2: MetDataset, rad_cocip2: MetDataset
 ) -> Cocip:
@@ -173,13 +173,17 @@ def test_cocip_processes_met(met: MetDataset, rad: MetDataset) -> None:
 
     # met starts without tau_cirrus
     assert "tau_cirrus" not in met
+    met_copy = met.copy()
+    met_chunked = met.copy()
+    met_chunked.data = met_chunked.data.chunk(2)
+    met_chunked_copy = met_chunked.copy()
     q = met["specific_humidity"].values.copy()
 
     cocip = Cocip(met=met, rad=rad, humidity_scaling=ExponentialBoostHumidityScaling())
 
-    # tau_cirrus added to met in __init__
+    # tau_cirrus not added to met in __init__ since it isn't dask-backed
     assert cocip.met is met
-    assert "tau_cirrus" in met
+    assert "tau_cirrus" not in met
 
     # specific humidity no longer modified on met
     np.testing.assert_array_equal(q, met["specific_humidity"].values)
@@ -187,6 +191,34 @@ def test_cocip_processes_met(met: MetDataset, rad: MetDataset) -> None:
     # There is not longer any issue in instantiating another model
     another_cocip = Cocip(met=met, rad=rad, humidity_scaling=ExponentialBoostHumidityScaling())
     assert another_cocip.met is met
+
+    cocip_3 = Cocip(met=met_chunked, rad=rad, humidity_scaling=ExponentialBoostHumidityScaling())
+
+    # tau_cirrus is added to met when it is dask-backed
+    assert cocip_3.met is met_chunked
+    assert "tau_cirrus" in met_chunked
+
+    cocip_4 = Cocip(
+        met=met_chunked_copy,
+        rad=rad,
+        humidity_scaling=ExponentialBoostHumidityScaling(),
+        compute_tau_cirrus_in_model_init=False,
+    )
+
+    # tau_cirrus is not added to met when it is dask-backed but the param is False
+    assert cocip_4.met is met_chunked_copy
+    assert "tau_cirrus" not in met_chunked_copy
+
+    cocip_5 = Cocip(
+        met=met_copy,
+        rad=rad,
+        humidity_scaling=ExponentialBoostHumidityScaling(),
+        compute_tau_cirrus_in_model_init=True,
+    )
+
+    # tau_cirrus is added to met when it is not dask-backed but the param is True
+    assert cocip_5.met is met_copy
+    assert "tau_cirrus" in met_copy
 
 
 def test_cocip_processes_rad(met: MetDataset, rad: MetDataset) -> None:
@@ -454,7 +486,7 @@ def test_eval_no_ef(cocip_no_ef: Cocip) -> None:
     assert cocip_no_ef.source["persistent_1"][-1] == 0
 
 
-def test_eval_persistent(cocip_persistent: Cocip) -> None:
+def test_eval_persistent(cocip_persistent: Cocip, regenerate_results: bool) -> None:
     """Confirm pinned values of `cocip_persistent` fixture."""
     assert cocip_persistent.timesteps.size == 11
 
@@ -464,21 +496,23 @@ def test_eval_persistent(cocip_persistent: Cocip) -> None:
     assert np.nansum(cocip_persistent.source["cocip"]) > 0
     assert cocip_persistent.contrail is not None
 
-    # # output json when algorithm has been adjusted
-    # cocip_persistent.source.dataframe.to_json(
-    #     get_static_path("cocip-flight-output.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
-    # cocip_persistent.contrail.to_json(
-    #     get_static_path("cocip-contrail-output.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
+    # output json when algorithm has been adjusted
+    # controlled by command line option --regenerate-results
+    if regenerate_results:
+        cocip_persistent.source.dataframe.to_json(
+            get_static_path("cocip-flight-output.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
+        cocip_persistent.contrail.to_json(
+            get_static_path("cocip-contrail-output.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
 
     flight_output = pd.read_json(get_static_path("cocip-flight-output.json"), orient="records")
     contrail_output = pd.read_json(get_static_path("cocip-contrail-output.json"), orient="records")
@@ -512,7 +546,7 @@ def test_eval_persistent(cocip_persistent: Cocip) -> None:
     )
 
 
-def test_eval_persistent2(cocip_persistent2: Cocip) -> None:
+def test_eval_persistent2(cocip_persistent2: Cocip, regenerate_results: bool) -> None:
     """Confirm pinned values of ``cocip_persistent2`` fixture."""
     assert cocip_persistent2.timesteps.size == 16
 
@@ -525,21 +559,23 @@ def test_eval_persistent2(cocip_persistent2: Cocip) -> None:
     assert np.sum(cocip_persistent2.source["cocip"]) > 0
     assert cocip_persistent2.contrail is not None
 
-    # # output json when algorithm has been adjusted
-    # cocip_persistent2.source.dataframe.to_json(
-    #     get_static_path("cocip-flight-output2.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
-    # cocip_persistent2.contrail.to_json(
-    #     get_static_path("cocip-contrail-output2.json"),
-    #     indent=2,
-    #     orient="records",
-    #     date_unit="ns",
-    #     double_precision=15,
-    # )
+    # output json when algorithm has been adjusted
+    # controlled by command line option --regenerate-results
+    if regenerate_results:
+        cocip_persistent2.source.dataframe.to_json(
+            get_static_path("cocip-flight-output2.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
+        cocip_persistent2.contrail.to_json(
+            get_static_path("cocip-contrail-output2.json"),
+            indent=2,
+            orient="records",
+            date_unit="ns",
+            double_precision=15,
+        )
 
     # confirm all discontinuous waypoints have an "ef" of 0 and an age of 0
     continuous = cocip_persistent2.contrail["continuous"].to_numpy()
@@ -670,7 +706,7 @@ def test_contrail_contrail_overlapping_effects() -> None:
     #: `rf_sw` and `rf_lw`
 
 
-@pytest.fixture
+@pytest.fixture()
 def fleet(met: MetDataset) -> Fleet:
     """Create a ``Fleet`` within the bounds of ``met``."""
     ds = met.data
@@ -925,7 +961,7 @@ def test_gridded_and_time_slice_outputs() -> None:
     np.testing.assert_allclose(t_slice_stats["total_contrail_ef"], ds["ef"].sum(), rtol=1)
 
 
-def test_contrail_edges(cocip_persistent: Cocip) -> None:
+def test_contrail_edges(cocip_persistent: Cocip, regenerate_results: bool) -> None:
     """Test contrail edges methods."""
     df_contrail = cocip_persistent.contrail
     assert df_contrail is not None
@@ -944,9 +980,11 @@ def test_contrail_edges(cocip_persistent: Cocip) -> None:
     )
 
     # summary json output for comparison
-    # df_contrail[["lon_edge_l", "lat_edge_l", "lon_edge_r", "lat_edge_r"]].to_json(
-    #     get_static_path("cocip-output-contrail-edges.json"), indent=2, orient="records"
-    # )
+    # controlled by command line option --regenerate-results
+    if regenerate_results:
+        df_contrail[["lon_edge_l", "lat_edge_l", "lon_edge_r", "lat_edge_r"]].to_json(
+            get_static_path("cocip-output-contrail-edges.json"), indent=2, orient="records"
+        )
 
     # load summary json output for comparison
     df_contrail_previous = pd.read_json(get_static_path("cocip-output-contrail-edges.json"))
@@ -1081,14 +1119,14 @@ def test_cocip_filtering(fl: Flight, met: MetDataset, rad: MetDataset):
     cocip = Cocip(**params)
     cocip.eval(fl)
     assert cocip._sac_flight.size == 18
-    assert cocip._downwash_flight.size == 10
+    assert cocip._downwash_flight.size == 11
     assert len(cocip.contrail) == 0
 
     cocip = Cocip(**params, filter_sac=False)
     with pytest.warns(UserWarning, match="Manually overriding SAC filter"):
         cocip.eval(fl)
     assert cocip._sac_flight.size == 20
-    assert cocip._downwash_flight.size == 10
+    assert cocip._downwash_flight.size == 11
     assert len(cocip.contrail) == 0
 
     cocip = Cocip(**params, filter_initially_persistent=False)

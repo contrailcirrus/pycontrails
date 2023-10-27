@@ -323,8 +323,7 @@ def interp(
     *,
     indices: RGIArtifacts | None = ...,
     return_indices: Literal[False] = ...,
-) -> npt.NDArray[np.float_]:
-    ...
+) -> npt.NDArray[np.float_]: ...
 
 
 @overload
@@ -341,8 +340,7 @@ def interp(
     *,
     indices: RGIArtifacts | None = ...,
     return_indices: Literal[True],
-) -> tuple[npt.NDArray[np.float_], RGIArtifacts]:
-    ...
+) -> tuple[npt.NDArray[np.float_], RGIArtifacts]: ...
 
 
 @overload
@@ -359,8 +357,7 @@ def interp(
     *,
     indices: RGIArtifacts | None = ...,
     return_indices: bool = ...,
-) -> npt.NDArray[np.float_] | tuple[npt.NDArray[np.float_], RGIArtifacts]:
-    ...
+) -> npt.NDArray[np.float_] | tuple[npt.NDArray[np.float_], RGIArtifacts]: ...
 
 
 def interp(

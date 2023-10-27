@@ -2,7 +2,9 @@
 pycontrails
 ===========
 
-*Python library for modeling aviation climate impacts.*
+*Python library for modeling contrails and other aviation climate impacts.*
+
+Learn more on `contrails.org <https://contrails.org>`_.
 
 .. list-table::
    :widths: 30 70
@@ -45,6 +47,7 @@ pycontrails
    :caption: Links
 
    Github <https://github.com/contrailcirrus/pycontrails>
+   Contrails.org <https://contrails.org>
    Contrails API <https://api.contrails.org>
    Contrails Map <https://map.contrails.org>
    Contrails Navigator <https://forecast.contrails.org>

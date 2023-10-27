@@ -13,6 +13,7 @@ import xarray as xr
 from overrides import overrides
 
 from pycontrails.core import met_var
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
@@ -20,7 +21,6 @@ from pycontrails.core.models import Model, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict
 from pycontrails.datalib import ecmwf, gfs
 from pycontrails.models import sac, tau_cirrus
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import (
     contrail_properties,
     radiative_forcing,
@@ -168,7 +168,7 @@ class Cocip(Model):
     - :cite:`schumannDeterminationContrailsSatellite1990`
     - :cite:`schumannContrailCirrusPrediction2010`
     - :cite:`voigtInsituObservationsYoung2010`
-    - :cite:`schumannPotentialReduceClimate2011a`
+    - :cite:`schumannPotentialReduceClimate2011`
     - :cite:`schumannContrailCirrusPrediction2012`
     - :cite:`schumannParametricRadiativeForcing2012`
     - :cite:`schumannContrailsVisibleAviation2012`
@@ -279,7 +279,8 @@ class Cocip(Model):
         super().__init__(met, params=params, **params_kwargs)
 
         shift_radiation_time = self.params["shift_radiation_time"]
-        met, rad = process_met_datasets(met, rad, shift_radiation_time)
+        compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
+        met, rad = process_met_datasets(met, rad, compute_tau_cirrus, shift_radiation_time)
 
         self.met = met
         self.rad = rad
@@ -293,17 +294,16 @@ class Cocip(Model):
     # ----------
 
     @overload
-    def eval(self, source: Flight, **params: Any) -> Flight:
-        ...
+    def eval(self, source: Fleet, **params: Any) -> Fleet: ...
 
     @overload
-    def eval(self, source: Sequence[Flight], **params: Any) -> list[Flight]:
-        ...
+    def eval(self, source: Flight, **params: Any) -> Flight: ...
 
-    # This is only included for type consistency with parent. This will raise.
     @overload
-    def eval(self, source: None = None, **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: Sequence[Flight], **params: Any) -> list[Flight]: ...
+
+    @overload
+    def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
     def eval(
         self,
@@ -369,6 +369,8 @@ class Cocip(Model):
         logger.debug("Downselect met for Cocip initialization")
         buffer = 0, self.params["met_level_buffer"][1]
         met = self.source.downselect_met(self.met, copy=False, level_buffer=buffer)
+        # Add tau_cirrus if it doesn't exist already.
+        met = add_tau_cirrus(met)
 
         # Prepare flight for model
         self._process_flight(met)
@@ -596,17 +598,20 @@ class Cocip(Model):
         """
         logger.debug("Processing flight emissions")
 
-        # currently only one emissions model
-        emissions = Emissions(copy_source=False)
+        # Call aircraft performance and Emissions models as needed
+        # NOTE: None of these sub-models actually do any met interpolation -- self.source already
+        # has all of the required met variables attached. Therefore, we don't need to worry about
+        # being consistent with passing in Cocip's interp_kwargs and humidity_scaling into
+        # the sub-models.
+        emissions = Emissions()
+        ap_model = self.params["aircraft_performance"]
 
         # Run against a list of flights (Fleet)
         if isinstance(self.source, Fleet):
             # Rip the Fleet apart, run BADA on each, then reassemble
             logger.debug("Separately running aircraft performance on each flight in fleet")
             fls = self.source.to_flight_list(copy=False)
-            fls = [
-                _eval_aircraft_performance(self.params["aircraft_performance"], fl) for fl in fls
-            ]
+            fls = [_eval_aircraft_performance(ap_model, fl) for fl in fls]
 
             # In Fleet-mode, always call emissions
             logger.debug("Separately running emissions on each flight in fleet")
@@ -624,9 +629,7 @@ class Cocip(Model):
 
         # Single flight
         else:
-            self.source = _eval_aircraft_performance(
-                self.params["aircraft_performance"], self.source
-            )
+            self.source = _eval_aircraft_performance(ap_model, self.source)
             self.source = _eval_emissions(emissions, self.source)
 
         # Scale nvPM with parameter (fleet / flight)
@@ -713,7 +716,11 @@ class Cocip(Model):
 
         # get the pressure level `dz_m` lower than element pressure
         dz_m = self.params["dz_m"]
+<<<<<<< HEAD
         air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+=======
+        air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
+>>>>>>> upstream/main
         level_lower = air_pressure_lower / 100.0
 
         # get full met grid or flight data interpolated to the pressure level `p_dz`
@@ -916,6 +923,7 @@ class Cocip(Model):
         }
         logger.debug("Downselect met for start of Cocip evolution")
         met = self._downwash_contrail.downselect_met(self.met, **buffers, copy=False)
+        met = add_tau_cirrus(met)
         rad = self._downwash_contrail.downselect_met(self.rad, **buffers, copy=False)
 
         calc_continuous(self._downwash_contrail)
@@ -988,6 +996,7 @@ class Cocip(Model):
             if time_end > met.variables["time"].values[-1]:
                 logger.debug("Downselect met at time_end %s within Cocip evolution", time_end)
                 met = latest_contrail.downselect_met(self.met, **buffers, copy=False)
+                met = add_tau_cirrus(met)
             if time_end > rad.variables["time"].values[-1]:
                 logger.debug("Downselect rad at time_end %s within Cocip evolution", time_end)
                 rad = latest_contrail.downselect_met(self.rad, **buffers, copy=False)
@@ -1211,14 +1220,13 @@ class Cocip(Model):
         # -1 if negative EF, 0 if no EF, 1 if positive EF,
         # or NaN for outside of domain of flight waypoints that don't persist
         df["cocip"] = np.sign(df["ef"])
+        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0.0).sum())
 
         # reset the index
         df = df.reset_index()
 
-        # create new Flight / Fleet output from dataframe with flight attrs
-
-        self.source = type(self.source)(df, attrs=self.source.attrs, copy=False)
-        logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0.0).sum())
+        # Reassign to source
+        self.source.data = VectorDataDict({k: v.to_numpy() for k, v in df.items()})
 
     def _fill_empty_flight_results(self, return_list_flight: bool) -> Flight | list[Flight]:
         """Fill empty results into flight / fleet and return.
@@ -1271,6 +1279,7 @@ class Cocip(Model):
 def process_met_datasets(
     met: MetDataset,
     rad: MetDataset,
+    compute_tau_cirrus: bool | str = "auto",
     shift_radiation_time: np.timedelta64 | None = None,
 ) -> tuple[MetDataset, MetDataset]:
     """Process and verify ERA5 data for :class:`Cocip` and :class:`CocipGrid`.
@@ -1290,6 +1299,9 @@ def process_met_datasets(
         Met pressure-level data
     rad : MetDataset
         Rad single-level data
+    compute_tau_cirrus : bool | str
+        Whether to add ``"tau_cirrus"`` variable to pressure-level met data. If set to
+        ``"auto"``, ``"tau_cirrus"`` will be computed iff the met data is dask-backed.
     shift_radiation_time : np.timedelta64 | None
         Shift the time dimension of radiation data to account for accumulated values.
         If not specified, the default value from :class:`CocipGridParams` will be used.
@@ -1297,7 +1309,7 @@ def process_met_datasets(
     Returns
     -------
     met : MetDataset
-        Met data with "tau_cirrus" variable attached.
+        Met data, possibly with "tau_cirrus" variable attached.
     rad : MetDataset
         Rad data with time shifted to account for accumulated values.
     """
@@ -1307,9 +1319,20 @@ def process_met_datasets(
             "Specific humidity enhancement of the raw specific humidity values in "
             "the underlying met data is deprecated."
         )
+    if isinstance(compute_tau_cirrus, str) and compute_tau_cirrus != "auto":
+        raise ValueError(
+            "Parameter ``compute_tau_cirrus`` must be one of"
+            f" True, False, or 'auto'. Found {compute_tau_cirrus}."
+        )
     if "tau_cirrus" not in met.data:
         met.ensure_vars(Cocip.met_variables)
-        met.data["tau_cirrus"] = tau_cirrus.tau_cirrus(met)
+        if (
+            compute_tau_cirrus == "auto"
+            and met.data["specific_humidity"].chunks is not None
+            or isinstance(compute_tau_cirrus, bool)
+            and compute_tau_cirrus
+        ):
+            met = add_tau_cirrus(met)
     else:
         met.ensure_vars(Cocip.processed_met_variables)
 
@@ -1327,6 +1350,24 @@ def process_met_datasets(
         rad = _process_rad(rad, shift_radiation_time)
 
     return met, rad
+
+
+def add_tau_cirrus(met: MetDataset) -> MetDataset:
+    """Add "tau_cirrus" variable to weather data if it does not exist already.
+
+    Parameters
+    ----------
+    met : MetDataset
+        Met pressure-level data.
+
+    Returns
+    -------
+    met : MetDataset
+        Met data with "tau_cirrus" variable attached.
+    """
+    if "tau_cirrus" not in met.data:
+        met.data["tau_cirrus"] = tau_cirrus.tau_cirrus(met)
+    return met
 
 
 def _process_rad(rad: MetDataset, shift_radiation_time: np.timedelta64) -> MetDataset:
@@ -1558,10 +1599,10 @@ def calc_timestep_meteorology(
     interpolate_met(met, contrail, "tau_cirrus", **interp_kwargs)
 
     # get the pressure level `dz_m` lower than element pressure
-    air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, params["dz_m"])
+    air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, params["dz_m"])
 
     # get meteorology at contrail waypoints interpolated at the pressure level `air_pressure_lower`
-    level_lower = air_pressure_lower / 100  # Pa -> hPa
+    level_lower = air_pressure_lower / 100.0  # Pa -> hPa
 
     # if met is already interpolated, this will automatically skip interpolation
     air_temperature_lower = interpolate_met(
@@ -2037,7 +2078,7 @@ def calc_timestep_contrail_evolution(
     level_2 = geo.advect_level(level_1, vertical_velocity_1, rho_air_1, terminal_fall_speed_1, dt)
     altitude_2 = units.pl_to_m(level_2)
 
-    data = VectorDataDict(
+    contrail_2 = GeoVectorDataset(
         {
             "waypoint": waypoint_2,
             "flight_id": contrail_1["flight_id"],
@@ -2048,9 +2089,9 @@ def calc_timestep_contrail_evolution(
             "latitude": latitude_2,
             "altitude": altitude_2,
             "level": level_2,
-        }
+        },
+        copy=False,
     )
-    contrail_2 = GeoVectorDataset(data, copy=False)
 
     # Update cumulative radiative heating energy absorbed by the contrail
     # This will always be zero if radiative_heating_effects is not activated in cocip_params
@@ -2093,7 +2134,7 @@ def calc_timestep_contrail_evolution(
         diffuse_v_1,
         seg_ratio_2,
         dt,
-        max_contrail_depth=params["max_contrail_depth"],
+        max_depth=params["max_depth"],
     )
     width_2, depth_2 = contrail_properties.new_contrail_dimensions(sigma_yy_2, sigma_zz_2)
 

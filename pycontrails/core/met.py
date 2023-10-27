@@ -705,7 +705,7 @@ class MetDataset(MetBase):
     def __setitem__(
         self,
         key: Hashable | list[Hashable] | Mapping,
-        value: MetDataArray | xr.DataArray | np.ndarray | xr.Variable,
+        value: Any,
     ) -> None:
         """Shortcut to set data variable on :attr:`data`.
 
@@ -715,7 +715,7 @@ class MetDataset(MetBase):
         ----------
         key : Hashable | list[Hashable] | Mapping
             Variable name
-        value : MetDataArray | ArrayLike | xr.Variable
+        value : Any
             Value to set to variable names
 
         See Also
@@ -1348,10 +1348,9 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        indices: interpolation.RGIArtifacts | None = None,
+        indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[False] = ...,
-    ) -> npt.NDArray[np.float_]:
-        ...
+    ) -> npt.NDArray[np.float_]: ...
 
     @overload
     def interpolate(
@@ -1365,10 +1364,9 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        indices: interpolation.RGIArtifacts | None = None,
+        indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[True],
-    ) -> tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]:
-        ...
+    ) -> tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]: ...
 
     def interpolate(
         self,
@@ -1854,8 +1852,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = ...,
         output_vertex_normals: bool = ...,
         closed: bool = ...,
-    ) -> dict:
-        ...
+    ) -> dict: ...
 
     @overload
     def to_polyhedra(
@@ -1869,8 +1866,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = ...,
         output_vertex_normals: bool = ...,
         closed: bool = ...,
-    ) -> "o3d.geometry.TriangleMesh":
-        ...
+    ) -> "o3d.geometry.TriangleMesh": ...
 
     def to_polyhedra(
         self,

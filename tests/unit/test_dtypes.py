@@ -7,17 +7,17 @@ import pytest
 import xarray as xr
 
 from pycontrails import Flight, GeoVectorDataset, MetDataset
+from pycontrails.core.aircraft_performance import AircraftPerformance, AircraftPerformanceGrid
 from pycontrails.core.met import MetDataArray
-from pycontrails.models.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import Cocip
+from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 from pycontrails.models.issr import ISSR
 from pycontrails.models.sac import SAC
 from pycontrails.physics import units
-from tests import BADA3_PATH, BADA4_PATH, BADA_AVAILABLE
 
 
-@pytest.fixture
+@pytest.fixture()
 def met(met_ecmwf_pl_path: str) -> MetDataset:
     """Create a MetDataset for testing."""
     ds1 = xr.open_dataset(met_ecmwf_pl_path)
@@ -138,7 +138,6 @@ def test_issr_sac_vector_output(
     np.testing.assert_array_equal(in_bounds, interp_non_nan)
 
 
-@pytest.mark.skipif(not BADA4_PATH.is_dir(), reason="BADA4 not available")
 @pytest.mark.parametrize("drop_aircraft_performance", [False, True])
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_cocip(
@@ -187,25 +186,25 @@ def test_cocip(
             assert np.can_cast(arr.dtype, "float32"), k
 
 
-@pytest.mark.skipif(not BADA_AVAILABLE, reason="BADA not available")
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 @pytest.mark.parametrize("bada_priority", [3, 4])
-def test_cocip_grid(met_cocip1: MetDataset, rad_cocip1: MetDataset, bada_priority: int):
+def test_cocip_grid(
+    met_cocip1: MetDataset,
+    rad_cocip1: MetDataset,
+    bada_priority: int,
+    bada_grid_model: AircraftPerformanceGrid,
+) -> None:
     """Confirm `CocipGrid` maintains float32 precision."""
-    CocipGrid = pytest.importorskip("pycontrails.models.cocipgrid").CocipGrid
 
     # Keep max_age small to avoid blowing out of bounds
     # And keep dt_integration small to make the evolution interesting
+    bada_grid_model.params["bada_priority"] = bada_priority
     params = {
         "max_age": np.timedelta64(2, "h"),
-        "bada_priority": bada_priority,
         "dt_integration": np.timedelta64(10, "m"),
         "humidity_scaling": ConstantHumidityScaling(),
+        "aircraft_performance": bada_grid_model,
     }
-    if bada_priority == 3:
-        params["bada3_path"] = BADA3_PATH
-    elif bada_priority == 4:
-        params["bada4_path"] = BADA4_PATH
     cg = CocipGrid(met=met_cocip1, rad=rad_cocip1, params=params)
 
     # Create float32 source
@@ -219,7 +218,7 @@ def test_cocip_grid(met_cocip1: MetDataset, rad_cocip1: MetDataset, bada_priorit
 
     out = cg.eval(source)
     assert out["ef_per_m"].data.dtype == "float32"
-    assert out.attrs["bada_model"] == f"BADA{bada_priority}"
+    assert out.attrs["ap_model"] == "BADAGrid"
     assert out.attrs["max_age"] == "2 hours"
     assert out.attrs["dt_integration"] == "10 minutes"
     assert out.attrs["pycontrails_version"].startswith("0.")

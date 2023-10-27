@@ -1,6 +1,82 @@
 
 # Changelog
 
+## v0.47.1
+
+### Fixes
+
+- Fix bug in `PSGrid` in which the `met` data was assumed to be already loaded into memory. This caused errors when running `PSGrid` with a `MetDataset` source.
+- Fix bug (#86) in which `Cocip.eval` loses the `source` fuel type. Instead of instantiating a new `Flight` or `Fleet` instance with the default fuel type, the `Cocip._bundle_results` method now overwrites the `self.source.data` attribute with the bundled predictions.
+- Avoid a memory explosion when running `Cocip` on a large non-dask-backed `met` parameter. Previously the `tau_cirrus` computation would be performed in memory over the entire `met` dataset.
+- Replace `datetime.utcfromtimestamp` (deprecated in python 3.12) with `datetime.fromtimestamp`.
+- Explicitly support python 3.12 in the `pyproject.toml` build system.
+
+### Internals
+
+- Add `compute_tau_cirrus_in_model_init` parameter to `CocipParams`. This controls whether to compute the cirrus optical depth in `Cocip.__init__` or `Cocip.eval`. When set to `"auto"` (the default), the `tau_cirrus` is computed in `Cocip.__init__` if and only if the `met` parameter is dask-backed.
+- Change data requirements for the `EmpiricalGrid` aircraft performance model.
+- Consolidate `ERA5.cache_dataset` and `HRES.cache_dataset` onto common `ECMWFAPI.cache_dataset` method. Previously the child implementations were identical.
+- No longer require the `pyproj` package as a dependency. This is now an optional dependency, and can be installed with `pip install pycontrails[pyproj]`.
+
+## v0.47.0
+
+Implement a Poll-Schumann (`PSGrid`) theoretical aircraft performance over a grid.
+
+### Breaking changes
+
+- Move the `pycontrails.models.aircraft_performance` module to `pycontrails.core.aircraft_performance`.
+- Rename `PSModel` -> `PSFlight`.
+
+### Fixes
+
+- Use the instance `fuel` attribute in the `Fleet.to_flight_list` method. Previously, the default `JetA` fuel was always used.
+- Ensure the `Fleet.fuel` attribute is inferred from the underlying sequence of flights in the `Fleet.from_seq` method.
+
+### Features
+
+- Implement the `PSGrid` model. For a given aircraft type and position, this model computes optimal aircraft performance at cruise conditions. In particular, this model can be used to estimate fuel flow, engine efficiency, and aircraft mass at cruise. In particular, the `PSGrid` model can now be used in conjunction with `CocipGrid` to simulate contrail formation over a grid.
+- Refactor the `Emissions` model so that `Emissions.eval` runs with `source: GeoVectorDataset`. Previously, the `eval` method required a `Flight` instance for the `source` parameter. This change allows the `Emissions` model to run more seamlessly as a sub-model of a gridded model (ie, `CocipGrid`),
+- No longer require `pycontrails-bada` to import or run the `CocipGrid` model. Instead, the `CocipGridParams.aircraft_performance` parameter can be set to any `AircraftPerformanceGrid` instance. This allows the `CocipGrid` model to run with any aircraft performance model that implements the `AircraftPerformanceGrid` interface.
+- Add experimental `EmpiricalAircraftPerformanceGrid` model.
+- Add convenience `GeoVectorDataset.T_isa` method to compute the ISA temperature at each point.
+
+### Internals
+
+- Add optional `climb_descend_at_end` parameter to the `Flight.resample_and_fill` method. If True, the climb or descent will be placed at the end of each segment rather than the start.
+- Define `AircraftPerformanceGridParams`, `AircraftPerformanceGrid`, and `AircraftPerformanceGridData` abstract interfaces for gridded aircraft performance models.
+- Add `set_attr` parameter to `Models.get_source_param`.
+- Better handle `source`, `source.attrs`, and `params` customizations in `CocipGrid`.
+- Include additional classes and functions in the `pycontrails.models.emissions` module.
+- Hardcode the paths to the static data files used in the `Emissions` and `PSFlight` models. Previously these were configurable by model parameters.
+- Add `altitude_ft` parameter to the `GeoVectorDataset` constructor. Warn if at least two of `altitude_ft`, `altitude`, and `level` are provided.
+- Allow instantiation of `Model` instances with `params: ModelParams`. Previously, the `params` parameter was required to be a `dict`. The current implementation checks that the `params` parameter is either a `dict` or has type `default_params` on the `Model` class.
+
+## v0.46.0
+
+Support "dry advection" simulation.
+
+### Features
+
+- Add new `DryAdvection` model to simulate sediment-free advection of an aircraft's exhaust plume. This model is experimental and may change in future releases. By default, the current implementation simulates plume geometry as a cylinder with an elliptical cross section (the same geometry assumed in CoCiP). Wind shear perturbs the ellipse azimuth, width, and depth over the plume evolution. The `DryAdvection` model may also be used to simulate advection without wind-shear effects by setting the model parameters `azimuth`, `width`, and `depth` to None.
+- Add new [Dry Advection example notebook](https://py.contrails.org/examples/advection.html) highlighting the new `DryAdvection` model and comparing it to the `Cocip` model.
+- Add optional `fill_value` parameter to `VectorDataset.sum`.
+
+### Fixes
+
+- (#80) Fix unit error in `wake_vortex.turbulent_kinetic_energy_dissipation_rate`. This fix affects the estimate of wake vortex max downward displacement and slightly changes `Cocip` predictions.
+- Change the implementation of `Flight.resample_and_fill` so that lat-lon interpolation is linear in time. Previously, the timestamp associated to a waypoint was floored according to the resampling frequency without updating the position accordingly. This caused errors in segment calculations (e.g., true airspeed).
+
+### Internals
+
+- Add optional `keep_original_index` parameter to the `Flight.resample_and_fill` method. If `True`, the time original index is preserved in the output in addition to the new time index obtained by resampling.
+- Improve docstrings in `wake_vortex` module
+- Rename `wake_vortex` functions to remove `get_` prefix at the start of each function name.
+- Add pytest command line parameter `--regenerate-results` to regenerate static test fixture results. Automate in make recipe `make pytest-regenerate-results`.
+- Update handling of `GeoVectorDataset.required_keys` the `GeoVectorDataset` constructor. Add class variable `GeoVectorDataset.vertical_keys` for handing the vertical dimension.
+- Rename `CocipParam.max_contrail_depth` -> `CocipParam.max_depth`.
+- Add `units.dt_to_seconds` function to convert `np.timedelta64` to `float` seconds.
+- Rename `thermo.p_dz` -> `thermo.pressure_dz`.
+
 ## v0.45.0
 
 Add experimental support for simulating radiative effects due to contrail-contrail overlap.
@@ -29,7 +105,7 @@ Add experimental support for simulating radiative effects due to contrail-contra
 ### Fixes
 
 - Narrow type hints on the ABC `AircraftPerformance` model. The `AircraftPerformance.eval` method requires a `Flight` object for the `source` parameter.
-- In `PSModel.eval`, explicitly set any aircraft performance data at waypoints with zero true airspeed to `np.nan`. This avoids numpy `RuntimeWarning`s without affecting the results.
+- In `PSFlight.eval`, explicitly set any aircraft performance data at waypoints with zero true airspeed to `np.nan`. This avoids numpy `RuntimeWarning`s without affecting the results.
 - Fix corner-case in the `polygon.buffer_and_clean` function in which the polygon created by buffering the `opencv` contour is not valid. Now a second attempt to buffer the polygon is made with a smaller buffer distance.
 - Ignore RuntimeError raised in `scipy.optimize.newton` if the maximum number of iterations is reached before convergence. This is a workaround for occasional false positive convergence warnings. The pycontrails use-case may be related to [this GitHub issue](https://github.com/scipy/scipy/issues/8904).
 - Update the `Models.__init__` warnings when `humidity_scaling` is not provided. The previous warning provided an outdated code example.
@@ -145,7 +221,7 @@ Support for the [Poll-Schumann aircraft performance model](https://doi.org/10.10
 
 - Use `ruff` in place of `pydocstyle` for linting docstrings.
 - Use `ruff` in place of `isort` for sorting imports.
-- Update the `AircraftPerformance` template based on the patterns used in the new `PSModel` class. This may change again in the future.
+- Update the `AircraftPerformance` template based on the patterns used in the new `PSFlight` class. This may change again in the future.
 
 ## v0.43.0
 

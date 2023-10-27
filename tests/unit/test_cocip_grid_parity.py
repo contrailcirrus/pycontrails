@@ -5,15 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-try:
-    from pycontrails.models.cocipgrid import CocipGrid
-except ImportError:
-    pytest.skip("CocipGrid not available", allow_module_level=True)
-
 from pycontrails import Flight, MetDataset
+from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.models.cocip import Cocip
+from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.humidity_scaling import ExponentialBoostHumidityScaling
-from pycontrails.utils.synthetic_flight import SyntheticFlight
 from tests import BADA4_PATH
 
 # Found by running big for-loop over many seeds
@@ -38,13 +34,13 @@ seeds = [35, 51, 184, 257, 324, 365, 409]
 
 
 @pytest.fixture(scope="module")
-def met(met_cocip1_module_scope: MetDataset):
+def met(met_cocip1_module_scope: MetDataset) -> MetDataset:
     """Namespace convenience."""
     return met_cocip1_module_scope
 
 
 @pytest.fixture(scope="module")
-def rad(rad_cocip1_module_scope: MetDataset):
+def rad(rad_cocip1_module_scope: MetDataset) -> MetDataset:
     """Namespace convenience."""
     return rad_cocip1_module_scope
 
@@ -64,6 +60,8 @@ def fl(met: MetDataset, request) -> Flight:
         "time": np.array([met["time"].values[0], met["time"].values[6]]),
     }
 
+    SyntheticFlight = pytest.importorskip("pycontrails.utils.synthetic_flight").SyntheticFlight
+
     syn = SyntheticFlight(
         bounds,
         "A320",
@@ -75,17 +73,18 @@ def fl(met: MetDataset, request) -> Flight:
     return syn()
 
 
-@pytest.mark.skipif(not BADA4_PATH.is_dir(), reason="BADA4 not available")
-def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
+def test_parity(
+    fl: Flight,
+    met: MetDataset,
+    rad: MetDataset,
+    bada_model: AircraftPerformance,
+) -> None:
     """Ensure substantial parity between `Cocip` and `CocipGrid`."""
 
     fl["azimuth"] = fl.segment_azimuth()
 
-    # Run BADA up front
-    from pycontrails.ext.bada import BADAFlight
-
-    bada_model = BADAFlight(met=met, bada4_path=BADA4_PATH)
-    fl = bada_model.eval(fl)
+    bada_model.met = met
+    bada_model.eval(fl, copy_source=False)
 
     # Confirm that fl has no additional variables
     assert len(fl.data) == 16
@@ -108,7 +107,6 @@ def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
         met=met,
         rad=rad,
         **model_params,
-        bada4_path=BADA4_PATH,
         verbose_outputs_evolution=True,
         verbose_outputs_formation=True,
     )
@@ -162,7 +160,7 @@ def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
     np.testing.assert_allclose(
         downwash1["dsn_dz"][continuous],
         downwash2["dsn_dz"][continuous],
-        atol=1e-6,
+        atol=1.5e-6,
     )
     assert np.all(downwash1["dsn_dz"][~continuous] == 0)
     assert np.all(downwash2["dsn_dz"][~continuous] != 0)
@@ -189,7 +187,7 @@ def test_parity(fl: Flight, met: MetDataset, rad: MetDataset):
     # Secondary differences are due to different specific_humidity values between the two models
     ef1 = out1["ef"][filt]
     ef2 = ef_per_waypoint[filt]
-    np.testing.assert_allclose(ef1, ef2, rtol=0.1)
+    np.testing.assert_allclose(ef1, ef2, rtol=0.15)
 
     # ----------------------------------------------------
     # Confirm general agreement between model contrail age

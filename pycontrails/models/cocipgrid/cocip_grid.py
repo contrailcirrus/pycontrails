@@ -8,11 +8,11 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generator,
+    Iterable,
     Iterator,
     NoReturn,
     Sequence,
     TypeVar,
-    cast,
     overload,
 )
 
@@ -30,17 +30,8 @@ from pycontrails.models import humidity_scaling, sac
 from pycontrails.models.cocip import cocip, contrail_properties, wake_vortex, wind_shear
 from pycontrails.models.cocipgrid import cocip_time_handling
 from pycontrails.models.cocipgrid.cocip_grid_params import CocipGridParams
-from pycontrails.models.emissions import black_carbon, emissions
+from pycontrails.models.emissions import Emissions
 from pycontrails.physics import geo, thermo, units
-
-try:
-    from pycontrails.ext.bada import BADAGrid
-except ImportError as e:
-    raise ImportError(
-        "CocipGrid requires the BADA extension. If you have access, install with 'pip install "
-        "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git'. "
-        "The BADA extension will not be required in a future release (~ pycontrails v0.48.0)."
-    ) from e
 
 if TYPE_CHECKING:
     import tqdm
@@ -73,7 +64,6 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
     --------
     :class:`CocipGridParams`
     :class:`Cocip`
-    :class:`BADAGrid`
     :mod:`wake_vortex`
     :mod:`contrail_properties`
     :mod:`radiative_forcing`
@@ -117,7 +107,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self.validate_time_params()
 
         shift_radiation_time = self.params["shift_radiation_time"]
-        met, rad = cocip.process_met_datasets(met, rad, shift_radiation_time)
+        compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
+        met, rad = cocip.process_met_datasets(met, rad, compute_tau_cirrus, shift_radiation_time)
 
         self.met = met
         self.rad = rad
@@ -133,16 +124,13 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self._target_dtype = np.result_type(*self.met.data.values())
 
     @overload
-    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset:
-        ...
+    def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
-    def eval(self, source: MetDataset, **params: Any) -> MetDataset:
-        ...
+    def eval(self, source: MetDataset, **params: Any) -> MetDataset: ...
 
     @overload
-    def eval(self, source: None = None, **params: Any) -> NoReturn:
-        ...
+    def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
@@ -217,6 +205,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self.set_source(source)
 
         self.met, self.rad = _downselect_met(self.source, self.met, self.rad, self.params)
+        # Add tau_cirrus if it doesn't exist already.
+        self.met = cocip.add_tau_cirrus(self.met)
         self._check_met_source_overlap()
 
         # Save humidity scaling type to output attrs
@@ -319,16 +309,17 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         else:
             dt_integration_str = str(dt_integration.astype("timedelta64[s]"))
 
-        attrs = {
+        attrs: dict[str, Any] = {
             "description": self.long_name,
             "max_age": max_age_str,
             "dt_integration": dt_integration_str,
             "aircraft_type": self.get_source_param("aircraft_type"),
-            "bada_model": self.get_source_param("bada_model"),
             "met_source": self.met.attrs.get("met_source", "unknown"),
             "pycontrails_version": pycontrails.__version__,
-            **cast(dict[str, Any], self.source.attrs),
+            **self.source.attrs,  # type: ignore[dict-item]
         }
+        if ap_model := self.params["aircraft_performance"]:
+            attrs["ap_model"] = type(ap_model).__name__
 
         if isinstance(azimuth, (np.floating, np.integer)):
             attrs["azimuth"] = azimuth.item()
@@ -356,33 +347,6 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
     # ---------------------------
     # Common Methods & Properties
     # ---------------------------
-
-    @property
-    def _nominal_vector_params(self) -> list[str]:
-        """Return list of parameters that act as nominal vector values.
-
-        Returns
-        -------
-        list[str]
-        """
-        return [
-            "aircraft_mass",
-            "true_airspeed",
-            "engine_efficiency",
-            "fuel_flow",
-            "thrust",
-            "segment_length",
-        ]
-
-    @property
-    def _nominal_attrs_params(self) -> list[str]:
-        """Return list of parameters that act as nominal vector values.
-
-        Returns
-        -------
-        list[str]
-        """
-        return ["aircraft_type", "wingspan"]
 
     def _parse_verbose_outputs(self) -> None:
         """Confirm param "verbose_outputs" has the expected type for grid and path mode.
@@ -497,19 +461,11 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
 
         # Add nominals -- it's a little strange that segment_length
         # is also a nominal
-        for key in self._nominal_vector_params:
-            if key in vector:
-                continue
-            if (scalar := self.params[key]) is None:
-                continue
-            dtype = np.result_type(np.float32, np.min_scalar_type(scalar))
-            vector[key] = np.full(vector.size, scalar, dtype=dtype)
+        for key in _nominal_params():
+            _setdefault_from_params(key, vector, self.params)
 
-        # Mirror logic of method get_source_param, but for vector
-        segment_length = vector.get(
-            "segment_length", vector.attrs.get("segment_length", self.params["segment_length"])
-        )
-        azimuth = vector.get("azimuth", vector.attrs.get("azimuth", self.params["azimuth"]))
+        segment_length = self._get_source_param_override("segment_length", vector)
+        azimuth = self._get_source_param_override("azimuth", vector)
 
         # Experimental segment-free mode logic
         if azimuth is None and segment_length is None:
@@ -523,7 +479,7 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
 
         lons = vector["longitude"]
         lats = vector["latitude"]
-        dist = segment_length / 2
+        dist = segment_length / 2.0
 
         # These should probably not be included in model input ... so
         # we'll get a warning if they get overwritten
@@ -562,6 +518,9 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         _warn_not_wrap(self.met)
         _warn_not_wrap(self.rad)
 
+    def _get_source_param_override(self, key: str, vector: GeoVectorDataset) -> Any:
+        return _get_source_param_override(key, vector, self.params)
+
     # ------------
     # Constructors
     # ------------
@@ -576,7 +535,7 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         lat_step: float = 1.0,
     ) -> MetDataset:
         """
-        Shortcut to create a MetDataset source from coordinate arrays.
+        Shortcut to create a :class:`MetDataset` source from coordinate arrays.
 
         Parameters
         ----------
@@ -601,6 +560,10 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         -------
         MetDataset
             MetDataset that can be used as ``source`` input to :meth:`CocipGrid.eval(source=...)`
+
+        See Also
+        --------
+        :meth:`MetDataset.from_coords`
         """
         if longitude is None:
             longitude = np.arange(-180, 180, lon_step, dtype=float)
@@ -618,6 +581,72 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
 ################################
 # Functions used by CocipGrid
 ################################
+
+
+def _get_source_param_override(key: str, vector: GeoVectorDataset, params: dict[str, Any]) -> Any:
+    """Mimic logic in :meth:`Models.get_source_param` replacing :attr:`source` with a ``vector``."""
+    try:
+        return vector[key]
+    except KeyError:
+        pass
+
+    try:
+        return vector.attrs[key]
+    except KeyError:
+        pass
+
+    val = params[key]
+    vector.attrs[key] = val
+    return val
+
+
+def _setdefault_from_params(key: str, vector: GeoVectorDataset, params: dict[str, Any]) -> None:
+    """Set a parameter on ``vector`` if it is not already set.
+
+    This method only sets "scalar" values.
+    If ``params[key]`` is None, the parameter is not set.
+    If ``params[key]`` is not a scalar, a TypeError is raised.
+    """
+
+    if key in vector:
+        return
+    if key in vector.attrs:
+        return
+
+    scalar = params[key]
+    if scalar is None:
+        return
+
+    if not isinstance(scalar, (int, float)):
+        raise TypeError(
+            f"Parameter {key} must be a scalar. For non-scalar values, directly "
+            "set the data on the 'source'."
+        )
+    vector.attrs[key] = float(scalar)
+
+
+def _nominal_params() -> Iterable[str]:
+    """Return fields from :class:`CocipGridParams` that override values computed by the model.
+
+    Each of the fields returned by this method is included in :class:`CocipGridParams`
+    with a default value of None. When a non-None scalar value is provided for one of
+    these fields and the :attr:`source` data does not provide a value, the scalar value
+    is used (and broadcast over :attr:`source`) instead of running the AP or Emissions models.
+
+    If non-scalar values are desired, they should be provided directly on
+    :attr:`source` instead.
+
+    Returns
+    -------
+    Iterable[str]
+    """
+    return (
+        "wingspan",
+        "aircraft_mass",
+        "true_airspeed",
+        "engine_efficiency",
+        "fuel_flow",
+    )
 
 
 def run_interpolators(
@@ -708,7 +737,7 @@ def run_interpolators(
     # Interpolation at lower level
     air_temperature = vector["air_temperature"]
     air_pressure = vector.air_pressure
-    air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+    air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
     lower_level = air_pressure_lower / 100.0
 
     # Advect at lower_level
@@ -1090,7 +1119,7 @@ def find_initial_contrail_regions(
     specific_humidity = vector["specific_humidity"]
     air_pressure = vector.air_pressure
     engine_efficiency = vector["engine_efficiency"]
-    fuel = vector.attrs.get("fuel", params["fuel"])
+    fuel = vector.attrs["fuel"]
     ei_h2o = fuel.ei_h2o
     q_fuel = fuel.q_fuel
 
@@ -1177,11 +1206,10 @@ def simulate_wake_vortex_downwash(
     air_temperature = vector["air_temperature"]
     T_crit_sac = vector["T_crit_sac"]
 
-    wsee = vector.get("wind_shear_enhancement", params["wind_shear_enhancement_exponent"])
-    wingspan = vector.get("wingspan", vector.attrs.get("wingspan", params.get("wingspan")))
-    aircraft_mass = vector.get(
-        "aircraft_mass", vector.attrs.get("aircraft_mass", params.get("aircraft_mass"))
-    )
+    wsee = _get_source_param_override("wind_shear_enhancement_exponent", vector, params)
+    wingspan = _get_source_param_override("wingspan", vector, params)
+    aircraft_mass = _get_source_param_override("aircraft_mass", vector, params)
+
     dz_max = wake_vortex.max_downward_displacement(
         wingspan=wingspan,
         true_airspeed=true_airspeed,
@@ -1195,7 +1223,7 @@ def simulate_wake_vortex_downwash(
     )
 
     width = wake_vortex.initial_contrail_width(wingspan, dz_max)
-    iwvd = vector.get("initial_wake_vortex_depth", params["initial_wake_vortex_depth"])
+    iwvd = _get_source_param_override("initial_wake_vortex_depth", vector, params)
     depth = wake_vortex.initial_contrail_depth(dz_max, iwvd)
     # Initially, sigma_yz is set to 0
     # See bottom left paragraph p. 552 Schumann 2012 beginning with:
@@ -1241,8 +1269,17 @@ def simulate_wake_vortex_downwash(
     data["latitude_head"] = vector["latitude_head"]
     data["longitude_tail"] = vector["longitude_tail"]
     data["latitude_tail"] = vector["latitude_tail"]
-    data["segment_length"] = vector["segment_length"]
     data["head_tail_dt"] = vector["head_tail_dt"]
+
+    segment_length = _get_source_param_override("segment_length", vector, params)
+    if isinstance(segment_length, np.ndarray):
+        data["segment_length"] = segment_length
+    else:
+        # This should be broadcast over the source: subsequent vectors created during
+        # evolution always recompute the segment length. GeoVectorDataset.sum will
+        # raise an error if the wake vortex GeoVectorDataset does not contain a
+        # segment_length variable.
+        data["segment_length"] = np.full_like(data["longitude"], segment_length)
 
     return GeoVectorDataset(data, attrs=vector.attrs, copy=True)
 
@@ -1423,15 +1460,17 @@ def calc_evolve_one_step(
     diffuse_v_t1 = curr_contrail["diffuse_v"]
 
     # Segment-free mode logic
-    try:
+    segment_length_t2: np.ndarray | float
+    seg_ratio_t12: np.ndarray | float
+    if _is_segment_free_mode(curr_contrail):
+        segment_length_t2 = 1.0
+        seg_ratio_t12 = 1.0
+    else:
         segment_length_t1 = curr_contrail["segment_length"]
         segment_length_t2 = next_contrail["segment_length"]
         seg_ratio_t12 = contrail_properties.segment_length_ratio(
             segment_length_t1, segment_length_t2
         )
-    except KeyError:
-        segment_length_t2 = 1.0  # type: ignore[assignment]
-        seg_ratio_t12 = 1.0  # type: ignore[assignment]
 
     sigma_yy_t2, sigma_zz_t2, sigma_yz_t2 = contrail_properties.plume_temporal_evolution(
         width_t1=width_t1,
@@ -1442,7 +1481,7 @@ def calc_evolve_one_step(
         diffuse_v_t1=diffuse_v_t1,
         seg_ratio=seg_ratio_t12,
         dt=params["dt_integration"],
-        max_contrail_depth=params["max_contrail_depth"],
+        max_depth=params["max_depth"],
     )
 
     width_t2, depth_t2 = contrail_properties.new_contrail_dimensions(sigma_yy_t2, sigma_zz_t2)
@@ -1523,7 +1562,7 @@ def calc_evolve_one_step(
     persistent = contrail_properties.contrail_persistent(
         latitude=latitude,
         altitude=altitude,
-        segment_length=segment_length_t2,
+        segment_length=segment_length_t2,  # type: ignore[arg-type]
         age=age,
         tau_contrail=tau_contrail,
         n_ice_per_m3=n_ice_per_vol,
@@ -1543,16 +1582,13 @@ def calc_evolve_one_step(
 
 
 def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
-    """Calculate BADA-derived fuel and emissions data.
-
-    The BADA database to use (BADA3 or BADA4) is determined by the ``bada_priority``
-    parameter.
+    """Calculate aircraft performance (AP) and emissions data.
 
     This function mutates the ``vector`` parameter in-place by setting keys:
-        - "true_airspeed": nominal value from BADA database to use for TAS
-        - "engine_efficiency": computed in :meth:`BADA.simulate_fuel_and_performance`
-        - "fuel_flow": compute in :meth:`BADA.simulate_fuel_and_performance`
-        - "nvpm_ei_n": computed in Emissions methods
+        - "true_airspeed": computed by the aircraft performance model
+        - "engine_efficiency": computed by the aircraft performance model
+        - "fuel_flow": computed by the aircraft performance model
+        - "nvpm_ei_n": computed by the :class:`Emissions` model
         - "head_tail_dt"
 
     The ``params`` parameter is also mutated in-place by setting keys:
@@ -1566,10 +1602,6 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
     variable on the input ``source``, whereas "fuel_dist" is less common and
     less interpretable. So, we set "fuel_flow" here and then calculate "fuel_dist"
     in :func:`find_initial_persistent_contrails`.
-
-    .. versionchanged:: 0.25.0
-
-        No longer support :class:`BADAFlight` model for emissions.
 
     Parameters
     ----------
@@ -1588,25 +1620,31 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
     # PART 1: Fuel flow data
     vector.attrs.setdefault("aircraft_type", params["aircraft_type"])
 
-    # Important: If params["engine_uid"] is None (the default value), let BADAGrid
+    # Important: If params["engine_uid"] is None (the default value), let Emissions
     # overwrite with the assumed value.
     # Otherwise, set the non-None value on vector here
     if param_engine_uid := params["engine_uid"]:
         vector.attrs.setdefault("engine_uid", param_engine_uid)
-    fuel = vector.attrs.setdefault("fuel", params["fuel"])
+    vector.attrs.setdefault("fuel", params["fuel"])
 
-    # TODO(June 2023): Replace with AircraftPerformanceGrid model
-    bada_vars = "true_airspeed", "engine_efficiency", "fuel_flow", "aircraft_mass", "n_engine"
-    if not vector.ensure_vars(bada_vars, False):
-        bada_params = {
-            "bada3_path": params["bada3_path"],
-            "bada4_path": params["bada4_path"],
-            "bada_priority": params["bada_priority"],
-            "copy_source": False,
-        }
-
-        bada_model = BADAGrid(**bada_params)
-        vector = bada_model.eval(vector)
+    ap_vars = (
+        "true_airspeed",
+        "engine_efficiency",
+        "fuel_flow",
+        "aircraft_mass",
+        "n_engine",
+        "wingspan",
+    )
+    if not vector.ensure_vars(ap_vars, False):
+        ap_model = params["aircraft_performance"]
+        if ap_model is None:
+            missing = set(ap_vars).difference(vector)
+            raise ValueError(
+                f"Missing variables: {missing} and no aircraft_performance included in "
+                "params. Instantiate 'CocipGrid' with an 'aircraft_performance' param. "
+                "For example: 'CocipGrid(..., aircraft_performance=PSGrid())'"
+            )
+        ap_model.eval(vector, copy_source=False)
 
     # PART 2: True airspeed logic
     # NOTE: This doesn't exactly fit here, but it is closely related to
@@ -1614,86 +1652,27 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
     # For the purpose of Cocip <> CocipGrid model parity, we attach a
     # "head_tail_dt" variable. This variable is used the first time `advect`
     # is called. It makes a small but noticeable difference in model outputs.
-    true_airspeed = vector["true_airspeed"]
+    true_airspeed = vector.get_data_or_attr("true_airspeed")
 
     if not _is_segment_free_mode(vector):
-        head_tail_dt_s = vector["segment_length"] / true_airspeed
-        head_tail_dt = (head_tail_dt_s * 1_000_000_000.0).astype("timedelta64[ns]")
+        segment_length = _get_source_param_override("segment_length", vector, params)
+        head_tail_dt_s = segment_length / true_airspeed
+        head_tail_dt_ns = 1_000_000_000.0 * head_tail_dt_s
+        head_tail_dt = head_tail_dt_ns.astype("timedelta64[ns]")
         vector["head_tail_dt"] = head_tail_dt
 
-    # Update params -- this is needed in bundle_results
-    # TODO(June 2023): This should happen upstream in the model, possibly early in eval
-    params["bada_model"] = vector.attrs["bada_model"]
-
-    # Update wingspan from BADA model, if its not already defined
-    if params["wingspan"] is None:
-        params["wingspan"] = vector.attrs["wingspan"]
-
     # PART 3: Emissions data
-    factor = vector.get("nvpm_ei_n_enhancement_factor", params["nvpm_ei_n_enhancement_factor"])
+    factor = _get_source_param_override("nvpm_ei_n_enhancement_factor", vector, params)
+    default_nvpm_ei_n = params["default_nvpm_ei_n"]
 
     # Early exit
     if not params["process_emissions"]:
-        logger.debug("Use default nvpm_ei_n value %s", params["default_nvpm_ei_n"])
-        vector.setdefault("nvpm_ei_n", factor * np.full(vector.size, params["default_nvpm_ei_n"]))
+        vector.attrs.setdefault("nvpm_ei_n", factor * default_nvpm_ei_n)
         return
 
-    # Extract engine UID attached in BADAGrid
-    engine_uid = vector.attrs["engine_uid"]
-    assert engine_uid is not None
-    emissions_model = emissions.Emissions()
-
-    # If engine UID not present in EDB, early exit
-    if (edb_gaseous := emissions_model.edb_engine_gaseous.get(engine_uid)) is None:
-        warnings.warn(
-            f"Cannot find 'engine_uid' {engine_uid} in EDB. A constant nvpm_ei_n will be used."
-        )
-        vector.setdefault("nvpm_ei_n", factor * np.full(vector.size, params["default_nvpm_ei_n"]))
-        return
-
-    fuel_flow_per_engine = vector["fuel_flow"] / vector.attrs["n_engine"]
-    air_temperature = vector["air_temperature"]
-    thrust_setting = emissions.get_thrust_setting(
-        edb_gaseous,
-        fuel_flow_per_engine=fuel_flow_per_engine,
-        air_pressure=vector.air_pressure,
-        air_temperature=air_temperature,
-        true_airspeed=true_airspeed,
-    )
-
-    # Only the gaseous engine is found in the EDB, early exit
-    if (edb_nvpm := emissions_model.edb_engine_nvpm.get(engine_uid)) is None:
-        nvpm_ei_m = emissions.nvpm_mass_emissions_index_sac(
-            edb_gaseous,
-            air_pressure=vector.air_pressure,
-            true_airspeed=true_airspeed,
-            air_temperature=air_temperature,
-            thrust_setting=thrust_setting,
-            fuel_flow_per_engine=fuel_flow_per_engine,
-            hydrogen_content=fuel.hydrogen_content,
-        )
-        nvpm_gmd = emissions.nvpm_geometric_mean_diameter_sac(
-            edb_gaseous,
-            air_pressure=vector.air_pressure,
-            true_airspeed=true_airspeed,
-            air_temperature=air_temperature,
-            thrust_setting=thrust_setting,
-            q_fuel=fuel.q_fuel,
-        )
-        nvpm_ei_n = black_carbon.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
-        vector.setdefault("nvpm_ei_n", factor * nvpm_ei_n)
-        return
-
-    # Main branch when gaseous engine and nvPM engine data are both present
-    _, nvpm_ei_n = emissions.get_nvpm_emissions_index_edb(
-        edb_nvpm,
-        true_airspeed=true_airspeed,
-        air_temperature=air_temperature,
-        air_pressure=vector.air_pressure,
-        thrust_setting=thrust_setting,
-        q_fuel=fuel.q_fuel,
-    )
-    vector.setdefault("nvpm_ei_n", factor * nvpm_ei_n)
+    emissions = Emissions()
+    emissions.eval(vector, copy_source=False)
+    vector.update(nvpm_ei_n=factor * vector["nvpm_ei_n"])
 
 
 def calc_wind_shear(
@@ -1732,7 +1711,7 @@ def calc_wind_shear(
     u_wind = contrail["eastward_wind"]
     v_wind = contrail["northward_wind"]
 
-    air_pressure_lower = thermo.p_dz(air_temperature, air_pressure, dz_m)
+    air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
     air_temperature_lower = contrail["air_temperature_lower"]
     u_wind_lower = contrail["eastward_wind_lower"]
     v_wind_lower = contrail["northward_wind_lower"]
@@ -1882,7 +1861,8 @@ def advect(
 
     if dt_tail is None or dt_head is None:
         assert _is_segment_free_mode(contrail)
-        assert dt_tail is None and dt_head is None
+        assert dt_tail is None
+        assert dt_head is None
         return GeoVectorDataset(data, attrs=contrail.attrs, copy=True)
 
     longitude_head = contrail["longitude_head"]
