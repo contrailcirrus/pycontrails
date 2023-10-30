@@ -1,4 +1,4 @@
-Plume chem progress 19/09/2023
+Plume chem pull request 27/10/23
 
 Updates:
 - Working on a script init_chem.py, which introduces the ChemDataset class. This class is to be used for the background chemistry dataset. 
