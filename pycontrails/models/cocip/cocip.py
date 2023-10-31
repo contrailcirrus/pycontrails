@@ -1115,7 +1115,9 @@ class Cocip(Model):
         self.contrail = pd.concat(dfs)
 
         # add age in hours to the contrail waypoint outputs
-        self.contrail["age_hours"] = self.contrail["age"] / np.timedelta64(1, "h")
+        age_hours = np.empty_like(self.contrail["ef"])
+        np.divide(self.contrail["age"], np.timedelta64(1, "h"), out=age_hours)
+        self.contrail["age_hours"] = age_hours
 
         if self.params["verbose_outputs"]:
             # Compute dt_integration -- logic is somewhat complicated, but
