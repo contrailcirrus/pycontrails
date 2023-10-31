@@ -2235,44 +2235,30 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
     return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
 
 
-def shift_longitude(data: XArrayType) -> XArrayType:
-    """Shift longitude values from [0, 360) to [-180, 180) domain.
+def shift_longitude(data: XArrayType, bound: float = -180.0) -> XArrayType:
+    """Shift longitude values from any input domain to [bound, 360 + bound) domain.
 
     Sorts data by ascending longitude values.
+
 
     Parameters
     ----------
     data : XArrayType
         :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
+    bound : float, optional
+        Lower bound of the domain.
+        Output domain will be [bound, 360 + bound).
+        Defaults to -180, which results in longitude domain [-180, 180).
+
 
     Returns
     -------
     XArrayType
-        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude values on [-180, 180).
+        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude values on [a, 360 + a).
     """
     return data.assign_coords(
-        longitude=((data["longitude"].values + 180.0) % 360.0) - 180.0
+        longitude=((data["longitude"].values - bound) % 360.0) + bound
     ).sortby("longitude", ascending=True)
-
-
-def shift_longitude_reverse(data: XArrayType) -> XArrayType:
-    """Shift longitude values from [-180, 180) to [0, 360) domain.
-
-    Sorts data by ascending longitude values.
-
-    Parameters
-    ----------
-    data : XArrayType
-        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
-
-    Returns
-    -------
-    XArrayType
-        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude values on [0, 360).
-    """
-    return data.assign_coords(longitude=(data["longitude"].values + 360.0) % 360.0).sortby(
-        "longitude", ascending=True
-    )
 
 
 def _wrap_longitude(data: XArrayType) -> XArrayType:
