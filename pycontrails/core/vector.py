@@ -984,6 +984,49 @@ class VectorDataset:
         df.attrs = self.attrs
         return df
 
+    def to_dict(self) -> dict[str, Any]:
+        """Create dictionary with :attr:`data` and :attr:`attrs`.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary with :attr:`data` and :attr:`attrs`.
+        """
+
+        np_encoder = json_module.NumpyEncoder()
+
+        def encode(obj: Any) -> Any:
+            # Try to handle some pandas objects
+            if hasattr(obj, "to_numpy"):
+                obj = obj.to_numpy()
+
+            # Convert numpy objects to python objects
+            if isinstance(obj, (np.ndarray, np.generic)):
+                return np_encoder.default(obj)
+
+            # Pass through everything else
+            return obj
+
+        data = {k: encode(v) for k, v in self.data.items()}
+        attrs = {k: encode(v) for k, v in self.attrs.items()}
+
+        # Only include one of the vertical coordinate keys
+        if isinstance(self, GeoVectorDataset):
+            data.pop("altitude", None)
+            data.pop("level", None)
+            if "altitude_ft" not in data:
+                data["altitude_ft"] = self.altitude_ft.tolist()
+
+        # Issue warning if any keys are duplicated
+        common_keys = data.keys() & attrs.keys()
+        if common_keys:
+            warnings.warn(
+                f"Found duplicate keys in data and attrs: {common_keys}. "
+                "Data keys will overwrite attrs keys in returned dictionary."
+            )
+
+        return {**attrs, **data}
+
     @classmethod
     def create_empty(
         cls: Type[VectorDatasetType],

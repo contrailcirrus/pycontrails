@@ -957,3 +957,47 @@ def test_resample_and_fill_two_waypoints() -> None:
     # variation in groundspeed than geodesic interpolation.
     gs = fl.segment_groundspeed()[:-1]
     np.testing.assert_allclose(gs, 210.0, atol=1.0)
+
+
+def test_flight_to_dict(flight_fake: Flight) -> None:
+    """Test the Flight.to_dict method."""
+
+    # Add some additional attributes
+    flight_fake.attrs["aircraft_type"] = "A320"
+    flight_fake.attrs["flight_number"] = "BA123"
+    flight_fake.attrs["some_time"] = pd.Timestamp("2021-01-01 00:00:00")
+    flight_fake.attrs["some_duration"] = pd.Timedelta("1H")
+
+    flight_dict = flight_fake.to_dict()
+    assert isinstance(flight_dict, dict)
+    for k in flight_dict:
+        assert isinstance(k, str)
+
+    assert flight_dict["aircraft_type"] == "A320"
+    assert flight_dict["flight_number"] == "BA123"
+
+    # Only the altitude_ft column is included
+    assert "altitude_ft" in flight_dict
+    assert "altitude" not in flight_dict
+    assert "level" not in flight_dict
+
+    # Ensure serializable
+    assert json.dumps(flight_dict)
+
+
+def test_flight_to_dict_conflicts(flight_fake: Flight) -> None:
+    """Test the Flight.to_dict method with conflicting keys."""
+
+    flight_fake["engine_efficiency"] = np.linspace(0.2, 0.4, len(flight_fake))
+    flight_fake.attrs["engine_efficiency"] = 0.33
+
+    match = "Found duplicate keys in data and attrs: {'engine_efficiency'}"
+    with pytest.warns(UserWarning, match=match):
+        flight_dict = flight_fake.to_dict()
+
+    ee = flight_dict["engine_efficiency"]
+    assert isinstance(ee, list)
+    np.testing.assert_array_equal(ee, flight_fake["engine_efficiency"])
+
+    # Ensure serializable
+    assert json.dumps(flight_dict)
