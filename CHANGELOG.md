@@ -9,6 +9,10 @@
 - Add `Vector.to_dict()` method to output Vector data as dictionary. This method enables
   `Flight.to_dict()` objects to be serialized for input to the [Contrails API](https://api.contrails.org).
 
+### Fixes
+
+- Fix issue in the `wake_vortex.max_downward_displacement` function in which float32 dtypes were promoted to float64 dtypes in certain cases.
+
 ## v0.48.0
 
 This release includes a number of breaking changes and new features. If upgrading from a previous version of `pycontrails`, please read the changelog carefully. Open an [issue](https://github.com/contrailcirrus/pycontrails/issues) if you experience problems.

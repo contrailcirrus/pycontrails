@@ -54,22 +54,24 @@ def max_downward_displacement(
     - :cite:`holzapfelProbabilisticTwoPhaseWake2003`
     - :cite:`schumannContrailCirrusPrediction2012`
     """
-    wingspan_arr = np.broadcast_to(wingspan, true_airspeed.shape)
-    aircraft_mass_arr = np.broadcast_to(aircraft_mass, true_airspeed.shape)
-
     rho_air = thermo.rho_d(air_temperature, air_pressure)
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
-    t_0 = effective_time_scale(wingspan, true_airspeed, aircraft_mass_arr, rho_air)
+    t_0 = effective_time_scale(wingspan, true_airspeed, aircraft_mass, rho_air)
 
     dz_max_strong = downward_displacement_strongly_stratified(
-        wingspan, true_airspeed, aircraft_mass_arr, rho_air, n_bv
+        wingspan, true_airspeed, aircraft_mass, rho_air, n_bv
     )
 
     is_weakly_stratified = n_bv * t_0 < 0.8
+    if isinstance(wingspan, np.ndarray):
+        wingspan = wingspan[is_weakly_stratified]
+    if isinstance(aircraft_mass, np.ndarray):
+        aircraft_mass = aircraft_mass[is_weakly_stratified]
+
     dz_max_weak = downward_displacement_weakly_stratified(
-        wingspan=wingspan_arr[is_weakly_stratified],
+        wingspan=wingspan,
         true_airspeed=true_airspeed[is_weakly_stratified],
-        aircraft_mass=aircraft_mass_arr[is_weakly_stratified],
+        aircraft_mass=aircraft_mass,
         rho_air=rho_air[is_weakly_stratified],
         n_bv=n_bv[is_weakly_stratified],
         dz_max_strong=dz_max_strong[is_weakly_stratified],
