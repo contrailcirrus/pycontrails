@@ -995,27 +995,39 @@ class VectorDataset:
 
         np_encoder = json_module.NumpyEncoder()
 
-        def encode(obj: Any) -> Any:
+        # round latitude, longitude, and altitude
+        precision = {"longitude": 3, "latitude": 3, "altitude_ft": 0, "time": "datetime64[s]"}
+
+        def encode(key: str, obj: Any) -> Any:
             # Try to handle some pandas objects
             if hasattr(obj, "to_numpy"):
                 obj = obj.to_numpy()
 
             # Convert numpy objects to python objects
             if isinstance(obj, (np.ndarray, np.generic)):
-                return np_encoder.default(obj)
+
+                # round specific keys in precision
+                try:
+                    d = precision[key]
+                    if key == "time":
+                        return np_encoder.default(obj.astype(d).astype(int))
+                    else:
+                        return np_encoder.default(obj.astype(float).round(d))
+                except KeyError:
+                    return np_encoder.default(obj)
 
             # Pass through everything else
             return obj
 
-        data = {k: encode(v) for k, v in self.data.items()}
-        attrs = {k: encode(v) for k, v in self.attrs.items()}
+        data = {k: encode(k, v) for k, v in self.data.items()}
+        attrs = {k: encode(k, v) for k, v in self.attrs.items()}
 
         # Only include one of the vertical coordinate keys
         if isinstance(self, GeoVectorDataset):
             data.pop("altitude", None)
             data.pop("level", None)
             if "altitude_ft" not in data:
-                data["altitude_ft"] = self.altitude_ft.tolist()
+                data["altitude_ft"] = self.altitude_ft.round(precision["altitude_ft"]).tolist()
 
         # Issue warning if any keys are duplicated
         common_keys = data.keys() & attrs.keys()

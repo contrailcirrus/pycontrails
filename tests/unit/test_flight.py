@@ -961,14 +961,18 @@ def test_resample_and_fill_two_waypoints() -> None:
 
 def test_flight_to_dict(flight_fake: Flight) -> None:
     """Test the Flight.to_dict method."""
+    fl = flight_fake.copy()
+
+    # modify lon to be more precise
+    fl.update({"longitude": 0.999 * fl["longitude"]})
 
     # Add some additional attributes
-    flight_fake.attrs["aircraft_type"] = "A320"
-    flight_fake.attrs["flight_number"] = "BA123"
-    flight_fake.attrs["some_time"] = pd.Timestamp("2021-01-01 00:00:00")
-    flight_fake.attrs["some_duration"] = pd.Timedelta("1H")
+    fl.attrs["aircraft_type"] = "A320"
+    fl.attrs["flight_number"] = "BA123"
+    fl.attrs["some_time"] = pd.Timestamp("2021-01-01 00:00:00")
+    fl.attrs["some_duration"] = pd.Timedelta("1H")
 
-    flight_dict = flight_fake.to_dict()
+    flight_dict = fl.to_dict()
     assert isinstance(flight_dict, dict)
     for k in flight_dict:
         assert isinstance(k, str)
@@ -983,6 +987,16 @@ def test_flight_to_dict(flight_fake: Flight) -> None:
 
     # Ensure serializable
     assert json.dumps(flight_dict)
+
+    # Ensure time is in unix seconds
+    assert flight_dict["time"][0] < 1e10
+
+    # Ensure that lat/lon have 3 decimals
+    assert len(str(flight_dict["latitude"][0]).split(".")[1]) <= 3
+    assert len(str(flight_dict["longitude"][0]).split(".")[1]) <= 3
+
+    # Ensure alt has 1 decimal
+    assert len(str(flight_dict["altitude_ft"][0]).split(".")[1]) == 1
 
 
 def test_flight_to_dict_conflicts(flight_fake: Flight) -> None:
