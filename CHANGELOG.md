@@ -1,6 +1,14 @@
 
 # Changelog
 
+## v0.48.1 (unreleased)
+
+### Features
+
+- Generalize `met.shift_longitude()` to translate longitude coordinates onto any domain bounds
+- Add `Vector.to_dict()` method to output Vector data as dictionary. This method enables
+  `Flight.to_dict()` objects to be serialized for input to the [Contrails API](https://api.contrails.org).
+
 ## v0.48.0
 
 This release includes a number of breaking changes and new features. If upgrading from a previous version of `pycontrails`, please read the changelog carefully. Open an [issue](https://github.com/contrailcirrus/pycontrails/issues) if you experience problems.
