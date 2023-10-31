@@ -1371,7 +1371,7 @@ class MetDataArray(MetBase):
         """
         if not self.in_memory:
             self._check_memory("Extracting numpy array from")
-            self.data = self.data.load()
+            self.data.load()
 
         return self.data.values
 
@@ -1617,8 +1617,20 @@ class MetDataArray(MetBase):
         )
 
     def _check_memory(self, msg_start: str) -> None:
+        """Check the memory usage of the underlying data.
+
+        If the data is larger than 4 GB, a warning is issued. If the data is
+        larger than 32 GB, a RuntimeError is raised.
+        """
         n_bytes = self.data.nbytes
+        mb = round(n_bytes / int(1e6), 2)
+        logger.debug("Loading %s into memory consumes %s MB.", self.name, mb)
+
         n_gb = n_bytes // int(1e9)
+        if n_gb <= 4:
+            return
+
+        # Prevent something stupid
         msg = (
             f"{msg_start} MetDataArray {self.name} requires loading "
             f"at least {n_gb} GB of data into memory. Downselect data if possible. "
@@ -1626,13 +1638,9 @@ class MetDataArray(MetBase):
             "with the method 'downselect_met'."
         )
 
-        if n_gb > 32:  # Prevent something stupid
+        if n_gb > 32:
             raise RuntimeError(msg)
-        if n_gb > 4:
-            warnings.warn(msg)
-
-        mb = round(n_bytes / int(1e6), 2)
-        logger.debug("Loading %s into memory consumes %s MB.", self.name, mb)
+        warnings.warn(msg)
 
     def save(self, **kwargs: Any) -> list[str]:
         """Save intermediate to :attr:`cachestore` as netcdf.
