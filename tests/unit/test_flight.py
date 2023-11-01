@@ -1015,3 +1015,14 @@ def test_flight_to_dict_conflicts(flight_fake: Flight) -> None:
 
     # Ensure serializable
     assert json.dumps(flight_dict)
+
+
+def test_flight_from_dict(flight_fake: Flight) -> None:
+    """Test the Flight.from_dict method."""
+    flight_dict = flight_fake.to_dict()
+
+    with pytest.warns(UserWarning, match="time"):
+        fl1 = Flight.from_dict(flight_dict)
+
+    assert np.all(fl1["longitude"] == flight_fake["longitude"].round(3))
+    assert fl1.attrs == flight_fake.attrs
