@@ -1238,7 +1238,7 @@ class GeoVectorDataset(VectorDataset):
         if not np.issubdtype(time.dtype, np.datetime64):
             warnings.warn("Time data is not np.datetime64. Attempting to coerce.")
             try:
-                pd_time = pd.to_datetime(self["time"])
+                pd_time = _handle_time_column(pd.Series(self["time"]))
             except ValueError as e:
                 raise ValueError("Could not coerce time data to datetime64.") from e
             np_time = pd_time.to_numpy(dtype="datetime64[ns]")
@@ -1974,29 +1974,116 @@ def vector_to_lon_lat_grid(
 
 
 def _handle_time_column(time: pd.Series) -> pd.Series:
-    if not hasattr(time, "dt"):
-        # If the time column is a string, we try to convert it to a datetime
-        # If it fails (for example, a unix integer time), we raise an error
-        # and let the user figure it out.
-        try:
-            return pd.to_datetime(time)
-        except ValueError as exc:
-            raise ValueError(
-                "The 'time' field must hold datetime-like values. "
-                'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
-                "with the appropriate unit."
-            ) from exc
+    """Ensure that pd.Series has compatible Timestamps.
 
+    Parameters
+    ----------
+    time : pd.Series
+        Pandas dataframe column labeled "time".
+
+
+    Returns
+    -------
+    pd.Series
+        Parsed pandas time series.
+
+
+    Raises
+    ------
+    ValueError
+        When time series can't be parsed, or is not timezone naive.
+    """
+    if not hasattr(time, "dt"):
+        time = _parse_pandas_time(time)
+
+    # Translate all times to UTC and then remove timezone.
     # If the time column contains a timezone, the call to `to_numpy`
-    # will convert it to an array of object. We do not want this, so
-    # we raise an error in this case. Timezone issues are complicated,
-    # and so it is better for the user to handle them rather than try
-    # to address them here.
+    # will convert it to an array of object.
     if time.dt.tz is not None:
-        raise ValueError(
-            "The 'time' field must be timezone naive. "
-            "This can be achieved with: "
-            'data["time"] = data["time"].dt.tz_localize(None)'
-        )
+        time = time.dt.tz_convert("UTC")
+        time = time.dt.tz_convert(None)
 
     return time
+
+
+def _parse_pandas_time(time: pd.Series) -> pd.Series:
+    """Parse pandas dataframe column labelled "time".
+
+    Parameters
+    ----------
+    time : pd.Series
+        Time series
+
+
+    Returns
+    -------
+    pd.Series
+        Parsed time series
+
+
+    Raises
+    ------
+    ValueError
+        When series values can't be inferred.
+    """
+    try:
+        # If the time series is a string, try to convert it to a datetime
+        if time.dtype == "O":
+            return pd.to_datetime(time)
+
+        # If the time is an int, try to parse it as unix time
+        elif time.dtype in ("int32", "int64"):
+            return _parse_unix_time(time)
+
+        else:
+            raise ValueError("Unsupported time format")
+
+    except ValueError as exc:
+        raise ValueError(
+            "The 'time' field must hold datetime-like values. "
+            'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
+            "with the appropriate unit."
+        ) from exc
+
+
+def _parse_unix_time(time: list[int] | npt.NDArray[np.int_] | pd.Series) -> pd.Series:
+    """Parse array of int times as unix epoch timestamps.
+
+    Attempts to parse the time in "s", "ms", "us", "ns"
+
+
+    Parameters
+    ----------
+    time : list[int] | npt.NDArray[np.int_] | pd.Series
+        Sequence of unix timestamps
+
+
+    Returns
+    -------
+    pd.Series
+        Series of timezone naive pandas Timestamps
+
+
+    Raises
+    ------
+    ValueError
+        When unable to parse time as unix epoch timestamp
+    """
+    units = "s", "ms", "us", "ns"
+    for unit in units:
+        try:
+            out = pd.to_datetime(time, unit=unit, utc=True)
+        except ValueError:
+            continue
+
+        # make timezone naive
+        out = out.dt.tz_convert(None)
+
+        # make sure time is reasonable
+        if (pd.Timestamp("1980-01-01") <= out).all() and (out <= pd.Timestamp("2030-01-01")).all():
+            return out
+
+    raise ValueError(
+        f"Unable to parse time parameter '{time}' as unix epoch timestamp between "
+        "1980-01-01 and 2030-01-01"
+    )

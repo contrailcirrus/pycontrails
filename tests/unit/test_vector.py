@@ -731,21 +731,47 @@ def test_vector_copy(random_path: VectorDataset) -> None:
     assert not np.may_share_memory(random_path5["a"], random_path["a"])
 
 
-def test_bad_time(random_geo_path: VectorDataset) -> None:
+def test_time_parsing(random_geo_path: VectorDataset) -> None:
     """Test that bad time data is handled correctly."""
     data = random_geo_path.copy().data
 
-    # time is successfully coerced to datetime64 (but values are nanoseconds after 1970)
+    # time can't be coerced to datetime64
     data.update(time=[1, 2, 3, 4])
     with pytest.warns(UserWarning, match="time"):
-        GeoVectorDataset(data)
+        with pytest.raises(ValueError, match="Could not coerce time data"):
+            GeoVectorDataset(data)
 
-    # time cannot be converted
+    # fails even if 1 time can't be coerced to datetime64
+    data.update(time=[1000000000, 1000000060, 1000000120, 10])
+    with pytest.warns(UserWarning, match="time"):
+        with pytest.raises(ValueError, match="Could not coerce time data"):
+            GeoVectorDataset(data)
+
+    # float times aren't supported
+    data.update(time=[1e9, 1e9 + 60, 1e9 + 120, 1e9 + 180])
+    with pytest.warns(UserWarning, match="time"):
+        with pytest.raises(ValueError, match="Could not coerce time data"):
+            GeoVectorDataset(data)
+
+    # reasonable int times are supported
+    data.update(time=[1000000000, 1000000060, 1000000120, 1000000240])
+    with pytest.warns(UserWarning, match="time"):
+        gvds = GeoVectorDataset(data)
+        assert gvds["time"][0] == np.datetime64("2001-09-09 01:46:40", "ns")
+
+    # reasonable int times are supported
+    data.update(time=[1000000000000, 1000000060000, 1000000120000, 1000000240000])
+    with pytest.warns(UserWarning, match="time"):
+        vector = GeoVectorDataset(data)
+        assert vector["time"][0] == np.datetime64("2001-09-09 01:46:40", "ns")
+
+    # random strings cannot be converted
     data.update(time=["hello", "world", "con", "trail"])
     with pytest.warns(UserWarning, match="time"):
         with pytest.raises(ValueError, match="time"):
             GeoVectorDataset(data)
 
+    # UTC timezones are stripped
     data.update(
         time=[
             "2021-10-05 00:00:00Z",
@@ -754,16 +780,27 @@ def test_bad_time(random_geo_path: VectorDataset) -> None:
             "2021-10-05 03:00:00Z",
         ]
     )
+    # parse strings with warning
+    with pytest.warns(UserWarning, match="time"):
+        vector = GeoVectorDataset(data=data)
+    assert vector["time"].dtype == np.dtype("datetime64[ns]")
+    assert vector["time"][0] == np.datetime64("2021-10-05 00:00:00", "ns")
+
+    # parse dataframe
     df = pd.DataFrame(data)
     df["time"] = pd.to_datetime(df["time"])
-
     assert df["time"].dt.tz is not None
-    with pytest.raises(ValueError, match="The 'time' field must be timezone naive."):
-        GeoVectorDataset(df)
-
-    df["time"] = df["time"].dt.tz_localize(None)
     vector = GeoVectorDataset(df)
     assert vector["time"].dtype == np.dtype("datetime64[ns]")
+    assert vector["time"][0] == np.datetime64("2021-10-05 00:00:00", "ns")
+
+    # timezones are converted to UTC and stripped
+    df["time"] = df["time"].dt.tz_convert("EST")
+    assert df["time"].dt.tz is not None
+    assert df["time"].iloc[0] == pd.Timestamp("2021-10-04 19:00:00-0500")
+    vector = GeoVectorDataset(df)
+    assert vector["time"].dtype == np.dtype("datetime64[ns]")
+    assert vector["time"][0] == np.datetime64("2021-10-05 00:00:00", "ns")
 
 
 def test_vector_from_array_like() -> None:
