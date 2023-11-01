@@ -992,7 +992,6 @@ class VectorDataset:
         dict[str, Any]
             Dictionary with :attr:`data` and :attr:`attrs`.
         """
-
         np_encoder = json_module.NumpyEncoder()
 
         # round latitude, longitude, and altitude
@@ -1004,7 +1003,7 @@ class VectorDataset:
                 obj = obj.to_numpy()
 
             # Convert numpy objects to python objects
-            if isinstance(obj, (np.ndarray, np.generic)):
+            if isinstance(obj, np.ndarray):
 
                 # round specific keys in precision
                 try:
