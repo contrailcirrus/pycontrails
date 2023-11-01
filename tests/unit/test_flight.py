@@ -1063,3 +1063,15 @@ def test_flight_from_dict(flight_fake: Flight) -> None:
 
     # note that attrs are a shallow copy, so nested objects are not copied
     assert fl4.attrs["object"] is flight_dict2["object"]
+
+    # test end to end
+    # create flight that will translate symmetrically
+    fl5 = flight_fake.copy()
+    fl5["altitude_ft"] = fl5.altitude_ft.round(0)
+    for k in ["latitude", "longitude"]:
+        fl5.update({k: fl5.data[k].round(3)})
+    fl5.update({"time": fl5.data["time"].astype("datetime64[s]")})
+    del fl5["altitude"]
+
+    with pytest.warns(UserWarning, match="time"):
+        assert fl5 == Flight.from_dict(fl5.to_dict())
