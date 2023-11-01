@@ -2062,11 +2062,10 @@ def _parse_pandas_time(time: pd.Series) -> pd.Series:
             return pd.to_datetime(time)
 
         # If the time is an int, try to parse it as unix time
-        elif time.dtype in ("int32", "int64"):
+        if time.dtype in ("int32", "int64"):
             return _parse_unix_time(time)
 
-        else:
-            raise ValueError("Unsupported time format")
+        raise ValueError("Unsupported time format")
 
     except ValueError as exc:
         raise ValueError(
