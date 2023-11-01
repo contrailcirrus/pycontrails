@@ -1008,12 +1008,12 @@ class VectorDataset:
                 # round specific keys in precision
                 try:
                     d = precision[key]
-                    if key == "time":
-                        return np_encoder.default(obj.astype(d).astype(int))
-                    else:
-                        return np_encoder.default(obj.astype(float).round(d))
                 except KeyError:
                     return np_encoder.default(obj)
+
+                if key == "time":
+                    return np_encoder.default(obj.astype(d).astype(int))
+                return np_encoder.default(obj.astype(float).round(d))
 
             # Pass through everything else
             return obj
