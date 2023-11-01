@@ -403,14 +403,13 @@ class Cocip(Model):
         self.contrail_list = []
         self._simulate_contrail_evolution()
 
-        self._cleanup_indices()
-
         if not self.contrail_list:
             logger.debug("No contrails formed by %s", label)
             return self._fill_empty_flight_results(return_flight_list)
 
         logger.debug("Complete contrail simulation for %s", label)
 
+        self._cleanup_indices()
         self._bundle_results()
 
         if return_flight_list:
@@ -1098,12 +1097,20 @@ class Cocip(Model):
 
     @overrides
     def _cleanup_indices(self) -> None:
-        if self.params["interpolation_use_indices"]:
+        """Cleanup interpolation artifacts."""
+
+        if not self.params["interpolation_use_indices"]:
+            return
+
+        if hasattr(self, "contrail_list"):
             for contrail in self.contrail_list:
                 contrail._invalidate_indices()
-            self.source._invalidate_indices()
-            self._sac_flight._invalidate_indices()
+
+        self.source._invalidate_indices()
+        self._sac_flight._invalidate_indices()
+        if hasattr(self, "_downwash_flight"):
             self._downwash_flight._invalidate_indices()
+        if hasattr(self, "_downwash_contrail"):
             self._downwash_contrail._invalidate_indices()
 
     def _bundle_results(self) -> None:
@@ -1142,10 +1149,9 @@ class Cocip(Model):
 
             self.contrail = seq_index.set_index("index")
 
-        # ---
-        # Create contrail xr.Dataset (self.contrail_dataset)
-        # ---
-        if self.params["verbose_outputs"]:
+            # ---
+            # Create contrail xr.Dataset (self.contrail_dataset)
+            # ---
             if isinstance(self.source, Fleet):
                 self.contrail_dataset = xr.Dataset.from_dataframe(
                     self.contrail.set_index(["flight_id", "timestep", "waypoint"])
@@ -1252,9 +1258,11 @@ class Cocip(Model):
         Flight or list[Flight]
             Flight or list of Flight objects with empty variables.
         """
+        self._cleanup_indices()
 
         intersection = self.source.data.pop("_met_intersection")
-        zeros_and_nans = np.where(intersection, 0.0, np.nan)
+        zeros_and_nans = np.zeros(intersection.shape, dtype=np.float32)
+        zeros_and_nans[~intersection] = np.nan
         self.source["ef"] = zeros_and_nans.copy()
         self.source["persistent_1"] = zeros_and_nans.copy()
         self.source["cocip"] = np.sign(zeros_and_nans)
