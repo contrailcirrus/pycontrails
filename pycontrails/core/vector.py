@@ -1005,14 +1005,16 @@ class VectorDataset:
             # Convert numpy objects to python objects
             if isinstance(obj, (np.ndarray, np.generic)):
 
+                # round time to unix seconds
+                if key == "time":
+                    return np_encoder.default(obj.astype("datetime64[s]").astype(int))
+
                 # round specific keys in precision
                 try:
                     d = precision[key]
                 except KeyError:
                     return np_encoder.default(obj)
 
-                if key == "time":
-                    return np_encoder.default(obj.astype("datetime64[s]").astype(int))
                 return np_encoder.default(obj.astype(float).round(d))
 
             # Pass through everything else
