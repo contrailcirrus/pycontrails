@@ -633,6 +633,8 @@ class VectorDataset:
         8  15  18
 
         """
+        vectors = [v for v in vectors if v]  # remove empty vectors
+
         if not vectors:
             return cls()
 

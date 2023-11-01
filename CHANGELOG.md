@@ -12,6 +12,7 @@
 ### Fixes
 
 - Fix issue in the `wake_vortex.max_downward_displacement` function in which float32 dtypes were promoted to float64 dtypes in certain cases.
+- Ignore empty vectors in `VectorDataset.sum`.
 
 ## v0.48.0
 
