@@ -18,7 +18,7 @@ from pycontrails.core import coordinates, interpolation
 from pycontrails.core import met as met_module
 from pycontrails.physics import units
 from pycontrails.utils import dependencies
-from pycontrails.utils import json as json_module
+from pycontrails.utils import json as json_utils
 
 logger = logging.getLogger(__name__)
 
@@ -755,7 +755,7 @@ class VectorDataset:
         str
             Unique hash for flight instance (sha1)
         """
-        _hash = json.dumps(self.data, cls=json_module.NumpyEncoder)
+        _hash = json.dumps(self.data, cls=json_utils.NumpyEncoder)
         return hashlib.sha1(bytes(_hash, "utf-8")).hexdigest()
 
     # ------------
@@ -992,7 +992,7 @@ class VectorDataset:
         dict[str, Any]
             Dictionary with :attr:`data` and :attr:`attrs`.
         """
-        np_encoder = json_module.NumpyEncoder()
+        np_encoder = json_utils.NumpyEncoder()
 
         # round latitude, longitude, and altitude
         precision = {"longitude": 3, "latitude": 3, "altitude_ft": 0, "time": "datetime64[s]"}
@@ -1851,7 +1851,7 @@ class GeoVectorDataset(VectorDataset):
         dict[str, Any]
             Python representation of GeoJSON FeatureCollection
         """
-        return json_module.dataframe_to_geojson_points(self.dataframe)
+        return json_utils.dataframe_to_geojson_points(self.dataframe)
 
     def to_pseudo_mercator(self: GeoVectorDatasetType, copy: bool = True) -> GeoVectorDatasetType:
         """Convert data from :attr:`attrs["crs"]` to Pseudo Mercator (EPSG:3857).
