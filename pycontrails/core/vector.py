@@ -1088,7 +1088,7 @@ class VectorDataset:
         data = {}
         attrs = {}
         for k, v in obj.items():
-            if isinstance(v, (list | np.ndarray)):
+            if isinstance(v, (list, np.ndarray)):
                 data[k] = v
             else:
                 attrs[k] = v
@@ -2043,12 +2043,10 @@ def _parse_pandas_time(time: pd.Series) -> pd.Series:
     time : pd.Series
         Time series
 
-
     Returns
     -------
     pd.Series
         Parsed time series
-
 
     Raises
     ------
