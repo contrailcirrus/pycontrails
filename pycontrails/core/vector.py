@@ -995,7 +995,7 @@ class VectorDataset:
         np_encoder = json_utils.NumpyEncoder()
 
         # round latitude, longitude, and altitude
-        precision = {"longitude": 3, "latitude": 3, "altitude_ft": 0, "time": "datetime64[s]"}
+        precision = {"longitude": 3, "latitude": 3, "altitude_ft": 0}
 
         def encode(key: str, obj: Any) -> Any:
             # Try to handle some pandas objects
@@ -1003,7 +1003,7 @@ class VectorDataset:
                 obj = obj.to_numpy()
 
             # Convert numpy objects to python objects
-            if isinstance(obj, np.ndarray):
+            if isinstance(obj, (np.ndarray, np.generic)):
 
                 # round specific keys in precision
                 try:
@@ -1012,7 +1012,7 @@ class VectorDataset:
                     return np_encoder.default(obj)
 
                 if key == "time":
-                    return np_encoder.default(obj.astype(d).astype(int))
+                    return np_encoder.default(obj.astype("datetime64[s]").astype(int))
                 return np_encoder.default(obj.astype(float).round(d))
 
             # Pass through everything else
