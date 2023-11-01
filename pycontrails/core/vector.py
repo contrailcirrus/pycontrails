@@ -991,6 +991,10 @@ class VectorDataset:
         -------
         dict[str, Any]
             Dictionary with :attr:`data` and :attr:`attrs`.
+
+        See Also
+        --------
+        :meth:`from_dict`
         """
         np_encoder = json_utils.NumpyEncoder()
 
@@ -1077,7 +1081,7 @@ class VectorDataset:
         Parameters
         ----------
         obj : dict[str, Any]
-            Dict representation of VectorDataset (e.g. `Vector.to_dict()`)
+            Dict representation of VectorDataset (e.g. :meth:`to_dict`)
         copy : bool, optional
             Passed to VectorDataset constructor.
             Defaults to True.
@@ -1088,6 +1092,10 @@ class VectorDataset:
         -------
         VectorDatasetType
             VectorDataset instance.
+
+        See Also
+        --------
+        :meth:`to_dict`
         """
         data = {}
         attrs = {}
