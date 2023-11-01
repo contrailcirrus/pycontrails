@@ -2031,8 +2031,8 @@ def _handle_time_column(time: pd.Series) -> pd.Series:
     # Translate all times to UTC and then remove timezone.
     # If the time column contains a timezone, the call to `to_numpy`
     # will convert it to an array of object.
+    # Note `.tz_convert(None)` automatically converts to UTC first.
     if time.dt.tz is not None:
-        time = time.dt.tz_convert("UTC")
         time = time.dt.tz_convert(None)
 
     return time
