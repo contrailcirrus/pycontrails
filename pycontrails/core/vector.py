@@ -1246,6 +1246,11 @@ class GeoVectorDataset(VectorDataset):
         elif time.dtype != "datetime64[ns]":
             self.update(time=time.astype("datetime64[ns]"))
 
+        # In certain edge cases, "time" arrays will contain NaT enties (np.datetime64("NaT"))
+        # We don't want to support NaT entries
+        if np.any(np.isnan(self["time"])):
+            raise ValueError("NaT values are not allowed in the time field.")
+
         # Ensure spatial coordinates are float32 or float64
         float_dtype = (np.float32, np.float64)
         for coord in ("longitude", "latitude", "altitude", "level", "altitude_ft"):
