@@ -1068,7 +1068,7 @@ class VectorDataset:
 
     @classmethod
     def from_dict(
-        cls: Type[VectorDatasetType], obj: dict[str, Any], copy: bool = True
+        cls: Type[VectorDatasetType], obj: dict[str, Any], copy: bool = True, **obj_kwargs: Any
     ) -> VectorDatasetType:
         """Create instance from dict representation containing data and attrs.
 
@@ -1079,6 +1079,8 @@ class VectorDataset:
         copy : bool, optional
             Passed to VectorDataset constructor.
             Defaults to True.
+        **obj_kwargs : Any
+            Additional properties passed as keyword arguments.
 
         Returns
         -------
@@ -1087,7 +1089,8 @@ class VectorDataset:
         """
         data = {}
         attrs = {}
-        for k, v in obj.items():
+
+        for k, v in {**obj, **obj_kwargs}.items():
             if isinstance(v, (list, np.ndarray)):
                 data[k] = v
             else:
