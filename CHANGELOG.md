@@ -6,8 +6,11 @@
 ### Features
 
 - Generalize `met.shift_longitude()` to translate longitude coordinates onto any domain bounds
-- Add `Vector.to_dict()` method to output Vector data as dictionary. This method enables
+- Add `Vector.to_dict()` methods to output Vector data as dictionary. This method enables
   `Flight.to_dict()` objects to be serialized for input to the [Contrails API](https://api.contrails.org).
+- Add `Vector.from_dict()` to create `VectorDataset` class from dictionary.
+- Support more time formats, including timezone aware times, in `VectorDataset` creation.
+  All timezone aware `"time"`` coordinates are converted to UTC and stripped of timezone identifier.
 
 ### Fixes
 
