@@ -1026,3 +1026,40 @@ def test_flight_from_dict(flight_fake: Flight) -> None:
 
     assert np.all(fl1["longitude"] == flight_fake["longitude"].round(3))
     assert fl1.attrs == flight_fake.attrs
+
+    # test **obj_kwargs
+    assert "destination" in flight_fake.attrs
+    with pytest.warns(UserWarning, match="time"):
+        fl2 = Flight.from_dict(flight_dict, new_field=5, destination="KOWE")
+
+    assert fl2.attrs["new_field"] == 5
+    assert fl2.attrs["destination"] == "KOWE"
+
+    # array **obj_kwargs must have the same legnth
+    with pytest.raises(ValueError, match="Incompatible array sizes"):
+        Flight.from_dict(flight_dict, array_field=np.array([3, 4, 5]))
+
+    # test copy
+
+    # convert lists to np.ndarrays
+    flight_dict2 = flight_fake.to_dict()
+    for k, v in flight_dict2.items():
+        if isinstance(v, list):
+            flight_dict2[k] = np.array(v)
+
+    flight_dict2["object"] = {"random": "dict attr"}
+    with pytest.warns(UserWarning, match="time"):
+        fl3 = Flight.from_dict(flight_dict2, copy=False)
+
+    assert fl3["longitude"] is flight_dict2["longitude"]
+    assert fl3.attrs["object"] is flight_dict2["object"]
+
+    with pytest.warns(UserWarning, match="time"):
+        fl4 = Flight.from_dict(flight_dict2, copy=True)
+
+    assert fl4["longitude"] is not flight_dict2["longitude"]
+    assert fl4["latitude"] is not flight_dict2["latitude"]
+    assert fl4["altitude_ft"] is not flight_dict2["altitude_ft"]
+
+    # note that attrs are a shallow copy, so nested objects are not copied
+    assert fl4.attrs["object"] is flight_dict2["object"]
