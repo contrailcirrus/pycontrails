@@ -17,6 +17,7 @@
 ### Internals
 
 - Set `frozen=True` on the `MetVariable` dataclass.
+- Test against python 3.12 in the GitHub Actions CI.
 
 ## v0.48.0
 
