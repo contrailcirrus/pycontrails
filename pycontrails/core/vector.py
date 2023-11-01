@@ -1066,6 +1066,35 @@ class VectorDataset:
         """
         return cls(data=_empty_vector_dict(keys or set()), attrs=attrs, copy=False, **attrs_kwargs)
 
+    @classmethod
+    def from_dict(
+        cls: Type[VectorDatasetType], obj: dict[str, Any], copy: bool = True
+    ) -> VectorDatasetType:
+        """Create instance from dict representation containing data and attrs.
+
+        Parameters
+        ----------
+        obj : dict[str, Any]
+            Dict representation of VectorDataset (e.g. `Vector.to_dict()`)
+        copy : bool, optional
+            Passed to VectorDataset constructor.
+            Defaults to True.
+
+        Returns
+        -------
+        VectorDatasetType
+            VectorDataset instance.
+        """
+        data = {}
+        attrs = {}
+        for k, v in obj.items():
+            if isinstance(v, (list | np.ndarray)):
+                data[k] = v
+            else:
+                attrs[k] = v
+
+        return cls(data=data, attrs=attrs, copy=copy)
+
     def generate_splits(
         self: VectorDatasetType, n_splits: int, copy: bool = True
     ) -> Generator[VectorDatasetType, None, None]:
@@ -2062,7 +2091,6 @@ def _parse_unix_time(time: list[int] | npt.NDArray[np.int_] | pd.Series) -> pd.S
     -------
     pd.Series
         Series of timezone naive pandas Timestamps
-
 
     Raises
     ------
