@@ -14,6 +14,10 @@
 - Fix issue in the `wake_vortex.max_downward_displacement` function in which float32 dtypes were promoted to float64 dtypes in certain cases.
 - Ignore empty vectors in `VectorDataset.sum`.
 
+### Internals
+
+- Set `frozen=True` on the `MetVariable` dataclass.
+
 ## v0.48.0
 
 This release includes a number of breaking changes and new features. If upgrading from a previous version of `pycontrails`, please read the changelog carefully. Open an [issue](https://github.com/contrailcirrus/pycontrails/issues) if you experience problems.

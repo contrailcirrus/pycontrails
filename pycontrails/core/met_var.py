@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import dataclasses
 
 
-@dataclass
+@dataclasses.dataclass(frozen=True)
 class MetVariable:
     """Met variable defined using CF, ECMWF, and WMO conventions.
 
