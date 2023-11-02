@@ -17,7 +17,7 @@
 ### Internals
 
 - Set `frozen=True` on the `MetVariable` dataclass.
-- Test against python 3.12 in the GitHub Actions CI.
+- Test against python 3.12 in the GitHub Actions CI. Use python 3.12 the docs and doctest workflows.
 
 ## v0.48.0
 
