@@ -987,6 +987,12 @@ class VectorDataset:
     def to_dict(self) -> dict[str, Any]:
         """Create dictionary with :attr:`data` and :attr:`attrs`.
 
+        If geo-spatial coordinates (e.g. `"latitude"`, `"longitude"`, `"altitude"`)
+        are present, round to a reasonable precision. If a `"time"` variable is present,
+        round to unix seconds. When the instance is a :class:`GeoVectorDataset`,
+        disregard any `"altitude"` or `"level"` coordinate and only include
+        `"altitude_ft"`in the output.
+
         Returns
         -------
         dict[str, Any]
@@ -995,6 +1001,38 @@ class VectorDataset:
         See Also
         --------
         :meth:`from_dict`
+
+        Examples
+        --------
+        >>> import pprint
+        >>> from pycontrails import Flight
+        >>> fl = Flight(
+        ...     longitude=[-100, -110],
+        ...     latitude=[40, 50],
+        ...     level=[200, 200],
+        ...     time=[np.datetime64("2020-01-01T09"), np.datetime64("2020-01-01T09:30")],
+        ...     aircraft_type="B737",
+        ... )
+        >>> fl = fl.resample_and_fill("5T")
+        >>> pprint.pprint(fl.to_dict())
+        {'aircraft_type': 'B737',
+         'altitude_ft': [38661.0, 38661.0, 38661.0, 38661.0, 38661.0, 38661.0, 38661.0],
+         'crs': 'EPSG:4326',
+         'latitude': [40.0, 41.724, 43.428, 45.111, 46.769, 48.399, 50.0],
+         'longitude': [-100.0,
+                       -101.441,
+                       -102.959,
+                       -104.563,
+                       -106.267,
+                       -108.076,
+                       -110.0],
+         'time': [1577869200,
+                  1577869500,
+                  1577869800,
+                  1577870100,
+                  1577870400,
+                  1577870700,
+                  1577871000]}
         """
         np_encoder = json_utils.NumpyEncoder()
 
