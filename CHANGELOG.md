@@ -1,7 +1,7 @@
 
 # Changelog
 
-## v0.48.1 (unreleased)
+## v0.48.1
 
 ### Features
 
