@@ -371,14 +371,12 @@ def flight_fake() -> Flight:
     """Fake Flight fixture."""
     n_waypoints = 500
 
-    df = pd.DataFrame(
-        {
-            "longitude": np.linspace(-45, 143, n_waypoints),
-            "latitude": np.linspace(-20, 80, n_waypoints),
-            "altitude": np.linspace(4000, 12000, n_waypoints),
-            "time": pd.date_range("2020 Jan 1 00:17", "2020 Jan 1 02:36", n_waypoints),
-        }
-    )
+    df = pd.DataFrame({
+        "longitude": np.linspace(-45, 143, n_waypoints),
+        "latitude": np.linspace(-20, 80, n_waypoints),
+        "altitude": np.linspace(4000, 12000, n_waypoints),
+        "time": pd.date_range("2020 Jan 1 00:17", "2020 Jan 1 02:36", n_waypoints),
+    })
 
     return Flight(df, attrs=dict(destination="SLC", flight_id="abcde"))
 

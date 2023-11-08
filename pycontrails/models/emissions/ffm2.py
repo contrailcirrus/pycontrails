@@ -150,16 +150,14 @@ def co_hc_emissions_index_profile(
         ff_intersect = (ei_hi - c) / m
         # Ensure intersection is between 30% and 85% fuel mass flow rate
         ff_intersect = np.clip(ff_intersect, fuel_flow_edb[1] + 0.01, fuel_flow_edb[2] - 0.01)
-        ff_profile = np.array(
-            [
-                ff_low_power,
-                fuel_flow_edb[0],
-                fuel_flow_edb[1],
-                ff_intersect,
-                fuel_flow_edb[2],
-                fuel_flow_edb[3],
-            ]
-        )
+        ff_profile = np.array([
+            ff_low_power,
+            fuel_flow_edb[0],
+            fuel_flow_edb[1],
+            ff_intersect,
+            fuel_flow_edb[2],
+            fuel_flow_edb[3],
+        ])
         ei_profile = np.array([ei_co_low_power, ei_edb[0], ei_edb[1], ei_hi, ei_hi, ei_hi])
 
     # Permutation 3: Point-to-point fit (Figure 13 of DuBois & Paynter, 2006)

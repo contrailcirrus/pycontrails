@@ -67,9 +67,9 @@ def test_sl_path_to_met(met_ecmwf_sl_path: str) -> None:
 def test_pl_path_to_met(met_ecmwf_pl_path: str) -> None:
     """Confirm `MetDataset` constructor converts `Dataset` with correct conventions."""
     ds = xr.open_dataset(met_ecmwf_pl_path)
-    assert set(ds.variables).issubset(
-        {"longitude", "latitude", "level", "time", "t", "r", "q", "ciwc"}
-    )
+    assert set(ds.variables).issubset({
+        "longitude", "latitude", "level", "time", "t", "r", "q", "ciwc"
+    })
     assert list(ds.data_vars) == ["t", "r", "q", "ciwc"]
 
     mds = MetDataset(ds)
@@ -443,14 +443,12 @@ def test_doubled_time_mds_interp_outside_grid(
 def test_interpolate_wrap_antimeridian(sl_path_to_tripled_time_mds: MetDataset) -> None:
     ds = sl_path_to_tripled_time_mds
     mda = MetDataArray(ds["sp"].data, wrap_longitude=True)
-    waypoints = pd.DataFrame(
-        {
-            "longitude": np.concatenate([np.linspace(-180, -160, 100), np.linspace(170, 180, 100)]),
-            "latitude": 10,  # should be close to 15
-            "level": -1,
-            "time": pd.date_range("2019-05-31T04", "2019-05-31T05:59:59", 200),
-        }
-    )
+    waypoints = pd.DataFrame({
+        "longitude": np.concatenate([np.linspace(-180, -160, 100), np.linspace(170, 180, 100)]),
+        "latitude": 10,  # should be close to 15
+        "level": -1,
+        "time": pd.date_range("2019-05-31T04", "2019-05-31T05:59:59", 200),
+    })
 
     interpolated = mda.interpolate(
         waypoints["longitude"].values,

@@ -95,9 +95,8 @@ def global_airport_database(
     airports["elevation_ft"].fillna(0, inplace=True)
 
     # Keep specific airport types used by commercial aviation
-    select_airport_types = airports["type"].isin(
-        ["large_airport", "medium_airport", "small_airport", "heliport"]
-    )
+    subset = ("large_airport", "medium_airport", "small_airport", "heliport")
+    select_airport_types = airports["type"].isin(subset)
 
     # Keep airports with valid ICAO codes
     select_icao_codes = (airports["icao_code"].str.len() == 4) & (

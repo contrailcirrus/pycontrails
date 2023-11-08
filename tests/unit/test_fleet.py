@@ -152,18 +152,16 @@ def test_fleet_numeric_types_to_data(syn: SyntheticFlight):
         fl.attrs["non-numeric"] = "contrail"
 
     fleet = Fleet.from_seq(fls)
-    fleet.ensure_vars(
-        [
-            "waypoint",
-            "longitude",
-            "latitude",
-            "level",
-            "time",
-            "flight_id",
-            "numeric1",
-            "numeric2",
-        ]
-    )
+    fleet.ensure_vars([
+        "waypoint",
+        "longitude",
+        "latitude",
+        "level",
+        "time",
+        "flight_id",
+        "numeric1",
+        "numeric2",
+    ])
     assert "non-numeric" not in fleet
 
     # Nothing in fleet.attrs is numeric

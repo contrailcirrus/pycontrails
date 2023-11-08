@@ -283,12 +283,10 @@ def test_ISSR_flight_span_antimeridian(met_era5_fake: MetDataset, flight_fake: F
     fl = flight_fake.copy()
     n_waypoints = len(fl)
     assert n_waypoints % 2 == 0  # needed below
-    longitude = np.concatenate(
-        [
-            np.linspace(150, 180, n_waypoints // 2, endpoint=False),
-            np.linspace(-180, -140, n_waypoints // 2),
-        ]
-    )
+    longitude = np.concatenate([
+        np.linspace(150, 180, n_waypoints // 2, endpoint=False),
+        np.linspace(-180, -140, n_waypoints // 2),
+    ])
     altitude = np.full(shape=fl.shape, fill_value=10000)
     fl.update(longitude=longitude, altitude=altitude)
 

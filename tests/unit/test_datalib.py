@@ -32,9 +32,9 @@ def test_parse_timesteps() -> None:
 
     # throw ValueError for length > 2
     with pytest.raises(ValueError, match="Input time bounds must have length"):
-        datalib.parse_timesteps(
-            [datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0)]
-        )
+        datalib.parse_timesteps([
+            datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0)
+        ])
 
     # accept (start, end)
     ts = datalib.parse_timesteps((datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 3)))
