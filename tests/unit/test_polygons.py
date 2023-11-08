@@ -89,7 +89,7 @@ def test_find_multipolygon_depth1(arr_name: str, request: pytest.FixtureRequest)
 
 @pytest.mark.parametrize(
     ("min_area", "n_children"),
-    [(1, 144), (2, 100), (3, 87), (4, 76), (6, 58), (12, 36), (20, 27)],
+    [(1, 144), (2, 100), (3, 87), (4, 73), (6, 56), (12, 35), (20, 24)],
 )
 def test_find_multipolygon_min_area(carr: np.ndarray, min_area: float, n_children: int):
     """Show that increasing min_area decreases the number of children."""

@@ -28,6 +28,7 @@ except ModuleNotFoundError as exc:
 
 try:
     import shapely
+    import shapely.errors
     import shapely.geometry
     import shapely.validation
 except ModuleNotFoundError as exc:
@@ -81,7 +82,7 @@ def buffer_and_clean(
     elif len(contour) < 4:
         base = shapely.LineString(contour)
     else:
-        base = shapely.LinearRing(contour)
+        base = shapely.Polygon(contour)
 
     if is_exterior:
         # The contours computed by openCV go directly over array points
@@ -90,7 +91,6 @@ def buffer_and_clean(
         # to the exterior contours to account for this.
         polygon = base.buffer(buffer, quad_segs=1)
     else:
-        # Only buffer the interiors if necessary
         try:
             polygon = shapely.Polygon(base)
         except shapely.errors.TopologicalError:
