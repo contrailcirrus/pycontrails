@@ -1,6 +1,17 @@
 
 # Changelog
 
+## v0.48.2 (unreleased)
+
+### Features
+
+- Add convenience `Fleet.resample_and_fill`.
+
+### Fixes
+
+- Update polygon algorithm to use `shapely.Polygon` instead of `shapely.LinearRing` for contours with at least 4 vertices.
+- Fix `Fleet.to_flight_list` to avoid duplicating global attributes on the child `Flight` instances.
+
 ## v0.48.1
 
 ### Features

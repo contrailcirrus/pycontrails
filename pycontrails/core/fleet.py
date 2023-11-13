@@ -247,9 +247,13 @@ class Fleet(Flight):
         list[Flight]
             List of Flights in the same order as was passed into the `Fleet` instance.
         """
-        grouped = self.dataframe.groupby("flight_id", sort=False)
+
+        # Avoid self.dataframe to avoid redundant attrs
+        tmp = pd.DataFrame(self.data, copy=copy)
+        grouped = tmp.groupby("flight_id", sort=False)
+        fl_attrs = self.attrs["fl_attrs"]
         return [
-            Flight(df, attrs=self.attrs["fl_attrs"][flight_id], fuel=self.fuel, copy=copy)
+            Flight(df, attrs=fl_attrs[flight_id], fuel=self.fuel, copy=copy)
             for flight_id, df in grouped
         ]
 
@@ -325,9 +329,15 @@ class Fleet(Flight):
 
     @overrides
     def resample_and_fill(self, *args: Any, **kwargs: Any) -> Fleet:
-        # Definitely do not try to call this on a Fleet! Lots of trajectory
-        # specific logic is employed on the Fligth method.
-        raise NotImplementedError
+        flights = self.to_flight_list(copy=False)
+        flights = [fl.resample_and_fill(*args, **kwargs) for fl in flights]
+        out = Fleet.from_seq(flights, copy=False, broadcast_numeric=False)
+
+        # TODO(@zeb): Handle fl_attrs and data_keys better
+        for k, v in self.attrs.items():
+            out.attrs.setdefault(k, v)
+
+        return out
 
     @overrides
     def segment_length(self) -> npt.NDArray[np.float_]:
