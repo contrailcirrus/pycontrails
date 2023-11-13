@@ -24,7 +24,7 @@ def syn():
     return SyntheticFlight(bounds, speed_m_per_s=220, aircraft_type="A320", seed=19)
 
 
-def test_fleet_io(syn: SyntheticFlight):
+def test_fleet_io(syn: SyntheticFlight) -> None:
     """Confirm that a fleet can be instantiated from a list of `Flights`.
 
     Check that the flights coming out of method `to_flight_list` agree with inputs.
@@ -38,7 +38,7 @@ def test_fleet_io(syn: SyntheticFlight):
         assert fl1 == fl2
 
 
-def test_fleet_calc_final_waypoints(syn: SyntheticFlight):
+def test_fleet_calc_final_waypoints(syn: SyntheticFlight) -> None:
     """Confirm `calc_final_waypoints` method."""
     fls = [syn() for _ in range(25)]
     fleet = Fleet.from_seq(fls)
@@ -61,7 +61,7 @@ def test_fleet_calc_final_waypoints(syn: SyntheticFlight):
         Fleet(data)
 
 
-def test_fleet_segment_length(syn: SyntheticFlight):
+def test_fleet_segment_length(syn: SyntheticFlight) -> None:
     """Check compatibility of `segment_length` and `segment_angle` on `Fleet`."""
     fls = [syn() for _ in range(20)]
     fleet = Fleet.from_seq(fls)
@@ -76,7 +76,7 @@ def test_fleet_segment_length(syn: SyntheticFlight):
     np.testing.assert_array_equal(cos1, cos2)
 
 
-def test_fleet_run_all_methods(syn: SyntheticFlight):
+def test_fleet_run_all_methods(syn: SyntheticFlight) -> None:
     """Ensure a few common methods on `Fleet` instance run without error."""
     fls = [syn() for _ in range(30)]
     fleet = Fleet.from_seq(fls)
@@ -88,14 +88,14 @@ def test_fleet_run_all_methods(syn: SyntheticFlight):
     assert isinstance(fleet.level, np.ndarray)
 
 
-def test_fleet_init_from_gen(syn: SyntheticFlight):
+def test_fleet_init_from_gen(syn: SyntheticFlight) -> None:
     """Check that Fleet can be instantiated from a generator of `Flights`."""
     fls = (syn() for _ in range(200))
     fleet = Fleet.from_seq(fls)
     assert fleet.n_flights == 200
 
 
-def test_fleet_waypoints(syn: SyntheticFlight):
+def test_fleet_waypoints(syn: SyntheticFlight) -> None:
     """Check Cocip continuity conventions on `Fleet` instance."""
     fls = (syn() for _ in range(321))
     fleet = Fleet.from_seq(fls)
@@ -113,7 +113,7 @@ def test_fleet_waypoints(syn: SyntheticFlight):
         assert id1 == id2
 
 
-def test_duplicate_flight_ids(syn: SyntheticFlight):
+def test_duplicate_flight_ids(syn: SyntheticFlight) -> None:
     """Check that Fleet raises exception if duplicate flight id is found."""
     fls = [syn() for _ in range(222)]
     fls[151].attrs.update(flight_id=333)
@@ -122,7 +122,7 @@ def test_duplicate_flight_ids(syn: SyntheticFlight):
         Fleet.from_seq(fls)
 
 
-def test_type_of_fleet(syn: SyntheticFlight):
+def test_type_of_fleet(syn: SyntheticFlight) -> None:
     """Confirm that a `Fleet` is an instance of `Flight`, but an iterable of `Flight` is not.
 
     This logic is used in `Cocip.eval` method.
@@ -142,7 +142,7 @@ def test_type_of_fleet(syn: SyntheticFlight):
     assert hasattr(fls, "__iter__")
 
 
-def test_fleet_numeric_types_to_data(syn: SyntheticFlight):
+def test_fleet_numeric_types_to_data(syn: SyntheticFlight) -> None:
     """Check that numeric attributes are attached to underlying `Fleet` data."""
     fls = [syn() for _ in range(40)]
     rng = np.random.default_rng()
@@ -170,7 +170,7 @@ def test_fleet_numeric_types_to_data(syn: SyntheticFlight):
     assert len(fleet.data) == n_keys
 
 
-def test_fleet_true_airspeed(syn: SyntheticFlight):
+def test_fleet_true_airspeed(syn: SyntheticFlight) -> None:
     """Confirm that method segment_true_airspeed on Fleet agrees with Flight-wise call."""
     fls = [syn() for _ in range(44)]
     fleet = Fleet.from_seq(fls)
@@ -196,3 +196,22 @@ def test_fleet_true_airspeed(syn: SyntheticFlight):
         tas_slice = fl.segment_true_airspeed(u_wind_slice, v_wind_slice)
         np.testing.assert_array_equal(tas_slice, tas[slice_])
         i0 = i1
+
+
+@pytest.mark.parametrize("n_min", [5, 6, 7, 8])
+def test_fleet_resample_and_fill(syn: SyntheticFlight, n_min: int) -> None:
+    """Test the Fleet.resample_and_fill method."""
+
+    n_flights = 99
+    fls = [syn(np.timedelta64(n_min, "m")) for _ in range(n_flights)]
+    fleet = Fleet.from_seq(fls)
+    fleet.attrs["pycontrails"] = 1234
+
+    resampled = fleet.resample_and_fill()
+    assert isinstance(resampled, Fleet)
+    assert resampled.n_flights == fleet.n_flights == n_flights
+
+    assert len(resampled) <= n_min * len(fleet)
+    assert len(resampled) >= n_min * (len(fleet) - n_flights)
+
+    assert resampled.attrs["pycontrails"] == 1234
