@@ -466,7 +466,7 @@ class Flight(GeoVectorDataset):
         return geo.segment_length(self["longitude"], self["latitude"], self.altitude)
 
     def segment_angle(self) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
-        """Calculate sin/cos for the angle between each segment and the longitudinal axis.
+        """Calculate sine and cosine for the angle between each segment and the longitudinal axis.
 
         This is different from the usual navigational angle between two points known as *bearing*.
 
@@ -486,8 +486,8 @@ class Flight(GeoVectorDataset):
         Returns
         -------
         npt.NDArray[np.float_], npt.NDArray[np.float_]
-            sin(a), cos(a), where ``a`` is the angle between the segment and the longitudinal axis
-            The final values are of both arrays are ``np.nan``.
+            Returns ``sin(a), cos(a)``, where ``a`` is the angle between the segment and the
+            longitudinal axis. The final values are of both arrays are ``np.nan``.
 
         See Also
         --------
@@ -765,8 +765,8 @@ class Flight(GeoVectorDataset):
     ) -> Flight:
         """Resample and fill flight trajectory with geodesics and linear interpolation.
 
-        Waypoints are resampled according to the frequency `freq`. Values for :attr:`data` columns
-        `longitude`, `latitude`, and `altitude` are interpolated.
+        Waypoints are resampled according to the frequency ``freq``. Values for :attr:`data`
+        columns ``longitude``, ``latitude``, and ``altitude`` are interpolated.
 
         Parameters
         ----------
@@ -797,7 +797,6 @@ class Flight(GeoVectorDataset):
             If true, the climb or descent will be placed at the end of each segment
             rather than the start. Default is false (climb or descent immediately).
 
-
         Returns
         -------
         Flight
@@ -806,7 +805,7 @@ class Flight(GeoVectorDataset):
         Raises
         ------
         ValueError
-            Unknown `fill_method`
+            Unknown ``fill_method``
 
         Examples
         --------
@@ -1074,11 +1073,13 @@ class Flight(GeoVectorDataset):
         dict[str, Any]
             Python representation of geojson FeatureCollection
         """
-        points = _return_linestring({
-            "longitude": self["longitude"],
-            "latitude": self["latitude"],
-            "altitude": self.altitude,
-        })
+        points = _return_linestring(
+            {
+                "longitude": self["longitude"],
+                "latitude": self["latitude"],
+                "altitude": self.altitude,
+            }
+        )
         geometry = {"type": "LineString", "coordinates": points}
         properties = {
             "start_time": self.time_start.isoformat(),
@@ -1170,7 +1171,7 @@ class Flight(GeoVectorDataset):
     # ------------
 
     def length_met(self, key: str, threshold: float = 1.0) -> float:
-        """Calculate total horizontal distance where column ``key`` exceeds``threshold``.
+        """Calculate total horizontal distance where column ``key`` exceeds ``threshold``.
 
         Parameters
         ----------
@@ -1190,7 +1191,7 @@ class Flight(GeoVectorDataset):
         KeyError
             :attr:`data` does not contain column ``key``
         NotImplementedError
-            Raises when attr:`attrs["crs"]` is not EPSG:4326
+            Raised when ``attrs["crs"]`` is not EPSG:4326
 
         Examples
         --------
