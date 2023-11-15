@@ -20,6 +20,8 @@ class Fleet(Flight):
     Flight waypoints are merged into a single :class:`Flight`-like object.
     """
 
+    __slots__ = ("fl_attrs", "final_waypoints")
+
     def __init__(
         self,
         data: (
@@ -35,6 +37,7 @@ class Fleet(Flight):
         attrs: dict[str, Any] | None = None,
         copy: bool = True,
         fuel: Fuel | None = None,
+        fl_attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
     ) -> None:
         # Do not want to call Flight.__init__
@@ -53,22 +56,25 @@ class Fleet(Flight):
             **attrs_kwargs,
         )
 
-        if "fl_attrs" not in self.attrs:
-            raise ValueError("Require key 'fl_attrs' in Fleet attrs.")
-
-        # set fuel for ALL FLIGHTS
-        # NOTE: We could also set fuel for each flight via the `fl_attrs` attribute
         self.fuel = fuel or JetA()
+        self.final_waypoints, self.fl_attrs = self._validate(fl_attrs)
 
-        self.final_waypoints = self.calc_final_waypoints()
+    def _validate(
+        self, fl_attrs: dict[str, Any] | None = None
+    ) -> tuple[npt.NDArray[np.bool_], dict[str, Any]]:
+        """Validate data, update fl_attrs and calculate the final waypoint of each flight.
 
-    def calc_final_waypoints(self) -> npt.NDArray[np.bool_]:
-        """Validate data and calculate the final waypoint of each flight.
+        Parameters
+        ----------
+        fl_attrs : dict[str, Any] | None, optional
+            Dictionary of individual :class:`Flight` attributes.
 
         Returns
         -------
-        npt.NDArray[np.bool_]
+        final_waypoints : npt.NDArray[np.bool_]
             A boolean array in which True values correspond to final waypoint of each flight.
+        fl_attrs : dict[str, Any]
+            Updated dictionary of individual :class:`Flight` attributes.
 
         Raises
         ------
@@ -81,19 +87,44 @@ class Fleet(Flight):
             raise KeyError("Expect 'flight_id' key in Fleet data.") from exc
 
         # Some pandas groupby magic to ensure flights are arranged in blocks
-        df = pd.DataFrame({"flight_id": flight_id}).reset_index()
+        df = pd.DataFrame({"flight_id": flight_id, "index": np.arange(self.size)})
         grouped = df.groupby("flight_id", sort=False)
         groups = grouped.agg({"flight_id": "size", "index": ["first", "last"]})
+
         expected_size = groups[("index", "last")] - groups[("index", "first")] + 1
         actual_size = groups[("flight_id", "size")]
-        if not (expected_size == actual_size).all():
-            raise ValueError("Fleet must have contiguous waypoints blocks with constant flight_id")
+        if not np.array_equal(expected_size, actual_size):
+            raise ValueError(
+                "Fleet must have contiguous waypoint blocks with constant flight_id. "
+                "If instantiating from a DataFrame, call df.sort(['flight_id', 'time']) "
+                "before passing to Fleet."
+            )
 
-        # Return boolean array of final waypoints by flight
+        # Calculate boolean array of final waypoints by flight
         final_waypoints = np.zeros(self.size, dtype=bool)
         final_waypoint_indices = groups[("index", "last")].to_numpy()
         final_waypoints[final_waypoint_indices] = True
-        return final_waypoints
+
+        # Set default fl_attrs if not provided
+        fl_attrs = fl_attrs or {}
+        for flight_id in groups.index:
+            fl_attrs.setdefault(flight_id, {})  # type: ignore[call-overload]
+
+        extra = fl_attrs.keys() - groups.index
+        if extra:
+            raise ValueError(f"Unexpected flight_id(s) {extra} in fl_attrs.")
+
+        return final_waypoints, fl_attrs
+
+    @overrides
+    def copy(self) -> Fleet:
+        return type(self)(
+            data=self.data,
+            attrs=self.attrs,
+            fuel=self.fuel,
+            copy=True,
+            fl_attrs=self.fl_attrs,
+        )
 
     @classmethod
     def from_seq(
@@ -114,8 +145,7 @@ class Fleet(Flight):
         copy : bool, optional
             If True, make copy of each flight instance in ``seq``.
         attrs : dict[str, Any] | None, optional
-            Global attribute to attach to instance. Must NOT contain the "fl_attrs"
-            key (this is automatically deduced when iterating over ``seq``).
+            Global attribute to attach to instance.
 
         Returns
         -------
@@ -124,102 +154,32 @@ class Fleet(Flight):
             instances in ``seq``. The fuel type is taken from the first :class:`Flight`
             in ``seq``.
         """
-        attrs = attrs or {}
-        if "fl_attrs" in attrs:
-            raise ValueError("Parameter 'attrs' cannot contain 'fl_attrs' key.")
-        attrs["fl_attrs"] = {}
-        attrs.setdefault("data_keys", None)
-        attrs.setdefault("crs", None)
-
         if copy:
-            seq = [fl.copy() for fl in seq]
+            seq = tuple(fl.copy() for fl in seq)
         elif not isinstance(seq, (list, tuple)):
-            seq = list(seq)
+            seq = tuple(seq)
 
         assert seq, "Cannot create Fleet from empty sequence."
+
+        fl_attrs: dict[str, Any] = {}
+
+        # Pluck from the first flight to get fuel, data_keys, and crs
         fuel = seq[0].fuel
+        data_keys = set(seq[0])  # convert to a new instance to because we mutate seq[0]
+        crs = seq[0].attrs["crs"]
+
         for fl in seq:
-            cls._validate_fl(fl, fuel, attrs, broadcast_numeric)
-
-        # Surprisingly, it's faster to call np.concatenate on each variable
-        # separately then it is to call pd.concat on the sequence of fl.dataframe.
-        # We do this concatenation below.
-        data = {var: np.concatenate([fl[var] for fl in seq]) for var in attrs["data_keys"]}
-        return cls(data=data, attrs=attrs, copy=False, fuel=fuel)
-
-    @staticmethod
-    def _validate_fl(
-        fl: Flight, fuel: Fuel, attrs: dict[str, Any], broadcast_numeric: bool
-    ) -> None:
-        """Attach "flight_id" and "waypoint" columns to flight :attr:`data`.
-
-        Mutates parameters `fl` and `attrs` in place.
-
-        Parameters
-        ----------
-        fl : Flight
-            Flight instance to process.
-        fuel : Fuel
-            Fuel used all flights
-        attrs : dict[str, Any]
-            Dictionary of `Fleet` attributes. Attributes belonging to `fl` are attached
-            to `attrs`.
-        broadcast_numeric : bool
-            If True, broadcast numeric attributes to data variables.
-
-        Raises
-        ------
-        KeyError
-            ``fl`` does not have a ``flight_id`` key in :attr:`attrs`.
-        ValueError
-            If ``flight_id`` is duplicated or incompatible CRS found.
-        AttributeError
-            If ``fuel`` is incompatible with other flights.
-        """
-        # Validate and cache attrs
-        try:
-            flight_id = fl.attrs["flight_id"]
-        except KeyError as exc:
-            raise KeyError("Each flight must have `flight_id` in its `attrs`.") from exc
-
-        if flight_id in attrs["fl_attrs"]:
-            raise ValueError(f"Duplicate `flight_id` {flight_id} found.")
-        attrs["fl_attrs"][flight_id] = fl.attrs
-
-        # Verify fuel type is consistent across flights
-        if fl.fuel != fuel:
-            raise ValueError(
-                f"Fuel type on Flight {flight_id} ({fl.fuel.fuel_name}) "
-                f"is not inconsistent with previous flights ({fuel.fuel_name}). "
-                "The `fuel` attributes must be consistent between flights in a Fleet."
+            _validate_fl(
+                fl,
+                fl_attrs=fl_attrs,
+                data_keys=data_keys,
+                crs=crs,
+                fuel=fuel,
+                broadcast_numeric=broadcast_numeric,
             )
 
-        # Verify CRS
-        crs = fl.attrs["crs"]
-        if attrs["crs"] is None:
-            attrs["crs"] = crs
-        elif attrs["crs"] != crs:
-            raise ValueError(f"Incompatible CRS {attrs['crs']} and {crs} found among flights.")
-
-        # Expand data
-        if broadcast_numeric:
-            fl.broadcast_numeric_attrs()
-        if "waypoint" not in fl:
-            fl["waypoint"] = np.arange(fl.size)
-        if "flight_id" not in fl:
-            fl["flight_id"] = np.full(fl.size, flight_id)
-
-        # Verify consistent data keys
-        # When attaching data_keys to attrs, use set(data_keys)
-        # But, we don't need to create this set separately for each flight
-        # Simply use fl.data.keys() to check for consistency.
-        data_keys = fl.data.keys()
-        if attrs["data_keys"] is None:
-            attrs["data_keys"] = data_keys
-        elif attrs["data_keys"] != data_keys:
-            raise ValueError(
-                f"Inconsistent data keys {attrs['data_keys']}  and {data_keys} found among flights."
-            )
+        data = {var: np.concatenate([fl[var] for fl in seq]) for var in seq[0]}
+        return cls(data=data, attrs=attrs, copy=False, fuel=fuel, fl_attrs=fl_attrs)
 
     @property
     def n_flights(self) -> int:
@@ -230,7 +190,7 @@ class Fleet(Flight):
         int
             Number of flights
         """
-        return len(self.attrs["fl_attrs"])
+        return len(self.fl_attrs)
 
     def to_flight_list(self, copy: bool = True) -> list[Flight]:
         """De-concatenate merged waypoints into a list of Flight instances.
@@ -248,12 +208,12 @@ class Fleet(Flight):
             List of Flights in the same order as was passed into the `Fleet` instance.
         """
 
-        # Avoid self.dataframe to avoid redundant attrs
+        # Avoid self.dataframe to purposely drop global attrs
         tmp = pd.DataFrame(self.data, copy=copy)
         grouped = tmp.groupby("flight_id", sort=False)
-        fl_attrs = self.attrs["fl_attrs"]
+
         return [
-            Flight(df, attrs=fl_attrs[flight_id], fuel=self.fuel, copy=copy)
+            Flight(df, attrs=self.fl_attrs[flight_id], fuel=self.fuel, copy=copy)
             for flight_id, df in grouped
         ]
 
@@ -331,13 +291,7 @@ class Fleet(Flight):
     def resample_and_fill(self, *args: Any, **kwargs: Any) -> Fleet:
         flights = self.to_flight_list(copy=False)
         flights = [fl.resample_and_fill(*args, **kwargs) for fl in flights]
-        out = Fleet.from_seq(flights, copy=False, broadcast_numeric=False)
-
-        # TODO(@zeb): Handle fl_attrs and data_keys better
-        for k, v in self.attrs.items():
-            out.attrs.setdefault(k, v)
-
-        return out
+        return Fleet.from_seq(flights, copy=False, broadcast_numeric=False, attrs=self.attrs)
 
     @overrides
     def segment_length(self) -> npt.NDArray[np.float_]:
@@ -373,3 +327,95 @@ class Fleet(Flight):
         sg_polyorder: int = 1,
     ) -> Fleet:
         raise NotImplementedError("Only implemented for Flight instances")
+
+
+def _extract_flight_id(fl: Flight) -> str:
+    """Extract flight_id from Flight instance."""
+
+    try:
+        return fl.attrs["flight_id"]
+    except KeyError:
+        pass
+
+    try:
+        flight_ids = fl["flight_id"]
+    except KeyError as exc:
+        raise KeyError("Each flight must have a 'flight_id' key in its 'attrs'.") from exc
+
+    tmp = np.unique(flight_ids)
+    if len(tmp) > 1:
+        raise ValueError(f"Multiple flight_ids {tmp} found in Flight.")
+    if len(tmp) == 0:
+        raise ValueError("Flight has no flight_id.")
+    return tmp[0]
+
+
+def _validate_fl(
+    fl: Flight,
+    *,
+    fl_attrs: dict[str, Any],
+    data_keys: set[str],
+    crs: str,
+    fuel: Fuel,
+    broadcast_numeric: bool,
+) -> None:
+    """Attach "flight_id" and "waypoint" columns to flight :attr:`data`.
+
+    Mutates parameter ``fl`` and ``fl_attrs`` in place.
+
+    Parameters
+    ----------
+    fl : Flight
+        Flight instance to process.
+    fl_attrs : dict[str, Any]
+        Dictionary of `Flight` attributes. Attributes belonging to `fl` are attached
+        to `fl_attrs` under the "flight_id" key.
+    data_keys : set[str]
+        Set of data keys expected in each flight.
+    fuel : Fuel
+        Fuel used all flights
+    crs : str
+        CRS to use all flights
+    broadcast_numeric : bool
+        If True, broadcast numeric attributes to data variables.
+
+    Raises
+    ------
+    KeyError
+        ``fl`` does not have a ``flight_id`` key in :attr:`attrs`.
+    ValueError
+        If ``flight_id`` is duplicated or incompatible CRS found.
+    """
+    flight_id = _extract_flight_id(fl)
+
+    if flight_id in fl_attrs:
+        raise ValueError(f"Duplicate 'flight_id' {flight_id} found.")
+    fl_attrs[flight_id] = fl.attrs
+
+    # Verify consistency across flights
+    if fl.fuel != fuel:
+        raise ValueError(
+            f"Fuel type on Flight {flight_id} ({fl.fuel.fuel_name}) "
+            f"is not inconsistent with previous flights ({fuel.fuel_name}). "
+            "The 'fuel' attributes must be consistent between flights in a Fleet."
+        )
+    if fl.attrs["crs"] != crs:
+        raise ValueError(
+            f"CRS on Flight {flight_id} ({fl.attrs['crs']}) "
+            f"is not inconsistent with previous flights ({crs}). "
+            "The 'crs' attributes must be consistent between flights in a Fleet."
+        )
+    if fl.data.keys() != data_keys:
+        raise ValueError(
+            f"Data keys on Flight {flight_id} ({fl.data.keys()}) "
+            f"is not inconsistent with previous flights ({data_keys}). "
+            "The 'data_keys' attributes must be consistent between flights in a Fleet."
+        )
+
+    # Expand data
+    if broadcast_numeric:
+        fl.broadcast_numeric_attrs()
+    if "waypoint" not in fl:
+        fl["waypoint"] = np.arange(fl.size)
+    if "flight_id" not in fl:
+        fl["flight_id"] = np.full(fl.size, flight_id)

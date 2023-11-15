@@ -1032,7 +1032,7 @@ def test_cocip_fleet(fl: Flight, met: MetDataset, rad: MetDataset):
         process_emissions=False,
         humidity_scaling=ExponentialBoostHumidityScaling(),
     )
-    with pytest.raises(ValueError, match="Duplicate `flight_id`"):
+    with pytest.raises(ValueError, match="Duplicate 'flight_id'"):
         cocip.eval(fls)
 
     # confirm nothing has been mutated (using default copy=True)

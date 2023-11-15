@@ -38,10 +38,31 @@ def test_fleet_io(syn: SyntheticFlight) -> None:
         assert fl1 == fl2
 
 
+def test_fleet_init(syn: SyntheticFlight) -> None:
+    """Check that `Fleet` can be instantiated directly from a GeoVectorDataset."""
+    fl = syn(np.timedelta64(5, "s"))
+    flight_id = np.arange(len(fl)) % 10
+    fl["flight_id"] = flight_id
+
+    with pytest.raises(ValueError, match="Fleet must have contiguous waypoint blocks"):
+        Fleet(fl)
+
+    df = fl.dataframe.sort_values(["flight_id", "time"])
+
+    with pytest.raises(ValueError, match=r"Unexpected flight_id\(s\) \{'hello'\} in fl_attrs."):
+        Fleet(df, fl_attrs={"hello": "world"})
+
+    fleet = Fleet(df)
+    assert fleet.fl_attrs.keys() == set(range(10))
+    assert fleet.n_flights == 10
+
+
 def test_fleet_calc_final_waypoints(syn: SyntheticFlight) -> None:
-    """Confirm `calc_final_waypoints` method."""
+    """Confirm the calculation of `final_waypoints`."""
+
     fls = [syn() for _ in range(25)]
     fleet = Fleet.from_seq(fls)
+
     assert isinstance(fleet.final_waypoints, np.ndarray)
     assert np.sum(fleet.final_waypoints) == len(fls)
     assert fleet.final_waypoints.dtype == bool
@@ -49,15 +70,13 @@ def test_fleet_calc_final_waypoints(syn: SyntheticFlight) -> None:
     assert np.all(fleet.final_waypoints[idx])
 
     fls.append(fls[3])
-    with pytest.raises(ValueError, match="Duplicate `flight_id`"):
+    with pytest.raises(ValueError, match="Duplicate 'flight_id'"):
         Fleet.from_seq(fls)
+
     data = fleet.data
     data["flight_id"][3] = data["flight_id"][-3]
-    match = "Fleet must have contiguous waypoints blocks with constant"
-    with pytest.raises(ValueError, match=match):
-        Fleet(data, attrs=fleet.attrs)
 
-    with pytest.raises(ValueError, match="Require key 'fl_attrs'"):
+    with pytest.raises(ValueError, match="Fleet must have contiguous waypoint blocks"):
         Fleet(data)
 
 
@@ -109,7 +128,7 @@ def test_fleet_waypoints(syn: SyntheticFlight) -> None:
 
     flight_ids = fleet.filter(~continuous)["flight_id"]
     # expect one of each flight_id
-    for id1, id2 in zip(flight_ids, fleet.attrs["fl_attrs"]):
+    for id1, id2 in zip(flight_ids, fleet.fl_attrs):
         assert id1 == id2
 
 
@@ -118,7 +137,7 @@ def test_duplicate_flight_ids(syn: SyntheticFlight) -> None:
     fls = [syn() for _ in range(222)]
     fls[151].attrs.update(flight_id=333)
     fls[97].attrs.update(flight_id=333)
-    with pytest.raises(ValueError, match="Duplicate `flight_id` 333 found."):
+    with pytest.raises(ValueError, match="Duplicate 'flight_id' 333 found."):
         Fleet.from_seq(fls)
 
 
@@ -215,3 +234,15 @@ def test_fleet_resample_and_fill(syn: SyntheticFlight, n_min: int) -> None:
     assert len(resampled) >= n_min * (len(fleet) - n_flights)
 
     assert resampled.attrs["pycontrails"] == 1234
+
+
+def test_fleet_slots(syn: SyntheticFlight) -> None:
+    """Ensure slots are respected."""
+
+    fls = (syn() for _ in range(100))
+    fleet = Fleet.from_seq(fls)
+
+    assert "__dict__" not in dir(fleet)
+    assert fleet.__slots__ == ("fl_attrs", "final_waypoints")
+    with pytest.raises(AttributeError, match="'Fleet' object has no attribute 'foo'"):
+        fleet.foo = "bar"
