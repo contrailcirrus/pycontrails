@@ -35,6 +35,7 @@ Flight & Aircraft
     :toctree: api/
 
     Flight
+    Fleet
     FlightPhase
     Fuel
     JetA

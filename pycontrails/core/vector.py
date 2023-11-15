@@ -255,7 +255,7 @@ class VectorDataset:
 
     __slots__ = ("data", "attrs")
 
-    #: Vector data with labels as keys and np.ndarrays as values
+    #: Vector data with labels as keys and :class:`np.ndarray` as values
     data: VectorDataDict
 
     #: Generic dataset attributes
@@ -425,7 +425,7 @@ class VectorDataset:
         self.data.update(other, **kwargs)
 
     def setdefault(self, key: str, default: npt.ArrayLike | None = None) -> np.ndarray:
-        """Shortcut to :attr:`data.setdefault`.
+        """Shortcut to :meth:`VectorDataDict.setdefault`.
 
         Parameters
         ----------
@@ -1918,8 +1918,8 @@ class GeoVectorDataset(VectorDataset):
     def to_geojson_points(self) -> dict[str, Any]:
         """Return dataset as GeoJSON FeatureCollection of Points.
 
-        Each Feature has a properties attribute that includes `time` and
-        other data besides `latitude`, `longitude`, and `altitude` in :attr:`data`.
+        Each Feature has a properties attribute that includes ``time`` and
+        other data besides ``latitude``, ``longitude``, and ``altitude`` in :attr:`data`.
 
         Returns
         -------
@@ -1934,7 +1934,7 @@ class GeoVectorDataset(VectorDataset):
         Parameters
         ----------
         copy : bool, optional
-            Copy data on tranformation.
+            Copy data on transformation.
             Defaults to True.
 
         Returns

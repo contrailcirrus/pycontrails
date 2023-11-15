@@ -17,7 +17,7 @@ from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorData
 class Fleet(Flight):
     """Data structure for holding a sequence of :class:`Flight` instances.
 
-    Flight waypoints are merged into a single ``Flight``-like object.
+    Flight waypoints are merged into a single :class:`Flight`-like object.
     """
 
     def __init__(
