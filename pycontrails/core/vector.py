@@ -1237,6 +1237,8 @@ class GeoVectorDataset(VectorDataset):
         (``altitude`` or ``level``).
     """
 
+    __slots__ = ()
+
     #: Required keys for creating GeoVectorDataset
     required_keys = "longitude", "latitude", "time"
 
