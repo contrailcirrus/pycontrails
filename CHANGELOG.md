@@ -11,6 +11,7 @@
 
 - Update polygon algorithm to use `shapely.Polygon` instead of `shapely.LinearRing` for contours with at least 4 vertices.
 - Fix `Fleet.to_flight_list` to avoid duplicating global attributes on the child `Flight` instances.
+- Add `__slots__` to `Flight` and `GeoVectorDataset`. The base `VectorDataset` class already uses `__slots__`.
 
 ## v0.48.1
 

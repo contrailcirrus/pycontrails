@@ -853,3 +853,12 @@ def test_vector_to_lon_lat_grid() -> None:
 
     assert np.count_nonzero(ds["segment_length"]) == 90
     assert np.count_nonzero(ds["ef"]) == 16
+
+
+def test_vector_slots(random_path: VectorDataset) -> None:
+    """Ensure slots are respected."""
+
+    assert "__dict__" not in dir(random_path)
+    assert random_path.__slots__ == ("data", "attrs")
+    with pytest.raises(AttributeError, match="'VectorDataset' object has no attribute 'foo'"):
+        random_path.foo = "bar"

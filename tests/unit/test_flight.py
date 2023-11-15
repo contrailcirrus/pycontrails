@@ -1069,3 +1069,12 @@ def test_flight_from_dict(flight_fake: Flight) -> None:
 
     with pytest.warns(UserWarning, match="time"):
         assert fl5 == Flight.from_dict(fl5.to_dict())
+
+
+def test_flight_slots(flight_fake: Flight) -> None:
+    """Ensure slots are respected."""
+
+    assert "__dict__" not in dir(flight_fake)
+    assert flight_fake.__slots__ == ("fuel",)
+    with pytest.raises(AttributeError, match="'Flight' object has no attribute 'foo'"):
+        flight_fake.foo = "bar"

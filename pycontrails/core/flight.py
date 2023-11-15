@@ -193,6 +193,8 @@ class Flight(GeoVectorDataset):
     4  20.201005  39.798995 2021-01-01 12:02:24.723618090   11000.0
     """
 
+    __slots__ = ("fuel",)
+
     #: Fuel used in flight trajectory
     fuel: Fuel
 
@@ -1073,13 +1075,11 @@ class Flight(GeoVectorDataset):
         dict[str, Any]
             Python representation of geojson FeatureCollection
         """
-        points = _return_linestring(
-            {
-                "longitude": self["longitude"],
-                "latitude": self["latitude"],
-                "altitude": self.altitude,
-            }
-        )
+        points = _return_linestring({
+            "longitude": self["longitude"],
+            "latitude": self["latitude"],
+            "altitude": self.altitude,
+        })
         geometry = {"type": "LineString", "coordinates": points}
         properties = {
             "start_time": self.time_start.isoformat(),
