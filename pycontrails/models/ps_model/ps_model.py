@@ -52,7 +52,7 @@ class PSFlight(AircraftPerformance):
     """
 
     name = "PSFlight"
-    long_name = "Poll-Schumann Aircraft Performance Model"
+    long_name = "Poll-Schumann Aircraft Performance Model (Beta Version 2)"
     met_variables = (AirTemperature,)
     optional_met_variables = EastwardWind, NorthwardWind
     default_params = PSFlightParams
@@ -209,7 +209,15 @@ class PSFlight(AircraftPerformance):
         air_pressure = units.ft_to_pl(altitude_ft) * 100.0
 
         # Clip unrealistically high true airspeed
-        max_mach = atyp_param.max_mach_num + 0.02  # allow small buffer
+        max_mach = maximum_permitted_mach_number_by_altitude(
+            altitude_ft,
+            air_pressure,
+            atyp_param.max_mach_num,
+            atyp_param.p_i_max,
+            atyp_param.p_inf_co,
+            atm_speed_limit=False,
+            buffer=0.02
+        )
         true_airspeed, mach_num = jet.clip_mach_number(true_airspeed, air_temperature, max_mach)
 
         # Reynolds number
@@ -897,13 +905,68 @@ def fuel_mass_flow_rate(
         Fuel mass flow rate, [:math:`kg s^{-1}`]
     """
     return (
-        0.7
+        (constants.kappa / 2)
         * (c_t * mach_num**3 / eta)
         * (constants.kappa * constants.R_d * air_temperature) ** 0.5
         * air_pressure
         * wing_surface_area
         / q_fuel
     )
+
+
+# -------------------
+# Operational limits
+# -------------------
+
+def maximum_permitted_mach_number_by_altitude(
+    altitude_ft: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
+    max_mach_num: float,
+    p_i_max: float,
+    p_inf_co: float, *,
+    atm_speed_limit: bool = True,
+    buffer: float = 0.02
+) -> ArrayOrFloat:
+    """
+    Calculate maximum permitted Mach number at a given altitude.
+
+    Parameters
+    ----------
+    altitude_ft : ArrayOrFloat
+        Waypoint altitude, [:math: `ft`]
+    air_pressure: ArrayOrFloat
+        Pressure altitude at each waypoint, [:math:`Pa`]
+    max_mach_num: float
+        Maximum permitted operational Mach number of the aircraft type.
+    p_i_max : float
+        Maximum permitted operational impact pressure of the aircraft type, [:math:`Pa`]
+    p_inf_co: float
+        Crossover pressure altitude, [:math:`Pa`]
+    atm_speed_limit: bool
+        Apply air traffic management speed limit of 250 knots below 10,000 feet
+    buffer: float
+        Additional buffer for maximum permitted Mach number.
+
+    Returns
+    -------
+    ArrayOrFloat
+        Maximum permitted Mach number at a given altitude for each waypoint.
+
+    Notes
+    -----
+    Below 10,000 ft, the ATM speed limit of 250 knots (p_i = 10510 Pa) is imposed. Below the
+    crossover altitude, the maximum operational speed is limited by the maximum permitted impact
+    pressure. Above the crossover altitude, the maximum operational speed is determined by the
+    maximum permitted Mach number of the aircraft type.
+    """
+    if atm_speed_limit:
+        p_i_max = np.where(altitude_ft < 10000.0, 10510.0, p_i_max)
+
+    return np.where(
+        air_pressure > p_inf_co,
+        2**0.5 * ((1 + (2 / constants.kappa) * (p_i_max / air_pressure))**0.5 - 1)**0.5,
+        max_mach_num
+    ) + buffer
 
 
 def correct_fuel_flow(
