@@ -57,6 +57,7 @@ class PSAircraftEngineParams:
     - ``j_1``               Wave drag parameter 1
     - ``j_2``               Wave drag parameter 2
     - ``j_3``               Wave drag parameter 3
+    - ``c_l_do``            Design optimum lift coefficient
 
     -------------------------------------
     ENGINE PARAMETERS
@@ -109,6 +110,7 @@ class PSAircraftEngineParams:
     j_1: float
     j_2: float
     j_3: float
+    c_l_do: float
 
     f_00: float
     ff_max_sls: float
@@ -155,6 +157,7 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
         j_1=tup.j_1,
         j_2=tup.j_2,
         j_3=70.0,  # use constant value for now, may be updated in the future
+        c_l_do=tup.CL_do,
         f_00=tup.nominal_F00_ISA_kn * 1000.0,
         ff_max_sls=tup.mf_max_T_O_SLS_kg_s,
         ff_idle_sls=tup.mf_idle_SLS_kg_s,
@@ -204,6 +207,7 @@ def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
         "wing_constant": float,
         "j_2": float,
         "j_1": float,
+        "CL_do": float,
         "nominal_F00_ISA_kn": float,
         "mf_max_T_O_SLS_kg_s": float,
         "mf_idle_SLS_kg_s": float,
