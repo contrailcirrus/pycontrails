@@ -261,10 +261,19 @@ class PSFlight(AircraftPerformance):
         c_t = engine_thrust_coefficient(
             thrust, mach_num, air_pressure, atyp_param.wing_surface_area
         )
+        c_t_eta_b = thrust_coefficient_at_max_efficiency(
+            mach_num, atyp_param.m_des, atyp_param.c_t_des
+        )
+
+        if correct_fuel_flow_:
+            c_t_available = max_available_thrust_coefficient(
+                air_temperature, mach_num, c_t_eta_b, atyp_param
+            )
+            np.clip(c_t, 0.0, c_t_available)
 
         if engine_efficiency is None:
             engine_efficiency = overall_propulsion_efficiency(
-                mach_num, c_t, atyp_param, self.params["eta_over_eta_b_min"]
+                mach_num, c_t, c_t_eta_b, atyp_param, self.params["eta_over_eta_b_min"]
             )
 
         if fuel_flow is None:
@@ -725,6 +734,7 @@ def engine_thrust_coefficient(
 def overall_propulsion_efficiency(
     mach_num: ArrayOrFloat,
     c_t: ArrayOrFloat,
+    c_t_eta_b: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
     eta_over_eta_b_min: float | None = None,
 ) -> npt.NDArray[np.float_]:
@@ -736,6 +746,8 @@ def overall_propulsion_efficiency(
         Mach number at each waypoint
     c_t : ArrayOrFloat
         Engine thrust coefficient
+    c_t_eta_b : ArrayOrFloat
+        Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
     eta_over_eta_b_min : float | None
@@ -749,7 +761,7 @@ def overall_propulsion_efficiency(
         Overall propulsion efficiency
     """
     eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(
-        mach_num, c_t, atyp_param.m_des, atyp_param.c_t_des
+        mach_num, c_t, c_t_eta_b
     )
     if eta_over_eta_b_min is not None:
         eta_over_eta_b.clip(min=eta_over_eta_b_min, out=eta_over_eta_b)
@@ -762,8 +774,7 @@ def overall_propulsion_efficiency(
 def propulsion_efficiency_over_max_propulsion_efficiency(
     mach_num: ArrayOrFloat,
     c_t: ArrayOrFloat,
-    m_des: float,
-    c_t_des: float,
+    c_t_eta_b: ArrayOrFloat,
 ) -> npt.NDArray[np.float_]:
     """Calculate ratio of OPE to maximum OPE that can be attained for a given Mach number.
 
@@ -773,10 +784,8 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
         Mach number at each waypoint.
     c_t : ArrayOrFloat
         Engine thrust coefficient.
-    m_des : float
-        Design optimum Mach number where the fuel mass flow rate is at a minimum.
-    c_t_des : float
-        Design optimum engine thrust coefficient where the fuel mass flow rate is at a minimum.
+    c_t_eta_b : ArrayOrFloat
+        Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
 
     Returns
     -------
@@ -788,7 +797,6 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     - ``eta / eta_b`` is approximated using a fourth-order polynomial
     - ``eta_b`` is the maximum overall propulsion efficiency for a given Mach number
     """
-    c_t_eta_b = max_thrust_coefficient(mach_num, m_des, c_t_des)
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
 
     sigma = np.where(mach_num < 0.4, 1.3 * (0.4 - mach_num), 0.0)
@@ -808,7 +816,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     return np.where(c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
 
 
-def max_thrust_coefficient(mach_num: ArrayOrFloat, m_des: float, c_t_des: float) -> ArrayOrFloat:
+def thrust_coefficient_at_max_efficiency(mach_num: ArrayOrFloat, m_des: float, c_t_des: float) -> ArrayOrFloat:
     """
     Calculate thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
 
@@ -969,6 +977,111 @@ def maximum_permitted_mach_number_by_altitude(
     ) + buffer
 
 
+def required_thrust_coefficient(
+    c_lift: ArrayOrFloat,
+    c_drag: ArrayOrFloat,
+    true_airspeed: ArrayOrFloat, *,
+    rocd: ArrayOrFloat = 300,
+) -> ArrayOrFloat:
+    """
+    Calculate required thrust coefficient to fly the stated true airspeed and climb rate.
+
+    Parameters
+    ----------
+    c_lift : ArrayOrFloat
+        Lift coefficient
+    c_drag : ArrayOrFloat
+        Total airframe drag coefficient
+    true_airspeed : ArrayOrFloat
+        True airspeed, [:math:`m \ s^{-1}`]
+    rocd : ArrayOrFloat
+        Rate of climb and descent over segment, [:math:`ft min^{-1}`]
+
+    Returns
+    -------
+    ArrayOrFloat
+        Required thrust coefficient to fly the stated true airspeed and climb rate
+
+    Notes
+    -----
+    The maximum "useful" operational altitude is being deemed to have been reached when the
+    achievable climb rate drops to about 300 ft/min.
+    """
+    dh_dt = units.ft_to_m(rocd) / 60
+    return c_lift * ((c_drag / c_lift) + (dh_dt / true_airspeed))
+
+
+def max_available_thrust_coefficient(
+    air_temperature: ArrayOrFloat,
+    mach_number: ArrayOrFloat,
+    c_t_eta_b: ArrayOrFloat,
+    atyp_param: PSAircraftEngineParams,
+) -> ArrayOrFloat:
+    """
+    Calculate maximum available thrust coefficient.
+
+    Parameters
+    ----------
+    air_temperature : ArrayOrFloat
+        Ambient temperature at each waypoint, [:math:`K`]
+    mach_number : ArrayOrFloat
+        Mach number at each waypoint.
+    c_t_eta_b : ArrayOrFloat
+        Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
+    atyp_param : AircraftEngineParams
+        Extracted aircraft and engine parameters.
+
+    Returns
+    -------
+    ArrayOrFloat
+        Maximum available thrust coefficient that can be supplied by the engines.
+    """
+    tr_max = normalised_max_throttle_parameter(
+        air_temperature, mach_number, atyp_param.tet_mcc, atyp_param.mec, atyp_param.tec
+    )
+    c_t_max_over_c_t_eta_b = 1 + 2.5 * (tr_max - 1)
+    return c_t_max_over_c_t_eta_b * c_t_eta_b
+
+
+def normalised_max_throttle_parameter(
+    air_temperature: ArrayOrFloat,
+    mach_number: ArrayOrFloat,
+    tet_mcc: float,
+    mec: float,
+    tec: float,
+) -> ArrayOrFloat:
+    """
+    Calculate normalised maximum throttle parameter.
+
+    Parameters
+    ----------
+    air_temperature : ArrayOrFloat
+        Ambient temperature at each waypoint, [:math:`K`]
+    mach_number : ArrayOrFloat
+        Mach number at each waypoint
+    tet_mcc : float
+        Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
+    mec : float
+        Engine constant used to calculate the throttle parameter
+    tec : float
+        Engine constant used to calculate the throttle parameter
+
+    Returns
+    -------
+    ArrayOrFloat
+        Normalised maximum throttle parameter, `tr_max`.
+
+    Notes
+    -----
+    The normalised throttle parameter is the ratio of the total temperature of the gas at turbine
+    entry to the freestream total temperature, `tet_over_t_inf`, divided by 'tet_over_t_inf' at
+    maximum overall propulsion efficiency for a given Mach Number.
+    """
+    return (tet_mcc / air_temperature) / (
+        tec * (1 - 0.53 * (mach_number - mec)**2) * (1 + 0.2 * mach_number**2)
+    )
+
+
 def correct_fuel_flow(
     fuel_flow: ArrayOrFloat,
     altitude_ft: ArrayOrFloat,
@@ -992,7 +1105,7 @@ def correct_fuel_flow(
     air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
     mach_number : ArrayOrFloat
-        Mach number
+        Mach number at each waypoint
     fuel_flow_idle_sls : float
         Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
     fuel_flow_max_sls : float

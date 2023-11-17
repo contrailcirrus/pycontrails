@@ -72,8 +72,8 @@ class PSAircraftEngineParams:
                         at a minimum.
     - ``eta_1``         Multiplier for maximum overall propulsion efficiency model
     - ``eta_2``         Exponent for maximum overall propulsion efficiency model
-    - ``mec``           Constant used to calculate the throttle parameter
-    - ``tec``           Constant used to calculate the throttle parameter
+    - ``mec``           Engine constant used to calculate the throttle parameter
+    - ``tec``           Engine constant used to calculate the throttle parameter
     - ``tet_mto``       Turbine entry temperature at maximum take-off rating, [:math:`K`]
     - ``tet_mcc``       Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
 
