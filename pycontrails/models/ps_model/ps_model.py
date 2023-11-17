@@ -197,7 +197,7 @@ class PSFlight(AircraftPerformance):
         **kwargs: Any,
     ) -> AircraftPerformanceData:
         try:
-            correct_fuel_flow_ = kwargs["correct_fuel_flow"]
+            correct_fuel_flow = kwargs["correct_fuel_flow"]
         except KeyError:
             raise KeyError("A 'correct_fuel_flow' kwarg is required for this model")
 
@@ -266,7 +266,7 @@ class PSFlight(AircraftPerformance):
             mach_num, atyp_param.m_des, atyp_param.c_t_des
         )
 
-        if correct_fuel_flow_:
+        if correct_fuel_flow:
             c_t_available = ps_lims.max_available_thrust_coefficient(
                 air_temperature, mach_num, c_t_eta_b, atyp_param
             )
@@ -279,12 +279,14 @@ class PSFlight(AircraftPerformance):
 
         if fuel_flow is None:
             fuel_flow = fuel_mass_flow_rate(
+                altitude_ft,
                 air_pressure,
                 air_temperature,
                 mach_num,
                 c_t,
                 engine_efficiency,
                 atyp_param.wing_surface_area,
+                atyp_param.ff_idle_sls,
                 q_fuel,
             )
         elif isinstance(fuel_flow, (int, float)):
@@ -293,19 +295,13 @@ class PSFlight(AircraftPerformance):
         # Flight phase
         segment_duration = flight.segment_duration(time, dtype=altitude_ft.dtype)
         rocd = flight.segment_rocd(segment_duration, altitude_ft)
-        flight_phase = flight.segment_phase(rocd, altitude_ft)
 
-        if correct_fuel_flow_:
-            fuel_flow = ps_lims.correct_fuel_flow(
-                fuel_flow,
-                altitude_ft,
-                air_temperature,
-                air_pressure,
-                mach_num,
-                atyp_param.ff_idle_sls,
-                atyp_param.ff_max_sls,
-                flight_phase,
+        if correct_fuel_flow:
+            flight_phase = flight.segment_phase(rocd, altitude_ft)
+            max_fuel_flow = ps_lims.maximum_fuel_flow(
+                air_temperature, air_pressure, mach_num, atyp_param.ff_max_sls, flight_phase
             )
+            fuel_flow = np.where(fuel_flow > max_fuel_flow, max_fuel_flow, fuel_flow)
 
         if dt_sec is not None:
             fuel_burn = jet.fuel_burn(fuel_flow, dt_sec)
@@ -879,20 +875,23 @@ def max_overall_propulsion_efficiency(
 # Fuel consumption
 # -------------------
 
-
 def fuel_mass_flow_rate(
+    altitude_ft: ArrayOrFloat,
     air_pressure: ArrayOrFloat,
     air_temperature: ArrayOrFloat,
     mach_num: ArrayOrFloat,
     c_t: ArrayOrFloat,
     eta: ArrayOrFloat | float,
     wing_surface_area: float,
+    fuel_flow_idle_sls: float,
     q_fuel: float,
 ) -> ArrayOrFloat:
     r"""Calculate fuel mass flow rate.
 
     Parameters
     ----------
+    altitude_ft : ArrayOrFloat
+        Waypoint altitude, [:math: `ft`]
     air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
     air_temperature : ArrayOrFloat
@@ -905,6 +904,8 @@ def fuel_mass_flow_rate(
         Overall propulsion efficiency
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
+    fuel_flow_idle_sls : float
+        Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
     q_fuel : float
         Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`]
 
@@ -913,7 +914,7 @@ def fuel_mass_flow_rate(
     ArrayOrFloat
         Fuel mass flow rate, [:math:`kg s^{-1}`]
     """
-    return (
+    fuel_flow = (
         (constants.kappa / 2)
         * (c_t * mach_num**3 / eta)
         * (constants.kappa * constants.R_d * air_temperature) ** 0.5
@@ -921,3 +922,26 @@ def fuel_mass_flow_rate(
         * wing_surface_area
         / q_fuel
     )
+    min_fuel_flow = fuel_flow_idle(fuel_flow_idle_sls, altitude_ft)
+    return np.where(fuel_flow < min_fuel_flow, min_fuel_flow, fuel_flow)
+
+
+def fuel_flow_idle(
+    fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat
+) -> npt.NDArray[np.float_]:
+    r"""Calculate minimum fuel mass flow rate at flight idle conditions.
+
+    Parameters
+    ----------
+    fuel_flow_idle_sls : float
+        Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
+    altitude_ft : ArrayOrFloat
+        Waypoint altitude, [:math: `ft`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Fuel mass flow rate at flight idle conditions, [:math:`kg \ s^{-1}`]
+    """
+    x = altitude_ft / 10000.0
+    return fuel_flow_idle_sls * (1.0 - 0.178 * x + 0.0085 * x**2)

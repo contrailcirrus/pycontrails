@@ -113,12 +113,14 @@ def test_ps_model() -> None:
 
     # Test fuel mass flow rate
     fuel_flow = ps.fuel_mass_flow_rate(
+        altitude_ft,
         air_pressure,
         air_temperature,
         mach_number,
         c_t,
         engine_efficiency,
         atyp_param.wing_surface_area,
+        atyp_param.ff_idle_sls,
         q_fuel=43e6,
     )
 

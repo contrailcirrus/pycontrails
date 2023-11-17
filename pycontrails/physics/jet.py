@@ -278,27 +278,6 @@ def equivalent_fuel_flow_rate_at_cruise(
     return fuel_flow_sls / denom
 
 
-def minimum_fuel_flow_rate_at_cruise(
-    fuel_flow_idle_sls: float, altitude_ft: npt.NDArray[np.float_]
-) -> npt.NDArray[np.float_]:
-    r"""Calculate minimum fuel mass flow rate at cruise conditions.
-
-    Parameters
-    ----------
-    fuel_flow_idle_sls : float
-        Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
-    altitude_ft : npt.NDArray[np.float_]
-        Waypoint altitude, [:math: `ft`]
-
-    Returns
-    -------
-    npt.NDArray[np.float_]
-        Minimum fuel mass flow rate at cruise conditions, [:math:`kg \ s^{-1}`]
-    """
-    x = altitude_ft / 10000.0
-    return fuel_flow_idle_sls * (1.0 - 0.178 * x + 0.0085 * x**2)
-
-
 def reserve_fuel_requirements(
     rocd: npt.NDArray[np.float_],
     altitude_ft: npt.NDArray[np.float_],
