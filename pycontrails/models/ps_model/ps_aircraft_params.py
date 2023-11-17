@@ -5,13 +5,14 @@ from __future__ import annotations
 import dataclasses
 import functools
 import pathlib
+import numpy as np
 from typing import Any, Mapping
 from pycontrails.physics import constants as c
 
 import pandas as pd
 
 #: Path to the Poll-Schumann aircraft parameters CSV file.
-PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20231115.csv"
+PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20231117.csv"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -73,7 +74,8 @@ class PSAircraftEngineParams:
     - ``eta_2``         Exponent for maximum overall propulsion efficiency model
     - ``mec``           Constant used to calculate the throttle parameter
     - ``tec``           Constant used to calculate the throttle parameter
-    - ``tet_max_climb`` Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
+    - ``tet_mto``       Turbine entry temperature at maximum take-off rating, [:math:`K`]
+    - ``tet_mcc``       Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
 
     -------------------------------------
     HEIGHT AND SPEED LIMITS
@@ -117,7 +119,8 @@ class PSAircraftEngineParams:
     eta_2: float
     mec: float
     tec: float
-    tet_max_climb: float
+    tet_mto: float
+    tet_mcc: float
 
     fl_max: float
     max_mach_num: float
@@ -129,6 +132,7 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
     icao = tup.ICAO
     wing_aspect_ratio = tup.AR
     amass_mtow = tup.MTOM_kg
+    tet_mto = turbine_entry_temperature_at_max_take_off(tup.Year_of_first_flight)
     p_i_max = impact_pressure_max_operating_limits(tup.MMO)
     params = PSAircraftEngineParams(
         manufacturer=tup.Manufacturer,
@@ -160,7 +164,8 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
         eta_2=tup.eta_2,
         mec=tup.Mec,
         tec=tup.Tec,
-        tet_max_climb=tup.TET_max_climb_K,
+        tet_mto=tet_mto,
+        tet_mcc=turbine_entry_temperature_at_max_continuous_climb(tet_mto),
         fl_max=tup.FL_max,
         max_mach_num=tup.MMO,
         p_i_max=p_i_max,
@@ -176,6 +181,7 @@ def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
         "ICAO": object,
         "Manufacturer": object,
         "Type": object,
+        "Year_of_first_flight": float,
         "n_engine": int,
         "winglets": object,
         "WV": object,
@@ -207,7 +213,6 @@ def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
         "eta_2": float,
         "Mec": float,
         "Tec": float,
-        "TET_max_climb_K": float,
         "FL_max": float,
         "MMO": float,
     }
@@ -215,6 +220,50 @@ def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
     df = pd.read_csv(PS_FILE_PATH, dtype=dtypes)
 
     return dict(_row_to_aircraft_engine_params(tup) for tup in df.itertuples(index=False))
+
+
+def turbine_entry_temperature_at_max_take_off(first_flight: float) -> float:
+    """
+    Calculate turbine entry temperature at maximum take-off rating.
+
+    Parameters
+    ----------
+    first_flight: float
+        Year of first flight
+
+    Returns
+    -------
+    float
+        Turbine entry temperature at maximum take-off rating, `tet_mto`, [:math:`K`]
+
+    Notes
+    -----
+    The turbine entry temperature at max take-off is approximated based on the year of first flight
+    for the specific aircraft type. This approximation captures the historical trends of
+    improvements in turbine cooling technology level. The uncertainty of this estimate is ±75 K.
+
+    References
+    ----------
+    - :cite:`cumpstyJetPropulsion2015`
+    """
+    return 2000 * (1 - np.exp(62.8 - 0.0325 * first_flight))
+
+
+def turbine_entry_temperature_at_max_continuous_climb(tet_mto: float) -> float:
+    """
+    Calculate turbine entry temperature at maximum continuous climb rating.
+
+    Parameters
+    ----------
+    tet_mto: float
+        Turbine entry temperature at maximum take-off rating, `tet_mto`, [:math:`K`]
+
+    Returns
+    -------
+    float
+        Turbine entry temperature at maximum continuous climb rating, `tet_mcc`, [:math:`K`]
+    """
+    return 0.92 * tet_mto
 
 
 def impact_pressure_max_operating_limits(max_mach_num: float) -> float:
