@@ -245,32 +245,24 @@ def maximum_usable_lift_coefficient(
 # ----------------
 # Fuel flow limits
 # ----------------
-def correct_fuel_flow(
-    fuel_flow: ArrayOrFloat,
-    altitude_ft: ArrayOrFloat,
+
+def maximum_fuel_flow(
     air_temperature: ArrayOrFloat,
     air_pressure: ArrayOrFloat,
     mach_number: ArrayOrFloat,
-    fuel_flow_idle_sls: float,
     fuel_flow_max_sls: float,
     flight_phase: npt.NDArray[np.uint8] | flight.FlightPhase,
 ) -> ArrayOrFloat:
-    r"""Correct fuel mass flow rate to ensure that they are within operational limits.
+    r"""Correct maximum fuel mass flow rate that can be supplied by the engine.
 
     Parameters
     ----------
-    fuel_flow : ArrayOrFloat
-        Fuel mass flow rate, [:math:`kg s^{-1}`]
-    altitude_ft : ArrayOrFloat
-        Waypoint altitude, [:math: `ft`]
     air_temperature : ArrayOrFloat
         Ambient temperature at each waypoint, [:math:`K`]
     air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
     mach_number : ArrayOrFloat
         Mach number at each waypoint
-    fuel_flow_idle_sls : float
-        Fuel mass flow rate under engine idle and sea level static conditions, [:math:`kg \ s^{-1}`]
     fuel_flow_max_sls : float
         Fuel mass flow rate at take-off and sea level static conditions, [:math:`kg \ s^{-1}`]
     flight_phase : npt.NDArray[np.uint8] | flight.FlightPhase
@@ -279,9 +271,8 @@ def correct_fuel_flow(
     Returns
     -------
     ArrayOrFloat
-        Corrected fuel mass flow rate, [:math:`kg \ s^{-1}`]
+        Maximum allowable fuel mass flow rate, [:math:`kg \ s^{-1}`]
     """
-    min_fuel_flow = jet.minimum_fuel_flow_rate_at_cruise(fuel_flow_idle_sls, altitude_ft)
     max_fuel_flow = jet.equivalent_fuel_flow_rate_at_cruise(
         fuel_flow_max_sls,
         (air_temperature / constants.T_msl),
@@ -290,9 +281,8 @@ def correct_fuel_flow(
     )
 
     # Account for descent conditions
-    # Assume max_fuel_flow at descent is not more than 30% of fuel_flow_max_sls
+    # Assume `max_fuel_flow` at descent is not more than 30% of fuel_flow_max_sls
     # We need this assumption because PTF files are not available in the PS model.
     descent = flight_phase == flight.FlightPhase.DESCENT
     max_fuel_flow[descent] = 0.3 * fuel_flow_max_sls
-    return np.clip(fuel_flow, min_fuel_flow, max_fuel_flow)
-
+    return max_fuel_flow

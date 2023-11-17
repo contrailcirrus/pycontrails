@@ -213,6 +213,7 @@ def _nominal_perf(aircraft_mass: ArrayOrFloat, perf: _PerfVariables) -> Aircraft
 
     engine_efficiency = ps_model.overall_propulsion_efficiency(mach_number, c_t, atyp_param)
 
+    # TODO: @Zeb, the inputs to this function needs to be updated
     fuel_flow = ps_model.fuel_mass_flow_rate(
         air_pressure,
         air_temperature,
