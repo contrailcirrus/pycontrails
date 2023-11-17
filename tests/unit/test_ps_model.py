@@ -157,7 +157,9 @@ def test_normalised_aircraft_performance_curves() -> None:
     c_t = ps.engine_thrust_coefficient(
         f_thrust, mach_num, air_pressure, atyp_param.wing_surface_area
     )
-    c_t_eta_b = ps.max_thrust_coefficient(mach_num, atyp_param.m_des, atyp_param.c_t_des)
+    c_t_eta_b = ps.thrust_coefficient_at_max_efficiency(
+        mach_num, atyp_param.m_des, atyp_param.c_t_des
+    )
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
 
     eta = ps.overall_propulsion_efficiency(mach_num, c_t, atyp_param)
