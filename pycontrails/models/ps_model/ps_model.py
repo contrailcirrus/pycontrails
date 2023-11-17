@@ -1082,6 +1082,70 @@ def normalised_max_throttle_parameter(
     )
 
 
+def maximum_allowable_aircraft_mass(
+    air_pressure: ArrayOrFloat,
+    mach_number: ArrayOrFloat,
+    mach_num_des: float,
+    c_l_do: float,
+    wing_surface_area: float,
+) -> ArrayOrFloat:
+    """
+    Calculate maximum allowable aircraft mass for a given altitude and mach number.
+    
+    Parameters
+    ----------
+    air_pressure : ArrayOrFloat
+        Ambient pressure, [:math:`Pa`]
+    mach_number : ArrayOrFloat
+        Mach number at each waypoint
+    mach_num_des : float
+        Design optimum Mach number where the fuel mass flow rate is at a minimum.
+    c_l_do : float
+        Design optimum lift coefficient.
+    wing_surface_area : float
+
+    Returns
+    -------
+    ArrayOrFloat
+        Maximum allowable aircraft mass, [:math:`kg`]
+    """
+    c_l_maxu = maximum_usable_lift_coefficient(mach_number, mach_num_des, c_l_do)
+    return (1 / constants.g) * (
+        c_l_maxu * 0.5 * constants.kappa * air_pressure * mach_number**2 * wing_surface_area
+    )
+
+
+def maximum_usable_lift_coefficient(
+    mach_number: ArrayOrFloat,
+    mach_num_des: float,
+    c_l_do: float
+) -> ArrayOrFloat:
+    """
+    Calculate maximum usable lift coefficient.
+
+    Parameters
+    ----------
+    mach_number : ArrayOrFloat
+        Mach number at each waypoint
+    mach_num_des : float
+        Design optimum Mach number where the fuel mass flow rate is at a minimum.
+    c_l_do : float
+        Design optimum lift coefficient.
+
+    Returns
+    -------
+    ArrayOrFloat
+        Maximum usable lift coefficient.
+    """
+    m_over_m_des = mach_number / mach_num_des
+    c_l_maxu_over_c_l_do = np.where(
+        m_over_m_des < 0.70,
+        1.8 - 0.024 * m_over_m_des - 0.824 * m_over_m_des**2,
+        13.272 - 42.262 * m_over_m_des + 49.883 * m_over_m_des**2 - 19.683 * m_over_m_des**3
+    )
+    return c_l_maxu_over_c_l_do * c_l_do
+
+
 def correct_fuel_flow(
     fuel_flow: ArrayOrFloat,
     altitude_ft: ArrayOrFloat,
