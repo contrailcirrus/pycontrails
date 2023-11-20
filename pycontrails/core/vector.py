@@ -97,7 +97,7 @@ class VectorDataDict(dict[str, np.ndarray]):
     def __setitem__(self, k: str, v: npt.ArrayLike) -> None:
         """Set new key-value pair to instance and warn when overwriting existing key.
 
-        This method casts ``v`` to a ``np.ndarray`` and ensures that the array size is
+        This method casts ``v`` to an :class:`numpy.ndarray` and ensures that the array size is
         consistent with the instance.
 
         Parameters
@@ -160,8 +160,8 @@ class VectorDataDict(dict[str, np.ndarray]):
     ) -> None:
         """Update values without warning if overwriting.
 
-        This method casts values in  ``other`` to np.ndarray arrays and ensures that the
-        array sizes are consistent with the instance.
+        This method casts values in  ``other`` to :class:`numpy.ndarray` and
+        ensures that the array sizes are consistent with the instance.
 
         Parameters
         ----------
@@ -256,7 +256,7 @@ class VectorDataset:
 
     __slots__ = ("data", "attrs")
 
-    #: Vector data with labels as keys and :class:`np.ndarray` as values
+    #: Vector data with labels as keys and :class:`numpy.ndarray` as values
     data: VectorDataDict
 
     #: Generic dataset attributes
@@ -599,7 +599,7 @@ class VectorDataset:
         vectors : Sequence[VectorDataset]
             List of :class:`VectorDataset` instances to concatenate.
         infer_attrs : bool, optional
-            If True, infer attributes from the first VectorDataset in the list.
+            If True, infer attributes from the first element in the sequence.
         fill_value : float, optional
             Fill value to use when concatenating arrays. By default None, which raises
             an error if incompatible keys are found.
@@ -607,7 +607,7 @@ class VectorDataset:
         Returns
         -------
         VectorDataset
-            Sum of all VectorDataset instances in ``vectors``.
+            Sum of all instances in ``vectors``.
 
         Raises
         ------
@@ -738,7 +738,7 @@ class VectorDataset:
 
     @property
     def dataframe(self) -> pd.DataFrame:
-        """Shorthand property to access :meth:`to_dataframe` with `copy=False`.
+        """Shorthand property to access :meth:`to_dataframe` with ``copy=False``.
 
         Returns
         -------
@@ -935,8 +935,8 @@ class VectorDataset:
     ) -> None:
         """Attach numeric values in :attr:`attrs` onto :attr:`data`.
 
-        Iterate through values in :attr:`attrs` and attach `float` and `int` values
-        to `data`.
+        Iterate through values in :attr:`attrs` and attach :class:`float` and
+        :class:`int` values to ``data``.
 
         This method modifies object in place.
 
@@ -966,7 +966,7 @@ class VectorDataset:
     # ------------
 
     def to_dataframe(self, copy: bool = True) -> pd.DataFrame:
-        """Create DataFrame in which each key-value pair in :attr:`data` is a column.
+        """Create :class:`pd.DataFrame` in which each key-value pair in :attr:`data` is a column.
 
         DataFrame does **not** copy data by default.
         Use the ``copy`` parameter to copy data values on creation.
@@ -988,11 +988,11 @@ class VectorDataset:
     def to_dict(self) -> dict[str, Any]:
         """Create dictionary with :attr:`data` and :attr:`attrs`.
 
-        If geo-spatial coordinates (e.g. `"latitude"`, `"longitude"`, `"altitude"`)
-        are present, round to a reasonable precision. If a `"time"` variable is present,
+        If geo-spatial coordinates (e.g. ``"latitude"``, ``"longitude"``, ``"altitude"``)
+        are present, round to a reasonable precision. If a ``"time"`` variable is present,
         round to unix seconds. When the instance is a :class:`GeoVectorDataset`,
-        disregard any `"altitude"` or `"level"` coordinate and only include
-        `"altitude_ft"`in the output.
+        disregard any ``"altitude"`` or ``"level"`` coordinate and only include
+        ``"altitude_ft"`` in the output.
 
         Returns
         -------
@@ -1122,7 +1122,7 @@ class VectorDataset:
         obj : dict[str, Any]
             Dict representation of VectorDataset (e.g. :meth:`to_dict`)
         copy : bool, optional
-            Passed to VectorDataset constructor.
+            Passed to :class:`VectorDataset` constructor.
             Defaults to True.
         **obj_kwargs : Any
             Additional properties passed as keyword arguments.
@@ -1629,9 +1629,13 @@ class GeoVectorDataset(VectorDataset):
         **interp_kwargs : Any
             Additional keyword arguments to pass to :meth:`MetDataArray.intersect_met`.
             Examples include ``method``, ``bounds_error``, and ``fill_value``. If an error such as
-            `ValueError: One of the requested xi is out of bounds in dimension 2` occurs, try
-            calling this function with ``bounds_error=False``. In addition, setting
-            ``fill_value=0.0`` will replace NaN values with 0.0.
+
+            .. code-block:: python
+
+                ValueError: One of the requested xi is out of bounds in dimension 2
+
+            occurs, try calling this function with ``bounds_error=False``. In addition,
+            setting ``fill_value=0.0`` will replace NaN values with 0.0.
 
         Returns
         -------
