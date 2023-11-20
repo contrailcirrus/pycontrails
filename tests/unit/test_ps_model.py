@@ -12,7 +12,7 @@ import pycontrails.models.ps_model.ps_aircraft_params as ps_params
 import pycontrails.models.ps_model.ps_operational_limits as ps_lims
 from pycontrails import Flight, FlightPhase, GeoVectorDataset, MetDataset
 from pycontrails.models.ps_model import PSGrid, ps_nominal_grid
-from pycontrails.physics import jet, units
+from pycontrails.physics import units
 
 from .conftest import get_static_path
 
@@ -150,14 +150,12 @@ def test_ps_model() -> None:
 
     # Test fuel mass flow rate
     fuel_flow = ps.fuel_mass_flow_rate(
-        altitude_ft,
         air_pressure,
         air_temperature,
         mach_number,
         c_t,
         engine_efficiency,
         atyp_param.wing_surface_area,
-        atyp_param.ff_idle_sls,
         q_fuel=43e6,
     )
     np.testing.assert_array_almost_equal(fuel_flow, [0.617, 0.601], decimal=3)
@@ -244,13 +242,19 @@ def test_fuel_flow_limits() -> None:
     air_pressure = units.ft_to_pl(altitude_ft) * 100
     mach_num = np.ones_like(fuel_flow_est) * 0.75
 
-    fuel_flow_max = ps_lims.max_fuel_flow(
-        air_temperature, air_pressure, mach_num, atyp_param.ff_max_sls, FlightPhase.CRUISE
+    fuel_flow_corrected = ps.fuel_flow_correction(
+        fuel_flow_est,
+        altitude_ft,
+        air_temperature,
+        air_pressure,
+        mach_num,
+        atyp_param.ff_idle_sls,
+        atyp_param.ff_max_sls,
+        FlightPhase.CRUISE,
     )
 
-    fuel_flow_corrected = np.where(fuel_flow_est > fuel_flow_max, fuel_flow_max, fuel_flow_est)
     np.testing.assert_array_almost_equal(
-        fuel_flow_corrected, [1.261, 1.261, 1.261, 0.02, 0.03], decimal=2
+        fuel_flow_corrected, [1.261, 1.261, 1.261, 0.11, 0.11], decimal=2
     )
     assert np.all(
         (fuel_flow_corrected < atyp_param.ff_max_sls)
