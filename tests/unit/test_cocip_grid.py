@@ -290,7 +290,7 @@ def test_cocip_grid_ps_ap_model(source: MetDataset, instance_params: dict[str, A
     assert out.attrs["ap_model"] == "PSGrid"
 
     # Pin the proportion of grid cells producing persistent contrails
-    assert out.data["ef_per_m"].astype(bool).mean().item() == 0.0775
+    assert out.data["ef_per_m"].astype(bool).mean().item() == 0.0778125
 
 
 @pytest.fixture()

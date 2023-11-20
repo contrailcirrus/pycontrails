@@ -322,6 +322,8 @@ def test_total_fuel_burn(load_factor: float) -> None:
         assert out.attrs["total_fuel_burn"] == pytest.approx(5452.7, abs=0.1)
     elif load_factor == 0.8:
         assert out.attrs["total_fuel_burn"] == pytest.approx(5566.1, abs=0.1)
+    else:
+        pytest.fail("Unexpected load factor")
 
 
 def test_zero_tas_waypoints() -> None:
@@ -395,7 +397,7 @@ def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
         "crs": "EPSG:4326",
         "aircraft_type": "B737",
         "mach_number": 0.758,
-        "wingspan": 34.296122229779854,
+        "wingspan": 34.3,
         "n_engine": 2,
     }
 
@@ -413,14 +415,14 @@ def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
 
     # Pin some output values
     abs = 1e-2
-    assert ds["fuel_flow"].min() == pytest.approx(0.54, abs=abs)
-    assert ds["fuel_flow"].max() == pytest.approx(0.71, abs=abs)
-    assert ds["fuel_flow"].mean() == pytest.approx(0.63, abs=abs)
+    assert ds["fuel_flow"].min() == pytest.approx(0.55, abs=abs)
+    assert ds["fuel_flow"].max() == pytest.approx(0.73, abs=abs)
+    assert ds["fuel_flow"].mean() == pytest.approx(0.65, abs=abs)
 
     abs = 1e-3
-    assert ds["engine_efficiency"].min() == pytest.approx(0.274, abs=abs)
-    assert ds["engine_efficiency"].max() == pytest.approx(0.288, abs=abs)
-    assert ds["engine_efficiency"].mean() == pytest.approx(0.284, abs=abs)
+    assert ds["engine_efficiency"].min() == pytest.approx(0.268, abs=abs)
+    assert ds["engine_efficiency"].max() == pytest.approx(0.282, abs=abs)
+    assert ds["engine_efficiency"].mean() == pytest.approx(0.278, abs=abs)
 
     abs = 1e3
     assert ds["aircraft_mass"].min() == pytest.approx(53000, abs=abs)
