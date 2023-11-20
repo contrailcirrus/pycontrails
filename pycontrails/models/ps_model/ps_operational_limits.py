@@ -138,8 +138,8 @@ def _normalised_max_throttle_parameter(
     air_temperature: ArrayOrFloat,
     mach_number: ArrayOrFloat,
     tet_mcc: float,
-    mec: float,
-    tec: float,
+    tr_ec: float,
+    m_ec: float,
 ) -> ArrayOrFloat:
     """
     Calculate normalised maximum throttle parameter.
@@ -152,10 +152,11 @@ def _normalised_max_throttle_parameter(
         Mach number at each waypoint
     tet_mcc : float
         Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
-    mec : float
-        Engine constant used to calculate the throttle parameter
-    tec : float
-        Engine constant used to calculate the throttle parameter
+    tr_ec : float
+        Engine characteristic ratio of total turbine-entry-temperature to the total freestream
+        temperature for maximum overall efficiency.
+    m_ec : float
+        Engine characteristic Mach number associated with `tr_ec`.
 
     Returns
     -------
@@ -165,11 +166,11 @@ def _normalised_max_throttle_parameter(
     Notes
     -----
     The normalised throttle parameter is the ratio of the total temperature of the gas at turbine
-    entry to the freestream total temperature, `tet_over_t_inf`, divided by 'tet_over_t_inf' at
-    maximum overall propulsion efficiency for a given Mach Number.
+    entry to the freestream total temperature, normalised with its value for maximum engine
+    overall efficiency at the same freestream Mach number.
     """
     return (tet_mcc / air_temperature) / (
-        tec * (1 - 0.53 * (mach_number - mec)**2) * (1 + 0.2 * mach_number**2)
+        tr_ec * (1 - 0.53 * (mach_number - m_ec)**2) * (1 + 0.2 * mach_number**2)
     )
 
 
@@ -236,7 +237,7 @@ def maximum_usable_lift_coefficient(
     m_over_m_des = mach_number / mach_num_des
     c_l_maxu_over_c_l_do = np.where(
         m_over_m_des < 0.70,
-        1.8 - 0.024 * m_over_m_des - 0.824 * m_over_m_des ** 2,
+        1.8 + 0.160 * m_over_m_des - 1.085 * m_over_m_des ** 2,
         13.272 - 42.262 * m_over_m_des + 49.883 * m_over_m_des ** 2 - 19.683 * m_over_m_des ** 3
     )
     return c_l_maxu_over_c_l_do * c_l_do
