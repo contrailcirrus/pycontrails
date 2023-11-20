@@ -1,11 +1,17 @@
 
 # Changelog
 
-## v0.48.2 (unreleased)
+## v0.49.0
+
+This release updates the Poll-Schumann (PS) aircraft performance model to version 2.0. It also includes a number of bug fixes and internal improvements.
 
 ### Features
 
 - Add convenience `Fleet.resample_and_fill`.
+- Update the PS model aircraft-engine parameters.
+- Improve PS model accuracy in fuel consumption estimates.
+- Improve PS model accuracy in overall propulsive efficiency estimates.
+- Include additional guardrails in the PS model to constrain the operational limits of different aircraft-engine types, i.e., the maximum permitted Mach number by altitude, maximum available thrust coefficient, maximum lift coefficient, and maximum allowable aircraft mass.
 
 ### Fixes
 
