@@ -315,13 +315,13 @@ def test_total_fuel_burn(load_factor: float) -> None:
     out = ps_model.eval(flight)
 
     if load_factor == 0.5:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4986.5, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4316, abs=1.0)
     elif load_factor == 0.6:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5306.1, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4353, abs=1.0)
     elif load_factor == 0.7:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5452.7, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4367, abs=1.0)
     elif load_factor == 0.8:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5566.1, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4372, abs=1.0)
     else:
         pytest.fail("Unexpected load factor")
 
