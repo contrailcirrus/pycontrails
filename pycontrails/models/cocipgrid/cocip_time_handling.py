@@ -152,7 +152,7 @@ class CocipTimeHandlingMixin:
                 f"Model start time: {tmin} Model end time: {tmax}"
             )
 
-    def init_pbar(self) -> "tqdm.tqdm" | None:
+    def init_pbar(self) -> tqdm.tqdm | None:
         """Initialize a progress bar for model evaluation."""
 
         if not self.params["show_progress"]:
@@ -267,7 +267,7 @@ class CocipTimeHandlingMixin:
         return max(grid_size // split_size, 1)
 
     def _load_met_slices(
-        self, start: np.datetime64, pbar: "tqdm.tqdm" | None = None
+        self, start: np.datetime64, pbar: tqdm.tqdm | None = None
     ) -> tuple[MetDataset, MetDataset]:
         """Load met and rad slices for interpolation.
 

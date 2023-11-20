@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 import pytest
@@ -552,7 +553,7 @@ def test_grid_results_segment_free(
 
 
 @pytest.fixture()
-def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> "SyntheticFlight":  # noqa: F821
+def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> SyntheticFlight:  # noqa: F821
     """Return synthetic flight."""
     t_start = source.data["time"].values[0]
     t_stop = t_start + np.timedelta64(120, "m")
@@ -574,7 +575,7 @@ def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> "SyntheticFli
     )
 
 
-def test_reasonable_syn_fl(syn_fl: "SyntheticFlight", met_cocip1) -> None:  # noqa: F821
+def test_reasonable_syn_fl(syn_fl: SyntheticFlight, met_cocip1) -> None:  # noqa: F821
     """Check that syn_fl fixture is reasonable."""
     for _ in range(100):
         fl = syn_fl()
@@ -589,7 +590,7 @@ def test_reasonable_syn_fl(syn_fl: "SyntheticFlight", met_cocip1) -> None:  # no
 
 
 def test_geovector_source(
-    syn_fl: "SyntheticFlight",  # noqa: F821
+    syn_fl: SyntheticFlight,  # noqa: F821
     instance_params: dict[str, Any],
     bada_grid_model: AircraftPerformanceGrid,
 ) -> None:
@@ -623,7 +624,7 @@ def test_geovector_source(
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
 def test_grid_against_flight(
-    syn_fl: "SyntheticFlight",  # noqa: F821
+    syn_fl: SyntheticFlight,  # noqa: F821
     instance_params: dict[str, Any],
     met_cocip1: MetDataset,
     rad_cocip1: MetDataset,

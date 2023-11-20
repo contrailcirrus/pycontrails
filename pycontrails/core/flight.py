@@ -1138,7 +1138,7 @@ class Flight(GeoVectorDataset):
         features = self.dataframe.groupby(key).apply(_group_to_feature).values.tolist()
         return {"type": "FeatureCollection", "features": features}
 
-    def to_traffic(self) -> "traffic.core.Flight":
+    def to_traffic(self) -> traffic.core.Flight:
         """Convert Flight instance to :class:`traffic.core.Flight` instance.
 
         See https://traffic-viz.github.io/traffic.core.flight.html#traffic.core.Flight
@@ -1282,7 +1282,7 @@ class Flight(GeoVectorDataset):
     # Visualization
     # ------------
 
-    def plot(self, **kwargs: Any) -> "matplotlib.axes.Axes":
+    def plot(self, **kwargs: Any) -> matplotlib.axes.Axes:
         """Plot flight trajectory longitude-latitude values.
 
         Parameters

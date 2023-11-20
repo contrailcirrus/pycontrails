@@ -3,8 +3,8 @@
 import logging
 import os
 import tempfile
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 logger = logging.getLogger(__name__)
 

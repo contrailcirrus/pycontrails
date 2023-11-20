@@ -256,7 +256,7 @@ def test_fuel_flow_limits() -> None:
     np.testing.assert_array_almost_equal(
         fuel_flow_corrected, [1.261, 1.261, 1.261, 0.11, 0.11], decimal=2
     )
-    assert np.all((fuel_flow_corrected < atyp_param.ff_max_sls))
+    assert np.all(fuel_flow_corrected < atyp_param.ff_max_sls)
 
 
 def test_normalised_aircraft_performance_curves() -> None:

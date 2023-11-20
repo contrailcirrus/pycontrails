@@ -1,6 +1,6 @@
 """Test the goes module."""
 
-from typing import Generator
+from collections.abc import Generator
 
 import numpy as np
 import pandas as pd

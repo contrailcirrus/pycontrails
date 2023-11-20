@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 
 def chunk_list(lst: list, n: int) -> Iterator[list[Any]]:

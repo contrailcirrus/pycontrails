@@ -475,7 +475,7 @@ class HRES(ECMWFAPI):
             LOG.debug("Performing MARS request: %s", request)
             self.server.execute(request, target=mars_temp_filename)
 
-            with open(mars_temp_filename, "r") as f:
+            with open(mars_temp_filename) as f:
                 return f.read()
 
     def generate_mars_request(

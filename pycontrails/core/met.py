@@ -9,19 +9,14 @@ import pathlib
 import typing
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Hashable,
-    Iterable,
-    Iterator,
     Literal,
-    Mapping,
-    MutableMapping,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -1406,7 +1401,7 @@ class MetDataArray(MetBase):
     @overrides
     def shape(self) -> tuple[int, int, int, int]:
         # https://github.com/python/mypy/issues/1178
-        return typing.cast(typing.Tuple[int, int, int, int], self.data.shape)
+        return typing.cast(tuple[int, int, int, int], self.data.shape)
 
     def copy(self) -> MetDataArray:
         """Create a copy of the current class.
@@ -1985,7 +1980,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = ...,
         output_vertex_normals: bool = ...,
         closed: bool = ...,
-    ) -> "o3d.geometry.TriangleMesh": ...
+    ) -> o3d.geometry.TriangleMesh: ...
 
     def to_polyhedra(
         self,
@@ -1998,7 +1993,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = 1.0,
         output_vertex_normals: bool = False,
         closed: bool = True,
-    ) -> dict | "o3d.geometry.TriangleMesh":
+    ) -> dict | o3d.geometry.TriangleMesh:
         """Create a collection of polyhedra from spatial array corresponding to a single time slice.
 
         Parameters
