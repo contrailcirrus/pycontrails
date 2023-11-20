@@ -4,22 +4,12 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generator,
-    Iterable,
-    Iterator,
-    NoReturn,
-    Sequence,
-    TypeVar,
-    overload,
-)
+from collections.abc import Generator, Iterable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, NoReturn, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import xarray as xr
 
 import pycontrails
 from pycontrails.core import models
@@ -2019,9 +2009,13 @@ def result_to_metdataset(
     for k, v in verbose_dict.items():
         data_vars[k] = (dims, v.reshape(shape), local_attrs[k])
 
-    # Bundle the package and return
-    ds = xr.Dataset(data_vars=data_vars, coords=source.coords, attrs=attrs)
-    return MetDataset(ds, copy=False)
+    # Update source
+    for k, v in data_vars.items():  # type: ignore[assignment]
+        source[k] = v
+    source.attrs.update(attrs)  # type: ignore[arg-type]
+
+    # Return reference to source
+    return source
 
 
 def result_merge_source(

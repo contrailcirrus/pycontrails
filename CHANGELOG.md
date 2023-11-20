@@ -14,6 +14,7 @@
 - Add `__slots__` to `GeoVectorDataset`, `Flight`, and `Fleet`. The base `VectorDataset` class already uses `__slots__`.
 - Add `Fleet.copy` method.
 - Improve `Fleet.__init__` implementation.
+- Ensure `source` parameter is mutated in `CocipGrid.eval` when the model parameter `copy_source=False`.
 
 ## v0.48.1
 
