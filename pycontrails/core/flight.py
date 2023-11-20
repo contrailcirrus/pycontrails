@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 # optional imports
 if TYPE_CHECKING:
-    import matplotlib
-    import traffic
+    import matplotlib.axes
+    import traffic.core
 
 
 class FlightPhase(enum.IntEnum):

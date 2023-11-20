@@ -129,7 +129,7 @@ class ModelParams:
         dict[str, Any]
             Dictionary version of self.
         """
-        return dict((field.name, getattr(self, field.name)) for field in fields(self))
+        return {(name := field.name): getattr(self, name) for field in fields(self)}
 
 
 # ------

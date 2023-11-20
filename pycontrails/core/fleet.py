@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -84,7 +85,8 @@ class Fleet(Flight):
         try:
             flight_id = self["flight_id"]
         except KeyError as exc:
-            raise KeyError("Expect 'flight_id' key in Fleet data.") from exc
+            msg = "Fleet must have a 'flight_id' key in its 'data'."
+            raise KeyError(msg) from exc
 
         # Some pandas groupby magic to ensure flights are arranged in blocks
         df = pd.DataFrame({"flight_id": flight_id, "index": np.arange(self.size)})
@@ -94,11 +96,12 @@ class Fleet(Flight):
         expected_size = groups[("index", "last")] - groups[("index", "first")] + 1
         actual_size = groups[("flight_id", "size")]
         if not np.array_equal(expected_size, actual_size):
-            raise ValueError(
+            msg = (
                 "Fleet must have contiguous waypoint blocks with constant flight_id. "
                 "If instantiating from a DataFrame, call df.sort(['flight_id', 'time']) "
                 "before passing to Fleet."
             )
+            raise ValueError(msg)
 
         # Calculate boolean array of final waypoints by flight
         final_waypoints = np.zeros(self.size, dtype=bool)
@@ -112,7 +115,8 @@ class Fleet(Flight):
 
         extra = fl_attrs.keys() - groups.index
         if extra:
-            raise ValueError(f"Unexpected flight_id(s) {extra} in fl_attrs.")
+            msg = f"Unexpected flight_id(s) {extra} in fl_attrs."
+            raise ValueError(msg)
 
         return final_waypoints, fl_attrs
 
@@ -159,7 +163,9 @@ class Fleet(Flight):
         elif not isinstance(seq, (list, tuple)):
             seq = tuple(seq)
 
-        assert seq, "Cannot create Fleet from empty sequence."
+        if not seq:
+            msg = "Cannot create Fleet from empty sequence."
+            raise ValueError(msg)
 
         fl_attrs: dict[str, Any] = {}
 
@@ -247,14 +253,16 @@ class Fleet(Flight):
             # Choosing a key we don't think exists
             key = "__u_wind"
             if key in self:
-                raise RuntimeError(f"Unexpected key {key} found")
+                msg = f"Unexpected key {key} found"
+                raise RuntimeError(msg)
             self[key] = u_wind
 
         if isinstance(v_wind, np.ndarray):
             # Choosing a key we don't think exists
             key = "__v_wind"
             if key in self:
-                raise RuntimeError(f"Unexpected key {key} found")
+                msg = f"Unexpected key {key} found"
+                raise RuntimeError(msg)
             self[key] = v_wind
 
         # Calculate TAS on each flight individually
@@ -301,7 +309,8 @@ class Fleet(Flight):
     @overrides
     def max_distance_gap(self) -> float:
         if self.attrs["crs"] != "EPSG:4326":
-            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
+            msg = "Only implemented for EPSG:4326 CRS."
+            raise NotImplementedError(msg)
 
         return np.nanmax(self.segment_length()).item()
 
@@ -326,7 +335,8 @@ class Fleet(Flight):
         sg_window: int = 7,
         sg_polyorder: int = 1,
     ) -> Fleet:
-        raise NotImplementedError("Only implemented for Flight instances")
+        msg = "Only implemented for Flight instances"
+        raise NotImplementedError(msg)
 
 
 def _extract_flight_id(fl: Flight) -> str:
@@ -340,13 +350,16 @@ def _extract_flight_id(fl: Flight) -> str:
     try:
         flight_ids = fl["flight_id"]
     except KeyError as exc:
-        raise KeyError("Each flight must have a 'flight_id' key in its 'attrs'.") from exc
+        msg = "Each flight must have a 'flight_id' key in its 'attrs'."
+        raise KeyError(msg) from exc
 
     tmp = np.unique(flight_ids)
     if len(tmp) > 1:
-        raise ValueError(f"Multiple flight_ids {tmp} found in Flight.")
+        msg = f"Multiple flight_ids {tmp} found in Flight."
+        raise ValueError(msg)
     if len(tmp) == 0:
-        raise ValueError("Flight has no flight_id.")
+        msg = "Flight has no flight_id."
+        raise ValueError(msg)
     return tmp[0]
 
 
@@ -389,28 +402,32 @@ def _validate_fl(
     flight_id = _extract_flight_id(fl)
 
     if flight_id in fl_attrs:
-        raise ValueError(f"Duplicate 'flight_id' {flight_id} found.")
+        msg = f"Duplicate 'flight_id' {flight_id} found."
+        raise ValueError(msg)
     fl_attrs[flight_id] = fl.attrs
 
     # Verify consistency across flights
     if fl.fuel != fuel:
-        raise ValueError(
+        msg = (
             f"Fuel type on Flight {flight_id} ({fl.fuel.fuel_name}) "
             f"is not inconsistent with previous flights ({fuel.fuel_name}). "
             "The 'fuel' attributes must be consistent between flights in a Fleet."
         )
+        raise ValueError(msg)
     if fl.attrs["crs"] != crs:
-        raise ValueError(
+        msg = (
             f"CRS on Flight {flight_id} ({fl.attrs['crs']}) "
             f"is not inconsistent with previous flights ({crs}). "
             "The 'crs' attributes must be consistent between flights in a Fleet."
         )
+        raise ValueError(msg)
     if fl.data.keys() != data_keys:
-        raise ValueError(
+        msg = (
             f"Data keys on Flight {flight_id} ({fl.data.keys()}) "
             f"is not inconsistent with previous flights ({data_keys}). "
             "The 'data_keys' attributes must be consistent between flights in a Fleet."
         )
+        raise ValueError(msg)
 
     # Expand data
     if broadcast_numeric:

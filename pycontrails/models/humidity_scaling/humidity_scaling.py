@@ -43,7 +43,7 @@ class HumidityScaling(models.Model):
     #: Variables required in addition to specific_humidity, air_temperature, and air_pressure
     #: These are either :class:`ModelParams` specific to scaling, or variables that should
     #: be extracted from :meth:`eval` parameter ``source``.
-    scaler_specific_keys: tuple[str, ...] = tuple()
+    scaler_specific_keys: tuple[str, ...] = ()
 
     @property
     @abc.abstractmethod
