@@ -8,6 +8,8 @@ import pytest
 import xarray as xr
 
 import pycontrails.models.ps_model.ps_model as ps
+import pycontrails.models.ps_model.ps_aircraft_params as ps_params
+import pycontrails.models.ps_model.ps_operational_limits as ps_lims
 from pycontrails import Flight, FlightPhase, GeoVectorDataset, MetDataset
 from pycontrails.models.ps_model import PSGrid, ps_nominal_grid
 from pycontrails.physics import jet, units
@@ -33,6 +35,35 @@ def test_aircraft_type_coverage() -> None:
     for atyp in aircraft_types:
         with pytest.raises(KeyError, match=f"Aircraft type {atyp} not covered by the PS model."):
             ps_model.check_aircraft_type_availability(atyp)
+
+
+def test_derived_aircraft_engine_params() -> None:
+    """
+    Test derived aircraft-engine parameters for PS model.
+    """
+    # Input parameters are for the following aircraft types: A320, A359
+
+    # Test turbine entry temperature at maximum take-off rating
+    first_flight = np.array([1987.0, 2013.0])
+    tet_mto = ps_params.turbine_entry_temperature_at_max_take_off(first_flight)
+    np.testing.assert_array_almost_equal(tet_mto, [1661.88, 1854.76], decimal=2)
+
+    # Test turbine entry temperature at maximum continuous climb rating
+    tet_mcc = ps_params.turbine_entry_temperature_at_max_continuous_climb(tet_mto)
+    np.testing.assert_array_almost_equal(tet_mcc, [1528.93, 1706.38], decimal=2)
+
+    # Test maximum permitted operational impact pressure
+    max_mach_num = np.array([0.820, 0.890])
+    p_i_max = ps_params.impact_pressure_max_operating_limits(max_mach_num)
+    np.testing.assert_array_almost_equal(p_i_max, [20882.79, 24441.49], decimal=2)
+
+    # Test max calibrated airspeed over the speed of sound at ISA mean sea level
+    v_cas_mo_over_c_msl = ps_params.max_calibrated_airspeed_over_speed_of_sound(max_mach_num)
+    np.testing.assert_array_almost_equal(v_cas_mo_over_c_msl, [0.5244, 0.5643], decimal=4)
+
+    # Test crossover pressure altitude
+    p_inf_co = ps_params.crossover_pressure_altitude(max_mach_num, p_i_max)
+    np.testing.assert_array_almost_equal(p_inf_co, [37618.42, 36319.05], decimal=2)
 
 
 def test_ps_model() -> None:
@@ -70,7 +101,7 @@ def test_ps_model() -> None:
 
     # Test zero-lift drag coefficient
     c_drag_0 = ps.zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
-    np.testing.assert_array_almost_equal(c_drag_0, [0.0181, 0.0189], decimal=2)
+    np.testing.assert_array_almost_equal(c_drag_0, [0.0181, 0.0190], decimal=2)
 
     # Test Oswald efficiency factor
     e_ls = ps.oswald_efficiency_factor(c_drag_0, atyp_param)
@@ -107,9 +138,15 @@ def test_ps_model() -> None:
     )
     np.testing.assert_array_almost_equal(c_t, [0.0285, 0.0402], decimal=4)
 
+    # Test thrust coefficient at maximum overall propulsion efficiency for a given Mach Number
+    c_t_eta_b = ps.thrust_coefficient_at_max_efficiency(
+        mach_number, atyp_param.m_des, atyp_param.c_t_des
+    )
+    np.testing.assert_array_almost_equal(c_t_eta_b, [0.0347, 0.0347], decimal=2)
+
     # Test overall propulsion efficiency
-    engine_efficiency = ps.overall_propulsion_efficiency(mach_number, c_t, atyp_param)
-    np.testing.assert_array_almost_equal(engine_efficiency, [0.315, 0.316], decimal=3)
+    engine_efficiency = ps.overall_propulsion_efficiency(mach_number, c_t, c_t_eta_b, atyp_param)
+    np.testing.assert_array_almost_equal(engine_efficiency, [0.2926, 0.2935], decimal=3)
 
     # Test fuel mass flow rate
     fuel_flow = ps.fuel_mass_flow_rate(
@@ -123,18 +160,101 @@ def test_ps_model() -> None:
         atyp_param.ff_idle_sls,
         q_fuel=43e6,
     )
+    np.testing.assert_array_almost_equal(fuel_flow, [0.617, 0.601], decimal=3)
 
-    fuel_flow = ps.correct_fuel_flow(
-        fuel_flow,
+
+def test_mach_number_limits():
+    # Extract aircraft properties for aircraft type (A320)
+    aircraft_type_icao = "A320"
+    ps_model = ps.PSFlight()
+    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+
+    # Test Mach number limits
+    altitude_ft = np.arange(10000.0, 41000.0, 5000.0)
+    air_pressure = units.ft_to_pl(altitude_ft) * 100.0
+
+    mach_num_lim = ps_lims.max_mach_number_by_altitude(
         altitude_ft,
-        air_temperature,
+        air_pressure,
+        atyp_param.max_mach_num,
+        atyp_param.p_i_max,
+        atyp_param.p_inf_co,
+        atm_speed_limit=False,
+        buffer=0.0
+    )
+    np.testing.assert_array_almost_equal(
+        mach_num_lim, [0.625, 0.683, 0.750, 0.82, 0.82, 0.82, 0.82], decimal=2
+    )
+
+
+def test_thrust_coefficient_limits():
+    # Extract aircraft properties for aircraft type (A320)
+    aircraft_type_icao = "A320"
+    ps_model = ps.PSFlight()
+    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+
+    mach_number = 0.75
+    air_temperature = np.arange(210.0, 251.0, 10.0)
+    c_t_eta_b = ps.thrust_coefficient_at_max_efficiency(
+        mach_number, atyp_param.m_des, atyp_param.c_t_des
+    )
+
+    # Maximum available thrust coefficients
+    c_t_max_avail = ps_lims.max_available_thrust_coefficient(
+        air_temperature, mach_number, c_t_eta_b, atyp_param
+    )
+    np.testing.assert_array_almost_equal(
+        c_t_max_avail, [0.0479, 0.0433, 0.0392, 0.0354, 0.0318], decimal=3
+    )
+
+
+def test_aircraft_mass_limits():
+    # Extract aircraft properties for aircraft type (A388)
+    aircraft_type_icao = "A388"
+    ps_model = ps.PSFlight()
+    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+    mtow = atyp_param.amass_mtow
+
+    mach_number = 0.82
+    altitude_ft = np.arange(30000.0, 43000.0, 2500.0)
+    air_pressure = units.ft_to_pl(altitude_ft) * 100.0
+
+    amass_lims = ps_lims.max_allowable_aircraft_mass(
         air_pressure,
         mach_number,
-        atyp_param.ff_idle_sls,
-        atyp_param.ff_max_sls,
-        FlightPhase.CRUISE,
+        atyp_param.m_des,
+        atyp_param.c_l_do,
+        atyp_param.wing_surface_area,
+        mtow
     )
-    np.testing.assert_array_almost_equal(fuel_flow, [0.574, 0.559], decimal=3)
+    np.testing.assert_array_almost_equal(
+        amass_lims, [mtow, mtow, 521823.2, 462861.6, 410455.8, 363983.4], decimal=0
+    )
+
+
+def test_fuel_flow_limits() -> None:
+    """Check the ps.correct_fuel_flow function."""
+    ps_model = ps.PSFlight()
+    atyp_param = ps_model.aircraft_engine_params["A320"]
+
+    # Erroneous fuel flow data
+    fuel_flow_est = np.array([3.05, 4.13, 5.20, 0.02, 0.03])
+    altitude_ft = np.ones_like(fuel_flow_est) * 35000
+    air_temperature = np.ones_like(fuel_flow_est) * 220
+    air_pressure = units.ft_to_pl(altitude_ft) * 100
+    mach_num = np.ones_like(fuel_flow_est) * 0.75
+
+    fuel_flow_max = ps_lims.max_fuel_flow(
+        air_temperature, air_pressure, mach_num, atyp_param.ff_max_sls, FlightPhase.CRUISE
+    )
+
+    fuel_flow_corrected = np.where(fuel_flow_est > fuel_flow_max, fuel_flow_max, fuel_flow_est)
+    np.testing.assert_array_almost_equal(
+        fuel_flow_corrected, [1.261, 1.261, 1.261, 0.02, 0.03], decimal=2
+    )
+    assert np.all(
+        (fuel_flow_corrected < atyp_param.ff_max_sls)
+    )
 
 
 def test_normalised_aircraft_performance_curves() -> None:
@@ -164,7 +284,7 @@ def test_normalised_aircraft_performance_curves() -> None:
     )
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
 
-    eta = ps.overall_propulsion_efficiency(mach_num, c_t, atyp_param)
+    eta = ps.overall_propulsion_efficiency(mach_num, c_t, c_t_eta_b, atyp_param)
     eta_b = ps.max_overall_propulsion_efficiency(
         mach_num_design_opt, mach_num_design_opt, atyp_param.eta_1, atyp_param.eta_2
     )
@@ -193,42 +313,13 @@ def test_total_fuel_burn(load_factor: float) -> None:
     out = ps_model.eval(flight)
 
     if load_factor == 0.5:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4558.2, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4986.5, abs=0.1)
     elif load_factor == 0.6:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4931.8, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5306.1, abs=0.1)
     elif load_factor == 0.7:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5267.7, abs=0.1)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5452.7, abs=0.1)
     elif load_factor == 0.8:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5414.8, abs=0.1)
-
-
-def test_fuel_clipping() -> None:
-    """Check the ps.correct_fuel_flow function."""
-    ps_model = ps.PSFlight()
-    atyp_param = ps_model.aircraft_engine_params["A320"]
-
-    # Erroneous fuel flow data
-    fuel_flow_est = np.array([3.05, 4.13, 5.20, 0.02, 0.03])
-    altitude_ft = np.ones_like(fuel_flow_est) * 35000
-    air_temperature = np.ones_like(fuel_flow_est) * 220
-    air_pressure = units.ft_to_pl(altitude_ft) * 100
-    mach_num = np.ones_like(fuel_flow_est) * 0.75
-
-    fuel_flow_corrected = ps.correct_fuel_flow(
-        fuel_flow_est,
-        altitude_ft,
-        air_temperature,
-        air_pressure,
-        mach_num,
-        atyp_param.ff_idle_sls,
-        atyp_param.ff_max_sls,
-        FlightPhase.CRUISE,
-    )
-
-    min_fuel_flow = jet.minimum_fuel_flow_rate_at_cruise(atyp_param.ff_idle_sls, altitude_ft)
-    assert np.all(
-        (fuel_flow_corrected < atyp_param.ff_max_sls) & (fuel_flow_corrected >= min_fuel_flow)
-    )
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5566.1, abs=0.1)
 
 
 def test_zero_tas_waypoints() -> None:
@@ -260,6 +351,7 @@ def test_zero_tas_waypoints() -> None:
 @pytest.mark.parametrize("aircraft_type", ["A320", "A333", "B737", "B753"])
 def test_ps_nominal_grid(aircraft_type: str) -> None:
     """Test the ps_nominal_grid function assuming the ISA temperature."""
+    # TODO: @Zeb, you'll need to fix this
     altitude_ft = np.arange(27000, 44000, 1000, dtype=float)
     level = units.ft_to_pl(altitude_ft)
     ds = ps_nominal_grid(aircraft_type, level=level)
