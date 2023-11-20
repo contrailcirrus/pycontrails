@@ -54,7 +54,7 @@ class PSFlight(AircraftPerformance):
     """
 
     name = "PSFlight"
-    long_name = "Poll-Schumann Aircraft Performance Model (Beta Version 2)"
+    long_name = "Poll-Schumann Aircraft Performance Model"
     met_variables = (AirTemperature,)
     optional_met_variables = EastwardWind, NorthwardWind
     default_params = PSFlightParams
@@ -136,7 +136,7 @@ class PSFlight(AircraftPerformance):
 
         self.source.attrs.setdefault("wingspan", aircraft_params.wing_span)
         self.source.attrs.setdefault("max_mach", aircraft_params.max_mach_num)
-        self.source.attrs.setdefault("max_altitude", units.ft_to_m(aircraft_params.fl_max * 100))
+        self.source.attrs.setdefault("max_altitude", units.ft_to_m(aircraft_params.fl_max * 100.0))
         self.source.attrs.setdefault("n_engine", aircraft_params.n_engine)
 
         amass_oew = self.source.attrs.get("amass_oew", aircraft_params.amass_oew)
@@ -277,7 +277,7 @@ class PSFlight(AircraftPerformance):
             c_t_available = ps_lims.max_available_thrust_coefficient(
                 air_temperature, mach_num, c_t_eta_b, atyp_param
             )
-            np.clip(c_t, 0.0, c_t_available)
+            np.clip(c_t, 0.0, c_t_available, out=c_t)
 
         if engine_efficiency is None:
             engine_efficiency = overall_propulsion_efficiency(

@@ -210,10 +210,14 @@ def _nominal_perf(aircraft_mass: ArrayOrFloat, perf: _PerfVariables) -> Aircraft
     c_t = ps_model.engine_thrust_coefficient(
         thrust, mach_number, air_pressure, atyp_param.wing_surface_area
     )
+    c_t_eta_b = ps_model.thrust_coefficient_at_max_efficiency(
+        mach_number, atyp_param.m_des, atyp_param.c_t_des
+    )
 
-    engine_efficiency = ps_model.overall_propulsion_efficiency(mach_number, c_t, atyp_param)
+    engine_efficiency = ps_model.overall_propulsion_efficiency(
+        mach_number, c_t, c_t_eta_b, atyp_param
+    )
 
-    # TODO: @Zeb, the inputs to this function needs to be updated
     fuel_flow = ps_model.fuel_mass_flow_rate(
         air_pressure,
         air_temperature,

@@ -52,18 +52,19 @@ def max_mach_number_by_altitude(
 
     Notes
     -----
-    Below 10,000 ft, the ATM speed limit of 250 knots (p_i = 10510 Pa) is imposed. Below the
+    Below 10,000 ft, the ATM speed limit of 250 knots (``p_i = 10510 Pa``) is imposed. Below the
     crossover altitude, the maximum operational speed is limited by the maximum permitted impact
     pressure. Above the crossover altitude, the maximum operational speed is determined by the
     maximum permitted Mach number of the aircraft type.
     """
     if atm_speed_limit:
-        p_i_max = np.where(altitude_ft < 10000.0, 10510.0, p_i_max)
+        p_i_max = np.where(altitude_ft < 10000.0, 10510.0, p_i_max)  # type: ignore[assignment]
 
     return (
-        np.where(
+        np.where(  # type: ignore[return-value]
             air_pressure > p_inf_co,
-            2**0.5 * ((1 + (2 / constants.kappa) * (p_i_max / air_pressure)) ** 0.5 - 1) ** 0.5,
+            2.0**0.5
+            * ((1.0 + (2.0 / constants.kappa) * (p_i_max / air_pressure)) ** 0.5 - 1.0) ** 0.5,
             max_mach_num,
         )
         + buffer
@@ -80,7 +81,7 @@ def required_thrust_coefficient(
     c_drag: ArrayOrFloat,
     true_airspeed: ArrayOrFloat,
     *,
-    rocd: ArrayOrFloat = 300,
+    rocd: ArrayOrFloat = 300.0,  # type: ignore[assignment]
 ) -> ArrayOrFloat:
     r"""
     Calculate required thrust coefficient to fly the stated true airspeed and climb rate.
@@ -106,7 +107,7 @@ def required_thrust_coefficient(
     The maximum "useful" operational altitude is being deemed to have been reached when the
     achievable climb rate drops to about 300 ft/min.
     """
-    dh_dt = units.ft_to_m(rocd) / 60
+    dh_dt = units.ft_to_m(rocd) / 60.0
     return c_lift * ((c_drag / c_lift) + (dh_dt / true_airspeed))
 
 
@@ -142,7 +143,7 @@ def max_available_thrust_coefficient(
         atyp_param.tr_ec,
         atyp_param.m_ec,
     )
-    c_t_max_over_c_t_eta_b = 1 + 2.5 * (tr_max - 1)
+    c_t_max_over_c_t_eta_b = 1.0 + 2.5 * (tr_max - 1)
     return c_t_max_over_c_t_eta_b * c_t_eta_b
 
 
@@ -182,7 +183,7 @@ def _normalised_max_throttle_parameter(
     overall efficiency at the same freestream Mach number.
     """
     return (tet_mcc / air_temperature) / (
-        tr_ec * (1 - 0.53 * (mach_number - m_ec) ** 2) * (1 + 0.2 * mach_number**2)
+        tr_ec * (1.0 - 0.53 * (mach_number - m_ec) ** 2) * (1.0 + 0.2 * mach_number**2)
     )
 
 
@@ -223,7 +224,7 @@ def max_allowable_aircraft_mass(
         Maximum allowable aircraft mass, [:math:`kg`]
     """
     c_l_maxu = max_usable_lift_coefficient(mach_number, mach_num_des, c_l_do)
-    amass_max = (1 / constants.g) * (
+    amass_max = (1.0 / constants.g) * (
         c_l_maxu * 0.5 * constants.kappa * air_pressure * (mach_number**2) * wing_surface_area
     )
     return np.minimum(amass_max, amass_mtow)
@@ -255,7 +256,7 @@ def max_usable_lift_coefficient(
         1.8 + 0.160 * m_over_m_des - 1.085 * m_over_m_des**2,
         13.272 - 42.262 * m_over_m_des + 49.883 * m_over_m_des**2 - 19.683 * m_over_m_des**3,
     )
-    return c_l_maxu_over_c_l_do * c_l_do
+    return c_l_maxu_over_c_l_do * c_l_do  # type: ignore[return-value]
 
 
 # ----------------
@@ -279,7 +280,7 @@ def fuel_flow_idle(fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat) -> npt.
         Fuel mass flow rate at flight idle conditions, [:math:`kg \ s^{-1}`]
     """
     x = altitude_ft / 10000.0
-    return fuel_flow_idle_sls * (1.0 - 0.178 * x + 0.0085 * x**2)
+    return fuel_flow_idle_sls * (1.0 - 0.178 * x + 0.0085 * x**2)  # type: ignore[return-value]
 
 
 def max_fuel_flow(
@@ -288,7 +289,7 @@ def max_fuel_flow(
     mach_number: ArrayOrFloat,
     fuel_flow_max_sls: float,
     flight_phase: npt.NDArray[np.uint8] | flight.FlightPhase,
-) -> ArrayOrFloat:
+) -> npt.NDArray[np.float_]:
     r"""Correct maximum fuel mass flow rate that can be supplied by the engine.
 
     Parameters
@@ -311,8 +312,8 @@ def max_fuel_flow(
     """
     ff_max = jet.equivalent_fuel_flow_rate_at_cruise(
         fuel_flow_max_sls,
-        (air_temperature / constants.T_msl),
-        (air_pressure / constants.p_surface),
+        air_temperature / constants.T_msl,
+        air_pressure / constants.p_surface,
         mach_number,
     )
 

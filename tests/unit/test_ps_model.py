@@ -353,7 +353,7 @@ def test_zero_tas_waypoints() -> None:
 @pytest.mark.parametrize("aircraft_type", ["A320", "A333", "B737", "B753"])
 def test_ps_nominal_grid(aircraft_type: str) -> None:
     """Test the ps_nominal_grid function assuming the ISA temperature."""
-    # TODO: @Zeb, you'll need to fix this
+
     altitude_ft = np.arange(27000, 44000, 1000, dtype=float)
     level = units.ft_to_pl(altitude_ft)
     ds = ps_nominal_grid(aircraft_type, level=level)
