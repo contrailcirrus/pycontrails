@@ -13,7 +13,7 @@ from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParam
 # Operational speed limits
 # ------------------------
 
-def maximum_permitted_mach_number_by_altitude(
+def max_mach_number_by_altitude(
     altitude_ft: ArrayOrFloat,
     air_pressure: ArrayOrFloat,
     max_mach_num: float,
@@ -128,7 +128,7 @@ def max_available_thrust_coefficient(
         Maximum available thrust coefficient that can be supplied by the engines.
     """
     tr_max = _normalised_max_throttle_parameter(
-        air_temperature, mach_number, atyp_param.tet_mcc, atyp_param.mec, atyp_param.tec
+        air_temperature, mach_number, atyp_param.tet_mcc, atyp_param.tr_ec, atyp_param.m_ec,
     )
     c_t_max_over_c_t_eta_b = 1 + 2.5 * (tr_max - 1)
     return c_t_max_over_c_t_eta_b * c_t_eta_b
@@ -178,12 +178,13 @@ def _normalised_max_throttle_parameter(
 # Aircraft mass limits
 # --------------------
 
-def maximum_allowable_aircraft_mass(
+def max_allowable_aircraft_mass(
     air_pressure: ArrayOrFloat,
     mach_number: ArrayOrFloat,
     mach_num_des: float,
     c_l_do: float,
     wing_surface_area: float,
+    amass_mtow: float,
 ) -> ArrayOrFloat:
     """
     Calculate maximum allowable aircraft mass for a given altitude and mach number.
@@ -200,19 +201,22 @@ def maximum_allowable_aircraft_mass(
         Design optimum lift coefficient.
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
+    amass_mtow: float
+        Aircraft maximum take-off weight, [:math:`kg`]
 
     Returns
     -------
     ArrayOrFloat
         Maximum allowable aircraft mass, [:math:`kg`]
     """
-    c_l_maxu = maximum_usable_lift_coefficient(mach_number, mach_num_des, c_l_do)
-    return (1 / constants.g) * (
-        c_l_maxu * 0.5 * constants.kappa * air_pressure * mach_number ** 2 * wing_surface_area
+    c_l_maxu = max_usable_lift_coefficient(mach_number, mach_num_des, c_l_do)
+    amass_max = (1 / constants.g) * (
+        c_l_maxu * 0.5 * constants.kappa * air_pressure * (mach_number ** 2) * wing_surface_area
     )
+    return np.minimum(amass_max, amass_mtow)
 
 
-def maximum_usable_lift_coefficient(
+def max_usable_lift_coefficient(
     mach_number: ArrayOrFloat,
     mach_num_des: float,
     c_l_do: float
@@ -247,7 +251,7 @@ def maximum_usable_lift_coefficient(
 # Fuel flow limits
 # ----------------
 
-def maximum_fuel_flow(
+def max_fuel_flow(
     air_temperature: ArrayOrFloat,
     air_pressure: ArrayOrFloat,
     mach_number: ArrayOrFloat,

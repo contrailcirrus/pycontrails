@@ -132,7 +132,7 @@ class PSFlight(AircraftPerformance):
 
         self.source.attrs.setdefault("wingspan", aircraft_params.wing_span)
         self.source.attrs.setdefault("max_mach", aircraft_params.max_mach_num)
-        self.source.attrs.setdefault("max_altitude", units.ft_to_m(aircraft_params.max_altitude_ft))
+        self.source.attrs.setdefault("max_altitude", units.ft_to_m(aircraft_params.fl_max * 100))
         self.source.attrs.setdefault("n_engine", aircraft_params.n_engine)
 
         amass_oew = self.source.attrs.get("amass_oew", aircraft_params.amass_oew)
@@ -210,7 +210,7 @@ class PSFlight(AircraftPerformance):
         air_pressure = units.ft_to_pl(altitude_ft) * 100.0
 
         # Clip unrealistically high true airspeed
-        max_mach = ps_lims.maximum_permitted_mach_number_by_altitude(
+        max_mach = ps_lims.max_mach_number_by_altitude(
             altitude_ft,
             air_pressure,
             atyp_param.max_mach_num,
@@ -298,7 +298,7 @@ class PSFlight(AircraftPerformance):
 
         if correct_fuel_flow:
             flight_phase = flight.segment_phase(rocd, altitude_ft)
-            max_fuel_flow = ps_lims.maximum_fuel_flow(
+            max_fuel_flow = ps_lims.max_fuel_flow(
                 air_temperature, air_pressure, mach_num, atyp_param.ff_max_sls, flight_phase
             )
             fuel_flow = np.where(fuel_flow > max_fuel_flow, max_fuel_flow, fuel_flow)
@@ -927,7 +927,8 @@ def fuel_mass_flow_rate(
 
 
 def fuel_flow_idle(
-    fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat
+    fuel_flow_idle_sls: float,
+    altitude_ft: ArrayOrFloat
 ) -> npt.NDArray[np.float_]:
     r"""Calculate minimum fuel mass flow rate at flight idle conditions.
 
