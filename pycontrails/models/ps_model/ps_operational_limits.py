@@ -1,26 +1,29 @@
+"""Support for calculating operational limits of the PS model."""
+
 from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
 
-from pycontrails.physics import constants, jet, units
-from pycontrails.utils.types import ArrayOrFloat
 from pycontrails.core import flight
 from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParams
-
+from pycontrails.physics import constants, jet, units
+from pycontrails.utils.types import ArrayOrFloat
 
 # ------------------------
 # Operational speed limits
 # ------------------------
+
 
 def max_mach_number_by_altitude(
     altitude_ft: ArrayOrFloat,
     air_pressure: ArrayOrFloat,
     max_mach_num: float,
     p_i_max: float,
-    p_inf_co: float, *,
+    p_inf_co: float,
+    *,
     atm_speed_limit: bool = True,
-    buffer: float = 0.02
+    buffer: float = 0.02,
 ) -> ArrayOrFloat:
     """
     Calculate maximum permitted Mach number at a given altitude.
@@ -57,24 +60,29 @@ def max_mach_number_by_altitude(
     if atm_speed_limit:
         p_i_max = np.where(altitude_ft < 10000.0, 10510.0, p_i_max)
 
-    return np.where(
-        air_pressure > p_inf_co,
-        2**0.5 * ((1 + (2 / constants.kappa) * (p_i_max / air_pressure))**0.5 - 1)**0.5,
-        max_mach_num
-    ) + buffer
+    return (
+        np.where(
+            air_pressure > p_inf_co,
+            2**0.5 * ((1 + (2 / constants.kappa) * (p_i_max / air_pressure)) ** 0.5 - 1) ** 0.5,
+            max_mach_num,
+        )
+        + buffer
+    )
 
 
 # ------------------------------
 # Thrust requirements and limits
 # ------------------------------
 
+
 def required_thrust_coefficient(
     c_lift: ArrayOrFloat,
     c_drag: ArrayOrFloat,
-    true_airspeed: ArrayOrFloat, *,
+    true_airspeed: ArrayOrFloat,
+    *,
     rocd: ArrayOrFloat = 300,
 ) -> ArrayOrFloat:
-    """
+    r"""
     Calculate required thrust coefficient to fly the stated true airspeed and climb rate.
 
     Parameters
@@ -128,7 +136,11 @@ def max_available_thrust_coefficient(
         Maximum available thrust coefficient that can be supplied by the engines.
     """
     tr_max = _normalised_max_throttle_parameter(
-        air_temperature, mach_number, atyp_param.tet_mcc, atyp_param.tr_ec, atyp_param.m_ec,
+        air_temperature,
+        mach_number,
+        atyp_param.tet_mcc,
+        atyp_param.tr_ec,
+        atyp_param.m_ec,
     )
     c_t_max_over_c_t_eta_b = 1 + 2.5 * (tr_max - 1)
     return c_t_max_over_c_t_eta_b * c_t_eta_b
@@ -170,13 +182,14 @@ def _normalised_max_throttle_parameter(
     overall efficiency at the same freestream Mach number.
     """
     return (tet_mcc / air_temperature) / (
-        tr_ec * (1 - 0.53 * (mach_number - m_ec)**2) * (1 + 0.2 * mach_number**2)
+        tr_ec * (1 - 0.53 * (mach_number - m_ec) ** 2) * (1 + 0.2 * mach_number**2)
     )
 
 
 # --------------------
 # Aircraft mass limits
 # --------------------
+
 
 def max_allowable_aircraft_mass(
     air_pressure: ArrayOrFloat,
@@ -211,15 +224,13 @@ def max_allowable_aircraft_mass(
     """
     c_l_maxu = max_usable_lift_coefficient(mach_number, mach_num_des, c_l_do)
     amass_max = (1 / constants.g) * (
-        c_l_maxu * 0.5 * constants.kappa * air_pressure * (mach_number ** 2) * wing_surface_area
+        c_l_maxu * 0.5 * constants.kappa * air_pressure * (mach_number**2) * wing_surface_area
     )
     return np.minimum(amass_max, amass_mtow)
 
 
 def max_usable_lift_coefficient(
-    mach_number: ArrayOrFloat,
-    mach_num_des: float,
-    c_l_do: float
+    mach_number: ArrayOrFloat, mach_num_des: float, c_l_do: float
 ) -> ArrayOrFloat:
     """
     Calculate maximum usable lift coefficient.
@@ -241,8 +252,8 @@ def max_usable_lift_coefficient(
     m_over_m_des = mach_number / mach_num_des
     c_l_maxu_over_c_l_do = np.where(
         m_over_m_des < 0.70,
-        1.8 + 0.160 * m_over_m_des - 1.085 * m_over_m_des ** 2,
-        13.272 - 42.262 * m_over_m_des + 49.883 * m_over_m_des ** 2 - 19.683 * m_over_m_des ** 3
+        1.8 + 0.160 * m_over_m_des - 1.085 * m_over_m_des**2,
+        13.272 - 42.262 * m_over_m_des + 49.883 * m_over_m_des**2 - 19.683 * m_over_m_des**3,
     )
     return c_l_maxu_over_c_l_do * c_l_do
 
@@ -251,10 +262,8 @@ def max_usable_lift_coefficient(
 # Fuel flow limits
 # ----------------
 
-def fuel_flow_idle(
-    fuel_flow_idle_sls: float,
-    altitude_ft: ArrayOrFloat
-) -> npt.NDArray[np.float_]:
+
+def fuel_flow_idle(fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat) -> npt.NDArray[np.float_]:
     r"""Calculate minimum fuel mass flow rate at flight idle conditions.
 
     Parameters

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Mapping, NoReturn, overload
+from collections.abc import Mapping
+from typing import Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -19,11 +20,11 @@ from pycontrails.core.aircraft_performance import (
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
+from pycontrails.models.ps_model import ps_operational_limits as ps_lims
 from pycontrails.models.ps_model.ps_aircraft_params import (
     PSAircraftEngineParams,
     load_aircraft_engine_params,
 )
-from pycontrails.models.ps_model import ps_operational_limits as ps_lims
 from pycontrails.physics import constants, jet, units
 from pycontrails.utils.types import ArrayOrFloat
 
@@ -94,7 +95,8 @@ class PSFlight(AircraftPerformance):
         if aircraft_type in self.aircraft_engine_params:
             return True
         if raise_error:
-            raise KeyError(f"Aircraft type {aircraft_type} not covered by the PS model.")
+            msg = f"Aircraft type {aircraft_type} not covered by the PS model."
+            raise KeyError(msg)
         return False
 
     @overload
@@ -119,12 +121,14 @@ class PSFlight(AircraftPerformance):
         try:
             aircraft_type = self.source.attrs["aircraft_type"]
         except KeyError as exc:
-            raise KeyError("`aircraft_type` required on flight attrs") from exc
+            msg = "`aircraft_type` required on flight attrs"
+            raise KeyError(msg) from exc
 
         try:
             aircraft_params = self.aircraft_engine_params[aircraft_type]
-        except KeyError:
-            raise KeyError(f"Aircraft type {aircraft_type} not covered by the PS model.")
+        except KeyError as exc:
+            msg = f"Aircraft type {aircraft_type} not covered by the PS model."
+            raise KeyError(msg) from exc
 
         # Set flight attributes based on engine, if they aren't already defined
         self.source.attrs.setdefault("aircraft_performance_model", self.name)
@@ -198,11 +202,13 @@ class PSFlight(AircraftPerformance):
     ) -> AircraftPerformanceData:
         try:
             correct_fuel_flow = kwargs["correct_fuel_flow"]
-        except KeyError:
-            raise KeyError("A 'correct_fuel_flow' kwarg is required for this model")
+        except KeyError as exc:
+            msg = "A 'correct_fuel_flow' kwarg is required for this model"
+            raise KeyError(msg) from exc
 
         if not isinstance(true_airspeed, np.ndarray):
-            raise NotImplementedError("Only array inputs are supported")
+            msg = "Only array inputs are supported"
+            raise NotImplementedError(msg)
 
         atyp_param = self.aircraft_engine_params[aircraft_type]
 
@@ -217,7 +223,7 @@ class PSFlight(AircraftPerformance):
             atyp_param.p_i_max,
             atyp_param.p_inf_co,
             atm_speed_limit=False,
-            buffer=0.02
+            buffer=0.02,
         )
         true_airspeed, mach_num = jet.clip_mach_number(true_airspeed, air_temperature, max_mach)
 
@@ -241,7 +247,8 @@ class PSFlight(AircraftPerformance):
             theta = jet.climb_descent_angle(true_airspeed, rocd)
 
         else:
-            raise NotImplementedError("Only array inputs are supported")
+            msg = "Only array inputs are supported"
+            raise NotImplementedError(msg)
 
         # Aircraft performance parameters
         c_lift = lift_coefficient(
@@ -761,9 +768,7 @@ def overall_propulsion_efficiency(
     npt.NDArray[np.float_]
         Overall propulsion efficiency
     """
-    eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(
-        mach_num, c_t, c_t_eta_b
-    )
+    eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(mach_num, c_t, c_t_eta_b)
     if eta_over_eta_b_min is not None:
         eta_over_eta_b.clip(min=eta_over_eta_b_min, out=eta_over_eta_b)
     eta_b = max_overall_propulsion_efficiency(
@@ -817,7 +822,9 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     return np.where(c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
 
 
-def thrust_coefficient_at_max_efficiency(mach_num: ArrayOrFloat, m_des: float, c_t_des: float) -> ArrayOrFloat:
+def thrust_coefficient_at_max_efficiency(
+    mach_num: ArrayOrFloat, m_des: float, c_t_des: float
+) -> ArrayOrFloat:
     """
     Calculate thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
 
@@ -878,6 +885,7 @@ def max_overall_propulsion_efficiency(
 # -------------------
 # Fuel consumption
 # -------------------
+
 
 def fuel_mass_flow_rate(
     air_pressure: ArrayOrFloat,

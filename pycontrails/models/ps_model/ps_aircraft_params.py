@@ -5,11 +5,13 @@ from __future__ import annotations
 import dataclasses
 import functools
 import pathlib
-import numpy as np
-from typing import Any, Mapping
-from pycontrails.physics import constants as c
+from collections.abc import Mapping
+from typing import Any
 
+import numpy as np
 import pandas as pd
+
+from pycontrails.physics import constants as c
 
 #: Path to the Poll-Schumann aircraft parameters CSV file.
 PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20231117.csv"
@@ -87,6 +89,7 @@ class PSAircraftEngineParams:
     - ``p_i_max``       Maximum operational impact pressure, [:math:`Pa`]
     - ``p_inf_co``      Crossover pressure altitude, [:math:`Pa`]
     """
+
     manufacturer: str
     aircraft_type: str
     n_engine: int
