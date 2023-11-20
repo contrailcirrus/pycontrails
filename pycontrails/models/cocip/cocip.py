@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Any, Literal, NoReturn, Sequence, overload
+from collections.abc import Sequence
+from typing import Any, Literal, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt

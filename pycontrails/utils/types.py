@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import functools
 from datetime import datetime
-from typing import Any, Callable, Type, TypeVar, Union
+from typing import Any, Callable, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -130,7 +130,7 @@ _Object = TypeVar("_Object")
 
 def type_guard(
     obj: Any,
-    type_: Type[_Object] | tuple[Type[_Object], ...],
+    type_: type[_Object] | tuple[type[_Object], ...],
     error_message: str | None = None,
 ) -> _Object:
     """Shortcut utility to type guard a variable with custom error message.

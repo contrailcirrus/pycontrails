@@ -809,7 +809,7 @@ def _evolve_vector(
     rad: MetDataset,
     params: dict[str, Any],
     run_downwash: bool,
-    pbar: "tqdm.tqdm" | None,
+    pbar: tqdm.tqdm | None,
 ) -> tuple[
     GeoVectorDataset,
     VectorDataset | None,

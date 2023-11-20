@@ -19,7 +19,7 @@ This module includes functions to produce additional output formats, including t
 from __future__ import annotations
 
 import warnings
-from typing import Hashable
+from collections.abc import Hashable
 
 import numpy as np
 import numpy.typing as npt
@@ -1202,17 +1202,17 @@ def meteorological_time_slice_statistics(
 
     stats = {
         "issr_percentage_coverage": (
-            np.nansum((is_issr * weights)) / (np.nansum(weights) * len(rhi.level))
+            np.nansum(is_issr * weights) / (np.nansum(weights) * len(rhi.level))
         ) * 100,
         "mean_rhi_in_issr": np.nanmean(rhi.values[is_issr.values]),
         "contrail_cirrus_percentage_coverage": (
-            np.nansum((area * cirrus_coverage["contrails"].data)) / np.nansum(area)
+            np.nansum(area * cirrus_coverage["contrails"].data) / np.nansum(area)
         ) * 100,
         "contrail_cirrus_clear_sky_percentage_coverage": (
-            np.nansum((area * cirrus_coverage["contrails_clear_sky"].data)) / np.nansum(area)
+            np.nansum(area * cirrus_coverage["contrails_clear_sky"].data) / np.nansum(area)
         ) * 100,
         "natural_cirrus_percentage_coverage": (
-            np.nansum((area * cirrus_coverage["natural_cirrus"].data)) / np.nansum(area)
+            np.nansum(area * cirrus_coverage["natural_cirrus"].data) / np.nansum(area)
         ) * 100,
     }
     return pd.Series(stats)
@@ -1754,7 +1754,7 @@ def _pixel_weights(contrail_segment: GeoVectorDataset, segment_grid: xr.DataArra
         (lon_grid - head["longitude"]),
         0.5 * (head["latitude"] + lat_grid),
     )
-    dy_grid = units.latitude_distance_to_m((lat_grid - head["latitude"]))
+    dy_grid = units.latitude_distance_to_m(lat_grid - head["latitude"])
     weights = (dx * dx_grid + dy * dy_grid) / det
     return xr.DataArray(
         data=weights.T,

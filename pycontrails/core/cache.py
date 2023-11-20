@@ -9,7 +9,8 @@ import pathlib
 import shutil
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 logger = logging.getLogger(__name__)
 
@@ -451,8 +452,8 @@ class GCPCacheStore(CacheStore):
     show_progress: bool
     chunk_size: int
     _disk_cache: DiskCacheStore
-    _client: "google.cloud.storage.Client"
-    _bucket: "google.cloud.storage.Bucket"
+    _client: google.cloud.storage.Client
+    _bucket: google.cloud.storage.Bucket
 
     def __init__(
         self,
@@ -552,7 +553,7 @@ class GCPCacheStore(CacheStore):
         return f"GCPCacheStore: {self.bucket}/{self.cache_dir}"
 
     @property
-    def client(self) -> "google.cloud.storage.Client":
+    def client(self) -> google.cloud.storage.Client:
         """Handle to Google Cloud Storage client.
 
         Returns

@@ -237,7 +237,7 @@ ignore-path = [
 # https://beta.ruff.rs/docs/settings/#select
 # https://www.pydocstyle.org/en/6.3.0/error_codes.html
 [tool.ruff]
-select = ["D", "E", "F", "I", "NPY", "PL", "PT"]
+select = ["D", "E", "F", "I", "NPY", "PL", "PT", "UP"]
 line-length = 100
 ignore = [
     "E402",

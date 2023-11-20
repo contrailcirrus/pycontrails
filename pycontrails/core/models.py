@@ -8,8 +8,9 @@ import json
 import logging
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import dataclass, fields
-from typing import Any, List, NoReturn, Sequence, Type, TypeVar, Union, overload
+from typing import Any, NoReturn, TypeVar, Union, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 ModelInput = Union[MetDataset, GeoVectorDataset, Flight, Sequence[Flight], None]
 
 #: Model output source types
-ModelOutput = Union[MetDataArray, MetDataset, GeoVectorDataset, Flight, List[Flight], NoReturn]
+ModelOutput = Union[MetDataArray, MetDataset, GeoVectorDataset, Flight, list[Flight], NoReturn]
 
 #: Model attribute source types
 SourceType = Union[MetDataset, GeoVectorDataset, Flight, Fleet]
@@ -146,7 +147,7 @@ class Model(ABC):
     __slots__ = ("params", "met", "source")
 
     #: Default model parameter dataclass
-    default_params: Type[ModelParams] = ModelParams
+    default_params: type[ModelParams] = ModelParams
 
     #: Instantiated model parameters, in dictionary form
     params: dict[str, Any]
@@ -403,7 +404,7 @@ class Model(ABC):
             f"Meteorology is required for this model. Specify with {type(self).__name__}(met=...) ",
         )
 
-    def require_source_type(self, type_: Type[_Source] | tuple[Type[_Source], ...]) -> _Source:
+    def require_source_type(self, type_: type[_Source] | tuple[type[_Source], ...]) -> _Source:
         """Ensure that :attr:`source` is ``type_``.
 
         Returns

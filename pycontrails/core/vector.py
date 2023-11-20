@@ -6,7 +6,8 @@ import hashlib
 import json
 import logging
 import warnings
-from typing import Any, Dict, Generator, Iterable, Iterator, Sequence, Type, TypeVar, overload
+from collections.abc import Generator, Iterable, Iterator, Sequence
+from typing import Any, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ VectorDatasetType = TypeVar("VectorDatasetType", bound="VectorDataset")
 GeoVectorDatasetType = TypeVar("GeoVectorDatasetType", bound="GeoVectorDataset")
 
 
-class AttrDict(Dict[str, Any]):
+class AttrDict(dict[str, Any]):
     """Thin wrapper around dict to warn when setting a key that already exists."""
 
     def __setitem__(self, k: str, v: Any) -> None:
@@ -72,7 +73,7 @@ class AttrDict(Dict[str, Any]):
         return default
 
 
-class VectorDataDict(Dict[str, np.ndarray]):
+class VectorDataDict(dict[str, np.ndarray]):
     """Thin wrapper around ``dict[str, np.ndarray]`` to ensure consistency.
 
     Parameters
@@ -586,7 +587,7 @@ class VectorDataset:
 
     @classmethod
     def sum(
-        cls: Type[VectorDatasetType],
+        cls: type[VectorDatasetType],
         vectors: Sequence[VectorDataset],
         infer_attrs: bool = True,
         fill_value: float | None = None,
@@ -1084,7 +1085,7 @@ class VectorDataset:
 
     @classmethod
     def create_empty(
-        cls: Type[VectorDatasetType],
+        cls: type[VectorDatasetType],
         keys: Iterable[str],
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
@@ -1112,7 +1113,7 @@ class VectorDataset:
 
     @classmethod
     def from_dict(
-        cls: Type[VectorDatasetType], obj: dict[str, Any], copy: bool = True, **obj_kwargs: Any
+        cls: type[VectorDatasetType], obj: dict[str, Any], copy: bool = True, **obj_kwargs: Any
     ) -> VectorDatasetType:
         """Create instance from dict representation containing data and attrs.
 
@@ -1909,7 +1910,7 @@ class GeoVectorDataset(VectorDataset):
     @classmethod
     @overrides
     def create_empty(
-        cls: Type[GeoVectorDatasetType],
+        cls: type[GeoVectorDatasetType],
         keys: Iterable[str] | None = None,
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
