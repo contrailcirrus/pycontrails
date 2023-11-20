@@ -2329,7 +2329,7 @@ def _wrap_longitude(data: XArrayType) -> XArrayType:
     # Ideally we'd raise if data was Zarr-based
     chunks = getattr(data, "chunks", None) or {}
     chunks = dict(chunks)  # chunks can be frozen
-    lon_chunks = chunks.get("longitude", tuple())
+    lon_chunks = chunks.get("longitude", ())
     if len(lon_chunks) == 1:
         chunks["longitude"] = (lon_chunks[0] + len(objs) - 1,)
         wrapped = wrapped.chunk(chunks)
