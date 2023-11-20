@@ -244,9 +244,9 @@ def equivalent_fuel_flow_rate_at_sea_level(
 
 def equivalent_fuel_flow_rate_at_cruise(
     fuel_flow_sls: npt.NDArray[np.float_] | float,
-    theta_amb: npt.NDArray[np.float_],
-    delta_amb: npt.NDArray[np.float_],
-    mach_num: npt.NDArray[np.float_],
+    theta_amb: ArrayOrFloat,
+    delta_amb: ArrayOrFloat,
+    mach_num: ArrayOrFloat,
 ) -> npt.NDArray[np.float_]:
     r"""Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
 
@@ -256,11 +256,11 @@ def equivalent_fuel_flow_rate_at_cruise(
     ----------
     fuel_flow_sls : npt.NDArray[np.float_] | float
         Fuel mass flow rate, [:math:`kg s^{-1}`]
-    theta_amb : npt.NDArray[np.float_]
+    theta_amb : ArrayOrFloat
         Ratio of the ambient temperature to the temperature at mean sea-level.
-    delta_amb : npt.NDArray[np.float_]
+    delta_amb : ArrayOrFloat
         Ratio of the pressure altitude to the surface pressure.
-    mach_num : npt.NDArray[np.float_]
+    mach_num : ArrayOrFloat
         Mach number
 
     Returns

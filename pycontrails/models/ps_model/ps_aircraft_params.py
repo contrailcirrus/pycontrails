@@ -243,7 +243,7 @@ def turbine_entry_temperature_at_max_take_off(first_flight: float) -> float:
     Returns
     -------
     float
-        Turbine entry temperature at maximum take-off rating, `tet_mto`, [:math:`K`]
+        Turbine entry temperature at maximum take-off rating, ``tet_mto``, [:math:`K`]
 
     Notes
     -----
@@ -255,7 +255,7 @@ def turbine_entry_temperature_at_max_take_off(first_flight: float) -> float:
     ----------
     - :cite:`cumpstyJetPropulsion2015`
     """
-    return 2000 * (1 - np.exp(62.8 - 0.0325 * first_flight))
+    return 2000.0 * (1 - np.exp(62.8 - 0.0325 * first_flight))
 
 
 def turbine_entry_temperature_at_max_continuous_climb(tet_mto: float) -> float:
@@ -287,17 +287,17 @@ def impact_pressure_max_operating_limits(max_mach_num: float) -> float:
     Returns
     -------
     float
-        Maximum permitted operational impact pressure for aircraft type, `p_i_max`, [:math:`Pa`]
+        Maximum permitted operational impact pressure for aircraft type, ``p_i_max``, [:math:`Pa`]
 
     Notes
     -----
-    The impact pressure is the difference between the free stream total pressure `p_0` and the
-    atmospheric static pressure `p_inf`. By definition, the calibrated airspeed, `v_cas`, is
+    The impact pressure is the difference between the free stream total pressure ``p_0`` and the
+    atmospheric static pressure ``p_inf``. By definition, the calibrated airspeed, ``v_cas``, is
     the speed at sea level in the ISA that has the same impact pressure.
     """
     v_cas_mo_over_c_msl = max_calibrated_airspeed_over_speed_of_sound(max_mach_num)
     return c.p_surface * (
-        (1 + 0.5 * (c.kappa - 1) * v_cas_mo_over_c_msl**2) ** (c.kappa / (c.kappa - 1)) - 1
+        (1.0 + 0.5 * (c.kappa - 1.0) * v_cas_mo_over_c_msl**2) ** (c.kappa / (c.kappa - 1.0)) - 1.0
     )
 
 
@@ -333,7 +333,7 @@ def crossover_pressure_altitude(max_mach_num: float, p_i_max: float) -> float:
     Returns
     -------
     float
-        Crossover pressure altitude, `p_inf_co`, [:math:`Pa`]
+        Crossover pressure altitude, ``p_inf_co``, [:math:`Pa`]
 
     Notes
     -----
@@ -344,5 +344,5 @@ def crossover_pressure_altitude(max_mach_num: float, p_i_max: float) -> float:
     altitude, the maximum operational speed is determined by the Mach number instead of CAS.
     """
     return p_i_max / (
-        0.5 * c.kappa * max_mach_num**2 * (1 + (max_mach_num**2 / 4) + (max_mach_num**4 / 40))
+        0.5 * c.kappa * max_mach_num**2 * (1.0 + (max_mach_num**2 / 4.0) + (max_mach_num**4 / 40.0))
     )
