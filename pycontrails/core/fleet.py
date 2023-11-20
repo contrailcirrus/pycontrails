@@ -291,7 +291,7 @@ class Fleet(Flight):
     def resample_and_fill(self, *args: Any, **kwargs: Any) -> Fleet:
         flights = self.to_flight_list(copy=False)
         flights = [fl.resample_and_fill(*args, **kwargs) for fl in flights]
-        return Fleet.from_seq(flights, copy=False, broadcast_numeric=False, attrs=self.attrs)
+        return type(self).from_seq(flights, copy=False, broadcast_numeric=False, attrs=self.attrs)
 
     @overrides
     def segment_length(self) -> npt.NDArray[np.float_]:
