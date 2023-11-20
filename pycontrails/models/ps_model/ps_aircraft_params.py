@@ -73,8 +73,9 @@ class PSAircraftEngineParams:
                         at a minimum.
     - ``eta_1``         Multiplier for maximum overall propulsion efficiency model
     - ``eta_2``         Exponent for maximum overall propulsion efficiency model
-    - ``mec``           Engine constant used to calculate the throttle parameter
-    - ``tec``           Engine constant used to calculate the throttle parameter
+    - ``tr_ec``         Engine characteristic ratio of total turbine-entry-temperature to
+                        the total freestream temperature for maximum overall efficiency.
+    - ``m_ec``          Engine characteristic Mach number associated with `tr_ec`.
     - ``tet_mto``       Turbine entry temperature at maximum take-off rating, [:math:`K`]
     - ``tet_mcc``       Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
 
@@ -119,8 +120,8 @@ class PSAircraftEngineParams:
     c_t_des: float
     eta_1: float
     eta_2: float
-    mec: float
-    tec: float
+    tr_ec: float
+    m_ec: float
     tet_mto: float
     tet_mcc: float
 
@@ -165,8 +166,8 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
         c_t_des=tup.CT_des,
         eta_1=tup.eta_1,
         eta_2=tup.eta_2,
-        mec=tup.Mec,
-        tec=tup.Tec,
+        tr_ec=tup.Tec,
+        m_ec=tup.Mec,
         tet_mto=tet_mto,
         tet_mcc=turbine_entry_temperature_at_max_continuous_climb(tet_mto),
         fl_max=tup.FL_max,
