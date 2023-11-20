@@ -149,6 +149,7 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
         amass_mpl=tup.MPM_i_kg,
         wing_surface_area=tup.Sref_m2,
         wing_span=tup.span_m,
+        fuselage_width=tup.bf_m,
         delta_2=tup.delta_2,
         cos_sweep=tup.cos_sweep,
         wing_aspect_ratio=wing_aspect_ratio,
