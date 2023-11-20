@@ -108,11 +108,11 @@ class PSGrid(AircraftPerformanceGrid):
 
         # Check some assumptions
         if "true_airspeed" in self.source or "true_airspeed" in self.source.attrs:
-            raise NotImplementedError(
-                "PSGrid currently only supports setting a 'mach_number' parameter."
-            )
+            msg = "PSGrid currently only supports setting a 'mach_number' parameter."
+            raise NotImplementedError(msg)
         if self.get_source_param("aircraft_mass", set_attr=False) is not None:
-            raise NotImplementedError("The 'aircraft_mass' parameter must be None.")
+            msg = "The 'aircraft_mass' parameter must be None."
+            raise NotImplementedError(msg)
         if isinstance(self.source, Flight):
             warnings.warn(
                 "The 'PSGrid' model is not intended to support 'Flight' objects as 'source' "
@@ -132,11 +132,11 @@ class PSGrid(AircraftPerformanceGrid):
 
         if isinstance(self.source, MetDataset):
             if "fuel_flow" in self.source:
-                raise NotImplementedError("PSGrid doesn't support custom 'fuel_flow' values.")
+                msg = "PSGrid doesn't support custom 'fuel_flow' values."
+                raise NotImplementedError(msg)
             if "engine_efficiency" in self.source:
-                raise NotImplementedError(
-                    "PSGrid doesn't support custom 'engine_efficiency' values."
-                )
+                msg = "PSGrid doesn't support custom 'engine_efficiency' values."
+                raise NotImplementedError(msg)
 
             ds = ps_nominal_grid(
                 aircraft_type,
@@ -286,7 +286,8 @@ def _parse_variables(
 
     if isinstance(air_temperature, xr.DataArray):
         if level is not None:
-            raise ValueError("If 'air_temperature' is a DataArray, 'level' must be None")
+            msg = "If 'air_temperature' is a DataArray, 'level' must be None"
+            raise ValueError(msg)
 
         level_da = air_temperature["level"]
         air_temperature, level_da = xr.broadcast(air_temperature, level_da)
@@ -294,13 +295,15 @@ def _parse_variables(
 
     if air_temperature is None:
         if level is None:
-            raise ValueError("The 'level' argument must be specified")
+            msg = "The 'level' argument must be specified"
+            raise ValueError(msg)
         altitude_m = units.pl_to_m(level)
         air_temperature = units.m_to_T_isa(altitude_m)
         return level, air_temperature
 
     if level is None:
-        raise ValueError("The 'level' argument must be specified")
+        msg = "The 'level' argument must be specified"
+        raise ValueError(msg)
 
     return level, air_temperature
 
@@ -407,10 +410,11 @@ def ps_nominal_grid(
     try:
         atyp_param = aircraft_engine_params[aircraft_type]
     except KeyError as exc:
-        raise KeyError(
+        msg = (
             f"The aircraft type {aircraft_type} is not currently supported by the PS model. "
             f"Available aircraft types are: {list(aircraft_engine_params)}"
-        ) from exc
+        )
+        raise KeyError(msg) from exc
 
     mach_number = mach_number or atyp_param.m_des
 

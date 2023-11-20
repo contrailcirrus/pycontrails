@@ -7,8 +7,8 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-import pycontrails.models.ps_model.ps_model as ps
 import pycontrails.models.ps_model.ps_aircraft_params as ps_params
+import pycontrails.models.ps_model.ps_model as ps
 import pycontrails.models.ps_model.ps_operational_limits as ps_lims
 from pycontrails import Flight, FlightPhase, GeoVectorDataset, MetDataset
 from pycontrails.models.ps_model import PSGrid, ps_nominal_grid
@@ -178,7 +178,7 @@ def test_mach_number_limits():
         atyp_param.p_i_max,
         atyp_param.p_inf_co,
         atm_speed_limit=False,
-        buffer=0.0
+        buffer=0.0,
     )
     np.testing.assert_array_almost_equal(
         mach_num_lim, [0.625, 0.683, 0.750, 0.82, 0.82, 0.82, 0.82], decimal=2
@@ -223,7 +223,7 @@ def test_aircraft_mass_limits():
         atyp_param.m_des,
         atyp_param.c_l_do,
         atyp_param.wing_surface_area,
-        mtow
+        mtow,
     )
     np.testing.assert_array_almost_equal(
         amass_lims, [mtow, mtow, 521823.2, 462861.6, 410455.8, 363983.4], decimal=0
@@ -256,9 +256,7 @@ def test_fuel_flow_limits() -> None:
     np.testing.assert_array_almost_equal(
         fuel_flow_corrected, [1.261, 1.261, 1.261, 0.11, 0.11], decimal=2
     )
-    assert np.all(
-        (fuel_flow_corrected < atyp_param.ff_max_sls)
-    )
+    assert np.all((fuel_flow_corrected < atyp_param.ff_max_sls))
 
 
 def test_normalised_aircraft_performance_curves() -> None:
