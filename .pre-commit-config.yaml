@@ -22,3 +22,15 @@ repos:
         entry: black
         types: [file]
         files: \.(py|ipynb)$
+      - id: nb-clean
+        name: nb-clean
+        language_version: python3
+        language: python
+        entry: nb-clean
+        types: [file]
+        files: \.(ipynb)$
+        args:
+          - clean
+          - --remove-empty-cells
+          - --preserve-cell-metadata
+          - --preserve-cell-outputs
