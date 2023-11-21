@@ -116,6 +116,8 @@ def max_available_thrust_coefficient(
     mach_number: ArrayOrFloat,
     c_t_eta_b: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
+    *,
+    buffer: float = 0.05,
 ) -> ArrayOrFloat:
     """
     Calculate maximum available thrust coefficient.
@@ -130,6 +132,8 @@ def max_available_thrust_coefficient(
         Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
+    buffer : float
+        Additional buffer for maximum available thrust coefficient.
 
     Returns
     -------
@@ -143,8 +147,8 @@ def max_available_thrust_coefficient(
         atyp_param.tr_ec,
         atyp_param.m_ec,
     )
-    c_t_max_over_c_t_eta_b = 1.0 + 2.5 * (tr_max - 1)
-    return c_t_max_over_c_t_eta_b * c_t_eta_b
+    c_t_max_over_c_t_eta_b = 1.0 + 2.5 * (tr_max - 1.0)
+    return c_t_max_over_c_t_eta_b * c_t_eta_b * (1.0 + buffer)
 
 
 def _normalised_max_throttle_parameter(

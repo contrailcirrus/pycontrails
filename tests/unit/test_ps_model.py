@@ -202,7 +202,7 @@ def test_thrust_coefficient_limits():
         air_temperature, mach_number, c_t_eta_b, atyp_param
     )
     np.testing.assert_array_almost_equal(
-        c_t_max_avail, [0.0479, 0.0433, 0.0392, 0.0354, 0.0318], decimal=3
+        c_t_max_avail, [0.050, 0.046, 0.041, 0.037, 0.033], decimal=3
     )
 
 
@@ -315,13 +315,13 @@ def test_total_fuel_burn(load_factor: float) -> None:
     out = ps_model.eval(flight)
 
     if load_factor == 0.5:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4316, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4509, abs=1.0)
     elif load_factor == 0.6:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4353, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4573, abs=1.0)
     elif load_factor == 0.7:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4367, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4618, abs=1.0)
     elif load_factor == 0.8:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4372, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4635, abs=1.0)
     else:
         pytest.fail("Unexpected load factor")
 
