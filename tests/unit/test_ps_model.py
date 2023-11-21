@@ -206,7 +206,9 @@ def test_thrust_coefficient_limits():
     )
 
 
-def test_aircraft_mass_limits():
+def test_aircraft_mass_limits() -> None:
+    """Test the max_allowable_aircraft_mass function."""
+
     # Extract aircraft properties for aircraft type (A388)
     aircraft_type_icao = "A388"
     ps_model = ps.PSFlight()
@@ -228,6 +230,40 @@ def test_aircraft_mass_limits():
     np.testing.assert_array_almost_equal(
         amass_lims, [mtow, mtow, 521823.2, 462861.6, 410455.8, 363983.4], decimal=0
     )
+
+
+@pytest.mark.filterwarnings("ignore:some failed to converge")
+@pytest.mark.parametrize("aircraft_type", ["A320", "A333", "B737", "B753"])
+def test_aircraft_mass_limits_ps_grid(aircraft_type: str) -> None:
+    """Test the max_allowable_aircraft_mass function with PSGrid."""
+
+    atyp_param = ps.load_aircraft_engine_params()[aircraft_type]
+    ps_model = PSGrid()
+
+    altitude_ft = np.arange(25000.0, 45000.0, 1000.0)
+    n = len(altitude_ft)
+    vector = GeoVectorDataset(
+        longitude=np.zeros(n),
+        latitude=np.zeros(n),
+        altitude_ft=altitude_ft,
+        time=np.r_[[np.datetime64("2020-01-01T00:00:00")] * n],
+        aircraft_type=aircraft_type,
+    )
+    vector["air_temperature"] = units.m_to_T_isa(vector.altitude)
+
+    out = ps_model.eval(vector)
+    assert out.attrs["mach_number"] == atyp_param.m_des
+
+    pred_amass = out["aircraft_mass"]
+    max_amass = ps_lims.max_allowable_aircraft_mass(
+        out.air_pressure,
+        atyp_param.m_des,
+        atyp_param.m_des,
+        atyp_param.c_l_do,
+        atyp_param.wing_surface_area,
+        atyp_param.amass_mtow,
+    )
+    assert np.all(pred_amass <= max_amass)
 
 
 def test_fuel_flow_limits() -> None:
