@@ -22,7 +22,7 @@ from pycontrails.core.fuel import JetA
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature
 from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.models.ps_model import ps_model
+from pycontrails.models.ps_model import ps_model, ps_operational_limits
 from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParams
 from pycontrails.physics import units
 from pycontrails.utils.types import ArrayOrFloat
@@ -258,7 +258,7 @@ def _estimate_mass_extremes(
     atyp_param: PSAircraftEngineParams,
     perf: _PerfVariables,
     n_iter: int = 3,
-) -> tuple[float, float]:
+) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     """Calculate the minimum and maximum mass for a given aircraft type."""
 
     oem = atyp_param.amass_oew  # operating empty mass
@@ -279,7 +279,7 @@ def _estimate_mass_extremes(
     ff = _nominal_perf(mtow, perf).fuel_flow
     max_mass = mtow - 2.0 * ff * 60.0 * 20.0
 
-    return min_mass, max_mass
+    return min_mass, max_mass  # type: ignore[return-value]
 
 
 def _parse_variables(
@@ -370,7 +370,7 @@ def ps_nominal_grid(
     >>> perf.to_dataframe()
            aircraft_mass  engine_efficiency  fuel_flow
     level
-    200.0   58564.031594           0.296651   0.585492
+    200.0   58564.031595           0.296651   0.585492
     210.0   61772.755626           0.296651   0.614767
     220.0   64992.059200           0.296651   0.644041
     230.0   68196.058808           0.296651   0.674351
@@ -431,6 +431,19 @@ def ps_nominal_grid(
     )
 
     min_mass, max_mass = _estimate_mass_extremes(atyp_param, perf)
+
+    mass_allowed = ps_operational_limits.max_allowable_aircraft_mass(
+        air_pressure,
+        mach_number=mach_number,
+        mach_num_des=atyp_param.m_des,
+        c_l_do=atyp_param.c_l_do,
+        wing_surface_area=atyp_param.wing_surface_area,
+        amass_mtow=atyp_param.amass_mtow,
+    )
+
+    min_mass.clip(max=mass_allowed, out=min_mass)  # type: ignore[call-overload]
+    max_mass.clip(max=mass_allowed, out=max_mass)  # type: ignore[call-overload]
+
     x0 = np.full_like(air_temperature, (max_mass + min_mass) / 2.0)
 
     # Choose aircraft mass to maximize engine efficiency
