@@ -89,7 +89,7 @@ class PCC(Model):
 
         # make sure surface level dataset is valid
         if not isinstance(surface, MetDataset):
-            raise ValueError("Surface air pressure required as input parameter `surface`")
+            raise TypeError("Surface air pressure required as input parameter 'surface'")
 
         self.surface = surface.copy()
         self.surface.ensure_vars(["surface_air_pressure"])

@@ -244,7 +244,8 @@ class SyntheticFlight:
 
             # If  bada paths were not passed into __init__, we expect to know speed_m_per_s
             if self.speed_m_per_s is None:
-                raise ValueError("Either specify `bada3_path`, `bada4_path`, or `speed_m_per_s`.")
+                msg = "Either specify 'bada3_path', 'bada4_path', or 'speed_m_per_s'."
+                raise ValueError(msg) from err
             self.bada = None
 
     def _calc_speed_m_per_s(self, level: ArrayOrFloat) -> ArrayOrFloat:

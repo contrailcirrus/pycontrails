@@ -2115,14 +2115,15 @@ def _parse_pandas_time(time: pd.Series) -> pd.Series:
         if np.issubdtype(time.dtype, np.integer):
             return _parse_unix_time(time)
 
-        raise ValueError("Unsupported time format")
-
     except ValueError as exc:
-        raise ValueError(
+        msg = (
             "The 'time' field must hold datetime-like values. "
             'Try data["time"] = pd.to_datetime(data["time"], unit=...) '
             "with the appropriate unit."
-        ) from exc
+        )
+        raise ValueError(msg) from exc
+
+    raise ValueError("Unsupported time format")
 
 
 def _parse_unix_time(time: list[int] | npt.NDArray[np.int_] | pd.Series) -> pd.Series:

@@ -291,7 +291,7 @@ class Model(ABC):
                 except KeyError as e2:
                     raise e2 from e1
             else:
-                raise e1
+                raise
 
     def _load_params(
         self, params: ModelParams | dict[str, Any] | None = None, **params_kwargs: Any
@@ -322,9 +322,8 @@ class Model(ABC):
             base_params = params
             params = None
         elif isinstance(params, ModelParams):
-            raise TypeError(
-                f"Model parameters must be of type {self.default_params.__name__} or dict"
-            )
+            msg = f"Model parameters must be of type {self.default_params.__name__} or dict"
+            raise TypeError(msg)
         else:
             base_params = self.default_params()
 
@@ -520,7 +519,8 @@ class Model(ABC):
 
         # TODO: This could be generalized for a MetDataset source
         if not isinstance(self.source, GeoVectorDataset):
-            raise ValueError("Attribute `source` must be a GeoVectorDataset")
+            msg = "Attribute 'source' must be a GeoVectorDataset"
+            raise TypeError(msg)
 
         if self.met is None:
             return
