@@ -90,28 +90,28 @@ class ModelParams:
     # Meteorology
     # -----------
 
-    #: Call :meth:`_verify_met` on model instantiation
+    #: Call :meth:`_verify_met` on model instantiation.
     verify_met: bool = True
 
-    #: Downselect input MetDataset to region around ``source``, if input.
+    #: Downselect input :class:`MetDataset`` to region around ``source``.
     downselect_met: bool = True
 
-    #: Met longitude buffer for input to :meth:`Flight.downselect_met(longitude_buffer=...)`,
-    #: in WGS84 coordinates
+    #: Met longitude buffer for input to :meth:`Flight.downselect_met`,
+    #: in WGS84 coordinates.
     #: Only applies when :attr:`downselect_met` is True.
     met_longitude_buffer: tuple[float, float] = (0.0, 0.0)
 
-    #: Met latitude buffer for input to :meth:`Flight.downselect_met(latitude_buffer=...)`,
-    #: in WGS84 coordinates
+    #: Met latitude buffer for input to :meth:`Flight.downselect_met`,
+    #: in WGS84 coordinates.
     #: Only applies when :attr:`downselect_met` is True.
     met_latitude_buffer: tuple[float, float] = (0.0, 0.0)
 
-    #: Met level buffer for input to :meth:`Flight.downselect_met(level_buffer=...)`,
-    #: in [:math:`hPa`]
+    #: Met level buffer for input to :meth:`Flight.downselect_met`,
+    #: in [:math:`hPa`].
     #: Only applies when :attr:`downselect_met` is True.
     met_level_buffer: tuple[float, float] = (0.0, 0.0)
 
-    #: Met time buffer for input to :meth:`Flight.downselect_met(time_buffer=...)`
+    #: Met time buffer for input to :meth:`Flight.downselect_met`
     #: Only applies when :attr:`downselect_met` is True.
     met_time_buffer: tuple[np.timedelta64, np.timedelta64] = (
         np.timedelta64(0, "h"),

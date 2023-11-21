@@ -81,7 +81,7 @@ class PSGrid(AircraftPerformanceGrid):
         source : MetDataset or GeoVectorDataset, optional
             The source data to use for the evaluation. If None, the source is taken
             from the :attr:`met` attribute of the :class:`PSGrid` instance.
-            The aircraft type is taken from ``source.attrs["aircraft_type]``. If this field
+            The aircraft type is taken from ``source.attrs["aircraft_type"]``. If this field
             is not present, ``params["aircraft_type"]`` is used instead. See the
             static CSV file :file:`ps-aircraft-params-20231117.csv` for a list of supported
             aircraft types.
@@ -333,12 +333,12 @@ def ps_nominal_grid(
         The aircraft type.
     level : npt.NDArray[np.float_] | None, optional
         The pressure level, [:math:`hPa`]. If None, the ``air_temperature``
-        argument must be a :class:`xr.DataArray` with a ``level`` coordinate.
+        argument must be a :class:`xarray.DataArray` with a ``level`` coordinate.
     air_temperature : xr.DataArray | npt.NDArray[np.float] | None, optional
         The ambient air temperature, [:math:`K`]. If None (default), the ISA
-        temperature is computed from the ``level`` argument. If a :class:`xr.DataArray`,
+        temperature is computed from the ``level`` argument. If a :class:`xarray.DataArray`,
         the ``level`` coordinate must be present and the ``level`` argument must be None
-        to avoid ambiguity. If a :class:`np.ndarray` is passed, it is assumed to be 1
+        to avoid ambiguity. If a :class:`numpy.ndarray` is passed, it is assumed to be 1
         dimensional with the same shape as the ``level`` argument.
     q_fuel : float, optional
         The fuel heating value, by default :attr:`JetA.q_fuel`
@@ -353,9 +353,10 @@ def ps_nominal_grid(
         The nominal performance grid. The grid is indexed by altitude and Mach number.
         Contains the following variables:
 
-        - `fuel_flow` : Fuel flow rate, [:math:`kg/s`]
-        - `engine_efficiency` : Engine efficiency
-        - `aircraft_mass` : Aircraft mass at which the engine efficiency is maximized, [:math:`kg`]
+        - ``"fuel_flow"`` : Fuel flow rate, [:math:`kg/s`]
+        - ``"engine_efficiency"`` : Engine efficiency
+        - ``"aircraft_mass"`` : Aircraft mass at which the engine efficiency is maximized,
+          [:math:`kg`]
 
     Examples
     --------
