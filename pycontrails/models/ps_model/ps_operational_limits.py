@@ -133,7 +133,8 @@ def max_available_thrust_coefficient(
     atyp_param : AircraftEngineParams
         Extracted aircraft and engine parameters.
     buffer : float
-        Additional buffer for maximum available thrust coefficient.
+        Additional buffer for maximum available thrust coefficient. The default value is 0.05,
+        which increases the maximum available thrust coefficient by 5%.
 
     Returns
     -------

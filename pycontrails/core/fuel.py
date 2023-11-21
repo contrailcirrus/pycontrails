@@ -83,7 +83,7 @@ class SAFBlend(Fuel):
     ----------
     pct_blend : float
         Sustainable aviation fuel percentage blend ratio by volume, %. Expected
-        to be in the interval [0, 100].
+        to be in the interval ``[0, 100]``.
 
     References
     ----------
