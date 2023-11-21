@@ -246,12 +246,12 @@ def test_type_guard(met_cocip1: MetDataset) -> None:
     assert a is b
     assert isinstance(b, str)
 
-    with pytest.raises(ValueError, match="must be of type"):
+    with pytest.raises(TypeError, match="must be of type"):
         type_guard("str", int)
 
-    with pytest.raises(ValueError, match="pycontrails.core.met.MetDataset"):
+    with pytest.raises(TypeError, match="pycontrails.core.met.MetDataset"):
         type_guard("str", (MetDataset, float))
 
     # custom error message
-    with pytest.raises(ValueError, match="custom error"):
+    with pytest.raises(TypeError, match="custom error"):
         type_guard("str", int, error_message="custom error")

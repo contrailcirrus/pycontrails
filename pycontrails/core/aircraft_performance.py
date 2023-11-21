@@ -445,13 +445,13 @@ class AircraftPerformance(Model):
             u = interpolate_met(self.met, self.source, "eastward_wind", **self.interp_kwargs)
             v = interpolate_met(self.met, self.source, "northward_wind", **self.interp_kwargs)
 
-        except (ValueError, KeyError):
+        except (ValueError, KeyError) as exc:
             raise ValueError(
-                "Variable `true_airspeed` not found. Include 'eastward_wind' and"
-                " 'northward_wind' variables on `met`in model constructor, or define"
-                " `true_airspeed` data on flight. This can be achieved by calling the"
-                " `Flight.segment_true_airspeed` method."
-            )
+                "Variable 'true_airspeed' not found. Include 'eastward_wind' and"
+                " 'northward_wind' variables on 'met' in model constructor, or define"
+                " 'true_airspeed' data on flight. This can be achieved by calling the"
+                " 'Flight.segment_true_airspeed' method."
+            ) from exc
 
         out = self.source.segment_true_airspeed(u, v)
         self.source["true_airspeed"] = out

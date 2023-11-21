@@ -48,8 +48,10 @@ class ECMWFAPI(datalib.MetDataSource):
         # downselect variables
         try:
             ds = ds[self.variable_shortnames]
-        except KeyError as e:
-            raise KeyError(f"Input dataset is missing variables {e}")
+        except KeyError as exc:
+            missing = set(self.variable_shortnames).difference(ds.variables)
+            msg = f"Input dataset is missing variables {missing}"
+            raise KeyError(msg) from exc
 
         # downselect times
         if not self.timesteps:
@@ -57,13 +59,12 @@ class ECMWFAPI(datalib.MetDataSource):
         else:
             try:
                 ds = ds.sel(time=self.timesteps)
-            except KeyError:
+            except KeyError as exc:
                 # this snippet shows the missing times for convenience
                 np_timesteps = {np.datetime64(t, "ns") for t in self.timesteps}
                 missing_times = sorted(np_timesteps.difference(ds["time"].values))
-                raise KeyError(
-                    f"Input dataset is missing time coordinates {[str(t) for t in missing_times]}"
-                )
+                msg = f"Input dataset is missing time coordinates {[str(t) for t in missing_times]}"
+                raise KeyError(msg) from exc
 
         # downselect pressure level
         # if "level" is not in dims and
@@ -74,10 +75,11 @@ class ECMWFAPI(datalib.MetDataSource):
 
         try:
             ds = ds.sel(level=self.pressure_levels)
-        except KeyError:
+        except KeyError as exc:
             # this snippet shows the missing levels for convenience
             missing_levels = sorted(set(self.pressure_levels) - set(ds["level"].values))
-            raise KeyError(f"Input dataset is missing level coordinates {missing_levels}")
+            msg = f"Input dataset is missing level coordinates {missing_levels}"
+            raise KeyError(msg) from exc
 
         # harmonize variable names
         ds = met.standardize_variables(ds, self.variables)

@@ -156,6 +156,6 @@ def type_guard(
         Raises ValueError if ``obj`` is not ``type_``
     """
     if not isinstance(obj, type_):
-        raise ValueError(error_message or f"Object must be of type {type_}")
+        raise TypeError(error_message or f"Object must be of type {type_}")
 
     return obj

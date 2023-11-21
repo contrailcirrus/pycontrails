@@ -656,7 +656,7 @@ class MetDataset(MetBase):
 
         # if input is already a Dataset, copy into data
         if not isinstance(data, xr.Dataset):
-            raise ValueError("Input `data` must be an xarray Dataset")
+            raise TypeError("Input 'data' must be an xarray Dataset")
 
         # copy Dataset into data
         if copy:
