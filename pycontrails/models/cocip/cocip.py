@@ -65,8 +65,8 @@ class Cocip(Model):
     The required meteorology variables depend on the data source (e.g. ECMWF, GFS).
 
     See :attr:`met_variables` and :attr:`rad_variables` for the list of required variables
-    to the ``met`` and ``rad`` inputs, respectively.
-    When an item in one of these arrays is a tuple, variable keys depend on data source.
+    to the ``met`` and ``rad`` parameters, respectively.
+    When an item in one of these arrays is a :class:`tuple`, variable keys depend on data source.
 
     The current list of required variables (labelled by ``"standard_name"``):
 
@@ -117,22 +117,22 @@ class Cocip(Model):
     - As described in :cite:`teohAviationContrailClimate2022`, this implementation sets
       the initial ice particle activation rate to be a function of
       the difference between the ambient temperature and the critical SAC threshold temperature.
-      See :func:`sac.T_critical_sac`.
+      See :func:`pycontrails.models.sac.T_critical_sac`.
     - Isobaric heat capacity calculation.
       The original model uses a constant value of 1004 :math:`J \ kg^{-1} \ K^{-1}`,
       whereas this model calculates isobaric heat capacity as a function of specific humidity.
-      See :func:`thermo.c_pm`.
+      See :func:`pycontrails.physics.thermo.c_pm`.
     - Solar direct radiation.
       The original algorithm uses ECMWF radiation variable `tisr` (top incident solar radiation)
       as solar direct radiation value.
       This implementation calculates the theoretical solar direct radiation at
       any arbitrary point in the atmosphere.
-      See :func:`geo.solar_direct_radiation`.
+      See :func:`pycontrails.physics.geo.solar_direct_radiation`.
     - Segment angle.
       The segment angle calculations for flights and contrail segments have been updated
       to use more precise spherical geometry instead of a triangular approximation.
       As the triangle approaches zero, the two calculations agree.
-      See :func:`geo.segment_angle`.
+      See :func:`pycontrails.physics.geo.segment_angle`.
     - Integration.
       This implementation consistently uses left-Riemann sums
       in the time integration of contrail segments.
@@ -232,8 +232,9 @@ class Cocip(Model):
     )
 
     #: Additional met variables used to support outputs
+    #:
     #: .. versionchanged:: 0.48.0
-    #: Moved Geopotential from :attr:`required_met_variables` to :attr:`optional_met_variables`
+    #:   Moved Geopotential from :attr:`met_variables` to :attr:`optional_met_variables`
     optional_met_variables = (
         (met_var.Geopotential, met_var.GeopotentialHeight),
         (ecmwf.CloudAreaFractionInLayer, gfs.TotalCloudCoverIsobaric),
@@ -252,13 +253,40 @@ class Cocip(Model):
     #: List of :class:`GeoVectorDataset` contrail objects - one for each timestep
     contrail_list: list[GeoVectorDataset]
 
-    #: Contrail evolution output from model. Set to None when no contrails are formed.
+    #: Contrail evolution output from model.
+    #:
+    #: Set to None when no contrails are formed.
+    #: Otherwise, this is a :class:`pandas.DataFrame` describing the evolution of the contrail.
+    #: Columns include:
+    #:
+    #: - ``waypoint``: The index of the waypoint in the original flight creating
+    #:   the contrail. This can be used to join the contrail DataFrame to the :attr:`source`.
+    #: - ``formation_time``: Time of contrail formation. Agrees with the ``time`` column
+    #:   in :attr:`source`.
+    #: - ``continuous``: Boolean indicating whether the contrail is continuous or not.
+    #: - ``persistent``: Boolean indicating whether the contrail is persistent or not.
+    #:   A contrail segment is considered continuous if both the current and the next
+    #:   contrail waypoint at the same time step persist.
+    #: - ``segment_length``: Length of the contrail segment, [:math:`m`].
+    #: - ``sin_a``, ``cos_a``: Sine and cosine of the segment angle.
+    #: - ``width``, ``depth``: Contrail width and depth, [:math:`m`].
+    #: - ``sigma_yz``: The ``yz`` component of the covariance matrix, [:math:`m^{2}`].
+    #:   See :func:`contrail_properties.plume_temporal_evolution`.
+    #: - ``q_sat``: Saturation specific humidity over ice, [:math:`kg \ kg^{-1}`].
+    #: - ``n_ice_per_m``: Number of ice particles per distance, [:math:`m^{-1}`].
+    #: - ``iwc``: Ice water content, [:math:`kg_{ice} kg_{air}^{-1}`].
+    #: - ``tau_contrail``: Optical depth of the contrail. See
+    #:   :func:`contrail_properties.contrail_optical_depth`.
+    #: - ``rf_sw``, ``rf_lw``, ``rf_net``: Shortwave, longwave, and net instantaneous
+    #:   radiative forcing, [:math:`W \ m^{-2}`] at the contrail waypoint.
+    #: - ``ef``: Energy forcing, [:math:`J`] at the contrail waypoint. See
+    #:   :func:`contrail_properties.energy_forcing`.
     contrail: pd.DataFrame | None
 
     #: :class:`xr.Dataset` representation of contrail evolution.
     contrail_dataset: xr.Dataset | None
 
-    #: Array of :class:`np.datetime64` time steps for contrail evolution
+    #: Array of :class:`numpy.datetime64` time steps for contrail evolution
     timesteps: npt.NDArray[np.datetime64]
 
     #: Parallel copy of flight waypoints after SAC filter applied
