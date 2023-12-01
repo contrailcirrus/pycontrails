@@ -183,15 +183,8 @@ nb-clean-check:
 # https://github.com/computationalmodelling/nbval/issues/194
 # nb-test: ensure-era5-cached nb-black-check nb-check-links
 nb-test:
-	pytest --nbval --ignore-glob=*/ACCF.ipynb docs/examples --sanitize-with docs/nb-test.cfg
-
-# execute notebooks for docs output
-# Note that nb-test will fail after running this locally
-# TODO: this currently breaks the xarray notebook output styling somehow
-nb-execute: nb-black-check
-	jupyter nbconvert --inplace \
-		--ClearMetadataPreprocessor.enabled=True \
-		--to notebook --execute docs/examples/[!ACCF]*.ipynb docs/tutorials/*.ipynb
+	pytest --nbval docs/examples/Cache.ipynb --sanitize-with docs/nb-test.cfg
+# 	pytest --nbval --ignore-glob=*/ACCF.ipynb docs/examples --sanitize-with docs/nb-test.cfg
 
 # Check for broken links in notebooks
 # https://github.com/jupyterlab/pytest-check-links
@@ -202,6 +195,12 @@ nb-check-links:
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
 		docs/examples docs/tutorials
+
+# execute notebooks for docs output
+nb-execute: ensure-era5-cached nb-black-check nb-check-links
+	jupyter nbconvert --inplace \
+		--ClearMetadataPreprocessor.enabled=True \
+		--to notebook --execute docs/examples/[!ACCF]*.ipynb docs/tutorials/*.ipynb
 
 docs-build: doc8
 	sphinx-build -b html $(DOCS_DIR) $(DOCS_BUILD_DIR)/html
