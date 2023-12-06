@@ -240,10 +240,7 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
 
         self._attach_verbose_outputs_evolution(contrail_list)
         summary_by_met_slice = [s for s in summary_by_met_slice if s]
-        if summary_by_met_slice:
-            summary = calc_intermediate_results(summary_by_met_slice)
-        else:
-            summary = None
+        summary = calc_intermediate_results(summary_by_met_slice)
         return self._bundle_results(summary, verbose_dicts)
 
     def _attach_verbose_outputs_evolution(self, contrail_list: list[GeoVectorDataset]) -> None:
@@ -946,9 +943,8 @@ def _evolve_vector(
     end_size = vector.size
     logger.debug("After evolution, contrail contains %s / %s points.", end_size, start_size)
 
-    if summary_data:
-        return vector, calc_intermediate_results(summary_data), verbose_dict, contrail_list
-    return vector, None, verbose_dict, contrail_list
+    summary = calc_intermediate_results(summary_data)
+    return vector, summary, verbose_dict, contrail_list
 
 
 def _run_downwash(
@@ -1889,61 +1885,51 @@ def advect(
     return GeoVectorDataset(data, attrs=contrail.attrs, copy=True)
 
 
-def calc_intermediate_results(vector_list: list[VectorDataset]) -> VectorDataset:
+def calc_intermediate_results(vector_list: list[VectorDataset]) -> VectorDataset | None:
     """Aggregate results after cocip simulation.
 
-    Results are summed over each vector in `vector_list`.
+    Results are summed over each vector in ``vector_list``.
+
+    If ``vector_list`` is empty, return None.
 
     Parameters
     ----------
     vector_list : list[VectorDataset]
-        List of `VectorDataset` objects each containing keys "index" and "ef". List is expected
-        to be nonempty.
+        List of :class:`VectorDataset` objects each containing keys "index", "age", and "ef".
 
     Returns
     -------
-    VectorDataset
+    VectorDataset | None
         Dataset with keys:
             - "index": Used to join to :attr:`CocipGrid.source`
             - "ef": Sum of ef values
             - "age": Contrail age associated to each index
+        Only return points with non-zero ef or age.
     """
+    if not vector_list:
+        return None
 
-    def key_to_df(key: str) -> pd.DataFrame:
-        """Get DataFrame of values over vector lifetime.
+    i0 = min(v["index"].min() for v in vector_list)
+    i1 = max(v["index"].max() for v in vector_list)
+    index = np.arange(i0, i1 + 1)
 
-        Generally, we try to avoid ``pd.concat`` because of the memory explosion it
-        often causes. This could be probably be reimplemented without ``pandas``
-        if needed, though there doesn't seem to be an obvious numpy approach to take.
-        We'd need to start by taking the union of v["index"] for v in vector_list.
-        Alternatively, we could use the full source index to determine the global
-        index of each vector.
+    # Use the dtype of the first vector to determine the dtype of the aggregate
+    v0 = vector_list[0]
+    ef = np.zeros(index.shape, dtype=v0["ef"].dtype)
+    age = np.zeros(index.shape, dtype=v0["age"].dtype)
 
-        For example, something like this would work for summing ef and avoid some of the
-        pd.concat overhead.
+    for v in vector_list:
+        idx = v["index"] - i0
+        ef[idx] += v["ef"]
+        age[idx] = np.maximum(age[idx], v["age"])
 
-        ```
-        index = source_index
-        out = np.zeros(len(index))
-        for v in vector_list:
-            out[v["index"]] += v["ef"]
-        nonzero = out != 0
-        series = pd.Series(out[nonzero], index=index[nonzero])
-        ```
-        """
-        # dtype = np.result_type(*[v[key].dtype for v in vector_list], np.float32)
-        dfs = [pd.DataFrame(data=v[key], index=v["index"]) for v in vector_list]
-        return pd.concat(dfs, axis=1)
+    # Only return points with non-zero ef or age
+    cond = age.astype(bool) | ef.astype(bool)
+    index = index[cond].copy()
+    ef = ef[cond].copy()
+    age = age[cond].copy()
 
-    ef = key_to_df("ef").sum(axis=1)
-    age = key_to_df("age").max(axis=1)
-
-    data = {
-        "index": ef.index.to_numpy(),
-        "ef": ef.to_numpy(),
-        "age": age.to_numpy(),
-    }
-
+    data = {"index": index, "ef": ef, "age": age}
     return VectorDataset(data, copy=False)
 
 

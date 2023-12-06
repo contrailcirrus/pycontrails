@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.49.1 (unreleased)
+
+### Fixes
+
+- Fix memory bottleneck in `CocipGrid` simulation by avoiding expensive call to `pd.concat`.
+
 ## v0.49.0
 
 This release updates the Poll-Schumann (PS) aircraft performance model to version 2.0. It also includes a number of bug fixes and internal improvements.
