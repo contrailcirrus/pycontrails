@@ -1,11 +1,12 @@
 
 # Changelog
 
-## v0.49.1 (unreleased)
+## v0.49.1
 
 ### Fixes
 
 - Fix memory bottleneck in `CocipGrid` simulation by avoiding expensive call to `pd.concat`.
+- Require `oldest-supported-numpy` for python 3.12. Remove logic for `numpy` 1.26.0rc1 in the `pyproject.toml` build system.
 
 ## v0.49.0
 
