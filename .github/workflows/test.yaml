@@ -69,7 +69,7 @@ jobs:
           credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
 
       - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v1'
+        uses: 'google-github-actions/setup-gcloud@v2'
 
       # download BADA files for testing
       - name: BADA files
