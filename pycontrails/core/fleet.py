@@ -127,7 +127,7 @@ class Fleet(Flight):
         return super().copy(**kwargs)
 
     @overrides
-    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Flight:
+    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Fleet:
         kwargs.setdefault("fuel", self.fuel)
         kwargs.setdefault("fl_attrs", self.fl_attrs)
         return super().filter(mask, copy=copy, **kwargs)
