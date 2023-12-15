@@ -446,7 +446,7 @@ def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
     assert isinstance(out, MetDataset)
 
     ds = out.data
-    assert ds.dims == met_era5_fake.data.dims
+    assert list(ds.dims) == list(met_era5_fake.data.dims)
     assert list(ds) == ["aircraft_mass", "engine_efficiency", "fuel_flow"]
 
     # Pin some output values
