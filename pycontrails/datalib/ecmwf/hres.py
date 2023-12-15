@@ -342,9 +342,9 @@ class HRES(ECMWFAPI):
         list[tuple[pd.Timestamp, pd.Timestamp]]
             List of tuple time bounds that can be used as inputs to :class:`HRES(time=...)`
         """
-        time_ranges = np.unique([
-            pd.Timestamp(t.year, t.month, t.day, 12 * (t.hour // 12)) for t in timesteps
-        ])
+        time_ranges = np.unique(
+            [pd.Timestamp(t.year, t.month, t.day, 12 * (t.hour // 12)) for t in timesteps]
+        )
 
         if len(time_ranges) == 1:
             time_ranges = [(timesteps[0], timesteps[-1])]

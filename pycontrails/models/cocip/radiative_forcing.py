@@ -72,9 +72,9 @@ class RFConstants:
 
     #: Approximate the effective emmissivity factor
     #: :math:`\delta_{\tau} in :cite:`schumannParametricRadiativeForcing2012`
-    delta_t = np.array([
-        0.940846, 0.808397, 0.736222, 0.675591, 0.748757, 0.708515, 0.927592, 0.795527
-    ])
+    delta_t = np.array(
+        [0.940846, 0.808397, 0.736222, 0.675591, 0.748757, 0.708515, 0.927592, 0.795527]
+    )
 
     #: Effective radius scaling factor for optical properties (extinction relative to scattering)
     #: :math:`\delta_{lr} in Eq. (3) in :cite:`schumannParametricRadiativeForcing2012`
@@ -83,9 +83,9 @@ class RFConstants:
     #: Optical depth scaling factor for reduction of the OLR at the contrail level due
     #: to existing cirrus above the contrail
     #: :math:`\delta_{lc} in Eq. (4) in :cite:`schumannParametricRadiativeForcing2012`
-    delta_lc = np.array([
-        0.159942, 0.0958129, 0.0924850, 0.0462023, 0.132925, 0.0870067, 0.0626339, 0.0665289
-    ])
+    delta_lc = np.array(
+        [0.159942, 0.0958129, 0.0924850, 0.0462023, 0.132925, 0.0870067, 0.0626339, 0.0665289]
+    )
 
     # -----
     # Variables/coefficients used to calculate the local contrail shortwave radiative forcing.
@@ -97,21 +97,21 @@ class RFConstants:
 
     # Approximates the albedo of the contrail
     #: :math:`A_{\mu}` in Eq. (6) in :cite:`schumannParametricRadiativeForcing2012`
-    A_mu = np.array([
-        0.361226, 0.294072, 0.343894, 0.317866, 0.337227, 0.310978, 0.342593, 0.269179
-    ])
+    A_mu = np.array(
+        [0.361226, 0.294072, 0.343894, 0.317866, 0.337227, 0.310978, 0.342593, 0.269179]
+    )
 
     # Approximates the albedo of the contrail
     #: :math:`C_{\mu}` in Eq. (6) in :cite:`schumannParametricRadiativeForcing2012`
-    C_mu = np.array([
-        0.709300, 0.678016, 0.687546, 0.675315, 0.712041, 0.713317, 0.660267, 0.545716
-    ])
+    C_mu = np.array(
+        [0.709300, 0.678016, 0.687546, 0.675315, 0.712041, 0.713317, 0.660267, 0.545716]
+    )
 
     #: Approximates the effective contrail optical depth
     #: :math:`delta_sr` in Eq. (7) and (8) in :cite:`schumannParametricRadiativeForcing2012`
-    delta_sr = np.array([
-        0.149851, 0.0254270, 0.0238836, 0.0463724, 0.0478892, 0.0700234, 0.0517942, 0
-    ])
+    delta_sr = np.array(
+        [0.149851, 0.0254270, 0.0238836, 0.0463724, 0.0478892, 0.0700234, 0.0517942, 0]
+    )
 
     #: Approximates the effective contrail optical depth
     #: :math:`F_r` in Eq. (7) and (8) in :cite:`schumannParametricRadiativeForcing2012`
@@ -119,15 +119,15 @@ class RFConstants:
 
     #: Approximates the contrail reflectances
     #: :math:`\gamma` in Eq. (9) in :cite:`schumannParametricRadiativeForcing2012`
-    gamma_lower = np.array([
-        0.323166, 0.392598, 0.356189, 0.345040, 0.407515, 0.523604, 0.310853, 0.274741
-    ])
+    gamma_lower = np.array(
+        [0.323166, 0.392598, 0.356189, 0.345040, 0.407515, 0.523604, 0.310853, 0.274741]
+    )
 
     #: Approximates the contrail reflectances
     #: :math:`\Gamma` in Eq. (9) in :cite:`schumannParametricRadiativeForcing2012`
-    gamma_upper = np.array([
-        0.241507, 0.347023, 0.288452, 0.296813, 0.327857, 0.437560, 0.274710, 0.208154
-    ])
+    gamma_upper = np.array(
+        [0.241507, 0.347023, 0.288452, 0.296813, 0.327857, 0.437560, 0.274710, 0.208154]
+    )
 
     #: Approximate the SZA-dependent contrail sideward scattering
     #: :math:`B_{\mu}` in Eq. (10) in :cite:`schumannParametricRadiativeForcing2012`
@@ -135,15 +135,15 @@ class RFConstants:
 
     #: Account for the optical depth of natural cirrus above the contrail
     #: :math:`\delta_{sc}` in Eq. (11) in :cite:`schumannParametricRadiativeForcing2012`
-    delta_sc = np.array([
-        0.157017, 0.143274, 0.167995, 0.148547, 0.173036, 0.162442, 0.171855, 0.213488
-    ])
+    delta_sc = np.array(
+        [0.157017, 0.143274, 0.167995, 0.148547, 0.173036, 0.162442, 0.171855, 0.213488]
+    )
 
     #: Account for the optical depth of natural cirrus above the contrail
     # :math:`\delta'_{sc}` in Eq. (11) in :cite:`schumannParametricRadiativeForcing2012`
-    delta_sc_aps = np.array([
-        0.229574, 0.197611, 0.245036, 0.204875, 0.248328, 0.254029, 0.244051, 0.302246
-    ])
+    delta_sc_aps = np.array(
+        [0.229574, 0.197611, 0.245036, 0.204875, 0.248328, 0.254029, 0.244051, 0.302246]
+    )
 
 
 # create a new constants class to use within module

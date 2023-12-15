@@ -917,9 +917,9 @@ def get_thrust_setting(
 
 
 def _row_to_edb_gaseous(tup: Any) -> tuple[str, EDBGaseous]:
-    return tup.engine_uid, EDBGaseous(**{
-        k.name: getattr(tup, k.name) for k in dataclasses.fields(EDBGaseous)
-    })
+    return tup.engine_uid, EDBGaseous(
+        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(EDBGaseous)}
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1082,9 +1082,9 @@ class EDBGaseous:
 
 
 def _row_to_edb_nvpm(tup: Any) -> tuple[str, EDBnvpm]:
-    return tup.engine_uid, EDBnvpm(**{
-        k.name: getattr(tup, k.name) for k in dataclasses.fields(EDBnvpm)
-    })
+    return tup.engine_uid, EDBnvpm(
+        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(EDBnvpm)}
+    )
 
 
 @dataclasses.dataclass

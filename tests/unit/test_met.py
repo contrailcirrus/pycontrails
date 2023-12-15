@@ -67,9 +67,9 @@ def test_sl_path_to_met(met_ecmwf_sl_path: str) -> None:
 def test_pl_path_to_met(met_ecmwf_pl_path: str) -> None:
     """Confirm `MetDataset` constructor converts `Dataset` with correct conventions."""
     ds = xr.open_dataset(met_ecmwf_pl_path)
-    assert set(ds.variables).issubset({
-        "longitude", "latitude", "level", "time", "t", "r", "q", "ciwc"
-    })
+    assert set(ds.variables).issubset(
+        {"longitude", "latitude", "level", "time", "t", "r", "q", "ciwc"}
+    )
     assert list(ds.data_vars) == ["t", "r", "q", "ciwc"]
 
     mds = MetDataset(ds)

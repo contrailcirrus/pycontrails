@@ -167,9 +167,9 @@ class IFS(datalib.MetDataSource):
             ds["z"] = self._calc_geopotential(ds)
 
         # take the mean of the air pressure to create quasi-gridded level coordinate
-        ds = ds.assign_coords({
-            "level": ("lev", (ds["air_pressure"].mean(dim=["time", "lat", "lon"]) / 100).values)
-        })
+        ds = ds.assign_coords(
+            {"level": ("lev", (ds["air_pressure"].mean(dim=["time", "lat", "lon"]) / 100).values)}
+        )
         ds = ds.swap_dims({"lev": "level"})
         ds = ds.drop_vars(names=["lev"])
 
