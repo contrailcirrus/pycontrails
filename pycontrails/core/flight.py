@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -19,6 +19,8 @@ from pycontrails.physics import constants, geo, units
 from pycontrails.utils import dependencies
 
 logger = logging.getLogger(__name__)
+
+FlightType = TypeVar("FlightType", bound="Flight")
 
 # optional imports
 if TYPE_CHECKING:
@@ -279,12 +281,14 @@ class Flight(GeoVectorDataset):
                 )
 
     @overrides
-    def copy(self, **kwargs: Any) -> Flight:
+    def copy(self: FlightType, **kwargs: Any) -> FlightType:
         kwargs.setdefault("fuel", self.fuel)
         return super().copy(**kwargs)
 
     @overrides
-    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Flight:
+    def filter(
+        self: FlightType, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any
+    ) -> FlightType:
         kwargs.setdefault("fuel", self.fuel)
         return super().filter(mask, copy=copy, **kwargs)
 
