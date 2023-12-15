@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, NoReturn
 
 import numpy as np
 import numpy.typing as npt
@@ -121,14 +121,24 @@ class Fleet(Flight):
         return final_waypoints, fl_attrs
 
     @overrides
-    def copy(self) -> Fleet:
-        return type(self)(
-            data=self.data,
-            attrs=self.attrs,
-            fuel=self.fuel,
-            copy=True,
-            fl_attrs=self.fl_attrs,
+    def copy(self, **kwargs: Any) -> Fleet:
+        kwargs.setdefault("fuel", self.fuel)
+        kwargs.setdefault("fl_attrs", self.fl_attrs)
+        return super().copy(**kwargs)
+
+    @overrides
+    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Flight:
+        kwargs.setdefault("fuel", self.fuel)
+        kwargs.setdefault("fl_attrs", self.fl_attrs)
+        return super().filter(mask, copy=copy, **kwargs)
+
+    @overrides
+    def sort(self, by: str | list[str]) -> NoReturn:
+        msg = (
+            "Fleet.sort is not implemented. A Fleet instance must be sorted "
+            "by 'flight_id' and 'time'."
         )
+        raise ValueError(msg)
 
     @classmethod
     def from_seq(
