@@ -1,6 +1,12 @@
 
 # Changelog
 
+## 0.49.2
+
+### Internals
+
+- Make `Fuel` and its subclasses `JetA`, `SAFBlend`, and `HydrogenFuel` frozen.
+
 ## v0.49.1
 
 ### Fixes
