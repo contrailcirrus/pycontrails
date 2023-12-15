@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 import numpy as np
 import numpy.typing as npt
@@ -258,9 +258,7 @@ class Flight(GeoVectorDataset):
                     "Set copy=False, or sort data before creating Flight."
                 )
             warnings.warn("Sorting Flight data by time.")
-
-            sorted_flight = self.sort("time")
-            self.data = sorted_flight.data
+            self.data = GeoVectorDataset(self, copy=False).sort("time").data
 
             # Update time_diff ... we use it again below
             time_diff = np.diff(self["time"])
@@ -281,8 +279,19 @@ class Flight(GeoVectorDataset):
                 )
 
     @overrides
-    def copy(self) -> Flight:
-        return type(self)(data=self.data, attrs=self.attrs, fuel=self.fuel, copy=True)
+    def copy(self, **kwargs: Any) -> Flight:
+        kwargs.setdefault("fuel", self.fuel)
+        return super().copy(**kwargs)
+
+    @overrides
+    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Flight:
+        kwargs.setdefault("fuel", self.fuel)
+        return super().filter(mask, copy=copy, **kwargs)
+
+    @overrides
+    def sort(self, by: str | list[str]) -> NoReturn:
+        msg = "Flight.sort is not implemented. A Flight instance must be sorted by 'time'."
+        raise ValueError(msg)
 
     @property
     def time_start(self) -> pd.Timestamp:

@@ -763,15 +763,20 @@ class VectorDataset:
     # Utilities
     # ------------
 
-    def copy(self: VectorDatasetType) -> VectorDatasetType:
+    def copy(self: VectorDatasetType, **kwargs: Any) -> VectorDatasetType:
         """Return a copy of this VectorDatasetType class.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Additional keyword arguments passed into the constructor of the returned class.
 
         Returns
         -------
         VectorDatasetType
             Copy of class
         """
-        return type(self)(data=self.data, attrs=self.attrs, copy=True)
+        return type(self)(data=self.data, attrs=self.attrs, copy=True, **kwargs)
 
     def select(self: VectorDataset, keys: Iterable[str], copy: bool = True) -> VectorDataset:
         """Return new class instance only containing specified keys.
@@ -795,7 +800,7 @@ class VectorDataset:
         return VectorDataset(data=data, attrs=self.attrs, copy=copy)
 
     def filter(
-        self: VectorDatasetType, mask: npt.NDArray[np.bool_], copy: bool = True
+        self: VectorDatasetType, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any
     ) -> VectorDatasetType:
         """Filter :attr:`data` according to a boolean array ``mask``.
 
@@ -809,6 +814,8 @@ class VectorDataset:
             Copy data on filter. Defaults to True. See
             `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_
             for insight into whether copy is appropriate.
+        **kwargs : Any
+            Additional keyword arguments passed into the constructor of the returned class.
 
         Returns
         -------
@@ -825,12 +832,13 @@ class VectorDataset:
             raise TypeError("Parameter `mask` must be a boolean array.")
 
         data = {key: value[mask] for key, value in self.data.items()}
-        return type(self)(data=data, attrs=self.attrs, copy=copy)
+        return type(self)(data=data, attrs=self.attrs, copy=copy, **kwargs)
 
     def sort(self: VectorDatasetType, by: str | list[str]) -> VectorDatasetType:
         """Sort data by key(s).
 
-        This method always creates a copy of the data.
+        This method always creates a copy of the data by calling
+        :meth:`pandas.DataFrame.sort_values`.
 
         Parameters
         ----------
@@ -842,7 +850,7 @@ class VectorDataset:
         VectorDatasetType
             Instance with sorted data.
         """
-        return type(self)(data=self.dataframe.sort_values(by=by), attrs=self.attrs)
+        return type(self)(data=self.dataframe.sort_values(by=by), attrs=self.attrs, copy=False)
 
     def ensure_vars(self, vars: str | Iterable[str], raise_error: bool = True) -> bool:
         """Ensure variables exist in column of :attr:`data` or :attr:`attrs`.
