@@ -98,7 +98,7 @@ class Fleet(Flight):
         if not np.array_equal(expected_size, actual_size):
             msg = (
                 "Fleet must have contiguous waypoint blocks with constant flight_id. "
-                "If instantiating from a DataFrame, call df.sort(['flight_id', 'time']) "
+                "If instantiating from a DataFrame, call df.sort_values(by=['flight_id', 'time']) "
                 "before passing to Fleet."
             )
             raise ValueError(msg)
@@ -140,7 +140,9 @@ class Fleet(Flight):
     def sort(self, by: str | list[str]) -> NoReturn:
         msg = (
             "Fleet.sort is not implemented. A Fleet instance must be sorted "
-            "by 'flight_id' and 'time'."
+            "by ['flight_id', 'time'] (this is enforced in Fleet._validate). "
+            "To force sorting, create a GeoVectorDataset instance "
+            "and call the 'sort' method."
         )
         raise ValueError(msg)
 
