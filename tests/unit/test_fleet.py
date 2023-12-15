@@ -270,4 +270,21 @@ def test_method_preserves_fuel_fl_attrs(syn: SyntheticFlight, method: str) -> No
     assert out.fuel is fleet.fuel
 
     assert hasattr(out, "fl_attrs")
-    assert out.fl_attrs is fleet.fl_attrs
+    assert out.fl_attrs == fleet.fl_attrs
+
+
+def test_fleet_filter_removes_flight(syn: SyntheticFlight) -> None:
+    """Ensure fl attributes are removed when Fleet.filter removes a entire flight."""
+
+    fls = [syn() for _ in range(5)]
+    fleet = Fleet.from_seq(fls)
+    assert fleet.n_flights == 5
+
+    id0 = fls[0].attrs["flight_id"]
+    mask = fleet["flight_id"] != id0
+    out = fleet.filter(mask)
+    assert isinstance(out, Fleet)
+
+    assert out.n_flights == 4
+    assert id0 not in out.fl_attrs
+    assert list(out.fl_attrs) == [fl.attrs["flight_id"] for fl in fls[1:]]

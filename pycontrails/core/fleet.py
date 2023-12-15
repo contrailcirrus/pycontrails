@@ -129,7 +129,11 @@ class Fleet(Flight):
     @overrides
     def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Fleet:
         kwargs.setdefault("fuel", self.fuel)
-        kwargs.setdefault("fl_attrs", self.fl_attrs)
+
+        flight_ids = set(np.unique(self["flight_id"][mask]))
+        fl_attrs = {k: v for k, v in self.fl_attrs.items() if k in flight_ids}
+        kwargs.setdefault("fl_attrs", fl_attrs)
+
         return super().filter(mask, copy=copy, **kwargs)
 
     @overrides
