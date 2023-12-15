@@ -294,7 +294,11 @@ class Flight(GeoVectorDataset):
 
     @overrides
     def sort(self, by: str | list[str]) -> NoReturn:
-        msg = "Flight.sort is not implemented. A Flight instance must be sorted by 'time'."
+        msg = (
+            "Flight.sort is not implemented. A Flight instance is automatically sorted "
+            "by 'time' on creation. To force sorting, create a GeoVectorDataset instance "
+            "and call the 'sort' method."
+        )
         raise ValueError(msg)
 
     @property
