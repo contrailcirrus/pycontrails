@@ -7,7 +7,7 @@ import dataclasses
 import numpy as np
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Fuel:
     """Base class for the physical parameters of the fuel."""
 
@@ -36,7 +36,7 @@ class Fuel:
     ei_oc: float
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class JetA(Fuel):
     """Jet A-1 Fuel.
 
@@ -97,20 +97,31 @@ class SAFBlend(Fuel):
 
         self.pct_blend = pct_blend
 
-        self.fuel_name = "Jet A-1 / Sustainable Aviation Fuel Blend"
+        fuel_name = "Jet A-1 / Sustainable Aviation Fuel Blend"
 
         # We take the default values for Jet-A and modify them for a custom blend
         base_fuel = JetA()
-        self.q_fuel = base_fuel.q_fuel + (10700.0 * self.pct_blend)
-        self.hydrogen_content = base_fuel.hydrogen_content + 0.015 * self.pct_blend
-        self.ei_co2 = base_fuel.ei_co2
-        self.ei_h2o = base_fuel.ei_h2o * (self.hydrogen_content / base_fuel.hydrogen_content)
-        self.ei_so2 = base_fuel.ei_so2 * (1.0 - self.pct_blend / 100.0)
-        self.ei_sulphates = self.ei_so2 / 0.98 * 0.02
-        self.ei_oc = base_fuel.ei_oc
+        q_fuel = base_fuel.q_fuel + (10700.0 * self.pct_blend)
+        hydrogen_content = base_fuel.hydrogen_content + 0.015 * self.pct_blend
+        ei_co2 = base_fuel.ei_co2
+        ei_h2o = base_fuel.ei_h2o * (hydrogen_content / base_fuel.hydrogen_content)
+        ei_so2 = base_fuel.ei_so2 * (1.0 - self.pct_blend / 100.0)
+        ei_sulphates = ei_so2 / 0.98 * 0.02
+        ei_oc = base_fuel.ei_oc
+
+        super().__init__(
+            fuel_name=fuel_name,
+            q_fuel=q_fuel,
+            hydrogen_content=hydrogen_content,
+            ei_co2=ei_co2,
+            ei_h2o=ei_h2o,
+            ei_so2=ei_so2,
+            ei_sulphates=ei_sulphates,
+            ei_oc=ei_oc,
+        )
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class HydrogenFuel(Fuel):
     """Hydrogen Fuel.
 
