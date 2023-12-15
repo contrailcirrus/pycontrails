@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 from pyproj import Geod
 
-from pycontrails import Flight, GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
+from pycontrails import Flight, GeoVectorDataset, MetDataArray, MetDataset, SAFBlend, VectorDataset
 from pycontrails.core import flight
 from pycontrails.models.issr import ISSR
 from pycontrails.physics import constants, units
@@ -1078,3 +1078,22 @@ def test_flight_slots(flight_fake: Flight) -> None:
     assert flight_fake.__slots__ == ("fuel",)
     with pytest.raises(AttributeError, match="'Flight' object has no attribute 'foo'"):
         flight_fake.foo = "bar"
+
+
+@pytest.mark.parametrize("method", ["copy", "filter"])
+def test_method_preserves_fuel(flight_fake: Flight, method: str) -> None:
+    """Ensure fuel is preserved for the copy and filter methods."""
+
+    flight_fake.fuel = SAFBlend(15.0)
+
+    if method == "copy":
+        out = flight_fake.copy()
+    else:
+        assert method == "filter"
+        mask = np.ones(len(flight_fake), dtype=bool)
+        mask[::3] = False
+        out = flight_fake.filter(mask)
+
+    assert isinstance(out, Flight)
+    assert hasattr(out, "fuel")
+    assert out.fuel is flight_fake.fuel

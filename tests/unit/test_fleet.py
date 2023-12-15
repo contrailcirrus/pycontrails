@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pycontrails import Flight
+from pycontrails import Flight, HydrogenFuel
 from pycontrails.core.fleet import Fleet
 
 try:
@@ -246,3 +246,28 @@ def test_fleet_slots(syn: SyntheticFlight) -> None:
     assert fleet.__slots__ == ("fl_attrs", "final_waypoints")
     with pytest.raises(AttributeError, match="'Fleet' object has no attribute 'foo'"):
         fleet.foo = "bar"
+
+
+@pytest.mark.parametrize("method", ["copy", "filter"])
+def test_method_preserves_fuel_fl_attrs(syn: SyntheticFlight, method: str) -> None:
+    """Ensure fuel and fl_attrs are preserved for the copy and filter methods."""
+
+    fls = (syn() for _ in range(5))
+    fleet = Fleet.from_seq(fls)
+
+    fleet.fuel = HydrogenFuel()
+
+    if method == "copy":
+        out = fleet.copy()
+    else:
+        assert method == "filter"
+        mask = np.ones(len(fleet), dtype=bool)
+        mask[::3] = False
+        out = fleet.filter(mask)
+
+    assert isinstance(out, Fleet)
+    assert hasattr(out, "fuel")
+    assert out.fuel is fleet.fuel
+
+    assert hasattr(out, "fl_attrs")
+    assert out.fl_attrs is fleet.fl_attrs
