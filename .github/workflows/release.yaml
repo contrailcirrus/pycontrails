@@ -55,8 +55,10 @@ jobs:
             python -m pytest {project}/tests -vv &&
             mv {project}/pycontrails-bak {project}/pycontrails
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
         with:
+          name: wheels-${{ matrix.os }}-artifact
           path: ./wheelhouse/*.whl
 
   build_sdist:
@@ -70,17 +72,19 @@ jobs:
       - name: Build sdist
         run: pipx run build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
         with:
+          name: sdist-artifact
           path: dist/*.tar.gz
 
   upload_pypi_test:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download wheels and sdist
+        uses: actions/download-artifact@v4
         with:
-          name: artifact
           path: dist
 
       - name: Publish distribution 📦 to Test PyPI
@@ -97,9 +101,9 @@ jobs:
     needs: [build_wheels, build_sdist, check-main-test-status]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download wheels and sdist
+        uses: actions/download-artifact@v4
         with:
-          name: artifact
           path: dist
 
       - name: Publish distribution 📦 to PyPI
