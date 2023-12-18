@@ -82,10 +82,17 @@ jobs:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     steps:
-      - name: Download wheels and sdist
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: tmp
+
+      - name: Unpack artifacts into dist
+        run: |
+          mkdir -p dist
+          mv tmp/wheels-*-artifact/wheelhouse/*.whl dist/
+          mv tmp/sdist-artifact/dist/*.tar.gz dist/
+          ls -al dist
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -101,10 +108,17 @@ jobs:
     needs: [build_wheels, build_sdist, check-main-test-status]
     runs-on: ubuntu-latest
     steps:
-      - name: Download wheels and sdist
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: tmp
+
+      - name: Unpack artifacts into dist
+        run: |
+          mkdir -p dist
+          mv tmp/wheels-*-artifact/wheelhouse/*.whl dist/
+          mv tmp/sdist-artifact/dist/*.tar.gz dist/
+          ls -al dist
 
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
