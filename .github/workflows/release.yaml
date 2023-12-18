@@ -89,9 +89,11 @@ jobs:
 
       - name: Unpack artifacts into dist
         run: |
+          ls -al tmp
+          ls -al tmp/*
           mkdir -p dist
-          mv tmp/wheels-*-artifact/wheelhouse/*.whl dist/
-          mv tmp/sdist-artifact/dist/*.tar.gz dist/
+          mv tmp/wheels-*-artifact/*.whl dist/
+          mv tmp/sdist-artifact/*.tar.gz dist/
           ls -al dist
 
       - name: Publish distribution 📦 to Test PyPI
