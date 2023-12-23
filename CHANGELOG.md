@@ -12,6 +12,7 @@
 ### Internals
 
 - Make `Fuel` and its subclasses `JetA`, `SAFBlend`, and `HydrogenFuel` frozen.
+- No longer copy `met` when `Models.downselect_met` is called. In some modes of operation, this reduces the memory footprint of the model.
 
 ## v0.49.1
 

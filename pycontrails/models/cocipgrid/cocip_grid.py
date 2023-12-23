@@ -2232,10 +2232,11 @@ def _downselect_met(
     longitude_buffer = params["met_longitude_buffer"]
     latitude_buffer = params["met_latitude_buffer"]
     level_buffer = params["met_level_buffer"]
+    time_buffer = params["met_time_buffer"]
 
     # Down select met relative to min / max integration timesteps, not Flight
-    t0 = params["met_time_buffer"][0]
-    t1 = params["met_time_buffer"][1] + params["max_age"] + params["dt_integration"]
+    t0 = time_buffer[0]
+    t1 = time_buffer[1] + params["max_age"] + params["dt_integration"]
 
     if isinstance(source, MetDataset):
         # MetDataset doesn't have a downselect_met method, so create a
@@ -2243,20 +2244,24 @@ def _downselect_met(
         # Just take extreme here for downselection
         # We may want to change min / max to nanmin / nanmax
         ds = source.data
+        lon = ds["longitude"].values
+        lat = ds["latitude"].values
+        level = ds["level"].values
+        time = ds["time"].values
         source = GeoVectorDataset(
-            longitude=np.array([ds["longitude"].values.min(), ds["longitude"].values.max()]),
-            latitude=np.array([ds["latitude"].values.min(), ds["latitude"].values.max()]),
-            level=np.array([ds["level"].values.min(), ds["level"].values.max()]),
-            time=np.array([ds["time"].values.min(), ds["time"].values.max()]),
+            longitude=[lon.min(), lon.max()],
+            latitude=[lat.min(), lat.max()],
+            level=[level.min(), level.max()],
+            time=[time.min(), time.max()],
         )
 
-    # `downselect_met(met=...)` copies `met`, `rad`
     met = source.downselect_met(
         met,
         latitude_buffer=latitude_buffer,
         longitude_buffer=longitude_buffer,
         level_buffer=level_buffer,
         time_buffer=(t0, t1),
+        copy=False,
     )
 
     rad = source.downselect_met(
@@ -2264,6 +2269,7 @@ def _downselect_met(
         latitude_buffer=latitude_buffer,
         longitude_buffer=longitude_buffer,
         time_buffer=(t0, t1),
+        copy=False,
     )
 
     return met, rad

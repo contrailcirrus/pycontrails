@@ -541,8 +541,7 @@ class Model(ABC):
         }
         kwargs = {k: v for k, v in buffers.items() if v is not None}
 
-        # `downselect_met(met=...)` copies `met`
-        self.met = self.source.downselect_met(self.met, **kwargs)
+        self.met = self.source.downselect_met(self.met, **kwargs, copy=False)
 
     def set_source_met(
         self,
