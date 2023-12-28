@@ -471,7 +471,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
     assert "extrakey" not in fl17
 
 
-def test_step_climb_interpolation(fl: Flight) -> None:
+def test_step_climb_interpolation() -> None:
     """Check the ROCD of the interpolated altitude."""
 
     def _check_rocd(_fl: Flight, nominal_rocd: float = constants.nominal_rocd) -> np.bool_:
@@ -481,8 +481,8 @@ def test_step_climb_interpolation(fl: Flight) -> None:
         rocd = np.abs(dalt / dt)
         return np.all(rocd[:-1] < 2 * nominal_rocd)
 
-    # test more aggresive altitude interpolation
-    fl_alt = Flight(
+    # test more aggressive altitude interpolation
+    fl = Flight(
         longitude=np.linspace(0, 10, 5),
         latitude=np.linspace(0, 10, 5),
         time=pd.DatetimeIndex([
@@ -495,7 +495,7 @@ def test_step_climb_interpolation(fl: Flight) -> None:
         altitude=np.array([0, 5000, 10000, 9000, 5000]),
     )
 
-    fl1 = fl_alt.resample_and_fill()
+    fl1 = fl.resample_and_fill()
     assert _check_rocd(fl1)
     # The first segment's climb should be at the start
     assert fl1["altitude"][1] > 0
