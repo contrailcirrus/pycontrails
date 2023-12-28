@@ -2071,12 +2071,10 @@ def _handle_time_column(time: pd.Series) -> pd.Series:
     time : pd.Series
         Pandas dataframe column labeled "time".
 
-
     Returns
     -------
     pd.Series
         Parsed pandas time series.
-
 
     Raises
     ------
@@ -2139,12 +2137,10 @@ def _parse_unix_time(time: list[int] | npt.NDArray[np.int_] | pd.Series) -> pd.S
 
     Attempts to parse the time in "s", "ms", "us", "ns"
 
-
     Parameters
     ----------
     time : list[int] | npt.NDArray[np.int_] | pd.Series
         Sequence of unix timestamps
-
 
     Returns
     -------
