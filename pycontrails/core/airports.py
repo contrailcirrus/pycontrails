@@ -88,11 +88,10 @@ def global_airport_database(
         airports.to_csv(cachestore.path(cache_key), index=False)
 
     #: Format dataset by renaming columns & filling nan values
-    airports.rename(
+    airports = airports.rename(
         columns={"latitude_deg": "latitude", "longitude_deg": "longitude", "gps_code": "icao_code"},
-        inplace=True,
     )
-    airports["elevation_ft"].fillna(0, inplace=True)
+    airports.fillna({"elevation_ft": 0}, inplace=True)
 
     # Keep specific airport types used by commercial aviation
     subset = ("large_airport", "medium_airport", "small_airport", "heliport")
@@ -108,7 +107,7 @@ def global_airport_database(
 
     # Format dataset
     airports["elevation_m"] = units.ft_to_m(airports["elevation_ft"].to_numpy())
-    airports.sort_values(by=["icao_code"], ascending=True, inplace=True)
+    airports = airports.sort_values(by="icao_code", ascending=True)
 
     return airports.reset_index(drop=True)
 

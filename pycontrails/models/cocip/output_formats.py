@@ -107,7 +107,7 @@ def flight_waypoint_summary_statistics(
         flight_waypoints.ensure_vars(["flight_id", "waypoint"])
         flight_waypoints = flight_waypoints.dataframe
 
-    flight_waypoints.set_index(["flight_id", "waypoint"], inplace=True)
+    flight_waypoints = flight_waypoints.set_index(["flight_id", "waypoint"])
 
     # Check and pre-process `contrails`
     if isinstance(contrails, GeoVectorDataset):
@@ -124,11 +124,11 @@ def flight_waypoint_summary_statistics(
         contrails.columns.get_level_values(1) + "_" + contrails.columns.get_level_values(0)
     )
     rename_cols = {"mean_altitude": "mean_contrail_altitude", "sum_ef": "ef"}
-    contrails.rename(columns=rename_cols, inplace=True)
+    contrails = contrails.rename(columns=rename_cols)
 
     # Concatenate to flight-waypoint outputs
     out = flight_waypoints.join(contrails, how="left")
-    out.reset_index(inplace=True)
+    out = out.reset_index()
     return GeoVectorDataset(out)
 
 
@@ -246,8 +246,7 @@ def contrail_flight_summary_statistics(flight_waypoints: GeoVectorDataset) -> pd
         "mean_mean_rsr": "mean_lifetime_rsr",
     }
 
-    flight_summary.rename(columns=rename_flight_summary_cols, inplace=True)
-    return flight_summary.reset_index(["flight_id"])
+    return flight_summary.rename(columns=rename_flight_summary_cols).reset_index(["flight_id"])
 
 
 # ---------------
@@ -1564,7 +1563,7 @@ def contrails_to_hi_res_grid(
 
     # Contrail head and tails: continuous segments only
     heads_t = contrails_t.dataframe
-    heads_t.sort_values(["flight_id", "waypoint"], inplace=True)
+    heads_t = heads_t.sort_values(["flight_id", "waypoint"])
     tails_t = heads_t.shift(periods=-1)
 
     is_continuous = heads_t["continuous"]
@@ -1572,7 +1571,7 @@ def contrails_to_hi_res_grid(
     tails_t = tails_t[is_continuous].copy()
     tails_t["waypoint"] = tails_t["waypoint"].astype("int")
 
-    heads_t.set_index(["flight_id", "waypoint"], inplace=True, drop=False)
+    heads_t = heads_t.set_index(["flight_id", "waypoint"], drop=False)
     tails_t.index = heads_t.index
 
     # Aggregate contrail segments to a high resolution longitude-latitude grid

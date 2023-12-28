@@ -1172,7 +1172,7 @@ class Cocip(Model):
 
             seq_index = seq_index.set_index("level_0")
             seq_index["dt_integration"] = first_dt
-            seq_index["dt_integration"].fillna(self.params["dt_integration"], inplace=True)
+            seq_index.fillna({"dt_integration": self.params["dt_integration"]}, inplace=True)
 
             self.contrail = seq_index.set_index("index")
 
@@ -1241,8 +1241,7 @@ class Cocip(Model):
 
         # Fill missing values for ef and contrail_age per conventions
         # Mean, max, and min radiative values are *not* filled with 0
-        df["ef"] = df["ef"].fillna(0.0)
-        df["contrail_age"] = df["contrail_age"].fillna(np.timedelta64(0, "ns"))
+        df.fillna({"ef": 0.0, "contrail_age": np.timedelta64(0, "ns")}, inplace=True)
 
         # cocip flag for each waypoint
         # -1 if negative EF, 0 if no EF, 1 if positive EF,

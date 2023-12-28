@@ -365,8 +365,8 @@ def test_total_fuel_burn(load_factor: float) -> None:
 def test_zero_tas_waypoints() -> None:
     """Confirm the PSFlight gracefully handles waypoints with zero true airspeed."""
     df_flight = pd.read_csv(get_static_path("flight.csv"))
-    df_flight["longitude"].iat[48] = df_flight["longitude"].iat[47]
-    df_flight["latitude"].iat[48] = df_flight["latitude"].iat[47]
+    coords = ["longitude", "latitude"]
+    df_flight.loc[48, coords] = df_flight.loc[47, coords]
 
     attrs = {"flight_id": "1", "aircraft_type": "A320"}
     flight = Flight(df_flight.iloc[:100], attrs=attrs)

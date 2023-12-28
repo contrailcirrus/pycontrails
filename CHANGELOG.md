@@ -3,6 +3,10 @@
 
 ## 0.49.2 (unreleased)
 
+### Features
+
+- Support [pandas Copy-on-Write](https://pandas.pydata.org/docs/user_guide/copy_on_write.html). This can be enabled with `pd.set_option("mode.copy_on_write", True)` or by setting the `PANDAS_COPY_ON_WRITE` environment variable.
+
 ### Fixes
 
 - Ensure the `Flight.fuel` attribute is preserved for the `Flight.filter` method.
@@ -13,6 +17,7 @@
 
 - Make `Fuel` and its subclasses `JetA`, `SAFBlend`, and `HydrogenFuel` frozen.
 - No longer copy `met` when `Models.downselect_met` is called. In some modes of operation, this reduces the memory footprint of the model.
+- Update codebase for more harmony with [PDEP 8](https://jorisvandenbossche.github.io/pandas-website-preview/pdeps/0008-inplace-methods-in-pandas.html) and Copy-on-Write semantics.
 
 ## v0.49.1
 
