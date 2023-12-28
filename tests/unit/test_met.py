@@ -221,7 +221,8 @@ def test_shift_longitude(zero_like_da: xr.DataArray) -> None:
 
     # shift coordinates to [0, 360) manually
     lons = da["longitude"].values
-    lons[lons < 0] = lons[lons < 0] + 360
+    lons = np.where(lons < 0.0, lons + 360.0, lons)
+
     da = da.assign_coords(longitude=lons)
     assert np.all(da["longitude"].values >= 0)
 

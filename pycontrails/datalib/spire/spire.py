@@ -725,7 +725,7 @@ def _downsample_flight(
     :meth:`flight.Flight.resample_and_fill`
     """
     mdf = messages.copy()
-    mdf.set_index("timestamp", inplace=True, drop=False)
+    mdf = mdf.set_index("timestamp", drop=False)
     resampled = mdf.resample(time_resolution).first()
 
     # remove rows that do not align with a previous time

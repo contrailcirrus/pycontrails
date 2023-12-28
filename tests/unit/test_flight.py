@@ -215,7 +215,7 @@ def test_flight_fitting() -> None:
     """Test Flight.fit_altitude()."""
 
     df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    df.rename(columns={"altitude_baro": "altitude_ft", "timestamp": "time"}, inplace=True)
+    df = df.rename(columns={"altitude_baro": "altitude_ft", "timestamp": "time"})
     df["time"] = df["time"].dt.tz_localize(None)
 
     flight = Flight(df[df["callsign"] == "BAW506"], drop_duplicated_times=True)

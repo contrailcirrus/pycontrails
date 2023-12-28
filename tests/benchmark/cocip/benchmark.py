@@ -50,7 +50,7 @@ def load_flights() -> list[Flight]:
 
     # load flight metadata
     df_flights_metadata = pd.read_parquet(INPUT_PATH / "flight" / FLIGHT_METADATA_FILE)
-    df_flights_metadata.set_index("flight_id", inplace=True)
+    df_flights_metadata = df_flights_metadata.set_index("flight_id")
 
     # Load flight waypoints
     df_flights_waypoints = pd.read_parquet(INPUT_PATH / "flight" / FLIGHT_WAYPOINT_FILE)

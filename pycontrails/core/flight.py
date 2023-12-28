@@ -1612,15 +1612,17 @@ def _altitude_interpolation_climb_descend_middle(
             # Skip short segments and segments that do not climb
             if not step_group:
                 continue
-            if altitude[start_na_idxs[i]] >= altitude[end_na_idxs[i]]:
+            if s[start_na_idxs[i]] >= s[end_na_idxs[i]]:
                 continue
 
             # We have a long climbing segment.  Keep first half of segment at the starting
             # altitude, then climb at mid point. Adjust indicies computed before accordingly
             na_group_size[i], is_odd = divmod(na_group_size[i], 2)
             nan_fill_size = na_group_size[i] + is_odd
-            isna[start_na_idxs[i] : start_na_idxs[i] + nan_fill_size + 1] = False
-            s[start_na_idxs[i] : start_na_idxs[i] + nan_fill_size + 1] = s[start_na_idxs[i]]
+
+            sl = slice(start_na_idxs[i], start_na_idxs[i] + nan_fill_size + 1)
+            isna[sl] = False
+            s[sl] = s[start_na_idxs[i]]
             start_na_idxs[i] += nan_fill_size
 
     # Use pandas to forward and backfill altitude values
@@ -1631,7 +1633,7 @@ def _altitude_interpolation_climb_descend_middle(
     # at nominal_rocd over each group of nan
     cumalt_list = []
     for start_na_idx, end_na_idx, size in zip(start_na_idxs, end_na_idxs, na_group_size):
-        if altitude[start_na_idx] <= altitude[end_na_idx]:
+        if s[start_na_idx] <= s[end_na_idx]:
             cumalt_list.append(np.arange(1, size, dtype=float))
         else:
             cumalt_list.append(np.flip(np.arange(1, size, dtype=float)))
