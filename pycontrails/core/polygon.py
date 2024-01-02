@@ -172,7 +172,7 @@ def _contours_to_polygons(
 
     Parameters
     ----------
-    contours : Sequence[npt.NDArray[np.float_]
+    contours : Sequence[npt.NDArray[np.float_]]
         The contours output from :func:`cv2.findContours`.
     hierarchy : npt.NDArray[np.int_]
         The hierarchy output from :func:`cv2.findContours`.
@@ -293,33 +293,41 @@ def find_multipolygon(
     ----------
     arr : npt.NDArray[np.float_]
         Array to convert to a multipolygon. The array will be converted to a binary
-        array by comparing each element to `threshold`. This binary array is then
+        array by comparing each element to ``threshold``. This binary array is then
         passed into :func:`cv2.findContours` to find the contours.
     threshold : float
-        Threshold to use when converting `arr` to a binary array.
+        Threshold to use when converting ``arr`` to a binary array.
     min_area : float
         Minimum area of a polygon to be included in the output.
     epsilon : float
         Epsilon value to use when simplifying the polygons. Passed into shapely's
         :meth:`shapely.geometry.Polygon.simplify` method.
-    interiors : bool
+    interiors : bool, optional
         Whether to include interior polygons.
-    convex_hull : bool
+    convex_hull : bool, optional
         Experimental. Whether to take the convex hull of each polygon.
-    longitude, latitude : npt.NDArray[np.float_], optional
-        If provided, the coordinates values corresponding to the dimensions of `arr`.
+    longitude : npt.NDArray[np.float_] | None, optional
+        If provided, the coordinates values corresponding to the longitude dimensions of ``arr``.
         The contour coordinates will be converted to longitude-latitude values by indexing
         into this array. Defaults to None.
-    precision : int, optional
+    latitude : npt.NDArray[np.float_] | None, optional
+        If provided, the coordinates values corresponding to the latitude dimensions of ``arr``.
+    precision : int | None, optional
         If provided, the precision to use when rounding the coordinates. Defaults to None.
 
     Returns
     -------
     shapely.MultiPolygon
         A multipolygon of the contours.
+
+    Raises
+    ------
+    ValueError
+        If ``arr`` is not 2d.
     """
     if arr.ndim != 2:
         raise ValueError("Array must be 2d")
+
     assert (longitude is None) == (latitude is None)
     if longitude is not None:
         assert latitude is not None
@@ -340,8 +348,8 @@ def find_multipolygon(
     hierarchy = hierarchy[0]
 
     polygons = _contours_to_polygons(
-        contours,
-        hierarchy,
+        contours,  # type: ignore[arg-type]
+        hierarchy,  # type: ignore[arg-type]
         min_area,
         convex_hull,
         epsilon,
@@ -392,8 +400,8 @@ def _buffer_simplify_iterate(polygon: shapely.Polygon, epsilon: float) -> shapel
 
     Returns
     -------
-    shapely.LinearRing
-        Simplified linear ring.
+    shapely.Polygon
+        Simplified linear ring as a :class:`shapely.Polygon`.
     """
     # Try to simplify without a buffer first
     # This seems to be computationally faster
@@ -498,10 +506,10 @@ def multipolygon_to_geojson(
     ----------
     multipolygon : shapely.MultiPolygon
         Multipolygon to convert.
-    altitude : float or None
+    altitude : float | None
         Altitude of the multipolygon. If provided, the multipolygon coordinates
         will be given a z-coordinate.
-    properties : dict[str, Any], optional
+    properties : dict[str, Any] | None, optional
         Properties to add to the GeoJSON feature.
 
     Returns
