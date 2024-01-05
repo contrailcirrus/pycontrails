@@ -78,7 +78,7 @@ class PSGrid(AircraftPerformanceGrid):
 
         Parameters
         ----------
-        source : MetDataset or GeoVectorDataset, optional
+        source : GeoVectorDataset | MetDataset | None, optional
             The source data to use for the evaluation. If None, the source is taken
             from the :attr:`met` attribute of the :class:`PSGrid` instance.
             The aircraft type is taken from ``source.attrs["aircraft_type"]``. If this field
@@ -90,12 +90,18 @@ class PSGrid(AircraftPerformanceGrid):
 
         Returns
         -------
-        GeoVectorDataset or MetDataset
+        GeoVectorDataset | MetDataset
             The source data with the following variables added:
 
                 - aircraft_mass
                 - fuel_flow
                 - engine_efficiency
+
+        Raises
+        ------
+        NotImplementedError
+            If "true_airspeed" or "aircraft_mass" fields are included in
+            :attr:`source`.
 
         See Also
         --------
@@ -334,7 +340,7 @@ def ps_nominal_grid(
     level : npt.NDArray[np.float_] | None, optional
         The pressure level, [:math:`hPa`]. If None, the ``air_temperature``
         argument must be a :class:`xarray.DataArray` with a ``level`` coordinate.
-    air_temperature : xr.DataArray | npt.NDArray[np.float] | None, optional
+    air_temperature : xr.DataArray | npt.NDArray[np.float_] | None, optional
         The ambient air temperature, [:math:`K`]. If None (default), the ISA
         temperature is computed from the ``level`` argument. If a :class:`xarray.DataArray`,
         the ``level`` coordinate must be present and the ``level`` argument must be None
@@ -357,6 +363,11 @@ def ps_nominal_grid(
         - ``"engine_efficiency"`` : Engine efficiency
         - ``"aircraft_mass"`` : Aircraft mass at which the engine efficiency is maximized,
           [:math:`kg`]
+
+    Raises
+    ------
+    KeyError
+        If "aircraft_type" is not supported by the PS model.
 
     Examples
     --------

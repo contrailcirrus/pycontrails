@@ -54,7 +54,7 @@ class Cocip(Model):
     params : dict[str, Any], optional
         Override Cocip model parameters with dictionary.
         See :class:`CocipFlightParams` for model parameters.
-    **params_kwargs
+    **params_kwargs : Any
         Override Cocip model parameters with keyword arguments.
         See :class:`CocipFlightParams` for model parameters.
 
@@ -358,24 +358,16 @@ class Cocip(Model):
 
         Parameters
         ----------
-        source : Flight | Sequence[Flight]
+        source : Flight | Sequence[Flight] | None
             Input Flight(s) to model.
         **params : Any
             Overwrite model parameters before eval.
 
         Returns
         -------
-        :class : Flight | list[Flight]
+        Flight | list[Flight] | NoReturn
             Flight(s) with updated Contrail data. The model parameter "verbose_outputs"
             determines the variables on the return flight object.
-
-        Raises
-        ------
-        ValueError
-            Raises when ``source`` is None.
-            Raises when the met variable "specific_humidity" is improperly scaled.
-        KeyError
-            Raises when the variable "tau_cirrus" is not in the met dataset.
 
         References
         ----------
@@ -483,6 +475,12 @@ class Cocip(Model):
         ----------
         met : MetDataset
             Meteorology data
+
+        Raises
+        ------
+        ValueError
+            If non-sequential waypoints are found in ``self.source["waypoint"]``
+            If there is no intersection between met domain and :attr:`source`.
 
         See Also
         --------
@@ -1284,7 +1282,7 @@ class Cocip(Model):
 
         Returns
         -------
-        Flight or list[Flight]
+        Flight | list[Flight]
             Flight or list of Flight objects with empty variables.
         """
         self._cleanup_indices()
@@ -1345,6 +1343,11 @@ def process_met_datasets(
         Met data, possibly with "tau_cirrus" variable attached.
     rad : MetDataset
         Rad data with time shifted to account for accumulated values.
+
+    Raises
+    ------
+    If a previous version of pycontrails has already scaled the gridded humidity
+    data.
     """
     # Check for remnants of previous scaling.
     if "_pycontrails_modified" in met["specific_humidity"].attrs:
@@ -1406,6 +1409,11 @@ def _process_rad(rad: MetDataset) -> MetDataset:
     -------
     MetDataset
         Rad data with time shifted.
+
+    Raises
+    ------
+    ValueError
+        If a "radiation_accumulated" field is not found on ``rad.attrs``.
 
     Notes
     -----
@@ -1548,6 +1556,11 @@ def calc_continuous(contrail: GeoVectorDataset) -> None:
     ----------
     contrail : GeoVectorDataset
         GeoVectorDataset instance onto which "continuous" is set.
+
+    Raises
+    ------
+    ValueError
+        If ``contrail`` is empty.
     """
     if not contrail:
         raise ValueError("Cannot calculate continuous on an empty contrail")
@@ -2092,8 +2105,10 @@ def calc_timestep_contrail_evolution(
 
     Parameters
     ----------
-    met, rad : MetDataset
-       Meteorology and radiation data
+    met : MetDataset
+       Meteorology data
+    rad : MetDataset
+        Radiation data
     contrail_1 : GeoVectorDataset
         Contrail waypoints at current timestep (1)
     time_2 : np.datetime64
@@ -2102,6 +2117,11 @@ def calc_timestep_contrail_evolution(
         Model parameters
     **interp_kwargs : Any
         Interpolation keyword arguments
+
+    Returns
+    -------
+    GeoVectorDataset
+        The contrail evolved to ``time_2``.
     """
 
     # get lat/lon for current timestep (t1)
@@ -2379,6 +2399,13 @@ def _rad_accumulation_to_average_instantaneous(
     -------
     npt.NDArray[np.float_]
         Array of values converted from accumulation to average instantaneous values
+
+    Raises
+    ------
+    KeyError
+        If units are not provided on ``rad``.
+    ValueError
+        If unknown units are provided on ``rad``.
     """
     mda = rad[name]
     try:

@@ -68,19 +68,15 @@ class PCR(Model):
         source : GeoVectorDataset | Flight | MetDataset | None, optional
             Input GeoVectorDataset or Flight.
             If None, evaluates at the :attr:`met` grid points.
+        **params : Any
+            Overwrite model parameters.
 
         Returns
         -------
         GeoVectorDataset | Flight | MetDataset
             Returns 1 in potential contrail regions, 0 everywhere else.
             Returns ``np.nan`` if interpolating outside meteorology grid.
-        **params : Any
-            Overwrite model parameters.
 
-        Raises
-        ------
-        NotImplementedError
-            Raises if input ``source`` is not supported.
         """
 
         self.update_params(params)

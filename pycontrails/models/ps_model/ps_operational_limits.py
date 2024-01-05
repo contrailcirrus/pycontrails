@@ -130,9 +130,9 @@ def max_available_thrust_coefficient(
         Mach number at each waypoint.
     c_t_eta_b : ArrayOrFloat
         Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
-    atyp_param : AircraftEngineParams
+    atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
-    buffer : float
+    buffer : float, optional
         Additional buffer for maximum available thrust coefficient. The default value is 0.05,
         which increases the maximum available thrust coefficient by 5%.
 
@@ -312,7 +312,7 @@ def max_fuel_flow(
 
     Returns
     -------
-    ArrayOrFloat
+    npt.NDArray[np.float_]
         Maximum allowable fuel mass flow rate, [:math:`kg \ s^{-1}`]
     """
     ff_max = jet.equivalent_fuel_flow_rate_at_cruise(
