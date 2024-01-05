@@ -393,7 +393,7 @@ def fluid_dynamic_viscosity(air_temperature: ArrayOrFloat) -> ArrayOrFloat:
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    ArrayOrFloat
         Fluid dynamic viscosity, [:math:`kg m^{-1} s^{-1}`]
 
     Notes
@@ -520,7 +520,7 @@ def oswald_efficiency_factor(
     ----------
     c_drag_0 : ArrayOrFloat
         Zero-lift drag coefficient.
-    atyp_param : AircraftEngineParams
+    atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
@@ -575,7 +575,7 @@ def wave_drag_coefficient(
         Mach number at each waypoint
     c_lift : ArrayOrFloat
         Zero-lift drag coefficient
-    atyp_param : AircraftEngineParams
+    atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
@@ -728,7 +728,7 @@ def engine_thrust_coefficient(
         Mach number at each waypoint
     air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    wing_surface_area : ArrayOrFloat
+    wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]
 
     Returns
@@ -756,9 +756,9 @@ def overall_propulsion_efficiency(
         Engine thrust coefficient
     c_t_eta_b : ArrayOrFloat
         Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
-    atyp_param : AircraftEngineParams
+    atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
-    eta_over_eta_b_min : float | None
+    eta_over_eta_b_min : float | None, optional
         Clip the ratio of the overall propulsion efficiency to the maximum propulsion
         efficiency to this value. See :func:`propulsion_efficiency_over_max_propulsion_efficiency`.
         If ``None``, no clipping is performed.
@@ -908,7 +908,7 @@ def fuel_mass_flow_rate(
         Mach number at each waypoint
     c_t : ArrayOrFloat
         Engine thrust coefficient
-    eta : ArrayOrFloat
+    eta : ArrayOrFloat | float
         Overall propulsion efficiency
     wing_surface_area : float
         Aircraft wing surface area, [:math:`m^2`]

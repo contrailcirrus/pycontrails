@@ -94,12 +94,8 @@ class SAC(Model):
         -------
         GeoVectorDataset | Flight | MetDataset
             Returns 1 where SAC is satisfied, 0 everywhere else.
-            Returns `np.nan` if interpolating outside meteorology grid.
+            Returns ``np.nan`` if interpolating outside meteorology grid.
 
-        Raises
-        ------
-        NotImplementedError
-            Raises if input ``source`` is not supported.
         """
 
         self.update_params(params)
@@ -309,7 +305,7 @@ def rh_critical_sac(air_temperature: ArrayLike, T_sat_liquid: ArrayLike, G: Arra
     ----------
     air_temperature : ArrayLike
         A sequence or array of temperature values, [:math:`K`]
-    T_sat_liquid : ArrayLike,
+    T_sat_liquid : ArrayLike
         Maximum threshold temperature for 100% relative humidity with respect to liquid, [:math:`K`]
     G : ArrayLike
         Slope of the mixing line in a temperature-humidity diagram.
