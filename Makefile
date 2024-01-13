@@ -166,25 +166,30 @@ nb-black:
 nb-black-check:
 	black docs/examples/*.ipynb --check
 
+# Note must be kept in sync with .pre-commit-config.yaml
+# and `nb-clean-check`
 nb-clean:
-	nb-clean clean docs/examples/*.ipynb \
+	nb-clean clean docs/**/*.ipynb \
         --remove-empty-cells \
-		--preserve-cell-metadata \
-		--preserve-cell-outputs
+		--preserve-cell-metadata tags \
+		--preserve-cell-outputs \
+		--preserve-execution-counts
 
 nb-clean-check:
-	nb-clean check docs/examples/*.ipynb \
+	nb-clean check docs/**/*.ipynb \
         --remove-empty-cells \
-		--preserve-cell-metadata \
-		--preserve-cell-outputs
+		--preserve-cell-metadata tags \
+		--preserve-cell-outputs \
+		--preserve-execution-counts
 
 # nbval 0.10.0 uses --nbval-sanitize-with instead of --sanitize-with
 # There is a bug in nbval 0.10.0 which prevents us from using it
 # https://github.com/computationalmodelling/nbval/issues/194
-# nb-test: ensure-era5-cached nb-black-check nb-check-links
-nb-test:
-	pytest --nbval docs/examples/Cache.ipynb --sanitize-with docs/nb-test.cfg
-# 	pytest --nbval --ignore-glob=*/ACCF.ipynb docs/examples --sanitize-with docs/nb-test.cfg
+nb-test: ensure-era5-cached nb-black-check nb-check-links
+	python -m pytest --nbval \
+		--ignore-glob=*/ACCF.ipynb \
+		--sanitize-with .nb-test.cfg \
+		docs/examples docs/tutorials
 
 # Check for broken links in notebooks
 # https://github.com/jupyterlab/pytest-check-links
@@ -196,11 +201,17 @@ nb-check-links:
 		--check-links-ignore "https://ourairports.com" \
 		docs/examples docs/tutorials
 
-# execute notebooks for docs output
+# execute all notebooks for docs output
 nb-execute: ensure-era5-cached nb-black-check nb-check-links
 	jupyter nbconvert --inplace \
 		--ClearMetadataPreprocessor.enabled=True \
-		--to notebook --execute docs/examples/[!ACCF]*.ipynb docs/tutorials/*.ipynb
+		--ClearMetadataPreprocessor.clear_notebook_metadata=False \
+		--to notebook \
+		--execute \
+		docs/examples/[!ACCF]*.ipynb \
+		docs/tutorials/[!interpolating-specific-humidity]*.ipynb
+
+	make nb-clean
 
 docs-build: doc8
 	sphinx-build -b html $(DOCS_DIR) $(DOCS_BUILD_DIR)/html

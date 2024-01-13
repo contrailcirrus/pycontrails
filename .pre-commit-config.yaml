@@ -34,3 +34,4 @@ repos:
           - --remove-empty-cells
           - --preserve-cell-metadata
           - --preserve-cell-outputs
+          - --preserve-execution-counts
