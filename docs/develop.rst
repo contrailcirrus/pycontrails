@@ -106,6 +106,11 @@ Run unit tests with `pytest <https://docs.pytest.org/en/7.2.x/>`__:
 
     $ make pytest
 
+Run notebook validation with `nbval <https://github.com/computationalmodelling/nbval>`__:
+
+.. code-block:: bash
+
+    $ make nb-test
 
 Documentation
 -------------
@@ -209,5 +214,5 @@ Test notebook examples with `nbval pytest plugin <https://github.com/computation
 
 .. code:: bash
 
-   $ make nbtest
+   $ make nb-test
 

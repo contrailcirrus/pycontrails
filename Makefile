@@ -185,7 +185,7 @@ nb-clean-check:
 # nbval 0.10.0 uses --nbval-sanitize-with instead of --sanitize-with
 # There is a bug in nbval 0.10.0 which prevents us from using it
 # https://github.com/computationalmodelling/nbval/issues/194
-nb-test: ensure-era5-cached nb-black-check nb-check-links
+nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
 	python -m pytest --nbval \
 		--ignore-glob=*/ACCF.ipynb \
 		--sanitize-with .nb-test.cfg \
