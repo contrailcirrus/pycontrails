@@ -33,5 +33,6 @@ repos:
           - clean
           - --remove-empty-cells
           - --preserve-cell-metadata
+          - tags
           - --preserve-cell-outputs
           - --preserve-execution-counts
