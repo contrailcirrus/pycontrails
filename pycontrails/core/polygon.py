@@ -348,8 +348,8 @@ def find_multipolygon(
     hierarchy = hierarchy[0]
 
     polygons = _contours_to_polygons(
-        contours,  # type: ignore[arg-type]
-        hierarchy,  # type: ignore[arg-type]
+        contours,
+        hierarchy,
         min_area,
         convex_hull,
         epsilon,
