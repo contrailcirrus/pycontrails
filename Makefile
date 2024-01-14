@@ -161,10 +161,10 @@ doc8:
 	doc8 docs
 
 nb-black:
-	black docs/examples/*.ipynb
+	black docs/**/*.ipynb
 
 nb-black-check:
-	black docs/examples/*.ipynb --check
+	black docs/**/*.ipynb --check
 
 # Note must be kept in sync with .pre-commit-config.yaml
 # and `nb-clean-check`
