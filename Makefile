@@ -201,16 +201,15 @@ nb-check-links:
 		--check-links-ignore "https://ourairports.com" \
 		docs/examples docs/tutorials
 
-# execute all notebooks for docs output
+# execute all notebooks in docs
 nb-execute: ensure-era5-cached nb-black-check nb-check-links
 	jupyter nbconvert --inplace \
-		--ClearMetadataPreprocessor.enabled=True \
-		--ClearMetadataPreprocessor.clear_notebook_metadata=False \
 		--to notebook \
 		--execute \
-		docs/examples/[!ACCF]*.ipynb \
-		docs/tutorials/[!interpolating-specific-humidity]*.ipynb
+		docs/examples/*.ipynb \
+		docs/tutorials/*.ipynb
 
+	# clean notebooks after execution
 	make nb-clean
 
 docs-build: doc8
