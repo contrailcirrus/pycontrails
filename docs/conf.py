@@ -69,7 +69,6 @@ exclude_patterns = [
     "Thumbs.db",
     ".DS_Store",
     "**.ipynb_checkpoints",
-    "nb-test.cfg",
 ]
 
 # suppress warnings during build
