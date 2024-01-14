@@ -166,8 +166,8 @@ nb-black:
 nb-black-check:
 	black docs/**/*.ipynb --check
 
-# Note must be kept in sync with .pre-commit-config.yaml
-# and `nb-clean-check`
+# Note must be kept in sync with 
+# `.pre-commit-config.yaml` and `make nb-clean-check`
 nb-clean:
 	nb-clean clean docs/**/*.ipynb \
         --remove-empty-cells \
@@ -187,9 +187,8 @@ nb-clean-check:
 # https://github.com/computationalmodelling/nbval/issues/194
 nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
 	python -m pytest --nbval \
-		--ignore-glob=*/ACCF.ipynb \
 		--sanitize-with .nb-test.cfg \
-		docs/examples docs/tutorials
+		docs/**/*.ipynb
 
 # Check for broken links in notebooks
 # https://github.com/jupyterlab/pytest-check-links
@@ -199,15 +198,14 @@ nb-check-links:
 		--check-links-ignore "https://doi.org/10.1021/acs.est.2c05781" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
-		docs/examples docs/tutorials
+		docs/**/*.ipynb
 
 # execute all notebooks in docs
 nb-execute: ensure-era5-cached nb-black-check nb-check-links
 	jupyter nbconvert --inplace \
 		--to notebook \
 		--execute \
-		docs/examples/*.ipynb \
-		docs/tutorials/*.ipynb
+		docs/**/*.ipynb
 
 	# clean notebooks after execution
 	make nb-clean
