@@ -168,6 +168,10 @@ class Emissions(Model):
                 "No 'engine_uid' found on source attrs. A constant emissions will be used."
             )
 
+        if "n_engine" not in self.source.attrs:
+            aircraft_type = self.source.attrs.get("aircraft_type")
+            self.source.attrs["n_engine"] = self.default_engines.at[aircraft_type, "n_engine"]
+
         try:
             fuel_flow_per_engine = self.source.get_data_or_attr("fuel_flow_per_engine")
         except KeyError:
