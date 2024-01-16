@@ -102,6 +102,63 @@ def test_emissions_eval(flight_fake: Flight, bada: str, aircraft_type: str, engi
         out_fl = emissions.eval(flight_fake)
 
 
+@pytest.mark.parametrize("aircraft_type", ["B737", "B738", "A320"])
+@pytest.mark.parametrize("engine_uid", ["01P11CM114", "01P08CM105"])
+@pytest.mark.parametrize("bada", ["BADA3", "BADA4"])
+def test_emissions_eval_no_n_engine(
+    flight_fake: Flight, bada: str, aircraft_type: str, engine_uid: str
+):
+    """Test emissions `eval` method.
+
+    Simple smoke test with several different BADA sources and aircraft types.
+    """
+    emissions = Emissions()
+
+    match = "Variable `air_temperature` not found. "
+    with pytest.raises(KeyError, match=match):
+        emissions.eval(source=flight_fake)
+
+    flight_fake["air_temperature"] = 216 * np.ones(flight_fake.size)
+    flight_fake["specific_humidity"] = 1e-6 * np.ones(flight_fake.size)
+    flight_fake["true_airspeed"] = 247 * np.ones(flight_fake.size)
+    flight_fake["fuel_flow"] = 0.3 * np.ones(flight_fake.size)
+    flight_fake.attrs["aircraft_type"] = aircraft_type
+    flight_fake.attrs["aircraft_type_bada"] = aircraft_type
+    flight_fake.attrs["engine_uid"] = engine_uid
+    flight_fake.attrs["bada_model"] = bada
+
+    out_fl = emissions.eval(source=flight_fake)
+    assert emissions.source is not flight_fake  # since copy is True
+    assert isinstance(out_fl, Flight)
+
+    # Constants in => nvpm_ei_n is now a function of altitude
+    counts = np.unique(out_fl["nvpm_ei_n"], return_counts=True)[1]
+    assert counts.size == 500
+
+    # ensure that "thrust", "nvpm_ei_n" and "nvpm_ei_m" are not overwritten
+    flight_fake["thrust_setting"] = 0.3 * np.ones(flight_fake.size)
+    out_fl = emissions.eval(source=flight_fake)
+    assert np.all(out_fl["thrust_setting"] == 0.3)
+    del flight_fake["thrust_setting"]
+
+    # both nvpm_ei_n keys need to be defined here
+    flight_fake["nvpm_ei_n"] = 1e15 * np.ones(flight_fake.size)
+    out_fl = emissions.eval(source=flight_fake)
+
+    assert np.all(out_fl["nvpm_ei_n"] == 1e15)
+
+    flight_fake["nvpm_ei_m"] = 2e-4 * np.ones(flight_fake.size)
+    out_fl = emissions.eval(flight_fake)
+
+    assert np.all(out_fl["nvpm_ei_n"] == 1e15)
+    assert np.all(out_fl["nvpm_ei_m"] == 2e-4)
+
+    # TODO: We don't currently guard against overwriting on the pollutants
+    flight_fake["co2"] = 15 * np.ones(flight_fake.size)
+    with pytest.warns(UserWarning, match="Overwriting data in key `co2`"):
+        out_fl = emissions.eval(flight_fake)
+
+
 def test_emissions_index_ffm2():
     """Test emissions without explicit flight.
 
