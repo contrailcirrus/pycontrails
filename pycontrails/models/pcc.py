@@ -147,10 +147,6 @@ class PCC(Model):
         sp = self.surface["surface_air_pressure"].data.loc[dict(level=-1)]  # surface air pressure
 
         def _apply_b_contr_plev(_ds: xr.Dataset) -> xr.Dataset:
-            # cannot instantiate SAC object unless all 4 x, y, z, t dimensions are present
-            # convert "level" coordinate to dimension
-            _ds = _ds.expand_dims(dim="level")
-
             p = _ds["air_pressure"]
 
             G = sac.slope_mixing_line(
@@ -195,7 +191,7 @@ class PCC(Model):
 
         # apply calculation per pressure level
         return (
-            self.source.data.groupby("level")  # type: ignore
+            self.source.data.groupby("level", squeeze=False)  # type: ignore
             .map(_apply_b_contr_plev)
             .transpose(*self.source.dim_order)
         )
