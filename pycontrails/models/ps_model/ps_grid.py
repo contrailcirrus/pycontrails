@@ -220,6 +220,13 @@ def _nominal_perf(aircraft_mass: ArrayOrFloat, perf: _PerfVariables) -> Aircraft
         mach_number, atyp_param.m_des, atyp_param.c_t_des
     )
 
+    # Always correct thrust coefficients in the gridded case
+    # (In the flight case, this correction is governed by a model parameter)
+    c_t_available = ps_operational_limits.max_available_thrust_coefficient(
+        air_temperature, mach_number, c_t_eta_b, atyp_param
+    )
+    np.clip(c_t, 0.0, c_t_available, out=c_t)
+
     engine_efficiency = ps_model.overall_propulsion_efficiency(
         mach_number, c_t, c_t_eta_b, atyp_param
     )

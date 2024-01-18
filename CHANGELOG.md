@@ -12,6 +12,7 @@
 - Ensure the `Flight.fuel` attribute is preserved for the `Flight.filter` method.
 - Ensure the `Fleet.fl_attrs` attribute is preserved for the `Fleet.filter` method.
 - Raise `ValueError` when `Flight.sort` or `Fleet.sort` is called. Both of these subclasses assume a custom sorting order that is enforced in their constructors.
+- Always correct intermediate thrust coefficients computed in the `PSGrid` model. This correction is already enabled by default in the `PSFlight` model.
 
 ### Internals
 
