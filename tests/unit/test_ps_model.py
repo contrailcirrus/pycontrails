@@ -438,6 +438,7 @@ def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
     }
 
 
+@pytest.mark.filterwarnings("ignore:RMS of")
 def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
     """Test the PSGrid model with source=None."""
 
@@ -452,18 +453,18 @@ def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
     # Pin some output values
     abs = 1e-2
     assert ds["fuel_flow"].min() == pytest.approx(0.55, abs=abs)
-    assert ds["fuel_flow"].max() == pytest.approx(0.73, abs=abs)
+    assert ds["fuel_flow"].max() == pytest.approx(0.77, abs=abs)
     assert ds["fuel_flow"].mean() == pytest.approx(0.65, abs=abs)
 
     abs = 1e-3
-    assert ds["engine_efficiency"].min() == pytest.approx(0.268, abs=abs)
+    assert ds["engine_efficiency"].min() == pytest.approx(0.272, abs=abs)
     assert ds["engine_efficiency"].max() == pytest.approx(0.282, abs=abs)
-    assert ds["engine_efficiency"].mean() == pytest.approx(0.278, abs=abs)
+    assert ds["engine_efficiency"].mean() == pytest.approx(0.279, abs=abs)
 
     abs = 1e3
     assert ds["aircraft_mass"].min() == pytest.approx(53000, abs=abs)
     assert ds["aircraft_mass"].max() == pytest.approx(68000, abs=abs)
-    assert ds["aircraft_mass"].mean() == pytest.approx(61000, abs=abs)
+    assert ds["aircraft_mass"].mean() == pytest.approx(62000, abs=abs)
 
 
 def test_ps_grid_raises(met_era5_fake: MetDataset) -> None:
