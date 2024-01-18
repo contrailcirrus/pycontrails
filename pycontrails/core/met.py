@@ -1738,7 +1738,8 @@ class MetDataArray(MetBase):
         # load data into memory (required for value assignment in _edges()
         self.data.load()
 
-        return MetDataArray(self.data.groupby("level").map(_edges), cachestore=self.cachestore)
+        data = self.data.groupby("level", squeeze=False).map(_edges)
+        return MetDataArray(data, cachestore=self.cachestore)
 
     def to_polygon_feature(
         self,
