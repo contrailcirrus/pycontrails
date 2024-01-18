@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import hashlib
 import json
@@ -699,25 +700,17 @@ class Model(ABC):
             return
 
         source = source or self.source
-        try:
+        with contextlib.suppress(KeyError):
             source.attrs["met_source_provider"] = self.met.provider_attr
-        except KeyError:
-            pass
 
-        try:
+        with contextlib.suppress(KeyError):
             source.attrs["met_source_dataset"] = self.met.dataset_attr
-        except KeyError:
-            pass
 
-        try:
+        with contextlib.suppress(KeyError):
             source.attrs["met_source_product"] = self.met.product_attr
-        except KeyError:
-            pass
 
-        try:
+        with contextlib.suppress(KeyError):
             source.attrs["met_source_forecast_time"] = self.met.attrs["forecast_time"]
-        except KeyError:
-            pass
 
 
 def _interp_grid_to_grid(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+import contextlib
 import dataclasses
 import functools
 import pathlib
@@ -865,10 +866,8 @@ class HistogramMatchingWithEckel(HumidityScaling):
         ensemble_specific_humidity = self.params["ensemble_specific_humidity"]
         assert len(ensemble_specific_humidity) == self.n_members
         for member, mda in enumerate(ensemble_specific_humidity):
-            try:
+            with contextlib.suppress(KeyError):
                 assert mda.data["number"] == member
-            except KeyError:
-                pass
 
     @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
