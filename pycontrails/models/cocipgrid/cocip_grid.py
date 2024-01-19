@@ -1609,17 +1609,17 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
         vector.attrs.setdefault("engine_uid", param_engine_uid)
     vector.attrs.setdefault("fuel", params["fuel"])
 
-    ap_vars = (
+    ap_vars = {
         "true_airspeed",
         "engine_efficiency",
         "fuel_flow",
         "aircraft_mass",
         "n_engine",
         "wingspan",
-    )
+    }
 
     # Look across both vector.data and vector.attrs
-    missing = set(ap_vars).difference(vector).difference(vector.attrs)
+    missing = ap_vars.difference(vector).difference(vector.attrs)
 
     if missing == {"true_airspeed"}:
         # If we're only missing true_airspeed but mach_number is present,
