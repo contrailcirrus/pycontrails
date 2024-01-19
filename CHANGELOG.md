@@ -1,7 +1,9 @@
 
 # Changelog
 
-## 0.49.2 (unreleased)
+## v0.49.3 (unreleased)
+
+## v0.49.2
 
 ### Features
 
