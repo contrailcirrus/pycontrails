@@ -665,6 +665,10 @@ class Model(ABC):
         ------
         KeyError
             Raises KeyError if key is not found in any location and ``default`` is not provided.
+
+        See Also
+        --------
+        - GeoVectorDataset.get_data_or_attr
         """
         marker = self.__marker
 
@@ -686,7 +690,8 @@ class Model(ABC):
         if default is not marker:
             return default
 
-        raise KeyError(f"key {key} not found in source data, attrs, or model params")
+        msg = f"Key '{key}' not found in source data, attrs, or model params"
+        raise KeyError(msg)
 
     def _cleanup_indices(self) -> None:
         """Cleanup indices artifacts if ``params["interpolation_use_indices"]`` is True."""
