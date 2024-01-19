@@ -1617,15 +1617,28 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
         "n_engine",
         "wingspan",
     )
-    if not vector.ensure_vars(ap_vars, False):
+
+    # Look across both vector.data and vector.attrs
+    missing = set(ap_vars).difference(vector).difference(vector.attrs)
+
+    if missing == {"true_airspeed"}:
+        # If we're only missing true_airspeed but mach_number is present,
+        # we can still proceed
+        mach_number = vector.get_data_or_attr("mach_number", None)
+        if mach_number is not None:
+            air_temperature = vector["air_temperature"]
+            vector["true_airspeed"] = units.mach_number_to_tas(mach_number, air_temperature)
+            missing = set()
+
+    if missing:
         ap_model = params["aircraft_performance"]
         if ap_model is None:
-            missing = set(ap_vars).difference(vector)
-            raise ValueError(
+            msg = (
                 f"Missing variables: {missing} and no aircraft_performance included in "
                 "params. Instantiate 'CocipGrid' with an 'aircraft_performance' param. "
                 "For example: 'CocipGrid(..., aircraft_performance=PSGrid())'"
             )
+            raise ValueError(msg)
         ap_model.eval(vector, copy_source=False)
 
     # PART 2: True airspeed logic
