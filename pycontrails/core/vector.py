@@ -442,23 +442,32 @@ class VectorDataset:
         """
         return self.data.setdefault(key, default)
 
-    def get_data_or_attr(self, key: str) -> Any:
+    __marker = object()
+
+    def get_data_or_attr(self, key: str, default: Any = __marker) -> Any:
         """Get value from :attr:`data` or :attr:`attrs`.
 
         This method first checks if ``key`` is in :attr:`data` and returns the value if so.
         If ``key`` is not in :attr:`data`, then this method checks if ``key`` is in :attr:`attrs`
         and returns the value if so. If ``key`` is not in :attr:`data` or :attr:`attrs`,
-        then a ``KeyError`` is raised.
+        then the ``default`` value is returned if provided. Otherwise a :class:`KeyError` is raised.
 
         Parameters
         ----------
         key : str
             Key to get from :attr:`data` or :attr:`attrs`
+        default : Any, optional
+            Default value to return if ``key`` is not in :attr:`data` or :attr:`attrs`.
 
         Returns
         -------
         Any
             Value at :attr:`data[key]` or :attr:`attrs[key]`
+
+        Raises
+        ------
+        KeyError
+            If ``key`` is not in :attr:`data` or :attr:`attrs` and ``default`` is not provided.
 
         Examples
         --------
@@ -472,13 +481,27 @@ class VectorDataset:
         >>> vector.get_data_or_attr("c")
         Traceback (most recent call last):
         ...
-        KeyError: 'c'
+        KeyError: "Key 'c' not found in data or attrs."
+
+        >>> vector.get_data_or_attr("c", default=5)
+        5
 
         """
-        try:
-            return self.data[key]
-        except KeyError:
-            return self.attrs[key]
+        marker = self.__marker
+
+        out = self.get(key, marker)
+        if out is not marker:
+            return out
+
+        out = self.attrs.get(key, marker)
+        if out is not marker:
+            return out
+
+        if default is not marker:
+            return default
+
+        msg = f"Key '{key}' not found in data or attrs."
+        raise KeyError(msg)
 
     # ------------
 
@@ -645,7 +668,8 @@ class VectorDataset:
             for v in vectors[1:]:
                 if v.data.keys() != keys:
                     diff = set(v).symmetric_difference(keys)
-                    raise KeyError(f"Summands have incompatible keys. Difference: {diff}")
+                    msg = f"Summands have incompatible keys. Difference: {diff}"
+                    raise KeyError(msg)
 
         else:
             keys = set().union(*[v.data.keys() for v in vectors])
@@ -881,9 +905,8 @@ class VectorDataset:
             if v in self or v in self.attrs:
                 continue
             if raise_error:
-                raise KeyError(
-                    f"{type(self).__name__} instance does not contain data or attr '{v}'"
-                )
+                msg = f"{type(self).__name__} instance does not contain data or attr '{v}'"
+                raise KeyError(msg)
             return False
 
         return True

@@ -19,6 +19,7 @@
 - Make `Fuel` and its subclasses `JetA`, `SAFBlend`, and `HydrogenFuel` frozen.
 - No longer copy `met` when `Models.downselect_met` is called. In some modes of operation, this reduces the memory footprint of the model.
 - Update codebase for more harmony with [PDEP 8](https://jorisvandenbossche.github.io/pandas-website-preview/pdeps/0008-inplace-methods-in-pandas.html) and Copy-on-Write semantics.
+- Add `default` parameter to the `VectorDataset.get_data_or_attr` method.
 
 ## v0.49.1
 
