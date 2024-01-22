@@ -182,3 +182,147 @@ def evaluate_linear_1d(
         out[p] = values[i0] * (1 - y0) + values[i0+1] * y0
 
     return np.asarray(out)
+
+
+
+# -----------------------------------------------------------------------------
+# The following two functions are copied directly from the scipy source code
+# Once pycontrails requires scipy >= 1.12, these can be removed and the scipy
+# source code can be used directly.
+# This is a workaround for the following commit:
+# https://github.com/scipy/scipy/commit/619e68f21769a19dd25e35506d25ddf1f960d9e3
+# -----------------------------------------------------------------------------
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+@cython.cdivision(True)
+cdef int find_interval_ascending(const double *x,
+                                 size_t nx,
+                                 double xval,
+                                 int prev_interval=0,
+                                 bint extrapolate=1) noexcept nogil:
+    """
+    Find an interval such that x[interval] <= xval < x[interval+1]. Assuming
+    that x is sorted in the ascending order.
+    If xval < x[0], then interval = 0, if xval > x[-1] then interval = n - 2.
+
+    Parameters
+    ----------
+    x : array of double, shape (m,)
+        Piecewise polynomial breakpoints sorted in ascending order.
+    xval : double
+        Point to find.
+    prev_interval : int, optional
+        Interval where a previous point was found.
+    extrapolate : bint, optional
+        Whether to return the last of the first interval if the
+        point is out-of-bounds.
+
+    Returns
+    -------
+    interval : int
+        Suitable interval or -1 if nan.
+
+    """
+    cdef:
+        int high, low, mid
+        int interval = prev_interval
+        double a = x[0]
+        double b = x[nx - 1]
+    if interval < 0 or interval >= nx:
+        interval = 0
+
+    if not (a <= xval <= b):
+        # Out-of-bounds (or nan)
+        if xval < a and extrapolate:
+            # below
+            interval = 0
+        elif xval > b and extrapolate:
+            # above
+            interval = nx - 2
+        else:
+            # nan or no extrapolation
+            interval = -1
+    elif xval == b:
+        # Make the interval closed from the right
+        interval = nx - 2
+    else:
+        # Find the interval the coordinate is in
+        # (binary search with locality)
+        if xval >= x[interval]:
+            low = interval
+            high = nx - 2
+        else:
+            low = 0
+            high = interval
+
+        if xval < x[low+1]:
+            high = low
+
+        while low < high:
+            mid = (high + low)//2
+            if xval < x[mid]:
+                # mid < high
+                high = mid
+            elif xval >= x[mid + 1]:
+                low = mid + 1
+            else:
+                # x[mid] <= xval < x[mid+1]
+                low = mid
+                break
+
+        interval = low
+
+    return interval
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+@cython.cdivision(True)
+@cython.initializedcheck(False)
+def find_indices(tuple grid not None, const double[:, :] xi):
+    # const is required for xi above in case xi is read-only
+    cdef:
+        long i, j, grid_i_size
+        double denom, value
+        # const is required in case grid is read-only
+        const double[::1] grid_i
+        # Axes to iterate over
+        long I = xi.shape[0]
+        long J = xi.shape[1]
+        int index = 0
+        # Indices of relevant edges between which xi are situated
+        np.intp_t[:,::1] indices = np.empty_like(xi, dtype=np.intp)
+        # Distances to lower edge in unity units
+        double[:,::1] norm_distances = np.zeros_like(xi, dtype=float)
+    # iterate through dimensions
+    for i in range(I):
+        grid_i = grid[i]
+        grid_i_size = grid_i.shape[0]
+        if grid_i_size == 1:
+            # special case length-one dimensions
+            for j in range(J):
+                # Should equal 0. Setting it to -1 is a hack: evaluate_linear 
+                # looks at indices [i, i+1] which both end up =0 with wraparound. 
+                # Conclusion: change -1 to 0 here together with refactoring
+                # evaluate_linear, which will also need to special-case
+                # length-one axes
+                indices[i, j] = -1
+                # norm_distances[i, j] is already zero
+        else:
+            for j in range(J):
+                value = xi[i, j]
+                index = find_interval_ascending(&grid_i[0],
+                                                grid_i_size,
+                                                value,
+                                                prev_interval=index,
+                                                extrapolate=1)
+                indices[i, j] = index
+                if value == value:
+                    denom = grid_i[index + 1] - grid_i[index]
+                    norm_distances[i, j] = (value - grid_i[index]) / denom
+                else:
+                    # xi[i, j] is nan
+                    norm_distances[i, j] = NAN
+    return np.asarray(indices), np.asarray(norm_distances)
