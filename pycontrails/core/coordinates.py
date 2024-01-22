@@ -157,12 +157,22 @@ def intersect_domain(
     ------
     ValueError
         Raises a ValueError when ``domain`` has all ``nan`` values.
+
+    Examples
+    --------
+    >>> domain = np.array([3.0, 4.0, 2.0])
+    >>> request = np.arange(1.0, 6.0)
+    >>> intersect_domain(domain, request)
+    array([False,  True,  True,  True, False])
+
+    >>> domain = np.array([3.0, np.nan, np.nan])
+    >>> request = np.arange(1.0, 6.0)
+    >>> intersect_domain(domain, request)
+    array([False, False,  True, False, False])
     """
-    # if the whole domain or request is nan, then there is nothing to slice
-    if np.isnan(domain).all():
+    isnan = np.isnan(domain)
+    if isnan.all():
         raise ValueError("Domain is all nan on request")
 
-    # if not np.all(np.diff(domain) >= 0):
-    #     raise ValueError("Domain must be sorted in ascending order")
-
-    return (request >= np.nanmin(domain)) & (request <= np.nanmax(domain))
+    domain = domain[~isnan]
+    return (request >= np.min(domain)) & (request <= np.max(domain))
