@@ -1610,21 +1610,22 @@ class GeoVectorDataset(VectorDataset):
         npt.NDArray[np.bool_]
             True if point is inside the bounding box defined by ``met``.
         """
+        variables = met.variables
 
         lat_intersect = coordinates.intersect_domain(
-            met.variables["latitude"].values,
+            variables["latitude"].values,
             self["latitude"],
         )
         lon_intersect = coordinates.intersect_domain(
-            met.variables["longitude"].values,
+            variables["longitude"].values,
             self["longitude"],
         )
         level_intersect = coordinates.intersect_domain(
-            met.variables["level"].values,
+            variables["level"].values,
             self.level,
         )
         time_intersect = coordinates.intersect_domain(
-            met.variables["time"].values,
+            variables["time"].values,
             self["time"],
         )
 
