@@ -30,6 +30,7 @@ from pycontrails.models.cocip.output_formats import (
 )
 from pycontrails.models.cocip.radiative_forcing import contrail_contrail_overlap_radiative_effects
 from pycontrails.models.humidity_scaling import (
+    ConstantHumidityScaling,
     ExponentialBoostHumidityScaling,
     ExponentialBoostLatitudeCorrectionHumidityScaling,
 )
@@ -1401,3 +1402,25 @@ def test_max_altitude_param(fl: Flight, met: MetDataset, rad: MetDataset, max_al
         assert np.count_nonzero(ef) == 11
     else:
         assert np.count_nonzero(ef) == 6
+
+
+@pytest.mark.parametrize("lon0", [-21, -20, -19.5])
+def test_cocip_bounds_check(fl: Flight, met: MetDataset, rad: MetDataset, lon0: float) -> None:
+    """Confirm that a warning is emitted when the advected contrail blows out of bounds."""
+    cocip = Cocip(met, rad=rad, humidity_scaling=ConstantHumidityScaling(rhi_adj=0.6))
+
+    fl["longitude"] += lon0 - fl["longitude"][0]
+    assert fl["longitude"][0] == lon0
+
+    if lon0 == -21:
+        time = "2019-01-01T05:00:00.000000"
+    elif lon0 == -20:
+        time = "2019-01-01T04:00:00.000000"
+    elif lon0 == -19.5:
+        time = "2019-01-01T03:00:00.000000"
+    else:
+        raise ValueError(lon0)
+
+    match = f"At time {time}, the contrail has no intersection with the met"
+    with pytest.warns(UserWarning, match=match):
+        cocip.eval(source=fl)
