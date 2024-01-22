@@ -3,6 +3,11 @@
 
 ## v0.49.3 (unreleased)
 
+### Fixes
+
+- Remove opaque warning issued when all tau_contrail values are nan in `Cocip` evolution.
+- Emit warning in `Cocip.eval` if the advected contrail is blown outside of the domain of the met data.
+
 ### Internals
 
 - Update time frequency aliases for `pandas` 2.2 compatibility.
