@@ -54,7 +54,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 [project.optional-dependencies]
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = ["pycontrails[ecmwf,gcp,gfs,goes,jupyter,pwlf,pyproj,vis,zarr]"]
+complete = ["pycontrails[ecmwf,gcp,gfs,goes,jupyter,pyproj,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -125,9 +125,6 @@ jupyter = ["ipywidgets>=7.6", "jupyterlab>=2.2"]
 
 # Polyhedra contruction methods
 open3d = ["open3d>=0.14"]
-
-# Piecewise linear fitting for flight smoothing
-pwlf = ["pwlf>=2.2.1"]
 
 # Geospatial coordinate transformations
 pyproj = ["pyproj>=3.5"]
