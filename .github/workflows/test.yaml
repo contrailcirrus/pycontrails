@@ -39,6 +39,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         pyversion: ['3.9', '3.10', '3.11', '3.12']
+        scipyversion: ['1.10', '1.11', '1.12']
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -104,6 +105,10 @@ jobs:
           gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > $HOME/.ssh/id_rsa
           chmod 600 $HOME/.ssh/id_rsa
           pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
+
+      - name: Install scipy
+        run: |
+          pip install "scipy==${{ matrix.scipyversion }}"
 
       - name: Show environment
         run: |
