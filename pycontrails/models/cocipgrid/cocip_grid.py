@@ -179,15 +179,16 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
             # Perhaps we could use the isel(time=0) slice to construct the source
             # from the met and rad data.
             raise NotImplementedError("CocipGrid.eval() with 'source=None' is not implemented.")
-        if isinstance(source, Flight):
-            if not source.ensure_vars(("true_airspeed", "azimuth"), False):
-                warnings.warn(
-                    "Flight source no longer supported by CocipGrid. "
-                    "Any Flight source will be viewed as a GeoVectorDataset. "
-                    "In particular, flight segment variable such as azimuth and true_airspeed "
-                    "are not used by CocipGrid (nominal values are used instead). Attach "
-                    "these to the Flight source before calling 'eval' to use them in CocipGrid."
-                )
+        if isinstance(source, Flight) and not source.ensure_vars(
+            ("true_airspeed", "azimuth"), False
+        ):
+            warnings.warn(
+                "Flight source no longer supported by CocipGrid. "
+                "Any Flight source will be viewed as a GeoVectorDataset. "
+                "In particular, flight segment variable such as azimuth and true_airspeed "
+                "are not used by CocipGrid (nominal values are used instead). Attach "
+                "these to the Flight source before calling 'eval' to use them in CocipGrid."
+            )
         self.set_source(source)
 
         self.met, self.rad = _downselect_met(self.source, self.met, self.rad, self.params)
@@ -997,10 +998,8 @@ def _run_downwash(
     vector, sac_ = find_initial_contrail_regions(vector, params)
     if (key := "sac") in verbose_outputs_formation:
         verbose_dict[key] = sac_
-    if (key := "T_crit_sac") in verbose_outputs_formation:
-        # This key isn't always present, e.g. find_initial_contrail_regions can exit early
-        if (val := vector.get(key)) is not None:
-            verbose_dict[key] = pd.Series(data=val, index=vector["index"])
+    if (key := "T_crit_sac") in verbose_outputs_formation and (val := vector.get(key)) is not None:
+        verbose_dict[key] = pd.Series(data=val, index=vector["index"])
 
     # Early exit if nothing in vector passes the SAC
     if not vector:
@@ -1022,9 +1021,8 @@ def _run_downwash(
 
     if (key := "persistent") in verbose_outputs_formation:
         verbose_dict[key] = persistent
-    if (key := "iwc") in verbose_outputs_formation:
-        if (data := contrail.get(key)) is not None:
-            verbose_dict[key] = pd.Series(data=data, index=contrail["index"])
+    if (key := "iwc") in verbose_outputs_formation and (data := contrail.get(key)) is not None:
+        verbose_dict[key] = pd.Series(data=data, index=contrail["index"])
 
     return contrail, verbose_dict
 

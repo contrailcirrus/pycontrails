@@ -878,9 +878,11 @@ def _download_with_progress(
     url = blob._get_download_url(gcp_cache._client)
     description = f"Download {gcp_path}"
 
-    with open(disk_path, "wb") as local_file:
-        with tqdm.wrapattr(local_file, "write", total=blob.size, desc=description) as file_obj:
-            download = ChunkedDownload(url, chunk_size, file_obj)
-            transport = gcp_cache.client._http
-            while not download.finished:
-                download.consume_next_chunk(transport, timeout=gcp_cache.timeout)
+    with (
+        open(disk_path, "wb") as local_file,
+        tqdm.wrapattr(local_file, "write", total=blob.size, desc=description) as file_obj,
+    ):
+        download = ChunkedDownload(url, chunk_size, file_obj)
+        transport = gcp_cache.client._http
+        while not download.finished:
+            download.consume_next_chunk(transport, timeout=gcp_cache.timeout)

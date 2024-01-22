@@ -218,9 +218,11 @@ def test_ISSR_flight_high_altitude(met_era5_fake: MetDataset, flight_fake: Fligh
     fl = flight_fake.copy()
     fl["altitude"] *= 2.5
 
-    with pytest.warns(UserWarning, match="Flight altitude is high"):
-        with pytest.raises(ValueError, match="One of the requested xi is out of bounds"):
-            ISSR(met=met_era5_fake, interpolation_bounds_error=True).eval(source=fl)
+    with (
+        pytest.warns(UserWarning, match="Flight altitude is high"),
+        pytest.raises(ValueError, match="One of the requested xi is out of bounds"),
+    ):
+        ISSR(met=met_era5_fake, interpolation_bounds_error=True).eval(source=fl)
 
     with pytest.warns(UserWarning, match="Flight altitude is high"):
         fl = ISSR(met=met_era5_fake).eval(source=fl)

@@ -507,17 +507,19 @@ class Cocip(Model):
         if "waypoint" not in self.source:
             # Give flight a range index
             self.source["waypoint"] = np.arange(self.source.size)
-        elif not isinstance(self.source, Fleet):
+        elif not isinstance(self.source, Fleet) and not np.all(
+            np.diff(self.source["waypoint"]) == 1
+        ):
             # If self.source is a usual Flight (not the subclass Fleet)
             # and has "waypoint" data, we want to give a warning if the waypoint
             # data has an usual index. CoCiP uses the waypoint for its continuity
             # convention, so the waypoint data is critical.
-            if not np.all(np.diff(self.source["waypoint"]) == 1):
-                raise ValueError(
-                    "Found non-sequential waypoints in flight key 'waypoint'. "
-                    "The CoCiP algorithm requires flight data key 'waypoint' "
-                    "to contain sequential waypoints if defined."
-                )
+            msg = (
+                "Found non-sequential waypoints in flight key 'waypoint'. "
+                "The CoCiP algorithm requires flight data key 'waypoint' "
+                "to contain sequential waypoints if defined."
+            )
+            raise ValueError(msg)
 
         # STEP 3: Test met domain for some overlap
         # We attach the intersection to the source.
@@ -564,7 +566,7 @@ class Cocip(Model):
             interpolate_met(met, self.source, "tau_cirrus", **interp_kwargs)
 
             # handle ECMWF/GFS ciwc variables
-            if (key := "specific_cloud_ice_water_content") in met:
+            if (key := "specific_cloud_ice_water_content") in met:  # noqa: SIM114
                 interpolate_met(met, self.source, key, **interp_kwargs)
             elif (key := "ice_water_mixing_ratio") in met:
                 interpolate_met(met, self.source, key, **interp_kwargs)
@@ -972,10 +974,7 @@ class Cocip(Model):
             logger.debug("Start time integration step %s ending at time %s", time_idx, time_end)
 
             # get the last evolution step of contrail waypoints, if it exists
-            if self.contrail_list:
-                latest_contrail = self.contrail_list[-1]
-            else:
-                latest_contrail = GeoVectorDataset()
+            latest_contrail = self.contrail_list[-1] if self.contrail_list else GeoVectorDataset()
 
             # load new contrail segments from downwash_flight
             contrail_2_segments = self._get_contrail_2_segments(time_idx)

@@ -772,10 +772,7 @@ def test_polygon_iso_value(island_slice: MetDataArray, iso_value: float) -> None
 def test_polyhedra_save(median_binary: MetDataArray, return_type: str) -> None:
     assert len(median_binary.data["time"]) == 1
     path: str | pathlib.Path
-    if return_type == "geojson":
-        path = "test_mesh.json"
-    else:
-        path = "test_mesh.ply"
+    path = "test_mesh.json" if return_type == "geojson" else "test_mesh.ply"
     median_binary.to_polyhedra(return_type=return_type, path=path)
 
     path = pathlib.Path(path)

@@ -103,11 +103,7 @@ def slice_domain(
 
     # ensure domain is sorted
     zero: float | np.timedelta64
-    if pd.api.types.is_datetime64_dtype(domain.dtype):
-        zero = np.timedelta64(0)
-    else:
-        zero = 0.0
-
+    zero = np.timedelta64(0) if pd.api.types.is_datetime64_dtype(domain.dtype) else 0.0
     if not np.all(np.diff(domain) >= zero):
         raise ValueError("Domain must be sorted in ascending order")
 

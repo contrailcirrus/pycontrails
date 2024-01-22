@@ -731,21 +731,27 @@ def test_time_parsing(random_geo_path: VectorDataset) -> None:
 
     # time can't be coerced to datetime64
     data.update(time=[1, 2, 3, 4])
-    with pytest.warns(UserWarning, match="time"):
-        with pytest.raises(ValueError, match="Could not coerce time data"):
-            GeoVectorDataset(data)
+    with (
+        pytest.warns(UserWarning, match="time"),
+        pytest.raises(ValueError, match="Could not coerce time data"),
+    ):
+        GeoVectorDataset(data)
 
     # fails even if 1 time can't be coerced to datetime64
     data.update(time=[1000000000, 1000000060, 1000000120, 10])
-    with pytest.warns(UserWarning, match="time"):
-        with pytest.raises(ValueError, match="Could not coerce time data"):
-            GeoVectorDataset(data)
+    with (
+        pytest.warns(UserWarning, match="time"),
+        pytest.raises(ValueError, match="Could not coerce time data"),
+    ):
+        GeoVectorDataset(data)
 
     # float times aren't supported
     data.update(time=[1e9, 1e9 + 60, 1e9 + 120, 1e9 + 180])
-    with pytest.warns(UserWarning, match="time"):
-        with pytest.raises(ValueError, match="Could not coerce time data"):
-            GeoVectorDataset(data)
+    with (
+        pytest.warns(UserWarning, match="time"),
+        pytest.raises(ValueError, match="Could not coerce time data"),
+    ):
+        GeoVectorDataset(data)
 
     # reasonable int times are supported
     data.update(time=[1000000000, 1000000060, 1000000120, 1000000240])
@@ -761,9 +767,8 @@ def test_time_parsing(random_geo_path: VectorDataset) -> None:
 
     # random strings cannot be converted
     data.update(time=["hello", "world", "con", "trail"])
-    with pytest.warns(UserWarning, match="time"):
-        with pytest.raises(ValueError, match="time"):
-            GeoVectorDataset(data)
+    with pytest.warns(UserWarning, match="time"), pytest.raises(ValueError, match="time"):
+        GeoVectorDataset(data)
 
     # UTC timezones are stripped
     data.update(

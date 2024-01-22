@@ -197,7 +197,7 @@ def _e_sat_piecewise(T: np.ndarray) -> np.ndarray:
     np.ndarray
         Piecewise array of e_sat_liquid and e_sat_ice values.
     """
-    condlist = [T >= -constants.absolute_zero, T < constants.absolute_zero]
+    condlist = [T >= -constants.absolute_zero, T < constants.absolute_zero]  # noqa: SIM300
     funclist = [e_sat_liquid, e_sat_ice, np.nan]  # nan passed through
     return np.piecewise(T, condlist, funclist)
 
