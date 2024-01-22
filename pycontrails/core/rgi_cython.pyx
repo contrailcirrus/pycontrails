@@ -31,7 +31,7 @@ ctypedef fused floating:
 @cython.nonecheck(False)
 def evaluate_linear_4d(
     const floating[:, :, :, :] values,
-    const long[:, :] indices,
+    const np.intp_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
 ) -> np.ndarray:
@@ -84,7 +84,7 @@ def evaluate_linear_4d(
 @cython.nonecheck(False)
 def evaluate_linear_3d(
     const floating[:, :, :] values,
-    const long[:, :] indices,
+    const np.intp_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
 ) -> np.ndarray:
@@ -126,7 +126,7 @@ def evaluate_linear_3d(
 @cython.nonecheck(False)
 def evaluate_linear_2d(
     const floating[:, :] values,
-    const long[:, :] indices,
+    const np.intp_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
 ) -> np.ndarray:
@@ -163,7 +163,7 @@ def evaluate_linear_2d(
 @cython.nonecheck(False)
 def evaluate_linear_1d(
     const floating[:] values,
-    const long[:] indices,
+    const np.intp_t[:] indices,
     const double[:] norm_distances,
     floating[:] out,
 ) -> np.ndarray:
