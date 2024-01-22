@@ -341,19 +341,6 @@ class Fleet(Flight):
         cos_a[self.final_waypoints] = np.nan
         return sin_a, cos_a
 
-    @overrides
-    def fit_altitude(
-        self,
-        max_segments: int = 30,
-        pop: int = 3,
-        r2_target: float = 0.999,
-        max_cruise_rocd: float = 10,
-        sg_window: int = 7,
-        sg_polyorder: int = 1,
-    ) -> Fleet:
-        msg = "Only implemented for Flight instances"
-        raise NotImplementedError(msg)
-
 
 def _extract_flight_id(fl: Flight) -> str:
     """Extract flight_id from Flight instance."""
