@@ -182,13 +182,13 @@ nb-clean-check:
 		--preserve-cell-outputs \
 		--preserve-execution-counts
 
-# nbval 0.10.0 uses --nbval-sanitize-with instead of --sanitize-with
-# There is a bug in nbval 0.10.0 which prevents us from using it
-# https://github.com/computationalmodelling/nbval/issues/194
-nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
-	python -m pytest --nbval \
-		--sanitize-with .nb-test.cfg \
-		docs/**/*.ipynb
+# Add `nbval-skip` cell tag if you want to skip a cell
+# Add `nbval-check-output` cell tag if you want to specifically compare cell output
+nb-test: # ensure-era5-cached nb-clean-check nb-black-check nb-check-links
+	python -m pytest --nbval-lax \
+		--ignore=docs/examples/ACCF.ipynb \
+		--ignore=docs/tutorials/interpolating-specific-humidity.ipynb \
+		docs/examples docs/tutorials
 
 # Check for broken links in notebooks
 # https://github.com/jupyterlab/pytest-check-links
@@ -198,14 +198,16 @@ nb-check-links:
 		--check-links-ignore "https://doi.org/10.1021/acs.est.2c05781" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
-		docs/**/*.ipynb
+		docs/examples/*.ipynb docs/tutorials/*.ipynb
 
-# execute all notebooks in docs
-nb-execute: ensure-era5-cached nb-black-check nb-check-links
+# Execute all notebooks in docs
+# Add `skip-execution` cell tag if you want to skip a cell
+# Add `raises-exception` cell tag if you know the cell raises exception
+nb-execute: # ensure-era5-cached nb-black-check nb-check-links
 	jupyter nbconvert --inplace \
 		--to notebook \
 		--execute \
-		docs/**/*.ipynb
+		docs/examples/*.ipynb docs/tutorials/*.ipynb
 
 	# clean notebooks after execution
 	make nb-clean

@@ -113,15 +113,20 @@ The full list of Sphinx configuration options is in the [Sphinx configuration do
 Examples and tutorials should be written as isolated executable [Jupyter Notebooks](https://jupyter.org/).
 The [nbsphinx](https://nbsphinx.readthedocs.io/en/0.9.1/) extension includes notebooks in the static documentation.
 
-Notebooks will be automatically evaluated during tests.
-To exclude a notebook cell from evaluation during testing or documentation generation,
+Notebooks will be automatically evaluated during tests, unless explicitly ignored.
+To exclude a notebook cell from evaluation during testing or automatic execution,
 [add the tags](https://jupyterbook.org/en/stable/content/metadata.html#adding-tags-using-notebook-interfaces) `nbval-skip` and `skip-execution` to cell metadata.
-See *[Avoiding output comparison](https://nbval.readthedocs.io/en/latest/index.html#Avoid-output-comparison-for-specific-cells) in the `nbval` documentation for more information.
 
 To test notebooks locally, run:
 
 ```bash
 $ make nb-test
+```
+
+To re-execute all notebooks, run:
+
+```bash
+$ make nb-execute
 ```
 
 #### Literature References
