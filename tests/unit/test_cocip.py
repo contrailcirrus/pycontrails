@@ -101,7 +101,7 @@ def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     # Eventually the advected waypoints will blow out of bounds
     # Specifically, there is a contrail at 4:30 with latitude larger than 59
     # We acknowledge this here
-    with pytest.warns(UserWarning, match="outside of the met interpolation grid"):
+    with pytest.warns(UserWarning, match="At time .* contrail has no intersection with the met"):
         cocip.eval(source=fl)
 
     return cocip
@@ -363,8 +363,10 @@ def test_flight_overrides(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
     # Eventually the advected waypoints will blow out of bounds
     # Specifically, there is a contrail at 4:30 with latitude larger than 59
     # We acknowledge this here
-    with pytest.warns(UserWarning, match="outside of the met interpolation grid"):
+    match = "At time 2019-01-01T04:30:00.000000, the contrail has no intersection with the met"
+    with pytest.warns(UserWarning, match=match):
         out1 = cocip.eval(fl)
+    with pytest.warns(UserWarning, match=match):
         out2 = cocip.eval(fl2)
 
     # Because Cocip copies fl, the original isn't modified
@@ -770,7 +772,7 @@ def fleet(met: MetDataset) -> Fleet:
     return Fleet.from_seq(fls, copy=False, broadcast_numeric=False)
 
 
-@pytest.mark.filterwarnings("ignore:All tau_contrail values are nan")
+@pytest.mark.filterwarnings("ignore:.*the contrail has no intersection with the met")
 @pytest.mark.parametrize("contrail_contrail_overlapping", [True, False])
 def test_cocip_contrail_contrail_overlapping(
     met: MetDataset,
@@ -1214,7 +1216,7 @@ def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: Me
     assert "_met_intersection" not in out
 
 
-@pytest.mark.filterwarnings("ignore:All tau_contrail values are nan")
+@pytest.mark.filterwarnings("ignore:.*the contrail has no intersection with the met")
 @pytest.mark.parametrize("q_method", [None, "cubic-spline"])
 def test_exponential_boost_coefficients(
     fl: Flight, met: MetDataset, rad: MetDataset, q_method: str | None
