@@ -188,11 +188,6 @@ class AircraftPerformance(Model):
 
         # shortcut if aircraft mass is provided
         if aircraft_mass is not None:
-            warnings.warn(
-                "Parameter 'aircraft_mass' provided to 'simulate_fuel_and_performance' "
-                f"is not None. Skipping {n_iter} iterations and only "
-                "calculating aircraft performance once."
-            )
             return self._simulate_fuel_and_performance_known_aircraft_mass(
                 aircraft_type=aircraft_type,
                 altitude_ft=altitude_ft,
