@@ -5,7 +5,8 @@
 
 ### Internals
 
-- Update time frequency aliases for pandas 2.2 compatibility.
+- Update time frequency aliases for `pandas` 2.2 compatibility.
+- Update cython annotations for `scipy` 1.12 compatibility.
 
 ## v0.49.2
 
