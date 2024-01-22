@@ -2185,6 +2185,12 @@ def calc_timestep_contrail_evolution(
         },
         copy=False,
     )
+    intersection = contrail_2.coords_intersect_met(met)
+    if not np.any(intersection):
+        warnings.warn(
+            f"At time {time_2}, the contrail has no intersection with the met data. "
+            "This is likely due to the contrail being advected outside the met domain."
+        )
 
     # Update cumulative radiative heating energy absorbed by the contrail
     # This will always be zero if radiative_heating_effects is not activated in cocip_params
