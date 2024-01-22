@@ -184,7 +184,7 @@ nb-clean-check:
 
 # Add `nbval-skip` cell tag if you want to skip a cell
 # Add `nbval-check-output` cell tag if you want to specifically compare cell output
-nb-test: # ensure-era5-cached nb-clean-check nb-black-check nb-check-links
+nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
 	python -m pytest --nbval-lax \
 		--ignore=docs/examples/ACCF.ipynb \
 		--ignore=docs/tutorials/interpolating-specific-humidity.ipynb \
@@ -203,7 +203,7 @@ nb-check-links:
 # Execute all notebooks in docs
 # Add `skip-execution` cell tag if you want to skip a cell
 # Add `raises-exception` cell tag if you know the cell raises exception
-nb-execute: # ensure-era5-cached nb-black-check nb-check-links
+nb-execute: ensure-era5-cached nb-black-check nb-check-links
 	jupyter nbconvert --inplace \
 		--to notebook \
 		--execute \
