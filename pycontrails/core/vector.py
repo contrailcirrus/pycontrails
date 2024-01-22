@@ -1568,10 +1568,7 @@ class GeoVectorDataset(VectorDataset):
         transformer = pyproj.Transformer.from_crs(self.attrs["crs"], crs, always_xy=True)
         lon, lat = transformer.transform(self["longitude"], self["latitude"])
 
-        if copy:
-            ret = self.copy()
-        else:
-            ret = self
+        ret = self.copy() if copy else self
 
         ret.update(longitude=lon, latitude=lat)
         ret.attrs.update(crs=crs)

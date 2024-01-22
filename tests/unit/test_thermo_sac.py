@@ -32,7 +32,7 @@ def test_slope_mixing_line(data: VectorDataset, engine_efficiency: float):
     # Consequently, we want G to be bounded above this constant
     # We use a small buffer to quantify this
     buffer = 0.2
-    assert np.all(G > 0.053 + buffer)
+    assert np.all(G > 0.053 + buffer)  # noqa: SIM300
 
 
 @pytest.mark.parametrize("e_sat", [thermo.e_sat_ice, thermo.e_sat_liquid])

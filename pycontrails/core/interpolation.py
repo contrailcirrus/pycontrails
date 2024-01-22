@@ -506,11 +506,7 @@ def _buildxi(
 
     time_float = _floatize_time(time, offset)
 
-    if single_level:
-        ndim = 3
-    else:
-        ndim = 4
-
+    ndim = 3 if single_level else 4
     shape = longitude.size, ndim
     xi = np.empty(shape, dtype=np.float64)
 

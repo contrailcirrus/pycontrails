@@ -168,7 +168,7 @@ def dataframe_to_geojson_points(
         # converting to int to allow JSON serialization
         properties = {"time": int(row.time.timestamp())}
         used_keys = ["time", "latitude", "longitude", "altitude"]
-        unused_keys = [k for k in row.keys() if k not in used_keys]
+        unused_keys = [k for k in row.keys() if k not in used_keys]  # noqa: SIM118
         properties.update({
             k: (
                 row[k]

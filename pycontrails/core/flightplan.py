@@ -123,10 +123,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     if len(basic) > 3:
         aircraft = basic[3].split("/")
         matches = re.match(r"(\d{1})(\S{3,4})", aircraft[0])
-        if matches:
-            groups = matches.groups()
-        else:
-            groups = ()
+        groups = matches.groups() if matches else ()
 
         if matches and len(groups) > 2:
             flightplan["number_aircraft"] = groups[1]
@@ -147,12 +144,9 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     # Dep. airport info
     if len(basic) > 5:
         matches = re.match(r"(\D*)(\d*)", basic[5])
-        if matches:
-            groups = matches.groups()
-        else:
-            groups = ()
+        groups = matches.groups() if matches else ()
 
-        if len(groups) > 0:
+        if groups:
             flightplan["departure_icao"] = groups[0]
         if len(groups) > 1:
             flightplan["time"] = groups[1]
@@ -160,13 +154,10 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     # Speed and route info
     if len(basic) > 6:
         matches = re.match(r"(\D*)(\d*)(\D*)(\d*)", basic[6])
-        if matches:
-            groups = matches.groups()
-        else:
-            groups = ()
+        groups = matches.groups() if matches else ()
 
         # match speed and level
-        if len(groups) > 0:
+        if groups:
             flightplan["speed_type"] = groups[0]
             if len(groups) > 1:
                 flightplan["speed"] = groups[1]
@@ -182,30 +173,21 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     # Dest. airport info
     if len(basic) > 7:
         matches = re.match(r"(\D{4})(\d{4})", basic[7])
-        if matches:
-            groups = matches.groups()
-        else:
-            groups = ()
+        groups = matches.groups() if matches else ()
 
-        if len(groups) > 0:
+        if groups:
             flightplan["destination_icao"] = groups[0]
         if len(groups) > 1:
             flightplan["duration"] = groups[1]
 
         matches = re.match(r"(\D{4})(\d{4})(\s{1})(\D{4})", basic[7])
-        if matches:
-            groups = matches.groups()
-        else:
-            groups = ()
+        groups = matches.groups() if matches else ()
 
         if len(groups) > 3:
             flightplan["alt_icao"] = groups[3]
 
         matches = re.match(r"(\D{4})(\d{4})(\s{1})(\D{4})(\s{1})(\D{4})", basic[7])
-        if matches:
-            groups = matches.groups()
-        else:
-            groups = ()
+        groups = matches.groups() if matches else ()
 
         if len(groups) > 5:
             flightplan["second_alt_icao"] = groups[5]
@@ -217,7 +199,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     # Supl. Info
     if len(basic) > 9:
         sup_match = re.findall(r"(\D{1}[\/]{1})", basic[9])
-        if len(sup_match) > 0:
+        if sup_match:
             suplInfo = {}
             for i in range(len(sup_match) - 1):
                 this_key = sup_match[i]
