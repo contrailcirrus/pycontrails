@@ -75,7 +75,7 @@ def test_parse_timesteps() -> None:
     ]
 
     # select frequency
-    ts = datalib.parse_timesteps(("2019-05-31T00:29:00", "2019-05-31T08:40:00"), freq="3H")
+    ts = datalib.parse_timesteps(("2019-05-31T00:29:00", "2019-05-31T08:40:00"), freq="3h")
     assert ts == [
         datetime(2019, 5, 31, 0),
         datetime(2019, 5, 31, 3),

@@ -1582,7 +1582,7 @@ class MetDataArray(MetBase):
         >>> longitude = np.linspace(1, 2, 10)
         >>> latitude = np.linspace(2, 3, 10)
         >>> level = np.linspace(200, 300, 10)
-        >>> time = pd.date_range("2022-03-01T14", periods=10, freq="5T")
+        >>> time = pd.date_range("2022-03-01T14", periods=10, freq="5min")
         >>> mda.interpolate(longitude, latitude, level, time)
         array([220.44348, 223.089  , 225.7434 , 228.41643, 231.10858, 233.54858,
                235.71506, 237.86479, 239.99275, 242.10793], dtype=float32)

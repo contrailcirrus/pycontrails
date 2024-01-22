@@ -274,7 +274,7 @@ class HRES(ECMWFAPI):
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
 
-        self.timesteps = datalib.parse_timesteps(time, freq="1H")
+        self.timesteps = datalib.parse_timesteps(time, freq="1h")
         self.pressure_levels = datalib.parse_pressure_levels(
             pressure_levels, self.supported_pressure_levels
         )
@@ -349,11 +349,8 @@ class HRES(ECMWFAPI):
         if len(time_ranges) == 1:
             time_ranges = [(timesteps[0], timesteps[-1])]
         else:
-            time_ranges[0] = (
-                timesteps[0],
-                time_ranges[1] - pd.Timedelta(1, "H"),
-            )
-            time_ranges[1:-1] = [(t, t + pd.Timedelta(11, "H")) for t in time_ranges[1:-1]]
+            time_ranges[0] = (timesteps[0], time_ranges[1] - pd.Timedelta(hours=1))
+            time_ranges[1:-1] = [(t, t + pd.Timedelta(hours=11)) for t in time_ranges[1:-1]]
             time_ranges[-1] = (time_ranges[-1], timesteps[-1])
 
         return time_ranges

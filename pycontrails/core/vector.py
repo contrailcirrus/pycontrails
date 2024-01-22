@@ -1045,7 +1045,7 @@ class VectorDataset:
         ...     time=[np.datetime64("2020-01-01T09"), np.datetime64("2020-01-01T09:30")],
         ...     aircraft_type="B737",
         ... )
-        >>> fl = fl.resample_and_fill("5T")
+        >>> fl = fl.resample_and_fill("5min")
         >>> pprint.pprint(fl.to_dict())
         {'aircraft_type': 'B737',
          'altitude_ft': [38661.0, 38661.0, 38661.0, 38661.0, 38661.0, 38661.0, 38661.0],

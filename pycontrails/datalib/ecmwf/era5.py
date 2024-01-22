@@ -69,7 +69,7 @@ class ERA5(ECMWFAPI):
     timestep_freq : str, optional
         Manually set the timestep interval within the bounds defined by :attr:`time`.
         Supports any string that can be passed to `pd.date_range(freq=...)`.
-        By default, this is set to "1H" for reanalysis products and "3H" for ensemble products.
+        By default, this is set to "1h" for reanalysis products and "3h" for ensemble products.
     product_type : str, optional
         Product type, one of "reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread"
     grid : float, optional
@@ -190,7 +190,7 @@ class ERA5(ECMWFAPI):
         self.grid = grid
 
         if timestep_freq is None:
-            timestep_freq = "1H" if product_type == "reanalysis" else "3H"
+            timestep_freq = "1h" if product_type == "reanalysis" else "3h"
 
         self.timesteps = datalib.parse_timesteps(time, freq=timestep_freq)
         self.pressure_levels = datalib.parse_pressure_levels(

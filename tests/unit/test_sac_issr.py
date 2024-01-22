@@ -247,7 +247,7 @@ def test_ISSR_flight_outside_met(
     # Alter the flight time
     fl = flight_fake.copy()
     with pytest.warns(UserWarning, match="Overwriting data in key `time`."):
-        fl["time"] += pd.Timedelta("1H")
+        fl["time"] += pd.Timedelta(hours=1)
 
     model = ISSR(met_era5_fake, interpolation_use_indices=interpolation_use_indices)
 

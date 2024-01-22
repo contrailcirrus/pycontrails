@@ -82,8 +82,8 @@ fl = Flight(data=df_flight, attrs=attrs)
 
 # get met dims from Flight
 time = (
-    pd.to_datetime(fl["time"][0]).floor("H"),
-    pd.to_datetime(fl["time"][-1]).ceil("H") + pd.Timedelta("5H"),
+    pd.to_datetime(fl["time"][0]).floor("h"),
+    pd.to_datetime(fl["time"][-1]).ceil("h") + pd.Timedelta("5h"),
 )
 pressure_levels = [
     400,
@@ -106,7 +106,7 @@ pressure_levels = [
 # era5sl = ERA5(time=time, variables=Cocip.rad_variables, cachestore=disk_cache)
 
 # load met locally from `input_path`
-filenames = [t.strftime("%Y-%m-%dT%H") for t in pd.date_range(time[0], time[1], freq="1H")]
+filenames = [t.strftime("%Y-%m-%dT%H") for t in pd.date_range(time[0], time[1], freq="1h")]
 
 met_filepaths = [str(input_path / "met" / f"{f}.nc") for f in filenames]
 rad_filepaths = [str(input_path / "rad" / f"{f}.nc") for f in filenames]

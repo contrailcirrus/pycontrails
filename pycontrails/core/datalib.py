@@ -40,7 +40,7 @@ OPEN_IN_PARALLEL: bool = False
 OPEN_WITH_LOCK: bool = False
 
 
-def parse_timesteps(time: TimeInput | None, freq: str | None = "1H") -> list[datetime]:
+def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[datetime]:
     """Parse time input into set of time steps.
 
     If input time is length 2, this creates a range of equally spaced time
@@ -58,7 +58,7 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1H") -> list[dat
         See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         for a list of frequency aliases.
         If None, returns input `time` as a list.
-        Defaults to "1H".
+        Defaults to "1h".
 
     Returns
     -------

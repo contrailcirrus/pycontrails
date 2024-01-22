@@ -774,7 +774,7 @@ class Flight(GeoVectorDataset):
 
     def resample_and_fill(
         self,
-        freq: str = "1T",
+        freq: str = "1min",
         fill_method: str = "geodesic",
         geodesic_threshold: float = 100e3,
         nominal_rocd: float = constants.nominal_rocd,
@@ -790,7 +790,7 @@ class Flight(GeoVectorDataset):
         Parameters
         ----------
         freq : str, optional
-            Resampling frequency, by default "1T"
+            Resampling frequency, by default "1min"
         fill_method : {"geodesic", "linear"}, optional
             Choose between ``"geodesic"`` and ``"linear"``, by default ``"geodesic"``.
             In geodesic mode, large gaps between waypoints are filled with geodesic
@@ -844,7 +844,7 @@ class Flight(GeoVectorDataset):
                    1        0.0       0.0       0.0 2020-01-01 01:00:00
                    2       50.0       0.0       0.0 2020-01-01 02:00:00
 
-        >>> fl.resample_and_fill('10T').dataframe  # resample with 10 minute frequency
+        >>> fl.resample_and_fill('10min').dataframe  # resample with 10 minute frequency
             longitude  latitude  altitude                time
         0    0.000000       0.0       0.0 2020-01-01 00:00:00
         1    0.000000       0.0       0.0 2020-01-01 00:10:00
@@ -1152,7 +1152,11 @@ class Flight(GeoVectorDataset):
             properties.update(self.constants)
             return {"type": "Feature", "geometry": geometry, "properties": properties}
 
-        features = self.dataframe.groupby(key).apply(_group_to_feature).values.tolist()
+        features = (
+            self.dataframe.groupby(key)
+            .apply(_group_to_feature, include_groups=False)
+            .values.tolist()
+        )
         return {"type": "FeatureCollection", "features": features}
 
     def to_traffic(self) -> traffic.core.Flight:
@@ -1231,7 +1235,7 @@ class Flight(GeoVectorDataset):
         >>> df['longitude'] = np.linspace(-20, 20, 11)
         >>> df['latitude'] = np.linspace(-20, 20, 11)
         >>> df['altitude'] = np.linspace(9500, 10000, 11)
-        >>> fl = Flight(df).resample_and_fill('10S')
+        >>> fl = Flight(df).resample_and_fill('10s')
 
         >>> # Intersect and attach
         >>> fl["air_temperature"] = fl.intersect_met(met['air_temperature'])

@@ -115,7 +115,6 @@ gfs = [
 ]
 
 goes = [
-    "aiohttp>=3.9.0b0; python_version>='3.12'", # remove once aiohttp is out of beta
     "cartopy>=0.22",
     "gcsfs>=2022.3",
     "h5netcdf>=1.2",
@@ -207,6 +206,8 @@ doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE", "NUMBER"]
 filterwarnings = [
     "error::UserWarning",
     "error::RuntimeWarning",
+    "ignore:datetime.datetime:DeprecationWarning:tqdm.std",
+    "ignore:Type google._upb._message:DeprecationWarning",
     "ignore:`np.bool8` is a deprecated alias:DeprecationWarning:skimage.util.dtype",
     "ignore:'cgi' is deprecated and slated:DeprecationWarning:google.cloud.storage.blob",
     "ignore:Engine 'cfgrib' loading failed:RuntimeWarning:xarray.backends.plugins",

@@ -328,44 +328,44 @@ def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[
     for col in fl.data:
         assert set(fl.data[col]) == set(fl2.data[col])
 
-    fl3 = fl2.resample_and_fill("10S")
-    assert fl3.max_time_gap == pd.Timedelta("10S")
-    assert np.all(np.diff(fl3.data["time"][1:-1]) == pd.Timedelta("10S"))
+    fl3 = fl2.resample_and_fill("10s")
+    assert fl3.max_time_gap == pd.Timedelta("10s")
+    assert np.all(np.diff(fl3.data["time"][1:-1]) == pd.Timedelta("10s"))
     assert set(fl3.data.keys()) == {"time", "latitude", "longitude", "altitude"}
 
 
 def test_resampling_10s(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with 10s resampling."""
-    fl2 = fl.resample_and_fill("10S")
+    fl2 = fl.resample_and_fill("10s")
     assert len(fl2) == 889
-    expected = pd.date_range(fl.time_start, fl.time_end, freq="10S").floor("10S")[1:]
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="10s").floor("10s")[1:]
     np.testing.assert_array_equal(fl2["time"], expected)
 
 
 def test_resampling_10t(fl: Flight, flight_meridian: Flight) -> None:
     """Test Flight.resample_and_fill() with 10T resampling."""
-    fl2 = fl.resample_and_fill("10T")
+    fl2 = fl.resample_and_fill("10min")
     assert len(fl2) == 14
-    expected = pd.date_range(fl.time_start, fl.time_end, freq="10T").floor("10T")[1:]
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="10min").floor("10min")[1:]
     np.testing.assert_array_equal(fl2["time"], expected)
 
 
 def test_resample_large_geodesic_threshold(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with large geodesic threshold."""
     # at large threshold, geodesics are not calculated
-    fl2 = fl.resample_and_fill("1T", "linear")
-    fl3 = fl.resample_and_fill("1T", "geodesic", 1000e3)
+    fl2 = fl.resample_and_fill("1min", "linear")
+    fl3 = fl.resample_and_fill("1min", "geodesic", 1000e3)
     assert fl2 == fl3
 
-    expected = pd.date_range(fl.time_start, fl.time_end, freq="1T").floor("1T")[1:]
+    expected = pd.date_range(fl.time_start, fl.time_end, freq="1min").floor("1min")[1:]
     np.testing.assert_array_equal(fl3["time"], expected)
 
 
-@pytest.mark.parametrize("freq", ["1T", "3T", "5T"])
+@pytest.mark.parametrize("freq", ["1min", "3min", "5min"])
 def test_resample_over_meridian(flight_meridian: Flight, freq: str) -> None:
     """Test Flight.resample_and_fill() over the meridian."""
     fl2 = flight_meridian.resample_and_fill(freq)
-    bound = 2.0 if freq == "5T" else 1.0
+    bound = 2.0 if freq == "5min" else 1.0
     assert np.all(np.abs(np.diff(fl2["longitude"] % 360.0)) < bound)
 
     expected = pd.date_range(flight_meridian.time_start, flight_meridian.time_end, freq=freq).floor(
@@ -378,8 +378,8 @@ def test_geodesic_interpolation(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with geodesic interpolation."""
     fl_alt = Flight(fl.dataframe)
     fl_alt["altitude"][:] = 10000.0
-    fl2 = fl_alt.resample_and_fill("1T", "geodesic", geodesic_threshold=1e3)
-    fl3 = fl_alt.resample_and_fill("1T", "geodesic", geodesic_threshold=200e3)
+    fl2 = fl_alt.resample_and_fill("1min", "geodesic", geodesic_threshold=1e3)
+    fl3 = fl_alt.resample_and_fill("1min", "geodesic", geodesic_threshold=200e3)
     # fine geodesic interpolation will beat linear interpolation for minimizing spherical distance
     assert fl2.length < fl3.length
     with pytest.raises(ValueError, match="Unknown `fill_method`"):
@@ -388,11 +388,11 @@ def test_geodesic_interpolation(fl: Flight) -> None:
 
 def test_resample_keep_original(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with keep_original_index=True."""
-    fl2 = fl.resample_and_fill("1T", keep_original_index=True)
+    fl2 = fl.resample_and_fill("1min", keep_original_index=True)
     assert len(fl2) == 401
     assert np.all(np.diff(fl2["time"]) > np.timedelta64(0, "ns"))  # monotonically increasing
 
-    fl3 = fl.resample_and_fill("1T", keep_original_index=False)
+    fl3 = fl.resample_and_fill("1min", keep_original_index=False)
     assert len(fl3) == 148
     assert np.all(np.diff(fl3["time"]) > np.timedelta64(0, "ns"))  # monotonically increasing
 
@@ -403,8 +403,8 @@ def test_altitude_interpolation(fl: Flight) -> None:
     """Check the ROCD of the interpolated altitude."""
 
     # check default flight
-    fl1 = fl.resample_and_fill("10S")
-    fl2 = fl.resample_and_fill("10T")
+    fl1 = fl.resample_and_fill("10s")
+    fl2 = fl.resample_and_fill("10min")
 
     def _check_rocd(_fl: Flight, nominal_rocd: float = constants.nominal_rocd) -> np.bool_:
         """Check rate of climb/descent."""
@@ -426,14 +426,14 @@ def test_altitude_interpolation(fl: Flight) -> None:
     )
 
     # resample to 1 min
-    fl10 = fl_alt.resample_and_fill("1T")
+    fl10 = fl_alt.resample_and_fill("1min")
 
     # confirm that rocd is appropriate
     assert _check_rocd(fl10)
 
     # resample to 5 minutes
     # confirm that all values exist in previous resampling
-    fl11 = fl_alt.resample_and_fill("5T")
+    fl11 = fl_alt.resample_and_fill("5min")
     assert _check_rocd(fl11)
     assert np.in1d(fl11["altitude"], fl10["altitude"]).all()
 
@@ -446,28 +446,28 @@ def test_altitude_interpolation(fl: Flight) -> None:
     )
 
     # resample to 1 min
-    fl13 = fl_lev.resample_and_fill("1T")
+    fl13 = fl_lev.resample_and_fill("1min")
     assert "level" not in fl13
     assert _check_rocd(fl13)
 
     # test nominal rocd
-    fl14 = fl_alt.resample_and_fill("1T", nominal_rocd=30)
+    fl14 = fl_alt.resample_and_fill("1min", nominal_rocd=30)
     assert _check_rocd(fl14, nominal_rocd=30)
 
     # test warning with low nominal rocd
     with pytest.warns(UserWarning, match="Rate of climb/descent values greater than nominal"):
-        fl15 = fl_alt.resample_and_fill("1T", nominal_rocd=1)
+        fl15 = fl_alt.resample_and_fill("1min", nominal_rocd=1)
         assert not _check_rocd(fl15, nominal_rocd=1)
 
     # test `drop` kwarg
     fl_alt["extrakey"] = np.linspace(0, 10, 10)
     fl_alt["level"] = fl_alt.level
-    fl16 = fl_alt.resample_and_fill("1T", drop=False)
+    fl16 = fl_alt.resample_and_fill("1min", drop=False)
     assert "extrakey" in fl16
     assert np.any(np.isnan(fl16["extrakey"]))
     assert "level" not in fl16
 
-    fl17 = fl_alt.resample_and_fill("1T")
+    fl17 = fl_alt.resample_and_fill("1min")
     assert "extrakey" not in fl17
 
 
@@ -709,7 +709,7 @@ def test_downselect_met(fl: Flight, met_issr: MetDataset) -> None:
     assert ds["time"].values[0] < fl["time"].min() < ds["time"].values[1]
 
 
-@pytest.mark.parametrize("freq", ["10S", "1T", "10T"])
+@pytest.mark.parametrize("freq", ["10s", "1min", "10min"])
 @pytest.mark.parametrize("shift", [-180, 0])
 def test_interpolation_edge_cases(shift: int, freq: str) -> None:
     """Test interpolation adjustments for antimeridian crossing.
@@ -771,7 +771,7 @@ def test_antimeridian_long_cross(direction: str, cross_anti: bool) -> None:
         altitude=np.full(n, 10000),
         time=pd.date_range("2022-01-01", "2022-01-01T03", n),
     )
-    fl2 = fl.resample_and_fill("5S")
+    fl2 = fl.resample_and_fill("5s")
     assert np.all(fl2["longitude"] < 180)
     assert np.all(fl2["longitude"] >= -180)
     assert np.all(np.isfinite(fl2["longitude"]))
@@ -944,7 +944,7 @@ def test_resample_and_fill_two_waypoints() -> None:
         time=["2023-03-14T00", "2023-03-14T05"],
     )
 
-    fl = fl.resample_and_fill("1T")
+    fl = fl.resample_and_fill("1min")
 
     # Using the variation in the groundspeed as a proxy for the
     # interpolation method. Linear interpolation gives rise to a much larger
@@ -964,7 +964,7 @@ def test_flight_to_dict(flight_fake: Flight) -> None:
     fl.attrs["aircraft_type"] = "A320"
     fl.attrs["flight_number"] = "BA123"
     fl.attrs["some_time"] = pd.Timestamp("2021-01-01 00:00:00")
-    fl.attrs["some_duration"] = pd.Timedelta("1H")
+    fl.attrs["some_duration"] = pd.Timedelta("1h")
 
     flight_dict = fl.to_dict()
     assert isinstance(flight_dict, dict)

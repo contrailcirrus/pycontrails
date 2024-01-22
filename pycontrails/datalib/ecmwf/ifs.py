@@ -89,7 +89,7 @@ class IFS(datalib.MetDataSource):
         self.forecast_date = pd.to_datetime(forecast_date).to_pydatetime()
 
         # parse inputs
-        self.timesteps = datalib.parse_timesteps(time, freq="3H")
+        self.timesteps = datalib.parse_timesteps(time, freq="3h")
         self.pressure_levels = datalib.parse_pressure_levels(pressure_levels, None)
         self.variables = datalib.parse_variables(variables, self.supported_variables)
 

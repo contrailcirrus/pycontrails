@@ -252,7 +252,7 @@ def test_cocip_processes_rad(met: MetDataset, rad: MetDataset) -> None:
     """Check that Cocip seamlessly processes rad data on init."""
 
     # rad starts without time shifting
-    t0 = pd.date_range("2019", freq="1H", periods=13)
+    t0 = pd.date_range("2019", freq="1h", periods=13)
     np.testing.assert_array_equal(rad["time"].values, t0)
 
     t1 = t0 - pd.Timedelta(30, "m")

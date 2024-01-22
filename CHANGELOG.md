@@ -3,6 +3,10 @@
 
 ## v0.49.3 (unreleased)
 
+### Internals
+
+- Update time frequency aliases for pandas 2.2 compatibility.
+
 ## v0.49.2
 
 ### Features

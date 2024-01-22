@@ -174,7 +174,7 @@ class GFSForecast(datalib.MetDataSource):
         # Forecast is available hourly for 0.25 degree grid,
         # 3 hourly for 0.5 and 1 degree grid
         # https://www.nco.ncep.noaa.gov/pmb/products/gfs/
-        freq = "1H" if grid == 0.25 else "3H"
+        freq = "1h" if grid == 0.25 else "3h"
         self.timesteps = datalib.parse_timesteps(time, freq=freq)
 
         self.pressure_levels = datalib.parse_pressure_levels(
