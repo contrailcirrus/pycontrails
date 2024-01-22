@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import Any, TypeVar
 
 import numpy as np
@@ -437,19 +436,6 @@ def contrail_persistent(
         np.sum(status_5),
         np.sum(status_6),
     )
-    tau_contrail_nan = np.isnan(tau_contrail)
-    logger.debug(
-        "Fraction of nan in tau_contrail: %s / %s",
-        tau_contrail_nan.sum(),
-        tau_contrail_nan.size,
-    )
-    if np.all(tau_contrail_nan):
-        warnings.warn(
-            "All tau_contrail values are nan. This may be due to waypoints "
-            "all lying outside of the met interpolation grid. It could "
-            "indicate an issue with interpolation, or an insufficient "
-            "met domain."
-        )
     return status_1 & status_2 & status_3 & status_4 & status_5 & status_6
 
 
