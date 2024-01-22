@@ -443,16 +443,17 @@ def interp(
         da = _localize(da, coords)
 
     # Using da.coords.variables is slightly more performant than da["longitude"].values
-    x = da.coords.variables["longitude"].values
-    y = da.coords.variables["latitude"].values
-    z = da.coords.variables["level"].values
+    variables = da.coords.variables
+    x = variables["longitude"].values
+    y = variables["latitude"].values
+    z = variables["level"].values
     if any(v.dtype != np.float64 for v in (x, y, z)):
         raise ValueError(
             "da must have float64 dtype for longitude, latitude, and level coordinates"
         )
 
     # Convert t and time to float64
-    t = da.coords.variables["time"].values
+    t = variables["time"].values
     offset = t[0]
     t = _floatize_time(t, offset)
 
