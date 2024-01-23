@@ -287,7 +287,7 @@ def _clean_trajectory_altitude(messages: pd.DataFrame) -> pd.DataFrame:
 
     # Filter altitude signal
     # See https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter
-    mdf["altitude_baro"] = flight.filter_altitude(mdf["time"], mdf["altitude_baro"].to_numpy())
+    mdf["altitude_baro"] = flight.filter_altitude(mdf["timestamp"], mdf["altitude_baro"].to_numpy())
 
     # Snap altitudes in cruise to the nearest flight level.
     # Requires segment phase
