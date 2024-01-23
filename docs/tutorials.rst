@@ -11,3 +11,4 @@ Tutorials
    :caption: Notebooks
 
    notebooks/run-cocip-on-flight
+   notebooks/run-cocip-with-fdr

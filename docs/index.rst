@@ -35,7 +35,7 @@ Learn more on `contrails.org <https://contrails.org>`_.
    :maxdepth: 1
    :caption: Using pycontrails
 
-   notebooks/Flight
+   flight
    meteorology
    models
    observations
