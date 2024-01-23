@@ -53,8 +53,9 @@ OpenSky
 Because persistent contrails are a sparse phenomenon, it is a nontrivial
 task to construct authentic flights exhibiting characteristics from the
 vantage of contrail research.
-The data in the ``flight.csv`` file was constructed from the
-`OpenSky database <https://opensky-network.org/>`__.
+The data in the 
+`data/flight.csv <https://github.com/contrailcirrus/pycontrails/blob/main/docs/notebooks/data/flight.csv>`__
+file was constructed from the `OpenSky database <https://opensky-network.org/>`__.
 We document the process here to ensure reproducibility.
 
 OpenSky provides access to an `impala shell <https://opensky-network.org/data/impala>`__
@@ -91,7 +92,7 @@ typically contains waypoint data with 1 second frequency.)
 The OpenSky impala shell simply streams text data over SSH.
 To convert to a CSV, the output of the impala shell can be piped (or copy-pasted)
 into the ``query_output.txt`` text file referenced below. The pandas
-code below converts the output of the above query to the ``flight.csv``
+code below converts the output of the above query to the ``data/flight.csv``
 file included here.
 
 .. code:: python
@@ -107,4 +108,4 @@ file included here.
 
    # artificially clip at 38000 ft to ensure we stay within met bounds
    df["altitude"] = df["altitude"].clip(upper=11582.4)
-   df.to_csv("flight.csv", index=False)
+   df.to_csv("data/flight.csv", index=False)
