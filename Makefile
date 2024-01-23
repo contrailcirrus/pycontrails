@@ -182,12 +182,18 @@ nb-clean-check:
 		--preserve-cell-outputs \
 		--preserve-execution-counts
 
+# Makes sure that all cells can execute without errors
 # Add `nbval-skip` cell tag if you want to skip a cell
 # Add `nbval-check-output` cell tag if you want to specifically compare cell output
+# TODO: 
+#   - Install eccodes on Github Action so GFS notebook can run
+#   - Provide meteorology data for `run-cocip-on-flight` tutorial
 nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
 	python -m pytest --nbval-lax \
 		--ignore=docs/integrations/ACCF.ipynb \
-		--ignore=docs/notebooks/interpolating-specific-humidity.ipynb \
+		--ignore=docs/notebooks/specific-humidity-interpolation.ipynb \
+		--ignore=docs/notebooks/GFS.ipynb \
+		--ignore=docs/notebooks/run-cocip-on-flight.ipynb \
 		docs/notebooks docs/integrations
 
 # Check for broken links in notebooks
@@ -201,7 +207,7 @@ nb-check-links:
 		docs/notebooks/*.ipynb
 
 # Execute all notebooks in docs
-# Add notebooks from docs/integrations/ manually
+# NOTE notebooks from docs/integrations/ manually
 # Add `skip-execution` cell tag if you want to skip a cell
 # Add `raises-exception` cell tag if you know the cell raises exception
 nb-execute: ensure-era5-cached nb-black-check nb-check-links
