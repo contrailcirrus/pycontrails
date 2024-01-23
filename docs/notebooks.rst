@@ -53,7 +53,7 @@ OpenSky
 Because persistent contrails are a sparse phenomenon, it is a nontrivial
 task to construct authentic flights exhibiting characteristics from the
 vantage of contrail research.
-The data in the 
+The data in the
 `data/flight.csv <https://github.com/contrailcirrus/pycontrails/blob/main/docs/notebooks/data/flight.csv>`__
 file was constructed from the `OpenSky database <https://opensky-network.org/>`__.
 We document the process here to ensure reproducibility.
