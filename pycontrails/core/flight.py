@@ -1633,31 +1633,29 @@ def _verify_altitude(
 
 
 def filter_altitude(
-    altitude: npt.NDArray[np.float_], *, kernel_size: int = 17
+    time: npt.NDArray[np.datetime64],
+    altitude: npt.NDArray[np.float_],
+    kernel_size: int = 17,
+    cruise_threshold: int = 120,
 ) -> npt.NDArray[np.float_]:
     """
     Filter noisy altitude on a single flight.
 
     Currently runs altitude through a median filter using :func:`scipy.signal.medfilt`
-    with ``kernel_size``, then a Savitzky-Golay filter to filter noise.
-
-    .. todo::
-
-        This method assumes that the time interval between altitude points
-        (:func:`segment_duration`) is moderately small (e.g. minutes).
-        This filter may not work as well when waypoints are close (seconds) or
-        farther apart in time (e.g. 30 minutes).
-
-        The optimal altitude filter is a work in a progress
-        and may change in the future.
+    with ``kernel_size``, then a Savitzky-Golay filter to filter noise. The median filter
+    is only applied during cruise segments that are longer than ``cruise_threshold``.
 
     Parameters
     ----------
+    time : npt.NDArray[np.datetime64]
+        Waypoint time in ``np.datetime64`` format.
     altitude : npt.NDArray[np.float_]
         Altitude signal
     kernel_size : int, optional
         Passed directly to :func:`scipy.signal.medfilt`, by default 11.
         Passed also to :func:`scipy.signal.medfilt`
+    cruise_theshold : int, optional
+        Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
 
     Returns
     -------
@@ -1693,21 +1691,59 @@ def filter_altitude(
     # Apply a median filter above a certain threshold
     altitude_filt = scipy.signal.medfilt(altitude, kernel_size=kernel_size)
 
-    # TODO: I think this makes sense because it smooths the climb/descent phases
+    # Apply Savitzky-Golay filter
     altitude_filt = _sg_filter(altitude_filt, window_length=kernel_size)
 
-    # TODO: The right way to do this is with a low pass filter at
-    # a reasonable rocd threshold ~300-500 ft/min, e.g.
-    # sos = scipy.signal.butter(4, 250, 'low', output='sos')
-    # return scipy.signal.sosfilt(sos, altitude_filt1)
-    #
     # Remove noise manually
     # only remove above max airport elevation
     d_alt_ft = np.diff(altitude_filt, append=np.nan)
     is_noise = (np.abs(d_alt_ft) <= 25.0) & (altitude_filt > MAX_AIRPORT_ELEVATION)
     altitude_filt[is_noise] = np.round(altitude_filt[is_noise], -3)
 
-    return altitude_filt
+    # Find cruise phase in filtered profile
+    seg_duration = segment_duration(time)
+    seg_rocd = segment_rocd(seg_duration, altitude_filt)
+    seg_phase = segment_phase(seg_rocd, altitude_filt)
+    is_cruise = seg_phase == FlightPhase.CRUISE
+
+    # Compute cumulative segment time in cruise segments
+    v = np.nan_to_num(seg_duration)
+    v[~is_cruise] = 0
+    n = v == 0
+    c = np.cumsum(v)
+    d = np.diff(np.concatenate(([0.0], c[n])))
+    v[n] = -d
+    cruise_duration = np.cumsum(v)
+
+    # Find cruise segment start and end indices
+    not_cruise = cruise_duration == 0
+
+    end_cruise = np.empty(cruise_duration.size, dtype=bool)
+    end_cruise[:-1] = ~not_cruise[:-1] & not_cruise[1:]
+    # if last sample is in cruise, last sample of end_cruise marks the end of a cruise segment
+    end_cruise[-1] = ~not_cruise[-1]
+
+    start_cruise = np.empty(cruise_duration.size, dtype=bool)
+    # if first sample is in cruise, first sample of start_cruise marks start of a segment
+    start_cruise[0] = ~not_cruise[0]
+    start_cruise[1:] = not_cruise[:-1] & ~not_cruise[1:]
+
+    start_idxs = np.flatnonzero(start_cruise)
+    end_idxs = np.flatnonzero(end_cruise)
+
+    # Threshold for min cruise segment
+    long_mask = cruise_duration[end_idxs] > 120
+    start_idxs = start_idxs[long_mask]
+    end_idxs = end_idxs[long_mask]
+
+    if np.any(start_idxs):
+        for i, start_idx in enumerate(start_idxs):
+            altitude[start_idxs[i] : end_idxs[i]] = altitude_filt[start_idxs[i] : end_idxs[i]]
+
+    # reapply Savitzky-Golay filter to smooth climb and descent
+    altitude = _sg_filter(altitude, window_length=kernel_size)
+
+    return altitude
 
 
 def segment_duration(
