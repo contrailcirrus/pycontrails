@@ -116,7 +116,16 @@ Documentation
 -------------
 
 Documentation is written in `reStructuredText <https://docutils.sourceforge.io/rst.html>`__
-and built with `Sphinx <https://www.sphinx-doc.org/en/master/>`__.
+and built with `Sphinx <https://www.sphinx-doc.org/en/master/>`__. The `quick reStructuredText
+reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`__
+provides a basic overview.
+
+Sphinx includes many additional
+`roles <https://www.sphinx-doc.org/en/master/usage/restructuredtext/roles.html>`__,
+`directives <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html>`__,
+and
+`extensions <https://www.sphinx-doc.org/en/master/usage/extensions/index.html>`__
+to enhance documentation.
 
 Sphinx configuration is written in `docs/conf.py <https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py>`__.
 See `Sphinx configuration docs <https://www.sphinx-doc.org/en/master/usage/configuration.html>`__ for the full list of configuration options.
@@ -151,6 +160,32 @@ To force the whole site to rebuild, use the options ``-aE``:
 See `sphinx-build <https://www.sphinx-doc.org/en/master/man/sphinx-build.html#cmdoption-sphinx-build-b>`__
 for a list of all the possible output builders.
 
+Notebooks
+~~~~~~~~~
+
+Examples and tutorials should be written as isolated executable `Jupyter
+Notebooks <https://jupyter.org/>`__. The
+`nbsphinx <https://nbsphinx.readthedocs.io/en/0.9.1/>`__ extension
+includes notebooks in the static documentation.
+
+Notebooks will be automatically evaluated during tests, unless
+explicitly ignored. To exclude a notebook cell from evaluation during
+testing or automatic execution, `add the
+tags <https://jupyterbook.org/en/stable/content/metadata.html#adding-tags-using-notebook-interfaces>`__
+``nbval-skip`` and ``skip-execution`` to cell metadata.
+
+To test notebooks locally, run:
+
+.. code:: bash
+
+   $ make nb-test
+
+To re-execute all notebooks, run:
+
+.. code:: bash
+
+   $ make nb-execute
+
 PDF Output
 ~~~~~~~~~~
 
@@ -166,7 +201,6 @@ A single pdf output (i.e. ``pycontrails.pdf``) will be built within ``docs/_buil
 
 To build manually, run:
 
-
 .. code-block:: bash
 
     $ sphinx-build -b latex docs docs/_build/latex
@@ -175,6 +209,14 @@ To build manually, run:
 
 References
 ~~~~~~~~~~
+
+The documentation uses
+`sphinxcontrib-bibtex <https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html>`__
+to include citations and a bibliography.
+
+All references should be cited through documentation and docstrings
+using the ```:cite:``
+directive <https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html#role-cite>`__.
 
 Literature references managed in the `pycontrails Zotero library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
 
@@ -202,7 +244,7 @@ Run rst linter with `doc8 <https://doc8.readthedocs.io/en/latest/readme.html>`__
 
 .. code-block:: bash
 
-    $ make pytest
+    $ make doc8
 
 Run docstring example tests with `doctest <https://docs.python.org/3/library/doctest.html>`__:
 
@@ -216,3 +258,103 @@ Test notebook examples with `nbval pytest plugin <https://github.com/computation
 
    $ make nb-test
 
+
+Conventions
+===========
+
+Code
+----
+
+``pycontrails`` aims to implement clear, consistent, performant data
+structures and models.
+
+The project uses `mypy <http://mypy-lang.org/>`__ for static type
+checking. All code should have specific, clear type annotations.
+
+The project uses `Black <https://black.readthedocs.io/en/stable/>`__,
+`ruff <https://github.com/charliermarsh/ruff>`__ and
+`doc8 <https://doc8.readthedocs.io/en/latest/readme.html>`__ to
+standardize code-formatting. These tools are run automatically in a
+pre-commit hook.
+
+The project uses `pytest <https://docs.pytest.org/en/7.2.x/>`__ to run
+unit tests. New code should include clear unit tests for implementation
+and output values. New test files should be included in the
+```/tests/unit/``
+directory <https://github.com/contrailcirrus/pycontrails/tree/main/tests/unit>`__.
+
+The project uses `Github
+Actions <https://github.com/contrailcirrus/pycontrails/actions>`__ to
+run code quality and unit tests on each pull request. Test locally
+before pushing using:
+
+.. code:: bash
+
+   $ make test
+
+Docstrings
+----------
+
+Wherever possible, we adhere to the `NumPy docstring
+conventions <https://numpydoc.readthedocs.io/en/latest/format.html>`__.
+
+The following links are good references for writing *numpy* docstrings:
+
+-  `numpydoc docstring
+   guide <https://numpydoc.readthedocs.io/en/latest/format.html>`__
+-  `pandas docstring
+   guide <https://pandas.pydata.org/docs/development/contributing_docstring.html>`__
+-  `scipy docstring
+   guideline <https://docs.scipy.org/doc//scipy/dev/contributor/rendering_documentation.html#documentation-guidelines>`__
+
+General guidelines:
+
+.. code:: rst
+
+   Use *italics*, **bold** and ``monospace`` if needed in any explanations
+   (but not for variable names and doctest code or multi-line code).
+   Variable, module, function, and class names
+   should be written between single back-ticks (`numpy`).
+
+When you specify a type in **Parameters** or **See Also**, Sphinx will
+automatically replace the text with the ``napolean_type_aliases``
+specified in
+`conf.py <https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py>`__,
+e.g.
+
+.. code:: python
+
+   """
+   Parameters
+   ----------
+   x : np.ndarray
+       Sphinx will automatically replace
+       "np.ndarray" with the napolean type alias "numpy.ndarray"
+   """
+
+The **See Also** section is *not a list*. All of the following work:
+
+.. code:: python
+
+   """
+   See Also
+   --------
+   :func:`segment_lengths`
+   segment_lengths
+   :class:`numpy.datetime64`
+   np.datetime64
+   """
+
+When you specify a type outside of **Parameters**, you have to use the
+`sphinx cross-referencing
+syntax <https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#cross-referencing-python-objects>`__:
+
+.. code:: python
+
+   """
+   This is a :func:`pd.to_datetime`    # NO
+   and :func:`pandas.to_datetime`      # YES
+
+   This is a :class:`np.datetime64`    # NO
+   and :class:`numpy.datetime64`       # YES
+   """
