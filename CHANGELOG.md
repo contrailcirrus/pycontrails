@@ -3,6 +3,10 @@
 
 ## v0.49.3 (unreleased)
 
+### Features
+
+- Re-organize notebooks in documentation
+
 ### Fixes
 
 - Remove opaque warning issued when all tau_contrail values are nan in `Cocip` evolution.
@@ -12,6 +16,12 @@
 
 - Update time frequency aliases for `pandas` 2.2 compatibility.
 - Update cython annotations for `scipy` 1.12 compatibility.
+- Improves notebook output testing capabilities (`make nb-test`).
+- Add new convenience Make recipe to execute all notebooks in the docs (`make nb-execute`)
+- Add new Make recipe to cleanup notebooks (`make nb-clean`)
+- Add pre-commit hook to check if notebooks are *clean*.
+- Re-organize notebooks in documentation
+- Clean up contributing and develop documentation.
 
 ## v0.49.2
 
