@@ -898,6 +898,7 @@ def test_flight_duplicated_times(flight_fake: Flight) -> None:
 def test_filter_altitude(kernel_size: int) -> None:
     """Check that noise in cruise altitude is removed."""
 
+    pd.date_range("2022-01-01T00:00", "2022-01-01T00:10", 10)
     altitude_ft = np.array([40000, 39975, 40000, 40000, 39975, 40000, 40000, 40025, 40025, 40000])
     altitude_cleaned = flight.filter_altitude(altitude_ft, kernel_size=kernel_size)
     assert altitude_cleaned.size == altitude_ft.size
