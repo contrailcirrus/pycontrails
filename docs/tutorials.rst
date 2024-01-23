@@ -1,21 +1,13 @@
 
+.. _tutorials:
+
 Tutorials
 =========
 
-The `/docs/tutorials <https://github.com/contrailcirrus/pycontrails/tree/main/docs/tutorials>`__
-directory contains a collection of `Jupyter Notebooks <https://jupyter.org/>`__
-walking through specific tutorials.
-
-Launch ``jupyter lab`` to run these notebooks interactively:
-
-.. code:: bash
-
-   $ cd docs/examples
-   $ jupyter lab
+   See :ref:`notebooks` to interact with these notebooks
 
 .. toctree::
    :maxdepth: 1
-   :caption: Tutorials
+   :caption: Notebooks
 
-   tutorials/CoCiP
-   tutorials/interpolating-specific-humidity
+   notebooks/run-cocip-on-flight

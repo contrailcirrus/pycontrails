@@ -28,13 +28,32 @@ Learn more on `contrails.org <https://contrails.org>`_.
 
    install
    develop
-   examples
+   notebooks
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+   :caption: Using pycontrails
+
+   notebooks/Flight
+   meteorology
+   models
+   observations
+   utilities
    tutorials
 
 .. toctree::
    :titlesonly:
    :maxdepth: 1
-   :caption: Resources
+   :caption: Explanations
+
+   notebooks/specific-humidity-interpolation
+   Energy Forcing Interpretation <https://apidocs.contrails.org/ef-interpretation.html>
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+   :caption: References
 
    api
    literature
