@@ -16,12 +16,13 @@
 
 - Update time frequency aliases for `pandas` 2.2 compatibility.
 - Update cython annotations for `scipy` 1.12 compatibility.
-- Improves notebook output testing capabilities (`make nb-test`).
+- Improve notebook output testing capabilities (`make nb-test`).
 - Add new convenience Make recipe to execute all notebooks in the docs (`make nb-execute`)
 - Add new Make recipe to cleanup notebooks (`make nb-clean`)
 - Add pre-commit hook to check if notebooks are *clean*.
-- Re-organize notebooks in documentation
+- Re-organize notebooks in documentation.
 - Clean up contributing and develop documentation.
+- Automatically parse `np.timedelta64`-like model params in `Model.update_params`.
 
 ## v0.49.2
 

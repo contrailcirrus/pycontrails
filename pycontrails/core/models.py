@@ -15,6 +15,7 @@ from typing import Any, NoReturn, TypeVar, Union, overload
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import scipy.interpolate
 import xarray as xr
 
@@ -1137,9 +1138,17 @@ def update_param_dict(param_dict: dict[str, Any], new_params: dict[str, Any]) ->
 
     """
     for param, value in new_params.items():
-        if param not in param_dict:
-            raise KeyError(
+        try:
+            old_value = param_dict[param]
+        except KeyError:
+            msg = (
                 f"Unknown parameter '{param}' passed into model. Possible "
                 f"parameters include {', '.join(param_dict)}."
             )
+            raise KeyError(msg) from None
+
+        # Convenience: convert timedelta64-like params
+        if isinstance(old_value, np.timedelta64) and not isinstance(value, np.timedelta64):
+            value = pd.to_timedelta(value).to_numpy()
+
         param_dict[param] = value
