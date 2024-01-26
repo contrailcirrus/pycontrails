@@ -938,6 +938,108 @@ class Flight(GeoVectorDataset):
         df = df.reset_index()
         return Flight(data=df, attrs=self.attrs)
 
+    def clean_and_resample(
+        self,
+        freq: str = "1min",
+        fill_method: str = "geodesic",
+        geodesic_threshold: float = 100e3,
+        nominal_rocd: float = constants.nominal_rocd,
+        kernel_size: int = 17,
+        cruise_threshold: float = 120,
+        force_filter: bool = False,
+        drop: bool = True,
+        keep_original_index: bool = False,
+        climb_descend_at_end: bool = False,
+    ) -> Flight:
+        """Resample and (possibly) filter a flight trajectory.
+
+        Waypoints are resampled according to the frequency ``freq``. If the original
+        flight data has a short sampling period, `filter_altitude` will also be called
+        to clean the data.  Large gaps in trajectories may be interpolated as step climbs
+        through `_altitude_interpolation`.
+
+        Parameters
+        ----------
+        freq : str, optional
+            Resampling frequency, by default "1min"
+        fill_method : {"geodesic", "linear"}, optional
+            Choose between ``"geodesic"`` and ``"linear"``, by default ``"geodesic"``.
+            In geodesic mode, large gaps between waypoints are filled with geodesic
+            interpolation and small gaps are filled with linear interpolation. In linear
+            mode, all gaps are filled with linear interpolation.
+        geodesic_threshold : float, optional
+            Threshold for geodesic interpolation, [:math:`m`].
+            If the distance between consecutive waypoints is under this threshold,
+            values are interpolated linearly.
+        nominal_rocd : float | None, optional
+            Nominal rate of climb / descent for aircraft type.
+            Defaults to :attr:`constants.nominal_rocd`.
+        kernel_size : int, optional
+            Passed directly to :func:`scipy.signal.medfilt`, by default 11.
+            Passed also to :func:`scipy.signal.medfilt`
+        cruise_theshold : int, optional
+            Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
+        force_filter: bool, optional
+            If set to true, `filter_altitude` will always be called. otherwise, it will only
+            be called if the flight has a median sample period under 10 seconds
+        drop : bool, optional
+            Drop any columns that are not resampled and filled.
+            Defaults to ``True``, dropping all keys outside of "time", "latitude",
+            "longitude" and "altitude". If set to False, the extra keys will be
+            kept but filled with ``nan`` or ``None`` values, depending on the data type.
+        keep_original_index : bool, optional
+            Keep the original index of the :class:`Flight` in addition to the new
+            resampled index. Defaults to ``False``.
+            .. versionadded:: 0.45.2
+        climb_or_descend_at_end : bool
+            If true, the climb or descent will be placed at the end of each segment
+            rather than the start. Default is false (climb or descent immediately).
+
+        Returns
+        -------
+        Flight
+            Filled Flight
+        """
+        clean_flight: Flight
+        # If the flight has a large sampling period, don't try to smooth it unless requested
+        median_gap = np.nanmedian(self.segment_duration())
+        if (median_gap > 10) and (not force_filter):
+            return self.resample_and_fill(
+                freq,
+                fill_method,
+                geodesic_threshold,
+                nominal_rocd,
+                drop,
+                keep_original_index,
+                climb_descend_at_end,
+            )
+
+        # If the flight has large gap(s), then call resample and fill, then filter altitude
+        max_gap = max(self.segment_duration())
+        if max_gap > 300:
+            clean_flight = self.resample_and_fill(
+                "1sec",
+                fill_method,
+                geodesic_threshold,
+                nominal_rocd,
+                drop,
+                keep_original_index,
+                climb_descend_at_end,
+            ).filter_altitude(kernel_size, cruise_threshold)
+        else:
+            clean_flight = self.filter_altitude(kernel_size, cruise_threshold)
+
+        # Resample to requested rate and return
+        return clean_flight.resample_and_fill(
+            freq,
+            fill_method,
+            geodesic_threshold,
+            nominal_rocd,
+            drop,
+            keep_original_index,
+            climb_descend_at_end,
+        )
+
     def filter_altitude(
         self,
         kernel_size: int = 17,
