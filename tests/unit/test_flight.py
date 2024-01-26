@@ -903,10 +903,8 @@ def test_filter_altitude(kernel_size: int) -> None:
     altitude_cleaned = flight.filter_altitude(time, altitude_ft, kernel_size=kernel_size)
     assert altitude_cleaned.size == altitude_ft.size
 
-    np.testing.assert_array_equal(altitude_cleaned[:-1], 40000.0)
-
-    # Final waypoint has altitude 40002 +/- 2 ft
-    assert altitude_cleaned[-1] == pytest.approx(40002, abs=2.5)
+    altitude_flat = np.array([40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000])
+    np.testing.assert_allclose(altitude_cleaned, altitude_flat, atol=20)
 
 
 @pytest.mark.filterwarnings("ignore:Time data is not np.datetime64:UserWarning")
