@@ -313,6 +313,11 @@ def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[
     assert np.all(np.diff(fl3.data["time"][1:-1]) == pd.Timedelta("10s"))
     assert set(fl3.data.keys()) == {"time", "latitude", "longitude", "altitude"}
 
+    fl4 = fl2.clean_and_resample("10s")
+    assert fl4.max_time_gap == pd.Timedelta("10s")
+    assert np.all(np.diff(fl4.data["time"][1:-1]) == pd.Timedelta("10s"))
+    assert set(fl4.data.keys()) == {"time", "latitude", "longitude", "altitude"}
+
 
 def test_resampling_10s(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with 10s resampling."""
