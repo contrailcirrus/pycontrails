@@ -1636,7 +1636,7 @@ def filter_altitude(
     time: npt.NDArray[np.datetime64],
     altitude: npt.NDArray[np.float_],
     kernel_size: int = 17,
-    cruise_threshold: np.float_ = 120.0,
+    cruise_threshold: float = 120,
 ) -> npt.NDArray[np.float_]:
     """
     Filter noisy altitude on a single flight.
