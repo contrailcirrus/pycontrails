@@ -938,6 +938,55 @@ class Flight(GeoVectorDataset):
         df = df.reset_index()
         return Flight(data=df, attrs=self.attrs)
 
+    def filter_altitude(
+        self,
+        kernel_size: int = 17,
+        cruise_threshold: float = 120,
+    ) -> Flight:
+        """
+        Filter noisy altitude on a single flight.
+
+        Currently runs altitude through a median filter using :func:`scipy.signal.medfilt`
+        with ``kernel_size``, then a Savitzky-Golay filter to filter noise. The median filter
+        is only applied during cruise segments that are longer than ``cruise_threshold``.
+
+        Parameters
+        ----------
+        kernel_size : int, optional
+            Passed directly to :func:`scipy.signal.medfilt`, by default 11.
+            Passed also to :func:`scipy.signal.medfilt`
+        cruise_theshold : int, optional
+            Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
+
+        Returns
+        -------
+        Flight
+            Filtered Flight
+
+        Notes
+        -----
+        Algorithm is derived from :meth:`traffic.core.flight.Flight.filter`.
+
+        The `traffic
+        <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`_
+        algorithm also computes thresholds on sliding windows
+        and replaces unacceptable values with NaNs.
+
+        Errors may raised if the ``kernel_size`` is too large.
+
+        See Also
+        --------
+        :meth:`traffic.core.flight.Flight.filter`
+        :func:`scipy.signal.medfilt`
+        """
+        df = self.dataframe.copy()
+        altitude_filtered = filter_altitude(
+            df["time"], df["altitude"], kernel_size, cruise_threshold
+        )
+        df.update(altitude=altitude_filtered)
+
+        return Flight(data=df, attrs=self.attrs)
+
     def _geodesic_interpolation(self, geodesic_threshold: float) -> pd.DataFrame | None:
         """Geodesic interpolate between large gaps between waypoints.
 
