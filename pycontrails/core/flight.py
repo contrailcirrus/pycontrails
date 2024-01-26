@@ -1088,9 +1088,9 @@ class Flight(GeoVectorDataset):
         altitude_filtered = filter_altitude(
             df["time"], df["altitude_ft"], kernel_size, cruise_threshold
         )
-        df.update(altitude_ft=altitude_filtered)
+        df["altitude_ft"] = altitude_filtered
         if "altitude" in df:
-            df.update(altitude=units.ft_to_m(altitude_filtered))
+            df["altitude"] = units.ft_to_m(altitude_filtered)
 
         return Flight(data=df, attrs=self.attrs)
 
