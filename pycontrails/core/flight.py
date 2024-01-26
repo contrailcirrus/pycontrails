@@ -1018,7 +1018,7 @@ class Flight(GeoVectorDataset):
         max_gap = max(self.segment_duration())
         if max_gap > 300:
             clean_flight = self.resample_and_fill(
-                "1sec",
+                "1S",
                 fill_method,
                 geodesic_threshold,
                 nominal_rocd,
