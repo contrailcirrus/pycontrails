@@ -1082,10 +1082,15 @@ class Flight(GeoVectorDataset):
         :func:`scipy.signal.medfilt`
         """
         df = self.dataframe.copy()
+        if "altitude_ft" not in df:
+            df["altitude_ft"] = units.m_to_ft(df["altitude"])
+
         altitude_filtered = filter_altitude(
-            df["time"], df["altitude"], kernel_size, cruise_threshold
+            df["time"], df["altitude_ft"], kernel_size, cruise_threshold
         )
-        df.update(altitude=altitude_filtered)
+        df.update(altitude_ft=altitude_filtered)
+        if "altitude" in df:
+            df.update(altitude=units.ft_to_m(altitude_filtered))
 
         return Flight(data=df, attrs=self.attrs)
 
@@ -1785,7 +1790,7 @@ def _verify_altitude(
 
 def filter_altitude(
     time: npt.NDArray[np.datetime64],
-    altitude: npt.NDArray[np.float_],
+    altitude_ft: npt.NDArray[np.float_],
     kernel_size: int = 17,
     cruise_threshold: float = 120,
 ) -> npt.NDArray[np.float_]:
@@ -1800,8 +1805,8 @@ def filter_altitude(
     ----------
     time : npt.NDArray[np.datetime64]
         Waypoint time in ``np.datetime64`` format.
-    altitude : npt.NDArray[np.float_]
-        Altitude signal
+    altitude_ft : npt.NDArray[np.float_]
+        Altitude signal in feet
     kernel_size : int, optional
         Passed directly to :func:`scipy.signal.medfilt`, by default 11.
         Passed also to :func:`scipy.signal.medfilt`
@@ -1829,18 +1834,18 @@ def filter_altitude(
     :meth:`traffic.core.flight.Flight.filter`
     :func:`scipy.signal.medfilt`
     """  # noqa: E501
-    if not len(altitude):
+    if not len(altitude_ft):
         raise ValueError("Altitude must have non-zero length to filter")
 
     # The kernel_size must be less than or equal to the number of data points available.
-    kernel_size = min(kernel_size, altitude.size)
+    kernel_size = min(kernel_size, altitude_ft.size)
 
     # The kernel_size must be odd.
     if (kernel_size % 2) == 0:
         kernel_size -= 1
 
     # Apply a median filter above a certain threshold
-    altitude_filt = scipy.signal.medfilt(altitude, kernel_size=kernel_size)
+    altitude_filt = scipy.signal.medfilt(altitude_ft, kernel_size=kernel_size)
 
     # Apply Savitzky-Golay filter
     altitude_filt = _sg_filter(altitude_filt, window_length=kernel_size)
@@ -1889,12 +1894,12 @@ def filter_altitude(
 
     if np.any(start_idxs):
         for i0, i1 in zip(start_idxs, end_idxs):
-            altitude[i0:i1] = altitude_filt[i0:i1]
+            altitude_ft[i0:i1] = altitude_filt[i0:i1]
 
     # reapply Savitzky-Golay filter to smooth climb and descent
-    altitude = _sg_filter(altitude, window_length=kernel_size)
+    altitude_ft = _sg_filter(altitude_ft, window_length=kernel_size)
 
-    return altitude
+    return altitude_ft
 
 
 def segment_duration(
