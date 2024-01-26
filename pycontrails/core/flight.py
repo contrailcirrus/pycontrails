@@ -1636,7 +1636,7 @@ def filter_altitude(
     time: npt.NDArray[np.datetime64],
     altitude: npt.NDArray[np.float_],
     kernel_size: int = 17,
-    cruise_threshold: int = 120,
+    cruise_threshold: np.float_ = 120.0,
 ) -> npt.NDArray[np.float_]:
     """
     Filter noisy altitude on a single flight.
@@ -1711,7 +1711,7 @@ def filter_altitude(
     v[~is_cruise] = 0
     n = v == 0
     c = np.cumsum(v)
-    d = np.diff(np.concatenate(([0.0], c[n])))
+    d = np.diff(c[n], prepend=0.0)
     v[n] = -d
     cruise_duration = np.cumsum(v)
 
@@ -1732,13 +1732,13 @@ def filter_altitude(
     end_idxs = np.flatnonzero(end_cruise)
 
     # Threshold for min cruise segment
-    long_mask = cruise_duration[end_idxs] > 120
+    long_mask = cruise_duration[end_idxs] > cruise_threshold
     start_idxs = start_idxs[long_mask]
     end_idxs = end_idxs[long_mask]
 
     if np.any(start_idxs):
-        for i, start_idx in enumerate(start_idxs):
-            altitude[start_idxs[i] : end_idxs[i]] = altitude_filt[start_idxs[i] : end_idxs[i]]
+        for i0, i1 in zip(start_idxs, end_idxs):
+            altitude[i0:i1] = altitude_filt[i0:i1]
 
     # reapply Savitzky-Golay filter to smooth climb and descent
     altitude = _sg_filter(altitude, window_length=kernel_size)
