@@ -1018,7 +1018,7 @@ class Flight(GeoVectorDataset):
         max_gap = max(self.segment_duration())
         if max_gap > 300:
             clean_flight = self.resample_and_fill(
-                "1S",
+                "1s",
                 fill_method,
                 geodesic_threshold,
                 nominal_rocd,
@@ -1892,14 +1892,15 @@ def filter_altitude(
     start_idxs = start_idxs[long_mask]
     end_idxs = end_idxs[long_mask]
 
+    result = np.copy(altitude_ft)
     if np.any(start_idxs):
         for i0, i1 in zip(start_idxs, end_idxs):
-            altitude_ft[i0:i1] = altitude_filt[i0:i1]
+            result[i0:i1] = altitude_filt[i0:i1]
 
     # reapply Savitzky-Golay filter to smooth climb and descent
-    altitude_ft = _sg_filter(altitude_ft, window_length=kernel_size)
+    result = _sg_filter(result, window_length=kernel_size)
 
-    return altitude_ft
+    return result
 
 
 def segment_duration(
