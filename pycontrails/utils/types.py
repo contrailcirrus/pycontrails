@@ -33,7 +33,7 @@ DatetimeLike = TypeVar("DatetimeLike", datetime, pd.Timestamp, np.datetime64, st
 
 
 def support_arraylike(
-    func: Callable[[np.ndarray], np.ndarray]
+    func: Callable[[np.ndarray], np.ndarray],
 ) -> Callable[[ArrayScalarLike], ArrayScalarLike]:
     """Extend a numpy universal function operating on arrays of floats.
 
