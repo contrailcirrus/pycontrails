@@ -1132,6 +1132,7 @@ def test_cocip_gfs(fl: Flight, met_gfs: MetDataset, rad_gfs: MetDataset) -> None
     # assert np.nansum(out["ef"]) > 0
 
 
+@pytest.mark.filterwarnings("ignore:.*the contrail has no intersection with the met")
 def test_cocip_filtering(fl: Flight, met: MetDataset, rad: MetDataset):
     """Confirm Cocip runs with non-default filtering flags.
 

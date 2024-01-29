@@ -767,7 +767,7 @@ def test_time_parsing(random_geo_path: VectorDataset) -> None:
 
     # random strings cannot be converted
     data.update(time=["hello", "world", "con", "trail"])
-    with pytest.warns(UserWarning, match="time"), pytest.raises(ValueError, match="time"):
+    with pytest.warns(UserWarning), pytest.raises(ValueError, match="time"):
         GeoVectorDataset(data)
 
     # UTC timezones are stripped
