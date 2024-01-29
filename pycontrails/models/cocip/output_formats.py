@@ -655,9 +655,8 @@ def regional_statistics(da_var: xr.DataArray, *, agg: str) -> pd.Series:
             "China": np.nansum(vars_regional["china"].values),
             "India": np.nansum(vars_regional["india"].values),
             "North Atlantic": np.nansum(vars_regional["n_atlantic"].values),
-            "North Pacific": np.nansum(vars_regional["n_pacific_1"].values) + np.nansum(
-                vars_regional["n_pacific_2"].values
-            ),
+            "North Pacific": np.nansum(vars_regional["n_pacific_1"].values)
+            + np.nansum(vars_regional["n_pacific_2"].values),
             "Arctic": np.nansum(vars_regional["arctic"].values),
         }
     elif agg == "mean":
@@ -681,11 +680,10 @@ def regional_statistics(da_var: xr.DataArray, *, agg: str) -> pd.Series:
             "North Atlantic": _area_mean_properties(
                 vars_regional["n_atlantic"], area_regional["n_atlantic"]
             ),
-            "North Pacific": 0.4 * _area_mean_properties(
-                vars_regional["n_pacific_1"], area_regional["n_pacific_1"]
-            ) + 0.6 * _area_mean_properties(
-                vars_regional["n_pacific_2"], area_regional["n_pacific_2"]
-            ),
+            "North Pacific": 0.4
+            * _area_mean_properties(vars_regional["n_pacific_1"], area_regional["n_pacific_1"])
+            + 0.6
+            * _area_mean_properties(vars_regional["n_pacific_2"], area_regional["n_pacific_2"]),
             "Arctic": _area_mean_properties(vars_regional["arctic"], area_regional["arctic"]),
         }
     else:
@@ -1194,17 +1192,21 @@ def meteorological_time_slice_statistics(
     stats = {
         "issr_percentage_coverage": (
             np.nansum(is_issr * weights) / (np.nansum(weights) * len(rhi.level))
-        ) * 100,
+        )
+        * 100,
         "mean_rhi_in_issr": np.nanmean(rhi.values[is_issr.values]),
         "contrail_cirrus_percentage_coverage": (
             np.nansum(area * cirrus_coverage["contrails"].data) / np.nansum(area)
-        ) * 100,
+        )
+        * 100,
         "contrail_cirrus_clear_sky_percentage_coverage": (
             np.nansum(area * cirrus_coverage["contrails_clear_sky"].data) / np.nansum(area)
-        ) * 100,
+        )
+        * 100,
         "natural_cirrus_percentage_coverage": (
             np.nansum(area * cirrus_coverage["natural_cirrus"].data) / np.nansum(area)
-        ) * 100,
+        )
+        * 100,
     }
     return pd.Series(stats)
 
