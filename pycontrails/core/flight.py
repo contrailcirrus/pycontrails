@@ -1017,15 +1017,19 @@ class Flight(GeoVectorDataset):
         # If the flight has large gap(s), then call resample and fill, then filter altitude
         max_gap = max(self.segment_duration())
         if max_gap > 300:
-            clean_flight = self.resample_and_fill(
-                "1s",
-                fill_method,
-                geodesic_threshold,
-                nominal_rocd,
-                drop,
-                keep_original_index,
-                climb_descend_at_end,
-            ).filter_altitude(kernel_size, cruise_threshold)
+            # Ignore warning in intermediate resample
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="^.*greater than nominal.*$")
+                clean_flight = self.resample_and_fill(
+                    "1s",
+                    fill_method,
+                    geodesic_threshold,
+                    nominal_rocd,
+                    drop,
+                    keep_original_index,
+                    climb_descend_at_end,
+                )
+            clean_flight = clean_flight.filter_altitude(kernel_size, cruise_threshold)
         else:
             clean_flight = self.filter_altitude(kernel_size, cruise_threshold)
 
@@ -1188,11 +1192,13 @@ class Flight(GeoVectorDataset):
         dict[str, Any]
             Python representation of geojson FeatureCollection
         """
-        points = _return_linestring({
-            "longitude": self["longitude"],
-            "latitude": self["latitude"],
-            "altitude": self.altitude,
-        })
+        points = _return_linestring(
+            {
+                "longitude": self["longitude"],
+                "latitude": self["latitude"],
+                "altitude": self.altitude,
+            }
+        )
         geometry = {"type": "LineString", "coordinates": points}
         properties = {
             "start_time": self.time_start.isoformat(),
