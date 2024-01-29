@@ -1193,9 +1193,9 @@ class Flight(GeoVectorDataset):
             Python representation of geojson FeatureCollection
         """
         points = _return_linestring({
-                "longitude": self["longitude"],
-                "latitude": self["latitude"],
-                "altitude": self.altitude,
+            "longitude": self["longitude"],
+            "latitude": self["latitude"],
+            "altitude": self.altitude,
         })
         geometry = {"type": "LineString", "coordinates": points}
         properties = {
