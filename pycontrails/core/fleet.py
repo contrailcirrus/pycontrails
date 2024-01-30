@@ -358,6 +358,7 @@ class Fleet(Flight):
         msg = "Only implemented for Flight instances"
         raise NotImplementedError(msg)
 
+
 def _extract_flight_id(fl: Flight) -> str:
     """Extract flight_id from Flight instance."""
 
