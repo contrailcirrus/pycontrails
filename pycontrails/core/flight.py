@@ -945,7 +945,7 @@ class Flight(GeoVectorDataset):
         geodesic_threshold: float = 100e3,
         nominal_rocd: float = constants.nominal_rocd,
         kernel_size: int = 17,
-        cruise_threshold: float = 120,
+        cruise_threshold: float = 120.0,
         force_filter: bool = False,
         drop: bool = True,
         keep_original_index: bool = False,
@@ -971,16 +971,16 @@ class Flight(GeoVectorDataset):
             Threshold for geodesic interpolation, [:math:`m`].
             If the distance between consecutive waypoints is under this threshold,
             values are interpolated linearly.
-        nominal_rocd : float | None, optional
+        nominal_rocd : float, optional
             Nominal rate of climb / descent for aircraft type.
             Defaults to :attr:`constants.nominal_rocd`.
         kernel_size : int, optional
             Passed directly to :func:`scipy.signal.medfilt`, by default 11.
             Passed also to :func:`scipy.signal.medfilt`
-        cruise_theshold : int, optional
+        cruise_theshold : float, optional
             Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
         force_filter: bool, optional
-            If set to true, `filter_altitude` will always be called. otherwise, it will only
+            If set to true, meth:`filter_altitude` will always be called. otherwise, it will only
             be called if the flight has a median sample period under 10 seconds
         drop : bool, optional
             Drop any columns that are not resampled and filled.
@@ -1002,7 +1002,8 @@ class Flight(GeoVectorDataset):
         """
         clean_flight: Flight
         # If the flight has a large sampling period, don't try to smooth it unless requested
-        median_gap = np.nanmedian(self.segment_duration())
+        seg_duration = self.segment_duration()
+        median_gap = np.nanmedian(seg_duration)
         if (median_gap > 10) and (not force_filter):
             return self.resample_and_fill(
                 freq,
@@ -1015,8 +1016,8 @@ class Flight(GeoVectorDataset):
             )
 
         # If the flight has large gap(s), then call resample and fill, then filter altitude
-        max_gap = max(self.segment_duration())
-        if max_gap > 300:
+        max_gap = np.max(seg_duration)
+        if max_gap > 300.0:
             # Ignore warning in intermediate resample
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", message="^.*greater than nominal.*$")
@@ -1047,7 +1048,7 @@ class Flight(GeoVectorDataset):
     def filter_altitude(
         self,
         kernel_size: int = 17,
-        cruise_threshold: float = 120,
+        cruise_threshold: float = 120.0,
     ) -> Flight:
         """
         Filter noisy altitude on a single flight.
@@ -1061,7 +1062,7 @@ class Flight(GeoVectorDataset):
         kernel_size : int, optional
             Passed directly to :func:`scipy.signal.medfilt`, by default 11.
             Passed also to :func:`scipy.signal.medfilt`
-        cruise_theshold : int, optional
+        cruise_theshold : float, optional
             Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
 
         Returns
@@ -1085,18 +1086,14 @@ class Flight(GeoVectorDataset):
         :meth:`traffic.core.flight.Flight.filter`
         :func:`scipy.signal.medfilt`
         """
-        df = self.dataframe.copy()
-        if "altitude_ft" not in df:
-            df["altitude_ft"] = units.m_to_ft(df["altitude"])
-
-        altitude_filtered = filter_altitude(
-            df["time"], df["altitude_ft"], kernel_size, cruise_threshold
+        out = fl.copy()
+        altitude_ft_filtered = filter_altitude(
+            fl["time"], fl.altitude_ft, kernel_size, cruise_threshold
         )
-        df["altitude_ft"] = altitude_filtered
-        if "altitude" in df:
-            df["altitude"] = units.ft_to_m(altitude_filtered)
-
-        return Flight(data=df, attrs=self.attrs)
+        out.update(altitude_ft=altitude_ft_filtered)
+        out.data.pop("altitude", None)  # avoid any ambiguity
+        out.data.pop("level", None)  # avoid any ambiguity
+        return out
 
     def _geodesic_interpolation(self, geodesic_threshold: float) -> pd.DataFrame | None:
         """Geodesic interpolate between large gaps between waypoints.
@@ -1868,15 +1865,15 @@ def filter_altitude(
 
     # Compute cumulative segment time in cruise segments
     v = np.nan_to_num(seg_duration)
-    v[~is_cruise] = 0
-    n = v == 0
+    v[~is_cruise] = 0.0
+    n = v == 0.0
     c = np.cumsum(v)
     d = np.diff(c[n], prepend=0.0)
     v[n] = -d
     cruise_duration = np.cumsum(v)
 
     # Find cruise segment start and end indices
-    not_cruise = cruise_duration == 0
+    not_cruise = cruise_duration == 0.0
 
     end_cruise = np.empty(cruise_duration.size, dtype=bool)
     end_cruise[:-1] = ~not_cruise[:-1] & not_cruise[1:]
