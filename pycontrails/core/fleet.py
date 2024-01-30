@@ -341,6 +341,22 @@ class Fleet(Flight):
         cos_a[self.final_waypoints] = np.nan
         return sin_a, cos_a
 
+    @overrides
+    def clean_and_resample(
+        self,
+        freq: str = "1min",
+        fill_method: str = "geodesic",
+        geodesic_threshold: float = 100e3,
+        nominal_rocd: float = constants.nominal_rocd,
+        kernel_size: int = 17,
+        cruise_threshold: float = 120,
+        force_filter: bool = False,
+        drop: bool = True,
+        keep_original_index: bool = False,
+        climb_descend_at_end: bool = False,
+    ) -> Flight:
+        msg = "Only implemented for Flight instances"
+        raise NotImplementedError(msg)
 
 def _extract_flight_id(fl: Flight) -> str:
     """Extract flight_id from Flight instance."""
