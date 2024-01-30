@@ -347,7 +347,7 @@ class Fleet(Flight):
         freq: str = "1min",
         fill_method: str = "geodesic",
         geodesic_threshold: float = 100e3,
-        nominal_rocd: float = constants.nominal_rocd,
+        nominal_rocd: float = 0.0,
         kernel_size: int = 17,
         cruise_threshold: float = 120,
         force_filter: bool = False,
