@@ -1086,9 +1086,9 @@ class Flight(GeoVectorDataset):
         :meth:`traffic.core.flight.Flight.filter`
         :func:`scipy.signal.medfilt`
         """
-        out = fl.copy()
+        out = self.copy()
         altitude_ft_filtered = filter_altitude(
-            fl["time"], fl.altitude_ft, kernel_size, cruise_threshold
+            self["time"], self.altitude_ft, kernel_size, cruise_threshold
         )
         out.update(altitude_ft=altitude_ft_filtered)
         out.data.pop("altitude", None)  # avoid any ambiguity
