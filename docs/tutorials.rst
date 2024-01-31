@@ -12,3 +12,4 @@ Tutorials
 
    notebooks/run-cocip-on-flight
    notebooks/run-cocip-with-fdr
+   notebooks/model-levels

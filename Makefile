@@ -194,6 +194,7 @@ nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
 		--ignore=docs/notebooks/specific-humidity-interpolation.ipynb \
 		--ignore=docs/notebooks/GFS.ipynb \
 		--ignore=docs/notebooks/run-cocip-on-flight.ipynb \
+		--ignore=docs/notebooks/model-levels.ipynb \
 		docs/notebooks docs/integrations
 
 # Check for broken links in notebooks
