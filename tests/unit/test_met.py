@@ -572,7 +572,7 @@ def test_edges_on_median_binary(median_binary: MetDataArray) -> None:
 
 
 def test_polygons_sparse_binary_specify_time_level(
-    sparse_binary: tuple[MetDataArray, dict]
+    sparse_binary: tuple[MetDataArray, dict],
 ) -> None:
     mda, _ = sparse_binary
     # must specify level and time

@@ -33,16 +33,14 @@ def test_flightplan_one() -> None:
     assert fp_dict["level_type"] == "F"
     assert fp_dict["level"] == "360"
     assert (
-        fp_dict["route"]
-        == "IMVUR1Z IMVUR N63 SAM N19 ADKIK DCT MOPAT DCT  "
+        fp_dict["route"] == "IMVUR1Z IMVUR N63 SAM N19 ADKIK DCT MOPAT DCT  "
         "LIMRI/M083F360 DCT 51N020W 47N030W/M083F380 40N040W 34N045W  28N050W/M083F400 "
         "24N055W 19N060W DCT AMTTO DCT ANU DCT"
     )
     assert fp_dict["other_info"] == "E/0740 P/3 R/E S/ J/ A/WHITE BLUE TAIL"
 
     assert (
-        flightplan.to_atc_plan(fp_dict)
-        == "(FPL-GEC8145-IN\n"
+        flightplan.to_atc_plan(fp_dict) == "(FPL-GEC8145-IN\n"
         "-B77L/H-SDE2E3FGHIJ3J4J5M1RWXYZ/SB1D1\n"
         "-EGGL1040\n"
         "-N0474F360 IMVUR1Z IMVUR N63 SAM N19 ADKIK DCT MOPAT DCT  "
@@ -77,8 +75,7 @@ def test_flightplan_two() -> None:
     assert fp_dict["other_info"] == "DOF/170428 RMK/DO NOT POST"
 
     assert (
-        flightplan.to_atc_plan(fp_dict)
-        == "(FPL-N12345-IG\n"
+        flightplan.to_atc_plan(fp_dict) == "(FPL-N12345-IG\n"
         "-SR22/L-S/S\n"
         "-KSEA1414\n"
         "-N0220F090 DCT\n"
