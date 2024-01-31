@@ -133,9 +133,13 @@ main-test-status:
 DOCS_DIR = docs
 DOCS_BUILD_DIR = docs/_build
 
-# Check for CDS credentials
+# Check for Copernicus CDS credentials
 check_cds_credentials:
 	$(eval CDS_CREDENTIALS = $(shell python -c 'import cdsapi; cdsapi.Client()' && echo "true" || echo "false"))
+
+# Check for GCP credentials
+check_gcp_credentials:
+	$(eval GCP_CREDENTIALS = $(shell python -c 'import google.storage; storage.Client()' && echo "true" || echo "false"))
 
 # Common ERA5 data for nb-tests and doctests
 ensure-era5-cached: check_cds_credentials
@@ -162,10 +166,16 @@ cache-era5-gcp:
 
 	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
 
-doctest: ensure-era5-cached
-	pytest --doctest-modules \
-		--ignore-glob=pycontrails/ext/* \
-		pycontrails -vv
+doctest: check_gcp_credentials ensure-era5-cached 
+	if [ $(CDS_CREDENTIALS) = false ]; then \
+		echo -e "$(COLOR_YELLOW)make doctest: skipping due to missing Copernicus CDS credentials$(END_COLOR)"; \
+	elseif [ $(GCP_CREDENTIALS) = false ]; then \
+		echo -e "$(COLOR_YELLOW)make doctest: skipping due to missing GCP credentials$(END_COLOR)"; \
+	else \
+		pytest --doctest-modules \
+			--ignore-glob=pycontrails/ext/* \
+			pycontrails -vv; \
+	fi
 
 doc8:
 	doc8 docs
