@@ -9,6 +9,10 @@ help:
 
 .PHONY: help
 
+# Colors
+COLOR_YELLOW = \033[0;33m
+END_COLOR = \033[0m
+
 # -----------
 # Pip / Setup
 # -----------
@@ -129,15 +133,21 @@ main-test-status:
 DOCS_DIR = docs
 DOCS_BUILD_DIR = docs/_build
 
+# Check for CDS credentials
+check_cds_credentials:
+	$(eval CDS_CREDENTIALS = $(shell python -c 'import cdsapi; cdsapi.Client()' && echo "true" || echo "false"))
+
 # Common ERA5 data for nb-tests and doctests
-ensure-era5-cached:
-	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
-		time = "2022-03-01", "2022-03-01T23"; \
-		lev = [300, 250, 200]; \
-		met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
-		rad_vars = ["tsr", "ttr"]; \
-		ERA5(time=time, variables=met_vars, pressure_levels=lev).download(); \
-		ERA5(time=time, variables=rad_vars).download()'
+ensure-era5-cached: check_cds_credentials
+	if [ $(CDS_CREDENTIALS) = true ]; then \
+		python -c 'from pycontrails.datalib.ecmwf import ERA5; \
+			time = "2022-03-01", "2022-03-01T23"; \
+			lev = [300, 250, 200]; \
+			met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
+			rad_vars = ["tsr", "ttr"]; \
+			ERA5(time=time, variables=met_vars, pressure_levels=lev).download(); \
+			ERA5(time=time, variables=rad_vars).download()'; \
+	fi
 
 cache-era5-gcp:
 	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
