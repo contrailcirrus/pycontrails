@@ -51,6 +51,15 @@ After activating the virtual environment, clone the `pycontrails repository <htt
     $ git clone git@github.com:contrailcirrus/pycontrails.git
     $ cd pycontrails
 
+These commands clone via SSH and may require `adding an SSH key to your GitHub account <https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent>`__.
+Alternatively, you can clone via HTTPS by running
+
+.. code-block:: bash
+
+    $ cd <install-path>
+    $ git clone https://github.com/contrailcirrus/pycontrails.git
+    $ cd pycontrails
+
 Install the development verison of ``pycontrails`` using ``make``:
 
 .. code-block:: bash
