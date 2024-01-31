@@ -53,7 +53,8 @@ class ModelParams:
     """
 
     #: Copy input ``source`` data on eval
-    copy_source: bool = True
+    copy_source: bool = \
+            True
 
     # -----------
     # Interpolate
