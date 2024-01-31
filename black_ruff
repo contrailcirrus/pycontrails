@@ -1,0 +1,41 @@
+.pre-commit-config.yaml:      - id: black
+.pre-commit-config.yaml:        name: black
+.pre-commit-config.yaml:        entry: black
+Makefile:ruff: black-check
+Makefile:black:
+Makefile:	black pycontrails tests
+Makefile:black-check:
+Makefile:	black pycontrails tests --check
+Makefile:test: ruff mypy black-check nb-black-check pytest doctest nb-test
+Makefile:nb-black:
+Makefile:	black docs/**/*.ipynb
+Makefile:nb-black-check:
+Makefile:	black docs/**/*.ipynb --check
+Makefile:nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
+Makefile:nb-execute: ensure-era5-cached nb-black-check nb-check-links
+pyproject.toml:    "black[jupyter]>=23.12",
+pyproject.toml:# black code formatting
+pyproject.toml:# https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
+pyproject.toml:[tool.black]
+.pre-commit-config.yaml:      - id: ruff
+.pre-commit-config.yaml:        name: ruff
+.pre-commit-config.yaml:        entry: ruff
+CHANGELOG.md:- Add NPY to `ruff` rules.
+CHANGELOG.md:- Use `ruff` in place of `pydocstyle` for linting docstrings.
+CHANGELOG.md:- Use `ruff` in place of `isort` for sorting imports.
+CHANGELOG.md:- Replace `flake8` with `ruff` linter
+Makefile:		   .ruff_cache \
+Makefile:ruff: black-check
+Makefile:	ruff pycontrails tests
+Makefile:test: ruff mypy black-check nb-black-check pytest doctest nb-test
+black_ruff:Makefile:ruff: black-check
+black_ruff:Makefile:test: ruff mypy black-check nb-black-check pytest doctest nb-test
+pyproject.toml:    "ruff>=0.0.259",
+pyproject.toml:# https://beta.ruff.rs/docs/
+pyproject.toml:# https://beta.ruff.rs/docs/settings/#select
+pyproject.toml:[tool.ruff]
+pyproject.toml:[tool.ruff.per-file-ignores]
+pyproject.toml:# https://beta.ruff.rs/docs/settings/#pydocstyle
+pyproject.toml:[tool.ruff.pydocstyle]
+.github/workflows/test.yaml:          black pycontrails --check
+.github/workflows/test.yaml:          ruff pycontrails tests
