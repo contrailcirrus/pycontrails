@@ -201,6 +201,9 @@ myst_enable_extensions: list[str] = []
 pygments_style = "default"
 pygments_dark_style = "monokai"  # furo-specific
 
+# https://sphinx-copybutton.readthedocs.io/en/latest/use.html#strip-and-configure-input-prompts-for-code-cells
+copybutton_prompt_text = "$ "
+
 
 # -- Options for HTML output -------------------------------------------------
 
