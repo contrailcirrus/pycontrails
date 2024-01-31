@@ -136,7 +136,7 @@ DOCS_BUILD_DIR = docs/_build
 
 # Check for GCP credentials
 ensure-gcp-credentials:
-	$(eval GCP_CREDENTIALS = $(shell python -c 'import gooERA5 data cachet()' && echo "true" || echo "false"))
+	$(eval GCP_CREDENTIALS = $(shell python -c 'import google.storage; storage.Client()' && echo "true" || echo "false"))
 
 # Common ERA5 data for nb-tests and doctests
 ensure-era5-cached:
