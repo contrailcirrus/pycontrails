@@ -6,6 +6,7 @@
 ### Features
 
 - Re-organize notebooks in documentation
+- Add new [model level](https://py.contrails.org/examples/model-levels.html) tutorial notebook.
 
 ### Fixes
 
