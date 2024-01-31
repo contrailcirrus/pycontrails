@@ -136,7 +136,7 @@ DOCS_BUILD_DIR = docs/_build
 
 # Check for GCP credentials
 ensure-gcp-credentials:
-	$(eval GCP_CREDENTIALS = $(shell python -c 'import google.storage; storage.Client()' && echo "true" || echo "false"))
+	$(eval GCP_CREDENTIALS = $(shell python -c 'from google.cloud import storage; storage.Client()' && echo "true" || echo "false"))
 
 # Common ERA5 data for nb-tests and doctests
 ensure-era5-cached:
@@ -167,7 +167,7 @@ cache-era5-gcp:
 doctest: ensure-gcp-credentials ensure-era5-cached 
 	if [ $(ERA5_CACHED) = false ]; then \
 		echo -e "$(COLOR_YELLOW)make doctest: skipping due to missing ERA5 data cache$(END_COLOR)"; \
-	elseif [ $(GCP_CREDENTIALS) = false ]; then \
+	elif [ $(GCP_CREDENTIALS) = false ]; then \
 		echo -e "$(COLOR_YELLOW)make doctest: skipping due to missing GCP credentials$(END_COLOR)"; \
 	else \
 		pytest --doctest-modules \
