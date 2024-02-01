@@ -12,6 +12,7 @@
 
 - Remove opaque warning issued when all tau_contrail values are nan in `Cocip` evolution.
 - Emit warning in `Cocip.eval` if the advected contrail is blown outside of the domain of the met data.
+- Remove empty flights in `Fleet.from_seq`.
 
 ### Internals
 
