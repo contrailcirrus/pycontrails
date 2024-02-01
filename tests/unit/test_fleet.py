@@ -1,6 +1,7 @@
 """Test Fleet data structure."""
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from pycontrails import Flight, HydrogenFuel
@@ -288,3 +289,16 @@ def test_fleet_filter_removes_flight(syn: SyntheticFlight) -> None:
     assert out.n_flights == 4
     assert id0 not in out.fl_attrs
     assert list(out.fl_attrs) == [fl.attrs["flight_id"] for fl in fls[1:]]
+
+
+def test_fleet_from_seq_removes_empty_flight() -> None:
+    """Ensure empty flights are removed when Fleet.from_seq is called."""
+    df = pd.DataFrame()
+    df["longitude"] = np.linspace(0, 50, 100)
+    df["latitude"] = np.linspace(0, 10, 100)
+    df["altitude"] = 11000
+    df["time"] = pd.date_range("2022-03-01 00:00:00", "2022-03-01 02:00:00", periods=100)
+
+    flights = [Flight(df, flight_id=1), Flight(flight_id=2)]
+    fleet = Fleet.from_seq(flights)
+    assert fleet.n_flights == 1
