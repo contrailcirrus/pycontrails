@@ -489,7 +489,7 @@ class MetBase(ABC, Generic[XArrayType]):
 
         Does not yet save in parallel.
 
-        ..versionchanged::0.34.1
+        .. versionchanged::0.34.1
 
             If :attr:`cachestore` is None, this method assigns it
             to new :class:`DiskCacheStore`.
