@@ -1081,3 +1081,24 @@ def test_method_preserves_fuel(flight_fake: Flight, method: str) -> None:
     assert isinstance(out, Flight)
     assert hasattr(out, "fuel")
     assert out.fuel is flight_fake.fuel
+
+
+def test_resample_and_fill_short_flight() -> None:
+    """Test resample_and_fill with a very short flight.
+
+    It is possible that the flight is so short that the resampling results in
+    an empty result. This test confirms that.
+    """
+    fl = Flight(
+        longitude=[0, 0.1],
+        latitude=[0, 0.1],
+        altitude_ft=[30000, 31000],
+        time=[np.datetime64("2022-01-01T00:00:01"), np.datetime64("2022-01-01T00:00:59")],
+    )
+    assert fl.duration == pd.Timedelta(seconds=58)
+
+    fl2 = fl.resample_and_fill("1 min")
+    assert len(fl2) == 0
+
+    fl3 = fl.resample_and_fill("1 min", keep_original_index=True)
+    assert len(fl3) == 2
