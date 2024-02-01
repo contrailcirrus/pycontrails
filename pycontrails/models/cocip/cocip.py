@@ -466,7 +466,7 @@ class Cocip(Model):
         Missing flight values should be prefilled before calling this method.
         This method modifies :attr:`self.source`.
 
-        ..versionchanged:: 0.35.2
+        .. versionchanged:: 0.35.2
 
             No longer broadcast all numeric source params. Instead, numeric
             source params can be accessed with :meth:`Flight.get_data_or_attr`.
