@@ -156,6 +156,10 @@ class Fleet(Flight):
     ) -> Fleet:
         """Instantiate a :class:`Fleet` instance from an iterable of :class:`Flight`.
 
+        .. versionchanged:: 0.49.3
+
+            Empty flights are now filtered out before concatenation.
+
         Parameters
         ----------
         seq : Iterable[Flight]
@@ -174,10 +178,11 @@ class Fleet(Flight):
             instances in ``seq``. The fuel type is taken from the first :class:`Flight`
             in ``seq``.
         """
-        if copy:
-            seq = tuple(fl.copy() for fl in seq)
-        elif not isinstance(seq, (list, tuple)):
-            seq = tuple(seq)
+
+        def _maybe_copy(fl: Flight) -> Flight:
+            return fl.copy() if copy else fl
+
+        seq = tuple(_maybe_copy(fl) for fl in seq if fl)  # filter out empty flights
 
         if not seq:
             msg = "Cannot create Fleet from empty sequence."
