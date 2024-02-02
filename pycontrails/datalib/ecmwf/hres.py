@@ -210,8 +210,11 @@ class HRES(ECMWFAPI):
     >>> hres = HRES(times, variables="air_temperature", pressure_levels=[300, 250])
 
     >>> # Cache files to google cloud storage
-    >>> gcp_cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="ecmwf")
-    >>> hres = HRES(
+    >>> gcp_cache = GCPCacheStore(                                          # doctest: +SKIP
+    ...     bucket="contrails-301217-unit-test",
+    ...     cache_dir="ecmwf",
+    ... )
+    >>> hres = HRES(                                                        # doctest: +SKIP
     ...     times,
     ...     variables="air_temperature",
     ...     pressure_levels=[300, 250],

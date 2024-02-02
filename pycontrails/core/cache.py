@@ -56,17 +56,11 @@ class CacheStore(ABC):
         Examples
         --------
         >>> from pycontrails import DiskCacheStore
-        >>> disk_cache = DiskCacheStore(cache_dir="cache", allow_clear=True)
-        >>> disk_cache.size
+        >>> cache = DiskCacheStore(cache_dir="cache", allow_clear=True)
+        >>> cache.size
         0.0...
 
-        >>> disk_cache.clear()  # cleanup
-
-        >>> from pycontrails import GCPCacheStore
-        >>> gcp_cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache")
-        >>> gcp_cache.size
-        0.0...
-
+        >>> cache.clear()  # cleanup
         """
 
     @abstractmethod
@@ -102,16 +96,11 @@ class CacheStore(ABC):
         Examples
         --------
         >>> from pycontrails import DiskCacheStore
-        >>> disk_cache = DiskCacheStore(cache_dir="cache", allow_clear=True)
-        >>> disk_cache.path("file.nc")
+        >>> cache = DiskCacheStore(cache_dir="cache", allow_clear=True)
+        >>> cache.path("file.nc")
         'cache/file.nc'
 
-        >>> disk_cache.clear()  # cleanup
-
-        >>> from pycontrails import GCPCacheStore
-        >>> gcp_cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache")
-        >>> gcp_cache.path("file.nc")
-        'cache/file.nc'
+        >>> cache.clear()  # cleanup
         """
 
     @abstractmethod
@@ -131,13 +120,8 @@ class CacheStore(ABC):
         Examples
         --------
         >>> from pycontrails import DiskCacheStore
-        >>> disk_cache = DiskCacheStore(cache_dir="cache", allow_clear=True)
-        >>> disk_cache.exists("file.nc")
-        False
-
-        >>> from pycontrails import GCPCacheStore
-        >>> gcp_cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache")
-        >>> gcp_cache.exists("file.nc")
+        >>> cache = DiskCacheStore(cache_dir="cache", allow_clear=True)
+        >>> cache.exists("file.nc")
         False
         """
 
@@ -427,10 +411,13 @@ class GCPCacheStore(CacheStore):
     Examples
     --------
     >>> from pycontrails import GCPCacheStore
-    >>> cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache")
-    >>> cache.cache_dir
+    >>> cache = GCPCacheStore(                                          # doctest: +SKIP
+    ...     bucket="contrails-301217-unit-test",
+    ...     cache_dir="cache",
+    ... )
+    >>> cache.cache_dir                                                 # doctest: +SKIP
     'cache/'
-    >>> cache.bucket
+    >>> cache.bucket                                                    # doctest: +SKIP
     'contrails-301217-unit-test'
     """
 
@@ -607,8 +594,11 @@ class GCPCacheStore(CacheStore):
         Examples
         --------
         >>> from pycontrails import GCPCacheStore
-        >>> cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache")
-        >>> cache.path("file.nc")
+        >>> cache = GCPCacheStore(                                          # doctest: +SKIP
+        ...     bucket="contrails-301217-unit-test",
+        ...     cache_dir="cache",
+        ... )
+        >>> cache.path("file.nc")                                           # doctest: +SKIP
         'cache/file.nc'
         """
         bucket_path = self.path(cache_path)
@@ -654,14 +644,14 @@ class GCPCacheStore(CacheStore):
         Examples
         --------
         >>> from pycontrails import GCPCacheStore
-        >>> cache = GCPCacheStore(
+        >>> cache = GCPCacheStore(                                          # doctest: +SKIP
         ...     bucket="contrails-301217-unit-test",
         ...     cache_dir="cache",
         ...     read_only=False,
         ... )
 
         >>> # put a file directly
-        >>> cache.put("README.md", "test/file.md")
+        >>> cache.put("README.md", "test/file.md")                          # doctest: +SKIP
         'test/file.md'
         """
         # store on disk path mirror -  will catch errors
@@ -713,21 +703,21 @@ class GCPCacheStore(CacheStore):
         --------
         >>> import pathlib
         >>> from pycontrails import GCPCacheStore
-        >>> cache = GCPCacheStore(
+        >>> cache = GCPCacheStore(                                      # doctest: +SKIP
         ...     bucket="contrails-301217-unit-test",
         ...     cache_dir="cache",
         ...     read_only=False,
         ... )
 
-        >>> cache.put("README.md", "example/file.md")
+        >>> cache.put("README.md", "example/file.md")                   # doctest: +SKIP
         'example/file.md'
 
         >>> # returns a full path to local copy of the file
-        >>> path = cache.get("example/file.md")
-        >>> pathlib.Path(path).is_file()
+        >>> path = cache.get("example/file.md")                         # doctest: +SKIP
+        >>> pathlib.Path(path).is_file()                                # doctest: +SKIP
         True
 
-        >>> pathlib.Path(path).read_text()[17:69]
+        >>> pathlib.Path(path).read_text()[17:69]                       # doctest: +SKIP
         'Python library for modeling aviation climate impacts'
         """
         if cache_path.endswith("/"):
@@ -771,8 +761,11 @@ class GCPCacheStore(CacheStore):
         Examples
         --------
         >>> from pycontrails import GCPCacheStore
-        >>> gcp_cache = GCPCacheStore(bucket="contrails-301217-unit-test", cache_dir="cache")
-        >>> gcp_cache.clear_disk()
+        >>> cache = GCPCacheStore(                                          # doctest: +SKIP
+        ...     bucket="contrails-301217-unit-test",
+        ...     cache_dir="cache",
+        ... )
+        >>> gcp_cache.clear_disk()                                          # doctest: +SKIP
         """
         self._disk_cache.clear(cache_path)
 

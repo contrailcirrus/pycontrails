@@ -133,25 +133,8 @@ main-test-status:
 DOCS_DIR = docs
 DOCS_BUILD_DIR = docs/_build
 
-
-# Check for GCP credentials
-ensure-gcp-credentials:
-	$(eval GCP_CREDENTIALS = $(shell python -c 'from google.cloud import storage; storage.Client()' && echo "true" || echo "false"))
-
-# Common ERA5 data for nb-tests and doctests
+# Cache common ERA5 data for nb-tests and doctests in DiskCacheStore(cache_dir=".doc-test-cache")
 ensure-era5-cached:
-	$(eval ERA5_CACHED = $(shell \
-			python -c 'from pycontrails.datalib.ecmwf import ERA5; \
-			time = "2022-03-01", "2022-03-01T23"; \
-			lev = [300, 250, 200]; \
-			met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
-			rad_vars = ["tsr", "ttr"]; \
-			ERA5(time=time, variables=met_vars, pressure_levels=lev).download(); \
-			ERA5(time=time, variables=rad_vars).download()' \
-			&& echo "true" \
-			|| echo "false"))
-
-cache-era5-gcp:
 	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
 		from pycontrails import DiskCacheStore; \
 		cache = DiskCacheStore(cache_dir=".doc-test-cache"); \
@@ -160,20 +143,21 @@ cache-era5-gcp:
 		met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
 		rad_vars = ["tsr", "ttr"]; \
 		ERA5(time=time, variables=met_vars, pressure_levels=lev, cachestore=cache).download(); \
-		ERA5(time=time, variables=rad_vars, cachestore=cache).download()'
+		ERA5(time=time, variables=rad_vars, cachestore=cache).download()' \
+		|| ( \
+		echo -e \
+			"$(COLOR_YELLOW)CDS Credentials required to run notebooks and doc tests\n" \
+			"See https://py.contrails.org/api/pycontrails.datalib.ecmwf.ERA5.html$(END_COLOR)"; \
+		exit 1)
 
+# Cache ERA5 files to GCP for use in Actions
+cache-era5-gcp: ensure-era5-cached
 	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
 
-doctest: ensure-gcp-credentials ensure-era5-cached 
-	if [ $(ERA5_CACHED) = false ]; then \
-		echo -e "$(COLOR_YELLOW)make doctest: skipping due to missing ERA5 data cache$(END_COLOR)"; \
-	elif [ $(GCP_CREDENTIALS) = false ]; then \
-		echo -e "$(COLOR_YELLOW)make doctest: skipping due to missing GCP credentials$(END_COLOR)"; \
-	else \
-		pytest --doctest-modules \
-			--ignore-glob=pycontrails/ext/* \
-			pycontrails -vv; \
-	fi
+doctest: ensure-era5-cached 
+	pytest --doctest-modules \
+		--ignore-glob=pycontrails/ext/* \
+		pycontrails -vv
 
 doc8:
 	doc8 docs
