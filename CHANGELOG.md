@@ -5,8 +5,13 @@
 
 ### Features
 
-- Re-organize notebooks in documentation
+- Re-organize notebooks in documentation.
 - Add new [model level](https://py.contrails.org/examples/model-levels.html) tutorial notebook.
+- Add new high-level `Flight.clean_and_resample` method. This method parallels the `Flight.resample_and_fill` method but performs additional altitude filtering. In essence, this method is a combination of `Flight.filter_altitude` and `Flight.resample_and_fill`.
+
+### Breaking changes
+
+- Remove `Flight.fit_altitude` method in favor of `Flight.filter_altitude`. The new method now only applies a median filter during cruise flight phase.
 
 ### Fixes
 
@@ -17,13 +22,13 @@
 
 ### Internals
 
-- Modify test workflow to use Makefile recipes and ensure early failures are detected in CI
-- Pin `black` and `ruff` versions for consistency between local and CI/CD environments
+- Modify test workflow to use Makefile recipes and ensure early failures are detected in CI.
+- Pin `black` and `ruff` versions for consistency between local and CI/CD environments.
 - Update time frequency aliases for `pandas` 2.2 compatibility.
 - Update cython annotations for `scipy` 1.12 compatibility.
 - Improve notebook output testing capabilities (`make nb-test`).
-- Add new convenience Make recipe to execute all notebooks in the docs (`make nb-execute`)
-- Add new Make recipe to cleanup notebooks (`make nb-clean`)
+- Add new convenience Make recipe to execute all notebooks in the docs (`make nb-execute`).
+- Add new Make recipe to cleanup notebooks (`make nb-clean`).
 - Add pre-commit hook to check if notebooks are *clean*.
 - Re-organize notebooks in documentation.
 - Clean up contributing and develop documentation.

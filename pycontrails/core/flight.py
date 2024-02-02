@@ -1015,7 +1015,7 @@ class Flight(GeoVectorDataset):
         # If the flight has a large sampling period, don't try to smooth it unless requested
         seg_duration = self.segment_duration()
         median_gap = np.nanmedian(seg_duration)
-        if (median_gap > 10) and (not force_filter):
+        if (median_gap > 10.0) and (not force_filter):
             return self.resample_and_fill(
                 freq,
                 fill_method,
