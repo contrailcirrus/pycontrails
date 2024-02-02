@@ -17,6 +17,7 @@
 
 ### Internals
 
+- Modify test workflow to use Makefile recipes and ensure early failures are detected in CI
 - Pin `black` and `ruff` versions for consistency between local and CI/CD environments
 - Update time frequency aliases for `pandas` 2.2 compatibility.
 - Update cython annotations for `scipy` 1.12 compatibility.
