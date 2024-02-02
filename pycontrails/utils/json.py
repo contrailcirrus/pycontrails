@@ -64,7 +64,7 @@ class NumpyEncoder(json.JSONEncoder):
         ):
             return int(obj)
 
-        if isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
+        if isinstance(obj, (np.float16, np.float32, np.float64)):
             return float(obj)
 
         # TODO: this is not easily reversible - np.timedelta64(str(np.timedelta64(1, "h"))) raises
@@ -74,7 +74,7 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, (np.datetime64)):
             return str(obj)
 
-        if isinstance(obj, (np.complex_, np.complex64, np.complex128)):
+        if isinstance(obj, (np.complex64, np.complex128)):
             return {"real": obj.real, "imag": obj.imag}
 
         if isinstance(obj, (np.ndarray,)):

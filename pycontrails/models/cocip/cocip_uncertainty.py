@@ -212,7 +212,7 @@ class CocipUncertaintyParams(CocipParams):
 
         return out
 
-    def rvs(self, size: None | int = None) -> dict[str, float | npt.NDArray[np.float_]]:
+    def rvs(self, size: None | int = None) -> dict[str, float | npt.NDArray[np.float64]]:
         """Call each distribution's `rvs` method to generate random parameters.
 
         Seed calls to `rvs` with class variable `rng`.
@@ -224,7 +224,7 @@ class CocipUncertaintyParams(CocipParams):
 
         Returns
         -------
-        dict[str, float | npt.NDArray[np.float_]]
+        dict[str, float | npt.NDArray[np.float64]]
             Dictionary of random parameters. Dictionary keys consists of names of parameters in
             `CocipParams` to be overridden by random value.
 

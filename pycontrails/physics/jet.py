@@ -25,20 +25,20 @@ logger = logging.getLogger(__name__)
 
 
 def acceleration(
-    true_airspeed: npt.NDArray[np.float_], segment_duration: npt.NDArray[np.float_]
-) -> npt.NDArray[np.float_]:
+    true_airspeed: npt.NDArray[np.float64], segment_duration: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
     r"""Calculate the acceleration/deceleration at each waypoint.
 
     Parameters
     ----------
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         True airspeed, [:math:`m \ s^{-1}`]
-    segment_duration : npt.NDArray[np.float_]
+    segment_duration : npt.NDArray[np.float64]
         Time difference between waypoints, [:math:`s`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Acceleration/deceleration, [:math:`m \ s^{-2}`]
 
     See Also
@@ -53,20 +53,20 @@ def acceleration(
 
 
 def climb_descent_angle(
-    true_airspeed: npt.NDArray[np.float_], rocd: npt.NDArray[np.float_]
-) -> npt.NDArray[np.float_]:
+    true_airspeed: npt.NDArray[np.float64], rocd: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
     r"""Calculate angle between the horizontal plane and the actual flight path.
 
     Parameters
     ----------
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         True airspeed, [:math:`m \ s^{-1}`]
-    rocd : npt.NDArray[np.float_]
+    rocd : npt.NDArray[np.float64]
         Rate of climb/descent, [:math:`ft min^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
 
     See Also
@@ -80,10 +80,10 @@ def climb_descent_angle(
 
 
 def clip_mach_number(
-    true_airspeed: npt.NDArray[np.float_],
-    air_temperature: npt.NDArray[np.float_],
+    true_airspeed: npt.NDArray[np.float64],
+    air_temperature: npt.NDArray[np.float64],
     max_mach_number: ArrayOrFloat,
-) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     r"""Compute the Mach number from the true airspeed and ambient temperature.
 
     This method clips the computed Mach number to the value of ``max_mach_number``.
@@ -93,9 +93,9 @@ def clip_mach_number(
 
     Parameters
     ----------
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         Array of true airspeed, [:math:`m \ s^{-1}`]
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : npt.NDArray[np.float64]
         Array of ambient temperature, [:math: `K`]
     max_mach_number : ArrayOrFloat
         Maximum mach number associated to aircraft. If no clipping
@@ -103,10 +103,10 @@ def clip_mach_number(
 
     Returns
     -------
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         Array of true airspeed, [:math:`m \ s^{-1}`]. All values are clipped at
         ``max_mach_number``.
-    mach_num : npt.NDArray[np.float_]
+    mach_num : npt.NDArray[np.float64]
         Array of Mach numbers, [:math:`Ma`]. All values are clipped at
         ``max_mach_number``.
     """
@@ -131,13 +131,13 @@ def clip_mach_number(
 
 
 def overall_propulsion_efficiency(
-    true_airspeed: npt.NDArray[np.float_],
-    F_thrust: npt.NDArray[np.float_],
-    fuel_flow: npt.NDArray[np.float_],
+    true_airspeed: npt.NDArray[np.float64],
+    F_thrust: npt.NDArray[np.float64],
+    fuel_flow: npt.NDArray[np.float64],
     q_fuel: float,
     is_descent: npt.NDArray[np.bool_] | bool | None,
     threshold: float = 0.5,
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.float64]:
     r"""Calculate the overall propulsion efficiency (OPE).
 
     Negative OPE values can occur during the descent phase and is clipped to a
@@ -146,22 +146,22 @@ def overall_propulsion_efficiency(
 
     Parameters
     ----------
-    true_airspeed: npt.NDArray[np.float_]
+    true_airspeed: npt.NDArray[np.float64]
         True airspeed for each waypoint, [:math:`m s^{-1}`].
-    F_thrust: npt.NDArray[np.float_]
+    F_thrust: npt.NDArray[np.float64]
         Thrust force provided by the engine, [:math:`N`].
-    fuel_flow: npt.NDArray[np.float_]
+    fuel_flow: npt.NDArray[np.float64]
         Fuel mass flow rate, [:math:`kg s^{-1}`].
     q_fuel : float
         Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
-    is_descent : npt.NDArray[np.float_] | None
+    is_descent : npt.NDArray[np.float64] | None
         Boolean array that indicates if a waypoint is in a descent phase.
     threshold : float
         Upper bound for realistic engine efficiency.
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Overall propulsion efficiency (OPE)
 
     References
@@ -190,49 +190,49 @@ def overall_propulsion_efficiency(
 
 
 def fuel_burn(
-    fuel_flow: npt.NDArray[np.float_], segment_duration: npt.NDArray[np.float_]
-) -> npt.NDArray[np.float_]:
+    fuel_flow: npt.NDArray[np.float64], segment_duration: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
     """Calculate the fuel consumption at each waypoint.
 
     Parameters
     ----------
-    fuel_flow: npt.NDArray[np.float_]
+    fuel_flow: npt.NDArray[np.float64]
         Fuel mass flow rate, [:math:`kg s^{-1}`]
-    segment_duration: npt.NDArray[np.float_]
+    segment_duration: npt.NDArray[np.float64]
         Time difference between waypoints, [:math:`s`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Fuel consumption at each waypoint, [:math:`kg`]
     """
     return fuel_flow * segment_duration
 
 
 def equivalent_fuel_flow_rate_at_sea_level(
-    fuel_flow_cruise: npt.NDArray[np.float_],
-    theta_amb: npt.NDArray[np.float_],
-    delta_amb: npt.NDArray[np.float_],
-    mach_num: npt.NDArray[np.float_],
-) -> npt.NDArray[np.float_]:
+    fuel_flow_cruise: npt.NDArray[np.float64],
+    theta_amb: npt.NDArray[np.float64],
+    delta_amb: npt.NDArray[np.float64],
+    mach_num: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
     r"""Convert fuel mass flow rate at cruise conditions to equivalent flow rate at sea level.
 
     Refer to Eq. (40) in :cite:`duboisFuelFlowMethod22006`.
 
     Parameters
     ----------
-    fuel_flow_cruise : npt.NDArray[np.float_]
+    fuel_flow_cruise : npt.NDArray[np.float64]
         Fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    theta_amb : npt.NDArray[np.float_]
+    theta_amb : npt.NDArray[np.float64]
         Ratio of the ambient temperature to the temperature at mean sea-level.
-    delta_amb : npt.NDArray[np.float_]
+    delta_amb : npt.NDArray[np.float64]
         Ratio of the pressure altitude to the surface pressure.
-    mach_num : npt.NDArray[np.float_]
+    mach_num : npt.NDArray[np.float64]
         Mach number, [:math: `Ma`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Estimate of fuel flow per engine at sea level, [:math:`kg \ s^{-1}`].
 
     References
@@ -243,18 +243,18 @@ def equivalent_fuel_flow_rate_at_sea_level(
 
 
 def equivalent_fuel_flow_rate_at_cruise(
-    fuel_flow_sls: npt.NDArray[np.float_] | float,
+    fuel_flow_sls: npt.NDArray[np.float64] | float,
     theta_amb: ArrayOrFloat,
     delta_amb: ArrayOrFloat,
     mach_num: ArrayOrFloat,
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.float64]:
     r"""Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
 
     Refer to Eq. (40) in :cite:`duboisFuelFlowMethod22006`.
 
     Parameters
     ----------
-    fuel_flow_sls : npt.NDArray[np.float_] | float
+    fuel_flow_sls : npt.NDArray[np.float64] | float
         Fuel mass flow rate, [:math:`kg s^{-1}`]
     theta_amb : ArrayOrFloat
         Ratio of the ambient temperature to the temperature at mean sea-level.
@@ -265,7 +265,7 @@ def equivalent_fuel_flow_rate_at_cruise(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Estimate of fuel mass flow rate at sea level, [:math:`kg \ s^{-1}`]
 
     References
@@ -279,28 +279,28 @@ def equivalent_fuel_flow_rate_at_cruise(
 
 
 def reserve_fuel_requirements(
-    rocd: npt.NDArray[np.float_],
-    altitude_ft: npt.NDArray[np.float_],
-    fuel_flow: npt.NDArray[np.float_],
-    fuel_burn: npt.NDArray[np.float_],
+    rocd: npt.NDArray[np.float64],
+    altitude_ft: npt.NDArray[np.float64],
+    fuel_flow: npt.NDArray[np.float64],
+    fuel_burn: npt.NDArray[np.float64],
 ) -> float:
     r"""
     Estimate reserve fuel requirements.
 
     Parameters
     ----------
-    rocd: npt.NDArray[np.float_]
+    rocd: npt.NDArray[np.float64]
         Rate of climb and descent, [:math:`ft \ min^{-1}`]
-    altitude_ft: npt.NDArray[np.float_]
+    altitude_ft: npt.NDArray[np.float64]
         Altitude, [:math:`ft`]
-    fuel_flow: npt.NDArray[np.float_]
+    fuel_flow: npt.NDArray[np.float64]
         Fuel mass flow rate, [:math:`kg \ s^{-1}`].
-    fuel_burn: npt.NDArray[np.float_]
+    fuel_burn: npt.NDArray[np.float64]
         Fuel consumption for each waypoint, [:math:`kg`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Reserve fuel requirements, [:math:`kg`]
 
     References
@@ -424,11 +424,11 @@ def update_aircraft_mass(
     operating_empty_weight: float,
     max_takeoff_weight: float,
     max_payload: float,
-    fuel_burn: npt.NDArray[np.float_],
+    fuel_burn: npt.NDArray[np.float64],
     total_reserve_fuel: float,
     load_factor: float,
     takeoff_mass: float | None,
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.float64]:
     """Update aircraft mass based on the simulated total fuel consumption.
 
     Used internally for finding aircraft mass iteratively.
@@ -444,7 +444,7 @@ def update_aircraft_mass(
         Aircraft maximum take-off weight, [:math:`kg`].
     max_payload: float
         Aircraft maximum payload, [:math:`kg`]
-    fuel_burn: npt.NDArray[np.float_]
+    fuel_burn: npt.NDArray[np.float64]
         Fuel consumption for each waypoint, [:math:`kg`]
     total_reserve_fuel: float
         Total reserve fuel requirements, [:math:`kg`]
@@ -458,7 +458,7 @@ def update_aircraft_mass(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Updated aircraft mass, [:math:`kg`]
 
     See Also
@@ -631,30 +631,30 @@ def turbine_inlet_temperature(
 
 
 def thrust_force(
-    altitude: npt.NDArray[np.float_],
-    true_airspeed: npt.NDArray[np.float_],
-    segment_duration: npt.NDArray[np.float_],
-    aircraft_mass: npt.NDArray[np.float_],
-    F_drag: npt.NDArray[np.float_],
-) -> npt.NDArray[np.float_]:
+    altitude: npt.NDArray[np.float64],
+    true_airspeed: npt.NDArray[np.float64],
+    segment_duration: npt.NDArray[np.float64],
+    aircraft_mass: npt.NDArray[np.float64],
+    F_drag: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
     r"""Calculate the thrust force at each waypoint.
 
     Parameters
     ----------
-    altitude : npt.NDArray[np.float_]
+    altitude : npt.NDArray[np.float64]
         Waypoint altitude, [:math:`m`]
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         True airspeed, [:math:`m \ s^{-1}`]
-    segment_duration : npt.NDArray[np.float_]
+    segment_duration : npt.NDArray[np.float64]
         Time difference between waypoints, [:math:`s`]
-    aircraft_mass : npt.NDArray[np.float_]
+    aircraft_mass : npt.NDArray[np.float64]
         Aircraft mass, [:math:`kg`]
-    F_drag : npt.NDArray[np.float_]
+    F_drag : npt.NDArray[np.float64]
         Draft force, [:math:`N`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Thrust force, [:math:`N`]
 
     References
@@ -789,49 +789,49 @@ def air_to_fuel_ratio(
 # -------------------
 
 
-def temperature_ratio(T: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+def temperature_ratio(T: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Calculate the ratio of ambient temperature relative to the temperature at mean sea level.
 
     Parameters
     ----------
-    T : npt.NDArray[np.float_]
+    T : npt.NDArray[np.float64]
         Air temperature, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Ratio of the temperature to the temperature at mean sea-level (MSL).
     """
     return T / constants.T_msl
 
 
-def pressure_ratio(p: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+def pressure_ratio(p: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Calculate the ratio of ambient pressure relative to the surface pressure.
 
     Parameters
     ----------
-    p : npt.NDArray[np.float_]
+    p : npt.NDArray[np.float64]
         Air pressure, [:math:`Pa`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Ratio of the pressure altitude to the surface pressure.
     """
     return p / constants.p_surface
 
 
-def density_ratio(rho: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+def density_ratio(rho: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     r"""Calculate the ratio of air density relative to the air density at mean-sea-level.
 
     Parameters
     ----------
-    rho : npt.NDArray[np.float_]
+    rho : npt.NDArray[np.float64]
         Air density, [:math:`kg \ m^{3}`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Ratio of the density to the air density at mean sea-level (MSL).
     """
     return rho / constants.rho_msl

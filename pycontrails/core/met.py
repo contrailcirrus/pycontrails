@@ -1445,9 +1445,9 @@ class MetDataArray(MetBase):
     @overload
     def interpolate(
         self,
-        longitude: float | npt.NDArray[np.float_],
-        latitude: float | npt.NDArray[np.float_],
-        level: float | npt.NDArray[np.float_],
+        longitude: float | npt.NDArray[np.float64],
+        latitude: float | npt.NDArray[np.float64],
+        level: float | npt.NDArray[np.float64],
         time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = ...,
@@ -1456,14 +1456,14 @@ class MetDataArray(MetBase):
         localize: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[False] = ...,
-    ) -> npt.NDArray[np.float_]: ...
+    ) -> npt.NDArray[np.float64]: ...
 
     @overload
     def interpolate(
         self,
-        longitude: float | npt.NDArray[np.float_],
-        latitude: float | npt.NDArray[np.float_],
-        level: float | npt.NDArray[np.float_],
+        longitude: float | npt.NDArray[np.float64],
+        latitude: float | npt.NDArray[np.float64],
+        level: float | npt.NDArray[np.float64],
         time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = ...,
@@ -1472,13 +1472,13 @@ class MetDataArray(MetBase):
         localize: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[True],
-    ) -> tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]: ...
+    ) -> tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]: ...
 
     def interpolate(
         self,
-        longitude: float | npt.NDArray[np.float_],
-        latitude: float | npt.NDArray[np.float_],
-        level: float | npt.NDArray[np.float_],
+        longitude: float | npt.NDArray[np.float64],
+        latitude: float | npt.NDArray[np.float64],
+        level: float | npt.NDArray[np.float64],
         time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = "linear",
@@ -1487,7 +1487,7 @@ class MetDataArray(MetBase):
         localize: bool = False,
         indices: interpolation.RGIArtifacts | None = None,
         return_indices: bool = False,
-    ) -> npt.NDArray[np.float_] | tuple[npt.NDArray[np.float_], interpolation.RGIArtifacts]:
+    ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
         """Interpolate values over underlying DataArray.
 
         Zero dimensional coordinates are reshaped to 1D arrays.
@@ -1514,11 +1514,11 @@ class MetDataArray(MetBase):
 
         Parameters
         ----------
-        longitude : float | npt.NDArray[np.float_]
+        longitude : float | npt.NDArray[np.float64]
             Longitude values to interpolate. Assumed to be 0 or 1 dimensional.
-        latitude : float | npt.NDArray[np.float_]
+        latitude : float | npt.NDArray[np.float64]
             Latitude values to interpolate. Assumed to be 0 or 1 dimensional.
-        level : float | npt.NDArray[np.float_]
+        level : float | npt.NDArray[np.float64]
             Level values to interpolate. Assumed to be 0 or 1 dimensional.
         time : np.datetime64 | npt.NDArray[np.datetime64]
             Time values to interpolate. Assumed to be 0 or 1 dimensional.
@@ -1888,8 +1888,8 @@ class MetDataArray(MetBase):
         from pycontrails.core import polygon
 
         # Convert to nested lists of coordinates for GeoJSON representation
-        longitude: npt.NDArray[np.float_] = self.variables["longitude"].values
-        latitude: npt.NDArray[np.float_] = self.variables["latitude"].values
+        longitude: npt.NDArray[np.float64] = self.variables["longitude"].values
+        latitude: npt.NDArray[np.float64] = self.variables["latitude"].values
 
         mp = polygon.find_multipolygon(
             arr,

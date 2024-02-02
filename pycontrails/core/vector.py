@@ -1406,7 +1406,7 @@ class GeoVectorDataset(VectorDataset):
         return attrs
 
     @property
-    def level(self) -> npt.NDArray[np.float_]:
+    def level(self) -> npt.NDArray[np.float64]:
         """Get pressure ``level`` values for points.
 
         Automatically calculates pressure level using :func:`units.m_to_pl` using ``altitude`` key.
@@ -1417,7 +1417,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.float64]
             Point pressure level values, [:math:`hPa`]
         """
         try:
@@ -1426,7 +1426,7 @@ class GeoVectorDataset(VectorDataset):
             return units.m_to_pl(self.altitude)
 
     @property
-    def altitude(self) -> npt.NDArray[np.float_]:
+    def altitude(self) -> npt.NDArray[np.float64]:
         """Get altitude.
 
         Automatically calculates altitude using :func:`units.pl_to_m` using ``level`` key.
@@ -1437,7 +1437,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.float64]
             Altitude, [:math:`m`]
         """
         try:
@@ -1451,12 +1451,12 @@ class GeoVectorDataset(VectorDataset):
             return units.ft_to_m(self["altitude_ft"])
 
     @property
-    def air_pressure(self) -> npt.NDArray[np.float_]:
+    def air_pressure(self) -> npt.NDArray[np.float64]:
         """Get ``air_pressure`` values for points.
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.float64]
             Point air pressure values, [:math:`Pa`]
         """
         try:
@@ -1465,12 +1465,12 @@ class GeoVectorDataset(VectorDataset):
             return 100.0 * self.level
 
     @property
-    def altitude_ft(self) -> npt.NDArray[np.float_]:
+    def altitude_ft(self) -> npt.NDArray[np.float64]:
         """Get altitude in feet.
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.float64]
             Altitude, [:math:`ft`]
         """
         try:
@@ -1574,12 +1574,12 @@ class GeoVectorDataset(VectorDataset):
         ret.attrs.update(crs=crs)
         return ret
 
-    def T_isa(self) -> npt.NDArray[np.float_]:
+    def T_isa(self) -> npt.NDArray[np.float64]:
         """Calculate the ICAO standard atmosphere temperature at each point.
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.float64]
             ISA temperature, [:math:`K`]
 
         See Also
@@ -1632,24 +1632,24 @@ class GeoVectorDataset(VectorDataset):
         self,
         mda: met_module.MetDataArray,
         *,
-        longitude: npt.NDArray[np.float_] | None = None,
-        latitude: npt.NDArray[np.float_] | None = None,
-        level: npt.NDArray[np.float_] | None = None,
+        longitude: npt.NDArray[np.float64] | None = None,
+        latitude: npt.NDArray[np.float64] | None = None,
+        level: npt.NDArray[np.float64] | None = None,
         time: npt.NDArray[np.datetime64] | None = None,
         use_indices: bool = False,
         **interp_kwargs: Any,
-    ) -> npt.NDArray[np.float_]:
+    ) -> npt.NDArray[np.float64]:
         """Intersect waypoints with MetDataArray.
 
         Parameters
         ----------
         mda : MetDataArray
             MetDataArray containing a meteorological variable at spatio-temporal coordinates.
-        longitude : npt.NDArray[np.float_], optional
+        longitude : npt.NDArray[np.float64], optional
             Override existing coordinates for met interpolation
-        latitude : npt.NDArray[np.float_], optional
+        latitude : npt.NDArray[np.float64], optional
             Override existing coordinates for met interpolation
-        level : npt.NDArray[np.float_], optional
+        level : npt.NDArray[np.float64], optional
             Override existing coordinates for met interpolation
         time : npt.NDArray[np.datetime64], optional
             Override existing coordinates for met interpolation
@@ -1668,7 +1668,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.float64]
             Interpolated values
 
         Examples

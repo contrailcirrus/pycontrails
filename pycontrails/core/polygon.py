@@ -42,7 +42,7 @@ except ModuleNotFoundError as exc:
 
 
 def buffer_and_clean(
-    contour: npt.NDArray[np.float_],
+    contour: npt.NDArray[np.float64],
     min_area: float,
     convex_hull: bool,
     epsilon: float,
@@ -54,7 +54,7 @@ def buffer_and_clean(
 
     Parameters
     ----------
-    contour : npt.NDArray[np.float_]
+    contour : npt.NDArray[np.float64]
         Contour to buffer and clean. A 2d array of shape (n, 2) where n is the number
         of vertices in the contour.
     min_area : float
@@ -157,13 +157,13 @@ def _round_polygon(polygon: shapely.Polygon, precision: int) -> shapely.Polygon:
 
 
 def _contours_to_polygons(
-    contours: Sequence[npt.NDArray[np.float_]],
+    contours: Sequence[npt.NDArray[np.float64]],
     hierarchy: npt.NDArray[np.int_],
     min_area: float,
     convex_hull: bool,
     epsilon: float,
-    longitude: npt.NDArray[np.float_] | None,
-    latitude: npt.NDArray[np.float_] | None,
+    longitude: npt.NDArray[np.float64] | None,
+    latitude: npt.NDArray[np.float64] | None,
     precision: int | None,
     buffer: float,
     i: int = 0,
@@ -172,7 +172,7 @@ def _contours_to_polygons(
 
     Parameters
     ----------
-    contours : Sequence[npt.NDArray[np.float_]]
+    contours : Sequence[npt.NDArray[np.float64]]
         The contours output from :func:`cv2.findContours`.
     hierarchy : npt.NDArray[np.int_]
         The hierarchy output from :func:`cv2.findContours`.
@@ -182,9 +182,9 @@ def _contours_to_polygons(
         Whether to take the convex hull of each polygon.
     epsilon : float
         Epsilon value to use when simplifying the polygons.
-    longitude : npt.NDArray[np.float_] | None
+    longitude : npt.NDArray[np.float64] | None
         Longitude values for the grid.
-    latitude : npt.NDArray[np.float_] | None
+    latitude : npt.NDArray[np.float64] | None
         Latitude values for the grid.
     precision : int | None
         Precision to use when rounding the coordinates.
@@ -253,7 +253,9 @@ def _contours_to_polygons(
     return out
 
 
-def determine_buffer(longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np.float_]) -> float:
+def determine_buffer(
+    longitude: npt.NDArray[np.float64], latitude: npt.NDArray[np.float64]
+) -> float:
     """Determine the proper buffer size to use when converting to polygons."""
 
     ndigits = 6
@@ -277,21 +279,21 @@ def determine_buffer(longitude: npt.NDArray[np.float_], latitude: npt.NDArray[np
 
 
 def find_multipolygon(
-    arr: npt.NDArray[np.float_],
+    arr: npt.NDArray[np.float64],
     threshold: float,
     min_area: float,
     epsilon: float,
     interiors: bool = True,
     convex_hull: bool = False,
-    longitude: npt.NDArray[np.float_] | None = None,
-    latitude: npt.NDArray[np.float_] | None = None,
+    longitude: npt.NDArray[np.float64] | None = None,
+    latitude: npt.NDArray[np.float64] | None = None,
     precision: int | None = None,
 ) -> shapely.MultiPolygon:
     """Compute a multipolygon from a 2d array.
 
     Parameters
     ----------
-    arr : npt.NDArray[np.float_]
+    arr : npt.NDArray[np.float64]
         Array to convert to a multipolygon. The array will be converted to a binary
         array by comparing each element to ``threshold``. This binary array is then
         passed into :func:`cv2.findContours` to find the contours.
@@ -306,11 +308,11 @@ def find_multipolygon(
         Whether to include interior polygons.
     convex_hull : bool, optional
         Experimental. Whether to take the convex hull of each polygon.
-    longitude : npt.NDArray[np.float_] | None, optional
+    longitude : npt.NDArray[np.float64] | None, optional
         If provided, the coordinates values corresponding to the longitude dimensions of ``arr``.
         The contour coordinates will be converted to longitude-latitude values by indexing
         into this array. Defaults to None.
-    latitude : npt.NDArray[np.float_] | None, optional
+    latitude : npt.NDArray[np.float64] | None, optional
         If provided, the coordinates values corresponding to the latitude dimensions of ``arr``.
     precision : int | None, optional
         If provided, the precision to use when rounding the coordinates. Defaults to None.
