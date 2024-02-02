@@ -121,6 +121,14 @@ Run notebook validation with `nbval <https://github.com/computationalmodelling/n
 
     $ make nb-test
 
+Run doctests with `pytest <https://github.com/computationalmodelling/nbval>`__:
+
+.. code-block:: bash
+
+    $ make doctest
+
+Notebook validation and doctests require `Copernicus Climate Data Store (CDS) credentials <api/pycontrails.datalib.ecmwf.ERA5.html>`__, and doctests additionally require `Google application credentials <https://cloud.google.com/docs/authentication/application-default-credentials>`__. If either are missing, the test suite will issue a warning and exit.
+
 Documentation
 -------------
 

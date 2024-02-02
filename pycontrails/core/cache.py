@@ -765,7 +765,7 @@ class GCPCacheStore(CacheStore):
         ...     bucket="contrails-301217-unit-test",
         ...     cache_dir="cache",
         ... )
-        >>> gcp_cache.clear_disk()
+        >>> cache.clear_disk()
         """
         self._disk_cache.clear(cache_path)
 
