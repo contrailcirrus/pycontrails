@@ -24,6 +24,8 @@
 
 - Modify test workflow to use Makefile recipes and ensure early failures are detected in CI.
 - Pin `black` and `ruff` versions for consistency between local and CI/CD environments.
+- Improve development documentation.
+- Improve handling of missing credentials in tests (`make nb-test`, `make doctest`).
 - Update time frequency aliases for `pandas` 2.2 compatibility.
 - Update cython annotations for `scipy` 1.12 compatibility.
 - Improve notebook output testing capabilities (`make nb-test`).
