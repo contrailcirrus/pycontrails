@@ -79,6 +79,11 @@ jobs:
           gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ env.BADA_CACHE_DIR }}
           ls -l ${{ env.BADA_CACHE_DIR }}
 
+      - name: Install make - windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          choco install make
+
       - name: Install pycontrails (dev)
         run: |
           pip install -U pip wheel
@@ -118,7 +123,7 @@ jobs:
         shell: bash
         run: |
           pip check
-          black pycontrails --check
-          ruff pycontrails tests
-          mypy pycontrails
-          pytest tests/unit -vv
+          make black-check
+          make ruff
+          make mypy
+          make pytest
