@@ -1097,8 +1097,18 @@ def test_resample_and_fill_short_flight() -> None:
     )
     assert fl.duration == pd.Timedelta(seconds=58)
 
-    fl2 = fl.resample_and_fill("1 min")
+    with pytest.warns(UserWarning, match="Method 'resample_and_fill' returns in an empty Flight."):
+        fl2 = fl.resample_and_fill("1 min")
     assert len(fl2) == 0
 
     fl3 = fl.resample_and_fill("1 min", keep_original_index=True)
     assert len(fl3) == 2
+
+
+def test_resample_and_fill_empty_flight() -> None:
+    """Test resample_and_fill with an empty flight."""
+    fl = Flight()
+    with pytest.warns(UserWarning, match="Flight instance is empty"):
+        fl2 = fl.resample_and_fill("1 min")
+
+    assert len(fl2) == 0

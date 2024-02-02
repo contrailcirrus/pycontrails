@@ -864,6 +864,11 @@ class Flight(GeoVectorDataset):
         if fill_method not in methods:
             raise ValueError(f'Unknown `fill_method`. Supported  methods: {", ".join(methods)}')
 
+        # STEP 0: If self is empty, return an empty flight
+        if not self:
+            warnings.warn("Flight instance is empty.")
+            return self.copy()
+
         # STEP 1: Prepare DataFrame on which we'll perform resampling
         df = self.dataframe
 
@@ -936,6 +941,12 @@ class Flight(GeoVectorDataset):
 
         # finally reset index
         df = df.reset_index()
+        if df.empty:
+            msg = "Method 'resample_and_fill' returns in an empty Flight."
+            if not keep_original_index:
+                msg = f"{msg} Pass 'keep_original_index=True' to keep the original index."
+            warnings.warn(msg)
+
         return Flight(data=df, attrs=self.attrs)
 
     def clean_and_resample(
