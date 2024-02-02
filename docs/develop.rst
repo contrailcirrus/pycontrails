@@ -121,7 +121,7 @@ Run notebook validation with `nbval <https://github.com/computationalmodelling/n
 
     $ make nb-test
 
-Run doctests with `pytest <https://github.com/computationalmodelling/nbval>`__:
+Run doctests with `pytest <https://docs.pytest.org/en/7.2.x/>`__:
 
 .. code-block:: bash
 
