@@ -3,10 +3,6 @@
 
 name: Unit tests
 
-defaults:
-  run:
-    shell: bash
-
 on:
   # run on push to main
   push:
@@ -119,6 +115,7 @@ jobs:
           pip list
 
       - name: QC & Test
+        shell: bash
         run: |
           pip check
           black pycontrails --check
