@@ -110,11 +110,11 @@ class ERA5(ECMWFAPI):
     ... )
 
     >>> # cache files to google cloud storage
-    >>> gcp_cache = GCPCacheStore(                                          # doctest: +SKIP
+    >>> gcp_cache = GCPCacheStore(
     ...     bucket="contrails-301217-unit-test",
     ...     cache_dir="ecmwf",
     ... )
-    >>> era5 = ERA5(                                                        # doctest: +SKIP
+    >>> era5 = ERA5(
     ...     "2020-06-01 12:00:00",
     ...     variables=["air_temperature", "relative_humidity"],
     ...     pressure_levels=[350, 300],
