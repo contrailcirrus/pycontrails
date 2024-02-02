@@ -19,7 +19,7 @@ on:
 
 # Global variables
 env:
-  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
+  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.doc-test-cache'
 
 # disable all permissions at the top level
 # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
