@@ -269,7 +269,7 @@ def max_usable_lift_coefficient(
 # ----------------
 
 
-def fuel_flow_idle(fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat) -> npt.NDArray[np.float_]:
+def fuel_flow_idle(fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat) -> npt.NDArray[np.float64]:
     r"""Calculate minimum fuel mass flow rate at flight idle conditions.
 
     Parameters
@@ -281,7 +281,7 @@ def fuel_flow_idle(fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat) -> npt.
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Fuel mass flow rate at flight idle conditions, [:math:`kg \ s^{-1}`]
     """
     x = altitude_ft / 10000.0
@@ -294,7 +294,7 @@ def max_fuel_flow(
     mach_number: ArrayOrFloat,
     fuel_flow_max_sls: float,
     flight_phase: npt.NDArray[np.uint8] | flight.FlightPhase,
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.float64]:
     r"""Correct maximum fuel mass flow rate that can be supplied by the engine.
 
     Parameters
@@ -312,7 +312,7 @@ def max_fuel_flow(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Maximum allowable fuel mass flow rate, [:math:`kg \ s^{-1}`]
     """
     ff_max = jet.equivalent_fuel_flow_rate_at_cruise(

@@ -178,9 +178,9 @@ class PSGrid(AircraftPerformanceGrid):
 @dataclasses.dataclass
 class _PerfVariables:
     atyp_param: PSAircraftEngineParams
-    air_pressure: npt.NDArray[np.float_] | float
-    air_temperature: npt.NDArray[np.float_] | float
-    mach_number: npt.NDArray[np.float_] | float
+    air_pressure: npt.NDArray[np.float64] | float
+    air_temperature: npt.NDArray[np.float64] | float
+    mach_number: npt.NDArray[np.float64] | float
     q_fuel: float
 
 
@@ -271,7 +271,7 @@ def _estimate_mass_extremes(
     atyp_param: PSAircraftEngineParams,
     perf: _PerfVariables,
     n_iter: int = 3,
-) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Calculate the minimum and maximum mass for a given aircraft type."""
 
     oem = atyp_param.amass_oew  # operating empty mass
@@ -296,9 +296,9 @@ def _estimate_mass_extremes(
 
 
 def _parse_variables(
-    level: npt.NDArray[np.float_] | None,
-    air_temperature: xr.DataArray | npt.NDArray[np.float_] | None,
-) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+    level: npt.NDArray[np.float64] | None,
+    air_temperature: xr.DataArray | npt.NDArray[np.float64] | None,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Parse the level and air temperature arguments."""
 
     if isinstance(air_temperature, xr.DataArray):
@@ -328,8 +328,8 @@ def _parse_variables(
 def ps_nominal_grid(
     aircraft_type: str,
     *,
-    level: npt.NDArray[np.float_] | None = None,
-    air_temperature: xr.DataArray | npt.NDArray[np.float_] | None = None,
+    level: npt.NDArray[np.float64] | None = None,
+    air_temperature: xr.DataArray | npt.NDArray[np.float64] | None = None,
     q_fuel: float = JetA.q_fuel,
     mach_number: float | None = None,
     maxiter: int = PSGridParams.maxiter,
@@ -344,10 +344,10 @@ def ps_nominal_grid(
     ----------
     aircraft_type : str
         The aircraft type.
-    level : npt.NDArray[np.float_] | None, optional
+    level : npt.NDArray[np.float64] | None, optional
         The pressure level, [:math:`hPa`]. If None, the ``air_temperature``
         argument must be a :class:`xarray.DataArray` with a ``level`` coordinate.
-    air_temperature : xr.DataArray | npt.NDArray[np.float_] | None, optional
+    air_temperature : xr.DataArray | npt.NDArray[np.float64] | None, optional
         The ambient air temperature, [:math:`K`]. If None (default), the ISA
         temperature is computed from the ``level`` argument. If a :class:`xarray.DataArray`,
         the ``level`` coordinate must be present and the ``level`` argument must be None

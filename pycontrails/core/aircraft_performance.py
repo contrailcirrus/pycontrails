@@ -108,14 +108,14 @@ class AircraftPerformance(Model):
         self,
         *,
         aircraft_type: str,
-        altitude_ft: npt.NDArray[np.float_],
+        altitude_ft: npt.NDArray[np.float64],
         time: npt.NDArray[np.datetime64],
-        true_airspeed: npt.NDArray[np.float_],
-        air_temperature: npt.NDArray[np.float_],
-        aircraft_mass: npt.NDArray[np.float_] | float | None,
-        thrust: npt.NDArray[np.float_] | float | None,
-        engine_efficiency: npt.NDArray[np.float_] | float | None,
-        fuel_flow: npt.NDArray[np.float_] | float | None,
+        true_airspeed: npt.NDArray[np.float64],
+        air_temperature: npt.NDArray[np.float64],
+        aircraft_mass: npt.NDArray[np.float64] | float | None,
+        thrust: npt.NDArray[np.float64] | float | None,
+        engine_efficiency: npt.NDArray[np.float64] | float | None,
+        fuel_flow: npt.NDArray[np.float64] | float | None,
         q_fuel: float,
         n_iter: int,
         amass_oew: float,
@@ -137,21 +137,21 @@ class AircraftPerformance(Model):
         ----------
         aircraft_type: str
             Aircraft type designator used to query the underlying model database.
-        altitude_ft: npt.NDArray[np.float_]
+        altitude_ft: npt.NDArray[np.float64]
             Altitude at each waypoint, [:math:`ft`]
         time: npt.NDArray[np.datetime64]
             Waypoint time in ``np.datetime64`` format.
-        true_airspeed: npt.NDArray[np.float_]
+        true_airspeed: npt.NDArray[np.float64]
             True airspeed for each waypoint, [:math:`m s^{-1}`]
-        air_temperature : npt.NDArray[np.float_]
+        air_temperature : npt.NDArray[np.float64]
             Ambient temperature for each waypoint, [:math:`K`]
-        aircraft_mass : npt.NDArray[np.float_] | float | None
+        aircraft_mass : npt.NDArray[np.float64] | float | None
             Override the aircraft_mass at each waypoint, [:math:`kg`].
-        thrust : npt.NDArray[np.float_] | float | None
+        thrust : npt.NDArray[np.float64] | float | None
             Override the thrust setting at each waypoint, [:math: `N`].
-        engine_efficiency : npt.NDArray[np.float_] | float | None
+        engine_efficiency : npt.NDArray[np.float64] | float | None
             Override the engine efficiency at each waypoint.
-        fuel_flow : npt.NDArray[np.float_] | float | None
+        fuel_flow : npt.NDArray[np.float64] | float | None
             Override the fuel flow at each waypoint, [:math:`kg s^{-1}`].
         q_fuel : float
             Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
@@ -225,14 +225,14 @@ class AircraftPerformance(Model):
         self,
         *,
         aircraft_type: str,
-        altitude_ft: npt.NDArray[np.float_],
+        altitude_ft: npt.NDArray[np.float64],
         time: npt.NDArray[np.datetime64],
-        true_airspeed: npt.NDArray[np.float_],
-        air_temperature: npt.NDArray[np.float_],
-        aircraft_mass: npt.NDArray[np.float_] | float,
-        thrust: npt.NDArray[np.float_] | float | None,
-        engine_efficiency: npt.NDArray[np.float_] | float | None,
-        fuel_flow: npt.NDArray[np.float_] | float | None,
+        true_airspeed: npt.NDArray[np.float64],
+        air_temperature: npt.NDArray[np.float64],
+        aircraft_mass: npt.NDArray[np.float64] | float,
+        thrust: npt.NDArray[np.float64] | float | None,
+        engine_efficiency: npt.NDArray[np.float64] | float | None,
+        fuel_flow: npt.NDArray[np.float64] | float | None,
         q_fuel: float,
         **kwargs: Any,
     ) -> AircraftPerformanceData:
@@ -277,13 +277,13 @@ class AircraftPerformance(Model):
         self,
         *,
         aircraft_type: str,
-        altitude_ft: npt.NDArray[np.float_],
+        altitude_ft: npt.NDArray[np.float64],
         time: npt.NDArray[np.datetime64],
-        true_airspeed: npt.NDArray[np.float_],
-        air_temperature: npt.NDArray[np.float_],
-        thrust: npt.NDArray[np.float_] | float | None,
-        engine_efficiency: npt.NDArray[np.float_] | float | None,
-        fuel_flow: npt.NDArray[np.float_] | float | None,
+        true_airspeed: npt.NDArray[np.float64],
+        air_temperature: npt.NDArray[np.float64],
+        thrust: npt.NDArray[np.float64] | float | None,
+        engine_efficiency: npt.NDArray[np.float64] | float | None,
+        fuel_flow: npt.NDArray[np.float64] | float | None,
         q_fuel: float,
         n_iter: int,
         amass_oew: float,
@@ -296,7 +296,7 @@ class AircraftPerformance(Model):
         # Variable aircraft_mass will change dynamically after each iteration
         # Set the initial aircraft mass depending on a possible load factor
 
-        aircraft_mass: npt.NDArray[np.float_] | float
+        aircraft_mass: npt.NDArray[np.float64] | float
         if takeoff_mass is not None:
             aircraft_mass = takeoff_mass
         else:
@@ -356,14 +356,14 @@ class AircraftPerformance(Model):
         self,
         *,
         aircraft_type: str,
-        altitude_ft: npt.NDArray[np.float_],
-        air_temperature: npt.NDArray[np.float_],
+        altitude_ft: npt.NDArray[np.float64],
+        air_temperature: npt.NDArray[np.float64],
         time: npt.NDArray[np.datetime64] | None,
-        true_airspeed: npt.NDArray[np.float_] | float | None,
-        aircraft_mass: npt.NDArray[np.float_] | float,
-        engine_efficiency: npt.NDArray[np.float_] | float | None,
-        fuel_flow: npt.NDArray[np.float_] | float | None,
-        thrust: npt.NDArray[np.float_] | float | None,
+        true_airspeed: npt.NDArray[np.float64] | float | None,
+        aircraft_mass: npt.NDArray[np.float64] | float,
+        engine_efficiency: npt.NDArray[np.float64] | float | None,
+        fuel_flow: npt.NDArray[np.float64] | float | None,
+        thrust: npt.NDArray[np.float64] | float | None,
         q_fuel: float,
         **kwargs: Any,
     ) -> AircraftPerformanceData:
@@ -386,24 +386,24 @@ class AircraftPerformance(Model):
         ----------
         aircraft_type : str
             Used to query the underlying model database for aircraft engine parameters.
-        altitude_ft : npt.NDArray[np.float_]
+        altitude_ft : npt.NDArray[np.float64]
             Altitude at each waypoint, [:math:`ft`]
-        air_temperature : npt.NDArray[np.float_]
+        air_temperature : npt.NDArray[np.float64]
             Ambient temperature for each waypoint, [:math:`K`]
         time: npt.NDArray[np.datetime64] | None
             Waypoint time in ``np.datetime64`` format. If None, only drag force
             will is used in thrust calculations (ie, no vertical change and constant
             horizontal change). In addition, aircraft is assumed to be in cruise.
-        true_airspeed : npt.NDArray[np.float_] | float | None
+        true_airspeed : npt.NDArray[np.float64] | float | None
             True airspeed for each waypoint, [:math:`m s^{-1}`].
             If None, a nominal value is used.
-        aircraft_mass : npt.NDArray[np.float_] | float
+        aircraft_mass : npt.NDArray[np.float64] | float
             Aircraft mass for each waypoint, [:math:`kg`].
-        engine_efficiency : npt.NDArray[np.float_] | float | None
+        engine_efficiency : npt.NDArray[np.float64] | float | None
             Override the engine efficiency at each waypoint.
-        fuel_flow : npt.NDArray[np.float_] | float | None
+        fuel_flow : npt.NDArray[np.float64] | float | None
             Override the fuel flow at each waypoint, [:math:`kg s^{-1}`].
-        thrust : npt.NDArray[np.float_] | float | None
+        thrust : npt.NDArray[np.float64] | float | None
             Override the thrust setting at each waypoint, [:math: `N`].
         q_fuel : float
             Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
@@ -416,12 +416,12 @@ class AircraftPerformance(Model):
             Derived performance metrics at each waypoint.
         """
 
-    def ensure_true_airspeed_on_source(self) -> npt.NDArray[np.float_]:
+    def ensure_true_airspeed_on_source(self) -> npt.NDArray[np.float64]:
         """Add ``true_airspeed`` field to :attr:`source` data if not already present.
 
         Returns
         -------
-        npt.NDArray[np.float_]
+        npt.NDArray[np.float64]
             True airspeed, [:math:`m s^{-1}`]. If ``true_airspeed`` is already present
             on :attr:`source`, this is returned directly. Otherwise, it is calculated
             using :meth:`Flight.segment_true_airspeed`.
@@ -459,30 +459,30 @@ class AircraftPerformanceData:
 
     Parameters
     ----------
-    fuel_flow : npt.NDArray[np.float_]
+    fuel_flow : npt.NDArray[np.float64]
         Fuel mass flow rate for each waypoint, [:math:`kg s^{-1}`]
-    aircraft_mass : npt.NDArray[np.float_]
+    aircraft_mass : npt.NDArray[np.float64]
         Aircraft mass for each waypoint, [:math:`kg`]
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         True airspeed at each waypoint, [:math: `m s^{-1}`]
-    fuel_burn: npt.NDArray[np.float_]
+    fuel_burn: npt.NDArray[np.float64]
         Fuel consumption for each waypoint, [:math:`kg`]. Set to an array of
         all nan values if it cannot be computed (ie, working with gridpoints).
-    thrust: npt.NDArray[np.float_]
+    thrust: npt.NDArray[np.float64]
         Thrust force, [:math:`N`]
-    engine_efficiency: npt.NDArray[np.float_]
+    engine_efficiency: npt.NDArray[np.float64]
         Overall propulsion efficiency for each waypoint
-    rocd : npt.NDArray[np.float_]
+    rocd : npt.NDArray[np.float64]
         Rate of climb and descent, [:math:`ft min^{-1}`]
     """
 
-    fuel_flow: npt.NDArray[np.float_]
-    aircraft_mass: npt.NDArray[np.float_]
-    true_airspeed: npt.NDArray[np.float_]
-    fuel_burn: npt.NDArray[np.float_]
-    thrust: npt.NDArray[np.float_]
-    engine_efficiency: npt.NDArray[np.float_]
-    rocd: npt.NDArray[np.float_]
+    fuel_flow: npt.NDArray[np.float64]
+    aircraft_mass: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.float64]
+    fuel_burn: npt.NDArray[np.float64]
+    thrust: npt.NDArray[np.float64]
+    engine_efficiency: npt.NDArray[np.float64]
+    rocd: npt.NDArray[np.float64]
 
 
 # --------------------------------

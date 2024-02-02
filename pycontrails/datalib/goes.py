@@ -735,7 +735,9 @@ def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]
     return np.dstack([red, green, blue])
 
 
-def _clip_and_scale(arr: npt.NDArray[np.float_], low: float, high: float) -> npt.NDArray[np.float_]:
+def _clip_and_scale(
+    arr: npt.NDArray[np.float64], low: float, high: float
+) -> npt.NDArray[np.float64]:
     """Clip array and rescale to the interval [0, 1].
 
     Array is first clipped to the interval [low, high] and then linearly rescaled
@@ -746,7 +748,7 @@ def _clip_and_scale(arr: npt.NDArray[np.float_], low: float, high: float) -> npt
 
     Parameters
     ----------
-    arr : npt.NDArray[np.float_]
+    arr : npt.NDArray[np.float64]
         Array to clip and scale.
     low : float
         Lower clipping bound.
@@ -755,7 +757,7 @@ def _clip_and_scale(arr: npt.NDArray[np.float_], low: float, high: float) -> npt
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Clipped and scaled array.
     """
     return (arr.clip(low, high) - low) / (high - low)
