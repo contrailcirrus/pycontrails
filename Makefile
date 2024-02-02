@@ -133,6 +133,16 @@ main-test-status:
 DOCS_DIR = docs
 DOCS_BUILD_DIR = docs/_build
 
+# Check for GCP credentials
+ensure-gcp-credentials:
+	python -c 'from google.cloud import storage; storage.Client()' \
+		|| ( \
+		echo -e \
+			"$(COLOR_YELLOW)Google application credentials required to run doc tests\n" \
+			"See https://cloud.google.com/docs/authentication/application-default-credentials$(END_COLOR)"; \
+		exit 1)
+
+
 # Cache common ERA5 data for nb-tests and doctests in DiskCacheStore(cache_dir=".doc-test-cache")
 ensure-era5-cached:
 	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
@@ -154,7 +164,7 @@ ensure-era5-cached:
 cache-era5-gcp: ensure-era5-cached
 	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
 
-doctest: ensure-era5-cached
+doctest: ensure-era5-cached ensure-gcp-credentials
 	pytest --doctest-modules \
 		--ignore-glob=pycontrails/ext/* \
 		pycontrails -vv
