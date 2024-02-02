@@ -2027,11 +2027,11 @@ def _hi_res_grid_coordinates(
         )
 
     lon_coords_hi_res = np.arange(
-        lon_coords[0], lon_coords[-1] + spatial_grid_res, spatial_grid_res
+        lon_coords[0], lon_coords[-1] + spatial_grid_res, spatial_grid_res, dtype=float
     )
 
     lat_coords_hi_res = np.arange(
-        lat_coords[0], lat_coords[-1] + spatial_grid_res, spatial_grid_res
+        lat_coords[0], lat_coords[-1] + spatial_grid_res, spatial_grid_res, dtype=float
     )
 
     return (np.round(lon_coords_hi_res, decimals=3), np.round(lat_coords_hi_res, decimals=3))
