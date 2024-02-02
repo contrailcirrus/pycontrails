@@ -116,6 +116,7 @@ jobs:
 
       - name: QC & Test
         run: |
+          set -e
           pip check
           black pycontrails --check
           ruff pycontrails tests
