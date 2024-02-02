@@ -234,9 +234,9 @@ ignore-path = [
 # https://beta.ruff.rs/docs/settings/#select
 # https://www.pydocstyle.org/en/6.3.0/error_codes.html
 [tool.ruff]
-select = ["D", "E", "F", "I", "NPY", "PL", "PT", "SIM", "UP"]
+lint.select = ["D", "E", "F", "I", "NPY", "PL", "PT", "SIM", "UP"]
 line-length = 100
-ignore = [
+lint.ignore = [
     "E402",
     "D105",
     "D202",
@@ -248,11 +248,11 @@ ignore = [
     "PLW2901",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "docs/conf.py" = ["E501"]
 "tests/*" = ["D"]
 
 # https://beta.ruff.rs/docs/settings/#pydocstyle
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"
 ignore-decorators = ["overrides.overrides"]
