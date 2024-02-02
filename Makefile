@@ -154,7 +154,7 @@ ensure-era5-cached:
 cache-era5-gcp: ensure-era5-cached
 	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
 
-doctest: ensure-era5-cached 
+doctest: ensure-era5-cached
 	pytest --doctest-modules \
 		--ignore-glob=pycontrails/ext/* \
 		pycontrails -vv
