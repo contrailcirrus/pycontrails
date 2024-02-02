@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Iterable
 from typing import Any, NoReturn
 
@@ -182,7 +183,12 @@ class Fleet(Flight):
         def _maybe_copy(fl: Flight) -> Flight:
             return fl.copy() if copy else fl
 
-        seq = tuple(_maybe_copy(fl) for fl in seq if fl)  # filter out empty flights
+        def _maybe_warn(fl: Flight) -> Flight:
+            if not fl:
+                warnings.warn("Empty flight found in sequence. It will be filtered out.")
+            return fl
+
+        seq = tuple(_maybe_copy(fl) for fl in seq if _maybe_warn(fl))
 
         if not seq:
             msg = "Cannot create Fleet from empty sequence."

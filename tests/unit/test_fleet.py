@@ -300,5 +300,8 @@ def test_fleet_from_seq_removes_empty_flight() -> None:
     df["time"] = pd.date_range("2022-03-01 00:00:00", "2022-03-01 02:00:00", periods=100)
 
     flights = [Flight(df, flight_id=1), Flight(flight_id=2)]
-    fleet = Fleet.from_seq(flights)
+
+    with pytest.warns(UserWarning, match="Empty flight found in sequence."):
+        fleet = Fleet.from_seq(flights)
+
     assert fleet.n_flights == 1
