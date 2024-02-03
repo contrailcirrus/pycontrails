@@ -21,8 +21,8 @@ END_COLOR = \033[0m
 # the latest open3d and accf packages often don't support the latest
 # versions of python
 pip-install:
-	pip install -U pip wheel
-	pip install -e ".[complete]"
+	python -m pip install -U pip wheel
+	python -m pip install -e ".[complete]"
 
 	# these still must be installed manually for Python < 3.10
 	# -pip install -e ".[open3d]"
@@ -30,7 +30,7 @@ pip-install:
 # development installation
 dev-install: pip-install
 
-	pip install -e ".[dev,docs]"
+	python -m pip install -e ".[dev,docs]"
 
 	# install pre-commit
 	pre-commit install
