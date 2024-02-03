@@ -4,18 +4,53 @@
 Running Notebooks
 =================
 
-The `/docs <https://github.com/contrailcirrus/pycontrails/tree/main/docs>`__
+The `/docs/notebooks <https://github.com/contrailcirrus/pycontrails/tree/main/docs/notebooks>`__
 directory in the repository contains `Jupyter Notebooks <https://jupyter.org/>`__
 demonstrating ``pycontrails``.
 
-To run these notebooks interactively, clone or download the repository,
+Local
+-----
+
+To run these notebooks locally, clone or download the repository,
 enter the ``docs`` directory, and launch ``jupyter lab``:
 
 .. code:: bash
 
    $ git clone https://github.com/contrailcirrus/pycontrails.git
    $ cd pycontrails/docs
-   $ jupyter lab
+   $ jupyter lab        # or notebook
+
+If you don't have `Jupyter installed <https://jupyter.org/install>`__,
+install the optional ``pycontrails[jupyter]`` dependencies:
+
+.. code-block:: bash
+
+    $ pip install "pycontrails[jupyter]"  # Jupyter notebook and lab interface
+
+Colab
+-----
+
+Notebooks can also be opened in `Google Colab <https://colab.research.google.com>`__.
+Select *File* -> *Open* -> **Github**, enter ``contrailcirrus/pycontrails``, then
+select the Notebook to open.
+
+.. image:: _static/img/colab.png
+  :alt: Colab example
+
+Alternatively, any notebook directly with the url ``https://colab.research.google.com/github/``
++ the path to the notebook file on github.com
+(e.g. `CoCiP.ipynb
+<https://colab.research.google.com/github/contrailcirrus/pycontrails/blob/main/docs/notebooks/CoCiP.ipynb>`__)
+
+``pycontrails`` must be installed into Colab environment by adding the top cell:
+
+.. code:: bash
+
+   !pip install pycontrails
+
+Credentials and data must be added to each Colab environment.
+Colab integrates with Google Drive to `load and save data <https://colab.research.google.com/notebooks/io.ipynb>`__
+and `store secrets <https://medium.com/@parthdasawant/how-to-use-secrets-in-google-colab-450c38e3ec75>`__.
 
 Data
 ----
