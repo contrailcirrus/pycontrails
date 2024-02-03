@@ -34,7 +34,7 @@ Python, create a dedicated Anaconda environment:
 .. code-block:: bash
 
     # create conda environment
-    $ conda create -n contrails python=3.10
+    $ conda create -n contrails
 
     # activate environment
     $ conda activate contrails
@@ -132,10 +132,10 @@ Notebook validation and doctests require `Copernicus Climate Data Store (CDS) cr
 Documentation
 -------------
 
-Documentation is written in `reStructuredText <https://docutils.sourceforge.io/rst.html>`__
+Documentation is written in `reStructuredText (rst) <https://docutils.sourceforge.io/rst.html>`__
 and built with `Sphinx <https://www.sphinx-doc.org/en/master/>`__. The `quick reStructuredText
 reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`__
-provides a basic overview.
+provides a decent rst syntax overview.
 
 Sphinx includes many additional
 `roles <https://www.sphinx-doc.org/en/master/usage/restructuredtext/roles.html>`__,
@@ -145,7 +145,7 @@ and
 to enhance documentation.
 
 Sphinx configuration is written in `docs/conf.py <https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py>`__.
-See `Sphinx configuration docs <https://www.sphinx-doc.org/en/master/usage/configuration.html>`__ for the full list of configuration options.
+See the `Sphinx configuration docs <https://www.sphinx-doc.org/en/master/usage/configuration.html>`__ for the full list of configuration options.
 
 Build HTML documentation:
 
@@ -227,17 +227,17 @@ To build manually, run:
 References
 ~~~~~~~~~~
 
+Literature references managed in the `pycontrails Zotero library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
+
 The documentation uses
 `sphinxcontrib-bibtex <https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html>`__
 to include citations and a bibliography.
 
 All references should be cited through documentation and docstrings
-using the ```:cite:``
-directive <https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html#role-cite>`__.
+using the `:cite: role <https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html#role-cite>`__.
 
-Literature references managed in the `pycontrails Zotero library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
 
-To automatically sync this library with the
+To automatically sync the Zotero library with the
 `docs/_static/pycontrails.bib <https://github.com/contrailcirrus/pycontrails/blob/main/docs/_static/pycontrails.bib>`__ Bibtex file:
 
 - Install `Zotero <https://www.zotero.org/>`__ and add the `pycontrails library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
@@ -277,10 +277,10 @@ Test notebook examples with `nbval pytest plugin <https://github.com/computation
 
 
 Conventions
-===========
+-----------
 
 Code
-----
+~~~~
 
 ``pycontrails`` aims to implement clear, consistent, performant data
 structures and models.
@@ -297,8 +297,7 @@ pre-commit hook.
 The project uses `pytest <https://docs.pytest.org/en/7.2.x/>`__ to run
 unit tests. New code should include clear unit tests for implementation
 and output values. New test files should be included in the
-```/tests/unit/``
-directory <https://github.com/contrailcirrus/pycontrails/tree/main/tests/unit>`__.
+`/tests/unit/ directory <https://github.com/contrailcirrus/pycontrails/tree/main/tests/unit>`__.
 
 The project uses `Github
 Actions <https://github.com/contrailcirrus/pycontrails/actions>`__ to
@@ -310,7 +309,7 @@ before pushing using:
    $ make test
 
 Docstrings
-----------
+~~~~~~~~~~
 
 Wherever possible, we adhere to the `NumPy docstring
 conventions <https://numpydoc.readthedocs.io/en/latest/format.html>`__.
@@ -333,7 +332,7 @@ General guidelines:
    Variable, module, function, and class names
    should be written between single back-ticks (`numpy`).
 
-When you specify a type in **Parameters** or **See Also**, Sphinx will
+When specifying types in **Parameters** or **See Also**, Sphinx will
 automatically replace the text with the ``napolean_type_aliases``
 specified in
 `conf.py <https://github.com/contrailcirrus/pycontrails/blob/main/docs/conf.py>`__,
@@ -364,7 +363,8 @@ The **See Also** section is *not a list*. All of the following work:
 
 When you specify a type outside of **Parameters**, you have to use the
 `sphinx cross-referencing
-syntax <https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#cross-referencing-python-objects>`__:
+syntax <https://www.sphinx-doc.org/en/master/usage/restructuredtext/domains.html#cross-referencing-python-objects>`__
+with the full module name:
 
 .. code:: python
 
