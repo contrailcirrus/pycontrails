@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from typing import Any
 
 import matplotlib.axes
@@ -1112,3 +1113,15 @@ def test_resample_and_fill_empty_flight() -> None:
         fl2 = fl.resample_and_fill("1 min")
 
     assert len(fl2) == 0
+
+
+@pytest.mark.parametrize("keep", [True, False])
+def test_resample_and_fill_non_float(fl: Flight, keep: bool) -> None:
+    """Test the resample_and_fill method with non-float columns and drop=False."""
+    # At least one object column
+    assert fl["constant_poorly_formatted_str_column"].dtype == object
+
+    # Don't allow any warnings with drop=False
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        fl.resample_and_fill(drop=False, keep_original_index=keep)

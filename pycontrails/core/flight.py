@@ -936,8 +936,7 @@ class Flight(GeoVectorDataset):
 
         # Remove original index if requested
         if not keep_original_index:
-            filt = df.index.isin(t)
-            df = df.loc[filt]
+            df = df.loc[t]
 
         # finally reset index
         df = df.reset_index()
@@ -2041,7 +2040,7 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
     """Resample a DataFrame to a given frequency.
 
     This function is used to resample a DataFrame to a given frequency. The new
-    index will include all the original index values and the new esampled-to-freq
+    index will include all the original index values and the new resampled-to-freq
     index values. The "longitude" and "latitude" columns will be linearly interpolated
     to the new index values.
 
@@ -2064,7 +2063,7 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
     # and the resampled-to-freq index values.
     t0 = df.index[0]
     t1 = df.index[-1]
-    t = pd.date_range(t0, t1, freq=freq).floor(freq)
+    t = pd.date_range(t0, t1, freq=freq, name="time").floor(freq)
     if t[0] < t0:
         t = t[1:]
 
@@ -2072,8 +2071,7 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
     concat_arr = np.unique(concat_arr)
     concat_index = pd.DatetimeIndex(concat_arr, name="time", copy=False)
 
-    out = pd.DataFrame(index=concat_index, columns=df.columns, dtype=float)
-    out.loc[df.index] = df
+    out = df.reindex(concat_index)
 
     # Linearly interpolate small horizontal gap
     coords = ["longitude", "latitude"]

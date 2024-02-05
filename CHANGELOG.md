@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.49.4 (unreleased)
+
+### Fixes
+
+- No longer emit `pandas` warning when `Flight.resample_and_fill(..., drop=True, ...)` is called with non-float data.
+
 ## v0.49.3
 
 ### Features
