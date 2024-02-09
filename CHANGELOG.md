@@ -15,7 +15,7 @@
   - B78X
   - BCS1
   - BCS3
-- Modify PS coefficients for B788 and A359.
+- Modify PS coefficients for B788, B789, and A359.
 
 ### Fixes
 
