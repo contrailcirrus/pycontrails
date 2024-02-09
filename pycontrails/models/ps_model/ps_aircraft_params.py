@@ -14,7 +14,7 @@ import pandas as pd
 from pycontrails.physics import constants as c
 
 #: Path to the Poll-Schumann aircraft parameters CSV file.
-PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20231117.csv"
+PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20240209.csv"
 
 
 @dataclasses.dataclass(frozen=True)
