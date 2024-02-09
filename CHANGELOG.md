@@ -3,6 +3,20 @@
 
 ## v0.49.4 (unreleased)
 
+### Features
+
+- Add support for 9 additional aircraft types in the [Poll-Schumann](https://py.contrails.org/notebooks/AircraftPerformance.html) (PS) aircraft performance model. The new aircraft types are:
+  - A338
+  - A339
+  - A35K
+  - B37M
+  - B38M
+  - B39M
+  - B78X
+  - BCS1
+  - BCS3
+- Modify PS coefficients for B788 and A359.
+
 ### Fixes
 
 - No longer emit `pandas` warning when `Flight.resample_and_fill(..., drop=True, ...)` is called with non-float data.
