@@ -20,8 +20,8 @@ from .conftest import get_static_path
 def test_aircraft_type_coverage() -> None:
     ps_model = ps.PSFlight()
 
-    # There are currently 53 aircraft types supported by the PS model
-    assert len(ps_model.aircraft_engine_params) == 53
+    # There are currently 62 aircraft types supported by the PS model
+    assert len(ps_model.aircraft_engine_params) == 62
 
     # Test PS model coverage: commonly used aircraft types
     aircraft_types = ["A320", "A332", "A359", "A388", "B737", "B763", "B77L", "B789"]
@@ -30,7 +30,7 @@ def test_aircraft_type_coverage() -> None:
         assert atyp in ps_model.aircraft_engine_params
 
     # Test unsupported aircraft types
-    aircraft_types = ["A339", "A35K", "AT76", "B38X", "B78X", "BCS3", "E75L"]
+    aircraft_types = ["AT76", "E75L"]
 
     for atyp in aircraft_types:
         with pytest.raises(KeyError, match=f"Aircraft type {atyp} not covered by the PS model."):
