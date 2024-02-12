@@ -1507,17 +1507,19 @@ def _eval_aircraft_performance(
         If ``aircraft_performance`` is None
     """
 
-    aircraft_performance_outputs = "wingspan", "engine_efficiency", "fuel_flow", "aircraft_mass"
-    if flight.ensure_vars(aircraft_performance_outputs, False):
+    ap_vars = {"wingspan", "engine_efficiency", "fuel_flow", "aircraft_mass"}
+    missing = ap_vars.difference(flight).difference(flight.attrs)
+    if not missing:
         return flight
 
     if aircraft_performance is None:
-        raise ValueError(
-            "An AircraftPerformance model parameter is required if the flight "
-            f"does not contain the following variables: {aircraft_performance_outputs}. "
-            "For example, instantiate the Cocip model with "
-            "'Cocip(..., aircraft_performance=PSFlight(...))'."
+        msg = (
+            f"An AircraftPerformance model parameter is required if the flight does not contain "
+            f"the following variables: {ap_vars}. This flight is missing: {missing}. "
+            "Instantiate the Cocip model with an AircraftPerformance model. "
+            "For example, 'Cocip(..., aircraft_performance=PSFlight(...))'."
         )
+        raise ValueError(msg)
 
     return aircraft_performance.eval(source=flight, copy_source=False)
 

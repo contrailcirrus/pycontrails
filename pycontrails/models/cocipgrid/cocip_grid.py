@@ -197,8 +197,9 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self._check_met_source_overlap()
 
         # Save humidity scaling type to output attrs
-        if self.params["humidity_scaling"] is not None:
-            for k, v in self.params["humidity_scaling"].description.items():
+        humidity_scaling = self.params["humidity_scaling"]
+        if humidity_scaling is not None:
+            for k, v in humidity_scaling.description.items():
                 self.source.attrs[f"humidity_scaling_{k}"] = v
 
         self._parse_verbose_outputs()

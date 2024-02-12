@@ -956,10 +956,8 @@ class VectorDataset:
                 continue
 
             min_dtype = np.min_scalar_type(scalar)
-            if np.can_cast(min_dtype, np.float32):
-                self.data.update({key: np.full(self.size, scalar, dtype=np.float32)})
-            else:
-                self.data.update({key: np.full(self.size, scalar)})
+            dtype = np.float32 if np.can_cast(min_dtype, np.float32) else None
+            self.data.update({key: np.full(self.size, scalar, dtype=dtype)})
 
     def broadcast_numeric_attrs(
         self, ignore_keys: str | Iterable[str] | None = None, overwrite: bool = False
