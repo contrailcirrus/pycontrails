@@ -220,6 +220,8 @@ def met_cocip1() -> MetDataset:
     """
     path = get_static_path("met-era5-cocip1.nc")
     ds = xr.open_dataset(path)
+    ds["air_pressure"] = ds["air_pressure"].astype("float32")
+    ds["altitude"] = ds["altitude"].astype("float32")
     return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 

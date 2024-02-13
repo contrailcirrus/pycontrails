@@ -288,48 +288,12 @@ class MetBase(ABC, Generic[XArrayType]):
         # single level data
         if self.is_single_level:
             # add level attributes to reflect surface level
-            self.data["level"].attrs.update(units="", long_name="Single Level")
+            level_attrs = self.data["level"].attrs
+            if not level_attrs:
+                level_attrs.update(units="", long_name="Single Level")
             return
 
-        # pressure level data
-        level = self.variables["level"].values
-
-        # add pressure level attributes
-        self.data["level"].attrs.update(units="hPa", long_name="Pressure", positive="down")
-
-        # add altitude and air_pressure
-
-        # XXX: use the dtype of the data to determine the precision of these coordinates
-        # There are two competing conventions here:
-        # - coordinate data should be float64
-        # - gridded data is typically float32
-        # - air_pressure and altitude often play both roles
-        # It is more important for air_pressure and altitude to be grid-aligned than to be
-        # coordinate-aligned, so we use the dtype of the data to determine the precision of
-        # these coordinates
-        if isinstance(self.data, xr.Dataset):
-            dtype = np.result_type(*self.data.data_vars.values(), np.float32)
-        else:
-            dtype = self.data.dtype
-
-        level = level.astype(dtype)
-        air_pressure = level * 100.0
-        altitude = units.pl_to_m(level)
-        self.data = self.data.assign_coords({"air_pressure": ("level", air_pressure)})
-        self.data = self.data.assign_coords({"altitude": ("level", altitude)})
-
-        # add air_pressure units and long name attributes
-        self.data.coords["air_pressure"].attrs.update(
-            standard_name=AirPressure.standard_name,
-            long_name=AirPressure.long_name,
-            units=AirPressure.units,
-        )
-        # add altitude units and long name attributes
-        self.data.coords["altitude"].attrs.update(
-            standard_name=Altitude.standard_name,
-            long_name=Altitude.long_name,
-            units=Altitude.units,
-        )
+        self.data = _add_vertical_coords(self.data)
 
     @property
     def hash(self) -> str:
@@ -668,6 +632,8 @@ class MetDataset(MetBase):
                 raise ValueError("Set 'copy=True' when using 'wrap_longitude=True'.")
             self.data = data
             self._validate_dims()
+            if not self.is_single_level:
+                self.data = _add_vertical_coords(self.data)
 
     def __getitem__(self, key: Hashable) -> MetDataArray:
         """Return DataArray of variable ``key`` cast to a :class:`MetDataArray` object.
@@ -2533,3 +2499,44 @@ def _load(hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Datas
     """
     disk_path = cachestore.get(f"{hash}*.nc")
     return xr.open_mfdataset(disk_path, chunks=chunks)
+
+
+def _add_vertical_coords(data: XArrayType) -> XArrayType:
+    """Add "air_pressure" and "altitude" coordinates to data."""
+
+    data["level"].attrs.update(units="hPa", long_name="Pressure", positive="down")
+
+    coords = data.coords
+    if "air_pressure" in coords and "altitude" in coords:
+        return data
+
+    # XXX: use the dtype of the data to determine the precision of these coordinates
+    # There are two competing conventions here:
+    # - coordinate data should be float64
+    # - gridded data is typically float32
+    # - air_pressure and altitude often play both roles
+    # It is more important for air_pressure and altitude to be grid-aligned than to be
+    # coordinate-aligned, so we use the dtype of the data to determine the precision of
+    # these coordinates
+    if isinstance(data, xr.Dataset):
+        dtype = np.result_type(*data.data_vars.values(), np.float32)
+    else:
+        dtype = data.dtype
+    level = data["level"].values.astype(dtype, copy=False)
+
+    if "air_pressure" not in coords:
+        data = data.assign_coords(air_pressure=("level", level * 100.0))
+        data.coords["air_pressure"].attrs.update(
+            standard_name=AirPressure.standard_name,
+            long_name=AirPressure.long_name,
+            units=AirPressure.units,
+        )
+    if "altitude" not in coords:
+        data = data.assign_coords(altitude=("level", units.pl_to_m(level)))
+        data.coords["altitude"].attrs.update(
+            standard_name=Altitude.standard_name,
+            long_name=Altitude.long_name,
+            units=Altitude.units,
+        )
+
+    return data
