@@ -740,6 +740,7 @@ def test_verbose_outputs_formation(
         "sac",
         "engine_efficiency",
         "true_airspeed",
+        "aircraft_mass",
         "fuel_flow",
         "specific_humidity",
         "air_temperature",

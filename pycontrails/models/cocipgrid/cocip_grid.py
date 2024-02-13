@@ -2094,6 +2094,7 @@ def _contrail_grid_variable_attrs() -> dict[str, dict[str, str]]:
         },
         "engine_efficiency": {"long_name": "Engine efficiency"},
         "true_airspeed": {"long_name": "True airspeed", "units": "m / s"},
+        "aircraft_mass": {"long_name": "Aircraft mass", "units": "kg"},
         "nvpm_ei_n": {
             "long_name": "Black carbon emissions index number",
             "units": "kg^{-1}",
