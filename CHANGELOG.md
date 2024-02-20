@@ -5,7 +5,6 @@
 
 ### Features
 
-- Improve clarity of warnings produced when meteorology data doesn't cover the time range required by a gridded Cocip model.
 - Add support for 9 additional aircraft types in the [Poll-Schumann](https://py.contrails.org/notebooks/AircraftPerformance.html) (PS) aircraft performance model. The new aircraft types are:
   - A338
   - A339
@@ -20,6 +19,7 @@
 
 ### Fixes
 
+- Improve clarity of warnings produced when meteorology data doesn't cover the time range required by a gridded Cocip model.
 - No longer emit `pandas` warning when `Flight.resample_and_fill(..., drop=True, ...)` is called with non-float data.
 
 ## v0.49.3
