@@ -139,18 +139,26 @@ class CocipTimeHandlingMixin:
         self.timedict = {t1: (source_time >= t1) & (source_time < t2) for t1, t2 in zipped}
 
     def _check_met_rad_time(self, tmin: pd.Timestamp, tmax: pd.Timestamp) -> None:
-        if self.met.data["time"].min() > tmin or self.met.data["time"].max() < tmax:
-            warnings.warn(
-                "Parameter 'met' is too short in the time dimension. "
-                "Include additional time in 'met' or reduce 'max_age' parameter. "
-                f"Model start time: {tmin} Model end time: {tmax}"
-            )
-        if self.rad.data["time"].min() > tmin or self.rad.data["time"].max() < tmax:
-            warnings.warn(
-                "Parameter 'rad' is too short in the time dimension. "
-                "Include additional time in 'rad' or reduce 'max_age' parameter."
-                f"Model start time: {tmin} Model end time: {tmax}"
-            )
+        """Warn if meteorology data doesn't cover a required time range.
+
+        Parameters
+        ----------
+        tmin: pd.Timestamp
+            Start of required time range
+        tmax:pd.Timestamp
+            End of required time range
+        """
+        met_tmin = pd.to_datetime(self.met.data["time"].min().values)
+        met_tmax = pd.to_datetime(self.met.data["time"].max().values)
+        rad_tmin = pd.to_datetime(self.rad.data["time"].min().values)
+        rad_tmax = pd.to_datetime(self.rad.data["time"].max().values)
+        differencing_note = (
+            "differencing reduces time coverage when providing accumulated radiative fluxes."
+        )
+        _check_start_time(met_tmin, tmin, "met")
+        _check_end_time(met_tmax, tmax, "met")
+        _check_start_time(rad_tmin, tmin, "rad", note=differencing_note)
+        _check_end_time(rad_tmax, tmax, "rad", note=differencing_note)
 
     def init_pbar(self) -> tqdm.tqdm | None:
         """Initialize a progress bar for model evaluation."""
@@ -340,3 +348,29 @@ class CocipRuntimeStats:
     n_old_vectors: int
     n_steps_new_vectors: int
     n_steps_old_vectors: int
+
+
+def _check_start_time(
+    met_start: pd.Timestap, model_start: pd.TimeStamp, name: str, note: str | None = None
+) -> None:
+    if met_start > model_start:
+        note = f" Note: {note}" if note else ""
+        warnings.warn(
+            f"Start time of parameter '{name}' ({met_start}) "
+            f"is after model start time ({model_start}). "
+            f"Include additional time at the start of '{name}'."
+            f"{note}"
+        )
+
+
+def _check_end_time(
+    met_end: pd.Timestap, model_end: pd.TimeStamp, name: str, note: str | None = None
+) -> None:
+    if met_end < model_end:
+        note = f" Note: {note}" if note else ""
+        warnings.warn(
+            f"End time of parameter '{name}' ({met_end}) "
+            f"is before model end time ({model_end}). "
+            f"Include additional time at the end of '{name}' or reduce 'max_age' parameter."
+            f"{note}"
+        )

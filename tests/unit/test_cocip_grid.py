@@ -95,7 +95,12 @@ def test_met_too_short(met_cocip1: MetDataset, rad_cocip1: MetDataset, source: M
 
     source = CocipGrid.create_source(level=5, time=np.datetime64("2019-01-01T04"))
     gc.set_source(source)
-    with pytest.warns(UserWarning, match="too short in the time dimension"):
+    with pytest.warns(UserWarning, match="before model end time"):
+        gc.attach_timedict()
+
+    source = CocipGrid.create_source(level=5, time=np.datetime64("2018-12-31T23"))
+    gc.set_source(source)
+    with pytest.warns(UserWarning, match="after model start time"):
         gc.attach_timedict()
 
     source = CocipGrid.create_source(level=5, time=np.datetime64("2019-01-01"))
