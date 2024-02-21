@@ -45,6 +45,15 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
     param_kwargs : Any
         Override CocipGridParams defaults with arbitrary keyword arguments.
 
+    Notes
+    -----
+    - If ``rad`` contains accumulated radiative fluxes, differencing to obtain
+      time-averaged fluxes will reduce the time coverage of ``rad`` by half a forecast
+      step. A warning will be produced during :meth:`eval` if the time coverage of
+      ``rad`` (after differencing) is too short given the model evaluation parameters.
+      If this occurs, provide an additional step of radiation data at the start or end
+      of ``rad``.
+
     References
     ----------
     - :cite:`schumannPotentialReduceClimate2011`

@@ -221,7 +221,7 @@ def test_model_grid_required_met_variables(met_era5_fake: MetDataset) -> None:
 def test_model_grid_hash(met_era5_fake: MetDataset) -> None:
     """Model hash."""
     grid_model = ModelTestGrid(met=met_era5_fake)
-    assert grid_model.hash == "28648ed00ce10e05aaa198325a8991ef79910d47"
+    assert grid_model.hash == "b0c26d747887f86ab1942667c3befcb5693688a3"
 
 
 def test_model_met_not_copied(met_era5_fake: MetDataset) -> None:
@@ -329,7 +329,7 @@ def test_model_flight_required_met_variables(met_era5_fake: MetDataset) -> None:
 def test_model_flight_hash(met_era5_fake: MetDataset) -> None:
     """Ensure pinned hash matches as check for model degradation."""
     flight_model = ModelTestFlight(met_era5_fake)
-    assert flight_model.hash == "2789e8bef2606322984d6733e8072f501507f114"
+    assert flight_model.hash == "a5b35e16632ff819e49499a832a1ba1787d3dd27"
 
 
 def test_model_flight_met_not_copied(met_era5_fake: MetDataset) -> None:

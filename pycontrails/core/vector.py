@@ -2041,8 +2041,8 @@ def vector_to_lon_lat_grid(
     >>> da = ds["foo"]
     >>> da.coords
     Coordinates:
-      * longitude  (longitude) float64 -10.0 -9.5 -9.0 -8.5 -8.0 ... 8.0 8.5 9.0 9.5
-      * latitude   (latitude) float64 -10.0 -9.5 -9.0 -8.5 -8.0 ... 8.0 8.5 9.0 9.5
+      * longitude  (longitude) float64 320B -10.0 -9.5 -9.0 -8.5 ... 8.0 8.5 9.0 9.5
+      * latitude   (latitude) float64 320B -10.0 -9.5 -9.0 -8.5 ... 8.0 8.5 9.0 9.5
 
     >>> da.values.round(2)
     array([[2.23, 0.67, 1.29, ..., 4.66, 3.91, 1.93],
