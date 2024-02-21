@@ -1123,15 +1123,15 @@ class MetDataset(MetBase):
         >>> met = MetDataset.from_coords(longitude, latitude, level, time)
         >>> met
         MetDataset with data:
-        <xarray.Dataset>
+        <xarray.Dataset> Size: 360B
         Dimensions:       (longitude: 20, latitude: 20, level: 2, time: 1)
         Coordinates:
-          * longitude     (longitude) float64 0.0 0.5 1.0 1.5 2.0 ... 8.0 8.5 9.0 9.5
-          * latitude      (latitude) float64 0.0 0.5 1.0 1.5 2.0 ... 7.5 8.0 8.5 9.0 9.5
-          * level         (level) float64 250.0 300.0
-          * time          (time) datetime64[ns] 2019-01-01
-            air_pressure  (level) float32 2.5e+04 3e+04
-            altitude      (level) float32 1.036e+04 9.164e+03
+          * longitude     (longitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
+          * latitude      (latitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
+          * level         (level) float64 16B 250.0 300.0
+          * time          (time) datetime64[ns] 8B 2019-01-01
+            air_pressure  (level) float32 8B 2.5e+04 3e+04
+            altitude      (level) float32 8B 1.036e+04 9.164e+03
         Data variables:
             *empty*
 
@@ -1146,18 +1146,18 @@ class MetDataset(MetBase):
         >>> met["humidity"] = xr.DataArray(np.full(met.shape, 0.5), coords=met.coords)
         >>> met
         MetDataset with data:
-        <xarray.Dataset>
+        <xarray.Dataset> Size: 13kB
         Dimensions:       (longitude: 20, latitude: 20, level: 2, time: 1)
         Coordinates:
-          * longitude     (longitude) float64 0.0 0.5 1.0 1.5 2.0 ... 8.0 8.5 9.0 9.5
-          * latitude      (latitude) float64 0.0 0.5 1.0 1.5 2.0 ... 7.5 8.0 8.5 9.0 9.5
-          * level         (level) float64 250.0 300.0
-          * time          (time) datetime64[ns] 2019-01-01
-            air_pressure  (level) float32 2.5e+04 3e+04
-            altitude      (level) float32 1.036e+04 9.164e+03
+          * longitude     (longitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
+          * latitude      (latitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
+          * level         (level) float64 16B 250.0 300.0
+          * time          (time) datetime64[ns] 8B 2019-01-01
+            air_pressure  (level) float32 8B 2.5e+04 3e+04
+            altitude      (level) float32 8B 1.036e+04 9.164e+03
         Data variables:
-            temperature   (longitude, latitude, level, time) float64 234.5 ... 234.5
-            humidity      (longitude, latitude, level, time) float64 0.5 0.5 ... 0.5 0.5
+            temperature   (longitude, latitude, level, time) float64 6kB 234.5 ... 234.5
+            humidity      (longitude, latitude, level, time) float64 6kB 0.5 0.5 ... 0.5
 
         >>> # Convert to a GeoVectorDataset
         >>> vector = met.to_vector()

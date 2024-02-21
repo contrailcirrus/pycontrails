@@ -148,10 +148,12 @@ class CocipTimeHandlingMixin:
         tmax:pd.Timestamp
             End of required time range
         """
-        met_tmin = pd.to_datetime(self.met.data["time"].min().values)
-        met_tmax = pd.to_datetime(self.met.data["time"].max().values)
-        rad_tmin = pd.to_datetime(self.rad.data["time"].min().values)
-        rad_tmax = pd.to_datetime(self.rad.data["time"].max().values)
+        met_time = self.met.data["time"].values
+        met_tmin = pd.to_datetime(met_time.min())
+        met_tmax = pd.to_datetime(met_time.max())
+        rad_time = self.rad.data["time"].values
+        rad_tmin = pd.to_datetime(rad_time.min())
+        rad_tmax = pd.to_datetime(rad_time.max())
         differencing_note = (
             "differencing reduces time coverage when providing accumulated radiative fluxes."
         )
@@ -351,7 +353,7 @@ class CocipRuntimeStats:
 
 
 def _check_start_time(
-    met_start: pd.Timestap, model_start: pd.TimeStamp, name: str, note: str | None = None
+    met_start: pd.Timestamp, model_start: pd.Timestamp, name: str, *, note: str | None = None
 ) -> None:
     if met_start > model_start:
         note = f" Note: {note}" if note else ""
@@ -364,7 +366,7 @@ def _check_start_time(
 
 
 def _check_end_time(
-    met_end: pd.Timestap, model_end: pd.TimeStamp, name: str, note: str | None = None
+    met_end: pd.Timestamp, model_end: pd.Timestamp, name: str, *, note: str | None = None
 ) -> None:
     if met_end < model_end:
         note = f" Note: {note}" if note else ""
