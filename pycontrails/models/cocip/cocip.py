@@ -379,15 +379,14 @@ class Cocip(Model):
         self.source = self.require_source_type(Flight)
         return_flight_list = isinstance(self.source, Fleet) and isinstance(source, Sequence)
 
-        self._calc_timesteps()
+        self._set_timesteps()
 
         # Downselect met for CoCiP initialization
         # We only need to buffer in the negative vertical direction,
         # which is the positive direction for level
         logger.debug("Downselect met for Cocip initialization")
-        buffer = 0, self.params["met_level_buffer"][1]
-        met = self.source.downselect_met(self.met, copy=False, level_buffer=buffer)
-        # Add tau_cirrus if it doesn't exist already.
+        level_buffer = 0, self.params["met_level_buffer"][1]
+        met = self.source.downselect_met(self.met, level_buffer=level_buffer, copy=False)
         met = add_tau_cirrus(met)
 
         # Prepare flight for model
@@ -438,8 +437,11 @@ class Cocip(Model):
 
         return self.source
 
-    def _calc_timesteps(self) -> None:
-        """Calculate :attr:`timesteps`."""
+    def _set_timesteps(self) -> None:
+        """Set the :attr:`timesteps` based on the ``source`` time range.
+
+        This method is called in :meth:`eval` before the flight is processed.
+        """
         if isinstance(self.source, Fleet):
             # time not sorted in Fleet instance
             tmin = self.source["time"].min()
