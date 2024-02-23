@@ -293,16 +293,18 @@ def longitude_latitude_grid(
     """
     # Ensure the required columns are included in `flight_waypoints`, `contrails` and `met`
     flight_waypoints.ensure_vars(("segment_length", "ef"))
-    contrails.ensure_vars((
-        "formation_time",
-        "segment_length",
-        "width",
-        "tau_contrail",
-        "rf_sw",
-        "rf_lw",
-        "rf_net",
-        "ef",
-    ))
+    contrails.ensure_vars(
+        (
+            "formation_time",
+            "segment_length",
+            "width",
+            "tau_contrail",
+            "rf_sw",
+            "rf_lw",
+            "rf_net",
+            "ef",
+        )
+    )
     met.ensure_vars(
         ("air_temperature", "specific_humidity", "specific_cloud_ice_water_content", "geopotential")
     )
@@ -857,35 +859,39 @@ def time_slice_statistics(
     - ``mean_albedo_at_contrail_wypts``, [dimensionless]
     """
     # Ensure the required columns are included in `flight_waypoints`, `contrails`, `met` and `rad`
-    flight_waypoints.ensure_vars((
-        "flight_id",
-        "segment_length",
-        "true_airspeed",
-        "fuel_flow",
-        "engine_efficiency",
-        "nvpm_ei_n",
-        "sac",
-        "persistent_1",
-    ))
-    contrails.ensure_vars((
-        "flight_id",
-        "segment_length",
-        "air_temperature",
-        "iwc",
-        "r_ice_vol",
-        "n_ice_per_m",
-        "tau_contrail",
-        "tau_cirrus",
-        "width",
-        "area_eff",
-        "sdr",
-        "rsr",
-        "olr",
-        "rf_sw",
-        "rf_lw",
-        "rf_net",
-        "ef",
-    ))
+    flight_waypoints.ensure_vars(
+        (
+            "flight_id",
+            "segment_length",
+            "true_airspeed",
+            "fuel_flow",
+            "engine_efficiency",
+            "nvpm_ei_n",
+            "sac",
+            "persistent_1",
+        )
+    )
+    contrails.ensure_vars(
+        (
+            "flight_id",
+            "segment_length",
+            "air_temperature",
+            "iwc",
+            "r_ice_vol",
+            "n_ice_per_m",
+            "tau_contrail",
+            "tau_cirrus",
+            "width",
+            "area_eff",
+            "sdr",
+            "rsr",
+            "olr",
+            "rf_sw",
+            "rf_lw",
+            "rf_net",
+            "ef",
+        )
+    )
 
     # Ensure that the waypoints are within `t_start` and `t_end`
     is_in_time = flight_waypoints.dataframe["time"].between(t_start, t_end, inclusive="right")
@@ -920,12 +926,14 @@ def time_slice_statistics(
 
     # Meteorology domain statistics
     if met is not None:
-        met.ensure_vars((
-            "air_temperature",
-            "specific_humidity",
-            "specific_cloud_ice_water_content",
-            "geopotential",
-        ))
+        met.ensure_vars(
+            (
+                "air_temperature",
+                "specific_humidity",
+                "specific_cloud_ice_water_content",
+                "geopotential",
+            )
+        )
         met = met.downselect(spatial_bbox)
         met_stats = meteorological_time_slice_statistics(t_end, contrails, met, humidity_scaling)
 
@@ -1929,13 +1937,15 @@ def natural_cirrus_properties_to_hi_res_grid(
         relatively narrow contrails.
     """
     # Ensure the required columns are included in `met`
-    met.ensure_vars((
-        "air_temperature",
-        "specific_humidity",
-        "specific_cloud_ice_water_content",
-        "geopotential",
-        "fraction_of_cloud_cover",
-    ))
+    met.ensure_vars(
+        (
+            "air_temperature",
+            "specific_humidity",
+            "specific_cloud_ice_water_content",
+            "geopotential",
+            "fraction_of_cloud_cover",
+        )
+    )
 
     # Ensure `met` only contains one time step, constraint can be relaxed in the future.
     if len(met["time"].data) > 1:

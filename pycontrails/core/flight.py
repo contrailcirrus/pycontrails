@@ -1199,11 +1199,13 @@ class Flight(GeoVectorDataset):
         dict[str, Any]
             Python representation of geojson FeatureCollection
         """
-        points = _return_linestring({
-            "longitude": self["longitude"],
-            "latitude": self["latitude"],
-            "altitude": self.altitude,
-        })
+        points = _return_linestring(
+            {
+                "longitude": self["longitude"],
+                "latitude": self["latitude"],
+                "altitude": self.altitude,
+            }
+        )
         geometry = {"type": "LineString", "coordinates": points}
         properties = {
             "start_time": self.time_start.isoformat(),

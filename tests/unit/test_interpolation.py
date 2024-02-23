@@ -328,14 +328,16 @@ def arbitrary_coords() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     longitude = np.array([-55, -43, -55, -21, -17, -18], dtype=np.float32)
     latitude = np.array([12, 17, -8, -44, 22, 23], dtype=np.float32)
     level = np.array([227, 228, 231, 233, 231, 230], dtype=np.float32)
-    time = np.array([
-        np.datetime64("2019-05-31T05:30"),
-        np.datetime64("2019-05-31T05:33"),
-        np.datetime64("2019-05-31T05:36"),
-        np.datetime64("2019-05-31T05:40"),
-        np.datetime64("2019-05-31T05:43"),
-        np.datetime64("2019-05-31T05:46"),
-    ])
+    time = np.array(
+        [
+            np.datetime64("2019-05-31T05:30"),
+            np.datetime64("2019-05-31T05:33"),
+            np.datetime64("2019-05-31T05:36"),
+            np.datetime64("2019-05-31T05:40"),
+            np.datetime64("2019-05-31T05:43"),
+            np.datetime64("2019-05-31T05:46"),
+        ]
+    )
     return longitude, latitude, level, time
 
 

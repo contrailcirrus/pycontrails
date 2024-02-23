@@ -312,10 +312,12 @@ class ACCF(Model):
         )
 
         if p_settings["lat_bound"] and p_settings["lon_bound"]:
-            ws.reduce_domain({
-                "latitude": p_settings["lat_bound"],
-                "longitude": p_settings["lon_bound"],
-            })
+            ws.reduce_domain(
+                {
+                    "latitude": p_settings["lat_bound"],
+                    "longitude": p_settings["lon_bound"],
+                }
+            )
 
         self.ds = ws.get_xarray()
         self.variable_names = ws.variable_names

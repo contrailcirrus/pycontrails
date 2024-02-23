@@ -88,11 +88,13 @@ def test_flight_creation() -> None:
     longitude = np.array([0, 1, 2])
     latitude = np.array([0, 1, 2])
     altitude = np.array([11000, 11200, 11300])
-    time = np.array([
-        np.datetime64("2021-09-01 00:00:00"),
-        np.datetime64("2021-08-31 23:00:00"),
-        np.datetime64("2021-09-01 01:00:00"),
-    ])
+    time = np.array(
+        [
+            np.datetime64("2021-09-01 00:00:00"),
+            np.datetime64("2021-08-31 23:00:00"),
+            np.datetime64("2021-09-01 01:00:00"),
+        ]
+    )
 
     # warn if copy=True and time not sorted
     with pytest.warns(UserWarning, match="Sorting Flight data by time."):
@@ -471,13 +473,15 @@ def test_step_climb_interpolation() -> None:
     fl = Flight(
         longitude=np.linspace(0, 10, 5),
         latitude=np.linspace(0, 10, 5),
-        time=pd.DatetimeIndex([
-            "1/1/2020 10:00:00",
-            "1/1/2020 11:00:00",
-            "1/1/2020 15:00:00",
-            "1/1/2020 16:00:00",
-            "1/1/2020 20:00:00",
-        ]),
+        time=pd.DatetimeIndex(
+            [
+                "1/1/2020 10:00:00",
+                "1/1/2020 11:00:00",
+                "1/1/2020 15:00:00",
+                "1/1/2020 16:00:00",
+                "1/1/2020 20:00:00",
+            ]
+        ),
         altitude=np.array([0, 5000, 10000, 9000, 5000]),
     )
 
@@ -560,13 +564,15 @@ def test_crs(fl: Flight, met_issr: MetDataset, rng: np.random.Generator) -> None
 
 
 def test_antimeridian_jump() -> None:
-    df = pd.DataFrame({
-        "longitude": [-177, -179, 179, 178],
-        "latitude": [40, 41, 42, 41],
-        "time": pd.date_range("2000-01-01 00:00:00", "2000-01-01 00:30:00", periods=4),
-        "altitude": [10000, 10001, 10003, 10006],
-        "issr": [0, 1, 1, 1],
-    })
+    df = pd.DataFrame(
+        {
+            "longitude": [-177, -179, 179, 178],
+            "latitude": [40, 41, 42, 41],
+            "time": pd.date_range("2000-01-01 00:00:00", "2000-01-01 00:30:00", periods=4),
+            "altitude": [10000, 10001, 10003, 10006],
+            "issr": [0, 1, 1, 1],
+        }
+    )
 
     fl = Flight(df)
     d = fl.to_geojson_multilinestring("issr", split_antimeridian=True)

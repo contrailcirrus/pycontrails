@@ -39,12 +39,14 @@ def random_geo_path() -> GeoVectorDataset:
     data = {
         "longitude": np.array([-15, -14, -13, -12]),
         "latitude": np.array([10, 11, 12, 13]),
-        "time": np.array([
-            "2021-10-05 00:00:00",
-            "2021-10-05 01:00:00",
-            "2021-10-05 02:00:00",
-            "2021-10-05 03:00:00",
-        ]),
+        "time": np.array(
+            [
+                "2021-10-05 00:00:00",
+                "2021-10-05 01:00:00",
+                "2021-10-05 02:00:00",
+                "2021-10-05 03:00:00",
+            ]
+        ),
         "altitude": np.array([1000, 5000, 10000, 40000]),
         "a": np.array([1, 2, 3, 4]),
         "b": np.array([5, 6, 7, 8]),
@@ -83,13 +85,17 @@ def test_vector_init_dictlike() -> None:
     """VectorDataset.__init__."""
 
     # it will acceptVectorDataDict/AttrDict input, but still copy
-    data = VectorDataDict({
-        "a": np.ones(100),
-        "b": np.empty(100),
-    })
-    attrs = AttrDict({
-        "test": "value",
-    })
+    data = VectorDataDict(
+        {
+            "a": np.ones(100),
+            "b": np.empty(100),
+        }
+    )
+    attrs = AttrDict(
+        {
+            "test": "value",
+        }
+    )
     vds = VectorDataset(data, attrs=attrs)
     assert vds.data is not data
     assert vds.attrs is not attrs
