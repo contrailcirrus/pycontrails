@@ -238,6 +238,17 @@ def rad_cocip1() -> MetDataset:
     return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
+@pytest.fixture()
+def met_cocip_nonuniform_time(met_cocip1: MetDataset) -> MetDataset:
+    """Return a MetDataset with nonuniform time."""
+    ds = met_cocip1.data
+    ds = ds.isel(time=slice(0, 3))
+    time = ds["time"].values
+    time[2] += np.timedelta64(5, "h")
+    ds["time"] = time
+    return MetDataset(ds)
+
+
 @pytest.fixture(scope="module")
 def met_cocip1_module_scope() -> MetDataset:
     """Create met available at module scope."""

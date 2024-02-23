@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 
@@ -48,8 +49,6 @@ def instance_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> dict[str,
         "dt_integration": np.timedelta64(5, "m"),
         # need to keep this super small to avoid advecting out of bounds
         "max_age": np.timedelta64(90, "m"),
-        # keep low to ensure update_met_slices actually gets called
-        "met_slice_dt": np.timedelta64(1, "h"),
         # explicitly raise error if we advect too far
         "interpolation_bounds_error": True,
         "target_split_size": 1000,
@@ -75,10 +74,52 @@ def test_init_contrail_grid_minimal_params(met_cocip1: MetDataset, rad_cocip1: M
     assert "aircraft_type" in gc.params
     assert "azimuth" in gc.params
 
-    assert gc.params["met_slice_dt"] == np.timedelta64(1, "h")
 
-
-def test_met_too_short(met_cocip1: MetDataset, rad_cocip1: MetDataset, source: MetDataset) -> None:
+@pytest.mark.parametrize(
+    ("source_kwargs", "match"),
+    [
+        (
+            {
+                "latitude": [55, 56],
+                "level": [220, 230],
+                "time": "2019-01-01T03",
+            },
+            "longitude",
+        ),
+        (
+            {
+                "longitude": [-33, -34],
+                "level": [220, 230],
+                "time": "2019-01-01T03",
+            },
+            "latitude",
+        ),
+        (
+            {
+                "longitude": [-33, -34],
+                "latitude": [55, 56],
+                "level": [1, 2],
+                "time": "2019-01-01T03",
+            },
+            "level",
+        ),
+        (
+            {
+                "longitude": [-33, -34],
+                "latitude": [55, 56],
+                "level": [220, 230],
+                "time": "2019-01-01T13",
+            },
+            "time",
+        ),
+    ],
+)
+def test_met_too_short(
+    met_cocip1: MetDataset,
+    rad_cocip1: MetDataset,
+    source_kwargs: dict,
+    match: str,
+) -> None:
     """Check that a warning is issued when met and rad don't adequately overlap the source."""
 
     gc = CocipGrid(
@@ -88,95 +129,10 @@ def test_met_too_short(met_cocip1: MetDataset, rad_cocip1: MetDataset, source: M
         humidity_scaling=ExponentialBoostHumidityScaling(),
     )
 
-    source = CocipGrid.create_source(level=[1, 2, 3], time=np.datetime64("2019-01-01"))
+    source = CocipGrid.create_source(**source_kwargs)
     gc.set_source(source)
-    with pytest.warns(UserWarning, match="does not overlap the grid domain"):
+    with pytest.warns(UserWarning, match=match):
         gc._check_met_source_overlap()
-
-    source = CocipGrid.create_source(level=5, time=np.datetime64("2019-01-01T04"))
-    gc.set_source(source)
-    with pytest.warns(UserWarning, match="before model end time"):
-        gc.attach_timedict()
-
-    source = CocipGrid.create_source(level=5, time=np.datetime64("2018-12-31T23"))
-    gc.set_source(source)
-    with pytest.warns(UserWarning, match="after model start time"):
-        gc.attach_timedict()
-
-    source = CocipGrid.create_source(level=5, time=np.datetime64("2019-01-01"))
-    gc.set_source(source)
-    with pytest.warns(UserWarning, match="does not overlap the grid domain"):
-        gc._check_met_source_overlap()
-
-
-@pytest.mark.parametrize("met_slice_dt", [np.timedelta64(1, "h"), np.timedelta64(2, "h")])
-def test_load_met_slices(
-    instance_params: dict[str, Any],
-    source: MetDataset,
-    met_slice_dt: np.timedelta64,
-) -> None:
-    """Verify expected behavior in `load_met_slices` method."""
-    instance_params["met_slice_dt"] = met_slice_dt
-    gc = CocipGrid(**instance_params)
-    assert gc.met.shape == (16, 8, 4, 13)
-    assert gc.rad.shape == (16, 8, 1, 13)
-
-    (time,) = source.data["time"].values
-    met, rad = gc._load_met_slices(time)
-
-    if met_slice_dt == np.timedelta64(1, "h"):
-        assert met.shape == (16, 8, 4, 2)
-        assert rad.shape == (16, 8, 1, 3)  # rad shifted, so it includes 1 more time slice
-    else:
-        assert met.shape == (16, 8, 4, 3)
-        assert rad.shape == (16, 8, 1, 4)  # rad shifted, so it includes 1 more time slice
-
-    assert met.data["time"].values[0] == time
-    assert rad.data["time"].values[0] == time - np.timedelta64(30, "m")
-
-    # Make sure all variables present
-    met.ensure_vars(gc.met_variables)
-
-
-@pytest.mark.parametrize(
-    "met_slice_dt",
-    [
-        np.timedelta64(0, "m"),
-        np.timedelta64(55, "m"),
-        np.timedelta64(150, "m"),
-    ],
-)
-def test_init_bad_met_slice_dt(
-    instance_params: dict[str, Any], met_slice_dt: np.timedelta64
-) -> None:
-    """Check that an error is raised when `met_slice_dt` is not a positive multiple of an hour."""
-    assert instance_params["met_slice_dt"] == np.timedelta64(1, "h")
-    instance_params["met_slice_dt"] = met_slice_dt
-
-    if met_slice_dt == 0:
-        match = "positive timedelta"
-    else:
-        match = "must be a multiple of the time difference"
-    with pytest.raises(ValueError, match=match):
-        CocipGrid(**instance_params)
-
-
-@pytest.mark.parametrize(
-    "dt_integration",
-    [
-        np.timedelta64(7, "m"),
-        np.timedelta64(8, "m"),
-        np.timedelta64(40, "m"),
-    ],
-)
-def test_init_bad_dt_integration(
-    instance_params: dict[str, Any], dt_integration: np.timedelta64
-) -> None:
-    """Check that an error is raised when dt_integration is not a positive multiple met_slice_dt."""
-    assert instance_params["dt_integration"] == np.timedelta64(5, "m")
-    instance_params["dt_integration"] = dt_integration
-    with pytest.raises(ValueError, match="must be a multiple of dt_integration"):
-        CocipGrid(**instance_params)
 
 
 def test_create_bad_latitude() -> None:
@@ -257,11 +213,9 @@ def test_generate_new_grid_vectors(
     (time,) = gc.source_time
     time = time.astype("datetime64[h]")  # timedict uses this resolution
 
-    gc.attach_timedict()
-    assert time in gc.timedict
-    filt = gc.timedict[time]
+    gc._set_timesteps()
 
-    vectors = gc._generate_new_vectors(filt)
+    vectors = gc._generate_new_vectors(1)
     assert isinstance(vectors, Iterable)
     vectors = list(vectors)
 
@@ -297,6 +251,22 @@ def test_cocip_grid_ps_ap_model(source: MetDataset, instance_params: dict[str, A
 
     # Pin the proportion of grid cells producing persistent contrails
     assert out.data["ef_per_m"].astype(bool).mean().item() == pytest.approx(0.077, abs=0.001)
+
+
+def test_cocip_grid_met_nonuniform_time(
+    met_cocip_nonuniform_time: MetDataset,
+    instance_params: dict[str, Any],
+    source: MetDataset,
+) -> None:
+    """Check the CocipGrid.eval works with met data with nonuniform time."""
+    instance_params["met"] = met_cocip_nonuniform_time
+    cg = CocipGrid(**instance_params, aircraft_performance=PSGrid(), verbose_outputs_evolution=True)
+    out = cg.eval(source)
+    assert isinstance(out, MetDataset)
+
+    df = cg.contrail
+    assert isinstance(df, pd.DataFrame)
+    assert df.isna().sum().sum() == 0
 
 
 @pytest.fixture()
@@ -342,9 +312,9 @@ def test_calc_emissions(
 
     gc = CocipGrid(**instance_params)
     gc.set_source(source)
-    filt = np.array([True])
+    gc._set_timesteps()
 
-    vector = next(gc._generate_new_vectors(filt))
+    vector = next(gc._generate_new_vectors(1))
 
     met = instance_params["met"]
 
@@ -408,19 +378,17 @@ def test_calc_first_contrail(
     instance_params["target_split_size"] = 5000
     instance_params["aircraft_performance"] = bada_grid_model
 
-    gc = CocipGrid(**instance_params)
+    gc = CocipGrid(**instance_params, compute_tau_cirrus_in_model_init=True)
     gc.set_source(source)
-    filt = np.array([True])
+    gc._set_timesteps()
 
-    vector = next(gc._generate_new_vectors(filt))
+    vector = next(gc._generate_new_vectors(1))
     assert vector.size == 3200
-
-    met, rad = gc._load_met_slices(gc.source_time[0])
 
     cg_module.run_interpolators(
         vector,
-        met,
-        rad,
+        gc.met,
+        gc.rad,
         dz_m=gc.params["dz_m"],
         humidity_scaling=gc.params["humidity_scaling"],
     )
@@ -430,8 +398,8 @@ def test_calc_first_contrail(
 
     cg_module.run_interpolators(
         sac_vector,
-        met,
-        rad,
+        gc.met,
+        gc.rad,
         dz_m=gc.params["dz_m"],
         humidity_scaling=gc.params["humidity_scaling"],
     )
@@ -439,8 +407,8 @@ def test_calc_first_contrail(
 
     cg_module.run_interpolators(
         contrail,
-        met,
-        rad,
+        gc.met,
+        gc.rad,
         dz_m=gc.params["dz_m"],
         humidity_scaling=gc.params["humidity_scaling"],
     )
@@ -773,3 +741,14 @@ def test_verbose_outputs_formation(
     assert ds["fuel_flow"].mean() == pytest.approx(0.6037, rel=rel)
     assert ds["rhi"].mean() == pytest.approx(0.6273, rel=rel)
     assert ds["iwc"].mean() == pytest.approx(4.4621e-06, rel=rel)
+
+
+def test_max_age_exceeds_met(instance_params: dict[str, Any], source: MetDataset) -> None:
+    """Perform smoke test to ensure max_age can exceed the available met time."""
+    instance_params["verbose_outputs_formation"] = True
+    instance_params["met"].data = instance_params["met"].data.isel(time=[0, 1])
+    instance_params["interpolation_bounds_error"] = False
+
+    model = CocipGrid(**instance_params, aircraft_performance=PSGrid())
+    out = model.eval(source=source)
+    assert out.data["contrail_age"].max() == 1.0

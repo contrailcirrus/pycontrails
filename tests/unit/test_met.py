@@ -1178,8 +1178,9 @@ def test_to_polygon_feature_collection(met_ecmwf_pl_path: str):
 
 def test_wrap_longitude_new_patterns():
     """Test new wrap_longitude patterns (pycontails 0.26.0)."""
+    rng = np.random.default_rng()
     da1 = xr.DataArray(
-        data=np.random.random((360, 5, 5, 1)),
+        data=rng.random((360, 5, 5, 1)),
         dims=["longitude", "latitude", "level", "time"],
         coords={
             "longitude": np.arange(-180, 180),

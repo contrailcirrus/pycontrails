@@ -1425,3 +1425,35 @@ def test_cocip_bounds_check(fl: Flight, met: MetDataset, rad: MetDataset, lon0: 
     match = f"At time {time}, the contrail has no intersection with the met"
     with pytest.warns(UserWarning, match=match):
         cocip.eval(source=fl)
+
+
+def test_cocip_met_nonuniform(
+    fl: Flight,
+    met_cocip_nonuniform_time: MetDataset,
+    rad: MetDataset,
+) -> None:
+    """Confirm that a warning is emitted when the advected contrail blows out of bounds."""
+
+    # Confirm the fixture has nonuniform time
+    met_time = met_cocip_nonuniform_time.data["time"]
+    assert len(met_time) == 3
+    assert len(np.unique(np.diff(met_time))) == 2
+    t0, t1, t2 = met_time.values
+
+    cocip = Cocip(
+        met_cocip_nonuniform_time,
+        rad=rad,
+        humidity_scaling=ConstantHumidityScaling(rhi_adj=0.6),
+        dt_integration="30min",
+        max_age="2hours",
+    )
+    cocip.eval(source=fl)
+
+    assert cocip.contrail is not None
+    contrail_time = cocip.contrail["time"]
+
+    # Confirm the contrail has waypoints in both (t0, t1) and (t1, t2)
+    assert np.all(contrail_time < t2)
+    assert np.all(contrail_time > t0)
+    assert np.any(contrail_time < t1)
+    assert np.any(contrail_time > t1)
