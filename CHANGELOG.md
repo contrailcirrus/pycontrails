@@ -1,7 +1,15 @@
 
 # Changelog
 
-## v0.49.4 (unreleased)
+## v0.49.4
+
+### Breaking changes
+
+- Remove the `CocipGridParams.met_slice_dt` parameter. Now met downselection is handled automatically during contrail evolution. When the `met` and `rad` data passed into `CocipGrid` are not already loaded into memory, this update may make `CocipGrid` slightly more performant.
+- No longer explicitly load `met` and `rad` time slices into memory in `CocipGrid`. This now only occurs downstream when interpolation is performed. This change better aligns `CocipGrid` with other pycontrails models.
+- Remove the `cocipgrid.cocip_time_handling` module. Any useful tooling has been moved directly to the `cocipgrid.cocip_grid` module.
+- Remove the `CocipGrid.timedict` attribute. Add a `CocipGrid.timesteps` attribute. This is now applied in the same manner that the `Cocip` model uses its `timesteps` attribute.
+- Simplify the runtime estimate used in constructing the `CocipGrid` `tqdm` progress bar. The new estimate is less precise than the previous estimate and should not be trusted for long-running simulations.
 
 ### Features
 
@@ -16,10 +24,12 @@
   - BCS1
   - BCS3
 - Modify PS coefficients for B788, B789, and A359.
+- Support running `CocipGrid` on meteorology data without a uniformly-spaced time dimension. The `CocipGrid` implementation now no longer assumes `met["time"].diff()` is constant.
+- Add a `MetDataset.downselect_met` method. This performs a met downselection in analogy with `GeoVectorDataset.downselect_met`.
 
 ### Fixes
 
-- Improve clarity of warnings produced when meteorology data doesn't cover the time range required by a gridded Cocip model.
+- Improve clarity of warnings produced when meteorology data doesn't cover the time range required by a gridded CoCiP model.
 - No longer emit `pandas` warning when `Flight.resample_and_fill(..., drop=True, ...)` is called with non-float data.
 
 ## v0.49.3
