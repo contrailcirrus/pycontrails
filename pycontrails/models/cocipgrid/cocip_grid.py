@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import dataclasses
+import itertools
 import logging
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
@@ -217,42 +217,40 @@ class CocipGrid(models.Model):
 
             evolved_this_step = []
             ef_summary_this_step = []
-
+            downwash_vectors_this_step = []
             for vector in self._generate_new_vectors(time_idx):
-                res = _evolve_vector(
-                    vector,
-                    met=met,
-                    rad=rad,
-                    params=self.params,
-                    t=time_end,
-                    run_downwash=True,
-                    pbar=pbar,
-                )
-                if self.params["verbose_outputs_evolution"] and res.downwash:
-                    contrail_list.append(res.downwash)
-                if res.ef_summary:
-                    evolved_this_step.append(res.contrail)
-                    ef_summary_this_step.append(res.ef_summary)
-                    if self.params["verbose_outputs_evolution"]:
-                        contrail_list.append(res.contrail)
-                if self.params["verbose_outputs_formation"] and res.verbose_dict:
-                    verbose_dicts.append(res.verbose_dict)
+                downwash, verbose_dict = _run_downwash(vector, met, rad, self.params)
 
-            for vector in existing_vectors:
-                res = _evolve_vector(
+                if downwash:
+                    # T_crit_sac is no longer needed. If verbose_outputs_formation is True,
+                    # it's already storied in the verbose_dict data
+                    downwash.data.pop("T_crit_sac", None)
+                    downwash_vectors_this_step.append(downwash)
+                    if self.params["verbose_outputs_evolution"]:
+                        contrail_list.append(downwash)
+
+                if self.params["verbose_outputs_formation"] and verbose_dict:
+                    verbose_dicts.append(verbose_dict)
+
+                if pbar is not None:
+                    pbar.update()
+
+            for vector in itertools.chain(existing_vectors, downwash_vectors_this_step):
+                contrail, ef = _evolve_vector(
                     vector,
                     met=met,
                     rad=rad,
                     params=self.params,
                     t=time_end,
-                    run_downwash=False,
-                    pbar=pbar,
                 )
-                if res.ef_summary:
-                    evolved_this_step.append(res.contrail)
-                    ef_summary_this_step.append(res.ef_summary)
+                if ef:
+                    evolved_this_step.append(contrail)
+                    ef_summary_this_step.append(ef)
                     if self.params["verbose_outputs_evolution"]:
-                        contrail_list.append(res.contrail)
+                        contrail_list.append(contrail)
+
+                if pbar is not None:
+                    pbar.update()
 
             if not evolved_this_step:
                 if np.all(time_end > self.source_time):
@@ -985,32 +983,6 @@ def _apply_humidity_scaling(
     return vector
 
 
-@dataclasses.dataclass
-class _EvolveVectorResult:
-    """Result of a single evolution step.
-
-    Attributes
-    ----------
-    contrail : GeoVectorDataset
-        Evolved contrail at end of the evolution step.
-    downwash : GeoVectorDataset | None
-        Downwash vector. None if no waypoints survive downwash.
-        None if ``run_downwash`` is False.
-    verbose_dict : dict[str, pd.Series] | None
-        Dictionary of "verbose outputs formation" data. None if
-        ``run_downwash`` is False. None if ``params["verbose_outputs_formation"]``
-        is False.
-    ef_summary : VectorDataset | None
-        The ``contrail`` summary statistics. The result of
-        ``contrail.select(("index", "age", "ef"), copy=False)``.
-    """
-
-    contrail: GeoVectorDataset
-    downwash: GeoVectorDataset | None = None
-    verbose_dict: dict[str, pd.Series] | None = None
-    ef_summary: VectorDataset | None = None
-
-
 def _evolve_vector(
     vector: GeoVectorDataset,
     *,
@@ -1018,9 +990,7 @@ def _evolve_vector(
     rad: MetDataset,
     params: dict[str, Any],
     t: np.datetime64,
-    run_downwash: bool,
-    pbar: tqdm.tqdm | None,
-) -> _EvolveVectorResult:
+) -> tuple[GeoVectorDataset, VectorDataset]:
     """Evolve ``vector`` to time ``t``.
 
     Return surviving contrail at end of evolution and aggregate metrics from evolution.
@@ -1035,43 +1005,22 @@ def _evolve_vector(
     Parameters
     ----------
     vector : GeoVectorDataset
-        Grid points of interest. This is either a slice of the ``source`` or a contrail
-        that has been initialized and is being evolved.
+        Contrail points that have been initialized and are ready for evolution.
     met, rad : MetDataset
         CoCiP met and rad slices. See :class:`CocipGrid`.
     params : dict[str, Any]
         CoCiP model parameters. See :class:`CocipGrid`.
     t : np.datetime64
         Time to evolve to.
-    run_downwash : bool
-        Use to run initial downwash on waypoints satisfying SAC
-    pbar : tqdm.tqmd | None
-        Track ``tqdm`` progress bar over simulation.
 
     Returns
     -------
-    _EvolveVectorResult
-        Result of the evolution step.
+    contrail : GeoVectorDataset
+        Evolved contrail at end of the evolution step.
+    ef_summary : VectorDataset
+        The ``contrail`` summary statistics. The result of
+        ``contrail.select(("index", "age", "ef"), copy=False)``.
     """
-    # Run downwash and first contrail calculation
-    if run_downwash:
-        downwash, verbose_dict = _run_downwash(vector, met, rad, params)
-
-        # T_crit_sac is no longer needed. If verbose_outputs_formation is True,
-        # it's already storied in the verbose_dict data
-        downwash.data.pop("T_crit_sac", None)
-        if pbar is not None:
-            pbar.update()
-
-        # Early exit if no waypoints survive downwash
-        if not downwash:
-            return _EvolveVectorResult(contrail=downwash, verbose_dict=verbose_dict)
-        vector = downwash
-
-    else:
-        downwash = None
-        verbose_dict = None
-
     dt = t - vector["time"]
 
     if _is_segment_free_mode(vector):
@@ -1095,17 +1044,9 @@ def _evolve_vector(
         **params["_interp_kwargs"],
     )
     out = calc_evolve_one_step(vector, out, params)
-    ef_summary = out.select(("index", "age", "ef"), copy=False) if out else None
+    ef_summary = out.select(("index", "age", "ef"), copy=False)
 
-    if pbar is not None:
-        pbar.update()
-
-    return _EvolveVectorResult(
-        contrail=out,
-        downwash=downwash,
-        verbose_dict=verbose_dict,
-        ef_summary=ef_summary,
-    )
+    return out, ef_summary
 
 
 def _run_downwash(
