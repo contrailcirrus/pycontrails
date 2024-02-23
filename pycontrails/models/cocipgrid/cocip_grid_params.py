@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import dataclasses
 
-import numpy as np
-
 from pycontrails.core.aircraft_performance import AircraftPerformanceGrid
 from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.models.cocip.cocip_params import CocipParams
@@ -30,13 +28,6 @@ class CocipGridParams(CocipParams):
     #: 10% of waypoints will survive SAC and initial downwash filtering. Accordingly, this parameter
     #: magnifies mesh split size before SAC is computed.
     target_split_size_pre_SAC_boost: float = 3.0
-
-    #: Time slice for loading met interpolators into memory, by default np.timedelta64(1, "h").
-    #: Must be a multiple of `np.timedelta64(1, "h")`. The higher the multiple, the more
-    #: memory consumed by the method `eval`. If None, the full met dataset is loaded
-    #: at once.
-    # TODO: Move this to CocipParams once that model is ready for fancy time handling
-    met_slice_dt: np.timedelta64 | None = np.timedelta64(1, "h")
 
     #: Display `tqdm` progress bar showing batch evaluation progress.
     show_progress: bool = True
