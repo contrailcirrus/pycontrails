@@ -533,6 +533,82 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         return _is_zarr(self.data)
 
+    def downselect_met(
+        self,
+        met: MetDataType,
+        *,
+        longitude_buffer: tuple[float, float] = (0.0, 0.0),
+        latitude_buffer: tuple[float, float] = (0.0, 0.0),
+        level_buffer: tuple[float, float] = (0.0, 0.0),
+        time_buffer: tuple[np.timedelta64, np.timedelta64] = (
+            np.timedelta64(0, "h"),
+            np.timedelta64(0, "h"),
+        ),
+        copy: bool = True,
+    ) -> MetDataType:
+        """Downselect ``met`` to encompass a spatiotemporal region of the data.
+
+        .. warning::
+
+            This method is analogous to :meth:`GeoVectorDataset.downselect_met`.
+            It does not change the instance data, but instead operates on the
+            ``met`` input. This method is different from :meth:`downselect` which
+            operates on the instance data.
+
+        Parameters
+        ----------
+        met : MetDataset | MetDataArray
+            MetDataset or MetDataArray to downselect.
+        longitude_buffer : tuple[float, float], optional
+            Extend longitude domain past by ``longitude_buffer[0]`` on the low side
+            and ``longitude_buffer[1]`` on the high side.
+            Units must be the same as class coordinates.
+            Defaults to ``(0, 0)`` degrees.
+        latitude_buffer : tuple[float, float], optional
+            Extend latitude domain past by ``latitude_buffer[0]`` on the low side
+            and ``latitude_buffer[1]`` on the high side.
+            Units must be the same as class coordinates.
+            Defaults to ``(0, 0)`` degrees.
+        level_buffer : tuple[float, float], optional
+            Extend level domain past by ``level_buffer[0]`` on the low side
+            and ``level_buffer[1]`` on the high side.
+            Units must be the same as class coordinates.
+            Defaults to ``(0, 0)`` [:math:`hPa`].
+        time_buffer : tuple[np.timedelta64, np.timedelta64], optional
+            Extend time domain past by ``time_buffer[0]`` on the low side
+            and ``time_buffer[1]`` on the high side.
+            Units must be the same as class coordinates.
+            Defaults to ``(np.timedelta64(0, "h"), np.timedelta64(0, "h"))``.
+        copy : bool
+            If returned object is a copy or view of the original. True by default.
+
+        Returns
+        -------
+        MetDataset | MetDataArray
+            Copy of downselected MetDataset or MetDataArray.
+        """
+        variables = self.variables
+        lon = variables["longitude"].values
+        lat = variables["latitude"].values
+        level = variables["level"].values
+        time = variables["time"].values
+
+        vector = vector_module.GeoVectorDataset(
+            longitude=[lon.min(), lon.max()],
+            latitude=[lat.min(), lat.max()],
+            level=[level.min(), level.max()],
+            time=[time.min(), time.max()],
+        )
+
+        return vector.downselect_met(
+            met,
+            longitude_buffer=longitude_buffer,
+            latitude_buffer=latitude_buffer,
+            level_buffer=level_buffer,
+            time_buffer=time_buffer,
+            copy=copy,
+        )
+
 
 class MetDataset(MetBase):
     """Meteorological dataset with multiple variables.
@@ -980,22 +1056,21 @@ class MetDataset(MetBase):
             crs                 EPSG:4326
 
         """
-        coords_keys = [str(key) for key in self.data.dims]  # str not in Hashable
+        coords_keys = self.data.dims
         coords_vals = [self.variables[key].values for key in coords_keys]
         coords_meshes = np.meshgrid(*coords_vals, indexing="ij")
-        raveled_coords = [mesh.ravel() for mesh in coords_meshes]
+        raveled_coords = (mesh.ravel() for mesh in coords_meshes)
         data = dict(zip(coords_keys, raveled_coords))
 
-        vector = vector_module.GeoVectorDataset(data, copy=False)
-        for key in self:
+        out = vector_module.GeoVectorDataset(data, copy=False)
+        for key, da in self.data.items():
             # The call to .values here will load the data if it is lazy
-            vector[key] = self[key].data.values.ravel()
+            out[key] = da.values.ravel()  # type: ignore[index]
 
         if transfer_attrs:
-            # vector.attrs expects keys to be strings .... we'll get an error
-            # if we cannot cast here
-            vector.attrs.update({str(k): v for k, v in self.attrs.items()})
-        return vector
+            out.attrs.update(self.attrs)  # type: ignore[arg-type]
+
+        return out
 
     def _get_pycontrails_attr_template(
         self,
