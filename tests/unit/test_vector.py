@@ -153,7 +153,8 @@ def test_vector_dict_like(random_path: VectorDataset) -> None:
     assert vds.get("d", None) is None
 
     # set
-    d = np.random.random(vds["a"].size)
+    rng = np.random.default_rng()
+    d = rng.random(vds["a"].size)
     vds["d"] = d
     assert vds.data["d"] is d
     with pytest.raises(ValueError, match="sizes"):
