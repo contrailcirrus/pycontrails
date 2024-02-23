@@ -447,7 +447,8 @@ class Model(ABC):
 
         # Raise error if source is not a MetDataset or GeoVectorDataset
         if not isinstance(source, (MetDataset, GeoVectorDataset)):
-            raise TypeError(f"Unable to handle input eval data {source}")
+            msg = f"Unknown source type: {type(source)}"
+            raise TypeError(msg)
 
         if self.params["copy_source"]:
             source = source.copy()
@@ -516,11 +517,14 @@ class Model(ABC):
         TypeError
             Raised if :attr:`met` is not a :class:`MetDataset`.
         """
-        if not hasattr(self, "source"):
-            raise ValueError("Attribute `source` must be defined before calling `downselect_met`")
+        try:
+            source = self.source
+        except AttributeError as exc:
+            msg = "Attribute 'source' must be defined before calling 'downselect_met'."
+            raise AttributeError(msg) from exc
 
         # TODO: This could be generalized for a MetDataset source
-        if not isinstance(self.source, GeoVectorDataset):
+        if not isinstance(source, GeoVectorDataset):
             msg = "Attribute 'source' must be a GeoVectorDataset"
             raise TypeError(msg)
 
@@ -543,7 +547,7 @@ class Model(ABC):
         }
         kwargs = {k: v for k, v in buffers.items() if v is not None}
 
-        self.met = self.source.downselect_met(self.met, **kwargs, copy=False)
+        self.met = source.downselect_met(self.met, **kwargs, copy=False)
 
     def set_source_met(
         self,
@@ -614,7 +618,8 @@ class Model(ABC):
                 continue
 
             if not isinstance(self.source, MetDataset):
-                raise TypeError(f"Unknown source type: {type(self.source)}")
+                msg = f"Unknown source type: {type(self.source)}"
+                raise TypeError(msg)
 
             da = self.met.data[met_key].reset_coords(drop=True)
             try:
@@ -770,7 +775,8 @@ def _interp_grid_to_grid(
         interped = da.interp(coords, **interp_kwargs).load().astype(da.dtype, copy=False)
         return interped.assign_coords(level=level0)
 
-    raise NotImplementedError(f"Unsupported q_method: {q_method}")
+    msg = f"Unsupported q_method: {q_method}"
+    raise NotImplementedError(msg)
 
 
 def _raise_missing_met_var(var: MetVariable | Sequence[MetVariable]) -> NoReturn:
@@ -786,15 +792,17 @@ def _raise_missing_met_var(var: MetVariable | Sequence[MetVariable]) -> NoReturn
     KeyError
     """
     if isinstance(var, MetVariable):
-        raise KeyError(
+        msg = (
             f"Variable `{var.standard_name}` not found. Either pass parameter `met`"
             f"in model constructor, or define `{var.standard_name}` data on input data."
         )
+        raise KeyError(msg)
     missing_keys = [v.standard_name for v in var]
-    raise KeyError(
+    msg = (
         f"One of `{missing_keys}` is required. Either pass parameter `met`"
         f"in model constructor, or define one of `{missing_keys}` data on input data."
     )
+    raise KeyError(msg)
 
 
 def interpolate_met(
@@ -847,7 +855,8 @@ def interpolate_met(
         return out
 
     if met is None:
-        raise ValueError(f"No variable key '{vector_key}' in 'vector' and 'met' is None")
+        msg = f"No variable key '{vector_key}' in 'vector' and 'met' is None"
+        raise KeyError(msg)
 
     if met_key in ("q", "specific_humidity") and q_method is not None:
         mda, log_applied = _extract_q(met, met_key, q_method)
@@ -859,7 +868,8 @@ def interpolate_met(
         try:
             mda = met[met_key]
         except KeyError as exc:
-            raise KeyError(f"No variable key '{met_key}' in 'met'.") from exc
+            msg = f"No variable key '{met_key}' in 'met'."
+            raise KeyError(msg) from exc
 
         out = vector.intersect_met(mda, **interp_kwargs)
 
@@ -890,7 +900,8 @@ def _extract_q(met: MetDataset, met_key: str, q_method: str) -> tuple[MetDataArr
         try:
             return met[met_key], False
         except KeyError as exc:
-            raise KeyError(f"No variable key '{met_key}' in 'met'.") from exc
+            msg = f"No variable key '{met_key}' in 'met'."
+            raise KeyError(msg) from exc
 
     try:
         return met["log_specific_humidity"], True
@@ -904,7 +915,8 @@ def _extract_q(met: MetDataset, met_key: str, q_method: str) -> tuple[MetDataArr
     try:
         return met[met_key], False
     except KeyError as exc:
-        raise KeyError(f"No variable key '{met_key}' in 'met'.") from exc
+        msg = f"No variable key '{met_key}' in 'met'."
+        raise KeyError(msg) from exc
 
 
 def _prepare_q(
@@ -972,7 +984,8 @@ def _prepare_q_cubic_spline(
     da: xr.DataArray, level: npt.NDArray[np.float64]
 ) -> tuple[MetDataArray, npt.NDArray[np.float64]]:
     if da["level"][0] < 50.0 or da["level"][-1] > 1000.0:
-        raise ValueError("Cubic spline interpolation requires data to span 50-1000 hPa.")
+        msg = "Cubic spline interpolation requires data to span 50-1000 hPa."
+        raise ValueError(msg)
     ppoly = _load_spline()
 
     da = da.assign_coords(level=ppoly(da["level"]))
@@ -1038,7 +1051,8 @@ def raise_invalid_q_method_error(q_method: str) -> NoReturn:
         ``q_method`` is not one of ``None``, ``"log-q-log-p"``, or ``"cubic-spline"``.
     """
     available = None, "log-q-log-p", "cubic-spline"
-    raise ValueError(f"Invalid 'q_method' value '{q_method}'. Must be one of {available}.")
+    msg = f"Invalid 'q_method' value '{q_method}'. Must be one of {available}."
+    raise ValueError(msg)
 
 
 @functools.cache
