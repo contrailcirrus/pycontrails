@@ -278,11 +278,14 @@ class CocipGrid(models.Model):
         rad: MetDataset | None,
         time_end: np.datetime64,
     ) -> tuple[MetDataset, MetDataset]:
-        """Downselect met and rad slices if necessary.
+        """Downselect ``self.met`` and ``self.rad`` if necessary to cover ``time_end``.
+
+        If the currently used ``met`` and ``rad`` slices do not include the time
+        ``time_end``, new slices are selected from the larger ``self.met`` and
+        ``self.rad`` data. The slicing only occurs in the time domain.
 
         If ``self.params["downselect_met"]`` is True, :func:`_downselect_met` has
-        already performed a spatial downselection of the met data. This method
-        only downselects ``met`` and ``rad`` in the time domain.
+        already performed a spatial downselection of the met data.
         """
         if met is None or time_end > met.variables["time"].values[-1]:
             idx = np.searchsorted(self.met.variables["time"].values, time_end)
