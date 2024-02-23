@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
@@ -13,15 +14,14 @@ import pandas as pd
 
 import pycontrails
 from pycontrails.core import models
-from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
 from pycontrails.models import humidity_scaling, sac
 from pycontrails.models.cocip import cocip, contrail_properties, wake_vortex, wind_shear
-from pycontrails.models.cocipgrid import cocip_time_handling
 from pycontrails.models.cocipgrid.cocip_grid_params import CocipGridParams
 from pycontrails.models.emissions import Emissions
 from pycontrails.physics import geo, thermo, units
+from pycontrails.utils import dependencies
 
 if TYPE_CHECKING:
     import tqdm
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
+class CocipGrid(models.Model):
     """Run CoCiP simulation on a grid.
 
     See :meth:`eval` for a description of model evaluation ``source`` parameters.
@@ -103,7 +103,6 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         **params_kwargs: Any,
     ):
         super().__init__(met, params=params, **params_kwargs)
-        self.validate_time_params()
 
         compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
         self.met, self.rad = cocip.process_met_datasets(met, rad, compute_tau_cirrus)
@@ -112,9 +111,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         self.params["_interp_kwargs"] = self.interp_kwargs
 
         if self.params["radiative_heating_effects"]:
-            raise NotImplementedError(
-                "Parameter 'radiative_heating_effects' is not yet implemented in CocipGrid"
-            )
+            msg = "Parameter 'radiative_heating_effects' is not yet implemented in CocipGrid"
+            raise NotImplementedError(msg)
 
         self._target_dtype = np.result_type(*self.met.data.values())
 
@@ -187,21 +185,11 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
             # in the source (we need to evolve contrails forward in time).
             # Perhaps we could use the isel(time=0) slice to construct the source
             # from the met and rad data.
-            raise NotImplementedError("CocipGrid.eval() with 'source=None' is not implemented.")
-        if isinstance(source, Flight) and not source.ensure_vars(
-            ("true_airspeed", "azimuth"), False
-        ):
-            warnings.warn(
-                "Flight source no longer supported by CocipGrid. "
-                "Any Flight source will be viewed as a GeoVectorDataset. "
-                "In particular, flight segment variable such as azimuth and true_airspeed "
-                "are not used by CocipGrid (nominal values are used instead). Attach "
-                "these to the Flight source before calling 'eval' to use them in CocipGrid."
-            )
+            msg = "CocipGrid.eval() with 'source=None' is not implemented."
+            raise NotImplementedError(msg)
         self.set_source(source)
 
         self.met, self.rad = _downselect_met(self.source, self.met, self.rad, self.params)
-        # Add tau_cirrus if it doesn't exist already.
         self.met = cocip.add_tau_cirrus(self.met)
         self._check_met_source_overlap()
 
@@ -212,37 +200,70 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
                 self.source.attrs[f"humidity_scaling_{k}"] = v
 
         self._parse_verbose_outputs()
-        self.attach_timedict()
+
+        self._set_timesteps()
         pbar = self.init_pbar()
 
-        summary: VectorDataset | None
-        summary_by_met_slice: list[VectorDataset] = []
-        existing_vectors: Iterator[GeoVectorDataset] = iter(())
+        met: MetDataset | None = None
+        rad: MetDataset | None = None
+
+        ef_summary: list[VectorDataset] = []
         verbose_dicts: list[dict[str, pd.Series]] = []
         contrail_list: list[GeoVectorDataset] = []
-        for time, filt in self.timedict.items():
-            met, rad = self._load_met_slices(time, pbar)
+        existing_vectors: Iterator[GeoVectorDataset] = iter(())
 
-            new_vectors = self._generate_new_vectors(filt)
-            evolved = []
-            for vector in new_vectors:
-                evolved.append(_evolve_vector(vector, met, rad, self.params, True, pbar))
+        for time_idx, time_end in enumerate(self.timesteps):
+            met, rad = self._maybe_downselect_met_rad(met, rad, time_end)
+
+            evolved_this_step = []
+            ef_summary_this_step = []
+
+            for vector in self._generate_new_vectors(time_idx):
+                res = _evolve_vector(
+                    vector,
+                    met=met,
+                    rad=rad,
+                    params=self.params,
+                    t=time_end,
+                    run_downwash=True,
+                    pbar=pbar,
+                )
+                if self.params["verbose_outputs_evolution"] and res.downwash:
+                    contrail_list.append(res.downwash)
+                if res.ef_summary:
+                    evolved_this_step.append(res.contrail)
+                    ef_summary_this_step.append(res.ef_summary)
+                    if self.params["verbose_outputs_evolution"]:
+                        contrail_list.append(res.contrail)
+                if self.params["verbose_outputs_formation"] and res.verbose_dict:
+                    verbose_dicts.append(res.verbose_dict)
+
             for vector in existing_vectors:
-                evolved.append(_evolve_vector(vector, met, rad, self.params, False, pbar))
-            if not evolved:
-                break
+                res = _evolve_vector(
+                    vector,
+                    met=met,
+                    rad=rad,
+                    params=self.params,
+                    t=time_end,
+                    run_downwash=False,
+                    pbar=pbar,
+                )
+                if res.ef_summary:
+                    evolved_this_step.append(res.contrail)
+                    ef_summary_this_step.append(res.ef_summary)
+                    if self.params["verbose_outputs_evolution"]:
+                        contrail_list.append(res.contrail)
 
-            vectors, summary_data, verbose_dicts_this_step, contrail_lists = zip(*evolved)
-            existing_vectors = combine_vectors(vectors, self.params["target_split_size"])
-            summary = VectorDataset.sum([r for r in summary_data if r])
-            summary_by_met_slice.append(summary)
+            if not evolved_this_step:
+                if np.all(time_end > self.source_time):
+                    break
+                continue
 
-            if self.params["verbose_outputs_formation"]:
-                verbose_dicts.extend([d for d in verbose_dicts_this_step if d])
-            if self.params["verbose_outputs_evolution"]:
-                contrail_list.extend([v for cl in contrail_lists for v in cl if v])
+            existing_vectors = combine_vectors(evolved_this_step, self.params["target_split_size"])
 
-            # TODO: Adjust pbar
+            summary = VectorDataset.sum(ef_summary_this_step)
+            if summary:
+                ef_summary.append(summary)
 
         if pbar is not None:
             logger.debug("Close progress bar")
@@ -250,9 +271,34 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
             pbar.close()
 
         self._attach_verbose_outputs_evolution(contrail_list)
-        summary_by_met_slice = [s for s in summary_by_met_slice if s]
-        summary = calc_intermediate_results(summary_by_met_slice)
-        return self._bundle_results(summary, verbose_dicts)
+        total_ef_summary = _aggregate_ef_summary(ef_summary)
+        return self._bundle_results(total_ef_summary, verbose_dicts)
+
+    def _maybe_downselect_met_rad(
+        self,
+        met: MetDataset | None,
+        rad: MetDataset | None,
+        time_end: np.datetime64,
+    ) -> tuple[MetDataset, MetDataset]:
+        """Downselect met and rad slices if necessary.
+
+        If ``self.params["downselect_met"]`` is True, :func:`_downselect_met` has
+        already performed a spatial downselection of the met data. This method
+        only downselects ``met`` and ``rad`` in the time domain.
+        """
+        if met is None or time_end > met.variables["time"].values[-1]:
+            idx = np.searchsorted(self.met.variables["time"].values, time_end)
+            sl = slice(max(0, idx - 1), idx + 1)
+            logger.debug("Select met slice %s", sl)
+            met = MetDataset(self.met.data.isel(time=sl), copy=False)
+
+        if rad is None or time_end > rad.variables["time"].values[-1]:
+            idx = np.searchsorted(self.rad.variables["time"].values, time_end)
+            sl = slice(max(0, idx - 1), idx + 1)
+            logger.debug("Select rad slice %s", sl)
+            rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
+
+        return met, rad
 
     def _attach_verbose_outputs_evolution(self, contrail_list: list[GeoVectorDataset]) -> None:
         """Attach intermediate artifacts to the model.
@@ -263,17 +309,18 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         Mirrors implementation in :class:`Cocip`. We could do additional work here
         if this turns out to be useful.
         """
-        if self.params["verbose_outputs_evolution"]:
-            # Attach the raw data
-            self.contrail_list = contrail_list  # attach raw data
+        if not self.params["verbose_outputs_evolution"]:
+            return
 
-            if contrail_list:
-                # And the contrail DataFrame (pd.concat is expensive here)
-                dfs = [contrail.dataframe for contrail in contrail_list]
-                dfs = [df.assign(timestep=t_idx) for t_idx, df in enumerate(dfs)]
-                self.contrail = pd.concat(dfs)
-            else:
-                self.contrail = pd.DataFrame()
+        self.contrail_list = contrail_list  # attach raw data
+
+        if contrail_list:
+            # And the contrail DataFrame (pd.concat is expensive here)
+            dfs = [contrail.dataframe for contrail in contrail_list]
+            dfs = [df.assign(timestep=t_idx) for t_idx, df in enumerate(dfs)]
+            self.contrail = pd.concat(dfs)
+        else:
+            self.contrail = pd.DataFrame()
 
     def _bundle_results(
         self,
@@ -342,6 +389,105 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
     # Common Methods & Properties
     # ---------------------------
 
+    @property
+    def source_time(self) -> npt.NDArray[np.datetime64]:
+        """Return the time array of the :attr:`source` data."""
+        try:
+            source = self.source
+        except AttributeError as exc:
+            msg = "No source set"
+            raise AttributeError(msg) from exc
+
+        if isinstance(source, GeoVectorDataset):
+            return source["time"]
+        if isinstance(source, MetDataset):
+            return source.variables["time"].values
+
+        msg = f"Cannot calculate timesteps for {source}"
+        raise TypeError(msg)
+
+    def _set_timesteps(self) -> None:
+        """Set the :attr:`timesteps` based on the ``source`` time range."""
+        source_time = self.source_time
+        tmin = source_time.min()
+        tmax = source_time.max()
+
+        tmin = pd.to_datetime(tmin)
+        tmax = pd.to_datetime(tmax)
+        dt = pd.to_timedelta(self.params["dt_integration"])
+
+        t_start = tmin.ceil(dt)
+        t_end = tmax.floor(dt) + self.params["max_age"] + dt
+        self.timesteps = np.arange(t_start, t_end, dt)
+
+    def init_pbar(self) -> tqdm.tqdm | None:
+        """Initialize a progress bar for model evaluation.
+
+        The total number of steps is estimated in a very crude way. Do not
+        rely on the progress bar for accurate estimates of runtime.
+
+        Returns
+        -------
+        tqdm.tqdm | None
+            A progress bar for model evaluation. If ``show_progress`` is False, returns None.
+        """
+
+        if not self.params["show_progress"]:
+            return None
+
+        try:
+            from tqdm.auto import tqdm
+        except ModuleNotFoundError as exc:
+            dependencies.raise_module_not_found_error(
+                name="CocipGrid.init_pbar method",
+                package_name="tqdm",
+                module_not_found_error=exc,
+                extra="Alternatively, set model parameter 'show_progress=False'.",
+            )
+
+        split_size = self.params["target_split_size"]
+        if isinstance(self.source, MetDataset):
+            n_splits_by_time = self._metdataset_source_n_splits()
+            n_splits = len(self.source_time) * n_splits_by_time
+        else:
+            tmp1 = self.source_time[:, None] < self.timesteps[1:]
+            tmp2 = self.source_time[:, None] >= self.timesteps[:-1]
+            n_points_by_timestep = np.sum(tmp1 & tmp2, axis=0)
+
+            init_split_size = self.params["target_split_size_pre_SAC_boost"] * split_size
+            n_splits_by_time = np.ceil(n_points_by_timestep / init_split_size)
+            n_splits = np.sum(n_splits_by_time)
+
+        n_init_surv = 0.1 * n_splits  # assume 10% of points survive the downwash
+        n_evo_steps = len(self.timesteps) * n_init_surv
+        total = n_splits + n_evo_steps
+
+        return tqdm(total=int(total), desc=f"{type(self).__name__} eval")
+
+    def _metdataset_source_n_splits(self) -> int:
+        """Compute the number of splits at a given time for a :class:`MetDataset` source.
+
+        This method assumes :attr:`source` is a :class:`MetDataset`.
+
+        Returns
+        -------
+        int
+            The number of splits.
+        """
+        if not isinstance(self.source, MetDataset):
+            msg = f"Expected source to be a MetDataset, found {type(self.source)}"
+            raise TypeError(msg)
+
+        variables = self.source.variables
+        grid_size = (
+            variables["longitude"].size * variables["latitude"].size * variables["level"].size
+        )
+
+        split_size = int(
+            self.params["target_split_size_pre_SAC_boost"] * self.params["target_split_size"]
+        )
+        return max(grid_size // split_size, 1)
+
     def _parse_verbose_outputs(self) -> None:
         """Confirm param "verbose_outputs" has the expected type for grid and path mode.
 
@@ -351,10 +497,11 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         is determine by :func:`_supported_verbose_outputs`.
         """
         if self.params["verbose_outputs"]:
-            raise ValueError(
+            msg = (
                 "Parameter 'verbose_outputs' is no longer supported for grid mode. "
                 "Instead, use 'verbose_outputs_formation' and 'verbose_outputs_evolution'."
             )
+            raise ValueError(msg)
         vo = self.params["verbose_outputs_formation"]
         supported = _supported_verbose_outputs_formation()
 
@@ -375,15 +522,13 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
             )
         self.params["verbose_outputs_formation"] = vo & supported
 
-    def _generate_new_vectors(
-        self, filt: npt.NDArray[np.bool_]
-    ) -> Generator[GeoVectorDataset, None, None]:
+    def _generate_new_vectors(self, time_idx: int) -> Generator[GeoVectorDataset, None, None]:
         """Generate :class:`GeoVectorDataset` instances from :attr:`source`.
 
         Parameters
         ----------
-        filt : npt.NDArray[np.bool_]
-            Boolean array that can be used to filter :attr:`self.source_time`.
+        time_idx : int
+            The index of the current time slice in :attr:`timesteps`.
 
         Yields
         ------
@@ -394,14 +539,25 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         """
         if "index" in self.source:
             # FIXME: We can simply change the internal variable to __index
-            raise RuntimeError("The variable 'index' is used internally. Found in source.")
+            msg = "The variable 'index' is used internally. Found in source."
+            raise RuntimeError(msg)
+
+        source_time = self.source_time
+        t_cur = self.timesteps[time_idx]
+        if time_idx == 0:
+            filt = source_time < t_cur
+        else:
+            t_prev = self.timesteps[time_idx - 1]
+            filt = (source_time >= t_prev) & (source_time < t_cur)
+
+        if not filt.any():
+            return
 
         if isinstance(self.source, MetDataset):
-            source_time = self.source_time
-            times_in_filt = self.source_time[filt]
+            times_in_filt = source_time[filt]
             filt_start_idx = np.argmax(filt).item()  # needed to ensure globally unique indexes
 
-            n_splits = self._grid_spatial_n_splits()
+            n_splits = self._metdataset_source_n_splits()
             for idx, time in enumerate(times_in_filt):
                 # For now, sticking with the convention that every vector should
                 # have a constant time value.
@@ -409,9 +565,11 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
 
                 # Convert the 4D grid to a vector
                 vector = source_slice.to_vector()
-                vector.update(longitude=vector["longitude"].astype(self._target_dtype, copy=False))
-                vector.update(latitude=vector["latitude"].astype(self._target_dtype, copy=False))
-                vector.update(level=vector["level"].astype(self._target_dtype, copy=False))
+                vector.update(
+                    longitude=vector["longitude"].astype(self._target_dtype, copy=False),
+                    latitude=vector["latitude"].astype(self._target_dtype, copy=False),
+                    level=vector["level"].astype(self._target_dtype, copy=False),
+                )
                 vector["index"] = source_time.size * np.arange(vector.size) + filt_start_idx + idx
 
                 # Split into chunks
@@ -441,7 +599,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
                     yield subvector
 
         else:
-            raise TypeError("Unknown source")
+            msg = f"Unknown source {self.source}"
+            raise TypeError(msg)
 
     def _build_subvector(self, vector: GeoVectorDataset) -> GeoVectorDataset:
         """Mutate `vector` by adding additional keys."""
@@ -465,11 +624,14 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         if azimuth is None and segment_length is None:
             return vector
         if azimuth is None:
-            raise ValueError("Set segment_length to None for experimental segment-free model")
+            msg = "Set 'segment_length' to None for experimental segment-free model"
+            raise ValueError(msg)
         if segment_length is None:
-            raise ValueError("Set azimuth to None for experimental segment-free model")
+            msg = "Set 'azimuth' to None for experimental segment-free model"
+            raise ValueError(msg)
         if self.params["dsn_dz_factor"]:
-            raise ValueError("dsn_dz_factor not supported outside of the segment-free mode")
+            msg = "'dsn_dz_factor' not supported outside of the segment-free mode"
+            raise ValueError(msg)
 
         lons = vector["longitude"]
         lats = vector["latitude"]
@@ -487,27 +649,34 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         return vector
 
     def _check_met_source_overlap(self) -> None:
-        if not hasattr(self, "source"):
-            raise ValueError("No source set")
+        try:
+            source = self.source
+        except AttributeError as exc:
+            msg = "No source set"
+            raise AttributeError(msg) from exc
 
-        if isinstance(self.source, MetDataset):
-            longitude = self.source.data["longitude"].values
-            latitude = self.source.data["latitude"].values
-            level = self.source.data["level"].values
-            time = self.source.data["time"].values
+        if isinstance(source, MetDataset):
+            variables = source.variables
+            longitude = variables["longitude"].values
+            latitude = variables["latitude"].values
+            level = variables["level"].values
+            time = variables["time"].values
         else:
-            longitude = self.source["longitude"]
-            latitude = self.source["latitude"]
-            level = self.source.level
-            time = self.source["time"]
+            longitude = source["longitude"]
+            latitude = source["latitude"]
+            level = source.level
+            time = source["time"]
 
-        _check_overlap(self.met.data["longitude"].values, longitude, "longitude", "met")
-        _check_overlap(self.met.data["latitude"].values, latitude, "latitude", "met")
-        _check_overlap(self.met.data["level"].values, level, "level", "met")
-        _check_overlap(self.met.data["time"].values, time, "time", "met")
-        _check_overlap(self.rad.data["longitude"].values, longitude, "longitude", "rad")
-        _check_overlap(self.rad.data["latitude"].values, latitude, "latitude", "rad")
-        _check_overlap(self.rad.data["time"].values, time, "time", "rad")
+        variables = self.met.variables
+        _check_overlap(variables["longitude"].values, longitude, "longitude", "met")
+        _check_overlap(variables["latitude"].values, latitude, "latitude", "met")
+        _check_overlap(variables["level"].values, level, "level", "met")
+        _check_overlap(variables["time"].values, time, "time", "met")
+
+        variables = self.rad.variables
+        _check_overlap(variables["longitude"].values, longitude, "longitude", "rad")
+        _check_overlap(variables["latitude"].values, latitude, "latitude", "rad")
+        _check_overlap(variables["time"].values, time, "time", "rad")
 
         _warn_not_wrap(self.met)
         _warn_not_wrap(self.rad)
@@ -567,7 +736,8 @@ class CocipGrid(models.Model, cocip_time_handling.CocipTimeHandlingMixin):
         out = MetDataset.from_coords(longitude=longitude, latitude=latitude, level=level, time=time)
 
         if np.any(out.data.latitude > 80.0001) or np.any(out.data.latitude < -80.0001):
-            raise ValueError("Model only supports latitude between -80 and 80.")
+            msg = "Model only supports latitude between -80 and 80."
+            raise ValueError(msg)
 
         return out
 
@@ -612,10 +782,11 @@ def _setdefault_from_params(key: str, vector: GeoVectorDataset, params: dict[str
         return
 
     if not isinstance(scalar, (int, float)):
-        raise TypeError(
+        msg = (
             f"Parameter {key} must be a scalar. For non-scalar values, directly "
             "set the data on the 'source'."
         )
+        raise TypeError(msg)
     vector.attrs[key] = float(scalar)
 
 
@@ -698,7 +869,8 @@ def run_interpolators(
 
     if keys:
         if rad is not None:
-            raise ValueError("`keys` override only valid for `met` input")
+            msg = "The 'keys' override only valid for 'met' input"
+            raise ValueError(msg)
 
         for met_key in keys:
             # NOTE: Changed in v0.43: no longer overwrites existing variables
@@ -707,9 +879,11 @@ def run_interpolators(
         return _apply_humidity_scaling(vector, humidity_scaling, humidity_interpolated)
 
     if dz_m is None:
-        raise TypeError("Specify `dz_m`.")
+        msg = "Specify 'dz_m'."
+        raise TypeError(msg)
     if rad is None:
-        raise TypeError("Specify `rad`")
+        msg = "Specify 'rad'."
+        raise TypeError(msg)
 
     # Interpolation at usual level
     # Excluded keys are not needed -- only used to initially compute tau_cirrus
@@ -811,22 +985,43 @@ def _apply_humidity_scaling(
     return vector
 
 
+@dataclasses.dataclass
+class _EvolveVectorResult:
+    """Result of a single evolution step.
+
+    Attributes
+    ----------
+    contrail : GeoVectorDataset
+        Evolved contrail at end of the evolution step.
+    downwash : GeoVectorDataset | None
+        Downwash vector. None if no waypoints survive downwash.
+        None if ``run_downwash`` is False.
+    verbose_dict : dict[str, pd.Series] | None
+        Dictionary of "verbose outputs formation" data. None if
+        ``run_downwash`` is False. None if ``params["verbose_outputs_formation"]``
+        is False.
+    ef_summary : VectorDataset | None
+        The ``contrail`` summary statistics. The result of
+        ``contrail.select(("index", "age", "ef"), copy=False)``.
+    """
+
+    contrail: GeoVectorDataset
+    downwash: GeoVectorDataset | None = None
+    verbose_dict: dict[str, pd.Series] | None = None
+    ef_summary: VectorDataset | None = None
+
+
 def _evolve_vector(
     vector: GeoVectorDataset,
+    *,
     met: MetDataset,
     rad: MetDataset,
     params: dict[str, Any],
+    t: np.datetime64,
     run_downwash: bool,
     pbar: tqdm.tqdm | None,
-) -> tuple[
-    GeoVectorDataset,
-    VectorDataset | None,
-    dict[str, pd.Series] | None,
-    list[GeoVectorDataset] | None,
-]:
-    """Evolve ``vector`` over lifespan of parameter ``met``.
-
-    The parameter ``met`` is used as the source of timesteps for contrail evolution.
+) -> _EvolveVectorResult:
+    """Evolve ``vector`` to time ``t``.
 
     Return surviving contrail at end of evolution and aggregate metrics from evolution.
 
@@ -840,11 +1035,14 @@ def _evolve_vector(
     Parameters
     ----------
     vector : GeoVectorDataset
-        Grid points of interest.
+        Grid points of interest. This is either a slice of the ``source`` or a contrail
+        that has been initialized and is being evolved.
     met, rad : MetDataset
         CoCiP met and rad slices. See :class:`CocipGrid`.
     params : dict[str, Any]
         CoCiP model parameters. See :class:`CocipGrid`.
+    t : np.datetime64
+        Time to evolve to.
     run_downwash : bool
         Use to run initial downwash on waypoints satisfying SAC
     pbar : tqdm.tqmd | None
@@ -852,110 +1050,62 @@ def _evolve_vector(
 
     Returns
     -------
-    vector : GeoVectorDataset
-        Evolved contrail at end of evolution.
-    summary_data : VectorDataset | None
-        Contrail summary statistics. Includes keys "index", "age", "ef".
-    verbose_dict : dict[str, pd.Series] | None
-        Dictionary of verbose outputs. None if ``run_downwash`` is False.
-    contrail_list : list[GeoVectorDataset] | None
-        List of intermediate evolved contrails. None if
-        ``params["verbose_outputs_evolution"]`` is False.
+    _EvolveVectorResult
+        Result of the evolution step.
     """
-    # Determine if we need to keep
-    contrail_list: list[GeoVectorDataset] | None
-    contrail_list = [] if params["verbose_outputs_evolution"] else None
-
     # Run downwash and first contrail calculation
     if run_downwash:
-        vector, verbose_dict = _run_downwash(vector, met, rad, params)
-        if contrail_list is not None:
-            contrail_list.append(vector.copy())
+        downwash, verbose_dict = _run_downwash(vector, met, rad, params)
 
         # T_crit_sac is no longer needed. If verbose_outputs_formation is True,
-        # it's already storied in the verbose_dict adta
-        vector.data.pop("T_crit_sac", None)
+        # it's already storied in the verbose_dict data
+        downwash.data.pop("T_crit_sac", None)
         if pbar is not None:
             pbar.update()
 
         # Early exit if no waypoints survive downwash
-        if not vector:
-            return vector, None, verbose_dict, contrail_list
+        if not downwash:
+            return _EvolveVectorResult(contrail=downwash, verbose_dict=verbose_dict)
+        vector = downwash
+
     else:
+        downwash = None
         verbose_dict = None
 
-    summary_data = []
+    dt = t - vector["time"]
 
-    met_times = met.data["time"].values
-    t0 = met_times[0]
-    t1 = met_times[-1]
-    dt_integration = params["dt_integration"]
-    timesteps = np.arange(t0 + dt_integration, t1 + dt_integration, dt_integration)
+    if _is_segment_free_mode(vector):
+        dt_head = None
+        dt_tail = None
+    else:
+        head_tail_dt = vector["head_tail_dt"]
+        half_head_tail_dt = head_tail_dt / 2
+        dt_head = dt - half_head_tail_dt  # type: ignore[operator]
+        dt_tail = dt + half_head_tail_dt  # type: ignore[operator]
 
-    # Not strictly necessary: Avoid looping few first few timesteps if waypoints not
-    # yet online. Cocip uses similar logic in _calc_timesteps.
-    timesteps = timesteps[timesteps > vector["time"].min()]
+    # After advection, out has time t
+    out = advect(vector, dt, dt_head, dt_tail)  # type: ignore[arg-type]
 
-    # Only used for logging below
-    start_size = vector.size
+    out = run_interpolators(
+        out,
+        met,
+        rad,
+        dz_m=params["dz_m"],
+        humidity_scaling=params["humidity_scaling"],
+        **params["_interp_kwargs"],
+    )
+    out = calc_evolve_one_step(vector, out, params)
+    ef_summary = out.select(("index", "age", "ef"), copy=False) if out else None
 
-    for t in timesteps:
-        if not vector:
-            break
+    if pbar is not None:
+        pbar.update()
 
-        # This if-else below is not strictly necessary ... it might be slightly
-        # more performant to avoid the call to vector.filter, which only occurs
-        # with GeoVectorDataset sources.
-        filt = vector["time"] < t
-        if np.all(filt):
-            v_now = vector
-            v_future = None
-        else:
-            v_now = vector.filter(filt)
-            v_future = vector.filter(~filt)
-
-            if not v_now:
-                continue
-
-        dt = t - v_now["time"]
-
-        # Segment-free mode
-        if _is_segment_free_mode(v_now):
-            dt_head = None
-            dt_tail = None
-        else:
-            head_tail_dt = v_now["head_tail_dt"]
-            half_head_tail_dt = head_tail_dt / 2
-            dt_head = dt - half_head_tail_dt
-            dt_tail = dt + half_head_tail_dt
-
-        # After advection, v_next has time t
-        v_next = advect(v_now, dt, dt_head, dt_tail)
-
-        v_next = run_interpolators(
-            v_next,
-            met,
-            rad,
-            dz_m=params["dz_m"],
-            humidity_scaling=params["humidity_scaling"],
-            **params["_interp_kwargs"],
-        )
-        v_next = calc_evolve_one_step(v_now, v_next, params)
-        if v_next:
-            summary_data.append(v_next.select(("index", "age", "ef")))
-        vector = v_next + v_future
-
-        if contrail_list is not None:
-            contrail_list.append(vector)
-        if pbar is not None:
-            pbar.update()
-
-    # Bundle results, return tuple
-    end_size = vector.size
-    logger.debug("After evolution, contrail contains %s / %s points.", end_size, start_size)
-
-    summary = calc_intermediate_results(summary_data)
-    return vector, summary, verbose_dict, contrail_list
+    return _EvolveVectorResult(
+        contrail=out,
+        downwash=downwash,
+        verbose_dict=verbose_dict,
+        ef_summary=ef_summary,
+    )
 
 
 def _run_downwash(
@@ -1017,24 +1167,24 @@ def _run_downwash(
         return vector, verbose_dict
 
     vector = run_interpolators(vector, met, rad, dz_m=params["dz_m"], **params["_interp_kwargs"])
-    contrail = simulate_wake_vortex_downwash(vector, params)
+    out = simulate_wake_vortex_downwash(vector, params)
 
-    contrail = run_interpolators(
-        contrail,
+    out = run_interpolators(
+        out,
         met,
         rad,
         dz_m=params["dz_m"],
         humidity_scaling=params["humidity_scaling"],
         **params["_interp_kwargs"],
     )
-    contrail, persistent = find_initial_persistent_contrails(vector, contrail, params)
+    out, persistent = find_initial_persistent_contrails(vector, out, params)
 
     if (key := "persistent") in verbose_outputs_formation:
         verbose_dict[key] = persistent
-    if (key := "iwc") in verbose_outputs_formation and (data := contrail.get(key)) is not None:
-        verbose_dict[key] = pd.Series(data=data, index=contrail["index"])
+    if (key := "iwc") in verbose_outputs_formation and (data := out.get(key)) is not None:
+        verbose_dict[key] = pd.Series(data=data, index=out["index"])
 
-    return contrail, verbose_dict
+    return out, verbose_dict
 
 
 def combine_vectors(
@@ -1681,6 +1831,7 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
 def calc_wind_shear(
     contrail: GeoVectorDataset,
     dz_m: float,
+    *,
     is_downwash: bool,
     dsn_dz_factor: float,
 ) -> None:
@@ -1780,7 +1931,7 @@ def calc_thermal_properties(contrail: GeoVectorDataset) -> None:
 
 def advect(
     contrail: GeoVectorDataset,
-    dt: np.timedelta64,
+    dt: np.timedelta64 | npt.NDArray[np.timedelta64],
     dt_head: np.timedelta64 | None,
     dt_tail: np.timedelta64 | None,
 ) -> GeoVectorDataset:
@@ -1798,7 +1949,7 @@ def advect(
     ----------
     contrail : GeoVectorDataset
         Grid points already interpolated against wind data
-    dt : np.timedelta64
+    dt : np.timedelta64 | npt.NDArray[np.timedelta64]
         Time step for advection
     dt_head : np.timedelta64 | None
         Time step for segment head advection. Use None for segment-free mode.
@@ -1906,8 +2057,8 @@ def advect(
     return GeoVectorDataset(data, attrs=contrail.attrs, copy=True)
 
 
-def calc_intermediate_results(vector_list: list[VectorDataset]) -> VectorDataset | None:
-    """Aggregate results after cocip simulation.
+def _aggregate_ef_summary(vector_list: list[VectorDataset]) -> VectorDataset | None:
+    """Aggregate EF results after cocip simulation.
 
     Results are summed over each vector in ``vector_list``.
 
@@ -2069,7 +2220,7 @@ def _concat_verbose_dicts(
     # Concatenate the values and return
     ret: dict[str, np.ndarray] = {}
     for key in verbose_outputs_formation:
-        series_list = [v for d in verbose_dicts if (v := d.get(key)) is not None]
+        series_list = [v for d in verbose_dicts if d and (v := d.get(key)) is not None]
         data = np.concatenate(series_list)
         index = np.concatenate([s.index for s in series_list])
 
@@ -2135,13 +2286,14 @@ def _warn_not_wrap(met: MetDataset) -> None:
     met : MetDataset
         Met dataset
     """
-    if not met.is_wrapped:
-        lon = met.data["longitude"]
-        if lon.min() == -180.0 and lon.max() == 179.75:
-            warnings.warn(
-                "The MetDataset `met` not been wrapped. The CocipGrid model may "
-                "perform better if `met.wrap_longitude()` is called first."
-            )
+    if met.is_wrapped:
+        return
+    lon = met.variables["longitude"]
+    if lon.min() == -180.0 and lon.max() == 179.75:
+        warnings.warn(
+            "The MetDataset `met` not been wrapped. The CocipGrid model may "
+            "perform better if `met.wrap_longitude()` is called first."
+        )
 
 
 def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np.float64]]:
@@ -2202,8 +2354,8 @@ def _check_overlap(
     """
     if met_array.min() > grid_array.min() or met_array.max() < grid_array.max():
         warnings.warn(
-            f"Met data '{name}' does not overlap the grid domain along the {coord} axis. "
-            "This causes interpolated values to be nan, leading to meaningless results."
+            f"Met data '{name}' does not cover the source domain along the {coord} axis. "
+            "This causes some interpolated values to be nan, leading to meaningless results."
         )
 
 
@@ -2243,7 +2395,6 @@ def _downselect_met(
     :meth:`Model.downselect_met`
     """
 
-    # return if downselect_met is False
     if not params["downselect_met"]:
         logger.debug("Avoiding downselecting met because params['downselect_met'] is False")
         return met, rad
@@ -2259,23 +2410,6 @@ def _downselect_met(
     # Down select met relative to min / max integration timesteps, not Flight
     t0 = time_buffer[0]
     t1 = time_buffer[1] + params["max_age"] + params["dt_integration"]
-
-    if isinstance(source, MetDataset):
-        # MetDataset doesn't have a downselect_met method, so create a
-        # GeoVectorDataset and downselect there
-        # Just take extreme here for downselection
-        # We may want to change min / max to nanmin / nanmax
-        ds = source.data
-        lon = ds["longitude"].values
-        lat = ds["latitude"].values
-        level = ds["level"].values
-        time = ds["time"].values
-        source = GeoVectorDataset(
-            longitude=[lon.min(), lon.max()],
-            latitude=[lat.min(), lat.max()],
-            level=[level.min(), level.max()],
-            time=[time.min(), time.max()],
-        )
 
     met = source.downselect_met(
         met,
