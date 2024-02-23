@@ -35,16 +35,18 @@ def _habit_distributions() -> npt.NDArray[np.float32]:
 
 
 def _habits() -> npt.NDArray[np.str_]:
-    return np.array([
-        "Sphere",
-        "Solid column",
-        "Hollow column",
-        "Rough aggregate",
-        "Rosette-6",
-        "Plate",
-        "Droxtal",
-        "Myhre",
-    ])
+    return np.array(
+        [
+            "Sphere",
+            "Solid column",
+            "Hollow column",
+            "Rough aggregate",
+            "Rosette-6",
+            "Plate",
+            "Droxtal",
+            "Myhre",
+        ]
+    )
 
 
 @dataclasses.dataclass

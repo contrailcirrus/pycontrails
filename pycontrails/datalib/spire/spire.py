@@ -198,17 +198,19 @@ def identify_flights(messages: pd.DataFrame) -> pd.Series:
         index=messages.index,
     )
 
-    for idx, gp in messages[[
-        "icao_address",
-        "tail_number",
-        "aircraft_type_icao",
-        "callsign",
-        "timestamp",
-        "longitude",
-        "latitude",
-        "altitude_baro",
-        "on_ground",
-    ]].groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"], sort=False):
+    for idx, gp in messages[
+        [
+            "icao_address",
+            "tail_number",
+            "aircraft_type_icao",
+            "callsign",
+            "timestamp",
+            "longitude",
+            "latitude",
+            "altitude_baro",
+            "on_ground",
+        ]
+    ].groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"], sort=False):
         # minimum # of messages > TRAJECTORY_MINIMUM_MESSAGES
         if len(gp) < TRAJECTORY_MINIMUM_MESSAGES:
             logger.debug(f"Message {idx} group too small to create flight ids")
@@ -542,14 +544,16 @@ def validate_flights(messages: pd.DataFrame) -> pd.Series:
         index=messages.index,
     )
 
-    for _, gp in messages[[
-        "flight_id",
-        "aircraft_type_icao",
-        "timestamp",
-        "altitude_baro",
-        "on_ground",
-        "speed",
-    ]].groupby("flight_id", sort=False):
+    for _, gp in messages[
+        [
+            "flight_id",
+            "aircraft_type_icao",
+            "timestamp",
+            "altitude_baro",
+            "on_ground",
+            "speed",
+        ]
+    ].groupby("flight_id", sort=False):
         # save flight ids
         valid.loc[gp.index] = is_valid_trajectory(gp)
 

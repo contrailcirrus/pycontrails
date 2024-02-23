@@ -169,16 +169,18 @@ def dataframe_to_geojson_points(
         properties = {"time": int(row.time.timestamp())}
         used_keys = ["time", "latitude", "longitude", "altitude"]
         unused_keys = [k for k in row.keys() if k not in used_keys]  # noqa: SIM118
-        properties.update({
-            k: (
-                row[k]
-                if not isinstance(row[k], float)
-                or isinstance(row[k], float)
-                and not np.isnan(row[k])
-                else None
-            )
-            for k in unused_keys
-        })
+        properties.update(
+            {
+                k: (
+                    row[k]
+                    if not isinstance(row[k], float)
+                    or isinstance(row[k], float)
+                    and not np.isnan(row[k])
+                    else None
+                )
+                for k in unused_keys
+            }
+        )
 
         geometry = {"type": "Point", "coordinates": point}
         return {"type": "Feature", "geometry": geometry, "properties": properties}
