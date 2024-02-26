@@ -134,7 +134,7 @@ class GFSForecast(datalib.MetDataSource):
         self,
         time: datalib.TimeInput | None,
         variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput = [-1],
+        pressure_levels: datalib.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float = 0.25,
         forecast_time: DatetimeLike | None = None,

@@ -1263,7 +1263,7 @@ def test_provider_attr_warning(met_ecmwf_sl_path: str, provider: str) -> None:
     mds = MetDataset(ds)
 
     with pytest.raises(KeyError, match="Specify 'provider' attribute on underlying dataset."):
-        mds.provider_attr
+        _ = mds.provider_attr
 
     mds.attrs["provider"] = provider
     with pytest.warns(UserWarning, match=f"Unknown provider '{provider}'."):

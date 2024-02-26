@@ -1088,9 +1088,9 @@ def test_cocip_performance(met: MetDataset, rad: MetDataset) -> None:
     # time 10 cocip calls
     start = pythontime.perf_counter()
 
-    for i in range(10):
+    for _ in range(10):
         cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
-        _ = cocip.eval(source=fl)
+        cocip.eval(source=fl)
 
     duration = pythontime.perf_counter() - start
 

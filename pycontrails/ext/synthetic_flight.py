@@ -162,7 +162,7 @@ class SyntheticFlight:
         msg += f"\nmax_queue_size: {self.max_queue_size}  min_n_waypoints: {self.min_n_waypoints}"
         return msg
 
-    def __call__(self, timestep: np.timedelta64 = np.timedelta64(1, "m")) -> Flight:
+    def __call__(self, timestep: np.timedelta64 | None = None) -> Flight:
         """Create random flight within `bounds` at a constant altitude.
 
         BADA4 data is used to determine flight speed at a randomly chosen altitude within
@@ -183,6 +183,8 @@ class SyntheticFlight:
         Flight
             Random `Flight` instance constrained by bounds.
         """
+        if timestep is None:
+            timestep = np.timedelta64(1, "m")
         # Building flights with `u_wind` and `v_wind` involved in the true airspeed calculation is
         # slow. BUT, we can do it in a vectorized way. So we maintain a short queue that gets
         # repeatedly replenished.
