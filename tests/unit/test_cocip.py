@@ -51,6 +51,78 @@ def rad(rad_cocip1: MetDataset) -> MetDataset:
 
 
 @pytest.fixture()
+def hres_dummy_met() -> MetDataset:
+    """Generate dummy HRES met data with values equal to the forecast step"""
+
+    time = pd.date_range("2024-01-01T00:00", freq="1h", periods=7)
+    level = np.linspace(100, 400, 4)
+    latitude = np.linspace(-80, 80, 17)
+    longitude = np.linspace(-180, 170, 36)
+
+    shape = (longitude.size, latitude.size, level.size, time.size)
+    var = [
+        "air_temperature",
+        "specific_humidity",
+        "eastward_wind",
+        "northward_wind",
+        "lagrangian_tendency_of_air_pressure",
+        "tau_cirrus",
+    ]
+    ds = xr.Dataset(
+        data_vars={
+            key: (
+                ("longitude", "latitude", "level", "time"),
+                np.broadcast_to(
+                    np.arange(time.size, dtype="float64").reshape((1, 1, 1, -1)), shape
+                ),
+            )
+            for key in var
+        },
+        coords={
+            "longitude": longitude,
+            "latitude": latitude,
+            "level": level,
+            "time": time,
+        },
+    )
+    attrs = {"provider": "ECMWF", "dataset": "HRES", "product": "forecast"}
+    return MetDataset(ds, attrs=attrs)
+
+
+@pytest.fixture()
+def hres_dummy_rad() -> MetDataset:
+    """Generate dummy HRES rad data with values equal to the forecast step"""
+
+    time = pd.date_range("2024-01-01T00:00", freq="1h", periods=7)
+    latitude = np.linspace(-80, 80, 17)
+    longitude = np.linspace(-180, 170, 36)
+
+    shape = (longitude.size, latitude.size, 1, time.size)
+    var = ["top_net_solar_radiation", "top_net_thermal_radiation"]
+    ds = xr.Dataset(
+        data_vars={
+            key: (
+                ("longitude", "latitude", "level", "time"),
+                np.broadcast_to(
+                    np.arange(time.size, dtype="float64").reshape((1, 1, 1, -1)), shape
+                ),
+            )
+            for key in var
+        },
+        coords={
+            "longitude": longitude,
+            "latitude": latitude,
+            "level": [1],
+            "time": time,
+        },
+        attrs={"radiation_accumulated": True},
+    )
+
+    attrs = {"provider": "ECMWF", "dataset": "HRES", "product": "forecast"}
+    return MetDataset(ds, attrs=attrs)
+
+
+@pytest.fixture()
 def fl(flight_cocip1: Flight) -> Flight:
     """Rename fixture `cocip_fl` from conftest."""
     return flight_cocip1
@@ -302,60 +374,13 @@ def test_cocip_processes_rad_with_warnings(met: MetDataset, rad: MetDataset) -> 
         Cocip(met, rad=rad)
 
 
-def test_cocip_processes_hres_rad() -> None:
-    """Test that Cocip correctly processes HRES radiation data with uneven time steps"""
+def test_cocip_processes_hres_rad_even_time(
+    hres_dummy_met: MetDataset, hres_dummy_rad: MetDataset
+) -> None:
+    """Test that Cocip correctly processes HRES radiation data with even time steps"""
 
-    # Generate dummy data
-    time = pd.date_range("2024-01-01T00:00", freq="1h", periods=7)
-    level = np.linspace(100, 400, 4)
-    latitude = np.linspace(-80, 80, 17)
-    longitude = np.linspace(-180, 170, 36)
-
-    shape = (longitude.size, latitude.size, level.size, time.size)
-    var = [
-        "air_temperature",
-        "specific_humidity",
-        "eastward_wind",
-        "northward_wind",
-        "lagrangian_tendency_of_air_pressure",
-        "tau_cirrus",
-    ]
-    pl = xr.Dataset(
-        data_vars={
-            key: (("longitude", "latitude", "level", "time"), np.ones(shape)) for key in var
-        },
-        coords={
-            "longitude": longitude,
-            "latitude": latitude,
-            "level": level,
-            "time": time,
-        },
-    )
-
-    shape = (longitude.size, latitude.size, 1, time.size)
-    var = ["top_net_solar_radiation", "top_net_thermal_radiation"]
-    sl = xr.Dataset(
-        data_vars={
-            key: (
-                ("longitude", "latitude", "level", "time"),
-                np.broadcast_to(
-                    np.arange(time.size, dtype="float64").reshape((1, 1, 1, -1)), shape
-                ),
-            )
-            for key in var
-        },
-        coords={
-            "longitude": longitude,
-            "latitude": latitude,
-            "level": [1],
-            "time": time,
-        },
-        attrs={"radiation_accumulated": True},
-    )
-
-    attrs = {"provider": "ECMWF", "dataset": "HRES", "product": "forecast"}
-    met = MetDataset(pl, attrs=attrs)
-    rad = MetDataset(sl, attrs=attrs)
+    met = hres_dummy_met
+    rad = hres_dummy_rad
 
     with pytest.warns(UserWarning, match="humidity scaling"):
         Cocip(met=met, rad=rad)
@@ -365,11 +390,18 @@ def test_cocip_processes_hres_rad() -> None:
     assert rad["time"].attrs["shift_radiation_time"] == shift
     np.testing.assert_allclose(rad["top_net_solar_radiation"].values, 1)
 
+
+def test_cocip_processes_hres_rad_uneven_time(
+    hres_dummy_met: MetDataset, hres_dummy_rad: MetDataset
+) -> None:
+    """Test that Cocip correctly processes HRES radiation data with uneven time steps"""
+
+    met = hres_dummy_met
+    rad = hres_dummy_rad
+
     steps = [0, 1, 3, 6]
-    pl = pl.isel(time=steps)
-    sl = sl.isel(time=steps)
-    met = MetDataset(pl, attrs=attrs)
-    rad = MetDataset(sl, attrs=attrs)
+    met.data = met.data.isel(time=steps)
+    rad.data = rad.data.isel(time=steps)
 
     t = [np.datetime64("2024-01-01T00") + np.timedelta64(step, "h") for step in steps]
     np.testing.assert_array_equal(rad["time"].values, t)
