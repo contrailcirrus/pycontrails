@@ -118,6 +118,16 @@ CoCiP
     models.cocip.wind_shear
 
 
+Gridded CoCiP
+"""""""""""""
+
+.. autosummary::
+    :toctree: api/
+
+    models.cocipgrid.CocipGrid
+    models.cocipgrid.CocipGridParams
+
+
 ACCF
 """"
 
@@ -133,8 +143,6 @@ ACCF
 
 Aircraft Performance
 """"""""""""""""""""
-
-*In development*
 
 .. autosummary::
     :toctree: api/
