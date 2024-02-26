@@ -383,9 +383,7 @@ def test_cocip_processes_hres_rad() -> None:
     ]
     np.testing.assert_array_equal(rad["time"].values, t)
     assert rad["time"].attrs["shift_radiation_time"] == "variable"
-    np.testing.assert_allclose(rad["top_net_solar_radiation"].values[..., 0], 1)
-    np.testing.assert_allclose(rad["top_net_solar_radiation"].values[..., 1], 1)
-    np.testing.assert_allclose(rad["top_net_solar_radiation"].values[..., 2], 1)
+    np.testing.assert_allclose(rad["top_net_solar_radiation"].values, 1)
 
 
 def test_cocip_time_handling(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
