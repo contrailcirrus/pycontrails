@@ -66,7 +66,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         fill_value: float | np.float64 | None,
     ):
         if values.dtype not in (np.float32, np.float64):
-            raise ValueError("values must be a float array")
+            msg = f"values must be a float array, not {values.dtype}"
+            raise ValueError(msg)
 
         self.grid = points
         self.values = values
@@ -94,7 +95,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
                 g0 = self.grid[i][0]
                 g1 = self.grid[i][-1]
                 if not (np.all(p >= g0) and np.all(p <= g1)):
-                    raise ValueError(f"One of the requested xi is out of bounds in dimension {i}")
+                    msg = f"One of the requested xi is out of bounds in dimension {i}"
+                    raise ValueError(msg)
 
             return np.zeros(xi.shape[0], dtype=bool)
 
@@ -213,7 +215,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             # np.interp could be better ... although that may also promote the dtype
             return rgi_cython.evaluate_linear_1d(values, indices, norm_distances, out)
 
-        raise ValueError(f"Invalid number of dimensions: {ndim}")
+        msg = f"Invalid number of dimensions: {ndim}"
+        raise ValueError(msg)
 
 
 def _floatize_time(
@@ -448,9 +451,8 @@ def interp(
     y = variables["latitude"].values
     z = variables["level"].values
     if any(v.dtype != np.float64 for v in (x, y, z)):
-        raise ValueError(
-            "da must have float64 dtype for longitude, latitude, and level coordinates"
-        )
+        msg = "da must have float64 dtype for longitude, latitude, and level coordinates"
+        raise ValueError(msg)
 
     # Convert t and time to float64
     t = variables["time"].values
@@ -526,9 +528,11 @@ def _linear_interp_with_indices(
     indices: RGIArtifacts | None,
 ) -> tuple[npt.NDArray[np.float64], RGIArtifacts]:
     if interp.method != "linear":
-        raise ValueError("Parameter 'indices' is only supported for 'method=linear'")
+        msg = "Parameter 'indices' is only supported for 'method=linear'"
+        raise ValueError(msg)
     if localize:
-        raise ValueError("Parameter 'indices' is only supported for 'localize=False'")
+        msg = "Parameter 'indices' is only supported for 'localize=False'"
+        raise ValueError(msg)
 
     if indices is None:
         assert xi is not None, "xi must be provided if indices is None"
@@ -604,7 +608,10 @@ class EmissionsProfileInterpolator:
     """
 
     def __init__(
-        self, xp: npt.NDArray[np.float64], fp: npt.NDArray[np.float64], drop_duplicates: bool = True
+        self,
+        xp: npt.NDArray[np.float64],
+        fp: npt.NDArray[np.float64],
+        drop_duplicates: bool = True,
     ) -> None:
         if drop_duplicates:
             # Using np.diff to detect duplicates ... this assumes xp is sorted.
@@ -622,13 +629,17 @@ class EmissionsProfileInterpolator:
 
     def _validate(self) -> None:
         if not len(self.xp):
-            raise ValueError("xp must not be empty")
+            msg = "xp must not be empty"
+            raise ValueError(msg)
         if len(self.xp) != len(self.fp):
-            raise ValueError("xp and fp must have the same length")
+            msg = "xp and fp must have the same length"
+            raise ValueError(msg)
         if not np.all(np.diff(self.xp) > 0.0):
-            raise ValueError("xp must be strictly increasing")
+            msg = "xp must be strictly increasing"
+            raise ValueError(msg)
         if np.any(np.isnan(self.xp)):
-            raise ValueError("xp must not contain nan values")
+            msg = "xp must not contain nan values"
+            raise ValueError(msg)
 
     def interp(self, x: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         """Interpolate x against xp and fp.
