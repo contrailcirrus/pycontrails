@@ -302,6 +302,92 @@ def test_cocip_processes_rad_with_warnings(met: MetDataset, rad: MetDataset) -> 
         Cocip(met, rad=rad)
 
 
+def test_cocip_processes_hres_rad() -> None:
+    """Test that Cocip correctly processes HRES radiation data with uneven time steps"""
+
+    # Generate dummy data
+    time = pd.date_range("2024-01-01T00:00", freq="1h", periods=7)
+    level = np.linspace(100, 400, 4)
+    latitude = np.linspace(-80, 80, 17)
+    longitude = np.linspace(-180, 170, 36)
+
+    shape = (longitude.size, latitude.size, level.size, time.size)
+    var = [
+        "air_temperature",
+        "specific_humidity",
+        "eastward_wind",
+        "northward_wind",
+        "lagrangian_tendency_of_air_pressure",
+        "tau_cirrus",
+    ]
+    pl = xr.Dataset(
+        data_vars={
+            key: (("longitude", "latitude", "level", "time"), np.ones(shape)) for key in var
+        },
+        coords={
+            "longitude": longitude,
+            "latitude": latitude,
+            "level": level,
+            "time": time,
+        },
+    )
+
+    shape = (longitude.size, latitude.size, 1, time.size)
+    var = ["top_net_solar_radiation", "top_net_thermal_radiation"]
+    sl = xr.Dataset(
+        data_vars={
+            key: (
+                ("longitude", "latitude", "level", "time"),
+                np.broadcast_to(
+                    np.arange(time.size, dtype="float64").reshape((1, 1, 1, -1)), shape
+                ),
+            )
+            for key in var
+        },
+        coords={
+            "longitude": longitude,
+            "latitude": latitude,
+            "level": [1],
+            "time": time,
+        },
+        attrs={"radiation_accumulated": True},
+    )
+
+    attrs = {"provider": "ECMWF", "dataset": "HRES", "product": "forecast"}
+    met = MetDataset(pl, attrs=attrs)
+    rad = MetDataset(sl, attrs=attrs)
+
+    with pytest.warns(UserWarning, match="humidity scaling"):
+        Cocip(met=met, rad=rad)
+    t = pd.date_range("2024-01-01T00:30", freq="1h", periods=6)
+    shift = str(-np.timedelta64(30, "m").astype("timedelta64[ns]"))
+    np.testing.assert_array_equal(rad["time"].values, t)
+    assert rad["time"].attrs["shift_radiation_time"] == shift
+    np.testing.assert_allclose(rad["top_net_solar_radiation"].values, 1)
+
+    steps = [0, 1, 3, 6]
+    pl = pl.isel(time=steps)
+    sl = sl.isel(time=steps)
+    met = MetDataset(pl, attrs=attrs)
+    rad = MetDataset(sl, attrs=attrs)
+
+    t = [np.datetime64("2024-01-01T00") + np.timedelta64(step, "h") for step in steps]
+    np.testing.assert_array_equal(rad["time"].values, t)
+
+    with pytest.warns(UserWarning, match="humidity scaling"):
+        Cocip(met=met, rad=rad)
+    t = [
+        np.datetime64("2024-01-01T00:30"),
+        np.datetime64("2024-01-01T02:00"),
+        np.datetime64("2024-01-01T04:30"),
+    ]
+    np.testing.assert_array_equal(rad["time"].values, t)
+    assert rad["time"].attrs["shift_radiation_time"] == "variable"
+    np.testing.assert_allclose(rad["top_net_solar_radiation"].values[..., 0], 1)
+    np.testing.assert_allclose(rad["top_net_solar_radiation"].values[..., 1], 1)
+    np.testing.assert_allclose(rad["top_net_solar_radiation"].values[..., 2], 1)
+
+
 def test_cocip_time_handling(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
     """Check a few aspects of Cocip time handling."""
     params = {
