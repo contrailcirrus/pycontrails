@@ -1448,6 +1448,12 @@ def _process_rad(rad: MetDataset) -> MetDataset:
             )
             raise ValueError(msg) from exc
         if radiation_accumulated:
+
+            # Don't assume that radiation data is uniformly spaced in time
+            # Instead, infer the appropriate time shift
+            time_diff = rad.data["time"].diff("time", label="upper")
+            time_shift = -time_diff / 2
+
             # Keep the original attrs -- we need these later on
             old_attrs = {k: v.attrs for k, v in rad.data.items()}
 
@@ -1455,13 +1461,28 @@ def _process_rad(rad: MetDataset) -> MetDataset:
             # This is typically what we want (forecast step 0 is all zeros)
             # But, if the data has been downselected for a particular Flight / Fleet,
             # we lose the first time step of the data.
-            rad.data = rad.data.diff("time", label="upper")
+            #
+            # Other portions of the code convert HRES accumulated fluxes (J/m2)
+            # to averaged fluxes (W/m2) assuming that accumulations are over
+            # one hour. For those conversions to work correctly, must normalize
+            # accumulations by number of hours between steps
+            time_diff_h = time_diff / np.timedelta64(1, "h")
+            rad.data = rad.data.diff("time", label="upper") / time_diff_h
 
             # Add back the original attrs
             for k, v in rad.data.items():
                 v.attrs = old_attrs[k]
 
-        shift_radiation_time = -np.timedelta64(30, "m")
+            # Short-circuit to avoid idiot check
+            rad.data = rad.data.assign_coords({"time": rad.data["time"] + time_shift})
+            if np.unique(time_shift).size == 1:
+                rad.data["time"].attrs["shift_radiation_time"] = str(time_shift.values[0])
+            else:
+                rad.data["time"].attrs["shift_radiation_time"] = "variable"
+            return rad
+
+        else:
+            shift_radiation_time = -np.timedelta64(30, "m")
 
     elif dataset == "ERA5" and product == "ensemble":
         shift_radiation_time = -np.timedelta64(90, "m")
