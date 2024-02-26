@@ -181,10 +181,11 @@ class MetBase(ABC, Generic[XArrayType]):
         ValueError
             If one of the coordinates is not sorted.
         """
-        if not np.all(np.diff(self.variables["time"]) > np.timedelta64(0, "ns")):
+        variables = self.variables
+        if not np.all(np.diff(variables["time"]) > np.timedelta64(0, "ns")):
             raise ValueError("Coordinate `time` not sorted. Initiate with `copy=True`.")
         for coord in self.dim_order[:3]:  # exclude time, the 4th dimension
-            if not np.all(np.diff(self.variables[coord]) > 0.0):
+            if not np.all(np.diff(variables[coord]) > 0.0):
                 raise ValueError(f"Coordinate '{coord}' not sorted. Initiate with 'copy=True'.")
 
     def _validate_transpose(self) -> None:
@@ -251,8 +252,9 @@ class MetBase(ABC, Generic[XArrayType]):
         self._validate_dim_contains_coords()
 
         # Ensure spatial coordinates all have dtype COORD_DTYPE
+        variables = self.variables
         for coord in ("longitude", "latitude", "level"):
-            arr = self.variables[coord].values
+            arr = variables[coord].values
             if arr.dtype != COORD_DTYPE:
                 self.data[coord] = arr.astype(COORD_DTYPE)
 
@@ -346,11 +348,12 @@ class MetBase(ABC, Generic[XArrayType]):
         dict[str, np.ndarray]
             Dictionary of coordinates
         """
+        variables = self.variables
         return {
-            "longitude": self.variables["longitude"].values,
-            "latitude": self.variables["latitude"].values,
-            "level": self.variables["level"].values,
-            "time": self.variables["time"].values,
+            "longitude": variables["longitude"].values,
+            "latitude": variables["latitude"].values,
+            "level": variables["level"].values,
+            "time": variables["time"].values,
         }
 
     @property
