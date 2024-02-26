@@ -80,7 +80,7 @@ def test_zarr_interpolation() -> None:
 
     vector = GeoVectorDataset(longitude=longitude, latitude=latitude, level=level, time=time)
     mds = vector.downselect_met(mds)
-    assert len(mds.variables["time"]) == 2
+    assert len(mds.indexes["time"]) == 2
     assert np.all(vector.coords_intersect_met(mds))
 
     # Run interpolation on downselected data

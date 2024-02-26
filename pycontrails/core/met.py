@@ -23,6 +23,7 @@ from typing import (
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import xarray as xr
 from overrides import overrides
 
@@ -110,7 +111,7 @@ class MetBase(ABC, Generic[XArrayType]):
         ValueError
             If longitude values are not contained in the interval [-180, 180].
         """
-        longitude = self.variables["longitude"].values
+        longitude = self.indexes["longitude"].to_numpy()
         if longitude.dtype != COORD_DTYPE:
             raise ValueError(
                 "Longitude values must be of type float64. "
@@ -154,7 +155,7 @@ class MetBase(ABC, Generic[XArrayType]):
         ValueError
             If latitude values are not contained in the interval [-90, 90].
         """
-        latitude = self.variables["latitude"].values
+        latitude = self.indexes["latitude"].to_numpy()
         if latitude.dtype != COORD_DTYPE:
             raise ValueError(
                 "Latitude values must be of type float64. "
@@ -181,11 +182,11 @@ class MetBase(ABC, Generic[XArrayType]):
         ValueError
             If one of the coordinates is not sorted.
         """
-        variables = self.variables
-        if not np.all(np.diff(variables["time"]) > np.timedelta64(0, "ns")):
+        indexes = self.indexes
+        if not np.all(np.diff(indexes["time"]) > np.timedelta64(0, "ns")):
             raise ValueError("Coordinate `time` not sorted. Initiate with `copy=True`.")
         for coord in self.dim_order[:3]:  # exclude time, the 4th dimension
-            if not np.all(np.diff(variables[coord]) > 0.0):
+            if not np.all(np.diff(indexes[coord]) > 0.0):
                 raise ValueError(f"Coordinate '{coord}' not sorted. Initiate with 'copy=True'.")
 
     def _validate_transpose(self) -> None:
@@ -252,9 +253,9 @@ class MetBase(ABC, Generic[XArrayType]):
         self._validate_dim_contains_coords()
 
         # Ensure spatial coordinates all have dtype COORD_DTYPE
-        variables = self.variables
+        indexes = self.indexes
         for coord in ("longitude", "latitude", "level"):
-            arr = variables[coord].values
+            arr = indexes[coord].to_numpy()
             if arr.dtype != COORD_DTYPE:
                 self.data[coord] = arr.astype(COORD_DTYPE)
 
@@ -267,7 +268,7 @@ class MetBase(ABC, Generic[XArrayType]):
         if not self.is_wrapped:
             # Ensure longitude is contained in interval [-180, 180)
             # If longitude has value at 180, we might not want to shift it?
-            lon = self.variables["longitude"].values
+            lon = self.indexes["longitude"].to_numpy()
 
             # This longitude shifting can give rise to precision errors with float32
             # Only shift if necessary
@@ -348,30 +349,36 @@ class MetBase(ABC, Generic[XArrayType]):
         dict[str, np.ndarray]
             Dictionary of coordinates
         """
-        variables = self.variables
+        variables = self.indexes
         return {
-            "longitude": variables["longitude"].values,
-            "latitude": variables["latitude"].values,
-            "level": variables["level"].values,
-            "time": variables["time"].values,
+            "longitude": variables["longitude"].to_numpy(),
+            "latitude": variables["latitude"].to_numpy(),
+            "level": variables["level"].to_numpy(),
+            "time": variables["time"].to_numpy(),
         }
 
     @property
-    def variables(self) -> dict[Hashable, xr.Variable]:
-        """Low level access to underlying :attr:`data` variables.
+    def variables(self) -> dict[Hashable, pd.Index]:
+        """See :attr:`indexes`."""
+        warnings.warn(
+            "The 'variables' property is deprecated and will be removed in a future release. "
+            "Use 'indexes' instead.",
+            DeprecationWarning,
+        )
+        return self.indexes
 
-        This method is typically is faster for accessing coordinate variables.
+    @property
+    def indexes(self) -> dict[Hashable, pd.Index]:
+        """Low level access to underlying :attr:`data` indexes.
+
+        This method is typically is faster for accessing coordinate indexes.
 
         .. versionadded:: 0.25.2
 
         Returns
         -------
-        dict[Hashable, xr.Variable]
-            Dictionary of variables. The type is actually..
-
-                xarray.core.utils.Frozen[Any, xr.Variable]
-
-            In practice, this behaves like a dictionary.
+        dict[Hashable, pd.Index]
+            Dictionary of indexes.
 
         Examples
         --------
@@ -381,16 +388,14 @@ class MetBase(ABC, Generic[XArrayType]):
         >>> levels = [200, 300]
         >>> era5 = ERA5(times, variables, levels)
         >>> mds = era5.open_metdataset()
-        >>> mds.variables["level"].values  # faster access than mds.data["level"]
+        >>> mds.indexes["level"].to_numpy()
         array([200., 300.])
 
         >>> mda = mds["air_temperature"]
-        >>> mda.variables["level"].values  # faster access than mda.data["level"]
+        >>> mda.indexes["level"].to_numpy()
         array([200., 300.])
         """
-        if isinstance(self.data, xr.Dataset):
-            return self.data.variables  # type: ignore[return-value]
-        return self.data.coords.variables
+        return {k: v.index for k, v in self.data._indexes.items()}  # type: ignore[attr-defined]
 
     @property
     def is_wrapped(self) -> bool:
@@ -416,7 +421,7 @@ class MetBase(ABC, Generic[XArrayType]):
         --------
         :func:`pycontrails.physics.geo.advect_longitude`
         """
-        longitude = self.variables["longitude"].values
+        longitude = self.indexes["longitude"].to_numpy()
         return _is_wrapped(longitude)
 
     @property
@@ -431,7 +436,7 @@ class MetBase(ABC, Generic[XArrayType]):
         bool
             If instance contains single level data.
         """
-        level = self.variables["level"].values
+        level = self.indexes["level"].to_numpy()
         return len(level) == 1 and level[0] == -1
 
     @abstractmethod
@@ -590,11 +595,11 @@ class MetBase(ABC, Generic[XArrayType]):
         MetDataset | MetDataArray
             Copy of downselected MetDataset or MetDataArray.
         """
-        variables = self.variables
-        lon = variables["longitude"].values
-        lat = variables["latitude"].values
-        level = variables["level"].values
-        time = variables["time"].values
+        indexes = self.indexes
+        lon = indexes["longitude"].to_numpy()
+        lat = indexes["latitude"].to_numpy()
+        level = indexes["level"].to_numpy()
+        time = indexes["time"].to_numpy()
 
         vector = vector_module.GeoVectorDataset(
             longitude=[lon.min(), lon.max()],
@@ -1060,7 +1065,7 @@ class MetDataset(MetBase):
 
         """
         coords_keys = self.data.dims
-        variables = self.variables
+        variables = self.indexes
         coords_vals = [variables[key].values for key in coords_keys]
         coords_meshes = np.meshgrid(*coords_vals, indexing="ij")
         raveled_coords = (mesh.ravel() for mesh in coords_meshes)
@@ -1933,8 +1938,9 @@ class MetDataArray(MetBase):
         from pycontrails.core import polygon
 
         # Convert to nested lists of coordinates for GeoJSON representation
-        longitude: npt.NDArray[np.float64] = self.variables["longitude"].values
-        latitude: npt.NDArray[np.float64] = self.variables["latitude"].values
+        indexes = self.indexes
+        longitude = indexes["longitude"].to_numpy()
+        latitude = indexes["latitude"].to_numpy()
 
         mp = polygon.find_multipolygon(
             arr,
@@ -2142,9 +2148,9 @@ class MetDataArray(MetBase):
         volume = self.data.sel(time=time).values
 
         # convert from array index back to coordinates
-        longitude = self.variables["longitude"].values
-        latitude = self.variables["latitude"].values
-        altitude = units.pl_to_m(self.variables["level"].values)
+        longitude = self.indexes["longitude"].values
+        latitude = self.indexes["latitude"].values
+        altitude = units.pl_to_m(self.indexes["level"].values)
 
         # Pad volume on all axes to close the volumes
         if closed:
@@ -2335,11 +2341,7 @@ def _wrap_longitude(data: XArrayType) -> XArrayType:
     ValueError
         If longitude values are already wrapped.
     """
-    if isinstance(data, xr.Dataset):
-        lon = data.variables["longitude"].values
-    else:
-        lon = data.coords.variables["longitude"].values
-
+    lon = data._indexes["longitude"].index.to_numpy()  # type: ignore[attr-defined]
     if _is_wrapped(lon):
         raise ValueError("Longitude values are already wrapped")
 
@@ -2404,7 +2406,7 @@ def _extract_2d_arr_and_altitude(
     """
     # Determine level if not specified
     if level is None:
-        level_coord = mda.variables["level"].values
+        level_coord = mda.indexes["level"].values
         if len(level_coord) == 1:
             level = level_coord[0]
         else:
@@ -2415,7 +2417,7 @@ def _extract_2d_arr_and_altitude(
 
     # Determine time if not specified
     if time is None:
-        time_coord = mda.variables["time"].values
+        time_coord = mda.indexes["time"].values
         if len(time_coord) == 1:
             time = time_coord[0]
         else:

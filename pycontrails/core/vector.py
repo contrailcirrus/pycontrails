@@ -1605,22 +1605,22 @@ class GeoVectorDataset(VectorDataset):
         npt.NDArray[np.bool_]
             True if point is inside the bounding box defined by ``met``.
         """
-        variables = met.variables
+        indexes = met.indexes
 
         lat_intersect = coordinates.intersect_domain(
-            variables["latitude"].values,
+            indexes["latitude"].to_numpy(),
             self["latitude"],
         )
         lon_intersect = coordinates.intersect_domain(
-            variables["longitude"].values,
+            indexes["longitude"].to_numpy(),
             self["longitude"],
         )
         level_intersect = coordinates.intersect_domain(
-            variables["level"].values,
+            indexes["level"].to_numpy(),
             self.level,
         )
         time_intersect = coordinates.intersect_domain(
-            variables["time"].values,
+            indexes["time"].to_numpy(),
             self["time"],
         )
 
@@ -1899,19 +1899,19 @@ class GeoVectorDataset(VectorDataset):
         MetDataset | MetDataArray
             Copy of downselected MetDataset or MetDataArray.
         """
-        variables = met.variables
+        variables = met.indexes
         lon_slice = coordinates.slice_domain(
-            variables["longitude"].values,
+            variables["longitude"].to_numpy(),
             self["longitude"],
             buffer=longitude_buffer,
         )
         lat_slice = coordinates.slice_domain(
-            variables["latitude"].values,
+            variables["latitude"].to_numpy(),
             self["latitude"],
             buffer=latitude_buffer,
         )
         time_slice = coordinates.slice_domain(
-            variables["time"].values,
+            variables["time"].to_numpy(),
             self["time"],
             buffer=time_buffer,
         )
@@ -1921,7 +1921,7 @@ class GeoVectorDataset(VectorDataset):
             level_slice = slice(None)
         else:
             level_slice = coordinates.slice_domain(
-                variables["level"].values,
+                variables["level"].to_numpy(),
                 self.level,
                 buffer=level_buffer,
             )
