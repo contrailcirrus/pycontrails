@@ -211,7 +211,7 @@ class CocipGrid(models.Model):
 
         self.met, self.rad = _downselect_met(self.source, self.met, self.rad, self.params)
         self.met = cocip.add_tau_cirrus(self.met)
-        self._check_met_source_overlap()
+        self._check_met_covers_source()
 
         # Save humidity scaling type to output attrs
         humidity_scaling = self.params["humidity_scaling"]
@@ -673,7 +673,12 @@ class CocipGrid(models.Model):
 
         return vector
 
-    def _check_met_source_overlap(self) -> None:
+    def _check_met_covers_source(self) -> None:
+        """Ensure that the met and rad data cover the source data.
+
+        See also :func:`_check_met_rad_time` which checks the time coverage
+        in more detail.
+        """
         try:
             source = self.source
         except AttributeError as exc:
@@ -693,15 +698,15 @@ class CocipGrid(models.Model):
             time = source["time"]
 
         variables = self.met.variables
-        _check_overlap(variables["longitude"].values, longitude, "longitude", "met")
-        _check_overlap(variables["latitude"].values, latitude, "latitude", "met")
-        _check_overlap(variables["level"].values, level, "level", "met")
-        _check_overlap(variables["time"].values, time, "time", "met")
+        _check_coverage(variables["longitude"].values, longitude, "longitude", "met")
+        _check_coverage(variables["latitude"].values, latitude, "latitude", "met")
+        _check_coverage(variables["level"].values, level, "level", "met")
+        _check_coverage(variables["time"].values, time, "time", "met")
 
         variables = self.rad.variables
-        _check_overlap(variables["longitude"].values, longitude, "longitude", "rad")
-        _check_overlap(variables["latitude"].values, latitude, "latitude", "rad")
-        _check_overlap(variables["time"].values, time, "time", "rad")
+        _check_coverage(variables["longitude"].values, longitude, "longitude", "rad")
+        _check_coverage(variables["latitude"].values, latitude, "latitude", "rad")
+        _check_coverage(variables["time"].values, time, "time", "rad")
 
         _warn_not_wrap(self.met)
         _warn_not_wrap(self.rad)
@@ -2302,12 +2307,10 @@ def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np
 _T = TypeVar("_T", np.float64, np.datetime64)
 
 
-def _check_overlap(
+def _check_coverage(
     met_array: npt.NDArray[_T], grid_array: npt.NDArray[_T], coord: str, name: str
 ) -> None:
-    """Check if met data should be downselected.
-
-    Warn if grid coordinate extends beyond met coordinate.
+    """Warn if the met data does not cover the entire source domain.
 
     Parameters
     ----------
