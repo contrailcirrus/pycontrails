@@ -146,9 +146,19 @@ class CocipGrid(models.Model):
         Parameters
         ----------
         source : GeoVectorDataset | MetDataset | None
-            Input :class:`GeoVectorDataset` or :class:`MetDataset`. If ``source`` is
-            :class:`MetDataset`, only its underlying coordinates (longitude, latitude,
-            level, and time values) are used.
+            Input :class:`GeoVectorDataset` or :class:`MetDataset`. If None,
+            a ``NotImplementedError`` is raised. If any subclass of :class:`GeoVectorDataset`
+            is passed (e.g., :class:`Flight`), the additional structure is forgotten and
+            the model is evaluated as if it were a :class:`GeoVectorDataset`.
+            Additional variables may be passed as ``source`` data or attrs. These
+            include:
+
+            - ``aircraft_type``: This overrides any value in :attr:`params`. Must be included
+              in the source attrs (not data).
+            - ``fuel_flow``, ``engine_efficiency``, ``true_airspeed``, ``wingspan``,
+              ``aircraft_mass``: These override any value in :attr:`params`.
+            - ``azimuth``: This overrides any value in :attr:`params`.
+            - ``segment_length``: This overrides any value in :attr:`params`.
         **params : Any
             Overwrite model parameters before eval
 
@@ -167,16 +177,18 @@ class CocipGrid(models.Model):
         Notes
         -----
         At a high level, the model is broken down into the following steps:
-            - Convert any :class:`MetDataset` ``source`` to :class:`GeoVectorDataset`
-            - Use the :attr:`params` ``met_slice_dt`` to slice :attr:`met` into
-              4d sub-grids with at least two timesteps.
-            - For each ``met`` time slice, initialize ``source`` points belonging to
-              the slice.
+          - Convert any :class:`MetDataset` ``source`` to :class:`GeoVectorDataset`.
+          - Split the ``source`` into chunks of size ``params["target_split_size"]``.
+          - For each timestep in :attr:`timesteps`:
+
+            - Generate any new waypoints from the source data. Calculate aircraft performance
+              and run the CoCiP downwash routine over the new waypoints.
             - For each "active" contrail (i.e., a contrail that has been initialized but
-              has not yet reach its end of life), evolve the contrail to the terminal
-              timestep of the ``met`` slice.
-            - Aggregate contrail age and energy forcing predictions to a single
-              output variable to return.
+              has not yet reach its end of life), evolve the contrail forward one step.
+              Filter any waypoint that has reached its end of life.
+
+          - Aggregate contrail age and energy forcing predictions to a single
+            output variable to return.
         """
         self.update_params(params)
         if source is None:
@@ -202,7 +214,7 @@ class CocipGrid(models.Model):
         self._parse_verbose_outputs()
 
         self._set_timesteps()
-        pbar = self.init_pbar()
+        pbar = self._init_pbar()
 
         met: MetDataset | None = None
         rad: MetDataset | None = None
@@ -421,7 +433,7 @@ class CocipGrid(models.Model):
         t_end = tmax.floor(dt) + self.params["max_age"] + dt
         self.timesteps = np.arange(t_start, t_end, dt)
 
-    def init_pbar(self) -> tqdm.tqdm | None:
+    def _init_pbar(self) -> tqdm.tqdm | None:
         """Initialize a progress bar for model evaluation.
 
         The total number of steps is estimated in a very crude way. Do not
@@ -440,7 +452,7 @@ class CocipGrid(models.Model):
             from tqdm.auto import tqdm
         except ModuleNotFoundError as exc:
             dependencies.raise_module_not_found_error(
-                name="CocipGrid.init_pbar method",
+                name="CocipGrid._init_pbar method",
                 package_name="tqdm",
                 module_not_found_error=exc,
                 extra="Alternatively, set model parameter 'show_progress=False'.",

@@ -66,38 +66,38 @@ class CocipGridParams(CocipParams):
     azimuth: float | None = 0.0
 
     #: Experimental parameter used to approximate ``dsn_dz`` from ``ds_dz`` via
-    #: ``dsn_dz = ds_dz * dsn_dz_factor``. A value of 0.0 disables any normal
-    #: wind shear effects. An initial unpublished experiment suggests that
+    #: ``dsn_dz = ds_dz * dsn_dz_factor``.
+    #: A value of 0.0 disables any normal wind shear effects.
+    #: An initial unpublished experiment suggests that
     #: ``dsn_dz_factor = 0.665`` adequately approximates the mean EF predictions
-    #: of :class:`CocipGrid` over all azimuths.
-    #: .. versionadded 0.32.2::
+    #: of :class:`CocipGrid` over all azimuths. Added in version 0.32.2.
     dsn_dz_factor: float = 0.0
 
     #: --------------------
     #: Aircraft Performance
     #: --------------------
 
-    #: Aircraft wingspan, [:math:`m`]. If included in :attr:`CocipGrid.source``,
+    #: Aircraft wingspan, [:math:`m`]. If included in :attr:`CocipGrid.source`,
     #: this parameter is unused. Otherwise, if this parameter is None, the
     #: :attr:`aircraft_performance` model is used to estimate the wingspan.
     wingspan: float | None = None
 
-    #: Nominal aircraft mass, [:math:`kg`]. If included in :attr:`CocipGrid.source``,
+    #: Nominal aircraft mass, [:math:`kg`]. If included in :attr:`CocipGrid.source`,
     #: this parameter is unused. Otherwise, if this parameter is None, the
     #: :attr:`aircraft_performance` model is used to estimate the aircraft mass.
     aircraft_mass: float | None = None
 
-    #: Cruising true airspeed, [:math:`m * s^{-1}`]. If included in :attr:`CocipGrid.source``,
+    #: Cruising true airspeed, [:math:`m * s^{-1}`]. If included in :attr:`CocipGrid.source`,
     #: this parameter is unused. Otherwise, if this parameter is None, the
     #: :attr:`aircraft_performance` model is used to estimate the true airspeed.
     true_airspeed: float | None = None
 
-    #: Nominal engine efficiency, [:math:`0 - 1`]. If included in :attr:`CocipGrid.source``,
+    #: Nominal engine efficiency, [:math:`0 - 1`]. If included in :attr:`CocipGrid.source`,
     #: this parameter is unused. Otherwise, if this parameter is None, the
     #: :attr:`aircraft_performance` model is used to estimate the engine efficiency.
     engine_efficiency: float | None = None
 
-    #: Nominal fuel flow, [:math:`kg s^{-1}`]. If included in :attr:`CocipGrid.source``,
+    #: Nominal fuel flow, [:math:`kg s^{-1}`]. If included in :attr:`CocipGrid.source`,
     #: this parameter is unused. Otherwise, if this parameter is None, the
     #: :attr:`aircraft_performance` model is used to estimate the fuel flow.
     fuel_flow: float | None = None
@@ -120,7 +120,7 @@ class CocipGridParams(CocipParams):
     # ------------
 
     #: Attach additional formation specific data to the output. If True, attach
-    #: all possible formation data. See :func:`contrail_grid._supported_verbose_outputs_formation`
+    #: all possible formation data. See :ref:pycontrails.models.cocipgrid.cocip_grid`
     #: for a list of supported formation data.
     verbose_outputs_formation: bool | set[str] = False
 
