@@ -750,5 +750,7 @@ def test_max_age_exceeds_met(instance_params: dict[str, Any], source: MetDataset
     instance_params["interpolation_bounds_error"] = False
 
     model = CocipGrid(**instance_params, aircraft_performance=PSGrid())
-    out = model.eval(source=source)
+
+    with pytest.warns(UserWarning, match="End time of parameter 'met'"):
+        out = model.eval(source=source)
     assert out.data["contrail_age"].max() == 1.0

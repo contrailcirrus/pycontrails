@@ -441,6 +441,8 @@ class CocipGrid(models.Model):
 
         t_start = tmin.ceil(dt)
         t_end = tmax.floor(dt) + self.params["max_age"] + dt
+        _check_met_rad_time(self.met, self.rad, tmin, t_end)
+
         self.timesteps = np.arange(t_start, t_end, dt)
 
     def _init_pbar(self) -> tqdm.tqdm | None:
@@ -2400,3 +2402,70 @@ def _downselect_met(
 def _is_segment_free_mode(vector: GeoVectorDataset) -> bool:
     """Determine if model is run in a segment-free mode."""
     return "longitude_head" not in vector
+
+
+def _check_met_rad_time(
+    met: MetDataset,
+    rad: MetDataset,
+    tmin: pd.Timestamp,
+    tmax: pd.Timestamp,
+) -> None:
+    """Warn if meteorology data doesn't cover a required time range.
+
+    Parameters
+    ----------
+    met : MetDataset
+        Meteorology dataset
+    rad : MetDataset
+        Radiative flux dataset
+    tmin: pd.Timestamp
+        Start of required time range
+    tmax:pd.Timestamp
+        End of required time range
+    """
+    met_time = met.data["time"].values
+    met_tmin = pd.to_datetime(met_time.min())
+    met_tmax = pd.to_datetime(met_time.max())
+    _check_start_time(met_tmin, tmin, "met")
+    _check_end_time(met_tmax, tmax, "met")
+
+    rad_time = rad.data["time"].values
+    rad_tmin = pd.to_datetime(rad_time.min())
+    rad_tmax = pd.to_datetime(rad_time.max())
+    note = "differencing reduces time coverage when providing accumulated radiative fluxes."
+    _check_start_time(rad_tmin, tmin, "rad", note=note)
+    _check_end_time(rad_tmax, tmax, "rad", note=note)
+
+
+def _check_start_time(
+    met_start: pd.Timestamp,
+    model_start: pd.Timestamp,
+    name: str,
+    *,
+    note: str | None = None,
+) -> None:
+    if met_start > model_start:
+        note = f" Note: {note}" if note else ""
+        warnings.warn(
+            f"Start time of parameter '{name}' ({met_start}) "
+            f"is after model start time ({model_start}). "
+            f"Include additional time at the start of '{name}'."
+            f"{note}"
+        )
+
+
+def _check_end_time(
+    met_end: pd.Timestamp,
+    model_end: pd.Timestamp,
+    name: str,
+    *,
+    note: str | None = None,
+) -> None:
+    if met_end < model_end:
+        note = f" Note: {note}" if note else ""
+        warnings.warn(
+            f"End time of parameter '{name}' ({met_end}) "
+            f"is before model end time ({model_end}). "
+            f"Include additional time at the end of '{name}' or reduce 'max_age' parameter."
+            f"{note}"
+        )
