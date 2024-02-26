@@ -72,6 +72,14 @@ class CocipGrid(models.Model):
     :mod:`tau_cirrus`
     """
 
+    __slots__ = (
+        "rad",
+        "timesteps",
+        "contrail",
+        "contrail_list",
+        "_target_dtype",
+    )
+
     name = "contrail_grid"
     long_name = "Gridded Contrail Cirrus Prediction Model"
     default_params = CocipGridParams
