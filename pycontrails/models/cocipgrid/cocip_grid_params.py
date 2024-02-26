@@ -40,6 +40,7 @@ class CocipGridParams(CocipParams):
     #: can be problematic with a small nominal segment length and a large
     #: `dt_integration` parameter. On the other hand, too large of a nominal segment
     #: length diminishes the "locality" of the grid point.
+    #:
     #: .. versionadded 0.32.2:: EXPERIMENTAL: If None, run CoCiP in "segment-free"
     #: mode. This mode does not include any terms involving segments (wind shear,
     #: segment_length, any derived terms). See :attr:`CocipGridParams.azimuth`
@@ -70,7 +71,9 @@ class CocipGridParams(CocipParams):
     #: A value of 0.0 disables any normal wind shear effects.
     #: An initial unpublished experiment suggests that
     #: ``dsn_dz_factor = 0.665`` adequately approximates the mean EF predictions
-    #: of :class:`CocipGrid` over all azimuths. Added in version 0.32.2.
+    #: of :class:`CocipGrid` over all azimuths.
+    #:
+    #: .. versionadded:: 0.32.2.
     dsn_dz_factor: float = 0.0
 
     #: --------------------
