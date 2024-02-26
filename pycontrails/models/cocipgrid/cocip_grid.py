@@ -300,12 +300,14 @@ class CocipGrid(models.Model):
         already performed a spatial downselection of the met data.
         """
         if met is None or time_end > met.variables["time"].values[-1]:
+            # idx is the first index at which self.met.variables["time"].values >= time_end
             idx = np.searchsorted(self.met.variables["time"].values, time_end)
             sl = slice(max(0, idx - 1), idx + 1)
             logger.debug("Select met slice %s", sl)
             met = MetDataset(self.met.data.isel(time=sl), copy=False)
 
         if rad is None or time_end > rad.variables["time"].values[-1]:
+            # idx is the first index at which self.rad.variables["time"].values >= time_end
             idx = np.searchsorted(self.rad.variables["time"].values, time_end)
             sl = slice(max(0, idx - 1), idx + 1)
             logger.debug("Select rad slice %s", sl)
