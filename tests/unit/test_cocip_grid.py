@@ -132,7 +132,7 @@ def test_met_too_short(
     source = CocipGrid.create_source(**source_kwargs)
     gc.set_source(source)
     with pytest.warns(UserWarning, match=match):
-        gc._check_met_source_overlap()
+        gc._check_met_covers_source()
 
 
 def test_create_bad_latitude() -> None:
