@@ -441,6 +441,9 @@ class CocipGrid(models.Model):
 
         t_start = tmin.ceil(dt)
         t_end = tmax.floor(dt) + self.params["max_age"] + dt
+
+        # Pass in t_end (as opposed to tmax) to ensure that the met and rad data
+        # cover the entire evolution period.
         _check_met_rad_time(self.met, self.rad, tmin, t_end)
 
         self.timesteps = np.arange(t_start, t_end, dt)
