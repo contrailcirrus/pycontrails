@@ -353,7 +353,7 @@ class MetDataSource(abc.ABC):
         self,
         time: TimeInput | None,
         variables: VariableInput,
-        pressure_levels: PressureLevelInput = [-1],
+        pressure_levels: PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float | None = None,
         **kwargs: Any,

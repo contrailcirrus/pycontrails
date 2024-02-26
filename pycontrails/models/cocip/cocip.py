@@ -302,7 +302,7 @@ class Cocip(Model):
         self,
         met: MetDataset,
         rad: MetDataset,
-        params: dict[str, Any] = {},
+        params: dict[str, Any] | None = None,
         **params_kwargs: Any,
     ) -> None:
         # call Model init

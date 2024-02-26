@@ -75,7 +75,7 @@ class PCC(Model):
         self,
         met: MetDataset,
         surface: MetDataset,
-        params: dict[str, Any] = {},
+        params: dict[str, Any] | None = None,
         **params_kwargs: Any,
     ) -> None:
         super().__init__(met, params=params, **params_kwargs)

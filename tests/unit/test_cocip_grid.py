@@ -552,7 +552,6 @@ def test_reasonable_syn_fl(syn_fl: SyntheticFlight, met_cocip1) -> None:  # noqa
     """Check that syn_fl fixture is reasonable."""
     for _ in range(100):
         fl = syn_fl()
-        fl.segment_angle
         u_wind = fl.intersect_met(met_cocip1["eastward_wind"])
         v_wind = fl.intersect_met(met_cocip1["northward_wind"])
         tas = fl.segment_true_airspeed(u_wind=u_wind, v_wind=v_wind)

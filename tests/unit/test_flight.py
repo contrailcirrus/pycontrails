@@ -550,7 +550,7 @@ def test_crs(fl: Flight, met_issr: MetDataset, rng: np.random.Generator) -> None
     assert np.all(fl.data["longitude"] != fl2.data["longitude"])
 
     with pytest.raises(NotImplementedError):
-        fl2.length
+        _ = fl2.length
     fl2.update(issr=rng.integers(0, 2, len(fl2)))
     with pytest.raises(NotImplementedError, match="Only implemented for EPSG:4326"):
         fl2.length_met("issr")
@@ -728,9 +728,6 @@ def test_interpolation_edge_cases(shift: int, freq: str) -> None:
         assert jump.size == 0
     elif shift == 0:
         assert jump.size == 1
-
-    # Interpolated altitudes should increase then decrease
-    np.diff(np.sign(np.diff(fl2.altitude))).nonzero()[0].size == 1
 
     assert not fl2.dataframe.isna().any().any()
 

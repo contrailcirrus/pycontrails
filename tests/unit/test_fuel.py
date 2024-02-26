@@ -18,7 +18,7 @@ def test_fuel_and_saf_properties():
     assert jet_a.__dict__.keys() - saf.__dict__.keys() == set()
 
     # And the saf instance has one more attribute
-    saf.__dict__.keys() - jet_a.__dict__.keys() == {"pct_blend"}
+    assert saf.__dict__.keys() - jet_a.__dict__.keys() == {"pct_blend"}
 
     assert saf.fuel_name == "Jet A-1 / Sustainable Aviation Fuel Blend"
     assert jet_a.fuel_name == "Jet A-1"
