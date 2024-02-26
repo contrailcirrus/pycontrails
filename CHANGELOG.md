@@ -32,6 +32,7 @@
 
 - Improve clarity of warnings produced when meteorology data doesn't cover the time range required by a gridded CoCiP model.
 - No longer emit `pandas` warning when `Flight.resample_and_fill(..., drop=True, ...)` is called with non-float data.
+- Correctly handle `CocipGrid` `rad` data with non-uniform time steps.
 
 ## v0.49.3
 
