@@ -445,17 +445,16 @@ def interp(
         coords = {"longitude": longitude, "latitude": latitude, "level": level, "time": time}
         da = _localize(da, coords)
 
-    # Using da.coords.variables is slightly more performant than da["longitude"].values
-    variables = da.coords.variables
-    x = variables["longitude"].values
-    y = variables["latitude"].values
-    z = variables["level"].values
+    indexes = da._indexes
+    x = indexes["longitude"].index.to_numpy()  # type: ignore[attr-defined]
+    y = indexes["latitude"].index.to_numpy()  # type: ignore[attr-defined]
+    z = indexes["level"].index.to_numpy()  # type: ignore[attr-defined]
     if any(v.dtype != np.float64 for v in (x, y, z)):
         msg = "da must have float64 dtype for longitude, latitude, and level coordinates"
         raise ValueError(msg)
 
     # Convert t and time to float64
-    t = variables["time"].values
+    t = indexes["time"].index.to_numpy()  # type: ignore[attr-defined]
     offset = t[0]
     t = _floatize_time(t, offset)
 

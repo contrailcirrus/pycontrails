@@ -10,6 +10,7 @@
 - Remove the `cocipgrid.cocip_time_handling` module. Any useful tooling has been moved directly to the `cocipgrid.cocip_grid` module.
 - Remove the `CocipGrid.timedict` attribute. Add a `CocipGrid.timesteps` attribute. This is now applied in the same manner that the `Cocip` model uses its `timesteps` attribute.
 - Simplify the runtime estimate used in constructing the `CocipGrid` `tqdm` progress bar. The new estimate is less precise than the previous estimate and should not be trusted for long-running simulations.
+- Deprecate `MetBase.variables` in favor of `MetBase.indexes`.
 
 ### Features
 

@@ -307,16 +307,16 @@ class CocipGrid(models.Model):
         If ``self.params["downselect_met"]`` is True, :func:`_downselect_met` has
         already performed a spatial downselection of the met data.
         """
-        if met is None or time_end > met.variables["time"].values[-1]:
-            # idx is the first index at which self.met.variables["time"].values >= time_end
-            idx = np.searchsorted(self.met.variables["time"].values, time_end)
+        if met is None or time_end > met.indexes["time"].to_numpy()[-1]:
+            # idx is the first index at which self.met.variables["time"].to_numpy() >= time_end
+            idx = np.searchsorted(self.met.indexes["time"].to_numpy(), time_end)
             sl = slice(max(0, idx - 1), idx + 1)
             logger.debug("Select met slice %s", sl)
             met = MetDataset(self.met.data.isel(time=sl), copy=False)
 
-        if rad is None or time_end > rad.variables["time"].values[-1]:
-            # idx is the first index at which self.rad.variables["time"].values >= time_end
-            idx = np.searchsorted(self.rad.variables["time"].values, time_end)
+        if rad is None or time_end > rad.indexes["time"].to_numpy()[-1]:
+            # idx is the first index at which self.rad.variables["time"].to_numpy() >= time_end
+            idx = np.searchsorted(self.rad.indexes["time"].to_numpy(), time_end)
             sl = slice(max(0, idx - 1), idx + 1)
             logger.debug("Select rad slice %s", sl)
             rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
@@ -424,7 +424,7 @@ class CocipGrid(models.Model):
         if isinstance(source, GeoVectorDataset):
             return source["time"]
         if isinstance(source, MetDataset):
-            return source.variables["time"].values
+            return source.indexes["time"].values
 
         msg = f"Cannot calculate timesteps for {source}"
         raise TypeError(msg)
@@ -503,10 +503,8 @@ class CocipGrid(models.Model):
             msg = f"Expected source to be a MetDataset, found {type(self.source)}"
             raise TypeError(msg)
 
-        variables = self.source.variables
-        grid_size = (
-            variables["longitude"].size * variables["latitude"].size * variables["level"].size
-        )
+        indexes = self.source.indexes
+        grid_size = indexes["longitude"].size * indexes["latitude"].size * indexes["level"].size
 
         split_size = int(
             self.params["target_split_size_pre_SAC_boost"] * self.params["target_split_size"]
@@ -686,27 +684,27 @@ class CocipGrid(models.Model):
             raise AttributeError(msg) from exc
 
         if isinstance(source, MetDataset):
-            variables = source.variables
-            longitude = variables["longitude"].values
-            latitude = variables["latitude"].values
-            level = variables["level"].values
-            time = variables["time"].values
+            indexes = source.indexes
+            longitude = indexes["longitude"].to_numpy()
+            latitude = indexes["latitude"].to_numpy()
+            level = indexes["level"].to_numpy()
+            time = indexes["time"].to_numpy()
         else:
             longitude = source["longitude"]
             latitude = source["latitude"]
             level = source.level
             time = source["time"]
 
-        variables = self.met.variables
-        _check_coverage(variables["longitude"].values, longitude, "longitude", "met")
-        _check_coverage(variables["latitude"].values, latitude, "latitude", "met")
-        _check_coverage(variables["level"].values, level, "level", "met")
-        _check_coverage(variables["time"].values, time, "time", "met")
+        indexes = self.met.indexes
+        _check_coverage(indexes["longitude"].to_numpy(), longitude, "longitude", "met")
+        _check_coverage(indexes["latitude"].to_numpy(), latitude, "latitude", "met")
+        _check_coverage(indexes["level"].to_numpy(), level, "level", "met")
+        _check_coverage(indexes["time"].to_numpy(), time, "time", "met")
 
-        variables = self.rad.variables
-        _check_coverage(variables["longitude"].values, longitude, "longitude", "rad")
-        _check_coverage(variables["latitude"].values, latitude, "latitude", "rad")
-        _check_coverage(variables["time"].values, time, "time", "rad")
+        indexes = self.rad.indexes
+        _check_coverage(indexes["longitude"].to_numpy(), longitude, "longitude", "rad")
+        _check_coverage(indexes["latitude"].to_numpy(), latitude, "latitude", "rad")
+        _check_coverage(indexes["time"].to_numpy(), time, "time", "rad")
 
         _warn_not_wrap(self.met)
         _warn_not_wrap(self.rad)
@@ -2261,7 +2259,7 @@ def _warn_not_wrap(met: MetDataset) -> None:
     """
     if met.is_wrapped:
         return
-    lon = met.variables["longitude"]
+    lon = met.indexes["longitude"]
     if lon.min() == -180.0 and lon.max() == 179.75:
         warnings.warn(
             "The MetDataset `met` not been wrapped. The CocipGrid model may "

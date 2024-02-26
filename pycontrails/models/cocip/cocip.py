@@ -1013,11 +1013,11 @@ class Cocip(Model):
                 np.timedelta64(0, "ns"),
                 time_end - latest_contrail["time"].max(),
             )
-            if time_end > met.variables["time"].values[-1]:
+            if time_end > met.indexes["time"].to_numpy()[-1]:
                 logger.debug("Downselect met at time_end %s within Cocip evolution", time_end)
                 met = latest_contrail.downselect_met(self.met, **buffers, copy=False)
                 met = add_tau_cirrus(met)
-            if time_end > rad.variables["time"].values[-1]:
+            if time_end > rad.indexes["time"].to_numpy()[-1]:
                 logger.debug("Downselect rad at time_end %s within Cocip evolution", time_end)
                 rad = latest_contrail.downselect_met(self.rad, **buffers, copy=False)
 
