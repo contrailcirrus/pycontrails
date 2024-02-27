@@ -1457,6 +1457,10 @@ def _process_rad(rad: MetDataset) -> MetDataset:
             # Keep the original attrs -- we need these later on
             old_attrs = {k: v.attrs for k, v in rad.data.items()}
 
+            # Also need to keep dataset-level attrs, which are lost
+            # when dividing a Dataset by a DataArray
+            old_rad_attrs = rad.data.attrs
+
             # NOTE: Taking the diff will remove the first time step
             # This is typically what we want (forecast step 0 is all zeros)
             # But, if the data has been downselected for a particular Flight / Fleet,
@@ -1468,6 +1472,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
             # accumulations by number of hours between steps
             time_diff_h = time_diff / np.timedelta64(1, "h")
             rad.data = rad.data.diff("time", label="upper") / time_diff_h
+            rad.data.attrs = old_rad_attrs
 
             # Add back the original attrs
             for k, v in rad.data.items():

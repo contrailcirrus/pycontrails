@@ -1,6 +1,12 @@
 
 # Changelog
 
+## v0.49.5
+
+## Fixes
+
+- Fix bug where `Cocip._process_rad` lost radiation dataset attributes
+
 ## v0.49.4
 
 ### Breaking changes
