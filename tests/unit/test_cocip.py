@@ -374,18 +374,18 @@ def test_cocip_processes_rad_with_warnings(met: MetDataset, rad: MetDataset) -> 
         Cocip(met, rad=rad)
 
 
-def test_cocip_preserves_hres_rad_attrs(
-    hres_dummy_met: MetDataset, hres_dummy_rad: MetDataset
-) -> None:
-    """Test that Cocip preserves dataset-level attributes after processing rad data"""
+def test_cocip_preserves_hres_attrs(hres_dummy_met: MetDataset, hres_dummy_rad: MetDataset) -> None:
+    """Test that Cocip preserves dataset-level attributes after preprocessing met and rad data"""
 
     met = hres_dummy_met
     rad = hres_dummy_rad
-    attrs = rad.data.attrs
+    rad_attrs = rad.data.attrs
+    met_attrs = met.data.attrs
 
     with pytest.warns(UserWarning, match="humidity scaling"):
         Cocip(met=met, rad=rad)
-    assert attrs == rad.data.attrs
+    assert met_attrs == met.data.attrs
+    assert rad_attrs == rad.data.attrs
 
 
 def test_cocip_processes_hres_rad_even_time(
