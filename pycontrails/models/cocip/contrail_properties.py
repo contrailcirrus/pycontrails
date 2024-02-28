@@ -204,8 +204,7 @@ def iwc_post_wake_vortex(
 def ice_particle_number(
     nvpm_ei_n: npt.NDArray[np.float64],
     fuel_dist: npt.NDArray[np.float64],
-    iwc: npt.NDArray[np.float64],
-    iwc_1: npt.NDArray[np.float64],
+    f_surv: npt.NDArray[np.float64],
     air_temperature: npt.NDArray[np.float64],
     T_crit_sac: npt.NDArray[np.float64],
     min_ice_particle_number_nvpm_ei_n: float,
@@ -223,11 +222,8 @@ def ice_particle_number(
         black carbon number emissions index, [:math:`kg^{-1}`]
     fuel_dist : npt.NDArray[np.float64]
         fuel consumption of the flight segment per distance traveled, [:math:`kg m^{-1}`]
-    iwc : npt.NDArray[np.float64]
-        initial ice water content at each flight waypoint before the wake vortex
-        phase, [:math:`kg_{H_{2}O}/kg_{air}`]
-    iwc_1 : npt.NDArray[np.float64]
-        ice water content after the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
+    f_surv : npt.NDArray[np.float64]
+        Fraction of contrail ice particle number that survive the wake vortex phase.
     air_temperature : npt.NDArray[np.float64]
         ambient temperature for each waypoint, [:math:`K`]
     T_crit_sac : npt.NDArray[np.float64]
@@ -241,7 +237,6 @@ def ice_particle_number(
     npt.NDArray[np.float64]
         initial number of ice particles per distance after the wake vortex phase, [:math:`# m^{-1}`]
     """
-    f_surv = ice_particle_survival_factor(iwc, iwc_1)
     f_activation = ice_particle_activation_rate(air_temperature, T_crit_sac)
     nvpm_ei_n_activated = nvpm_ei_n * f_activation
     return fuel_dist * np.maximum(nvpm_ei_n_activated, min_ice_particle_number_nvpm_ei_n) * f_surv
