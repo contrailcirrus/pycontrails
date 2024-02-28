@@ -836,14 +836,21 @@ class Cocip(Model):
         air_temperature = self._sac_flight["air_temperature"]
         specific_humidity = self._sac_flight["specific_humidity"]
         T_critical_sac = self._sac_flight["T_critical_sac"]
+        rhi_0 = thermo.rhi(
+            specific_humidity, air_temperature, air_pressure
+        )
 
         # Flight performance parameters
-        fuel_dist = (
-            self._sac_flight.get_data_or_attr("fuel_flow") / self._sac_flight["true_airspeed"]
-        )
+        fuel_flow = self._sac_flight.get_data_or_attr("fuel_flow")
+        true_airspeed = self._sac_flight["true_airspeed"]
+        fuel_dist = fuel_flow / true_airspeed
 
         nvpm_ei_n = self._sac_flight.get_data_or_attr("nvpm_ei_n")
         ei_h2o = self._sac_flight.fuel.ei_h2o
+
+        # In Fleet-mode, wingspan resides on `data`, and in Flight-mode,
+        # wingspan resides on `attrs`.
+        wingspan = self._sac_flight.get_data_or_attr("wingspan")
 
         # get initial contrail parameters from wake vortex simulation
         width = self._sac_flight["width"]
@@ -890,11 +897,25 @@ class Cocip(Model):
             air_temperature, air_pressure, air_pressure_1
         )
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
+
+        if self.params["improved_wake_vortex_ice_survival_fraction"]:
+            f_surv = wake_vortex.ice_particle_number_survival_fraction(
+                air_temperature,
+                rhi_0,
+                ei_h2o,
+                wingspan,
+                true_airspeed,
+                fuel_flow,
+                nvpm_ei_n,
+                0.5 * depth     # Taking the mid-point of the contrail plume
+            )
+        else:
+            f_surv = contrail_properties.ice_particle_survival_factor(iwc, iwc_1)
+
         n_ice_per_m_1 = contrail_properties.ice_particle_number(
             nvpm_ei_n=nvpm_ei_n,
             fuel_dist=fuel_dist,
-            iwc=iwc,
-            iwc_1=iwc_1,
+            f_surv=f_surv,
             air_temperature=air_temperature,
             T_crit_sac=T_critical_sac,
             min_ice_particle_number_nvpm_ei_n=self.params["min_ice_particle_number_nvpm_ei_n"],

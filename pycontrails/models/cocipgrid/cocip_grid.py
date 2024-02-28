@@ -1482,11 +1482,11 @@ def find_initial_persistent_contrails(
         air_pressure_1=air_pressure_1,
     )
     iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
+    f_surv = contrail_properties.ice_particle_survival_factor(iwc, iwc_1)
     n_ice_per_m = contrail_properties.ice_particle_number(
         nvpm_ei_n=nvpm_ei_n,
         fuel_dist=fuel_dist,
-        iwc=iwc,
-        iwc_1=iwc_1,
+        f_surv=f_surv,
         air_temperature=air_temperature,
         T_crit_sac=T_crit_sac,
         min_ice_particle_number_nvpm_ei_n=params["min_ice_particle_number_nvpm_ei_n"],

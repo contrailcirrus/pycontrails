@@ -184,6 +184,14 @@ class CocipParams(ModelParams):
     #: :attr:`radiative_heating_effects` is enabled.
     max_depth: float = 1500.0
 
+    #: Experimental. Improved ice crystal number survival fraction in the wake vortex phase.
+    #: Implement Unterstrasser (2016), who developed a parametric model that estimates the survival
+    #: fraction of the contrail ice crystal number after the wake vortex phase based on the results
+    #: from large eddy simulations. This replicates Fig. 4 of Karcher (2018).
+    #:
+    #:  .. versionadded:: 0.50.0
+    improved_wake_vortex_ice_survival_fraction: bool = False
+
     #: Experimental. Radiative heating effects on contrail cirrus properties.
     #: Terrestrial and solar radiances warm the contrail ice particles and cause
     #: convective turbulence. This effect is expected to enhance vertical mixing
