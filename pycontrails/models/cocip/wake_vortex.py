@@ -399,10 +399,10 @@ simulations. ACP, 16(4), pp.2059-2082. https://doi.org/10.5194/acp-16-2059-2016
 """
 
 
-def ice_particle_survival_fraction(
+def ice_particle_number_survival_fraction(
     air_temperature: npt.NDArray[np.float_],
     rhi_0: npt.NDArray[np.float_],
-    ei_h2o: float,
+    ei_h2o: npt.NDArray[np.float_] | float,
     wingspan: npt.NDArray[np.float_] | float,
     true_airspeed: npt.NDArray[np.float_],
     fuel_flow: npt.NDArray[np.float_],
@@ -410,7 +410,7 @@ def ice_particle_survival_fraction(
     z_desc: npt.NDArray[np.float_],
 ) -> npt.NDArray[np.float_]:
     """
-    Calculate fraction of contrail ice particle number that survive the wake vortex phase.
+    Calculate fraction of ice particle number surviving the wake vortex phase and required inputs.
 
     Parameters
     ----------
@@ -418,7 +418,7 @@ def ice_particle_survival_fraction(
         ambient temperature for each waypoint, [:math:`K`]
     rhi_0: npt.NDArray[np.float_]
         Relative humidity with respect to ice at the flight waypoint
-    ei_h2o : float
+    ei_h2o : npt.NDArray[np.float_] | float
         Emission index of water vapor, [:math:`kg \ kg^{-1}`]
     wingspan : npt.NDArray[np.float_] | float
         aircraft wingspan, [:math:`m`]
@@ -444,14 +444,41 @@ def ice_particle_survival_fraction(
     """
     # Length scales
     z_atm = z_atm_length_scale(air_temperature, rhi_0)
-    z_emit = z_emit_length_scale(ei_h2o, wingspan, true_airspeed, air_temperature, fuel_flow)
+    rho_emit = emitted_water_vapour_concentration(ei_h2o, wingspan, true_airspeed, fuel_flow)
+    z_emit = z_emit_length_scale(rho_emit, air_temperature)
+    z_total = z_total_length_scale(aei_n, z_atm, z_emit, z_desc)
+    return _ice_number_survival_fraction(z_total)
 
+
+def z_total_length_scale(
+    aei_n: npt.NDArray[np.float_],
+    z_atm: npt.NDArray[np.float_],
+    z_emit: npt.NDArray[np.float_],
+    z_desc: npt.NDArray[np.float_]
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate the total length-scale effect of the wake vortex downwash.
+
+    Parameters
+    ----------
+    aei_n : npt.NDArray[np.float_]
+        Apparent ice crystal number emissions index at contrail formation, [:math:`kg^{-1}`]
+    z_atm : npt.NDArray[np.float_]
+        Length-scale effect of ambient supersaturation on the ice crystal mass budget, [:math:`m`]
+    z_emit : npt.NDArray[np.float_]
+        Length-scale effect of water vapour emissions on the ice crystal mass budget, [:math:`m`]
+    z_desc : npt.NDArray[np.float_]
+        Final vertical displacement of the wake vortex, `dz_max` in `wake_vortex.py`, [:math:`m`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Total length-scale effect of the wake vortex downwash, [:math:`m`]
+    """
     alpha_atm = 1.7 * (aei_n / 2.8e14)**(-0.18)
     alpha_emit = 1.15 * (aei_n / 2.8e14)**(-0.18)
     z_total = alpha_atm * z_atm + alpha_emit * z_emit - 0.6 * z_desc
-
-    f_surv = 0.4 + (1.19 / np.pi) * np.arctan(-1.35 + (z_total / 100))
-    return np.clip(f_surv, 0.0, 1.0, out=f_surv)
+    return np.maximum(z_total, 0.0)
 
 
 def z_atm_length_scale(
@@ -507,68 +534,8 @@ def z_atm_length_scale(
     return z_atm.reshape(rhi_0.shape)
 
 
-def z_emit_length_scale(
-    ei_h2o: float,
-    wingspan: npt.NDArray[np.float_] | float,
-    true_airspeed: npt.NDArray[np.float_],
-    air_temperature: npt.NDArray[np.float_],
-    fuel_flow: npt.NDArray[np.float_], *,
-    n_iter: int = 10
-) -> npt.NDArray[np.float_]:
-    """
-    Calculate the length-scale effect of water vapour emissions on the ice crystal mass budget.
-
-    Parameters
-    ----------
-    ei_h2o : float
-        Emission index of water vapor, [:math:`kg \ kg^{-1}`]
-    wingspan : npt.NDArray[np.float_] | float
-        aircraft wingspan, [:math:`m`]
-    true_airspeed : npt.NDArray[np.float_]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_temperature : npt.NDArray[np.float_]
-        ambient temperature for each waypoint, [:math:`K`]
-    fuel_flow : ArrayOrFloat
-        Fuel mass flow rate, [:math:`kg s^{-1}`]
-    n_iter : int
-        Number of iterations, set to 10 as default where `z_emit` is accurate to within +-1 m.
-
-    Returns
-    -------
-    npt.NDArray[np.float_]
-        The effect of the aircraft water vapour emission on the ice crystal mass budget,
-        provided as a length scale equivalent, [:math:`m`]
-
-    Notes
-    -----
-    - See eq. (7) in Unterstrasser (2016).
-    """
-    rho_emit = _emitted_water_vapour_concentration(ei_h2o, wingspan, true_airspeed, fuel_flow)
-
-    # Solve non-linear equation numerically using the bisection method
-    # Did not use scipy functions because it is unstable when dealing with np.arrays
-    z_1 = np.zeros_like(true_airspeed)
-    z_2 = np.ones_like(true_airspeed) * 1000.0
-
-    rho_emit = rho_emit.flatten()
-    t_amb = air_temperature.flatten()
-
-    lhs = (thermo.e_sat_ice(t_amb) / (constants.R_v * t_amb)) + rho_emit
-
-    for i in range(n_iter):
-        z_est = 0.5 * (z_1 + z_2)
-        rhs = (
-            thermo.e_sat_ice((t_amb + 9.8e-3 * z_est)) / (constants.R_v * (t_amb + 9.8e-3 * z_est))
-        )
-        z_1 = np.where(lhs > rhs, z_est, z_1)
-        z_2 = np.where(lhs < rhs, z_est, z_2)
-
-    z_emit = 0.5 * (z_1 + z_2)
-    return z_emit.reshape(air_temperature.shape)
-
-
-def _emitted_water_vapour_concentration(
-    ei_h2o: float,
+def emitted_water_vapour_concentration(
+    ei_h2o: npt.NDArray[np.float_] | float,
     wingspan: npt.NDArray[np.float_] | float,
     true_airspeed: npt.NDArray[np.float_],
     fuel_flow: npt.NDArray[np.float_],
@@ -578,7 +545,7 @@ def _emitted_water_vapour_concentration(
 
     Parameters
     ----------
-    ei_h2o : float
+    ei_h2o : npt.NDArray[np.float_] | float
         Emission index of water vapor, [:math:`kg \ kg^{-1}`]
     wingspan : npt.NDArray[np.float_] | float
         aircraft wingspan, [:math:`m`]
@@ -597,11 +564,60 @@ def _emitted_water_vapour_concentration(
     - See eq. (6) and (A8) in Unterstrasser (2016).
     """
     h2o_per_dist = (ei_h2o * fuel_flow) / true_airspeed
-    area_p = _plume_area(wingspan)
+    area_p = plume_area(wingspan)
     return h2o_per_dist / area_p
 
 
-def _plume_area(
+def z_emit_length_scale(
+    rho_emit: npt.NDArray[np.float_],
+    air_temperature: npt.NDArray[np.float_], *,
+    n_iter: int = 10
+) -> npt.NDArray[np.float_]:
+    """
+    Calculate the length-scale effect of water vapour emissions on the ice crystal mass budget.
+
+    Parameters
+    ----------
+    rho_emit : npt.NDArray[np.float_] | float
+        Aircraft-emitted water vapour concentration in the plume, [:math:`kg m^{-3}`]
+    air_temperature : npt.NDArray[np.float_]
+        ambient temperature for each waypoint, [:math:`K`]
+    n_iter : int
+        Number of iterations, set to 10 as default where `z_emit` is accurate to within +-1 m.
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        The effect of the aircraft water vapour emission on the ice crystal mass budget,
+        provided as a length scale equivalent, [:math:`m`]
+
+    Notes
+    -----
+    - See eq. (7) in Unterstrasser (2016).
+    """
+    # Solve non-linear equation numerically using the bisection method
+    # Did not use scipy functions because it is unstable when dealing with np.arrays
+    z_1 = np.zeros_like(rho_emit)
+    z_2 = np.ones_like(rho_emit) * 1000.0
+
+    rho_emit = rho_emit.flatten()
+    t_amb = air_temperature.flatten()
+
+    lhs = (thermo.e_sat_ice(t_amb) / (constants.R_v * t_amb)) + rho_emit
+
+    for i in range(n_iter):
+        z_est = 0.5 * (z_1 + z_2)
+        rhs = (
+            thermo.e_sat_ice((t_amb + 9.8e-3 * z_est)) / (constants.R_v * (t_amb + 9.8e-3 * z_est))
+        )
+        z_1 = np.where(lhs > rhs, z_est, z_1)
+        z_2 = np.where(lhs < rhs, z_est, z_2)
+
+    z_emit = 0.5 * (z_1 + z_2)
+    return z_emit.reshape(air_temperature.shape)
+
+
+def plume_area(
     wingspan: npt.NDArray[np.float_] | float,
 ) -> npt.NDArray[np.float_] | float:
     """
@@ -705,6 +721,24 @@ def _initial_wake_vortex_circulation(
     return (constants.g * aircraft_mass) / (rho_air * b_0 * true_airspeed)
 
 
+def _ice_number_survival_fraction(z_total: npt.NDArray[np.float_]) -> npt.NDArray[np.float_]:
+    """
+    Calculate fraction of ice particle number surviving the wake vortex phase.
+
+    Parameters
+    ----------
+    z_total : npt.NDArray[np.float_]
+        Total length-scale effect of the wake vortex downwash, [:math:`m`]
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Fraction of ice particle number surviving the wake vortex phase
+    """
+    f_surv = 0.45 + (1.19 / np.pi) * np.arctan(-1.35 + (z_total / 100))
+    return np.clip(f_surv, 0.0, 1.0, out=f_surv)
+
+
 def initial_contrail_depth_u2016(
     z_desc: npt.NDArray[np.float_],
     f_surv: npt.NDArray[np.float_],
@@ -732,7 +766,7 @@ def initial_contrail_depth_u2016(
       using :func:`z_desc_length_scale`.
     """
     return z_desc * np.where(
-        f_surv < 0.2,
-        6 * f_surv,
-        0.15 * f_surv + (6 - 0.15) * 0.2,
+        f_surv <= 0.2,
+        6.0 * f_surv,
+        0.15 * f_surv + (6.0 - 0.15) * 0.2,
     )
