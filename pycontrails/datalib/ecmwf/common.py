@@ -71,7 +71,7 @@ class ECMWFAPI(datalib.MetDataSource):
         # length of the requested pressure levels is 1
         # expand the dims with this level
         if "level" not in ds.dims and len(self.pressure_levels) == 1:
-            ds = ds.expand_dims({"level": self.pressure_levels})
+            ds = ds.expand_dims(level=self.pressure_levels)
 
         try:
             ds = ds.sel(level=self.pressure_levels)
