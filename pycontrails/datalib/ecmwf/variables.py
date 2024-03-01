@@ -122,6 +122,24 @@ RelativeHumidity = MetVariable(
     ),
 )
 
+
+Divergence = MetVariable(
+    short_name="d",
+    standard_name="divergence_of_wind",
+    long_name="Divergence of wind",
+    units="s**-1",
+    level_type="isobaricInhPa",
+    ecmwf_id=155,
+    grib2_id=(0, 2, 13),
+    description=(
+        "This parameter is the horizontal divergence of velocity. It is the rate "
+        "at which air is spreading out horizontally from a point, per square metre. "
+        "This parameter is positive for air that is spreading out, or diverging, and "
+        "negative for the opposite, for air that is concentrating, or converging (convergence)."
+    ),
+)
+
+
 TOAIncidentSolarRadiation = MetVariable(
     short_name="tisr",
     standard_name="toa_incident_solar_radiation",

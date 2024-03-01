@@ -76,12 +76,12 @@ class MetVariable:
 
     @property
     def ecmwf_link(self) -> str | None:
-        """Database link in the ECMWF Paramter Database if :attr:`ecmwf_id` is defined.
+        """Database link in the ECMWF Parameter Database if :attr:`ecmwf_id` is defined.
 
         Returns
         -------
         str
-            Database link in the ECMWF Paramter Database
+            Database link in the ECMWF Parameter Database
         """
         return (
             f"https://apps.ecmwf.int/codes/grib/param-db?id={self.ecmwf_id}"

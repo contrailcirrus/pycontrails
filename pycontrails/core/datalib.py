@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import abc
-import dataclasses
 import hashlib
 import logging
 import pathlib
@@ -109,6 +108,11 @@ def parse_pressure_levels(
 ) -> list[int]:
     """Check input pressure levels are consistent type and ensure levels exist in ECMWF data source.
 
+    .. versionchanged:: 0.50.0
+
+        The returned pressure levels are now sorted. Pressure levels must be unique.
+        Raises ValueError if pressure levels have mixed signs.
+
     Parameters
     ----------
     pressure_levels : PressureLevelInput
@@ -127,18 +131,31 @@ def parse_pressure_levels(
     ValueError
         Raises ValueError if pressure level is not supported by ECMWF data source
     """
-    # ensure pressure_levels is list-like
+    # Ensure pressure_levels is array-like
     if isinstance(pressure_levels, (int, float)):
         pressure_levels = [pressure_levels]
 
-    # Cast array-like to list of ints
-    out = np.asarray(pressure_levels, dtype=int).tolist()
+    # Cast array-like to int dtype and sort
+    arr = np.asarray(pressure_levels, dtype=int)
+    arr.sort()
 
-    # ensure pressure levels are valid
-    for pl in out:
-        if supported and pl not in supported:
-            msg = f"Pressure level {pl} is not supported. Supported levels: {supported}"
-            raise ValueError(msg)
+    # If any values are non-positive, the entire array should be [-1]
+    if np.any(arr <= 0) and not np.array_equal(arr, [-1]):
+        msg = f"Pressure levels must be all positive or all -1, got {arr}"
+        raise ValueError(msg)
+
+    # Ensure pressure levels are unique
+    if np.any(np.diff(arr) == 0):
+        msg = f"Pressure levels must be unique, got {arr}"
+        raise ValueError(msg)
+
+    out = arr.tolist()
+    if supported is None:
+        return out
+
+    if missing := set(out).difference(supported):
+        msg = f"Pressure levels {missing} are not supported. Supported levels: {supported}"
+        raise ValueError(msg)
 
     return out
 
@@ -178,35 +195,31 @@ def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> l
     else:
         parsed_variables = variables
 
-    # unpack dict of supported str values from supported
     short_names = {v.short_name: v for v in supported}
     standard_names = {v.standard_name: v for v in supported}
     long_names = {v.long_name: v for v in supported}
-
-    # unpack dict of support int values from supported
     ecmwf_ids = {v.ecmwf_id: v for v in supported}
     grib1_ids = {v.grib1_id: v for v in supported}
+    supported_set = set(supported)
 
     for var in parsed_variables:
         matched = _find_match(
             var,
-            supported,
+            supported_set,
             ecmwf_ids,  # type: ignore[arg-type]
             grib1_ids,  # type: ignore[arg-type]
             short_names,
             standard_names,
             long_names,  # type: ignore[arg-type]
         )
-
-        # "replace" copies dataclass
-        met_var_list.append(dataclasses.replace(matched))
+        met_var_list.append(matched)
 
     return met_var_list
 
 
 def _find_match(
     var: VariableInput,
-    supported: list[MetVariable],
+    supported: set[MetVariable],
     ecmwf_ids: dict[int, MetVariable],
     grib1_ids: dict[int, MetVariable],
     short_names: dict[str, MetVariable],
@@ -215,9 +228,8 @@ def _find_match(
 ) -> MetVariable:
     """Find a match for input variable in supported."""
 
-    if isinstance(var, MetVariable):
-        if var in supported:
-            return var
+    if isinstance(var, MetVariable) and var in supported:
+        return var
 
     # list of MetVariable options
     # here we extract the first MetVariable in var that is supported
@@ -230,21 +242,19 @@ def _find_match(
             if v in supported:
                 return v
 
-    # int code
     elif isinstance(var, int):
-        if var in ecmwf_ids:
-            return ecmwf_ids[var]
-        if var in grib1_ids:
-            return grib1_ids[var]
+        if ret := ecmwf_ids.get(var):
+            return ret
+        if ret := grib1_ids.get(var):
+            return ret
 
-    # string reference
     elif isinstance(var, str):
-        if var in short_names:
-            return short_names[var]
-        if var in standard_names:
-            return standard_names[var]
-        if var in long_names:
-            return long_names[var]
+        if ret := short_names.get(var):
+            return ret
+        if ret := standard_names.get(var):
+            return ret
+        if ret := long_names.get(var):
+            return ret
 
     msg = f"{var} is not in supported parameters. Supported parameters include: {standard_names}"
     raise ValueError(msg)
@@ -396,6 +406,11 @@ class MetDataSource(abc.ABC):
         return [v.standard_name for v in self.variables]
 
     @property
+    def is_single_level(self) -> bool:
+        """Return True if the datasource is single level data."""
+        return self.pressure_levels == [-1]
+
+    @property
     def pressure_level_variables(self) -> list[MetVariable]:
         """Parameters available from data source.
 
@@ -426,10 +441,9 @@ class MetDataSource(abc.ABC):
         list[MetVariable] | None
             List of MetVariable available in datasource
         """
-        if self.pressure_levels != [-1]:
-            return self.pressure_level_variables
-
-        return self.single_level_variables
+        return (
+            self.single_level_variables if self.is_single_level else self.pressure_level_variables
+        )
 
     @property
     def supported_pressure_levels(self) -> list[int] | None:

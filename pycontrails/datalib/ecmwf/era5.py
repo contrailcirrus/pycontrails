@@ -155,14 +155,12 @@ class ERA5(ECMWFAPI):
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         url: str | None = None,
         key: str | None = None,
-    ):
+    ) -> None:
         # Parse and set each parameter to the instance
 
         self.product_type = product_type
 
-        if cachestore is self.__marker:
-            cachestore = cache.DiskCacheStore()
-        self.cachestore = cachestore
+        self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
 
         self.paths = paths
 
@@ -381,7 +379,6 @@ class ERA5(ECMWFAPI):
             # this would download a file from a remote (e.g. GCP) cache
             disk_cachepaths = [self.cachestore.get(f) for f in self._cachepaths]
 
-            # run MetDataset constructor
             ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
 
             # If any files are already cached, they will not have the version attached
