@@ -72,7 +72,7 @@ dev-pycontrails-bada:
 # -----------
 
 ruff: black-check
-	ruff pycontrails tests
+	ruff check pycontrails tests
 
 black:
 	black pycontrails tests
