@@ -180,7 +180,7 @@ def _download_data(
     moisture_vars = _required_moisture_short_names(variables)
     surface_vars = _required_surface_short_names(variables)
 
-    kw = {"chunks": None, "consolidated": True}
+    kw: dict[str, Any] = {"chunks": None, "consolidated": True}
     wind_ds = xr.open_zarr(WIND_STORE, **kw)[wind_vars].sel(time=t) if wind_vars else None
     moisture_ds = (
         xr.open_zarr(MOISTURE_STORE, **kw)[moisture_vars].sel(time=t) if moisture_vars else None
@@ -394,7 +394,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         variables: datalib.VariableInput,
         pressure_levels: datalib.PressureLevelInput | None = None,
         grid: float = 0.25,
-        cachestore: cache.CacheStore | None = __marker,
+        cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
     ) -> None:
         self.timesteps = datalib.parse_timesteps(time)
 
@@ -431,8 +431,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
     @overrides
     def download_dataset(self, times: list[datetime.datetime]) -> None:
         if self.is_single_level:
-            unique_dates = {t.date() for t in times}
-            unique_dates = sorted(unique_dates)
+            unique_dates = sorted({t.date() for t in times})
             for t in unique_dates:
                 ds = open_arco_era5_single_level(t, self.variables)
                 self.cache_dataset(ds)
@@ -469,7 +468,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
-        xr_kwargs: dict[str, int] | None = None,
+        xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> MetDataset:
 
