@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pycontrails.datalib.ecmwf.arco_era5 import ARCOERA5
 from pycontrails.datalib.ecmwf.era5 import ERA5
 from pycontrails.datalib.ecmwf.hres import HRES
 from pycontrails.datalib.ecmwf.ifs import IFS
@@ -11,6 +12,7 @@ from pycontrails.datalib.ecmwf.variables import (
     SURFACE_VARIABLES,
     CloudAreaFraction,
     CloudAreaFractionInLayer,
+    Divergence,
     PotentialVorticity,
     RelativeHumidity,
     RelativeVorticity,
@@ -23,11 +25,13 @@ from pycontrails.datalib.ecmwf.variables import (
 )
 
 __all__ = [
+    "ARCOERA5",
     "ERA5",
     "HRES",
     "IFS",
     "CloudAreaFraction",
     "CloudAreaFractionInLayer",
+    "Divergence",
     "PotentialVorticity",
     "RelativeHumidity",
     "RelativeVorticity",
