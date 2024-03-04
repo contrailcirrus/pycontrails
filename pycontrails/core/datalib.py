@@ -514,7 +514,7 @@ class MetDataSource(abc.ABC):
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
-        xr_kwargs: dict[str, int] | None = None,
+        xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> MetDataset:
         """Open MetDataset from data source.
@@ -527,7 +527,7 @@ class MetDataSource(abc.ABC):
         dataset : xr.Dataset | None, optional
             Input :class:`xr.Dataset` loaded manually.
             The dataset must have the same format as the original data source API or files.
-        xr_kwargs : dict[str, int] | None, optional
+        xr_kwargs : dict[str, Any] | None, optional
             Dictionary of keyword arguments passed into :func:`xarray.open_mfdataset`
             when opening files. Examples include "chunks", "engine", "parallel", etc.
             Ignored if ``dataset`` is input.
