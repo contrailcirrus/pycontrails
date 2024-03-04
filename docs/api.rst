@@ -71,6 +71,15 @@ GFS
     datalib.gfs.variables
 
 
+ARCO ERA5
+"""""""""
+
+.. autosummary::
+    :toctree: api/
+
+    datalib.ecmwf.arco_era5
+
+
 GOES
 """"
 
