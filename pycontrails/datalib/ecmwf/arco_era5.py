@@ -1,11 +1,26 @@
-"""Support for accessing ARCO ERA5 data from Google Cloud Storage."""
+"""Support for `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_.
+
+This module supports:
+
+- Downloading ARCO ERA5 model level data for specific times and pressure level variables.
+- Downloading ARCO ERA5 single level data for specific times and single level variables.
+- Interpolating model level data to a target lat-lon grid and pressure levels.
+- Local caching of the downloaded and interpolated data as netCDF files.
+- Opening cached data as a :class:`pycontrails.MetDataset` object.
+
+This module requires the following additional dependencies:
+
+- `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+- `gcsfs <https://gcsfs.readthedocs.io/en/latest/>`_
+- `zarr <https://zarr.readthedocs.io/en/stable/>`_
+
+"""
 
 import dataclasses
 import datetime
 import hashlib
 from typing import Any
 
-import gcsfs
 import xarray as xr
 from overrides import overrides
 
@@ -13,6 +28,16 @@ from pycontrails.core import cache, datalib, met_var
 from pycontrails.core.met import MetDataset
 from pycontrails.datalib.ecmwf import common as ecmwf_common
 from pycontrails.datalib.ecmwf import variables as ecmwf_variables
+from pycontrails.utils import dependencies
+
+try:
+    import gcsfs
+except ModuleNotFoundError as e:
+    dependencies.raise_module_not_found_error(
+        "arco_era5 module",
+        package_name="gcsfs",
+        module_not_found_error=e,
+    )
 
 MOISTURE_STORE = "gs://gcp-public-data-arco-era5/co/model-level-moisture.zarr"
 WIND_STORE = "gs://gcp-public-data-arco-era5/co/model-level-wind.zarr"
@@ -173,6 +198,14 @@ def open_arco_era5_model_level_data(
 ) -> xr.Dataset:
     """Open ARCO ERA5 model level data for a specific time and variables.
 
+    This function downloads moisture, wind, and surface data from the
+    `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_
+    Zarr stores and interpolates the data to a target grid and pressure levels.
+
+    This function requires the `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+    package to be installed. It is not available as an optional pycontrails dependency,
+    and instead must be installed manually.
+
     Parameters
     ----------
     t : datetime.datetime
@@ -192,6 +225,12 @@ def open_arco_era5_model_level_data(
         Dataset with the requested variables on the target grid and pressure levels.
         Data is reformatted for :class:`MetDataset` conventions.
         Data **is not** cached.
+
+    References
+    ----------
+    - `ARCO ERA5 moisture workflow <https://github.com/google-research/arco-era5/blob/main/docs/moisture_dataset.py>`_
+    - `Model Level Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/1-Model-Levels-Walkthrough.ipynb>`_
+    - `Surface Reanalysis Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/0-Surface-Reanalysis-Walkthrough.ipynb>`_
     """
     data = _download_data(t, variables)
 
@@ -203,42 +242,57 @@ def open_arco_era5_model_level_data(
     _attribute_fix(data.moisture)
     _attribute_fix(data.surface)
 
-    import metview as mv
+    try:
+        import metview as mv
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            "arco_era5 module",
+            package_name="metview",
+            module_not_found_error=exc,
+        )
+    except ImportError as exc:
+        msg = "Failed to import metview"
+        raise ImportError(msg) from exc
 
-    gg = mv.Fieldset()  # gaussian grid on model levels
-
+    # Extract any moisture data (defined on a Gaussian grid)
+    gg_ml = mv.Fieldset()  # Gaussian grid on model levels
     if data.moisture:
         moisture_gg = mv.dataset_to_fieldset(data.moisture, no_warn=True)
-        gg = mv.merge(gg, moisture_gg)
+        gg_ml = mv.merge(gg_ml, moisture_gg)
 
-    if data.wind:  # spherical harmonics on model levels
+    # Convert any wind data (defined on a spherical harmonic grid) to the Gaussian grid
+    if data.wind:
         wind_sh = mv.dataset_to_fieldset(data.wind, no_warn=True)
         if met_var.EastwardWind in variables or met_var.NorthwardWind in variables:
             uv_wind_sh = mv.uvwind(data=wind_sh, truncation=639)
             wind_sh = mv.merge(wind_sh, uv_wind_sh)
         wind_gg = mv.read(data=wind_sh, grid="N320")
-        gg = mv.merge(gg, wind_gg)
+        gg_ml = mv.merge(gg_ml, wind_gg)
 
+    # Convert any surface data (defined on a spherical harmonic grid) to the Gaussian grid
     surface_sh = mv.dataset_to_fieldset(data.surface, no_warn=True)
     surface_gg = mv.read(data=surface_sh, grid="N320")
     lnsp = surface_gg.select(shortName="lnsp")
 
+    # Compute Geopotential if requested
     if met_var.Geopotential in variables:
-        t = gg.select(shortName="t")
-        q = gg.select(shortName="q")
+        t = gg_ml.select(shortName="t")
+        q = gg_ml.select(shortName="q")
         zs = surface_gg.select(shortName="z")
         zp = mv.mvl_geopotential_on_ml(t, q, lnsp, zs)
-        gg = mv.merge(gg, zp)
+        gg_ml = mv.merge(gg_ml, zp)
 
-    pl = mv.Fieldset()  # gaussian grid on pressure levels
+    # Convert the Gaussian grid to a lat-lon grid
+    gg_pl = mv.Fieldset()  # Gaussian grid on pressure levels
     for var in variables:
-        var_gg = gg.select(shortName=var.short_name)
-        var_pl = mv.mvl_ml2hPa(lnsp, var_gg, pressure_levels)
-        pl = mv.merge(pl, var_pl)
+        var_gg_ml = gg_ml.select(shortName=var.short_name)
+        var_gg_pl = mv.mvl_ml2hPa(lnsp, var_gg_ml, pressure_levels)
+        gg_pl = mv.merge(gg_pl, var_gg_pl)
 
-    ll = mv.read(data=pl, grid=[grid, grid])  # lat-lon grid on pressure levels
+    # Regrid the Gaussian grid pressure level data to a lat-lon grid
+    ll_pl = mv.read(data=gg_pl, grid=[grid, grid])
 
-    ds = ll.to_dataset()
+    ds = ll_pl.to_dataset()
     return MetDataset(ds.rename(isobaricInhPa="level").expand_dims("time")).data
 
 
@@ -293,7 +347,9 @@ def open_arco_era5_single_level(
 class ARCOERA5(ecmwf_common.ECMWFAPI):
     """ARCO ERA5 data accessed remotely through Google Cloud Storage.
 
-    https://cloud.google.com/storage/docs/public-datasets/era5
+    This is a high-level interface to access and cache
+    `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_
+    for a predefined set of times, variables, and pressure levels.
 
     References
     ----------
@@ -301,6 +357,11 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
     ARCO-ERA5: An Analysis-Ready Cloud-Optimized Reanalysis Dataset.
     22nd Conf. on AI for Env. Science, Denver, CO, Amer. Meteo. Soc, 4A.1,
     https://ams.confex.com/ams/103ANNUAL/meetingapp.cgi/Paper/415842
+
+    See Also
+    --------
+    :func:`open_arco_era5_model_level_data`
+    :func:`open_arco_era5_single_level`
     """
 
     grid: float
