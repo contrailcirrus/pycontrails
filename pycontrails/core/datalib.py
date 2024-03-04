@@ -407,7 +407,10 @@ class MetDataSource(abc.ABC):
 
     @property
     def is_single_level(self) -> bool:
-        """Return True if the datasource is single level data."""
+        """Return True if the datasource is single level data.
+
+        .. versionadded:: 0.50.0
+        """
         return self.pressure_levels == [-1]
 
     @property

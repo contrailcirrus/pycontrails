@@ -351,6 +351,8 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
     `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_
     for a predefined set of times, variables, and pressure levels.
 
+        .. versionadded:: 0.50.0
+
     References
     ----------
     Carver, Robert W, and Merose, Alex. (2023):
