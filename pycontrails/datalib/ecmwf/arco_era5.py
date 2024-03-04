@@ -19,6 +19,7 @@ This module requires the following additional dependencies:
 import dataclasses
 import datetime
 import hashlib
+import warnings
 from typing import Any
 
 import xarray as xr
@@ -190,58 +191,12 @@ def _download_data(
     return _ARCOERA5Datasets(wind=wind_ds, moisture=moisture_ds, surface=surface_ds)
 
 
-def open_arco_era5_model_level_data(
-    t: datetime.datetime,
+def _handle_metview(
+    data: _ARCOERA5Datasets,
     variables: list[met_var.MetVariable],
     pressure_levels: list[int],
     grid: float,
 ) -> xr.Dataset:
-    """Open ARCO ERA5 model level data for a specific time and variables.
-
-    This function downloads moisture, wind, and surface data from the
-    `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_
-    Zarr stores and interpolates the data to a target grid and pressure levels.
-
-    This function requires the `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-    package to be installed. It is not available as an optional pycontrails dependency,
-    and instead must be installed manually.
-
-    Parameters
-    ----------
-    t : datetime.datetime
-        Time of the data to open.
-    variables : list[met_var.MetVariable]
-        List of variables to open. Unsupported variables are ignored.
-    pressure_levels : list[int]
-        Target pressure levels, [:math:`hPa`]. For ``metview`` compatibility, this should be
-        a sorted (increasing or decreasing) list of integers. Floating point values
-        are treated as integers in ``metview``.
-    grid : float
-        Target grid resolution, [:math:`degrees`]. A value of 0.25 is recommended.
-
-    Returns
-    -------
-    xr.Dataset
-        Dataset with the requested variables on the target grid and pressure levels.
-        Data is reformatted for :class:`MetDataset` conventions.
-        Data **is not** cached.
-
-    References
-    ----------
-    - `ARCO ERA5 moisture workflow <https://github.com/google-research/arco-era5/blob/main/docs/moisture_dataset.py>`_
-    - `Model Level Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/1-Model-Levels-Walkthrough.ipynb>`_
-    - `Surface Reanalysis Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/0-Surface-Reanalysis-Walkthrough.ipynb>`_
-    """
-    data = _download_data(t, variables)
-
-    if not data.surface:
-        msg = "No variables provided"
-        raise ValueError(msg)
-
-    _attribute_fix(data.wind)
-    _attribute_fix(data.moisture)
-    _attribute_fix(data.surface)
-
     try:
         import metview as mv
     except ModuleNotFoundError as exc:
@@ -294,6 +249,69 @@ def open_arco_era5_model_level_data(
 
     ds = ll_pl.to_dataset()
     return MetDataset(ds.rename(isobaricInhPa="level").expand_dims("time")).data
+
+
+def open_arco_era5_model_level_data(
+    t: datetime.datetime,
+    variables: list[met_var.MetVariable],
+    pressure_levels: list[int],
+    grid: float,
+) -> xr.Dataset:
+    """Open ARCO ERA5 model level data for a specific time and variables.
+
+    This function downloads moisture, wind, and surface data from the
+    `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_
+    Zarr stores and interpolates the data to a target grid and pressure levels.
+
+    This function requires the `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+    package to be installed. It is not available as an optional pycontrails dependency,
+    and instead must be installed manually.
+
+    Parameters
+    ----------
+    t : datetime.datetime
+        Time of the data to open.
+    variables : list[met_var.MetVariable]
+        List of variables to open. Unsupported variables are ignored.
+    pressure_levels : list[int]
+        Target pressure levels, [:math:`hPa`]. For ``metview`` compatibility, this should be
+        a sorted (increasing or decreasing) list of integers. Floating point values
+        are treated as integers in ``metview``.
+    grid : float
+        Target grid resolution, [:math:`degrees`]. A value of 0.25 is recommended.
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with the requested variables on the target grid and pressure levels.
+        Data is reformatted for :class:`MetDataset` conventions.
+        Data **is not** cached.
+
+    References
+    ----------
+    - `ARCO ERA5 moisture workflow <https://github.com/google-research/arco-era5/blob/main/docs/moisture_dataset.py>`_
+    - `Model Level Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/1-Model-Levels-Walkthrough.ipynb>`_
+    - `Surface Reanalysis Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/0-Surface-Reanalysis-Walkthrough.ipynb>`_
+    """
+    data = _download_data(t, variables)
+
+    if not data.surface:
+        msg = "No variables provided"
+        raise ValueError(msg)
+
+    _attribute_fix(data.wind)
+    _attribute_fix(data.moisture)
+    _attribute_fix(data.surface)
+
+    # Ignore all the metview warnings from deprecated pandas usage
+    # This could be removed after metview updates their python API
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="A value is trying to be set on a copy of a DataFrame",
+            category=FutureWarning,
+        )
+        return _handle_metview(data, variables, pressure_levels, grid)
 
 
 def open_arco_era5_single_level(
