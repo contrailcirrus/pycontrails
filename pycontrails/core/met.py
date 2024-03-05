@@ -1065,8 +1065,8 @@ class MetDataset(MetBase):
 
         """
         coords_keys = self.data.dims
-        variables = self.indexes
-        coords_vals = [variables[key].values for key in coords_keys]
+        indexes = self.indexes
+        coords_vals = [indexes[key].values for key in coords_keys]
         coords_meshes = np.meshgrid(*coords_vals, indexing="ij")
         raveled_coords = (mesh.ravel() for mesh in coords_meshes)
         data = dict(zip(coords_keys, raveled_coords))
