@@ -102,7 +102,7 @@ class CocipParams(ModelParams):
     met_latitude_buffer: tuple[float, float] = (10.0, 10.0)
 
     #: Met level buffer [:math:`hPa`] for Cocip initialization and evolution.
-    met_level_buffer: tuple[float, float] = (200.0, 200.0)
+    met_level_buffer: tuple[float, float] = (40.0, 40.0)
 
     # ---------
     # Filtering
