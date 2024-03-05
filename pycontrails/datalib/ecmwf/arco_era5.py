@@ -16,6 +16,8 @@ This module requires the following additional dependencies:
 
 """
 
+from __future__ import annotations
+
 import dataclasses
 import datetime
 import hashlib
