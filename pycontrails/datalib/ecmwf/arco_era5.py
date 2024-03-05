@@ -18,12 +18,16 @@ This module requires the following additional dependencies:
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import datetime
 import functools
 import hashlib
 import multiprocessing
+import pathlib
+import tempfile
 import warnings
+from collections.abc import Iterable
 from typing import Any
 
 import pandas as pd
@@ -385,6 +389,9 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         Cache store to use. By default, a new disk cache store is used.
     n_jobs : int, optional
         EXPERIMENTAL: Number of parallel jobs to use for downloading data. By default, 1.
+    cleanup_metview_tempfiles : bool, optional
+        If True, cleanup all ``tmp*.grib`` files. Implementation is brittle and may
+        not work on all systems. By default, True.
 
     References
     ----------
@@ -411,6 +418,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         grid: float = 0.25,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         n_jobs: int = 1,
+        cleanup_metview_tempfiles: bool = True,
     ) -> None:
         self.timesteps = datalib.parse_timesteps(time)
 
@@ -423,6 +431,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         self.grid = grid
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.n_jobs = n_jobs
+        self.cleanup_metview_tempfiles = cleanup_metview_tempfiles
 
     @property
     def pressure_level_variables(self) -> list[met_var.MetVariable]:
@@ -448,6 +457,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
     @overrides
     def download_dataset(self, times: list[datetime.datetime]) -> None:
+
         # Download single level data sequentially
         if self.is_single_level:
             unique_dates = sorted({t.date() for t in times})
@@ -456,17 +466,24 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
                 self.cache_dataset(ds)
             return
 
+        stack = contextlib.ExitStack()
+        if self.cleanup_metview_tempfiles:
+            stack.enter_context(_MetviewTempfileHandler())
+
         # Download sequentially if n_jobs == 1
         if self.n_jobs == 1:
             for t in times:
-                _download_convert_cache_handler(self, t)
+                with stack:
+                    _download_convert_cache_handler(self, t)
             return
 
         # Download in parallel
-        mp = multiprocessing.get_context("spawn")
-        args = ((self, t) for t in times)
-        with mp.Pool(self.n_jobs) as pool:
-            pool.starmap(_download_convert_cache_handler, args)
+        with stack:
+            mp = multiprocessing.get_context("spawn")
+            args = ((self, t) for t in times)
+
+            with mp.Pool(self.n_jobs) as pool:
+                pool.starmap(_download_convert_cache_handler, args)
 
     @overrides
     def create_cachepath(self, t: datetime.datetime) -> str:
@@ -525,3 +542,20 @@ def _download_convert_cache_handler(arco: ARCOERA5, t: datetime.datetime) -> Non
     """Download, convert, and cache ARCO ERA5 model level data."""
     ds = open_arco_era5_model_level_data(t, arco.variables, arco.pressure_levels, arco.grid)
     arco.cache_dataset(ds)
+
+
+def _get_grib_files() -> Iterable[pathlib.Path]:
+    """Get all temporary GRIB files."""
+    tmp = pathlib.Path(tempfile.gettempdir())
+    return tmp.glob("tmp*.grib")
+
+
+class _MetviewTempfileHandler:
+    def __enter__(self) -> None:
+        self.existing_grib_files = set(_get_grib_files())
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore[no-untyped-def]
+        new_grib_files = _get_grib_files()
+        for f in new_grib_files:
+            if f not in self.existing_grib_files:
+                f.unlink(missing_ok=True)
