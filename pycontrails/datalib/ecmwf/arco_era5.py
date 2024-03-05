@@ -20,10 +20,12 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import functools
 import hashlib
 import warnings
 from typing import Any
 
+import pandas as pd
 import xarray as xr
 from overrides import overrides
 
@@ -31,6 +33,7 @@ from pycontrails.core import cache, datalib, met_var
 from pycontrails.core.met import MetDataset
 from pycontrails.datalib.ecmwf import common as ecmwf_common
 from pycontrails.datalib.ecmwf import variables as ecmwf_variables
+from pycontrails.physics import units
 from pycontrails.utils import dependencies
 
 try:
@@ -65,51 +68,41 @@ MOISTURE_STORE_VARIABLES = [
 
 PRESSURE_LEVEL_VARIABLES = [*WIND_STORE_VARIABLES, *MOISTURE_STORE_VARIABLES, met_var.Geopotential]
 
-# Round the full pressure level associated with each model level to the nearest hPa.
-# Only include model levels between 20,000 and 50,000 ft.
-# import pandas as pd
-# import pycontrails.physics.units as units
-# url = "https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions"
-# df = pd.read_html(url, na_values="-", index_col="n")[0]
-# alt_ft_min = 20_000
-# alt_ft_max = 50_000
-# alt_m_min = units.ft_to_m(alt_ft_min)
-# alt_m_max = units.ft_to_m(alt_ft_max)
-# filt = df["Geometric Altitude [m]"].between(alt_m_min, alt_m_max)
-# targets = df.loc[filt, "pf [hPa]"].round().astype(int).tolist()
 
-DEFAULT_PRESSURE_LEVELS = [
-    121,
-    127,
-    134,
-    141,
-    148,
-    155,
-    163,
-    171,
-    180,
-    188,
-    197,
-    207,
-    217,
-    227,
-    237,
-    248,
-    260,
-    272,
-    284,
-    297,
-    310,
-    323,
-    337,
-    352,
-    367,
-    383,
-    399,
-    416,
-    433,
-    451,
-]
+@functools.cache
+def _read_model_level_dataframe() -> pd.DataFrame:
+    """Read the ERA5 model level definitions published by ECMWF.
+
+    This requires the lxml package to be installed.
+    """
+    url = "https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions"
+    return pd.read_html(url, na_values="-", index_col="n")[0]
+
+
+def pressure_levels_at_model_levels(alt_ft_min: float, alt_ft_max: float) -> list[int]:
+    """Return the pressure levels at each model level assuming a constant surface pressure.
+
+    The pressure levels are rounded to the nearest hPa.
+
+    Parameters
+    ----------
+    alt_ft_min : float
+        Minimum altitude, [:math:`ft`].
+    alt_ft_max : float
+        Maximum altitude, [:math:`ft`].
+
+    Returns
+    -------
+    list[int]
+        List of pressure levels, [:math:`hPa`].
+    """
+    df = _read_model_level_dataframe()
+    alt_ft_min = 20_000
+    alt_ft_max = 50_000
+    alt_m_min = units.ft_to_m(alt_ft_min)
+    alt_m_max = units.ft_to_m(alt_ft_max)
+    filt = df["Geometric Altitude [m]"].between(alt_m_min, alt_m_max)
+    return df.loc[filt, "pf [hPa]"].round().astype(int).tolist()
 
 
 def _attribute_fix(ds: xr.Dataset | None) -> None:
@@ -401,8 +394,9 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         self.timesteps = datalib.parse_timesteps(time)
 
         if pressure_levels is None:
-            pressure_levels = DEFAULT_PRESSURE_LEVELS
-        self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
+            self.pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
+        else:
+            self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
 
         self.variables = datalib.parse_variables(variables, self.supported_variables)
         self.grid = grid
