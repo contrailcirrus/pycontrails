@@ -22,6 +22,7 @@ import dataclasses
 import datetime
 import functools
 import hashlib
+import multiprocessing
 import warnings
 from typing import Any
 
@@ -366,6 +367,25 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
         .. versionadded:: 0.50.0
 
+    Parameters
+    ----------
+    time : TimeInput
+        Time of the data to open.
+    variables : VariableInput
+        List of variables to open.
+    pressure_levels : PressureLevelInput, optional
+        Target pressure levels, [:math:`hPa`]. For pressure level data, this should be
+        a sorted (increasing or decreasing) list of integers. For single level data,
+        this should be ``-1``. By default, the pressure levels are set to the
+        pressure levels at each model level between 20,000 and 50,000 ft assuming a
+        constant surface pressure.
+    grid : float, optional
+        Target grid resolution, [:math:`degrees`]. A value of 0.25 is recommended.
+    cachestore : CacheStore, optional
+        Cache store to use. By default, a new disk cache store is used.
+    n_jobs : int, optional
+        EXPERIMENTAL: Number of parallel jobs to use for downloading data. By default, 1.
+
     References
     ----------
     Carver, Robert W, and Merose, Alex. (2023):
@@ -390,6 +410,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         pressure_levels: datalib.PressureLevelInput | None = None,
         grid: float = 0.25,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
+        n_jobs: int = 1,
     ) -> None:
         self.timesteps = datalib.parse_timesteps(time)
 
@@ -401,6 +422,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         self.variables = datalib.parse_variables(variables, self.supported_variables)
         self.grid = grid
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
+        self.n_jobs = n_jobs
 
     @property
     def pressure_level_variables(self) -> list[met_var.MetVariable]:
@@ -426,22 +448,25 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
     @overrides
     def download_dataset(self, times: list[datetime.datetime]) -> None:
+        # Download single level data sequentially
         if self.is_single_level:
             unique_dates = sorted({t.date() for t in times})
             for t in unique_dates:
                 ds = open_arco_era5_single_level(t, self.variables)
                 self.cache_dataset(ds)
-
             return
 
-        for t in times:
-            ds = open_arco_era5_model_level_data(
-                t=t,
-                variables=self.variables,
-                pressure_levels=self.pressure_levels,
-                grid=self.grid,
-            )
-            self.cache_dataset(ds)
+        # Download sequentially if n_jobs == 1
+        if self.n_jobs == 1:
+            for t in times:
+                _download_convert_cache_handler(self, t)
+            return
+
+        # Download in parallel
+        mp = multiprocessing.get_context("spawn")
+        args = ((self, t) for t in times)
+        with mp.Pool(self.n_jobs) as pool:
+            pool.starmap(_download_convert_cache_handler, args)
 
     @overrides
     def create_cachepath(self, t: datetime.datetime) -> str:
@@ -494,3 +519,9 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
             dataset="ERA5",
             product="reanalysis",
         )
+
+
+def _download_convert_cache_handler(arco: ARCOERA5, t: datetime.datetime) -> None:
+    """Download, convert, and cache ARCO ERA5 model level data."""
+    ds = open_arco_era5_model_level_data(t, arco.variables, arco.pressure_levels, arco.grid)
+    arco.cache_dataset(ds)
