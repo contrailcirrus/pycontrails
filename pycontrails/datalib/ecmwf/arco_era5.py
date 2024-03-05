@@ -427,6 +427,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         else:
             self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
 
+        self.paths = None
         self.variables = datalib.parse_variables(variables, self.supported_variables)
         self.grid = grid
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
