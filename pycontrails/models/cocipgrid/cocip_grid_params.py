@@ -64,6 +64,7 @@ class CocipGridParams(CocipParams):
     #: true north, by default 0.0.
     #:
     #:    .. versionadded:: 0.32.2
+    #:
     #:    EXPERIMENTAL: If None, run CoCiP in "segment-free"
     #:    mode. This mode does not include any terms involving segments (wind shear,
     #:    segment_length, any derived terms), unless :attr:`dsn_dz_factor`
@@ -128,7 +129,7 @@ class CocipGridParams(CocipParams):
     # ------------
 
     #: Attach additional formation specific data to the output. If True, attach
-    #: all possible formation data. See :ref:`pycontrails.models.cocipgrid.cocip_grid`
+    #: all possible formation data. See :mod:`pycontrails.models.cocipgrid.cocip_grid`
     #: for a list of supported formation data.
     verbose_outputs_formation: bool | set[str] = False
 
