@@ -534,10 +534,11 @@ class Cocip(Model):
             self.source.size,
         )
         if not intersection.any():
-            raise ValueError(
+            msg = (
                 "No intersection between flight waypoints and met domain. "
-                "Rerun Cocip with `met` overlapping flight."
+                "Rerun Cocip with met overlapping flight."
             )
+            raise ValueError(msg)
 
         # STEP 4: Begin met interpolation
         # Unfortunately we use both "u_wind" and "eastward_wind" to refer to the
