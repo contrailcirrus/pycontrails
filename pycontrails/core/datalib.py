@@ -154,7 +154,7 @@ def parse_pressure_levels(
         return out
 
     if missing := set(out).difference(supported):
-        msg = f"Pressure levels {missing} are not supported. Supported levels: {supported}"
+        msg = f"Pressure levels {sorted(missing)} are not supported. Supported levels: {supported}"
         raise ValueError(msg)
 
     return out
@@ -162,6 +162,11 @@ def parse_pressure_levels(
 
 def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> list[MetVariable]:
     """Parse input variables.
+
+    .. versionchanged:: 0.50.0
+
+        The output is no longer copied. Each :class:`MetVariable` is a frozen dataclass,
+        so copying is unnecessary.
 
     Parameters
     ----------

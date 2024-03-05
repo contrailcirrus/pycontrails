@@ -112,12 +112,12 @@ def test_parse_pressure_levels() -> None:
     pl = datalib.parse_pressure_levels(np.array([100, 200]))
     assert pl == [100, 200]
 
-    # support ndarrays with -1
-    pl = datalib.parse_pressure_levels(np.array([-1, 200]))
-    assert pl == [-1, 200]
+    # raise if mixed signs
+    with pytest.raises(ValueError, match="Pressure levels must be all positive or all -1"):
+        datalib.parse_pressure_levels(np.array([-1, 200]))
 
     # throw error if not supported
-    with pytest.raises(ValueError, match="Pressure level 300 is not supported."):
+    with pytest.raises(ValueError, match=r"Pressure levels \[300\] are not supported."):
         datalib.parse_pressure_levels([100, 200, 300], supported=[100, 200])
 
 
@@ -178,9 +178,9 @@ def test_parse_variables() -> None:
     v = datalib.parse_variables(np.array(["t", "r"]), supported=supported)
     assert v == [AirTemperature, RelativeHumidity]
 
-    # make sure that original dataclass is copied
+    # The original dataclass is not copied
     v = datalib.parse_variables("t", supported=supported)
-    assert v[0] is not AirTemperature
+    assert v[0] is AirTemperature
 
     # raise value error if unmatched
     with pytest.raises(ValueError, match="not in supported parameters"):
