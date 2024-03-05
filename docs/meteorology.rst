@@ -11,3 +11,4 @@ Meteorology
    notebooks/Meteorology
    notebooks/ECMWF
    notebooks/GFS
+   notebooks/ARCO-ERA5
