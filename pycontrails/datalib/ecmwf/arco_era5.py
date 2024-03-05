@@ -10,7 +10,8 @@ This module supports:
 
 This module requires the following additional dependencies:
 
-- `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+- `metview (binaries and python bindings) <https://metview.readthedocs.io/en/latest/python.html>`_
+- `lxml` <https://lxml.de/>
 - `gcsfs <https://gcsfs.readthedocs.io/en/latest/>`_
 - `zarr <https://zarr.readthedocs.io/en/stable/>`_
 
