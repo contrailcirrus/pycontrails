@@ -5,17 +5,32 @@
 
 ### Features
 
+- Add `ARCOERA5` interface for accessing ARCO ERA5 model level data. This interface requires the [metview](https://metview.readthedocs.io/en/latest/python.html) python package.
+- Add [ARCO ERA5 tutorial notebook](https://py.contrails.org/notebooks/ARCO-ERA5.html) highlighting the new interface.
 - Add support to output contrail warming impact in ATR20
+
+### Breaking changes
+
+- Reduce `CocipParams.met_level_buffer` from `(200, 200)` to `(40, 40)`. This change is motivated by the observation that the previous buffer was unnecessarily large and caused additional memory overhead. The new buffer is more in line with the typical vertical advection path of a contrail.
+
+### Fixes
+
+- Raise ValueError when `list[Flight]` source is provided to `Cocip` and the `copy_source` parameter is set to `False`. Previously the source was copied in this case regardless of the `copy_source` parameter.
+- Fix broken link in the [model level notebook](https://py.contrails.org/notebooks/model-levels.html).
 
 ### Internals
 
+- The `datalib.parse_pressure_levels` now sorts the pressure levels in ascending order and raises a ValueError if the input pressure levels are duplicated or have mixed signs.
+- Add new `MetDataSource.is_single_level` property.
+- Add `ecmwf.Divergence` (a subclass of `MetVariable`) for accessing ERA5 divergence data.
+- Update the [specific humidity interpolation notebook](https://py.contrails.org/notebooks/specific-humidity-interpolation.html) to use the new `ARCOERA5` interface.
 - Adds two parameters to `CoCipParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output. 
 
 ## v0.49.5
 
-## Fixes
+### Fixes
 
-- Fix bug where `Cocip._process_rad` lost radiation dataset attributes
+- Fix bug in which `Cocip._process_rad` dropped radiation dataset attributes introduced in v0.49.4.
 
 ## v0.49.4
 
