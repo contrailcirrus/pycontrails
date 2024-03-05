@@ -1899,19 +1899,19 @@ class GeoVectorDataset(VectorDataset):
         MetDataset | MetDataArray
             Copy of downselected MetDataset or MetDataArray.
         """
-        variables = met.indexes
+        indexes = met.indexes
         lon_slice = coordinates.slice_domain(
-            variables["longitude"].to_numpy(),
+            indexes["longitude"].to_numpy(),
             self["longitude"],
             buffer=longitude_buffer,
         )
         lat_slice = coordinates.slice_domain(
-            variables["latitude"].to_numpy(),
+            indexes["latitude"].to_numpy(),
             self["latitude"],
             buffer=latitude_buffer,
         )
         time_slice = coordinates.slice_domain(
-            variables["time"].to_numpy(),
+            indexes["time"].to_numpy(),
             self["time"],
             buffer=time_buffer,
         )
@@ -1921,7 +1921,7 @@ class GeoVectorDataset(VectorDataset):
             level_slice = slice(None)
         else:
             level_slice = coordinates.slice_domain(
-                variables["level"].to_numpy(),
+                indexes["level"].to_numpy(),
                 self.level,
                 buffer=level_buffer,
             )
