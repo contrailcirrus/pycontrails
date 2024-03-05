@@ -12,20 +12,24 @@ from pycontrails.core import datalib
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind, RelativeHumidity
 
 
-def test_parse_timesteps() -> None:
+def test_parse_timesteps_single_time() -> None:
     """Test timestep parsing."""
 
-    # accept single time
     ts = datalib.parse_timesteps(datetime(2019, 5, 31, 0))
     assert ts == [datetime(2019, 5, 31, 0)]
 
     ts = datalib.parse_timesteps([datetime(2019, 5, 31, 0)])
     assert ts == [datetime(2019, 5, 31, 0)]
 
-    # select floor and ceiling hour for single time with minutes defined
+
+def test_parse_timesteps_frequency() -> None:
+    """Test timestep parsing with floor and ceiling hour."""
     ts = datalib.parse_timesteps(datetime(2019, 5, 31, 5, 10))
     assert ts == [datetime(2019, 5, 31, 5), datetime(2019, 5, 31, 6)]
 
+
+def test_parse_timesteps_multiple_times() -> None:
+    """Test timestep parsing with zero and multiple times."""
     # throw ValueError for length == 0
     with pytest.raises(ValueError, match="Input time bounds must have length"):
         datalib.parse_timesteps([])
@@ -36,7 +40,9 @@ def test_parse_timesteps() -> None:
             [datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 0)]
         )
 
-    # accept (start, end)
+
+def test_parse_timesteps_tuple_times() -> None:
+    """Test timestep parsing with ``(start, end)`` input."""
     ts = datalib.parse_timesteps((datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 3)))
     assert ts == [
         datetime(2019, 5, 31, 0),
@@ -53,7 +59,9 @@ def test_parse_timesteps() -> None:
         datetime(2019, 5, 31, 3),
     ]
 
-    # support alternate types for input
+
+def test_parse_timesteps_alternate_input() -> None:
+    """Test timestep parsing with alternate input types."""
     ts = datalib.parse_timesteps(pd.to_datetime(datetime(2019, 5, 31, 0, 29)))
     assert ts == [datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 1)]
 
@@ -74,7 +82,9 @@ def test_parse_timesteps() -> None:
         datetime(2019, 5, 31, 3),
     ]
 
-    # select frequency
+
+def test_parse_timesteps_frequency_input() -> None:
+    """Test timestep parsing with frequency input."""
     ts = datalib.parse_timesteps(("2019-05-31T00:29:00", "2019-05-31T08:40:00"), freq="3h")
     assert ts == [
         datetime(2019, 5, 31, 0),
