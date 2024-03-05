@@ -440,17 +440,21 @@ class Model(ABC):
             # Return dataset with the same coords as self.met, but empty data_vars
             return MetDataset(xr.Dataset(coords=self.met.data.coords))
 
+        copy_source = self.params["copy_source"]
+
         # Turn Sequence into Fleet
         if isinstance(source, Sequence):
-            # TODO: fix type guard here
-            return Fleet.from_seq(source, copy=self.params["copy_source"])
+            if not copy_source:
+                msg = "Parameter copy_source=False is not supported for Sequence[Flight] source"
+                raise ValueError(msg)
+            return Fleet.from_seq(source)
 
         # Raise error if source is not a MetDataset or GeoVectorDataset
         if not isinstance(source, (MetDataset, GeoVectorDataset)):
             msg = f"Unknown source type: {type(source)}"
             raise TypeError(msg)
 
-        if self.params["copy_source"]:
+        if copy_source:
             source = source.copy()
 
         if not isinstance(source, Flight):
