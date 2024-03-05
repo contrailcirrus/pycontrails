@@ -93,7 +93,7 @@ class GFSForecast(datalib.MetDataSource):
     GFSForecast
         Timesteps: ['2022-03-22 00', '2022-03-22 01', '2022-03-22 02', '2022-03-22 03']
         Variables: ['t']
-        Pressure levels: [300, 250]
+        Pressure levels: [250, 300]
         Grid: 0.25
         Forecast time: 2022-03-22 00:00:00
 
@@ -102,7 +102,7 @@ class GFSForecast(datalib.MetDataSource):
     GFSForecast
         Timesteps: ['2022-03-22 00', '2022-03-22 03']
         Variables: ['t']
-        Pressure levels: [300, 250]
+        Pressure levels: [250, 300]
         Grid: 0.5
         Forecast time: 2022-03-22 00:00:00
 
