@@ -836,9 +836,7 @@ class Cocip(Model):
         air_temperature = self._sac_flight["air_temperature"]
         specific_humidity = self._sac_flight["specific_humidity"]
         T_critical_sac = self._sac_flight["T_critical_sac"]
-        rhi_0 = thermo.rhi(
-            specific_humidity, air_temperature, air_pressure
-        )
+        rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
 
         # Flight performance parameters
         fuel_flow = self._sac_flight.get_data_or_attr("fuel_flow")
@@ -907,7 +905,7 @@ class Cocip(Model):
                 true_airspeed,
                 fuel_flow,
                 nvpm_ei_n,
-                0.5 * depth     # Taking the mid-point of the contrail plume
+                0.5 * depth,  # Taking the mid-point of the contrail plume
             )
         else:
             f_surv = contrail_properties.ice_particle_survival_factor(iwc, iwc_1)
