@@ -22,14 +22,6 @@ from pycontrails.models.cocip import (
     contrail_properties,
     radiative_heating,
 )
-from pycontrails.models.cocip.wake_vortex import (
-    plume_area,
-    z_atm_length_scale,
-    z_emit_length_scale,
-    z_total_length_scale,
-    _ice_number_survival_fraction,
-    initial_contrail_depth_u2016
-)
 from pycontrails.models.cocip.output_formats import (
     contrail_flight_summary_statistics,
     flight_waypoint_summary_statistics,
@@ -37,6 +29,14 @@ from pycontrails.models.cocip.output_formats import (
     time_slice_statistics,
 )
 from pycontrails.models.cocip.radiative_forcing import contrail_contrail_overlap_radiative_effects
+from pycontrails.models.cocip.wake_vortex import (
+    _ice_number_survival_fraction,
+    initial_contrail_depth_u2016,
+    plume_area,
+    z_atm_length_scale,
+    z_emit_length_scale,
+    z_total_length_scale,
+)
 from pycontrails.models.humidity_scaling import (
     ConstantHumidityScaling,
     ExponentialBoostHumidityScaling,
@@ -1607,14 +1607,14 @@ def test_cocip_met_nonuniform(
 
 
 def test_unterstrasser_wake_vortex_length_scales():
-    """ Test Unterstrasser (2016) wake vortex length scales using values listed in Table A2."""
+    """Test Unterstrasser (2016) wake vortex length scales using values listed in Table A2."""
     # Input parameters
 
     # Aircraft types: B777, CRJ, A380, B737, B747, B777, B767
     air_temperature = np.array([209.0, 217.0, 217.0, 217.0, 217.0, 217.0, 218.0])
     rhi_0 = np.array([1.0, 1.0, 1.4, 1.4, 1.2, 1.1, 1.1])
     wingspan = np.array([60.9, 21.2, 79.8, 34.4, 64.4, 60.9, 47.6])
-    h2o_per_dist = np.array([15.00, 1.77, 20.03, 3.70, 13.82, 15.0, 7.26]) / 1000    # Units: kg/m**3
+    h2o_per_dist = np.array([15.00, 1.77, 20.03, 3.70, 13.82, 15.0, 7.26]) / 1000  # Units: kg/m**3
 
     # Derived parameters
     a_p = plume_area(wingspan)
@@ -1634,7 +1634,7 @@ def test_unterstrasser_wake_vortex_length_scales():
 
 
 def test_unterstrasser_wake_vortex_survival_fractions():
-    """ Test Unterstrasser (2016) ice crystal survival fraction using values listed in Table A2."""
+    """Test Unterstrasser (2016) ice crystal survival fraction using values listed in Table A2."""
     # Input parameters
 
     # Aircraft types: B777, CRJ, A380, B737, B747, B777, B767
@@ -1652,7 +1652,7 @@ def test_unterstrasser_wake_vortex_survival_fractions():
 
 
 def test_unterstrasser_initial_contrail_depth():
-    """ Test Unterstrasser (2016) initial contrail depth."""
+    """Test Unterstrasser (2016) initial contrail depth."""
     # Input parameters
     z_desc = np.array([339.0, 169.0, 399.0, 349.0, 548.0, 339.0, 339.0])
     f_surv = np.array([0.384, 0.099, 0.874, 0.884, 0.158, 0.782, 0.017])
@@ -1661,4 +1661,3 @@ def test_unterstrasser_initial_contrail_depth():
     np.testing.assert_array_almost_equal(
         depth_est, [416.2, 100.4, 519.1, 454.6, 519.5, 436.4, 34.6], decimal=1
     )
-    return
