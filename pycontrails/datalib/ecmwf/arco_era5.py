@@ -11,7 +11,7 @@ This module supports:
 This module requires the following additional dependencies:
 
 - `metview (binaries and python bindings) <https://metview.readthedocs.io/en/latest/python.html>`_
-- `lxml` <https://lxml.de/>
+- `lxml <https://lxml.de/>`_
 - `gcsfs <https://gcsfs.readthedocs.io/en/latest/>`_
 - `zarr <https://zarr.readthedocs.io/en/stable/>`_
 
@@ -274,7 +274,7 @@ def open_arco_era5_model_level_data(
     pressure_levels: list[int],
     grid: float,
 ) -> xr.Dataset:
-    """Open ARCO ERA5 model level data for a specific time and variables.
+    r"""Open ARCO ERA5 model level data for a specific time and variables.
 
     This function downloads moisture, wind, and surface data from the
     `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_
@@ -295,7 +295,7 @@ def open_arco_era5_model_level_data(
         a sorted (increasing or decreasing) list of integers. Floating point values
         are treated as integers in ``metview``.
     grid : float
-        Target grid resolution, [:math:`degrees`]. A value of 0.25 is recommended.
+        Target grid resolution, [:math:`\deg`]. A value of 0.25 is recommended.
 
     Returns
     -------
@@ -306,6 +306,7 @@ def open_arco_era5_model_level_data(
 
     References
     ----------
+    - :cite:`carverARCOERA5AnalysisReadyCloudOptimized2023`
     - `ARCO ERA5 moisture workflow <https://github.com/google-research/arco-era5/blob/main/docs/moisture_dataset.py>`_
     - `Model Level Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/1-Model-Levels-Walkthrough.ipynb>`_
     - `Surface Reanalysis Walkthrough <https://github.com/google-research/arco-era5/blob/main/docs/0-Surface-Reanalysis-Walkthrough.ipynb>`_
@@ -380,7 +381,7 @@ def open_arco_era5_single_level(
 
 
 class ARCOERA5(ecmwf_common.ECMWFAPI):
-    """ARCO ERA5 data accessed remotely through Google Cloud Storage.
+    r"""ARCO ERA5 data accessed remotely through Google Cloud Storage.
 
     This is a high-level interface to access and cache
     `ARCO ERA5 <https://cloud.google.com/storage/docs/public-datasets/era5>`_
@@ -401,21 +402,18 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         pressure levels at each model level between 20,000 and 50,000 ft assuming a
         constant surface pressure.
     grid : float, optional
-        Target grid resolution, [:math:`degrees`]. A value of 0.25 is recommended.
+        Target grid resolution, [:math:`\deg`]. Default is 0.25.
     cachestore : CacheStore, optional
-        Cache store to use. By default, a new disk cache store is used.
+        Cache store to use. By default, a new disk cache store is used. If None, no caching is done.
     n_jobs : int, optional
         EXPERIMENTAL: Number of parallel jobs to use for downloading data. By default, 1.
     cleanup_metview_tempfiles : bool, optional
-        If True, cleanup all ``tmp*.grib`` files. Implementation is brittle and may
+        If True, cleanup all ``TEMP_DIRECTORY/tmp*.grib`` files. Implementation is brittle and may
         not work on all systems. By default, True.
 
     References
     ----------
-    Carver, Robert W, and Merose, Alex. (2023):
-    ARCO-ERA5: An Analysis-Ready Cloud-Optimized Reanalysis Dataset.
-    22nd Conf. on AI for Env. Science, Denver, CO, Amer. Meteo. Soc, 4A.1,
-    https://ams.confex.com/ams/103ANNUAL/meetingapp.cgi/Paper/415842
+    :cite:`carverARCOERA5AnalysisReadyCloudOptimized2023`
 
     See Also
     --------

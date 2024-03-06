@@ -1181,12 +1181,12 @@ class MetDataset(MetBase):
         level: npt.ArrayLike | float,
         time: npt.ArrayLike | np.datetime64,
     ) -> MetDataset:
-        """Create a :class:`MetDataset` containing a coordinate skeleton from coordinate arrays.
+        r"""Create a :class:`MetDataset` containing a coordinate skeleton from coordinate arrays.
 
         Parameters
         ----------
         longitude, latitude : npt.ArrayLike | float
-            Horizontal coordinates, in [:math:`degrees`]
+            Horizontal coordinates, in [:math:`\deg`]
         level : npt.ArrayLike | float
             Vertical coordinate, in [:math:`hPa`]
         time: npt.ArrayLike | np.datetime64,
