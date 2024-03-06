@@ -140,8 +140,8 @@ vis = [
     "shapely>=2.0",
 ]
 
-# Load data from remote Zarr stores
-zarr = ["fsspec>=2022.7.1", "zarr>=2.12"]
+# Load data from remote GCS Zarr stores
+zarr = ["fsspec>=2022.7.1", "gcsfs>=2022.7.1", "zarr>=2.12"]
 
 # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 [tool.setuptools]

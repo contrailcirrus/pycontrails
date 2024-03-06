@@ -49,6 +49,7 @@ except ModuleNotFoundError as e:
         "arco_era5 module",
         package_name="gcsfs",
         module_not_found_error=e,
+        pycontrails_optional_package="zarr",
     )
 
 MOISTURE_STORE = "gs://gcp-public-data-arco-era5/co/model-level-moisture.zarr"
@@ -82,7 +83,21 @@ def _read_model_level_dataframe() -> pd.DataFrame:
     This requires the lxml package to be installed.
     """
     url = "https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions"
-    return pd.read_html(url, na_values="-", index_col="n")[0]
+    try:
+        return pd.read_html(url, na_values="-", index_col="n")[0]
+    except ImportError as exc:
+        if "lxml" in exc.msg:
+            dependencies.raise_module_not_found_error(
+                "arco_era5._read_model_level_dataframe function",
+                package_name="lxml",
+                module_not_found_error=exc,
+                extra=(
+                    "Alternatively, if instantiating an 'ARCOERA5' object, you can provide "
+                    "the 'pressure_levels' parameter directly to avoid the need to read the "
+                    "ECMWF model level definitions."
+                ),
+            )
+        raise
 
 
 def pressure_levels_at_model_levels(alt_ft_min: float, alt_ft_max: float) -> list[int]:
@@ -205,6 +220,7 @@ def _handle_metview(
             "arco_era5 module",
             package_name="metview",
             module_not_found_error=exc,
+            extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
         )
     except ImportError as exc:
         msg = "Failed to import metview"
