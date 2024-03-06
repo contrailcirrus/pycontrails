@@ -473,6 +473,8 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
     @overrides
     def download_dataset(self, times: list[datetime.datetime]) -> None:
+        if not times:
+            return
 
         # Download single level data sequentially
         if self.is_single_level:
@@ -486,8 +488,10 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         if self.cleanup_metview_tempfiles:
             stack.enter_context(_MetviewTempfileHandler())
 
+        n_jobs = min(self.n_jobs, len(times))
+
         # Download sequentially if n_jobs == 1
-        if self.n_jobs == 1:
+        if n_jobs == 1:
             for t in times:
                 with stack:  # cleanup after each iteration
                     _download_convert_cache_handler(self, t)
@@ -495,7 +499,8 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
         # Download in parallel
         args = [(self, t) for t in times]
-        with multiprocessing.Pool(self.n_jobs) as pool, stack:  # cleanup after pool is closed
+        mp = multiprocessing.get_context("spawn")
+        with mp.Pool(n_jobs) as pool, stack:  # cleanup after pool is closed
             pool.starmap(_download_convert_cache_handler, args, chunksize=1)
 
     @overrides
