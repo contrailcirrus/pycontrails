@@ -475,17 +475,14 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         # Download sequentially if n_jobs == 1
         if self.n_jobs == 1:
             for t in times:
-                with stack:
+                with stack:  # cleanup after each iteration
                     _download_convert_cache_handler(self, t)
             return
 
         # Download in parallel
-        with stack:
-            mp = multiprocessing.get_context("spawn")
-            args = ((self, t) for t in times)
-
-            with mp.Pool(self.n_jobs) as pool:
-                pool.starmap(_download_convert_cache_handler, args)
+        args = [(self, t) for t in times]
+        with multiprocessing.Pool(self.n_jobs) as pool, stack:  # cleanup after pool is closed
+            pool.starmap(_download_convert_cache_handler, args, chunksize=1)
 
     @overrides
     def create_cachepath(self, t: datetime.datetime) -> str:
