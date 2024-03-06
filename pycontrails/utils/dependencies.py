@@ -1,4 +1,4 @@
-"""Raise ``ModuleNotFoundError`` when dependencies are not met."""
+"""Raise ``ImportError`` when dependencies are not met."""
 
 from __future__ import annotations
 
@@ -8,30 +8,32 @@ from typing import NoReturn
 def raise_module_not_found_error(
     name: str,
     package_name: str,
-    module_not_found_error: ModuleNotFoundError,
+    module_not_found_error: ImportError,
     pycontrails_optional_package: str | None = None,
     extra: str | None = None,
 ) -> NoReturn:
-    """Raise ``ModuleNotFoundError`` with a helpful message.
+    """Raise ``ImportError`` with a helpful message.
 
     Parameters
     ----------
     name : str
-        The name describing the context of the ``ModuleNotFoundError``. For example,
+        The name describing the context of the ``ImportError``. For example,
         if the module is required for a specific function, the name could be
         "my_function function". If the module is required for a specific method,
         the name could be "MyClass.my_method method". If the module is required
-        for an entire pycontrails module, the name could be "my_module module".
+        for an entire ``pycontrails`` module, the name could be "my_module module".
     package_name : str
         The name of the package that is required. This should be the full name of
         the python package, which may be different from the name of the module
         that is actually imported. For example, if ``import sklearn`` triggers
-        the ``ModuleNotFoundError``, the ``package_name`` should be "scikit-learn".
-    module_not_found_error : ModuleNotFoundError
-        The ``ModuleNotFoundError`` that was raised. This is simply passed to the
-        ``from`` clause of the ``raise`` statement below.
+        the ``ImportError``, the ``package_name`` should be "scikit-learn".
+    module_not_found_error : ImportError
+        The ``ImportError`` that was raised. This is passed to the
+        ``from`` clause of the ``raise`` statement below. The subclass of the
+        ``ImportError`` is preserved (e.g., ``ModuleNotFoundError`` or
+        ``ImportError``).
     pycontrails_optional_package : str, optional
-        The name of the optional pycontrails package that can be used to
+        The name of the optional ``pycontrails`` package that can be used to
         install the required package. See the ``pyproject.toml`` file.
     extra : str, optional
         Any extra information that should be included in the error message.
@@ -61,4 +63,4 @@ def raise_module_not_found_error(
     if extra:
         msg = f"{msg} {extra}"
 
-    raise ModuleNotFoundError(msg) from module_not_found_error
+    raise type(module_not_found_error)(msg) from module_not_found_error
