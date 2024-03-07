@@ -485,10 +485,14 @@ def z_total_length_scale(
     npt.NDArray[np.float64]
         Total length-scale effect of the wake vortex downwash, [:math:`m`]
     """
-    alpha_atm = 1.7 * (aei_n / 2.8e14) ** (-0.18)
-    alpha_emit = 1.15 * (aei_n / 2.8e14) ** (-0.18)
+    alpha_base = (aei_n / 2.8e14) ** (-0.18)
+    alpha_atm = 1.7 * alpha_base
+    alpha_emit = 1.15 * alpha_base
+
     z_total = alpha_atm * z_atm + alpha_emit * z_emit - 0.6 * z_desc
-    return np.maximum(z_total, 0.0)
+
+    z_total.clip(min=0.0, out=z_total)
+    return z_total
 
 
 def z_atm_length_scale(
@@ -502,9 +506,9 @@ def z_atm_length_scale(
     Parameters
     ----------
     air_temperature : npt.NDArray[np.float64]
-        ambient temperature for each waypoint, [:math:`K`]
+        Ambient temperature for each waypoint, [:math:`K`].
     rhi_0 : npt.NDArray[np.float64]
-        Relative humidity with respect to ice at the flight waypoint
+        Relative humidity with respect to ice at the flight waypoint.
     n_iter : int
         Number of iterations, set to 10 as default where ``z_atm`` is accurate to within +-1 m.
 
@@ -512,38 +516,35 @@ def z_atm_length_scale(
     -------
     npt.NDArray[np.float64]
         The effect of the ambient supersaturation on the ice crystal mass budget,
-        provided as a length scale equivalent, [:math:`m`]
+        provided as a length scale equivalent, [:math:`m`].
 
     Notes
     -----
     - See eq. (5) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     # Only perform operation when the ambient condition is supersaturated w.r.t. ice
-    s_i = rhi_0 - 1.0
-    issr = s_i > 0
-    s_i = s_i[issr].copy()
-    air_temperature = air_temperature[issr].copy()
+    issr = rhi_0 > 1.0
 
-    air_temperature = air_temperature.flatten()
-    s_i = s_i.flatten()
+    rhi_issr = rhi_0[issr]
+    air_temperature_issr = air_temperature[issr]
 
     # Solve non-linear equation numerically using the bisection method
     # Did not use scipy functions because it is unstable when dealing with np.arrays
-    z_1 = np.zeros_like(s_i)
-    z_2 = np.ones_like(s_i) * 1000.0
-    lhs = (1 + s_i) * thermo.e_sat_ice(air_temperature) / air_temperature
+    z_1 = np.zeros_like(rhi_issr)
+    z_2 = np.full_like(rhi_issr, 1000.0)
+    lhs = rhi_issr * thermo.e_sat_ice(air_temperature_issr) / air_temperature_issr
 
     for _ in range(n_iter):
         z_est = 0.5 * (z_1 + z_2)
-        rhs = (thermo.e_sat_ice(air_temperature + 9.8e-3 * z_est)) / (
-            air_temperature + 9.8e-3 * z_est
+        rhs = (thermo.e_sat_ice(air_temperature_issr + 9.8e-3 * z_est)) / (
+            air_temperature_issr + 9.8e-3 * z_est
         )
-        z_1 = np.where(lhs > rhs, z_est, z_1)
-        z_2 = np.where(lhs < rhs, z_est, z_2)
+        z_1[lhs > rhs] = z_est[lhs > rhs]
+        z_2[lhs < rhs] = z_est[lhs < rhs]
 
-    z_atm = np.zeros_like(rhi_0)
-    z_atm[issr] = 0.5 * (z_1 + z_2)
-    return z_atm.reshape(rhi_0.shape)
+    out = np.zeros_like(rhi_0)
+    out[issr] = 0.5 * (z_1 + z_2)
+    return out
 
 
 def emitted_water_vapour_concentration(
@@ -607,21 +608,19 @@ def z_emit_length_scale(
     # Solve non-linear equation numerically using the bisection method
     # Did not use scipy functions because it is unstable when dealing with np.arrays
     z_1 = np.zeros_like(rho_emit)
-    z_2 = np.ones_like(rho_emit) * 1000.0
+    z_2 = np.full_like(rho_emit, 1000.0)
 
-    rho_emit = rho_emit.flatten()
-    t_amb = air_temperature.flatten()
-
-    lhs = (thermo.e_sat_ice(t_amb) / (constants.R_v * t_amb)) + rho_emit
+    lhs = (thermo.e_sat_ice(air_temperature) / (constants.R_v * air_temperature)) + rho_emit
 
     for _ in range(n_iter):
         z_est = 0.5 * (z_1 + z_2)
-        rhs = thermo.e_sat_ice(t_amb + 9.8e-3 * z_est) / (constants.R_v * (t_amb + 9.8e-3 * z_est))
-        z_1 = np.where(lhs > rhs, z_est, z_1)
-        z_2 = np.where(lhs < rhs, z_est, z_2)
+        rhs = thermo.e_sat_ice(air_temperature + 9.8e-3 * z_est) / (
+            constants.R_v * (air_temperature + 9.8e-3 * z_est)
+        )
+        z_1[lhs > rhs] = z_est[lhs > rhs]
+        z_2[lhs < rhs] = z_est[lhs < rhs]
 
-    z_emit = 0.5 * (z_1 + z_2)
-    return z_emit.reshape(air_temperature.shape)
+    return 0.5 * (z_1 + z_2)
 
 
 def plume_area(wingspan: npt.NDArray[np.float64] | float) -> npt.NDArray[np.float64] | float:
@@ -642,7 +641,7 @@ def plume_area(wingspan: npt.NDArray[np.float64] | float) -> npt.NDArray[np.floa
     - See eq. (A6) and (A7) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     r_plume = 1.5 + 0.314 * wingspan
-    return 2 * 2 * np.pi * r_plume**2
+    return 2.0 * 2.0 * np.pi * r_plume**2
 
 
 def z_desc_length_scale(
@@ -683,7 +682,7 @@ def z_desc_length_scale(
         wingspan, air_temperature, air_pressure, true_airspeed, aircraft_mass
     )
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
-    return ((8 * gamma_0) / (np.pi * n_bv)) ** 0.5
+    return ((8.0 * gamma_0) / (np.pi * n_bv)) ** 0.5
 
 
 def _initial_wake_vortex_circulation(
@@ -737,8 +736,9 @@ def _ice_number_survival_fraction(z_total: npt.NDArray[np.float64]) -> npt.NDArr
     npt.NDArray[np.float64]
         Fraction of ice particle number surviving the wake vortex phase
     """
-    f_surv = 0.45 + (1.19 / np.pi) * np.arctan(-1.35 + (z_total / 100))
-    return np.clip(f_surv, 0.0, 1.0, out=f_surv)
+    f_surv = 0.45 + (1.19 / np.pi) * np.arctan(-1.35 + (z_total / 100.0))
+    np.clip(f_surv, 0.0, 1.0, out=f_surv)
+    return f_surv
 
 
 def initial_contrail_depth_u2016(
