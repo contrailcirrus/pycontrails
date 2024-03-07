@@ -284,7 +284,7 @@ def ice_particle_activation_rate(
     return -0.661 * np.exp(d_temp) + 1.0
 
 
-def ice_particle_survival_factor(
+def ice_particle_survival_fraction(
     iwc: npt.NDArray[np.float64], iwc_1: npt.NDArray[np.float64]
 ) -> npt.NDArray[np.float64]:
     """
