@@ -136,6 +136,15 @@ class CocipParams(ModelParams):
     #: :attr:`CocipGridParams.verbose_outputs_evolution`.
     verbose_outputs: bool = False
 
+    #: Add additional metric of ATR20 and global mean RF to model output.
+    #: These are not standard CoCiP outputs but based on the derivation used
+    #: by :cite:`dietmullerPythonLibraryComputing2022`.
+    compute_atr20: bool = False
+
+    #: Constant factor used to convert global mean RF, [:math:`W m^{-2}`],
+    #: to ATR20, [:math:`K`], given by :cite:`dietmullerPythonLibraryComputing2022`.
+    global_rf_to_atr20_factor: float = 0.0151
+
     # ----------------
     # Model parameters
     # ----------------
