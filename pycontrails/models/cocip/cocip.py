@@ -1244,7 +1244,9 @@ class Cocip(Model):
         aggregated.columns = [f"{k1}_{k2}" for k1, k2 in aggregated.columns]
         aggregated = aggregated.rename(columns={"ef_sum": "ef", "age_max": "contrail_age"})
         if self.params["compute_atr20"]:
-            aggregated = aggregated.rename(columns={"global_mean_rf_sum":"global_mean_rf","atr20_sum":"atr20"})
+            aggregated = aggregated.rename(
+                columns={"global_mean_rf_sum": "global_mean_rf", "atr20_sum": "atr20"}
+            )
 
         # Join the two
         df = df.join(aggregated)
