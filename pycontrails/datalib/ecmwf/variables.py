@@ -135,7 +135,7 @@ Divergence = MetVariable(
         "This parameter is the horizontal divergence of velocity. It is the rate "
         "at which air is spreading out horizontally from a point, per square metre. "
         "This parameter is positive for air that is spreading out, or diverging, and "
-        "negative for the opposite, for air that is concentrating, or converging (convergence)."
+        "negative for air that is moving inward toward a point, or converging."
     ),
 )
 
