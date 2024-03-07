@@ -908,7 +908,7 @@ class Cocip(Model):
                 0.5 * depth,  # Taking the mid-point of the contrail plume
             )
         else:
-            f_surv = contrail_properties.ice_particle_survival_factor(iwc, iwc_1)
+            f_surv = contrail_properties.ice_particle_survival_fraction(iwc, iwc_1)
 
         n_ice_per_m_1 = contrail_properties.ice_particle_number(
             nvpm_ei_n=nvpm_ei_n,
