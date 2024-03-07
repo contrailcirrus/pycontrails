@@ -118,8 +118,6 @@ def pressure_levels_at_model_levels(alt_ft_min: float, alt_ft_max: float) -> lis
         List of pressure levels, [:math:`hPa`].
     """
     df = _read_model_level_dataframe()
-    alt_ft_min = 20_000
-    alt_ft_max = 50_000
     alt_m_min = units.ft_to_m(alt_ft_min)
     alt_m_max = units.ft_to_m(alt_ft_max)
     filt = df["Geometric Altitude [m]"].between(alt_m_min, alt_m_max)
