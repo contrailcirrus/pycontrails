@@ -9,6 +9,13 @@
 
 ### Features
 
+- Refine CoCiP contrail initialization model based on the work of Unterstrasser (2016) and Karcher (2018). This update includes the following changes:
+  - Implement improved estimation of the survival fraction of contrail ice crystal number after the wake vortex phase (`f_surv`). The parameterised model is described by Unterstrasser (2016) and was developed using outputs provided by large eddy simulations.
+  - These changes replicates Fig. 4 of Karcher (2018), where `f_surv` now depends on the initial number of ice crystals. These effects are particularly important, especially in the "soot-poor" scenario where the number fraction of contrail ice crystals that survives the wake vortex phase could be larger than the mass fraction, because the particles are larger in size.
+  - This also improves upon the existing assumption in CoCiP, where the survival fraction is estimated as the change in contrail ice water content (by mass) before and after the wake vortex phase.
+
+  This new update can be enabled by setting the `CocipParam.improved_wake_vortex_ice_survival_fraction` parameter to `True`. This is disabled by default.
+
 - Adds optional ATR20 to CoCiPGrid model.
 
 ### Fixes

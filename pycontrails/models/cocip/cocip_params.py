@@ -190,7 +190,7 @@ class CocipParams(ModelParams):
     #: number after the wake vortex phase based on the results from large eddy simulations.
     #: This replicates Fig. 4 of :cite:`karcherFormationRadiativeForcing2018`.
     #:
-    #:  .. versionadded:: 0.50.0
+    #:  .. versionadded:: 0.50.1
     improved_wake_vortex_ice_survival_fraction: bool = False
 
     #: Experimental. Radiative heating effects on contrail cirrus properties.
