@@ -18,9 +18,15 @@ g: float = 9.80665
 #: Radius of Earth :math:`[m]`
 radius_earth: float = 6371229.0
 
+#: Surface area of Earth :math:`[m^2]`
+surface_area_earth: float = 5.10072e+14
+
 #: ISA height of the tropopause :math:`[m]`
 #: :cite:`wikipediacontributorsInternationalStandardAtmosphere2023`
 h_tropopause: float = 11000.0
+
+#: Seconds in a Julian year :math:`[s]`
+seconds_per_year: float = 3.15576e+7
 
 # -------------
 # Thermodynamic
