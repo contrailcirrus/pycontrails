@@ -31,7 +31,7 @@ from pycontrails.models.cocip import (
 )
 from pycontrails.models.cocip.cocip_params import CocipFlightParams
 from pycontrails.models.emissions.emissions import Emissions
-from pycontrails.physics import geo, thermo, units
+from pycontrails.physics import constants, geo, thermo, units
 
 logger = logging.getLogger(__name__)
 
@@ -1101,6 +1101,9 @@ class Cocip(Model):
 
         # Initially set energy forcing to 0 because the contrail just formed (age = 0)
         contrail["ef"] = np.zeros_like(contrail["n_ice_per_m"])
+        if self.params["compute_atr20"]:
+            contrail["global_mean_rf"] = np.zeros_like(contrail["n_ice_per_m"])
+            contrail["atr20"] = np.zeros_like(contrail["n_ice_per_m"])
 
         if not self.params["filter_sac"]:
             contrail["sac"] = self._downwash_flight["sac"]
@@ -1226,6 +1229,10 @@ class Cocip(Model):
 
         # Perform all aggregations
         agg_dict = {"ef": ["sum"], "age": ["max"]}
+        if self.params["compute_atr20"]:
+            agg_dict["global_mean_rf"] = ["sum"]
+            agg_dict["atr20"] = ["sum"]
+
         rad_keys = ["sdr", "rsr", "olr", "rf_sw", "rf_lw", "rf_net"]
         for key in rad_keys:
             if self.params["verbose_outputs"]:
@@ -1236,6 +1243,8 @@ class Cocip(Model):
         aggregated = grouped.agg(agg_dict)
         aggregated.columns = [f"{k1}_{k2}" for k1, k2 in aggregated.columns]
         aggregated = aggregated.rename(columns={"ef_sum": "ef", "age_max": "contrail_age"})
+        if self.params["compute_atr20"]:
+            aggregated = aggregated.rename(columns={"global_mean_rf_sum":"global_mean_rf","atr20_sum":"atr20"})
 
         # Join the two
         df = df.join(aggregated)
@@ -2372,6 +2381,12 @@ def calc_timestep_contrail_evolution(
     contrail_2["ef"] = energy_forcing_2
     contrail_2["age"][energy_forcing_2 == 0.0] = np.timedelta64(0, "ns")
 
+    if params["compute_atr20"]:
+        contrail_2["global_mean_rf"] = (
+            contrail_2["ef"] / constants.surface_area_earth / constants.seconds_per_year
+        )
+        contrail_2["atr20"] = params["global_rf_to_atr20_factor"] * contrail_2["global_mean_rf"]
+
     # filter contrail_2 by persistent waypoints, if any continuous segments are left
     logger.debug(
         "Fraction of waypoints surviving: %s / %s",
@@ -2408,6 +2423,9 @@ def calc_timestep_contrail_evolution(
         continuous = final_contrail["continuous"]
         final_contrail["ef"][~continuous] = 0.0
         final_contrail["age"][~continuous] = np.timedelta64(0, "ns")
+        if params["compute_atr20"]:
+            final_contrail["global_mean_rf"][~continuous] = 0.0
+            final_contrail["atr20"][~continuous] = 0.0
     return final_contrail
 
 
