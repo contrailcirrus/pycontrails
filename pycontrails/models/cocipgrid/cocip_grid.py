@@ -122,6 +122,13 @@ class CocipGrid(models.Model):
             msg = "Parameter 'radiative_heating_effects' is not yet implemented in CocipGrid"
             raise NotImplementedError(msg)
 
+        if self.params["improved_wake_vortex_ice_survival_fraction"]:
+            msg = (
+                "Parameter 'improved_wake_vortex_ice_survival_fraction' is not "
+                "yet implemented in CocipGrid"
+            )
+            raise NotImplementedError(msg)
+
         self._target_dtype = np.result_type(*self.met.data.values())
 
     @overload
