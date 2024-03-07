@@ -168,6 +168,7 @@ def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
         "verbose_outputs": True,
         "met_time_buffer": (np.timedelta64(0, "h"), np.timedelta64(1, "h")),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
+        "compute_atr20": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
 
@@ -689,6 +690,14 @@ def test_eval_persistent(cocip_persistent: Cocip, regenerate_results: bool) -> N
         if key in ["time", "flight_id"]:
             np.testing.assert_array_equal(cocip_persistent.source[key], flight_output[key])
             continue
+        if key=='atr20':
+            np.testing.assert_allclose(
+                cocip_persistent.source.get_data_or_attr(key),
+                flight_output[key],
+                err_msg=key,
+                rtol=1e-2,
+            )
+            continue           
         np.testing.assert_allclose(
             cocip_persistent.source.get_data_or_attr(key),
             flight_output[key],
