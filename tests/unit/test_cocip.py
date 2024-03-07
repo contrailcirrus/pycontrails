@@ -690,14 +690,14 @@ def test_eval_persistent(cocip_persistent: Cocip, regenerate_results: bool) -> N
         if key in ["time", "flight_id"]:
             np.testing.assert_array_equal(cocip_persistent.source[key], flight_output[key])
             continue
-        if key=='atr20':
+        if key == "atr20":
             np.testing.assert_allclose(
                 cocip_persistent.source.get_data_or_attr(key),
                 flight_output[key],
                 err_msg=key,
                 rtol=1e-2,
             )
-            continue           
+            continue
         np.testing.assert_allclose(
             cocip_persistent.source.get_data_or_attr(key),
             flight_output[key],
