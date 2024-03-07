@@ -836,7 +836,6 @@ class Cocip(Model):
         air_temperature = self._sac_flight["air_temperature"]
         specific_humidity = self._sac_flight["specific_humidity"]
         T_critical_sac = self._sac_flight["T_critical_sac"]
-        rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
 
         # Flight performance parameters
         fuel_flow = self._sac_flight.get_data_or_attr("fuel_flow")
@@ -897,6 +896,7 @@ class Cocip(Model):
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
         if self.params["improved_wake_vortex_ice_survival_fraction"]:
+            rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
             f_surv = wake_vortex.ice_particle_number_survival_fraction(
                 air_temperature,
                 rhi_0,
