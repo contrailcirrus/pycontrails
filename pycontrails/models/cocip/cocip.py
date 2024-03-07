@@ -845,10 +845,6 @@ class Cocip(Model):
         nvpm_ei_n = self._sac_flight.get_data_or_attr("nvpm_ei_n")
         ei_h2o = self._sac_flight.fuel.ei_h2o
 
-        # In Fleet-mode, wingspan resides on `data`, and in Flight-mode,
-        # wingspan resides on `attrs`.
-        wingspan = self._sac_flight.get_data_or_attr("wingspan")
-
         # get initial contrail parameters from wake vortex simulation
         width = self._sac_flight["width"]
         depth = self._sac_flight["depth"]
@@ -896,6 +892,7 @@ class Cocip(Model):
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
         if self.params["improved_wake_vortex_ice_survival_fraction"]:
+            wingspan = self._sac_flight.get_data_or_attr("wingspan")
             rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
             f_surv = wake_vortex.ice_particle_number_survival_fraction(
                 air_temperature,
