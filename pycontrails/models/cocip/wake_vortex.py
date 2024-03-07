@@ -413,6 +413,9 @@ def ice_particle_number_survival_fraction(
     r"""
     Calculate fraction of ice particle number surviving the wake vortex phase and required inputs.
 
+    This implementation is based on the work of Unterstrasser (2016) and is an improved estimation
+    compared with :func:`contrail_properties.ice_particle_survival_fraction`.
+
     Parameters
     ----------
     air_temperature : npt.NDArray[np.float_]
@@ -440,7 +443,7 @@ def ice_particle_number_survival_fraction(
     Notes
     -----
     - See eq. (3), (9), and (10) in Unterstrasser (2016).
-    - For consistency in CoCiP, `z_desc` should be cauclated using :func:`dz_max` instead of
+    - For consistency in CoCiP, ``z_desc`` should be calculated using :func:`dz_max` instead of
       using :func:`z_desc_length_scale`.
     """
     # Length scales
