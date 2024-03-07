@@ -1606,7 +1606,7 @@ def test_cocip_met_nonuniform(
     assert np.any(contrail_time > t1)
 
 
-def test_unterstrasser_wake_vortex_length_scales():
+def test_unterstrasser_wake_vortex_length_scales() -> None:
     """Test Unterstrasser (2016) wake vortex length scales using values listed in Table A2."""
     # Input parameters
 
@@ -1633,7 +1633,7 @@ def test_unterstrasser_wake_vortex_length_scales():
     )
 
 
-def test_unterstrasser_wake_vortex_survival_fractions():
+def test_unterstrasser_wake_vortex_survival_fractions() -> None:
     """Test Unterstrasser (2016) ice crystal survival fraction using values listed in Table A2."""
     # Input parameters
 
@@ -1651,7 +1651,7 @@ def test_unterstrasser_wake_vortex_survival_fractions():
     )
 
 
-def test_unterstrasser_initial_contrail_depth():
+def test_unterstrasser_initial_contrail_depth() -> None:
     """Test Unterstrasser (2016) initial contrail depth."""
     # Input parameters
     z_desc = np.array([339.0, 169.0, 399.0, 349.0, 548.0, 339.0, 339.0])

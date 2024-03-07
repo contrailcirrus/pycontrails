@@ -1,4 +1,24 @@
-"""Wave-vortex downwash functions."""
+"""Wave-vortex downwash functions.
+
+This module includes both equations from the original CoCiP model
+:cite:`schumannContrailCirrusPrediction2012` as well as improvements from
+:cite:`unterstrasserPropertiesYoungContrails2016`.
+
+Unterstrasser Notes
+-------------------
+
+Improved estimation of the survival fraction of the contrail ice crystal number ``f_surv``
+during the  wake-vortex phase. This is a parameterised model that is developed based on
+outputs provided by large eddy simulations.
+
+For comparison, CoCiP assumes that ``f_surv`` is equal to the change in the contrail ice water
+content (by mass) before and after the wake vortex phase. However, for larger (smaller) ice
+particles, their survival fraction by number could be smaller (larger) than their survival fraction
+by mass. This is particularly important in the "soot-poor" scenario, for example, in cleaner
+lean-burn engines where their soot emissions can be 3-4 orders of magnitude lower than conventional
+RQL engines.
+
+"""
 
 from __future__ import annotations
 
@@ -383,22 +403,6 @@ def initial_contrail_depth(
 # Unterstrasser (2016)
 # --------------------
 
-"""
-Improved estimation of the survival fraction of the contrail ice crystal number `f_surv` during the 
-wake-vortex phase. This is a parameterised model that is developed based on outputs provided by 
-large eddy simulations. 
-
-For comparison, CoCiP assumes that `f_surv` is equal to the change in the contrail ice water 
-content (by mass) before and after the wake vortex phase. However, for larger (smaller) ice 
-particles, their survival fraction by number could be smaller (larger) than their survival fraction 
-by mass. This is particularly important in the `soot-poor` scenario, for example, in cleaner 
-lean-burn engines where their soot emissions can be 3-4 orders of magnitude lower than conventional
-RQL engines. 
-
-Unterstrasser, S., 2016. Properties of young contrails–a parametrisation based on large-eddy 
-simulations. ACP, 16(4), pp.2059-2082. https://doi.org/10.5194/acp-16-2059-2016
-"""
-
 
 def ice_particle_number_survival_fraction(
     air_temperature: npt.NDArray[np.float64],
@@ -413,36 +417,38 @@ def ice_particle_number_survival_fraction(
     r"""
     Calculate fraction of ice particle number surviving the wake vortex phase and required inputs.
 
-    This implementation is based on the work of Unterstrasser (2016) and is an improved estimation
-    compared with :func:`contrail_properties.ice_particle_survival_fraction`.
+    This implementation is based on the work of :cite:`unterstrasserPropertiesYoungContrails2016`
+    and is an improved estimation compared with
+    :func:`contrail_properties.ice_particle_survival_fraction`.
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : npt.NDArray[np.float64]
         ambient temperature for each waypoint, [:math:`K`]
-    rhi_0: npt.NDArray[np.float_]
+    rhi_0: npt.NDArray[np.float64]
         Relative humidity with respect to ice at the flight waypoint
-    ei_h2o : npt.NDArray[np.float_] | float
+    ei_h2o : npt.NDArray[np.float64] | float
         Emission index of water vapor, [:math:`kg \ kg^{-1}`]
-    wingspan : npt.NDArray[np.float_] | float
+    wingspan : npt.NDArray[np.float64] | float
         aircraft wingspan, [:math:`m`]
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    fuel_flow : ArrayOrFloat
+    fuel_flow : npt.NDArray[np.float64]
         Fuel mass flow rate, [:math:`kg s^{-1}`]
-    aei_n : npt.NDArray[np.float_]
+    aei_n : npt.NDArray[np.float64]
         Apparent ice crystal number emissions index at contrail formation, [:math:`kg^{-1}`]
-    z_desc : npt.NDArray[np.float_]
-        Final vertical displacement of the wake vortex, `dz_max` in `wake_vortex.py`, [:math:`m`]
+    z_desc : npt.NDArray[np.float64]
+        Final vertical displacement of the wake vortex, ``dz_max`` in :mod:`wake_vortex.py`,
+        [:math:`m`].
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Fraction of contrail ice particle number that survive the wake vortex phase.
 
     Notes
     -----
-    - See eq. (3), (9), and (10) in Unterstrasser (2016).
+    - See eq. (3), (9), and (10) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     - For consistency in CoCiP, ``z_desc`` should be calculated using :func:`dz_max` instead of
       using :func:`z_desc_length_scale`.
     """
@@ -465,18 +471,18 @@ def z_total_length_scale(
 
     Parameters
     ----------
-    aei_n : npt.NDArray[np.float_]
+    aei_n : npt.NDArray[np.float64]
         Apparent ice crystal number emissions index at contrail formation, [:math:`kg^{-1}`]
-    z_atm : npt.NDArray[np.float_]
+    z_atm : npt.NDArray[np.float64]
         Length-scale effect of ambient supersaturation on the ice crystal mass budget, [:math:`m`]
-    z_emit : npt.NDArray[np.float_]
+    z_emit : npt.NDArray[np.float64]
         Length-scale effect of water vapour emissions on the ice crystal mass budget, [:math:`m`]
-    z_desc : npt.NDArray[np.float_]
+    z_desc : npt.NDArray[np.float64]
         Final vertical displacement of the wake vortex, `dz_max` in `wake_vortex.py`, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Total length-scale effect of the wake vortex downwash, [:math:`m`]
     """
     alpha_atm = 1.7 * (aei_n / 2.8e14) ** (-0.18)
@@ -491,27 +497,26 @@ def z_atm_length_scale(
     *,
     n_iter: int = 10,
 ) -> npt.NDArray[np.float64]:
-    """
-    Calculate the length-scale effect of ambient supersaturation on the ice crystal mass budget.
+    """Calculate the length-scale effect of ambient supersaturation on the ice crystal mass budget.
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : npt.NDArray[np.float64]
         ambient temperature for each waypoint, [:math:`K`]
-    rhi_0 : npt.NDArray[np.float_]
+    rhi_0 : npt.NDArray[np.float64]
         Relative humidity with respect to ice at the flight waypoint
     n_iter : int
-        Number of iterations, set to 10 as default where `z_atm` is accurate to within +-1 m.
+        Number of iterations, set to 10 as default where ``z_atm`` is accurate to within +-1 m.
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         The effect of the ambient supersaturation on the ice crystal mass budget,
         provided as a length scale equivalent, [:math:`m`]
 
     Notes
     -----
-    - See eq. (5) in Unterstrasser (2016).
+    - See eq. (5) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     # Only perform operation when the ambient condition is supersaturated w.r.t. ice
     s_i = rhi_0 - 1.0
@@ -552,23 +557,23 @@ def emitted_water_vapour_concentration(
 
     Parameters
     ----------
-    ei_h2o : npt.NDArray[np.float_] | float
+    ei_h2o : npt.NDArray[np.float64] | float
         Emission index of water vapor, [:math:`kg \ kg^{-1}`]
-    wingspan : npt.NDArray[np.float_] | float
+    wingspan : npt.NDArray[np.float64] | float
         aircraft wingspan, [:math:`m`]
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    fuel_flow : ArrayOrFloat
+    fuel_flow : npt.NDArray[np.float64]
         Fuel mass flow rate, [:math:`kg s^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Aircraft-emitted water vapour concentration in the plume, [:math:`kg m^{-3}`]
 
     Notes
     -----
-    - See eq. (6) and (A8) in Unterstrasser (2016).
+    - See eq. (6) and (A8) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     h2o_per_dist = (ei_h2o * fuel_flow) / true_airspeed
     area_p = plume_area(wingspan)
@@ -578,27 +583,26 @@ def emitted_water_vapour_concentration(
 def z_emit_length_scale(
     rho_emit: npt.NDArray[np.float64], air_temperature: npt.NDArray[np.float64], *, n_iter: int = 10
 ) -> npt.NDArray[np.float64]:
-    """
-    Calculate the length-scale effect of water vapour emissions on the ice crystal mass budget.
+    """Calculate the length-scale effect of water vapour emissions on the ice crystal mass budget.
 
     Parameters
     ----------
-    rho_emit : npt.NDArray[np.float_] | float
+    rho_emit : npt.NDArray[np.float64] | float
         Aircraft-emitted water vapour concentration in the plume, [:math:`kg m^{-3}`]
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : npt.NDArray[np.float64]
         ambient temperature for each waypoint, [:math:`K`]
     n_iter : int
-        Number of iterations, set to 10 as default where `z_emit` is accurate to within +-1 m.
+        Number of iterations, set to 10 as default where ``z_emit`` is accurate to within +-1 m.
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         The effect of the aircraft water vapour emission on the ice crystal mass budget,
         provided as a length scale equivalent, [:math:`m`]
 
     Notes
     -----
-    - See eq. (7) in Unterstrasser (2016).
+    - See eq. (7) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     # Solve non-linear equation numerically using the bisection method
     # Did not use scipy functions because it is unstable when dealing with np.arrays
@@ -620,15 +624,12 @@ def z_emit_length_scale(
     return z_emit.reshape(air_temperature.shape)
 
 
-def plume_area(
-    wingspan: npt.NDArray[np.float64] | float,
-) -> npt.NDArray[np.float64] | float:
-    """
-    Calculate area of the wake-vortex plume.
+def plume_area(wingspan: npt.NDArray[np.float64] | float) -> npt.NDArray[np.float64] | float:
+    """Calculate area of the wake-vortex plume.
 
     Parameters
     ----------
-    wingspan : npt.NDArray[np.float_] | float
+    wingspan : npt.NDArray[np.float64] | float
         aircraft wingspan, [:math:`m`]
 
     Returns
@@ -638,7 +639,7 @@ def plume_area(
 
     Notes
     -----
-    - See eq. (A6) and (A7) in Unterstrasser (2016).
+    - See eq. (A6) and (A7) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     r_plume = 1.5 + 0.314 * wingspan
     return 2 * 2 * np.pi * r_plume**2
@@ -652,18 +653,17 @@ def z_desc_length_scale(
     aircraft_mass: npt.NDArray[np.float64],
     dT_dz: npt.NDArray[np.float64],
 ) -> npt.NDArray[np.float64]:
-    """
-    Calculate the final vertical displacement of the wake vortex.
+    """Calculate the final vertical displacement of the wake vortex.
 
     Parameters
     ----------
-    wingspan : npt.NDArray[np.float_] | float
+    wingspan : npt.NDArray[np.float64] | float
         aircraft wingspan, [:math:`m`]
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : npt.NDArray[np.float64]
         ambient temperature for each waypoint, [:math:`K`]
     air_pressure : npt.NDArray[np.float64]
         pressure altitude at each waypoint, [:math:`Pa`]
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
     aircraft_mass : npt.NDArray[np.float64] | float
         aircraft mass for each waypoint, [:math:`kg`]
@@ -672,12 +672,12 @@ def z_desc_length_scale(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Final vertical displacement of the wake vortex, [:math:`m`]
 
     Notes
     -----
-    - See eq. (4) in Unterstrasser (2016).
+    - See eq. (4) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     gamma_0 = _initial_wake_vortex_circulation(
         wingspan, air_temperature, air_pressure, true_airspeed, aircraft_mass
@@ -693,31 +693,30 @@ def _initial_wake_vortex_circulation(
     true_airspeed: npt.NDArray[np.float64],
     aircraft_mass: npt.NDArray[np.float64],
 ) -> npt.NDArray[np.float64]:
-    """
-    Calculate initial wake vortex circulation.
+    """Calculate initial wake vortex circulation.
 
     Parameters
     ----------
-    wingspan : npt.NDArray[np.float_] | float
+    wingspan : npt.NDArray[np.float64] | float
         aircraft wingspan, [:math:`m`]
-    air_temperature : npt.NDArray[np.float_]
+    air_temperature : npt.NDArray[np.float64]
         ambient temperature for each waypoint, [:math:`K`]
     air_pressure : npt.NDArray[np.float64]
         pressure altitude at each waypoint, [:math:`Pa`]
-    true_airspeed : npt.NDArray[np.float_]
+    true_airspeed : npt.NDArray[np.float64]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
     aircraft_mass : npt.NDArray[np.float64] | float
         aircraft mass for each waypoint, [:math:`kg`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Initial wake vortex circulation, [:math:`m^{2} s^{-1}`]
 
     Notes
     -----
     - This is a measure of the strength/intensity of the wake vortex circulation.
-    - See eq. (A1) in Unterstrasser (2016).
+    - See eq. (A1) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     """
     b_0 = wake_vortex_separation(wingspan)
     rho_air = thermo.rho_d(air_temperature, air_pressure)
@@ -730,12 +729,12 @@ def _ice_number_survival_fraction(z_total: npt.NDArray[np.float64]) -> npt.NDArr
 
     Parameters
     ----------
-    z_total : npt.NDArray[np.float_]
+    z_total : npt.NDArray[np.float64]
         Total length-scale effect of the wake vortex downwash, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Fraction of ice particle number surviving the wake vortex phase
     """
     f_surv = 0.45 + (1.19 / np.pi) * np.arctan(-1.35 + (z_total / 100))
@@ -746,26 +745,26 @@ def initial_contrail_depth_u2016(
     z_desc: npt.NDArray[np.float64],
     f_surv: npt.NDArray[np.float64],
 ) -> npt.NDArray[np.float64]:
-    """
-    Calculate initial contrail depth using Unterstrasser (2016) formula.
+    """Calculate initial contrail depth using :cite:`unterstrasserPropertiesYoungContrails2016`.
 
     Parameters
     ----------
-    z_desc : npt.NDArray[np.float_]
-        Final vertical displacement of the wake vortex, `dz_max` in `wake_vortex.py`, [:math:`m`]
-    f_surv : npt.NDArray[np.float_]
+    z_desc : npt.NDArray[np.float64]
+        Final vertical displacement of the wake vortex, ``dz_max`` in :mod:`wake_vortex.py`,
+        [:math:`m`].
+    f_surv : npt.NDArray[np.float64]
         Fraction of contrail ice particle number that survive the wake vortex phase.
         See :func:`ice_particle_survival_fraction`.
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         Initial contrail depth, [:math:`m`]
 
     Notes
     -----
-    - See eq. (12), and (13) in Unterstrasser (2016).
-    - For consistency in CoCiP, `z_desc` should be cauclated using :func:`dz_max` instead of
+    - See eq. (12), and (13) in :cite:`unterstrasserPropertiesYoungContrails2016`.
+    - For consistency in CoCiP, `z_desc` should be calculated using :func:`dz_max` instead of
       using :func:`z_desc_length_scale`.
     """
     return z_desc * np.where(
