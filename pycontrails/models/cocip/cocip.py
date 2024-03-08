@@ -2387,7 +2387,9 @@ def calc_timestep_contrail_evolution(
         contrail_2["global_yearly_mean_rf"] = (
             contrail_2["ef"] / constants.surface_area_earth / constants.seconds_per_year
         )
-        contrail_2["atr20"] = params["global_rf_to_atr20_factor"] * contrail_2["global_yearly_mean_rf"]
+        contrail_2["atr20"] = (
+            params["global_rf_to_atr20_factor"] * contrail_2["global_yearly_mean_rf"]
+        )
 
     # filter contrail_2 by persistent waypoints, if any continuous segments are left
     logger.debug(
