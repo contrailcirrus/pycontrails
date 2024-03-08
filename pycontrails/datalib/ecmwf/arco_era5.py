@@ -498,7 +498,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         # Download in parallel
         args = [(self, t) for t in times]
         mp = multiprocessing.get_context("spawn")
-        with mp.Pool(n_jobs) as pool, stack:  # cleanup after pool is closed
+        with mp.Pool(n_jobs) as pool, stack:  # cleanup after pool finishes work
             pool.starmap(_download_convert_cache_handler, args, chunksize=1)
 
     @overrides
