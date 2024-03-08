@@ -1,6 +1,16 @@
 
 # Changelog
 
+## v0.50.0
+
+### Features
+
+- Add support to output contrail warming impact in ATR20
+
+### Internals
+
+- Adds two parameters to `CoCipParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output. 
+
 ## v0.49.5
 
 ## Fixes
