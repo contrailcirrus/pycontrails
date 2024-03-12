@@ -25,6 +25,7 @@
 - Add `ecmwf.Divergence` (a subclass of `MetVariable`) for accessing ERA5 divergence data.
 - Update the [specific humidity interpolation notebook](https://py.contrails.org/notebooks/specific-humidity-interpolation.html) to use the new `ARCOERA5` interface.
 - Adds two parameters to `CoCipParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output. 
+- Bump minimum pytest version to 8.1 to avoid failures in release workflow.
 
 ## v0.49.5
 
