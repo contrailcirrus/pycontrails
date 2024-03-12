@@ -13,8 +13,9 @@ import pandas as pd
 
 from pycontrails.physics import constants as c
 
+# TODO: choose between static files with and without classes
 #: Path to the Poll-Schumann aircraft parameters CSV file.
-PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20240209.csv"
+PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-class-params-20240229.csv"
 
 
 @dataclasses.dataclass(frozen=True)
