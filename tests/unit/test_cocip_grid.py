@@ -295,7 +295,6 @@ def test_atr20_outputs(
     """Confirm each verbose_outputs parameter is attached to results."""
     instance_params["compute_atr20"] = True
     model = CocipGrid(**instance_params)
-    t_step = np.timedelta64(20, "m")
     start_time = np.datetime64("2019-01-01")
     source = CocipGrid.create_source(
         level=[220, 230, 240, 250],
