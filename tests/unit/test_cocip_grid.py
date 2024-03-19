@@ -323,6 +323,7 @@ def test_atr20_outputs(
     assert ds["atr20_per_m"].mean() == pytest.approx(2.504e-18, rel=rel)
     assert ds["global_yearly_mean_rf_per_m"].mean() == pytest.approx(1.659e-16, rel=rel)
 
+
 ##############################################################
 # NOTE: No tests below here will run unless BADA is available.
 ##############################################################
