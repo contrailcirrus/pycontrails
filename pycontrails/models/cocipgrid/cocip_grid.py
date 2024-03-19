@@ -20,7 +20,7 @@ from pycontrails.models import humidity_scaling, sac
 from pycontrails.models.cocip import cocip, contrail_properties, wake_vortex, wind_shear
 from pycontrails.models.cocipgrid.cocip_grid_params import CocipGridParams
 from pycontrails.models.emissions import Emissions
-from pycontrails.physics import geo, thermo, units
+from pycontrails.physics import constants, geo, thermo, units
 from pycontrails.utils import dependencies
 
 if TYPE_CHECKING:
@@ -398,6 +398,15 @@ class CocipGrid(models.Model):
                 nominal_segment_length=segment_length,
                 attrs=attrs,
             )
+
+            if self.params["compute_atr20"]:
+                self.source["global_yearly_mean_rf_per_m"] = (
+                    self.source["ef_per_m"].data / constants.surface_area_earth / constants.seconds_per_year
+                )
+                self.source["atr20_per_m"] = (
+                    self.params["global_rf_to_atr20_factor"]
+                    * self.source["global_yearly_mean_rf_per_m"].data
+                )
         else:
             self.source = result_merge_source(
                 result=summary,
@@ -406,6 +415,16 @@ class CocipGrid(models.Model):
                 nominal_segment_length=segment_length,
                 attrs=attrs,
             )
+
+            if self.params["compute_atr20"]:
+                self.source["global_yearly_mean_rf_per_m"] = (
+                    self.source["ef_per_m"] / constants.surface_area_earth / constants.seconds_per_year
+                )
+                self.source["atr20_per_m"] = (
+                    self.params["global_rf_to_atr20_factor"]
+                    * self.source["global_yearly_mean_rf_per_m"]
+                )
+
         return self.source
 
     # ---------------------------
@@ -2241,6 +2260,14 @@ def _contrail_grid_variable_attrs() -> dict[str, dict[str, str]]:
             "long_name": "Ice water content after the wake vortex phase",
             "units": "kg_h2o / kg_air",
         },
+        "global_yearly_mean_rf_per_m": {
+            "long_name": "Global yearly mean RF per meter of flight trajectory",
+            "units": "W / m**2 / m",
+        },
+        "atr20_per_m": {
+            "long_name": "Average Temperature Response over a 20 year horizon",
+            "units": "K / m",
+        },
     }
 
 
@@ -2249,7 +2276,12 @@ def _supported_verbose_outputs_formation() -> set[str]:
 
     Uses output of :func:`_contrail_grid_variable_attrs` as a source of truth.
     """
-    return set(_contrail_grid_variable_attrs()) - {"contrail_age", "ef_per_m"}
+    return set(_contrail_grid_variable_attrs()) - {
+        "contrail_age",
+        "ef_per_m",
+        "global_yearly_mean_rf_per_m",
+        "atr20_per_m",
+    }
 
 
 def _warn_not_wrap(met: MetDataset) -> None:
