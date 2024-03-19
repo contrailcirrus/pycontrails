@@ -401,7 +401,9 @@ class CocipGrid(models.Model):
 
             if self.params["compute_atr20"]:
                 self.source["global_yearly_mean_rf_per_m"] = (
-                    self.source["ef_per_m"].data / constants.surface_area_earth / constants.seconds_per_year
+                    self.source["ef_per_m"].data
+                    / constants.surface_area_earth
+                    / constants.seconds_per_year
                 )
                 self.source["atr20_per_m"] = (
                     self.params["global_rf_to_atr20_factor"]
@@ -418,7 +420,9 @@ class CocipGrid(models.Model):
 
             if self.params["compute_atr20"]:
                 self.source["global_yearly_mean_rf_per_m"] = (
-                    self.source["ef_per_m"] / constants.surface_area_earth / constants.seconds_per_year
+                    self.source["ef_per_m"]
+                    / constants.surface_area_earth
+                    / constants.seconds_per_year
                 )
                 self.source["atr20_per_m"] = (
                     self.params["global_rf_to_atr20_factor"]
