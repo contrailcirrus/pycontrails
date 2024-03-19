@@ -288,6 +288,41 @@ def grid_results(
     return gc.eval(source=source, aircraft_performance=bada_grid_model)
 
 
+def test_atr20_outputs(
+    instance_params: dict[str, Any],
+    bada_grid_model: AircraftPerformanceGrid,
+) -> None:
+    """Confirm each verbose_outputs parameter is attached to results."""
+    instance_params["compute_atr20"] = True
+    model = CocipGrid(**instance_params)
+    t_step = np.timedelta64(20, "m")
+    start_time = np.datetime64("2019-01-01")
+    source = CocipGrid.create_source(
+        level=[220, 230, 240, 250],
+        time=start_time,
+        longitude=np.linspace(-35, -25, 40),
+        latitude=np.linspace(51, 57, 20),
+    )
+    out = model.eval(source=source, aircraft_performance=bada_grid_model)
+
+    expected = [
+        "atr20_per_m",
+        "global_yearly_mean_rf_per_m",
+    ]
+
+    for var in expected:
+        assert var in out
+
+    # Everything is a float
+    ds = out.data
+    for data in ds.values():
+        assert data.dtype in ["float32", "float64"]
+
+    # Pin a few values
+    rel = 1e-2
+    assert ds["atr20_per_m"].mean() == pytest.approx(2.504e-18, rel=rel)
+    assert ds["global_yearly_mean_rf_per_m"].mean() == pytest.approx(1.659e-16, rel=rel)
+
 ##############################################################
 # NOTE: No tests below here will run unless BADA is available.
 ##############################################################
