@@ -9,7 +9,7 @@
 
 ### Internals
 
-- Adds two parameters to `CoCipParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output. 
+- Adds two parameters to `CoCipGridParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output. 
 
 ## v0.50.0
 
