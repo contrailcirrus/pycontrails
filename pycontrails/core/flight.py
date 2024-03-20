@@ -787,6 +787,13 @@ class Flight(GeoVectorDataset):
         Waypoints are resampled according to the frequency ``freq``. Values for :attr:`data`
         columns ``longitude``, ``latitude``, and ``altitude`` are interpolated.
 
+        Resampled waypoints will include all multiples of ``freq`` between the flight
+        start and end time. For example, when resampling to a frequency of 1 minute,
+        a flight that starts at 2020/1/1 00:00:59 and ends at 2020/1/1 00:01:01
+        will return a single waypoint at 2020/1/1 00:01:00, whereas a flight that
+        starts at 2020/1/1 00:01:01 and ends at 2020/1/1 00:01:59 will return an empty
+        flight.
+
         Parameters
         ----------
         freq : str, optional
