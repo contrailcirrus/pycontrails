@@ -345,8 +345,8 @@ def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[
 def test_resampling_10s(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with 10s resampling."""
     fl2 = fl.resample_and_fill("10s")
-    assert len(fl2) == 889
-    expected = pd.date_range(fl.time_start, fl.time_end, freq="10s").floor("10s")[1:]
+    assert len(fl2) == 890
+    expected = pd.date_range(fl.time_start.ceil("10s"), fl.time_end, freq="10s")
     np.testing.assert_array_equal(fl2["time"], expected)
 
 
@@ -376,9 +376,9 @@ def test_resample_over_meridian(flight_meridian: Flight, freq: str) -> None:
     bound = 2.0 if freq == "5min" else 1.0
     assert np.all(np.abs(np.diff(fl2["longitude"] % 360.0)) < bound)
 
-    expected = pd.date_range(flight_meridian.time_start, flight_meridian.time_end, freq=freq).floor(
-        freq
-    )[1:]
+    expected = pd.date_range(
+        flight_meridian.time_start.ceil(freq), flight_meridian.time_end, freq=freq
+    )
     np.testing.assert_array_equal(fl2["time"], expected)
 
 
