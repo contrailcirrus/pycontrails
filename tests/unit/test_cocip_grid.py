@@ -269,6 +269,11 @@ def test_cocip_grid_met_nonuniform_time(
     assert df.isna().sum().sum() == 0
 
 
+##############################################################
+# NOTE: No tests below here will run unless BADA is available.
+##############################################################
+
+
 @pytest.fixture()
 def grid_results(
     instance_params: dict[str, Any],
@@ -321,11 +326,6 @@ def test_atr20_outputs(
     rel = 1e-2
     assert ds["atr20_per_m"].mean() == pytest.approx(2.504e-18, rel=rel)
     assert ds["global_yearly_mean_rf_per_m"].mean() == pytest.approx(1.659e-16, rel=rel)
-
-
-##############################################################
-# NOTE: No tests below here will run unless BADA is available.
-##############################################################
 
 
 @pytest.mark.parametrize("aircraft_type", ["B737", "A320", "A359", "B772"])
