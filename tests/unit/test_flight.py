@@ -49,6 +49,26 @@ def random_flight_list(rng: np.random.Generator) -> list[Flight]:
     return [_random_flight() for _ in range(100)]
 
 
+@pytest.fixture()
+def short_fl_spans_minute() -> tuple[Flight, Flight]:
+    return Flight(
+        longitude=[0, 1],
+        latitude=0,
+        altitude=0,
+        time=pd.date_range("2020-01-01 00:00:59", "2020-01-01 00:01:01", periods=2),
+    )
+
+
+@pytest.fixture()
+def short_fl_within_minute() -> tuple[Flight, Flight]:
+    return Flight(
+        longitude=[0, 1],
+        latitude=0,
+        altitude=0,
+        time=pd.date_range("2020-01-01 00:01:01", "2020-01-01 00:01:03", periods=2),
+    )
+
+
 ##########
 # Tests
 ##########
@@ -1088,10 +1108,13 @@ def test_method_preserves_fuel(flight_fake: Flight, method: str) -> None:
 
 
 def test_resample_and_fill_short_flight() -> None:
-    """Test resample_and_fill with a very short flight.
+    """Test resample_and_fill with very short flights.
 
     It is possible that the flight is so short that the resampling results in
     an empty result. This test confirms that.
+
+    However, short flights should return a single waypoint if they span
+    the resampling interval. This test also confirms that.
     """
     fl = Flight(
         longitude=[0, 0.1],
@@ -1107,6 +1130,19 @@ def test_resample_and_fill_short_flight() -> None:
 
     fl3 = fl.resample_and_fill("1 min", keep_original_index=True)
     assert len(fl3) == 2
+
+    fl = Flight(
+        longitude=[0, 0.1],
+        latitude=[0, 0.1],
+        altitude_ft=[30000, 31000],
+        time=[np.datetime64("2022-01-01T00:00:59"), np.datetime64("2022-01-01T00:01:01")],
+    )
+    assert fl.duration == pd.Timedelta(seconds=2)
+
+    fl2 = fl.resample_and_fill("1 min")
+    assert len(fl2) == 1
+    expected = np.datetime64("2022-01-01T00:01:00")
+    np.testing.assert_array_equal(fl2["time"], expected)
 
 
 def test_resample_and_fill_empty_flight() -> None:
