@@ -3,9 +3,17 @@
 
 ## v0.50.1
 
+### Breaking changes
+
+- Updates to flight resampling logic now ensure that resampled waypoints include any and all times between flight start and end times that are a multiple of the resampling frequency. This may add an additional waypoint to some flights after resampling, and may result in `Flight.resample_and_fill` returning a flight with a single waypoint rather than an empty flight.
+
 ### Features
 
 - Adds optional ATR20 to CoCiPGrid model.
+
+### Fixes
+
+- Update flight resampling logic to align with expected behavior for very short flights, which is now detailed in the `Flight.resample_and_fill` docstring.
 
 ### Internals
 
