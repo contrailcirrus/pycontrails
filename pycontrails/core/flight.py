@@ -2063,11 +2063,9 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
 
     # Manually create a new index that includes all the original index values
     # and the resampled-to-freq index values.
-    t0 = df.index[0]
+    t0 = df.index[0].ceil(freq)
     t1 = df.index[-1]
-    t = pd.date_range(t0, t1, freq=freq, name="time").floor(freq)
-    if t[0] < t0:
-        t = t[1:]
+    t = pd.date_range(t0, t1, freq=freq, name="time")
 
     concat_arr = np.concatenate([df.index, t])
     concat_arr = np.unique(concat_arr)
