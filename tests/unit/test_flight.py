@@ -49,26 +49,6 @@ def random_flight_list(rng: np.random.Generator) -> list[Flight]:
     return [_random_flight() for _ in range(100)]
 
 
-@pytest.fixture()
-def short_fl_spans_minute() -> tuple[Flight, Flight]:
-    return Flight(
-        longitude=[0, 1],
-        latitude=0,
-        altitude=0,
-        time=pd.date_range("2020-01-01 00:00:59", "2020-01-01 00:01:01", periods=2),
-    )
-
-
-@pytest.fixture()
-def short_fl_within_minute() -> tuple[Flight, Flight]:
-    return Flight(
-        longitude=[0, 1],
-        latitude=0,
-        altitude=0,
-        time=pd.date_range("2020-01-01 00:01:01", "2020-01-01 00:01:03", periods=2),
-    )
-
-
 ##########
 # Tests
 ##########
@@ -354,7 +334,7 @@ def test_resampling_10t(fl: Flight, flight_meridian: Flight) -> None:
     """Test Flight.resample_and_fill() with 10T resampling."""
     fl2 = fl.resample_and_fill("10min")
     assert len(fl2) == 14
-    expected = pd.date_range(fl.time_start, fl.time_end, freq="10min").floor("10min")[1:]
+    expected = pd.date_range(fl.time_start.ceil("10min"), fl.time_end, freq="10min")
     np.testing.assert_array_equal(fl2["time"], expected)
 
 
@@ -365,7 +345,7 @@ def test_resample_large_geodesic_threshold(fl: Flight) -> None:
     fl3 = fl.resample_and_fill("1min", "geodesic", 1000e3)
     assert fl2 == fl3
 
-    expected = pd.date_range(fl.time_start, fl.time_end, freq="1min").floor("1min")[1:]
+    expected = pd.date_range(fl.time_start.ceil("1min"), fl.time_end, freq="1min")
     np.testing.assert_array_equal(fl3["time"], expected)
 
 
