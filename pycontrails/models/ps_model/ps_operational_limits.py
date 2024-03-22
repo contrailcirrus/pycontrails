@@ -335,10 +335,10 @@ def max_usable_lift_coefficient(
 
 
 def minimum_mach_num(
-    air_pressure: np.float64,
-    aircraft_mass: np.float64,
+    air_pressure: float,
+    aircraft_mass: float,
     atyp_param: PSAircraftEngineParams,
-) -> np.float64:
+) -> float:
     """
     Calculate minimum mach number to avoid stall.
 
