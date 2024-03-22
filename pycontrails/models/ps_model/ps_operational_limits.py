@@ -176,22 +176,22 @@ def get_excess_thrust_available(
 
     Parameters
     ----------
-    mach_number : ArrayOrFloat
+    mach_number : float | npt.NDArray[np.float64]
         Mach number at each waypoint
-    air_temperature : ArrayOrFloat
+    air_temperature : float | npt.NDArray[np.float64]
         Ambient temperature at each waypoint, [:math:`K`]
-    air_pressure : ArrayOrFloat
+    air_pressure : float | npt.NDArray[np.float64]
         Ambient pressure, [:math:`Pa`]
-    aircraft_mass : ArrayOrFloat
+    aircraft_mass : float | npt.NDArray[np.float64]
         Aircraft mass at each waypoint, [:math:`kg`]
-    theta : ArrayOrFloat
+    theta : float | npt.NDArray[np.float64]
         Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
     atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
     -------
-    ArrayOrFloat
+    float | npt.NDArray[np.float64]
         The difference between the maximum rated thrust coefficient and the thrust coefficient
         required to maintain the current mach_number.
     """
@@ -344,16 +344,16 @@ def minimum_mach_num(
 
     Parameters
     ----------
-    air_pressure : ArrayOrFloat
-    Ambient pressure, [:math:`Pa`]
-    aircraft_mass : ArrayOrFloat
+    air_pressure : float
+        Ambient pressure, [:math:`Pa`]
+    aircraft_mass : float
         Aircraft mass at each waypoint, [:math:`kg`]
     atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
     -------
-    ArrayOrFloat
+    float
         Maximum usable lift coefficient.
     """
 
@@ -391,6 +391,72 @@ def minimum_mach_num(
     ).root
 
     return m
+
+
+def maximum_mach_num(
+    altitude_ft: float,
+    air_pressure: float,
+    aircraft_mass: float,
+    air_temperature: float,
+    theta: float,
+    atyp_param: PSAircraftEngineParams,
+) -> float:
+    r"""
+    Return the maximum mach number at the current operating conditions.
+
+    The value returned  will be the lesser of the maximum operational mach
+    number of the aircraft or the mach number obtainable at maximum thrust
+
+    Parameters
+    ----------
+    altitude_ft  : float
+        Altitude, [:math:`ft`]
+    air_pressure : float
+        Ambient pressure, [:math:`Pa`]
+    aircraft_mass : float
+        Aircraft mass at each waypoint, [:math:`kg`]
+    air_temperature : npt.NDArray[np.float64]
+        Array of ambient temperature, [:math: `K`]
+    theta : float | npt.NDArray[np.float64]
+        Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
+    atyp_param : PSAircraftEngineParams
+        Extracted aircraft and engine parameters.
+
+    Returns
+    -------
+    float
+        Maximum usable lift coefficient.
+    """
+    # Max speed ignoring thrust limits
+    mach_num_op_lim = max_mach_number_by_altitude(
+        altitude_ft,
+        air_pressure,
+        atyp_param.max_mach_num,
+        atyp_param.p_i_max,
+        atyp_param.p_inf_co,
+    )
+
+    # If the max mach number ignoring thrust limits is possible, return that value
+    if (
+        get_excess_thrust_available(
+            mach_num_op_lim, air_temperature, air_pressure, aircraft_mass, theta, atyp_param
+        )
+        > 0
+    ):
+        return mach_num_op_lim
+
+    # Numerically solve for the speed where drag == max thrust
+    try:
+        m_max = scipy.optimize.root_scalar(
+            get_excess_thrust_available,
+            args=(air_temperature, air_pressure, aircraft_mass, theta, atyp_param),
+            x0=mach_num_op_lim,
+            x1=mach_num_op_lim - 0.05,
+        ).root
+    except ValueError:
+        return np.nan
+
+    return m_max
 
 
 # ----------------
