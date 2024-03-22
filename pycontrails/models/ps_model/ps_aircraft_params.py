@@ -80,6 +80,9 @@ class PSAircraftEngineParams:
     - ``m_ec``          Engine characteristic Mach number associated with `tr_ec`.
     - ``tet_mto``       Turbine entry temperature at maximum take-off rating, [:math:`K`]
     - ``tet_mcc``       Turbine entry temperature at maximum continuous climb rating, [:math:`K`]
+    - ``nominal_opr``   Nominal engine operating pressure ratio.
+    - ``nominal_bpr``   Nominal engine bypass ratio.
+    - ``nominal_fpr``   Nominal engine fan pressure ratio.
 
     -------------------------------------
     HEIGHT AND SPEED LIMITS
@@ -127,6 +130,9 @@ class PSAircraftEngineParams:
     m_ec: float
     tet_mto: float
     tet_mcc: float
+    nominal_opr: float
+    nominal_bpr: float
+    nominal_fpr: float
 
     fl_max: float
     max_mach_num: float
@@ -174,6 +180,9 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
         m_ec=tup.Mec,
         tet_mto=tet_mto,
         tet_mcc=turbine_entry_temperature_at_max_continuous_climb(tet_mto),
+        nominal_opr=tup.nominal_opr,
+        nominal_bpr=tup.nominal_bpr,
+        nominal_fpr=tup.nominal_fpr,
         fl_max=tup.FL_max,
         max_mach_num=tup.MMO,
         p_i_max=p_i_max,
@@ -224,6 +233,9 @@ def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
         "Tec": float,
         "FL_max": float,
         "MMO": float,
+        "nominal_opr": float,
+        "nominal_bpr": float,
+        "nominal_fpr": float,
     }
 
     df = pd.read_csv(PS_FILE_PATH, dtype=dtypes)
