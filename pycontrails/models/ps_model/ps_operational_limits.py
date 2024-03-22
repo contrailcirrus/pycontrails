@@ -164,13 +164,13 @@ def max_available_thrust_coefficient(
 
 
 def get_excess_thrust_available(
-    mach_number: ArrayOrFloat,
-    air_temperature: ArrayOrFloat,
-    air_pressure: ArrayOrFloat,
-    aircraft_mass: ArrayOrFloat,
-    theta: ArrayOrFloat,
+    mach_number: float | npt.NDArray[np.float64],
+    air_temperature: float | npt.NDArray[np.float64],
+    air_pressure: float | npt.NDArray[np.float64],
+    aircraft_mass: float | npt.NDArray[np.float64],
+    theta: float | npt.NDArray[np.float64],
     atyp_param: PSAircraftEngineParams,
-) -> ArrayOrFloat:
+) -> float | npt.NDArray[np.float64]:
     r"""
     Calculate the excess thrust coefficient available at specified operation condition.
 
@@ -358,14 +358,14 @@ def minimum_mach_num(
     """
 
     def excess_mass(
-        mach_number: np.float64,
-        air_pressure: np.float64,
-        aircraft_mass: np.float64,
-        mach_num_des: np.float64,
-        c_l_do: np.float64,
-        wing_surface_area: np.float64,
-        amass_mtow: np.float64,
-    ) -> np.float_:
+        mach_number: float,
+        air_pressure: float,
+        aircraft_mass: float,
+        mach_num_des: float,
+        c_l_do: float,
+        wing_surface_area: float,
+        amass_mtow: float,
+    ) -> float:
         amass_max = max_allowable_aircraft_mass(
             air_pressure,
             mach_number,
