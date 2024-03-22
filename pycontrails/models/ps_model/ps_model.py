@@ -534,7 +534,7 @@ def oswald_efficiency_factor(
     """
     numer = 1.075 if atyp_param.winglets else 1.0
     k_1 = _non_vortex_lift_dependent_drag_factor(c_drag_0, atyp_param.cos_sweep)
-    denom = 1.0 + 0.03 + atyp_param.delta_2 + (k_1 * (np.pi * atyp_param.wing_aspect_ratio))
+    denom = 1.0 + 0.03 + atyp_param.delta_2 + (k_1 * np.pi * atyp_param.wing_aspect_ratio)
     return numer / denom
 
 
