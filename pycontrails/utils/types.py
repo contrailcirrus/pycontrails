@@ -15,7 +15,9 @@ import xarray as xr
 ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray, Union[xr.DataArray, np.ndarray])
 
 #: Array or Float (np.ndarray, float)
-ArrayOrFloat = TypeVar("ArrayOrFloat", npt.NDArray[np.float64], float)
+ArrayOrFloat = TypeVar(
+    "ArrayOrFloat", npt.NDArray[np.float64], float, Union[float, npt.NDArray[np.float64]]
+)
 
 #: Array like input (np.ndarray, xr.DataArray, np.float64, float)
 ArrayScalarLike = TypeVar(
