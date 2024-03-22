@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
+import scipy.optimize
 
 from pycontrails.core import flight
-from pycontrails.models.ps_model import (
-    reynolds_number,
-    lift_coefficient,
-    skin_friction_coefficient,
-    zero_lift_drag_coefficient,
-    oswald_efficiency_factor,
-    wave_drag_coefficient,
-    airframe_drag_coefficient,
-    thrust_coefficient_at_max_efficiency,
-)
 from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParams
+from pycontrails.models.ps_model.ps_model import (
+    airframe_drag_coefficient,
+    lift_coefficient,
+    oswald_efficiency_factor,
+    reynolds_number,
+    skin_friction_coefficient,
+    thrust_coefficient_at_max_efficiency,
+    wave_drag_coefficient,
+    zero_lift_drag_coefficient,
+)
 from pycontrails.physics import constants, jet, units
 from pycontrails.utils.types import ArrayOrFloat
 
@@ -161,64 +162,64 @@ def max_available_thrust_coefficient(
     c_t_max_over_c_t_eta_b = 1.0 + 2.5 * (tr_max - 1.0)
     return c_t_max_over_c_t_eta_b * c_t_eta_b * (1.0 + buffer)
 
-    def get_excess_thrust_available(
-        mach_number: ArrayOrFloat,
-        air_temperature: ArrayOrFloat,
-        air_pressure: ArrayOrFloat,
-        aircraft_mass: ArrayOrFloat,
-        theta: ArrayOrFloat,
-        atyp_param: PSAircraftEngineParams,
-    ) -> ArrayOrFloat:
-        """
-        Calculate the excess thrust coefficient available at specified operation condition.
 
-        Parameters
-        ----------
-        mach_number : ArrayOrFloat
-            Mach number at each waypoint
-        air_temperature : ArrayOrFloat
-            Ambient temperature at each waypoint, [:math:`K`]
-        air_pressure : ArrayOrFloat
-            Ambient pressure, [:math:`Pa`]
-        aircraft_mass : ArrayOrFloat
-            Aircraft mass at each waypoint, [:math:`kg`]
-        theta : ArrayOrFloat
-            Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
-        atyp_param : PSAircraftEngineParams
-            Extracted aircraft and engine parameters.
+def get_excess_thrust_available(
+    mach_number: ArrayOrFloat,
+    air_temperature: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
+    aircraft_mass: ArrayOrFloat,
+    theta: ArrayOrFloat,
+    atyp_param: PSAircraftEngineParams,
+) -> ArrayOrFloat:
+    r"""
+    Calculate the excess thrust coefficient available at specified operation condition.
 
-        Returns
-        -------
-        ArrayOrFloat
-            The difference between the maximum rated thrust coefficient and the thrust coefficient
-            required to maintain the current mach_number.
-        """
-        rn = reynolds_number(atyp_param.wing_surface_area, mach_num, air_temperature, air_pressure)
+    Parameters
+    ----------
+    mach_number : ArrayOrFloat
+        Mach number at each waypoint
+    air_temperature : ArrayOrFloat
+        Ambient temperature at each waypoint, [:math:`K`]
+    air_pressure : ArrayOrFloat
+        Ambient pressure, [:math:`Pa`]
+    aircraft_mass : ArrayOrFloat
+        Aircraft mass at each waypoint, [:math:`kg`]
+    theta : ArrayOrFloat
+        Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
+    atyp_param : PSAircraftEngineParams
+        Extracted aircraft and engine parameters.
 
-        c_lift = lift_coefficient(
-            atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, theta
-        )
+    Returns
+    -------
+    ArrayOrFloat
+        The difference between the maximum rated thrust coefficient and the thrust coefficient
+        required to maintain the current mach_number.
+    """
+    rn = reynolds_number(atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure)
 
-        c_f = skin_friction_coefficient(rn)
-        c_drag_0 = zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
-        e_ls = oswald_efficiency_factor(c_drag_0, atyp_param)
-        c_drag_w = wave_drag_coefficient(mach_number, c_lift, atyp_param)
-        c_drag = airframe_drag_coefficient(
-            c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio
-        )
+    c_lift = lift_coefficient(
+        atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, theta
+    )
 
-        req_thrust_coeff = required_thrust_coefficient(
-            c_lift, c_drag, units.mach_number_to_tas(mach_number, air_temperature)
-        )
+    c_f = skin_friction_coefficient(rn)
+    c_drag_0 = zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
+    e_ls = oswald_efficiency_factor(c_drag_0, atyp_param)
+    c_drag_w = wave_drag_coefficient(mach_number, c_lift, atyp_param)
+    c_drag = airframe_drag_coefficient(
+        c_drag_0, c_drag_w, c_lift, e_ls, atyp_param.wing_aspect_ratio
+    )
 
-        c_t_eta_b = thrust_coefficient_at_max_efficiency(
-            mach_number, atyp_param.m_des, atyp_param.c_t_des
-        )
-        max_thrust_coeff = max_available_thrust_coefficient(
-            air_temperature, mach_number, c_t_eta_b, atyp_param
-        )
+    tas = units.mach_number_to_tas(mach_number, air_temperature)
+    req_thrust_coeff = required_thrust_coefficient(c_lift, c_drag, tas)
 
-        return max_thrust_coeff - req_thrust_coeff
+    c_t_eta_b = thrust_coefficient_at_max_efficiency(
+        mach_number, atyp_param.m_des, atyp_param.c_t_des
+    )
+    max_thrust_coeff = max_available_thrust_coefficient(
+        air_temperature, mach_number, c_t_eta_b, atyp_param
+    )
+
+    return max_thrust_coeff - req_thrust_coeff
 
 
 def _normalised_max_throttle_parameter(
@@ -331,6 +332,65 @@ def max_usable_lift_coefficient(
         13.272 - 42.262 * m_over_m_des + 49.883 * m_over_m_des**2 - 19.683 * m_over_m_des**3,
     )
     return c_l_maxu_over_c_l_do * c_l_do  # type: ignore[return-value]
+
+
+def minimum_mach_num(
+    air_pressure: np.float64,
+    aircraft_mass: np.float64,
+    atyp_param: PSAircraftEngineParams,
+) -> np.float64:
+    """
+    Calculate minimum mach number to avoid stall.
+
+    Parameters
+    ----------
+    air_pressure : ArrayOrFloat
+    Ambient pressure, [:math:`Pa`]
+    aircraft_mass : ArrayOrFloat
+        Aircraft mass at each waypoint, [:math:`kg`]
+    atyp_param : PSAircraftEngineParams
+        Extracted aircraft and engine parameters.
+
+    Returns
+    -------
+    ArrayOrFloat
+        Maximum usable lift coefficient.
+    """
+
+    def excess_mass(
+        mach_number: np.float64,
+        air_pressure: np.float64,
+        aircraft_mass: np.float64,
+        mach_num_des: np.float64,
+        c_l_do: np.float64,
+        wing_surface_area: np.float64,
+        amass_mtow: np.float64,
+    ) -> np.float_:
+        amass_max = max_allowable_aircraft_mass(
+            air_pressure,
+            mach_number,
+            mach_num_des,
+            c_l_do,
+            wing_surface_area,
+            amass_mtow,
+        )
+        return amass_max - aircraft_mass
+
+    m = scipy.optimize.root_scalar(
+        excess_mass,
+        args=(
+            air_pressure,
+            aircraft_mass,
+            atyp_param.m_des,
+            atyp_param.c_l_do,
+            atyp_param.wing_surface_area,
+            atyp_param.amass_mtow,
+        ),
+        x0=0.5,
+        x1=0.6,
+    ).root
+
+    return m
 
 
 # ----------------
