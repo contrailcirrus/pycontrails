@@ -410,8 +410,8 @@ def tas_to_mach_number(true_airspeed: ArrayScalarLike, T: ArrayScalarLike) -> Ar
 
 
 def mach_number_to_tas(
-    mach_number: float | npt.NDArray[np.float64], T: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    mach_number: float | npt.NDArray[np.float64], T: float | npt.NDArray[np.float64]
+) -> float | npt.NDArray[np.float64]:
     r"""Calculate true airspeed from the Mach number at a specified ambient temperature.
 
     Parameters
