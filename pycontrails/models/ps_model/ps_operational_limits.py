@@ -8,16 +8,6 @@ import scipy.optimize
 
 from pycontrails.core import flight
 from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParams
-from pycontrails.models.ps_model.ps_model import (
-    airframe_drag_coefficient,
-    lift_coefficient,
-    oswald_efficiency_factor,
-    reynolds_number,
-    skin_friction_coefficient,
-    thrust_coefficient_at_max_efficiency,
-    wave_drag_coefficient,
-    zero_lift_drag_coefficient,
-)
 from pycontrails.physics import constants, jet, units
 from pycontrails.utils.types import ArrayOrFloat
 
@@ -195,6 +185,17 @@ def get_excess_thrust_available(
         The difference between the maximum rated thrust coefficient and the thrust coefficient
         required to maintain the current mach_number.
     """
+    from pycontrails.models.ps_model.ps_model import (
+        airframe_drag_coefficient,
+        lift_coefficient,
+        oswald_efficiency_factor,
+        reynolds_number,
+        skin_friction_coefficient,
+        thrust_coefficient_at_max_efficiency,
+        wave_drag_coefficient,
+        zero_lift_drag_coefficient,
+    )
+
     rn = reynolds_number(atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure)
 
     c_lift = lift_coefficient(
