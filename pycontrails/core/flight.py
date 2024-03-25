@@ -1119,13 +1119,25 @@ class Flight(GeoVectorDataset):
         np.signedinteger[Any] | npt.NDArray[np.signedinteger[Any]],
     ]:
         """
-        Foo.
+        Convert distance along fligth path to a geodesic coordinates.
 
-        Bar
+        Will return a tuple containing `(lat, lon, index)`, where index indicates which flight
+        segment contains the returned coordinate.
+
+        Parameters
+        ----------
+        distance : ArrayOrFlight
+            Distance along flight path, [:math:`m`]
+
+        Returns
+        -------
+        (ArrayOrFloat, ArrayOrFloat, int | npt.NDArray[int])
+            latitude, longitude, and segment index cooresponding to distance.
         """
 
         # Check if flight crosses antimeridian line
         lon_ = self["longitude"]
+        lat_ = self["latitude"]
         sign_ = np.sign(lon_)
         min_pos = np.min(lon_[sign_ == 1.0], initial=np.inf)
         max_neg = np.max(lon_[sign_ == -1.0], initial=-np.inf)
@@ -1134,7 +1146,7 @@ class Flight(GeoVectorDataset):
             # In this case, we believe the flight crosses the antimeridian
             shift = min_pos
             # So we shift the longitude "chart"
-            self["longitude"] = (self["longitude"] - shift) % 360.0
+            lon_ = (lon_ - shift) % 360.0
         else:
             shift = None
 
@@ -1161,10 +1173,10 @@ class Flight(GeoVectorDataset):
 
         # linear interpolation in lat/lon - assuming the way points are within 100-200km so this
         # should be accurate enough without needed to reproject or use spherical distance
-        lat1: ArrayOrFloat = self.coords["latitude"][seg_idx]
-        lon1: ArrayOrFloat = self.coords["longitude"][seg_idx]
-        lat2: ArrayOrFloat = self.coords["latitude"][seg_idx + 1]
-        lon2: ArrayOrFloat = self.coords["longitude"][seg_idx + 1]
+        lat1: ArrayOrFloat = lat_[seg_idx]
+        lon1: ArrayOrFloat = lon_[seg_idx]
+        lat2: ArrayOrFloat = lat_[seg_idx + 1]
+        lon2: ArrayOrFloat = lon_[seg_idx + 1]
 
         dx = distance - cumulative_lengths[seg_idx]
         fx = dx / lengths[seg_idx]
@@ -1177,16 +1189,16 @@ class Flight(GeoVectorDataset):
                 lon = np.nan
                 seg_idx = 0  # type: ignore
             elif distance >= cumulative_lengths[-1]:
-                lat = self.coords["latitude"][-1]
-                lon = self.coords["longitude"][-1]
+                lat = lat_[-1]
+                lon = lon_[-1]
                 seg_idx = self.size - 1  # type: ignore
         else:
             lat[distance < 0] = np.nan  # type: ignore
             lon[distance < 0] = np.nan  # type: ignore
             seg_idx[distance < 0] = 0  # type: ignore
 
-            lat[distance >= cumulative_lengths[-1]] = self.coords["latitude"][-1]  # type: ignore
-            lon[distance >= cumulative_lengths[-1]] = self.coords["longitude"][-1]  # type: ignore
+            lat[distance >= cumulative_lengths[-1]] = lat_[-1]  # type: ignore
+            lon[distance >= cumulative_lengths[-1]] = lon_[-1]  # type: ignore
             seg_idx[distance >= cumulative_lengths[-1]] = self.size - 1  # type: ignore
 
         if shift is not None:
