@@ -296,6 +296,16 @@ def test_flight_length_methods(fl: Flight) -> None:
     assert isinstance(fl.max_distance_gap, float)
     assert fl.max_distance_gap < fl.length
 
+    lat, lon, idx = fl.distance_to_coords(-1.0)
+    assert np.isnan(lat)
+    assert np.isnan(lon)
+    assert idx == 0
+
+    lat, lon, idx = fl.distance_to_coords(fl.length + 1)
+    assert pytest.approx(lat) == y1
+    assert pytest.approx(lon) == x1
+    assert idx == fl.size - 1
+
 
 def test_flight_filtering_methods(flight_data: pd.DataFrame, flight_attrs: dict[str, Any]) -> None:
     data = flight_data.copy()
@@ -592,6 +602,10 @@ def test_antimeridian_jump() -> None:
     issr_feature = d["features"][1]
     assert len(issr_feature["geometry"]["coordinates"]) == 1
 
+    fl = Flight(df)
+    _, lon, idx = fl.distance_to_coords(np.array([200000.0, 300000.0, 400000.0, 500000.0]))
+    assert (idx == np.array([0, 1, 1, 2])).all()
+    assert (np.sign(lon) == np.array([-1, -1, 1, 1])).all()
     df["longitude"] = [-177, -179, 179, -178]
     fl = Flight(df)
     # jumps antimeridian twice
