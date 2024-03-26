@@ -34,6 +34,7 @@ from pycontrails.models.cocip.wake_vortex import (
     initial_contrail_depth_u2016,
     plume_area,
     z_atm_length_scale,
+    z_desc_length_scale,
     z_emit_length_scale,
     z_total_length_scale,
 )
@@ -1606,6 +1607,37 @@ def test_cocip_met_nonuniform(
     assert np.any(contrail_time > t1)
 
 
+@pytest.mark.filterwarnings("ignore:Manually overriding SAC filter")
+@pytest.mark.filterwarnings("ignore:Manually overriding initially persistent filter")
+def test_cocip_survival_fraction(fl: Flight, met: MetDataset, rad: MetDataset):
+    """Confirm Cocip runs with all survival fraction parameterizations.
+
+    Set filter_sac and filter_initially_persistent to False to survival fraction
+    parameterizations run on as many segments as possible
+    """
+    scaling = ConstantHumidityScaling()
+    params = dict(
+        met=met,
+        rad=rad,
+        process_emissions=False,
+        humidity_scaling=scaling,
+        filter_sac=False,
+        filter_initially_persistent=False,
+    )
+
+    cocip = Cocip(**params, improved_wake_vortex_ice_survival_fraction=False)
+    assert not hasattr(cocip, "_sac_flight")
+    cocip.eval(fl)
+    assert len(cocip._sac_flight) == len(fl)
+    assert "n_ice_per_m_1" in cocip._sac_flight
+
+    cocip = Cocip(**params, improved_wake_vortex_ice_survival_fraction=True)
+    assert not hasattr(cocip, "_sac_flight")
+    cocip.eval(fl)
+    assert len(cocip._sac_flight) == len(fl)
+    assert "n_ice_per_m_1" in cocip._sac_flight
+
+
 def test_unterstrasser_wake_vortex_length_scales() -> None:
     """Test Unterstrasser (2016) wake vortex length scales using values listed in Table A2."""
     # Input parameters
@@ -1660,4 +1692,33 @@ def test_unterstrasser_initial_contrail_depth() -> None:
     depth_est = initial_contrail_depth_u2016(z_desc, f_surv)
     np.testing.assert_array_almost_equal(
         depth_est, [416.2, 100.4, 519.1, 454.6, 519.5, 436.4, 34.6], decimal=1
+    )
+
+
+def test_unterstrasser_final_vertical_displacement() -> None:
+    """Test Unterstrasser (2016) wake vortex vertical displacement.
+
+    Unlike other tests, input and output values required for testing
+    are not provided by Unterstrasser (2016). The expected values
+    used here are the values produced by the function at the time
+    of implementation. This test therefore serves primarily to check
+    that the implementation runs without crashing, and to detect
+    future changes relative to the initial implementation.
+    """
+
+    # Input parameters
+    # Aircraft types: B777, CRJ, A380, B737, B747, B777, B767
+    wingspan = np.array([60.9, 21.2, 79.8, 34.4, 64.4, 60.9, 47.6])  # m
+    aircraft_mass = np.array([250e3, 25e3, 420e3, 65e3, 300e3, 250e3, 100e3])  # kg
+
+    air_temperature = np.full_like(wingspan, 215.0)  # K
+    air_pressure = np.full_like(wingspan, 300e2)  # Pa
+    true_airspeed = np.full_like(wingspan, 235.0)  # m/s, approx mach 0.8
+    dT_dz = np.full_like(wingspan, 1e-3)  # K/m, weakly stably stratified
+
+    z_desc = z_desc_length_scale(
+        wingspan, air_temperature, air_pressure, true_airspeed, aircraft_mass, dT_dz
+    )
+    np.testing.assert_array_almost_equal(
+        z_desc, [448.7, 240.5, 508.1, 304.4, 478.0, 448.7, 321.0], decimal=1
     )
