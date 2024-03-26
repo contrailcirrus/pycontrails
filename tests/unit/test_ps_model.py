@@ -184,6 +184,22 @@ def test_mach_number_limits():
         mach_num_lim, [0.625, 0.683, 0.750, 0.82, 0.82, 0.82, 0.82], decimal=2
     )
 
+    aircraft_mass = 60000.0
+    mmin = []
+    mmax = []
+    air_temperature = units.m_to_T_isa(units.ft_to_m(altitude_ft))
+    for alt, pres, temp in zip(altitude_ft, air_pressure, air_temperature):
+        mmin.append(ps_lims.minimum_mach_num(pres, aircraft_mass, atyp_param))
+        mmax.append(ps_lims.maximum_mach_num(alt, pres, aircraft_mass, temp, 0.0, atyp_param))
+
+    np.testing.assert_array_almost_equal(
+        mmin, [0.315662, 0.352631, 0.397494, 0.453966, 0.530647, 0.611083, 0.695437]
+    )
+
+    np.testing.assert_array_almost_equal(
+        mmax, [0.644569, 0.703489, 0.769528, 0.84, 0.84, 0.84, 0.814814]
+    )
+
 
 def test_thrust_coefficient_limits():
     # Extract aircraft properties for aircraft type (A320)
