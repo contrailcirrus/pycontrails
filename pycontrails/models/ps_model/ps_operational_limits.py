@@ -197,6 +197,8 @@ def get_excess_thrust_available(
     )
 
     rn = reynolds_number(atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure)
+    if rn <= 0.0:
+        return np.nan
 
     c_lift = lift_coefficient(
         atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, theta
@@ -365,7 +367,6 @@ def minimum_mach_num(
         mach_num_des: float,
         c_l_do: float,
         wing_surface_area: float,
-        amass_mtow: float,
     ) -> float:
         amass_max = max_allowable_aircraft_mass(
             air_pressure,
@@ -373,8 +374,10 @@ def minimum_mach_num(
             mach_num_des,
             c_l_do,
             wing_surface_area,
-            amass_mtow,
+            1e10,
         )
+        if amass_max < 0:
+            return np.nan
         return amass_max - aircraft_mass
 
     m = scipy.optimize.root_scalar(
@@ -385,7 +388,6 @@ def minimum_mach_num(
             atyp_param.m_des,
             atyp_param.c_l_do,
             atyp_param.wing_surface_area,
-            atyp_param.amass_mtow,
         ),
         x0=0.5,
         x1=0.6,
