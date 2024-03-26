@@ -2,10 +2,10 @@
 
 Notes
 -----
-:cite:`unterstrasserPropertiesYoungContrails2016` provides an
-improved estimation of the survival fraction of the contrail ice crystal number ``f_surv``
-during the  wake-vortex phase. This is a parameterised model that is developed based on
-outputs provided by large eddy simulations.
+:cite:`unterstrasserPropertiesYoungContrails2016` provides a parameterized model of the
+survival fraction of the contrail ice crystal number ``f_surv`` during the  wake-vortex phase.
+The model was developed based on output from large eddy simulations, and improves agreement with
+LES outputs relative to the default survival fraction parameterization used in CoCiP.
 
 For comparison, CoCiP assumes that ``f_surv`` is equal to the change in the contrail ice water
 content (by mass) before and after the wake vortex phase. However, for larger (smaller) ice
@@ -78,7 +78,7 @@ def ice_particle_number_survival_fraction(
     rho_emit = emitted_water_vapour_concentration(ei_h2o, wingspan, true_airspeed, fuel_flow)
     z_emit = z_emit_length_scale(rho_emit, air_temperature)
     z_total = z_total_length_scale(aei_n, z_atm, z_emit, z_desc)
-    return _ice_number_survival_fraction(z_total)
+    return _survival_fraction_from_length_scale(z_total)
 
 
 def z_total_length_scale(
@@ -155,10 +155,11 @@ def z_atm_length_scale(
     z_2 = np.full_like(rhi_issr, 1000.0)
     lhs = rhi_issr * thermo.e_sat_ice(air_temperature_issr) / air_temperature_issr
 
+    dry_adiabatic_lapse_rate = constants.g / constants.c_pd
     for _ in range(n_iter):
         z_est = 0.5 * (z_1 + z_2)
-        rhs = (thermo.e_sat_ice(air_temperature_issr + 9.8e-3 * z_est)) / (
-            air_temperature_issr + 9.8e-3 * z_est
+        rhs = (thermo.e_sat_ice(air_temperature_issr + dry_adiabatic_lapse_rate * z_est)) / (
+            air_temperature_issr + dry_adiabatic_lapse_rate * z_est
         )
         z_1[lhs > rhs] = z_est[lhs > rhs]
         z_2[lhs < rhs] = z_est[lhs < rhs]
@@ -233,10 +234,11 @@ def z_emit_length_scale(
 
     lhs = (thermo.e_sat_ice(air_temperature) / (constants.R_v * air_temperature)) + rho_emit
 
+    dry_adiabatic_lapse_rate = constants.g / constants.c_pd
     for _ in range(n_iter):
         z_est = 0.5 * (z_1 + z_2)
-        rhs = thermo.e_sat_ice(air_temperature + 9.8e-3 * z_est) / (
-            constants.R_v * (air_temperature + 9.8e-3 * z_est)
+        rhs = thermo.e_sat_ice(air_temperature + dry_adiabatic_lapse_rate * z_est) / (
+            constants.R_v * (air_temperature + dry_adiabatic_lapse_rate * z_est)
         )
         z_1[lhs > rhs] = z_est[lhs > rhs]
         z_2[lhs < rhs] = z_est[lhs < rhs]
@@ -343,7 +345,9 @@ def _initial_wake_vortex_circulation(
     return (constants.g * aircraft_mass) / (rho_air * b_0 * true_airspeed)
 
 
-def _ice_number_survival_fraction(z_total: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def _survival_fraction_from_length_scale(
+    z_total: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
     """
     Calculate fraction of ice particle number surviving the wake vortex phase.
 
