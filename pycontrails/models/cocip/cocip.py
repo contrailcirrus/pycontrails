@@ -26,6 +26,7 @@ from pycontrails.models.cocip import (
     contrail_properties,
     radiative_forcing,
     radiative_heating,
+    unterstrasser_wake_vortex,
     wake_vortex,
     wind_shear,
 )
@@ -894,7 +895,7 @@ class Cocip(Model):
         if self.params["improved_wake_vortex_ice_survival_fraction"]:
             wingspan = self._sac_flight.get_data_or_attr("wingspan")
             rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
-            f_surv = wake_vortex.ice_particle_number_survival_fraction(
+            f_surv = unterstrasser_wake_vortex.ice_particle_number_survival_fraction(
                 air_temperature,
                 rhi_0,
                 ei_h2o,
