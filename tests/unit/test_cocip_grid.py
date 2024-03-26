@@ -788,3 +788,36 @@ def test_max_age_exceeds_met(instance_params: dict[str, Any], source: MetDataset
     with pytest.warns(UserWarning, match="End time of parameter 'met'"):
         out = model.eval(source=source)
     assert out.data["contrail_age"].max() == 1.0
+
+
+@pytest.mark.filterwarnings("ignore:Manually overriding SAC filter")
+@pytest.mark.filterwarnings("ignore:Manually overriding initially persistent filter")
+def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetDataset):
+    """Confirm CocipGrid behaves as expected with all survival fraction parameterizations.
+
+    Set filter_sac and filter_initially_persistent to False so survival fraction
+    parameterizations run on as many segments as possible
+    """
+
+    model = CocipGrid(
+        **instance_params,
+        aircraft_performance=PSGrid(),
+        filter_sac=False,
+        filter_initially_persistent=False,
+        verbose_outputs_formation=True,
+        improved_wake_vortex_ice_survival_fraction=False,
+    )
+    assert not hasattr(model, "_sac_flight")
+    result = model.eval(source)
+    for var in ["contrail_age", "ef_per_m", "iwc"]:
+        assert not np.any(np.isnan(result.data[var]))
+
+    with pytest.raises(NotImplementedError, match="not yet implemented in CocipGrid"):
+        model = CocipGrid(
+            **instance_params,
+            aircraft_performance=PSGrid(),
+            filter_sac=False,
+            filter_initially_persistent=False,
+            verbose_outputs_formation=True,
+            improved_wake_vortex_ice_survival_fraction=True,
+        )

@@ -1596,3 +1596,34 @@ def test_cocip_met_nonuniform(
     assert np.all(contrail_time > t0)
     assert np.any(contrail_time < t1)
     assert np.any(contrail_time > t1)
+
+
+@pytest.mark.filterwarnings("ignore:Manually overriding SAC filter")
+@pytest.mark.filterwarnings("ignore:Manually overriding initially persistent filter")
+def test_cocip_survival_fraction(fl: Flight, met: MetDataset, rad: MetDataset):
+    """Confirm Cocip runs with all survival fraction parameterizations.
+
+    Set filter_sac and filter_initially_persistent to False to survival fraction
+    parameterizations run on as many segments as possible
+    """
+    scaling = ConstantHumidityScaling()
+    params = dict(
+        met=met,
+        rad=rad,
+        process_emissions=False,
+        humidity_scaling=scaling,
+        filter_sac=False,
+        filter_initially_persistent=False,
+    )
+
+    cocip = Cocip(**params, improved_wake_vortex_ice_survival_fraction=False)
+    assert not hasattr(cocip, "_sac_flight")
+    cocip.eval(fl)
+    assert len(cocip._sac_flight) == len(fl)
+    assert "n_ice_per_m_1" in cocip._sac_flight
+
+    cocip = Cocip(**params, improved_wake_vortex_ice_survival_fraction=True)
+    assert not hasattr(cocip, "_sac_flight")
+    cocip.eval(fl)
+    assert len(cocip._sac_flight) == len(fl)
+    assert "n_ice_per_m_1" in cocip._sac_flight

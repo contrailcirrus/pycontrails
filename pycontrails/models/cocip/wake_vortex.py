@@ -1,4 +1,25 @@
-"""Wave-vortex downwash functions."""
+"""Wave-vortex downwash functions.
+
+This module includes equations from the original CoCiP model
+:cite:`schumannContrailCirrusPrediction2012`. An alternative set of equations based on
+:cite:`unterstrasserPropertiesYoungContrails2016` is available in
+:py:mod:`unterstrasser_wake_vortex`.
+
+Unterstrasser Notes
+-------------------
+
+Improved estimation of the survival fraction of the contrail ice crystal number ``f_surv``
+during the  wake-vortex phase. This is a parameterised model that is developed based on
+outputs provided by large eddy simulations.
+
+For comparison, CoCiP assumes that ``f_surv`` is equal to the change in the contrail ice water
+content (by mass) before and after the wake vortex phase. However, for larger (smaller) ice
+particles, their survival fraction by number could be smaller (larger) than their survival fraction
+by mass. This is particularly important in the "soot-poor" scenario, for example, in cleaner
+lean-burn engines where their soot emissions can be 3-4 orders of magnitude lower than conventional
+RQL engines.
+
+"""
 
 from __future__ import annotations
 
