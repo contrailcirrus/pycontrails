@@ -17,6 +17,7 @@ from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.vector import AttrDict, GeoVectorDataset, VectorDataDict, VectorDataset
 from pycontrails.physics import constants, geo, units
 from pycontrails.utils import dependencies
+from pycontrails.utils.types import ArrayOrFloat
 
 logger = logging.getLogger(__name__)
 
@@ -1111,6 +1112,101 @@ class Flight(GeoVectorDataset):
         out.data.pop("altitude", None)  # avoid any ambiguity
         out.data.pop("level", None)  # avoid any ambiguity
         return out
+
+    def distance_to_coords(self: Flight, distance: ArrayOrFloat) -> tuple[
+        ArrayOrFloat,
+        ArrayOrFloat,
+        np.signedinteger[Any] | npt.NDArray[np.signedinteger[Any]],
+    ]:
+        """
+        Convert distance along fligth path to a geodesic coordinates.
+
+        Will return a tuple containing `(lat, lon, index)`, where index indicates which flight
+        segment contains the returned coordinate.
+
+        Parameters
+        ----------
+        distance : ArrayOrFlight
+            Distance along flight path, [:math:`m`]
+
+        Returns
+        -------
+        (ArrayOrFloat, ArrayOrFloat, int | npt.NDArray[int])
+            latitude, longitude, and segment index cooresponding to distance.
+        """
+
+        # Check if flight crosses antimeridian line
+        lon_ = self["longitude"]
+        lat_ = self["latitude"]
+        sign_ = np.sign(lon_)
+        min_pos = np.min(lon_[sign_ == 1.0], initial=np.inf)
+        max_neg = np.max(lon_[sign_ == -1.0], initial=-np.inf)
+
+        if (180.0 - min_pos) + (180.0 + max_neg) < 180.0 and min_pos < np.inf and max_neg > -np.inf:
+            # In this case, we believe the flight crosses the antimeridian
+            shift = min_pos
+            # So we shift the longitude "chart"
+            lon_ = (lon_ - shift) % 360.0
+        else:
+            shift = None
+
+        # Make a fake flight that flies at constant height so distance is just
+        # distance traveled across groud
+        flat_dataset = Flight(
+            longitude=self.coords["longitude"],
+            latitude=self.coords["latitude"],
+            time=self.coords["time"],
+            level=[self.coords["level"][0] for _ in range(self.size)],
+        )
+
+        lengths = flat_dataset.segment_length()
+        cumulative_lengths = np.nancumsum(lengths)
+        cumulative_lengths = np.insert(cumulative_lengths[:-1], 0, 0)
+
+        if isinstance(distance, float):
+            seg_idx = np.argmax(cumulative_lengths > distance)
+        else:
+            seg_idx = np.argmax(cumulative_lengths > distance.reshape((distance.size, 1)), axis=1)
+
+        # If in the last segment (which has length 0), then just return the last waypoint
+        seg_idx -= 1
+
+        # linear interpolation in lat/lon - assuming the way points are within 100-200km so this
+        # should be accurate enough without needed to reproject or use spherical distance
+        lat1: ArrayOrFloat = lat_[seg_idx]
+        lon1: ArrayOrFloat = lon_[seg_idx]
+        lat2: ArrayOrFloat = lat_[seg_idx + 1]
+        lon2: ArrayOrFloat = lon_[seg_idx + 1]
+
+        dx = distance - cumulative_lengths[seg_idx]
+        fx = dx / lengths[seg_idx]
+        lat: ArrayOrFloat = (1 - fx) * lat1 + fx * lat2
+        lon: ArrayOrFloat = (1 - fx) * lon1 + fx * lon2
+
+        if isinstance(distance, float):
+            if distance < 0:
+                lat = np.nan
+                lon = np.nan
+                seg_idx = 0  # type: ignore
+            elif distance >= cumulative_lengths[-1]:
+                lat = lat_[-1]
+                lon = lon_[-1]
+                seg_idx = self.size - 1  # type: ignore
+        else:
+            lat[distance < 0] = np.nan  # type: ignore
+            lon[distance < 0] = np.nan  # type: ignore
+            seg_idx[distance < 0] = 0  # type: ignore
+
+            lat[distance >= cumulative_lengths[-1]] = lat_[-1]  # type: ignore
+            lon[distance >= cumulative_lengths[-1]] = lon_[-1]  # type: ignore
+            seg_idx[distance >= cumulative_lengths[-1]] = self.size - 1  # type: ignore
+
+        if shift is not None:
+            # We need to translate back to the original chart here
+            lon += shift
+            lon = ((lon + 180.0) % 360.0) - 180.0
+
+        return lat, lon, seg_idx
 
     def _geodesic_interpolation(self, geodesic_threshold: float) -> pd.DataFrame | None:
         """Geodesic interpolate between large gaps between waypoints.
