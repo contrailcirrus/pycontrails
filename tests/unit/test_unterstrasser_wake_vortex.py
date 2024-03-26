@@ -3,7 +3,7 @@
 import numpy as np
 
 from pycontrails.models.cocip.unterstrasser_wake_vortex import (
-    _ice_number_survival_fraction,
+    _survival_fraction_from_length_scale,
     initial_contrail_depth_u2016,
     plume_area,
     z_atm_length_scale,
@@ -52,7 +52,7 @@ def test_unterstrasser_wake_vortex_survival_fractions() -> None:
 
     # Derived parameters
     z_total_est = z_total_length_scale(aei_n, z_atm, z_emit, z_desc)
-    f_surv_est = _ice_number_survival_fraction(z_total_est)
+    f_surv_est = _survival_fraction_from_length_scale(z_total_est)
     np.testing.assert_array_almost_equal(
         f_surv_est, [0.38, 0.099, 0.87, 0.88, 0.15, 0.78, 0.096], decimal=2
     )
