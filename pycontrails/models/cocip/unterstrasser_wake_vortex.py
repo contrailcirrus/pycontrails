@@ -67,6 +67,10 @@ def ice_particle_number_survival_fraction(
     npt.NDArray[np.float64]
         Fraction of contrail ice particle number that survive the wake vortex phase.
 
+    References
+    ----------
+    - :cite:`unterstrasserPropertiesYoungContrails2016`
+
     Notes
     -----
     - See eq. (3), (9), and (10) in :cite:`unterstrasserPropertiesYoungContrails2016`.
