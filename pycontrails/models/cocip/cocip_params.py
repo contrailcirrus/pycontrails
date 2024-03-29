@@ -191,7 +191,7 @@ class CocipParams(ModelParams):
     #: This replicates Fig. 4 of :cite:`karcherFormationRadiativeForcing2018`.
     #:
     #:  .. versionadded:: 0.50.1
-    improved_wake_vortex_ice_survival_fraction: bool = False
+    unterstrasser_ice_survival_fraction: bool = False
 
     #: Experimental. Radiative heating effects on contrail cirrus properties.
     #: Terrestrial and solar radiances warm the contrail ice particles and cause

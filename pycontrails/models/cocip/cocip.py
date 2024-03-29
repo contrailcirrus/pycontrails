@@ -892,7 +892,7 @@ class Cocip(Model):
         )
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
-        if self.params["improved_wake_vortex_ice_survival_fraction"]:
+        if self.params["unterstrasser_ice_survival_fraction"]:
             wingspan = self._sac_flight.get_data_or_attr("wingspan")
             rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
             f_surv = unterstrasser_wake_vortex.ice_particle_number_survival_fraction(
