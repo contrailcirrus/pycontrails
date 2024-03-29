@@ -50,7 +50,7 @@ except ModuleNotFoundError as exc:
 
 
 #: Default channels to use if none are specified. These are the channels
-#: required by the MIT ash color scheme.
+#: required by the SEVIRI (MIT) ash color scheme.
 DEFAULT_CHANNELS = "C11", "C14", "C15"
 
 #: The time at which the GOES scan mode changed from mode 3 to mode 6. This
@@ -203,10 +203,10 @@ def gcs_goes_path(
         GOES Region of interest.
     channels : str | Iterable[str]
         Set of channels or bands for CMIP data. The 16 possible channels are
-        represented by the strings "C01" to "C16". For the MIT ash color scheme,
+        represented by the strings "C01" to "C16". For the SEVIRI ash color scheme,
         set ``channels=("C11", "C14", "C15")``. For the true color scheme,
         set ``channels=("C01", "C02", "C03")``. By default, the channels
-        required by the MIT ash color scheme are used.
+        required by the SEVIRI ash color scheme are used.
 
     Returns
     -------
@@ -306,10 +306,10 @@ class GOES:
 
     channels : str | set[str] | None
         Set of channels or bands for CMIP data. The 16 possible channels are
-        represented by the strings "C01" to "C16". For the MIT ash color scheme,
+        represented by the strings "C01" to "C16". For the SEVIRI ash color scheme,
         set ``channels=("C11", "C14", "C15")``. For the true color scheme,
         set ``channels=("C01", "C02", "C03")``. By default, the channels
-        required by the MIT ash color scheme are used. The channels must have
+        required by the SEVIRI ash color scheme are used. The channels must have
         a common horizontal resolution. The resolutions are:
 
         - C01: 1.0 km
@@ -585,7 +585,7 @@ def _concat_c02(ds1: XArrayType, ds2: XArrayType) -> XArrayType:
 def extract_goes_visualization(
     da: xr.DataArray,
     color_scheme: str = "ash",
-    ash_convention: str = "MIT",
+    ash_convention: str = "SEVIRI",
     gamma: float = 2.2,
 ) -> tuple[npt.NDArray[np.float32], ccrs.Geostationary, tuple[float, float, float, float]]:
     """Extract artifacts for visualizing GOES data with the given color scheme.
@@ -597,7 +597,7 @@ def extract_goes_visualization(
         required by :func:`to_ash`.
     color_scheme : str = {"ash", "true"}
         Color scheme to use for visualization.
-    ash_convention : str = {"MIT", "standard"}
+    ash_convention : str = {"SEVIRI", "standard"}
         Passed into :func:`to_ash`. Only used if ``color_scheme="ash"``.
     gamma : float = 2.2
         Passed into :func:`to_true_color`. Only used if ``color_scheme="true"``.
@@ -672,17 +672,18 @@ def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float3
     return np.dstack([red, green, blue])
 
 
-def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]:
+def to_ash(da: xr.DataArray, convention: str = "SEVIRI") -> npt.NDArray[np.float32]:
     """Compute 3d RGB array for the ASH color scheme.
 
     Parameters
     ----------
     da : xr.DataArray
         DataArray of GOES data with appropriate channels.
-    convention : str = {"MIT", "standard"}
+    convention : str = {"SEVIRI", "standard"}
         Convention for color space.
 
-        - MIT convention requires channels C11, C14, C15
+        - SEVIRI convention requires channels C11, C14, C15.
+          Used in :cite:`kulikSatellitebasedDetectionContrails2019`.
         - Standard convention requires channels C11, C13, C14, C15
 
     Returns
@@ -693,6 +694,7 @@ def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]
     References
     ----------
     - `Ash RGB quick guide (the color space and color interpretations) <https://rammb.cira.colostate.edu/training/visit/quick_guides/GOES_Ash_RGB.pdf>`_
+    - :cite:`SEVIRIRGBCal`
     - :cite:`kulikSatellitebasedDetectionContrails2019`
 
     Examples
@@ -716,7 +718,7 @@ def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]
         green = c14 - c11
         blue = c13
 
-    elif convention == "MIT":
+    elif convention in ["SEVIRI", "MIT"]:  # retain MIT for backwards compatibility
         c11 = da.sel(band_id=11).values  # 8.44
         c14 = da.sel(band_id=14).values  # 11.19
         c15 = da.sel(band_id=15).values  # 12.27
@@ -726,7 +728,7 @@ def to_ash(da: xr.DataArray, convention: str = "MIT") -> npt.NDArray[np.float32]
         blue = c14
 
     else:
-        raise ValueError("Convention must be either 'MIT' or 'standard'")
+        raise ValueError("Convention must be either 'SEVIRI' or 'standard'")
 
     # See colostate pdf for slightly wider values
     red = _clip_and_scale(red, -4.0, 2.0)
