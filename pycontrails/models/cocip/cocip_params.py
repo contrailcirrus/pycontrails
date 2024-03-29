@@ -138,12 +138,12 @@ class CocipParams(ModelParams):
 
     #: Add additional metric of ATR20 and global yearly mean RF to model output.
     #: These are not standard CoCiP outputs but based on the derivation used
-    #: in the first supplement to :cite:`yin_predicting_2023`. ATR20 is defined
+    #: in the first supplement to :cite:`yinPredictingClimateImpact2023`. ATR20 is defined
     #: as the average temperature response over a 20 year horizon.
     compute_atr20: bool = False
 
     #: Constant factor used to convert global- and year-mean RF, [:math:`W m^{-2}`],
-    #: to ATR20, [:math:`K`], given by :cite:`yin_predicting_2023`.
+    #: to ATR20, [:math:`K`], given by :cite:`yinPredictingClimateImpact2023`.
     global_rf_to_atr20_factor: float = 0.0151
 
     # ----------------
