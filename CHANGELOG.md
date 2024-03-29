@@ -13,7 +13,7 @@
   - This update implements a refined parameterization of the survival fraction of contrail ice crystal number after the wake vortex phase (`f_surv`). The parameterised model was developed by Unterstrasser (2016) based on outputs provided by large eddy simulations, and improves agreement with LES output relative to the default survival fraction parameterization in CoCiP.
   - These changes replicate Fig. 4 of Karcher (2018), where `f_surv` now depends on the initial number of ice crystals. These effects are particularly important, especially in the "soot-poor" scenario where the number fraction of contrail ice crystals that survives the wake vortex phase could be larger than the mass fraction, because the particles are larger in size.
   - This also improves upon the existing assumption in CoCiP, where the survival fraction is estimated as the change in contrail ice water content (by mass) before and after the wake vortex phase.
-The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new parameter, `improved_wake_vortex_ice_survival_fraction`, to `True`.
+The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new parameter, `unterstrasser_ice_survival_fraction`, to `True`.
 - Adds optional ATR20 to CoCiPGrid model.
 
 ### Fixes
@@ -22,7 +22,7 @@ The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new 
 
 ### Internals
   
-- Adds a parameter to `CoCipParams`, `improved_wake_vortex_ice_survival_fraction`, that activates the Unterstrasser (2016) survival parameterization when set to `True`. This is disabled by default, and only implemented for `CoCiP`. `CoCiPGrid` will produce an error if run with `improved_wake_vortex_ice_surival_fraction=True`.
+- Adds a parameter to `CoCipParams`, `unterstrasser_ice_survival_fraction`, that activates the Unterstrasser (2016) survival parameterization when set to `True`. This is disabled by default, and only implemented for `CoCiP`. `CoCiPGrid` will produce an error if run with `unterstrasser_ice_surival_fraction=True`.
 - Modifies `CoCiPGrid` so that setting `compute_atr_20` (defined in `CoCipParams`) to `True` adds `global_yearly_mean_rf` and `atr20` to CoCiP-grid output. 
 
 ## v0.50.0

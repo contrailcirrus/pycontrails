@@ -805,7 +805,7 @@ def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetData
         filter_sac=False,
         filter_initially_persistent=False,
         verbose_outputs_formation=True,
-        improved_wake_vortex_ice_survival_fraction=False,
+        unterstrasser_ice_survival_fraction=False,
     )
     assert not hasattr(model, "_sac_flight")
     result = model.eval(source)
@@ -819,5 +819,5 @@ def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetData
             filter_sac=False,
             filter_initially_persistent=False,
             verbose_outputs_formation=True,
-            improved_wake_vortex_ice_survival_fraction=True,
+            unterstrasser_ice_survival_fraction=True,
         )

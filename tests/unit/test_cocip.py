@@ -1616,13 +1616,13 @@ def test_cocip_survival_fraction(fl: Flight, met: MetDataset, rad: MetDataset):
         filter_initially_persistent=False,
     )
 
-    cocip = Cocip(**params, improved_wake_vortex_ice_survival_fraction=False)
+    cocip = Cocip(**params, unterstrasser_ice_survival_fraction=False)
     assert not hasattr(cocip, "_sac_flight")
     cocip.eval(fl)
     assert len(cocip._sac_flight) == len(fl)
     assert "n_ice_per_m_1" in cocip._sac_flight
 
-    cocip = Cocip(**params, improved_wake_vortex_ice_survival_fraction=True)
+    cocip = Cocip(**params, unterstrasser_ice_survival_fraction=True)
     assert not hasattr(cocip, "_sac_flight")
     cocip.eval(fl)
     assert len(cocip._sac_flight) == len(fl)
