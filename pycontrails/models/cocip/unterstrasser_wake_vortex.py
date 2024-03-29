@@ -366,7 +366,7 @@ def _survival_fraction_from_length_scale(
     return f_surv
 
 
-def initial_contrail_depth_u2016(
+def initial_contrail_depth(
     z_desc: npt.NDArray[np.float64],
     f_surv: npt.NDArray[np.float64],
 ) -> npt.NDArray[np.float64]:
