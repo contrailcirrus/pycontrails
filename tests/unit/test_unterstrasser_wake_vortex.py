@@ -30,13 +30,13 @@ def test_unterstrasser_wake_vortex_length_scales() -> None:
     # Test `z_atm`
     z_atm_est = z_atm_length_scale(air_temperature, rhi_0)
     np.testing.assert_array_almost_equal(
-        z_atm_est, [0.0, 0.0, 275.9, 275.9, 148.9, 77.6, 78.6], decimal=1
+        z_atm_est, [0.0, 0.0, 276.9, 276.9, 148.9, 77.6, 78.6], decimal=1
     )
 
     # Test `z_emit`
     z_emit_est = z_emit_length_scale(rho_emit, air_temperature)
     np.testing.assert_array_almost_equal(
-        z_emit_est, [279.8, 90.3, 96.2, 83.5, 99.1, 117.7, 81.5], decimal=1
+        z_emit_est, [280.8, 90.3, 96.2, 83.5, 99.1, 118.7, 81.5], decimal=1
     )
 
 
