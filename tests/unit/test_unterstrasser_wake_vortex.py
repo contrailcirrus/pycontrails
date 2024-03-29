@@ -4,7 +4,7 @@ import numpy as np
 
 from pycontrails.models.cocip.unterstrasser_wake_vortex import (
     _survival_fraction_from_length_scale,
-    initial_contrail_depth_u2016,
+    initial_contrail_depth,
     plume_area,
     z_atm_length_scale,
     z_desc_length_scale,
@@ -64,7 +64,7 @@ def test_unterstrasser_initial_contrail_depth() -> None:
     z_desc = np.array([339.0, 169.0, 399.0, 349.0, 548.0, 339.0, 339.0])
     f_surv = np.array([0.384, 0.099, 0.874, 0.884, 0.158, 0.782, 0.017])
 
-    depth_est = initial_contrail_depth_u2016(z_desc, f_surv)
+    depth_est = initial_contrail_depth(z_desc, f_surv)
     np.testing.assert_array_almost_equal(
         depth_est, [416.2, 100.4, 519.1, 454.6, 519.5, 436.4, 34.6], decimal=1
     )
