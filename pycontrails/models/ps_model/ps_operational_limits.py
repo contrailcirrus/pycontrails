@@ -197,8 +197,11 @@ def get_excess_thrust_available(
     )
 
     rn = reynolds_number(atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure)
-    if rn <= 0.0:
-        return np.nan
+    if isinstance(rn, float):
+        if rn <= 0.0:
+            return np.nan
+    else:
+        rn[rn <= 0.0] = np.nan
 
     c_lift = lift_coefficient(
         atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, theta
