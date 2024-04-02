@@ -23,7 +23,8 @@ The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new 
 ### Internals
   
 - Adds a parameter to `CoCipParams`, `unterstrasser_ice_survival_fraction`, that activates the Unterstrasser (2016) survival parameterization when set to `True`. This is disabled by default, and only implemented for `CoCiP`. `CoCiPGrid` will produce an error if run with `unterstrasser_ice_surival_fraction=True`.
-- Modifies `CoCiPGrid` so that setting `compute_atr_20` (defined in `CoCipParams`) to `True` adds `global_yearly_mean_rf` and `atr20` to CoCiP-grid output. 
+- Modifies `CoCiPGrid` so that setting `compute_atr_20` (defined in `CoCipParams`) to `True` adds `global_yearly_mean_rf` and `atr20` to CoCiP-grid output.
+- Replaces `pycontrails.datalib.GOES` ash convention label "MIT" with "SEVIRI"
 
 ## v0.50.0
 
