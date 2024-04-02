@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, NoReturn, TypeVar, overload
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import xarray as xr
 
 import pycontrails
 from pycontrails.core import models
@@ -311,22 +312,44 @@ class CocipGrid(models.Model):
         ``time_end``, new slices are selected from the larger ``self.met`` and
         ``self.rad`` data. The slicing only occurs in the time domain.
 
+        If the last currently-used ``met`` and ``rad`` slice is before ``time_end``,
+        it will be re-used as the first updated slice to avoid losing references to
+        data that has already been retrieved from zarr stores.
+
         If ``self.params["downselect_met"]`` is True, :func:`_downselect_met` has
         already performed a spatial downselection of the met data.
         """
         if met is None or time_end > met.indexes["time"].to_numpy()[-1]:
             # idx is the first index at which self.met.variables["time"].to_numpy() >= time_end
             idx = np.searchsorted(self.met.indexes["time"].to_numpy(), time_end)
-            sl = slice(max(0, idx - 1), idx + 1)
-            logger.debug("Select met slice %s", sl)
-            met = MetDataset(self.met.data.isel(time=sl), copy=False)
+            if met is not None:
+                logger.debug("Reuse end of met and select met step %d" % idx)
+                met = MetDataset(
+                    xr.concat(
+                        (met.data.isel(time=[-1]), self.met.data.isel(time=[idx])), dim="time"
+                    ),
+                    copy=False,
+                )
+            else:
+                sl = slice(max(0, idx - 1), idx + 1)
+                logger.debug("Select met slice %s", sl)
+                met = MetDataset(self.met.data.isel(time=sl), copy=False)
 
         if rad is None or time_end > rad.indexes["time"].to_numpy()[-1]:
             # idx is the first index at which self.rad.variables["time"].to_numpy() >= time_end
             idx = np.searchsorted(self.rad.indexes["time"].to_numpy(), time_end)
-            sl = slice(max(0, idx - 1), idx + 1)
-            logger.debug("Select rad slice %s", sl)
-            rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
+            if rad is not None:
+                logger.debug("Reuse end of rad and select rad step %d" % idx)
+                rad = MetDataset(
+                    xr.concat(
+                        (rad.data.isel(time=[-1]), self.rad.data.isel(time=[idx])), dim="time"
+                    ),
+                    copy=False,
+                )
+            else:
+                sl = slice(max(0, idx - 1), idx + 1)
+                logger.debug("Select rad slice %s", sl)
+                rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
 
         return met, rad
 
