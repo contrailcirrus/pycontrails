@@ -312,44 +312,75 @@ class CocipGrid(models.Model):
         ``time_end``, new slices are selected from the larger ``self.met`` and
         ``self.rad`` data. The slicing only occurs in the time domain.
 
-        If the last currently-used ``met`` and ``rad`` slice is before ``time_end``,
-        it will be re-used as the first updated slice to avoid losing references to
-        data that has already been retrieved from zarr stores.
+        The end of currently-used ``met`` and ``rad`` will be used as the start
+        of newly-selected met slices when possible to avoid losing and re-loading
+        already-loaded met data.
 
         If ``self.params["downselect_met"]`` is True, :func:`_downselect_met` has
         already performed a spatial downselection of the met data.
         """
-        if met is None or time_end > met.indexes["time"].to_numpy()[-1]:
+
+        if met is None:
             # idx is the first index at which self.met.variables["time"].to_numpy() >= time_end
             idx = np.searchsorted(self.met.indexes["time"].to_numpy(), time_end)
-            if met is not None:
-                logger.debug("Reuse end of met and select met step %d" % idx)
-                met = MetDataset(
-                    xr.concat(
-                        (met.data.isel(time=[-1]), self.met.data.isel(time=[idx])), dim="time"
-                    ),
-                    copy=False,
-                )
-            else:
-                sl = slice(max(0, idx - 1), idx + 1)
+            sl = slice(max(0, idx - 1), idx + 1)
+            logger.debug("Select met slice %s", sl)
+            met = MetDataset(self.met.data.isel(time=sl), copy=False)
+
+        elif time_end > met.indexes["time"].to_numpy()[-1]:
+            current_times = met.indexes["time"].to_numpy()
+            all_times = self.met.indexes["time"].to_numpy()
+            # idx is the first index at which all_times >= time_end
+            idx = np.searchsorted(all_times, time_end)
+            sl = slice(max(0, idx - 1), idx + 1)
+
+            # case 1: cannot re-use end of current met as start of new met
+            if current_times[-1] != all_times[sl.start]:
                 logger.debug("Select met slice %s", sl)
                 met = MetDataset(self.met.data.isel(time=sl), copy=False)
-
-        if rad is None or time_end > rad.indexes["time"].to_numpy()[-1]:
-            # idx is the first index at which self.rad.variables["time"].to_numpy() >= time_end
-            idx = np.searchsorted(self.rad.indexes["time"].to_numpy(), time_end)
-            if rad is not None:
-                logger.debug("Reuse end of rad and select rad step %d" % idx)
-                rad = MetDataset(
-                    xr.concat(
-                        (rad.data.isel(time=[-1]), self.rad.data.isel(time=[idx])), dim="time"
-                    ),
+            # case 2: can re-use end of current met plus one step of new met
+            elif sl.start < all_times.size - 1:
+                sl = slice(sl.start + 1, sl.stop)
+                logger.debug("Reuse end of met and select met slice %s", sl)
+                met = MetDataset(
+                    xr.concat((met.data.isel(time=[-1]), self.met.data.isel(time=sl)), dim="time"),
                     copy=False,
                 )
+            # case 3: can re-use end of current met and nothing else
             else:
-                sl = slice(max(0, idx - 1), idx + 1)
+                logger.debug("Reuse end of met")
+                met = MetDataset(met.data.isel(time=[-1]), copy=False)
+
+        if rad is None:
+            # idx is the first index at which self.rad.variables["time"].to_numpy() >= time_end
+            idx = np.searchsorted(self.rad.indexes["time"].to_numpy(), time_end)
+            sl = slice(max(0, idx - 1), idx + 1)
+            logger.debug("Select rad slice %s", sl)
+            rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
+
+        elif time_end > rad.indexes["time"].to_numpy()[-1]:
+            current_times = rad.indexes["time"].to_numpy()
+            all_times = self.rad.indexes["time"].to_numpy()
+            # idx is the first index at which all_times >= time_end
+            idx = np.searchsorted(all_times, time_end)
+            sl = slice(max(0, idx - 1), idx + 1)
+
+            # case 1: cannot re-use end of current rad as start of new rad
+            if current_times[-1] != all_times[sl.start]:
                 logger.debug("Select rad slice %s", sl)
                 rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
+            # case 2: can re-use end of current rad plus one step of new rad
+            elif sl.start < all_times.size - 1:
+                sl = slice(sl.start + 1, sl.stop)
+                logger.debug("Reuse end of rad and select rad slice %s", sl)
+                rad = MetDataset(
+                    xr.concat((rad.data.isel(time=[-1]), self.rad.data.isel(time=sl)), dim="time"),
+                    copy=False,
+                )
+            # case 3: can re-use end of current rad and nothing else
+            else:
+                logger.debug("Reuse end of rad")
+                rad = MetDataset(rad.data.isel(time=[-1]), copy=False)
 
         return met, rad
 
