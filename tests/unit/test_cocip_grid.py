@@ -269,6 +269,52 @@ def test_cocip_grid_met_nonuniform_time(
     assert df.isna().sum().sum() == 0
 
 
+def test_max_age_exceeds_met(instance_params: dict[str, Any], source: MetDataset) -> None:
+    """Perform smoke test to ensure max_age can exceed the available met time."""
+    instance_params["verbose_outputs_formation"] = True
+    instance_params["met"].data = instance_params["met"].data.isel(time=[0, 1])
+    instance_params["interpolation_bounds_error"] = False
+
+    model = CocipGrid(**instance_params, aircraft_performance=PSGrid())
+
+    with pytest.warns(UserWarning, match="End time of parameter 'met'"):
+        out = model.eval(source=source)
+    assert out.data["contrail_age"].max() == 1.0
+
+
+@pytest.mark.filterwarnings("ignore:Manually overriding SAC filter")
+@pytest.mark.filterwarnings("ignore:Manually overriding initially persistent filter")
+def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetDataset):
+    """Confirm CocipGrid behaves as expected with all survival fraction parameterizations.
+
+    Set filter_sac and filter_initially_persistent to False so survival fraction
+    parameterizations run on as many segments as possible
+    """
+
+    model = CocipGrid(
+        **instance_params,
+        aircraft_performance=PSGrid(),
+        filter_sac=False,
+        filter_initially_persistent=False,
+        verbose_outputs_formation=True,
+        unterstrasser_ice_survival_fraction=False,
+    )
+    assert not hasattr(model, "_sac_flight")
+    result = model.eval(source)
+    for var in ["contrail_age", "ef_per_m", "iwc"]:
+        assert not np.any(np.isnan(result.data[var]))
+
+    with pytest.raises(NotImplementedError, match="not yet implemented in CocipGrid"):
+        model = CocipGrid(
+            **instance_params,
+            aircraft_performance=PSGrid(),
+            filter_sac=False,
+            filter_initially_persistent=False,
+            verbose_outputs_formation=True,
+            unterstrasser_ice_survival_fraction=True,
+        )
+
+
 ##############################################################
 # NOTE: No tests below here will run unless BADA is available.
 ##############################################################
@@ -775,49 +821,3 @@ def test_verbose_outputs_formation(
     assert ds["fuel_flow"].mean() == pytest.approx(0.6037, rel=rel)
     assert ds["rhi"].mean() == pytest.approx(0.6273, rel=rel)
     assert ds["iwc"].mean() == pytest.approx(4.4621e-06, rel=rel)
-
-
-def test_max_age_exceeds_met(instance_params: dict[str, Any], source: MetDataset) -> None:
-    """Perform smoke test to ensure max_age can exceed the available met time."""
-    instance_params["verbose_outputs_formation"] = True
-    instance_params["met"].data = instance_params["met"].data.isel(time=[0, 1])
-    instance_params["interpolation_bounds_error"] = False
-
-    model = CocipGrid(**instance_params, aircraft_performance=PSGrid())
-
-    with pytest.warns(UserWarning, match="End time of parameter 'met'"):
-        out = model.eval(source=source)
-    assert out.data["contrail_age"].max() == 1.0
-
-
-@pytest.mark.filterwarnings("ignore:Manually overriding SAC filter")
-@pytest.mark.filterwarnings("ignore:Manually overriding initially persistent filter")
-def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetDataset):
-    """Confirm CocipGrid behaves as expected with all survival fraction parameterizations.
-
-    Set filter_sac and filter_initially_persistent to False so survival fraction
-    parameterizations run on as many segments as possible
-    """
-
-    model = CocipGrid(
-        **instance_params,
-        aircraft_performance=PSGrid(),
-        filter_sac=False,
-        filter_initially_persistent=False,
-        verbose_outputs_formation=True,
-        unterstrasser_ice_survival_fraction=False,
-    )
-    assert not hasattr(model, "_sac_flight")
-    result = model.eval(source)
-    for var in ["contrail_age", "ef_per_m", "iwc"]:
-        assert not np.any(np.isnan(result.data[var]))
-
-    with pytest.raises(NotImplementedError, match="not yet implemented in CocipGrid"):
-        model = CocipGrid(
-            **instance_params,
-            aircraft_performance=PSGrid(),
-            filter_sac=False,
-            filter_initially_persistent=False,
-            verbose_outputs_formation=True,
-            unterstrasser_ice_survival_fraction=True,
-        )
