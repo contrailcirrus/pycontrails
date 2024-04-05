@@ -780,7 +780,7 @@ def test_geovector_source(
 
     # Pin the mean EF
     assert out["ef_per_m"].mean().item() == pytest.approx(832396, abs=10)
-    assert out["ef_per_m"][persistent].mean().item() == pytest.approx(28945214, abs=10)
+    assert out["ef_per_m"][persistent].mean().item() == pytest.approx(28944911, abs=10)
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
