@@ -71,7 +71,9 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         self.grid = points
         self.values = values
-        self.method = method
+        # TODO: consider supporting updated tensor-product spline methods
+        # see https://github.com/scipy/scipy/releases/tag/v1.13.0
+        self.method = _pick_method(scipy.__version__, method)
         self.bounds_error = bounds_error
         self.fill_value = fill_value
 
@@ -217,6 +219,42 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         msg = f"Invalid number of dimensions: {ndim}"
         raise ValueError(msg)
+
+
+def _pick_method(scipy_version: str, method: str) -> str:
+    """Select an interpolation method.
+
+    For scipy versions 1.13.0 and later, fall back on legacy implementations
+    of tensor-product spline methods. The default implementations in 1.13.0
+    and later are incompatible with this class.
+
+    Parameters
+    ----------
+    scipy_version : str
+        scipy version (major.minor.patch)
+
+    method : str
+        Interpolation method. Passed into :class:`scipy.interpolate.RegularGridInterpolator`
+        as-is unless ``scipy_version`` is 1.13.0 or later and ``method`` is ``"slinear"``,
+        ``"cubic"``, or ``"quintic"``. In this case, ``"_legacy"`` is appended to ``method``.
+
+    Returns
+    -------
+    str
+        Interpolation method adjusted for compatibility with this class.
+    """
+    try:
+        version = scipy_version.split(".")
+        major = int(version[0])
+        minor = int(version[1])
+    except (IndexError, ValueError) as exc:
+        msg = f"Failed to parse major and minor version from {scipy_version}"
+        raise ValueError(msg) from exc
+
+    reimplemented_methods = ["slinear", "cubic", "quintic"]
+    if major > 1 or (major == 1 and minor >= 13) and method in reimplemented_methods:
+        return method + "_legacy"
+    return method
 
 
 def _floatize_time(
