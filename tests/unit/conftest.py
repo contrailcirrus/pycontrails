@@ -100,6 +100,10 @@ def override_cache() -> DiskCacheStore:
 def met_pcc_pl(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> MetDataset:
     """Met data (pressure levels) for PCC algorithm testing.
 
+    The v2024.03.0 release of xarray changes the datatype of decoded variables
+    from float32 to float64. This breaks tests that expect variables as float32.
+    As a workaround, we manually convert variables to float32 after decoding.
+
     Returns
     -------
     MetDataset
@@ -117,7 +121,9 @@ def met_pcc_pl(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> MetDat
         paths=met_ecmwf_pl_path,
         cachestore=override_cache,
     )
-    return era5.open_metdataset()
+    met = era5.open_metdataset()
+    met.data = met.data.astype("float32")
+    return met
 
 
 @pytest.fixture(scope="session")
@@ -200,11 +206,15 @@ def met_issr(met_ecmwf_pl_path: str) -> MetDataset:
     the test `tests/unit/test_dtypes::test_issr_sac_grid_output[linear-ISSR]`
     to hang. As a workaround, we open without dask parallelism.
 
+    The v2024.03.0 release of xarray changes the datatype of decoded variables
+    from float32 to float64. This breaks tests that expect variables as float32.
+    As a workaround, we manually convert variables to float32 after decoding.
+
     Returns
     -------
     MetDataset
     """
-    ds = xr.open_dataset(met_ecmwf_pl_path)
+    ds = xr.open_dataset(met_ecmwf_pl_path).astype("float32")
     ds = met.standardize_variables(ds, (met_var.AirTemperature, met_var.SpecificHumidity))
     ds.attrs.update(provider="ECMWF", dataset="ERA5", product="reanalysis")
     return MetDataset(ds)
@@ -217,9 +227,13 @@ def met_cocip1() -> MetDataset:
     See ``met_cocip1_module_scope`` for a module-scoped version.
 
     See tests/fixtures/cocip-met.py for domain and creation of the source data file.
+
+    The v2024.03.0 release of xarray changes the datatype of decoded variables
+    from float32 to float64. This breaks tests that expect variables as float32.
+    As a workaround, we manually convert variables to float32 after decoding.
     """
     path = get_static_path("met-era5-cocip1.nc")
-    ds = xr.open_dataset(path)
+    ds = xr.open_dataset(path).astype("float32")
     ds["air_pressure"] = ds["air_pressure"].astype("float32")
     ds["altitude"] = ds["altitude"].astype("float32")
     return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
