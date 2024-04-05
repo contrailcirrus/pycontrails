@@ -59,7 +59,7 @@ class ISSR(Model):
     >>> out1 = model.eval()
     >>> issr1 = out1["issr"]
     >>> issr1.proportion  # Get proportion of values with ice supersaturation
-    0.114140
+    0.11414134603859523
 
     >>> # Run with a lower threshold
     >>> out2 = model.eval(rhi_threshold=0.95)
