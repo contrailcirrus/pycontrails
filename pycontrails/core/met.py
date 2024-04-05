@@ -674,13 +674,10 @@ class MetDataset(MetBase):
     >>> da = mda.data  # Underlying `xarray` object
 
     >>> # Check out a few values
-    >>> da[5:10, 5:10, 1, 1].values
-    array([[224.0896 , 224.41374, 224.75946, 225.16237, 225.60507],
-           [224.09457, 224.42038, 224.76526, 225.16817, 225.61089],
-           [224.10037, 224.42618, 224.77106, 225.17314, 225.61586],
-           [224.10617, 224.43282, 224.7777 , 225.17812, 225.62166],
-           [224.11115, 224.44028, 224.7835 , 225.18393, 225.62663]],
-          dtype=float32)
+    >>> da[5:8, 5:8, 1, 1].values
+    array([[224.08959005, 224.41374427, 224.75945349],
+           [224.09456429, 224.42037658, 224.76525676],
+           [224.10036756, 224.42617985, 224.77106004]])
 
     >>> # Mean temperature over entire array
     >>> da.mean().load().item()
@@ -1618,15 +1615,15 @@ class MetDataArray(MetBase):
 
         >>> # Interpolation at a grid point agrees with value
         >>> mda.interpolate(1, 2, 300, np.datetime64('2022-03-01T14:00'))
-        array([241.91974], dtype=float32)
+        array([241.91972984])
 
         >>> da = mda.data
         >>> da.sel(longitude=1, latitude=2, level=300, time=np.datetime64('2022-03-01T14')).item()
-        241.91974
+        241.9197298421629
 
         >>> # Interpolation off grid
         >>> mda.interpolate(1.1, 2.1, 290, np.datetime64('2022-03-01 13:10'))
-        array([239.83794], dtype=float32)
+        array([239.83793798])
 
         >>> # Interpolate along path
         >>> longitude = np.linspace(1, 2, 10)
@@ -1634,8 +1631,9 @@ class MetDataArray(MetBase):
         >>> level = np.linspace(200, 300, 10)
         >>> time = pd.date_range("2022-03-01T14", periods=10, freq="5min")
         >>> mda.interpolate(longitude, latitude, level, time)
-        array([220.44348, 223.089  , 225.7434 , 228.41643, 231.10858, 233.54858,
-               235.71506, 237.86479, 239.99275, 242.10793], dtype=float32)
+        array([220.44347694, 223.08900738, 225.74338924, 228.41642088,
+               231.10858599, 233.54857391, 235.71504913, 237.86478872,
+               239.99274623, 242.10792167])
         """
         # Load if necessary
         if not self.in_memory:

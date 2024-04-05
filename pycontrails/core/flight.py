@@ -1356,8 +1356,8 @@ class Flight(GeoVectorDataset):
         >>> # Intersect and attach
         >>> fl["air_temperature"] = fl.intersect_met(met['air_temperature'])
         >>> fl["air_temperature"]
-        array([235.94658, 235.95767, 235.96873, ..., 234.59918, 234.60388,
-               234.60846], dtype=float32)
+        array([235.94657007, 235.95766965, 235.96873412, ..., 234.59917962,
+               234.60387402, 234.60845312])
 
         >>> # Length (in meters) of waypoints whose temperature exceeds 236K
         >>> fl.length_met("air_temperature", threshold=236)
