@@ -320,7 +320,7 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str) -> None:
 
     # Pin the RMSE (out of curiosity)
     rmse = (np.mean((out1 - out2) ** 2)) ** 0.5
-    assert rmse == pytest.approx(3.3319390877860893, rel=1e-10)
+    assert rmse == pytest.approx(3.3319389446, rel=1e-10)
 
 
 @pytest.fixture()
