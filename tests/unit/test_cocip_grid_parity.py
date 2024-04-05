@@ -124,23 +124,26 @@ def test_parity(
     # Confirm exact agreement on verbose formation outputs
     # ------------------------------------------------------------
 
+    rtol = 1e-15  # some roundoff error after xarray changes
+
     # Ignore anything fl came with -- those are already identical
     common_keys = set(cg.source).intersection(cocip.source).difference(fl)
     assert common_keys == {"contrail_age", "nvpm_ei_n", "sac", "specific_humidity", "rhi"}
     exclude_keys = ["contrail_age"]  # This is checked below
     for key in common_keys.difference(exclude_keys):
-        np.testing.assert_array_equal(cocip.source[key], cg.source[key], err_msg=key)
+        np.testing.assert_allclose(cocip.source[key], cg.source[key], err_msg=key, rtol=rtol)
 
     # ---------------------------------------------------------
     # Confirm very tight agreement between initially persistent
     # ---------------------------------------------------------
 
+    rtol = 1e-10
     common_keys = set(downwash1).intersection(downwash2)
     assert len(common_keys) == 43
     exclude_keys = ["segment_length", "dsn_dz", "time", "formation_time"]
 
     for key in common_keys.difference(exclude_keys):
-        np.testing.assert_array_equal(downwash1[key], downwash2[key], err_msg=key)
+        np.testing.assert_allclose(downwash1[key], downwash2[key], err_msg=key, rtol=rtol)
 
     different_keys = [
         ("vertical_velocity", "lagrangian_tendency_of_air_pressure"),
@@ -151,7 +154,7 @@ def test_parity(
     ]
     for key1, key2 in different_keys:
         msg = f"{key1} and {key2} do not agree"
-        np.testing.assert_array_equal(downwash1[key1], downwash2[key2], err_msg=msg)
+        np.testing.assert_allclose(downwash1[key1], downwash2[key2], err_msg=msg, rtol=rtol)
 
     # The segment_length variable is fundamentally different
     # And dsn_dz is different as a consequence of the Cocip continuity conventions
