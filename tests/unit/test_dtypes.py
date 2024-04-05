@@ -19,8 +19,13 @@ from pycontrails.physics import units
 
 @pytest.fixture()
 def met(met_ecmwf_pl_path: str) -> MetDataset:
-    """Create a MetDataset for testing."""
-    ds1 = xr.open_dataset(met_ecmwf_pl_path)
+    """Create a MetDataset for testing.
+
+    The v2024.03.0 release of xarray changes the datatype of decoded variables
+    from float32 to float64. This breaks tests that expect variables as float32.
+    As a workaround, we manually convert variables to float32 after decoding.
+    """
+    ds1 = xr.open_dataset(met_ecmwf_pl_path).astype("float32")
 
     # shift time and concatenate to create a new dataset
     ds2 = ds1.copy()
