@@ -25,6 +25,9 @@ The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new 
 - Adds a parameter to `CoCipParams`, `unterstrasser_ice_survival_fraction`, that activates the Unterstrasser (2016) survival parameterization when set to `True`. This is disabled by default, and only implemented for `CoCiP`. `CoCiPGrid` will produce an error if run with `unterstrasser_ice_surival_fraction=True`.
 - Modifies `CoCiPGrid` so that setting `compute_atr_20` (defined in `CoCipParams`) to `True` adds `global_yearly_mean_rf` and `atr20` to CoCiP-grid output.
 - Replaces `pycontrails.datalib.GOES` ash convention label "MIT" with "SEVIRI"
+- Modifies meteorology time step selection logic in `CoCiPGrid` to reduce duplicate chunk downloads when reading from remote zarr stores.
+- Updates unit tests for xarray v2024.03.0, which introduced changes to netCDF decoding that slightly alter decoded values. Note that some unit tests will fail for earlier xarray versions.
+- Updates `RegularGridInterpolator` to fall back on legacy scipy implementations of tensor-product spline methods when using scipy versions 1.13.0 and later.
 
 ## v0.50.0
 
