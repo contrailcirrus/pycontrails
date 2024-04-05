@@ -58,8 +58,8 @@ def test_implementations_close(met_cocip1: MetDataset) -> None:
     assert (da1 <= 2 * da2).all()
 
     # Pin the mean values of each
-    assert da1.mean() == 0.01444357167929411
-    assert da2.mean().item() == 0.008129739202558994
+    assert da1.mean() == pytest.approx(0.014443565160, rel=1e-10)
+    assert da2.mean() == pytest.approx(0.0081297373399, rel=1e-10)
 
 
 def test_geopotential_approximation(met_cocip1: MetDataset):

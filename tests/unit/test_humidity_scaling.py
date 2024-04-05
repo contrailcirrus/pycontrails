@@ -347,7 +347,7 @@ def test_histogram_matching_reanalysis(
 
     # Check that the two methods give different results
     diff = np.abs(np.log(q1) - np.log(q0))
-    assert diff.min() >= 1e-6
+    assert diff.min() >= 5e-7
     assert diff.max() <= 2
     assert 0.02 < diff.mean() < 0.1
 

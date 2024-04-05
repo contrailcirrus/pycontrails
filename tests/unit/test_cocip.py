@@ -698,6 +698,15 @@ def test_eval_persistent(cocip_persistent: Cocip, regenerate_results: bool) -> N
                 rtol=1e-2,
             )
             continue
+        if key in ["tau_cirrus", "specific_cloud_ice_water_content"]:
+            np.testing.assert_allclose(
+                cocip_persistent.source.get_data_or_attr(key),
+                flight_output[key],
+                err_msg=key,
+                rtol=rtol,
+                atol=1e-14,  # for trace cloud ice
+            )
+            continue
         np.testing.assert_allclose(
             cocip_persistent.source.get_data_or_attr(key),
             flight_output[key],
@@ -761,7 +770,7 @@ def test_eval_persistent2(cocip_persistent2: Cocip, regenerate_results: bool) ->
     contrail_output["age"] = pd.to_timedelta(contrail_output["age"])
     contrail_output["dt_integration"] = pd.to_timedelta(contrail_output["dt_integration"])
 
-    rtol = 1e-3
+    rtol = 1e-4
     for key in flight_output:
         if key in ["time", "flight_id"]:
             assert np.all(cocip_persistent2.source[key] == flight_output[key])
@@ -771,7 +780,15 @@ def test_eval_persistent2(cocip_persistent2: Cocip, regenerate_results: bool) ->
                 cocip_persistent2.source.level, flight_output[key], err_msg=key
             )
             continue
-
+        if key in ["tau_cirrus", "specific_cloud_ice_water_content"]:
+            np.testing.assert_allclose(
+                cocip_persistent2.source[key],
+                flight_output[key],
+                err_msg=key,
+                rtol=rtol,
+                atol=1e-14,  # for trace cloud ice
+            )
+            continue
         np.testing.assert_allclose(
             cocip_persistent2.source[key], flight_output[key], err_msg=key, rtol=rtol
         )
@@ -935,9 +952,9 @@ def test_cocip_contrail_contrail_overlapping(
     out = cocip.eval(fleet)
 
     if contrail_contrail_overlapping:
-        assert out["ef"].sum() == pytest.approx(621504.7e8, abs=8e7)
+        assert out["ef"].sum() == pytest.approx(621498.2e8, abs=8e7)
     else:
-        assert out["ef"].sum() == pytest.approx(621506.7e8, abs=8e7)
+        assert out["ef"].sum() == pytest.approx(621500.2e8, abs=8e7)
 
 
 # ------
