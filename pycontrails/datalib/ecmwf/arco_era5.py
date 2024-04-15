@@ -22,16 +22,11 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import datetime
-import functools
 import hashlib
 import multiprocessing
-import pathlib
-import tempfile
 import warnings
-from collections.abc import Iterable
 from typing import Any
 
-import pandas as pd
 import xarray as xr
 from overrides import overrides
 
@@ -39,7 +34,10 @@ from pycontrails.core import cache, datalib, met_var
 from pycontrails.core.met import MetDataset
 from pycontrails.datalib.ecmwf import common as ecmwf_common
 from pycontrails.datalib.ecmwf import variables as ecmwf_variables
-from pycontrails.physics import units
+from pycontrails.datalib.ecmwf.model_levels import (
+    MetviewTempfileHandler,
+    pressure_levels_at_model_levels,
+)
 from pycontrails.utils import dependencies
 
 try:
@@ -74,54 +72,6 @@ MOISTURE_STORE_VARIABLES = [
 ]
 
 PRESSURE_LEVEL_VARIABLES = [*WIND_STORE_VARIABLES, *MOISTURE_STORE_VARIABLES, met_var.Geopotential]
-
-
-@functools.cache
-def _read_model_level_dataframe() -> pd.DataFrame:
-    """Read the ERA5 model level definitions published by ECMWF.
-
-    This requires the lxml package to be installed.
-    """
-    url = "https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions"
-    try:
-        return pd.read_html(url, na_values="-", index_col="n")[0]
-    except ImportError as exc:
-        if "lxml" in exc.msg:
-            dependencies.raise_module_not_found_error(
-                "arco_era5._read_model_level_dataframe function",
-                package_name="lxml",
-                module_not_found_error=exc,
-                extra=(
-                    "Alternatively, if instantiating an 'ARCOERA5' object, you can provide "
-                    "the 'pressure_levels' parameter directly to avoid the need to read the "
-                    "ECMWF model level definitions."
-                ),
-            )
-        raise
-
-
-def pressure_levels_at_model_levels(alt_ft_min: float, alt_ft_max: float) -> list[int]:
-    """Return the pressure levels at each model level assuming a constant surface pressure.
-
-    The pressure levels are rounded to the nearest hPa.
-
-    Parameters
-    ----------
-    alt_ft_min : float
-        Minimum altitude, [:math:`ft`].
-    alt_ft_max : float
-        Maximum altitude, [:math:`ft`].
-
-    Returns
-    -------
-    list[int]
-        List of pressure levels, [:math:`hPa`].
-    """
-    df = _read_model_level_dataframe()
-    alt_m_min = units.ft_to_m(alt_ft_min)
-    alt_m_max = units.ft_to_m(alt_ft_max)
-    filt = df["Geometric Altitude [m]"].between(alt_m_min, alt_m_max)
-    return df.loc[filt, "pf [hPa]"].round().astype(int).tolist()
 
 
 def _attribute_fix(ds: xr.Dataset | None) -> None:
@@ -444,7 +394,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         self.variables = datalib.parse_variables(variables, self.supported_variables)
         self.grid = grid
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
-        self.n_jobs = n_jobs
+        self.n_jobs = max(1, n_jobs)
         self.cleanup_metview_tempfiles = cleanup_metview_tempfiles
 
     @property
@@ -484,7 +434,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
         stack = contextlib.ExitStack()
         if self.cleanup_metview_tempfiles:
-            stack.enter_context(_MetviewTempfileHandler())
+            stack.enter_context(MetviewTempfileHandler())
 
         n_jobs = min(self.n_jobs, len(times))
 
@@ -558,20 +508,3 @@ def _download_convert_cache_handler(arco: ARCOERA5, t: datetime.datetime) -> Non
     """Download, convert, and cache ARCO ERA5 model level data."""
     ds = open_arco_era5_model_level_data(t, arco.variables, arco.pressure_levels, arco.grid)
     arco.cache_dataset(ds)
-
-
-def _get_grib_files() -> Iterable[pathlib.Path]:
-    """Get all temporary GRIB files."""
-    tmp = pathlib.Path(tempfile.gettempdir())
-    return tmp.glob("tmp*.grib")
-
-
-class _MetviewTempfileHandler:
-    def __enter__(self) -> None:
-        self.existing_grib_files = set(_get_grib_files())
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore[no-untyped-def]
-        new_grib_files = _get_grib_files()
-        for f in new_grib_files:
-            if f not in self.existing_grib_files:
-                f.unlink(missing_ok=True)

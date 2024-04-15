@@ -6,6 +6,8 @@ from pycontrails.datalib.ecmwf.arco_era5 import ARCOERA5
 from pycontrails.datalib.ecmwf.era5 import ERA5
 from pycontrails.datalib.ecmwf.hres import HRES
 from pycontrails.datalib.ecmwf.ifs import IFS
+from pycontrails.datalib.ecmwf.model_level_era5 import ModelLevelERA5
+from pycontrails.datalib.ecmwf.model_level_hres import ModelLevelHRES
 from pycontrails.datalib.ecmwf.variables import (
     ECMWF_VARIABLES,
     PRESSURE_LEVEL_VARIABLES,
@@ -29,6 +31,8 @@ __all__ = [
     "ERA5",
     "HRES",
     "IFS",
+    "ModelLevelERA5",
+    "ModelLevelHRES",
     "CloudAreaFraction",
     "CloudAreaFractionInLayer",
     "Divergence",

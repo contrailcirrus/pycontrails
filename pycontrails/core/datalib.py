@@ -103,6 +103,28 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[dat
     return daterange.to_pydatetime().tolist()
 
 
+def validate_timestep_freq(freq: str, datasource_freq: str) -> bool:
+    """Check that input timestep frequency is compatible with the data source timestep frequency.
+
+    A data source timestep frequency of 1 hour allows input timestep frequencies of
+    1 hour, 2 hours, 3 hours, etc., but not 1.5 hours or 30 minutes.
+
+    Parameters
+    ----------
+    freq : str
+        Input timestep frequency
+    datasource_freq : str
+        Datasource timestep frequency
+
+    Returns
+    -------
+    bool
+        True if the input timestep frequency is an even multiple
+        of the data source timestep frequency.
+    """
+    return pd.Timedelta(freq) % pd.Timedelta(datasource_freq) == pd.Timedelta(0)
+
+
 def parse_pressure_levels(
     pressure_levels: PressureLevelInput, supported: list[int] | None = None
 ) -> list[int]:
