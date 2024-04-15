@@ -1181,7 +1181,7 @@ class Flight(GeoVectorDataset):
 
         dx = distance - cumulative_lengths[seg_idx]
         fx = dx / lengths[seg_idx]
-        lat: ArrayOrFloat = (1 - fx) * lat1 + fx * lat2
+        lat = (1 - fx) * lat1 + fx * lat2
         lon = (1 - fx) * lon1 + fx * lon2
 
         if isinstance(distance, float):
