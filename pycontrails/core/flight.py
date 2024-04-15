@@ -1188,7 +1188,7 @@ class Flight(GeoVectorDataset):
             if distance < 0:
                 lat = np.nan
                 lon = np.nan
-                seg_idx = 0  # type: ignore
+                seg_idx = np.intp(0)
             elif distance >= cumulative_lengths[-1]:
                 lat = lat_[-1]
                 lon = lon_[-1]
