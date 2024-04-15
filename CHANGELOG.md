@@ -1,6 +1,13 @@
 
 # Changelog
 
+## v0.50.2
+
+### Features
+
+- Adds `Flight.distance_to_coords` which takes in a distance along a flight trajectory in meters and returns geodesic coordinates.
+- Adds methods to `ps_operational_limits` to find the maximum and minimum mach numbers for a given set of operating conditions.
+
 ## v0.50.1
 
 ### Breaking changes
@@ -15,8 +22,6 @@
   - This also improves upon the existing assumption in CoCiP, where the survival fraction is estimated as the change in contrail ice water content (by mass) before and after the wake vortex phase.
 The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new parameter, `unterstrasser_ice_survival_fraction`, to `True`.
 - Adds optional ATR20 to CoCiPGrid model.
-- Adds `Flight.distance_to_coords` which takes in a distance along a flight trajectory in meters and returns geodesic coordinates.
-- Adds methods to `ps_operational_limits` to find the maximum and minimum mach numbers for a given set of operating conditions.
 
 ### Fixes
 

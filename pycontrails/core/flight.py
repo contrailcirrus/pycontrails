@@ -1194,12 +1194,12 @@ class Flight(GeoVectorDataset):
                 lon = lon_[-1]
                 seg_idx = np.intp(self.size - 1)
         else:
-            lat[distance < 0] = np.nan  # type: ignore
-            lon[distance < 0] = np.nan  # type: ignore
+            lat[distance < 0] = np.nan
+            lon[distance < 0] = np.nan
             seg_idx[distance < 0] = 0  # type: ignore
 
-            lat[distance >= cumulative_lengths[-1]] = lat_[-1]  # type: ignore
-            lon[distance >= cumulative_lengths[-1]] = lon_[-1]  # type: ignore
+            lat[distance >= cumulative_lengths[-1]] = lat_[-1]
+            lon[distance >= cumulative_lengths[-1]] = lon_[-1]
             seg_idx[distance >= cumulative_lengths[-1]] = self.size - 1  # type: ignore
 
         if shift is not None:
