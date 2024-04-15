@@ -604,8 +604,8 @@ def test_antimeridian_jump() -> None:
 
     fl = Flight(df)
     _, lon, idx = fl.distance_to_coords(np.array([200000.0, 300000.0, 400000.0, 500000.0]))
-    assert (idx == np.array([0, 1, 1, 2])).all()
-    assert (np.sign(lon) == np.array([-1, -1, 1, 1])).all()
+    np.testing.assert_array_equal(idx, [0, 1, 1, 2])
+    np.testing.assert_array_equal(np.sign(lon), [-1, -1, 1, 1])
     df["longitude"] = [-177, -179, 179, -178]
     fl = Flight(df)
     # jumps antimeridian twice
