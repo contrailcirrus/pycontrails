@@ -1162,6 +1162,7 @@ class Flight(GeoVectorDataset):
         lengths = flat_dataset.segment_length()
         cumulative_lengths = np.nancumsum(lengths)
         cumulative_lengths = np.insert(cumulative_lengths[:-1], 0, 0)
+        seg_idx: np.intp | npt.NDArray[np.intp]
 
         if isinstance(distance, float):
             seg_idx = np.argmax(cumulative_lengths > distance)
