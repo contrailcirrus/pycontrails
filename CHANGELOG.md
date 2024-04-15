@@ -16,7 +16,7 @@
 The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new parameter, `unterstrasser_ice_survival_fraction`, to `True`.
 - Adds optional ATR20 to CoCiPGrid model.
 - Adds `Flight.distance_to_coords` which takes in a distance along a flight trajectory in meters and returns geodesic coordinates.
-- Adds methods to `ps_operataional_limits` to find the maximum and minimum mach numbers for a given set of operating conditions.
+- Adds methods to `ps_operational_limits` to find the maximum and minimum mach numbers for a given set of operating conditions.
 
 ### Fixes
 
