@@ -1126,7 +1126,7 @@ class Flight(GeoVectorDataset):
 
         Parameters
         ----------
-        distance : ArrayOrFlight
+        distance : ArrayOrFloat
             Distance along flight path, [:math:`m`]
 
         Returns
