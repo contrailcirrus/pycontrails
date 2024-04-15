@@ -1119,7 +1119,7 @@ class Flight(GeoVectorDataset):
         np.signedinteger[Any] | npt.NDArray[np.signedinteger[Any]],
     ]:
         """
-        Convert distance along fligth path to a geodesic coordinates.
+        Convert distance along flight path to geodesic coordinates.
 
         Will return a tuple containing `(lat, lon, index)`, where index indicates which flight
         segment contains the returned coordinate.
