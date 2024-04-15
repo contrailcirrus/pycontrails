@@ -1116,7 +1116,7 @@ class Flight(GeoVectorDataset):
     def distance_to_coords(self: Flight, distance: ArrayOrFloat) -> tuple[
         ArrayOrFloat,
         ArrayOrFloat,
-        np.signedinteger[Any] | npt.NDArray[np.signedinteger[Any]],
+        np.intp | npt.NDArray[np.intp],
     ]:
         """
         Convert distance along flight path to geodesic coordinates.
