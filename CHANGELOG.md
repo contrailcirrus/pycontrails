@@ -3,10 +3,20 @@
 
 ## v0.50.2
 
+### Breaking changes
+
+- Replaces engine-uid `01P10IA024` with `04P10IA027` (superseded in the IACO EDB).
+
 ### Features
 
 - Adds `Flight.distance_to_coords` which takes in a distance along a flight trajectory in meters and returns geodesic coordinates.
 - Adds methods to `ps_operational_limits` to find the maximum and minimum mach numbers for a given set of operating conditions.
+- Updates ICAO aircraft engine emissions databank (EDB) from v28c to v29b.
+
+### Internals
+
+- New data for gaseous and nvPM emissions for PW812D, PW812GA, RR Trent 7000 with improved nvPM combustor
+- Update nvPM emissions for IAE V2530-A5, PW1500G and PW1900G
 
 ## v0.50.1
 
