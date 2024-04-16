@@ -38,8 +38,8 @@ def test_emissions_class_variables():
     assert emissions2.edb_engine_nvpm is emissions2.edb_engine_nvpm
 
     # Update if emissions data changes
-    assert len(emissions1.edb_engine_gaseous) == 557
-    assert len(emissions1.edb_engine_nvpm) == 178
+    assert len(emissions1.edb_engine_gaseous) == 595
+    assert len(emissions1.edb_engine_nvpm) == 214
 
     # Check that the gaseous engine UIDs are a superset of the nvPM engine UIDs in the EDB.
     # This logic is used in cocip_grid.calc_emissions
