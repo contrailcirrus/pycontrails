@@ -118,7 +118,7 @@ def max_available_thrust_coefficient(
     c_t_eta_b: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
     *,
-    buffer: float = 0.20,
+    buffer: float = 0.10,
 ) -> ArrayOrFloat:
     """
     Calculate maximum available thrust coefficient.
