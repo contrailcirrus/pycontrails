@@ -32,10 +32,7 @@ from pycontrails.core import cache, datalib, met_var
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib.ecmwf import variables as ecmwf_var
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
-from pycontrails.datalib.ecmwf.model_levels import (
-    MetviewTempfileHandler,
-    pressure_levels_at_model_levels,
-)
+from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.utils import dependencies, temp
 from pycontrails.utils.types import DatetimeLike
 
@@ -55,69 +52,6 @@ MODEL_LEVEL_VARIABLES = [
 LAST_STEP_1H = 96  # latest forecast step with 1 hour frequency
 LAST_STEP_3H = 144  # latest forecast step with 3 hour frequency
 LAST_STEP_6H = 240  # latest forecast step with 6 hour frequency
-
-
-def grib_to_dataset(
-    source: str, time: datetime, step: int, pressure_levels: list[int], variables: list[MetVariable]
-) -> xr.Dataset:
-    """Extract pressure-level dataset from retrieved model-level GRIB file.
-
-    Parameters
-    ----------
-    source : str
-        Path to retrieved GRIB file.
-    time : datetime
-        Time to extract from GRIB file.
-    step : int
-        Forecast steps corresponding to the time.
-    pressure_levels : list[int]:
-        List of pressure levels to interpolate data onto.
-    variables : list[MetVariable]
-        List of variables to extract from GRIB file.
-
-    Notes
-    -----
-    This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-    python bindings and binaries.
-    """
-    try:
-        import metview as mv
-    except ModuleNotFoundError as exc:
-        dependencies.raise_module_not_found_error(
-            "model_level.grib_to_dataset function",
-            package_name="metview",
-            module_not_found_error=exc,
-            extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
-        )
-    except ImportError as exc:
-        msg = "Failed to import metview"
-        raise ImportError(msg) from exc
-
-    # Read contents of GRIB file as metview Fieldset
-    LOG.debug("Opening GRIB file")
-    fs_ml = mv.read(source)
-
-    # Create new fieldset containing fields interpolated to pressure levels.
-    fs_pl = mv.Fieldset()
-    selection = dict(step=step)
-    lnsp = fs_ml.select(shortName="lnsp", **selection)
-    for var in variables:
-        LOG.debug(
-            f"Converting {var.short_name} at {time.strftime('%Y-%m-%d %H:%M:%S')}" f" (step {step})"
-        )
-
-        f_ml = fs_ml.select(shortName=var.short_name, **selection)
-        f_pl = mv.mvl_ml2hPa(lnsp, f_ml, pressure_levels)
-        fs_pl = mv.merge(fs_pl, f_pl)
-
-    # Create dataset
-    ds = fs_pl.to_dataset()
-
-    # Confirm dataset passes validation before returning
-    ds = ds.rename(isobaricInhPa="level", time="initialization_time")
-    ds = ds.rename(step="time").assign_coords(time=time).expand_dims("time")
-    breakpoint()
-    return MetDataset(ds).data
 
 
 class ModelLevelHRES(ECMWFAPI):
@@ -372,14 +306,7 @@ class ModelLevelHRES(ECMWFAPI):
 
         # will always submit a single MARS request since each forecast is a separate file on tape
         LOG.debug(f"Retrieving ERA5 data for times {times} from forecast {self.forecast_time}")
-
-        stack = contextlib.ExitStack()
-
-        if self.cleanup_metview_tempfiles:
-            stack.enter_context(MetviewTempfileHandler())
-
-        with stack:  # clean up after processing entire forecast
-            _download_convert_cache_handler(self, times)
+        _download_convert_cache_handler(self, times)
 
     @overrides
     def open_metdataset(
@@ -410,7 +337,6 @@ class ModelLevelHRES(ECMWFAPI):
 
     @overrides
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
-
         ds.attrs.update(
             provider="ECMWF", dataset="HRES", product="forecast", radiation_accumulated=True
         )
@@ -473,7 +399,7 @@ def _download_convert_cache_handler(
     dates and times in the list of specified times.
 
     After retrieval, this function processes the GRIB file
-    to produce the dataset specified by :param:`era5`.
+    to produce the dataset specified by :param:`hres`.
 
     Parameters
     ----------
@@ -481,7 +407,28 @@ def _download_convert_cache_handler(
         :class:`ModelLevelHRES` instance with specifications for processed dataset.
     times : list[datetime]
         Times to download in a single MARS request.
+
+    Notes
+    -----
+    This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+    python bindings and binaries.
+
+    The lifetime of the metview import must last until processed datasets are cached
+    to avoid premature deletion of metview temporary files.
     """
+    try:
+        import metview as mv
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            "model_level.grib_to_dataset function",
+            package_name="metview",
+            module_not_found_error=exc,
+            extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
+        )
+    except ImportError as exc:
+        msg = "Failed to import metview"
+        raise ImportError(msg) from exc
+
     stack = contextlib.ExitStack()
     request = hres._mars_request(times)
 
@@ -493,12 +440,31 @@ def _download_convert_cache_handler(
 
     with stack:
         if not hres.cache_grib or not hres.cachestore.exists(target):
-            if not hasattr(hres, "cds"):
+            if not hasattr(hres, "server"):
                 hres._set_server()
             hres.server.execute(request, target)
 
-        # reduce memory overhead by converting one timestep at a time
+        # Read contents of GRIB file as metview Fieldset
+        LOG.debug("Opening GRIB file")
+        fs_ml = mv.read(target)
+
+        # reduce memory overhead by cacheing one timestep at a time
         for time, step in zip(times, hres.get_forecast_steps(times)):
-            ds = grib_to_dataset(target, time, step, hres.pressure_levels, hres.variables)
+            fs_pl = mv.Fieldset()
+            selection = dict(step=step)
+            lnsp = fs_ml.select(shortName="lnsp", **selection)
+            for var in hres.variables:
+                LOG.debug(
+                    f"Converting {var.short_name} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                    + f" (step {step})"
+                )
+                f_ml = fs_ml.select(shortName=var.short_name, **selection)
+                f_pl = mv.mvl_ml2hPa(lnsp, f_ml, hres.pressure_levels)
+                fs_pl = mv.merge(fs_pl, f_pl)
+
+            # Create, validate, and cache dataset
+            ds = fs_pl.to_dataset()
+            ds = ds.rename(isobaricInhPa="level", time="initialization_time")
+            ds = ds.rename(step="time").assign_coords(time=time).expand_dims("time")
             ds.attrs["pycontrails_version"] = pycontrails.__version__
             hres.cache_dataset(ds)

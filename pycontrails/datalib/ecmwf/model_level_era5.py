@@ -43,10 +43,7 @@ from pycontrails.core import cache, datalib, met_var
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib.ecmwf import variables as ecmwf_var
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
-from pycontrails.datalib.ecmwf.model_levels import (
-    MetviewTempfileHandler,
-    pressure_levels_at_model_levels,
-)
+from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.utils import dependencies, temp
 
 MODEL_LEVEL_VARIABLES = [
@@ -63,81 +60,6 @@ MODEL_LEVEL_VARIABLES = [
 ]
 
 ALL_ENSEMBLE_MEMBERS = list(range(10))
-
-
-def grib_to_dataset(
-    source: str,
-    time: datetime,
-    pressure_levels: list[int],
-    variables: list[MetVariable],
-    ensemble_members: list[int] | None,
-) -> xr.Dataset:
-    """Extract pressure-level dataset from retrieved model-level GRIB file.
-
-    Parameters
-    ----------
-    source : str
-        Path to retrieved GRIB file.
-    time : datetime
-        Time to extract from GRIB file.
-    pressure_levels : list[int]:
-        List of pressure levels to interpolate data onto.
-    variables : list[MetVariable]
-        List of variables to extract from GRIB file.
-    ensemble_members : list[int], optional
-        List of ensemble members to extract from GRIB file.
-        If not provided, assumes that the GRIB file contains
-        only a single nominal member.
-
-    Notes
-    -----
-    This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-    python bindings and binaries.
-    """
-    try:
-        import metview as mv
-    except ModuleNotFoundError as exc:
-        dependencies.raise_module_not_found_error(
-            "model_level.grib_to_dataset function",
-            package_name="metview",
-            module_not_found_error=exc,
-            extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
-        )
-    except ImportError as exc:
-        msg = "Failed to import metview"
-        raise ImportError(msg) from exc
-
-    # Read contents of GRIB file as metview Fieldset
-    LOG.debug("Opening GRIB file")
-    fs_ml = mv.read(source)
-
-    # Create new fieldset containing fields interpolated to pressure levels.
-    fs_pl = mv.Fieldset()
-    dimensions = ensemble_members if ensemble_members else None
-    for ens in dimensions:
-        date = time.strftime("%Y%m%d")
-        t = time.strftime("%H%M")
-        selection = dict(date=date, time=t)
-        if ens:
-            selection |= dict(number=ens)
-
-        lnsp = fs_ml.select(shortName="lnsp", **selection)
-
-        for var in variables:
-            LOG.debug(
-                f"Converting {var.short_name} at {t}" + (f" (ensemble member {ens})" if ens else "")
-            )
-
-            f_ml = fs_ml.select(shortName=var.short_name, **selection)
-            f_pl = mv.mvl_ml2hPa(lnsp, f_ml, pressure_levels)
-            fs_pl = mv.merge(fs_pl, f_pl)
-
-    # Create dataset
-    ds = fs_pl.to_dataset()
-
-    # Confirm dataset passes validation before returning
-    ds = ds.rename(isobaricInhPa="level").expand_dims("time")
-    return MetDataset(ds).data
 
 
 class ModelLevelERA5(ECMWFAPI):
@@ -369,15 +291,8 @@ class ModelLevelERA5(ECMWFAPI):
 
         # retrieve and process data for each request
         LOG.debug(f"Retrieving ERA5 data for times {times} in {len(requests)} request(s)")
-
-        stack = contextlib.ExitStack()
-
-        if self.cleanup_metview_tempfiles:
-            stack.enter_context(MetviewTempfileHandler())
-
         for times_in_request in requests.values():
-            with stack:  # clean up after each iteration
-                _download_convert_cache_handler(self, times_in_request)
+            _download_convert_cache_handler(self, times_in_request)
 
     @overrides
     def open_metdataset(
@@ -421,42 +336,6 @@ class ModelLevelERA5(ECMWFAPI):
             dataset="ERA5",
             product=product,
         )
-
-    def _retrieve_grib(self, times: list[datetime], target: str) -> None:
-        """Download data for specified times in a single MARS request.
-
-        This function builds a MARS request and retrieves a single GRIB file.
-        Logic in the calling function ensures that all times will be contained
-        in a single file on tape in the MARS archive.
-
-        Because MARS requests treat dates and times as separate dimensions,
-        retrieved data will include the Cartesian product of all unique
-        dates and times in the list of specified times.
-
-        Parameters
-        ----------
-        times : list[datetime]
-            Times to download in a single MARS request.
-        target: str
-            Location to save downloaded GRIB file.
-        """
-
-    def _process_grib(self, times: list[datetime], target: str):
-        """Process model-level GRIB file and cache results as netCDF files.
-
-        Parameters
-        ----------
-        times : list[datetime]
-            List of timesteps to process
-
-        target : str
-            Path to GRIB file to process
-
-        Notes
-        -----
-        The dependency on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-        is limited to this method.
-        """
 
     def _mars_request(self, times: list[datetime]) -> dict[str, str]:
         """Generate MARS request for specific list of times.
@@ -529,7 +408,28 @@ def _download_convert_cache_handler(
         :class:`ModelLevelERA5` instance with specifications for processed dataset.
     times : list[datetime]
         Times to download in a single MARS request.
+
+    Notes
+    -----
+    This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+    python bindings and binaries.
+
+    The lifetime of the metview import must last until processed datasets are cached
+    to avoid premature deletion of metview temporary files.
     """
+    try:
+        import metview as mv
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            "model_level.grib_to_dataset function",
+            package_name="metview",
+            module_not_found_error=exc,
+            extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
+        )
+    except ImportError as exc:
+        msg = "Failed to import metview"
+        raise ImportError(msg) from exc
+
     stack = contextlib.ExitStack()
     request = era5._mars_request(times)
 
@@ -546,11 +446,34 @@ def _download_convert_cache_handler(
                 era5._set_cds()
             era5.cds.retrieve("reanalysis-era5-complete", request, target)
 
-        # reduce memory overhead by converting one timestep at a time
+        # Read contents of GRIB file as metview Fieldset
+        LOG.debug("Opening GRIB file")
+        fs_ml = mv.read(target)
+
+        # reduce memory overhead by cacheing one timestep at a time
         for time in times:
-            ds = grib_to_dataset(
-                target, time, era5.pressure_levels, era5.variables, era5.ensemble_members
-            )
+            fs_pl = mv.Fieldset()
+            dimensions = era5.ensemble_members if era5.ensemble_members else [None]
+            for ens in dimensions:
+                date = time.strftime("%Y%m%d")
+                t = time.strftime("%H%M")
+                selection = dict(date=date, time=t)
+                if ens:
+                    selection |= dict(number=ens)
+
+                lnsp = fs_ml.select(shortName="lnsp", **selection)
+                for var in era5.variables:
+                    LOG.debug(
+                        f"Converting {var.short_name} at {t}"
+                        + (f" (ensemble member {ens})" if ens else "")
+                    )
+                    f_ml = fs_ml.select(shortName=var.short_name, **selection)
+                    f_pl = mv.mvl_ml2hPa(lnsp, f_ml, era5.pressure_levels)
+                    fs_pl = mv.merge(fs_pl, f_pl)
+
+            # Create, validate, and cache dataset
+            ds = fs_pl.to_dataset()
+            ds = ds.rename(isobaricInhPa="level").expand_dims("time")
             ds.attrs["pycontrails_version"] = pycontrails.__version__
             era5.cache_dataset(ds)
 

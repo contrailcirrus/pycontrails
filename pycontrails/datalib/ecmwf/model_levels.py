@@ -6,8 +6,6 @@ This module requires the following additional dependency:
 """
 
 import functools
-import pathlib
-import tempfile
 
 import pandas as pd
 
@@ -61,33 +59,3 @@ def _read_model_level_dataframe() -> pd.DataFrame:
                 ),
             )
         raise
-
-
-class MetviewTempfileHandler:
-    """Context manager for handling cleanup metview temporary files.
-
-    This context manager will attempt to delete all ``TEMPORARY_DIRECTORY/tmp*.grib``
-    files created during the lifetime of the context manager. The implementation
-    is brittle and may not work on all systems, so modules using it should include
-    an option to disable it.
-    """
-
-    def __enter__(self) -> None:
-        self.existing_grib_files = MetviewTempfileHandler.get_grib_files()
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore[no-untyped-def]
-        new_grib_files = MetviewTempfileHandler.get_grib_files().difference(
-            self.existing_grib_files
-        )
-        for f in new_grib_files:
-            f.unlink(missing_ok=True)
-
-    @staticmethod
-    def get_grib_files() -> set[pathlib.Path]:
-        """Get all temporary GRIB files.
-
-        Current implementation returns all files of the form tmp*.grib
-        inside the temporary directory returned by :py:func:`tempfile.gettempdir`.
-        """
-        tmp = pathlib.Path(tempfile.gettempdir())
-        return set(tmp.glob("tmp*.grib"))
