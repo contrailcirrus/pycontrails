@@ -57,6 +57,9 @@ ECMWF
     datalib.ecmwf.ERA5
     datalib.ecmwf.HRES
     datalib.ecmwf.hres.get_forecast_filename
+    datalib.ecmwf.model_levels
+    datalib.ecmwf.model_level_era5
+    datalib.ecmwf.model_level_hres
     datalib.ecmwf.IFS
     datalib.ecmwf.variables
 
