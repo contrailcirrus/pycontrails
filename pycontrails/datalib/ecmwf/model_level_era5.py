@@ -228,15 +228,16 @@ class ModelLevelERA5(ECMWFAPI):
         return MODEL_LEVEL_VARIABLES
 
     @property
-    def single_level_variables(self) -> None:
+    def single_level_variables(self) -> list[MetVariable]:
         """ECMWF single-level parameters available on model levels.
 
         Returns
         -------
-        None
+        list[MetVariable]
+            Always returns an empty list.
             To access single-level variables, used :class:`pycontrails.datalib.ecmwf.ERA5`.
         """
-        return None
+        return []
 
     @property
     def dataset(self) -> str:
@@ -268,7 +269,7 @@ class ModelLevelERA5(ECMWFAPI):
             Path to local ERA5 data file
         """
         if self.cachestore is None:
-            msg = "Attribute self.cachestore must be defined to create cache path"
+            msg = "Cachestore is required to create cache path"
             raise ValueError(msg)
 
         string = (
@@ -351,26 +352,33 @@ class ModelLevelERA5(ECMWFAPI):
         ----------
         times : list[datetime]
             Times included in MARS request.
+
+        Returns
+        -------
+        dict[str, str]:
+            MARS request for submission to Copernicus CDS.
         """
-        dates = set(t.strftime("%Y-%m-%d") for t in times)
-        times = set(t.strftime("%H:%M:%S") for t in times)
+        unique_dates = set(t.strftime("%Y-%m-%d") for t in times)
+        unique_times = set(t.strftime("%H:%M:%S") for t in times)
         # param 152 = log surface pressure, needed for metview level conversion
         grib_params = set(self.variable_ecmwfids + [152])
         common = {
             "class": "ea",
-            "date": "/".join(sorted(dates)),
+            "date": "/".join(sorted(unique_dates)),
             "expver": "1",
             "levelist": "/".join(str(lev) for lev in sorted(self.levels)),
             "levtype": "ml",
             "param": "/".join(str(p) for p in sorted(grib_params)),
-            "time": "/".join(sorted(times)),
+            "time": "/".join(sorted(unique_times)),
             "type": "an",
             "grid": f"{self.grid}/{self.grid}",
         }
         if self.product_type == "reanalysis":
             specific = {"stream": "oper"}
-        else:
-            specific = {"stream": "enda", "number": "/".join(str(n) for n in self.ensemble_members)}
+        elif self.product_type == "ensemble_members":
+            specific = {"stream": "enda"}
+            if self.ensemble_members is not None:  # always defined; checked to satisfy mypy
+                specific |= {"number": "/".join(str(n) for n in self.ensemble_members)}
         return common | specific
 
     def _set_cds(self) -> None:
@@ -437,6 +445,10 @@ def _download_convert_cache_handler(
         msg = "Failed to import metview"
         raise ImportError(msg) from exc
 
+    if era5.cachestore is None:
+        msg = "Cachestore is required to download and cache data"
+        raise ValueError(msg)
+
     stack = contextlib.ExitStack()
     request = era5._mars_request(times)
 
@@ -460,13 +472,13 @@ def _download_convert_cache_handler(
         # reduce memory overhead by cacheing one timestep at a time
         for time in times:
             fs_pl = mv.Fieldset()
-            dimensions = era5.ensemble_members if era5.ensemble_members else [None]
+            dimensions = era5.ensemble_members if era5.ensemble_members else [-1]
             for ens in dimensions:
                 date = time.strftime("%Y%m%d")
                 t = time.strftime("%H%M")
                 selection = dict(date=date, time=t)
-                if ens:
-                    selection |= dict(number=ens)
+                if ens >= 0:
+                    selection |= dict(number=str(ens))
 
                 lnsp = fs_ml.select(shortName="lnsp", **selection)
                 for var in era5.variables:
