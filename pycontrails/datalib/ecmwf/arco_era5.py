@@ -24,7 +24,10 @@ import dataclasses
 import datetime
 import hashlib
 import multiprocessing
+import pathlib
+import tempfile
 import warnings
+from collections.abc import Iterable
 from typing import Any
 
 import xarray as xr
@@ -34,10 +37,7 @@ from pycontrails.core import cache, datalib, met_var
 from pycontrails.core.met import MetDataset
 from pycontrails.datalib.ecmwf import common as ecmwf_common
 from pycontrails.datalib.ecmwf import variables as ecmwf_variables
-from pycontrails.datalib.ecmwf.model_levels import (
-    MetviewTempfileHandler,
-    pressure_levels_at_model_levels,
-)
+from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.utils import dependencies
 
 try:
@@ -434,7 +434,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
         stack = contextlib.ExitStack()
         if self.cleanup_metview_tempfiles:
-            stack.enter_context(MetviewTempfileHandler())
+            stack.enter_context(_MetviewTempfileHandler())
 
         n_jobs = min(self.n_jobs, len(times))
 
@@ -508,3 +508,20 @@ def _download_convert_cache_handler(arco: ARCOERA5, t: datetime.datetime) -> Non
     """Download, convert, and cache ARCO ERA5 model level data."""
     ds = open_arco_era5_model_level_data(t, arco.variables, arco.pressure_levels, arco.grid)
     arco.cache_dataset(ds)
+
+
+def _get_grib_files() -> Iterable[pathlib.Path]:
+    """Get all temporary GRIB files."""
+    tmp = pathlib.Path(tempfile.gettempdir())
+    return tmp.glob("tmp*.grib")
+
+
+class _MetviewTempfileHandler:
+    def __enter__(self) -> None:
+        self.existing_grib_files = set(_get_grib_files())
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore[no-untyped-def]
+        new_grib_files = _get_grib_files()
+        for f in new_grib_files:
+            if f not in self.existing_grib_files:
+                f.unlink(missing_ok=True)
