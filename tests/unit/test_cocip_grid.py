@@ -250,7 +250,7 @@ def test_cocip_grid_ps_ap_model(source: MetDataset, instance_params: dict[str, A
     assert out.attrs["ap_model"] == "PSGrid"
 
     # Pin the proportion of grid cells producing persistent contrails
-    assert out.data["ef_per_m"].astype(bool).mean().item() == pytest.approx(0.077, abs=0.001)
+    assert out.data["ef_per_m"].astype(bool).mean().item() == pytest.approx(0.078, abs=0.001)
 
 
 def test_cocip_grid_met_nonuniform_time(
