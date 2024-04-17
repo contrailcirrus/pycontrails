@@ -9,6 +9,7 @@
 
 ### Features
 
+- Adds support for the `E190` aircraft type in the PS model
 - Adds `Flight.distance_to_coords` which takes in a distance along a flight trajectory in meters and returns geodesic coordinates.
 - Adds methods to `ps_operational_limits` to find the maximum and minimum mach numbers for a given set of operating conditions.
 - Updates ICAO aircraft engine emissions databank (EDB) from v28c to v29b.
@@ -17,6 +18,7 @@
 
 - New data for gaseous and nvPM emissions for PW812D, PW812GA, RR Trent 7000 with improved nvPM combustor
 - Update nvPM emissions for IAE V2530-A5, PW1500G and PW1900G
+- Update PS model coeffiencts to match the latest version provided by Ian Poll
 
 ## v0.50.1
 
