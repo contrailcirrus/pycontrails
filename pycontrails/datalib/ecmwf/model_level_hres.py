@@ -57,13 +57,12 @@ LAST_STEP_6H = 240  # latest forecast step with 6 hour frequency
 class ModelLevelHRES(ECMWFAPI):
     """Class to support model-level HRES data access, download, and organization.
 
-    The interface is similar to :class:`HRES`, which downloads pressure-level data
-    with much lower vertical resolution and single-level data. Note, however,
-    that only a subset of the pressure-level data available through the operational
+    The interface is similar to :class:`pycontrails.datalib.ecmwf.HRES`,
+    which downloads pressure-level data with much lower vertical resolution and single-level data.
+    Note, however, that only a subset of the pressure-level data available through the operational
     archive is available as model-level data. As a consequence, this interface only
-    supports access to nominal HRES forecasts (corresponding to
-    ``stream = "oper"`` and ``field_type = "fc"`` in :class:`HRES`) initialized
-    at 00z and 12z.
+    supports access to nominal HRES forecasts (corresponding to ``stream = "oper"`` and
+    ``field_type = "fc"`` in :class:`pycontrails.datalib.ecmwf.HRES`) initialized at 00z and 12z.
 
     Requires account with ECMWF and API key.
 
@@ -87,7 +86,7 @@ class ModelLevelHRES(ECMWFAPI):
     time : datalib.TimeInput
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
-        (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
+        (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         All times will be downloaded in a single GRIB file, which
         ensures that exactly one request is submitted per file on tape accessed.
@@ -98,17 +97,13 @@ class ModelLevelHRES(ECMWFAPI):
         Variable name (i.e. "t", "air_temperature", ["air_temperature, specific_humidity"])
     pressure_levels : datalib.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar).
-        To download surface-level parameters, use :class:`ERA5`.
+        To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.HRES`.
         Defaults to pressure levels that match model levels at a nominal surface pressure.
     timestep_freq : str, optional
         Manually set the timestep interval within the bounds defined by :attr:`time`.
-        Supports any string that can be passed to `pd.date_range(freq=...)`.
+        Supports any string that can be passed to ``pandas.date_range(freq=...)``.
         By default, this is set to the highest frequency that can supported the requested
         time range ("1h" out to 96 hours, "3h" out to 144 hours, and "6h" out to 240 hours)
-    product_type : str, optional
-        Product type, one of "reanalysis" and "ensemble_members". Unlike :class:`ERA5`, this
-        class does not support direct access to the ensemble mean and spread, which are not
-        available on model levels.
     grid : float, optional
         Specify latitude/longitude grid spacing in data.
         By default, this is set to 0.1.
@@ -118,15 +113,10 @@ class ModelLevelHRES(ECMWFAPI):
     levels : list[int], optional
         Specify ECMWF model levels to include in MARS requests.
         By default, this is set to include all model levels.
-    cachestore : cache.CacheStore | None, optional
+    cachestore : CacheStore | None, optional
         Cache data store for staging processed netCDF files.
-        Defaults to :class:`cache.DiskCacheStore`.
+        Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
-    n_jobs : int, optional
-        EXPERIMENTAL: Number of parallel jobs to use for downloading data. By default, 1.
-    cleanup_metview_tempfiles : bool, optional
-        If True, cleanup all ``TEMP_DIRECTORY/tmp*.grib`` files. Implementation is brittle and may
-        not work on all systems. By default, True.
     cache_grib: bool, optional
         If True, cache downloaded GRIB files rather than storing them in a temporary file.
         By default, False.
@@ -151,7 +141,6 @@ class ModelLevelHRES(ECMWFAPI):
         levels: list[int] | None = None,
         ensemble_members: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
-        cleanup_metview_tempfiles: bool = True,
         cache_grib: bool = False,
         url: str | None = None,
         key: str | None = None,
@@ -160,7 +149,6 @@ class ModelLevelHRES(ECMWFAPI):
         # Parse and set each parameter to the instance
 
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
-        self.cleanup_metview_tempfiles = cleanup_metview_tempfiles
         self.cache_grib = cache_grib
 
         self.paths = None
@@ -225,7 +213,7 @@ class ModelLevelHRES(ECMWFAPI):
         if pressure_levels is None:
             pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
         self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
-        self.variables = datalib.parse_variables(variables, self.model_level_variables)
+        self.variables = datalib.parse_variables(variables, self.pressure_level_variables)
 
     def __repr__(self) -> str:
         base = super().__repr__()
@@ -258,15 +246,26 @@ class ModelLevelHRES(ECMWFAPI):
         return [time_to_step(t) for t in times]
 
     @property
-    def model_level_variables(self) -> list[MetVariable]:
-        """ECMWF model level parameters.
+    def pressure_level_variables(self) -> list[MetVariable]:
+        """ECMWF pressure level parameters available on model levels.
 
         Returns
         -------
-        list[MetVariable] | None
+        list[MetVariable]
             List of MetVariable available in datasource
         """
         return MODEL_LEVEL_VARIABLES
+
+    @property
+    def single_level_variables(self) -> None:
+        """ECMWF single-level parameters available on model levels.
+
+        Returns
+        -------
+        None
+            To access single-level variables, use :class:`pycontrails.datalib.ecmwf.HRES`.
+        """
+        return None
 
     @overrides
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:

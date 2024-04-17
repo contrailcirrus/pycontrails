@@ -7,8 +7,9 @@ This module supports
 - Local caching of processed netCDF files.
 - Opening processed and cached files as a :class:`pycontrails.MetDataset` object.
 
-Consider using :class:`ARCOERA5` to access model-level data from the nominal ERA5
-reanalysis between 1959 and 2022. :class:`ARCOERA5` accesses data through Google's
+Consider using :class:`pycontrails.datalib.ecmwf.ARCOERA5`
+to access model-level data from the nominal ERA5 reanalysis between 1959 and 2022.
+:class:`pycontrails.datalib.ecmwf.ARCOERA5` accesses data through Google's
 `Analysis-Ready, Cloud Optimized ERA5 dataset <https://cloud.google.com/storage/docs/public-datasets/era5>`_
 and has lower latency than this module, which retrieves data from the
 `Copernicus Climate Data Store <https://cds.climate.copernicus.eu/#!/home>`_.
@@ -65,7 +66,7 @@ ALL_ENSEMBLE_MEMBERS = list(range(10))
 class ModelLevelERA5(ECMWFAPI):
     """Class to support model-level ERA5 data access, download, and organization.
 
-    The interface is similar to :class:`ERA5`, which downloads pressure-level
+    The interface is similar to :class:`pycontrails.datalib.ecmwf.ERA5`, which downloads pressure-level
     with much lower vertical resolution.
 
     Requires account with
@@ -88,7 +89,7 @@ class ModelLevelERA5(ECMWFAPI):
     time : datalib.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
-        (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
+        (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         GRIB files will be downloaded from CDS in chunks no larger than 1 month
         for the nominal reanalysis and no larger than 1 day for ensemble members.
@@ -98,16 +99,16 @@ class ModelLevelERA5(ECMWFAPI):
         Variable name (i.e. "t", "air_temperature", ["air_temperature, specific_humidity"])
     pressure_levels : datalib.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar).
-        To download surface-level parameters, use :class:`ERA5`.
+        To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.ERA5`.
         Defaults to pressure levels that match model levels at a nominal surface pressure.
     timestep_freq : str, optional
         Manually set the timestep interval within the bounds defined by :attr:`time`.
-        Supports any string that can be passed to `pd.date_range(freq=...)`.
+        Supports any string that can be passed to ``pd.date_range(freq=...)``.
         By default, this is set to "1h" for reanalysis products and "3h" for ensemble products.
     product_type : str, optional
-        Product type, one of "reanalysis" and "ensemble_members". Unlike :class:`ERA5`, this
-        class does not support direct access to the ensemble mean and spread, which are not
-        available on model levels.
+        Product type, one of "reanalysis" and "ensemble_members". Unlike
+        :class:`pycontrails.datalib.ecmwf.ERA5`, this class does not support direct access to the
+        ensemble mean and spread, which are not available on model levels.
     grid : float, optional
         Specify latitude/longitude grid spacing in data.
         By default, this is set to 0.25 for reanalysis products and 0.5 for ensemble products.
@@ -120,11 +121,8 @@ class ModelLevelERA5(ECMWFAPI):
         By default, includes every available ensemble member.
     cachestore : cache.CacheStore | None, optional
         Cache data store for staging processed netCDF files.
-        Defaults to :class:`cache.DiskCacheStore`.
+        Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
-    cleanup_metview_tempfiles : bool, optional
-        If True, cleanup all ``TEMP_DIRECTORY/tmp*.grib`` files. Implementation is brittle and may
-        not work on all systems. By default, True.
     cache_grib: bool, optional
         If True, cache downloaded GRIB files rather than storing them in a temporary file.
         By default, False.
@@ -148,14 +146,12 @@ class ModelLevelERA5(ECMWFAPI):
         ensemble_members: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
         n_jobs: int = 1,
-        cleanup_metview_tempfiles: bool = True,
         cache_grib: bool = False,
         url: str | None = None,
         key: str | None = None,
     ) -> None:
 
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
-        self.cleanup_metview_tempfiles = cleanup_metview_tempfiles
         self.cache_grib = cache_grib
 
         self.paths = None
@@ -214,22 +210,33 @@ class ModelLevelERA5(ECMWFAPI):
         if pressure_levels is None:
             pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
         self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
-        self.variables = datalib.parse_variables(variables, self.model_level_variables)
+        self.variables = datalib.parse_variables(variables, self.pressure_level_variables)
 
     def __repr__(self) -> str:
         base = super().__repr__()
         return f"{base}\n\tDataset: {self.dataset}\n\tProduct type: {self.product_type}"
 
     @property
-    def model_level_variables(self) -> list[MetVariable]:
-        """ECMWF model level parameters.
+    def pressure_level_variables(self) -> list[MetVariable]:
+        """ECMWF pressure level parameters available on model levels.
 
         Returns
         -------
-        list[MetVariable] | None
+        list[MetVariable]
             List of MetVariable available in datasource
         """
         return MODEL_LEVEL_VARIABLES
+
+    @property
+    def single_level_variables(self) -> None:
+        """ECMWF single-level parameters available on model levels.
+
+        Returns
+        -------
+        None
+            To access single-level variables, used :class:`pycontrails.datalib.ecmwf.ERA5`.
+        """
+        return None
 
     @property
     def dataset(self) -> str:
