@@ -1,6 +1,17 @@
 
 # Changelog
 
+## v0.50.3
+
+### Features
+
+- Add `ModelLevelERA5` and `ModelLevelHRES` interfaces for accessing ERA5 and HRES data on model levels.
+- Update [ECMWF tutorial notebook](https://py.contrails.org/notebooks/ECMWF.html) with instructions for using model-level datalibs.
+
+### Internals
+
+- Extract model-level utilities in `ARCOERA5` to their own module for reuse in `ModelLevelERA5` and `ModelLevelHRES`.
+
 ## v0.50.2
 
 ### Breaking changes
