@@ -257,15 +257,16 @@ class ModelLevelHRES(ECMWFAPI):
         return MODEL_LEVEL_VARIABLES
 
     @property
-    def single_level_variables(self) -> None:
+    def single_level_variables(self) -> list[MetVariable]:
         """ECMWF single-level parameters available on model levels.
 
         Returns
         -------
-        None
+        list[MetVariable]
+            Always returns an empty list.
             To access single-level variables, use :class:`pycontrails.datalib.ecmwf.HRES`.
         """
-        return None
+        return []
 
     @overrides
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:
@@ -284,7 +285,7 @@ class ModelLevelHRES(ECMWFAPI):
             Path to local HRES data file
         """
         if self.cachestore is None:
-            msg = "Attribute self.cachestore must be defined to create cache path"
+            msg = "Cachestore is required to create cache path"
             raise ValueError(msg)
 
         string = (
@@ -340,13 +341,18 @@ class ModelLevelHRES(ECMWFAPI):
             provider="ECMWF", dataset="HRES", product="forecast", radiation_accumulated=True
         )
 
-    def _mars_request(self, times: list[datetime]) -> dict[str, str]:
+    def _mars_request(self, times: list[datetime]) -> str:
         """Generate MARS request for specific list of times.
 
         Parameters
         ----------
         times : list[datetime]
             Times included in MARS request.
+
+        Returns
+        -------
+        str
+            MARS request for submission to ECMWF API.
         """
         date = self.forecast_time.strftime("%Y-%m-%d")
         time = self.forecast_time.strftime("%H:%M:%S")
@@ -427,6 +433,10 @@ def _download_convert_cache_handler(
     except ImportError as exc:
         msg = "Failed to import metview"
         raise ImportError(msg) from exc
+
+    if hres.cachestore is None:
+        msg = "Cachestore is required to download and cache data"
+        raise ValueError(msg)
 
     stack = contextlib.ExitStack()
     request = hres._mars_request(times)
