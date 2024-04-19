@@ -10,7 +10,9 @@
 
 ### Internals
 
+- Create static copy of dataframe for determining pressure at ECMWF model levels.
 - Extract model-level utilities in `ARCOERA5` to their own module for reuse in `ModelLevelERA5` and `ModelLevelHRES`.
+- Update Makefile so `make doctest` and `make nb-test` use data cached by `make ensure-era5-cached` when run locally.
 
 ## v0.50.2
 
