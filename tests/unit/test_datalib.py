@@ -100,6 +100,24 @@ def test_parse_timesteps_frequency_input() -> None:
     assert ts == [datetime(2019, 5, 31, 0, 29), datetime(2019, 5, 31, 1, 40)]
 
 
+@pytest.mark.parametrize(("freq", "datasource_freq"), [("1h", "1h"), ("2h", "1h"), ("3h", "1h")])
+def test_validate_timestep_frequency_valid(freq: str, datasource_freq: str) -> None:
+    """Test timestep frequency validation with valid frequencies."""
+    assert datalib.validate_timestep_freq(freq, datasource_freq)
+
+
+@pytest.mark.parametrize(
+    ("freq", "datasource_freq"),
+    [
+        ("90min", "1h"),
+        ("30min", "1h"),
+    ],
+)
+def test_validate_timestep_frequency_invalid(freq: str, datasource_freq: str) -> None:
+    """Test timestep frequency validation with invalid frequencies."""
+    assert not datalib.validate_timestep_freq(freq, datasource_freq)
+
+
 def test_parse_pressure_levels() -> None:
     """Test pressure level parsing."""
 
