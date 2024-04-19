@@ -165,7 +165,7 @@ cache-era5-gcp: ensure-era5-cached
 	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
 
 doctest: ensure-era5-cached ensure-gcp-credentials
-	pytest --doctest-modules \
+	PYCONTRAILS_CACHE_DIR="$(CURDIR)/.doc-test-cache" pytest --doctest-modules \
 		--ignore-glob=pycontrails/ext/* \
 		pycontrails -vv
 
@@ -201,7 +201,7 @@ nb-clean-check:
 #   - Install eccodes on Github Action so GFS notebook can run
 #   - Provide meteorology data for `run-cocip-on-flight` tutorial
 nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
-	python -m pytest --nbval-lax \
+	PYCONTRAILS_CACHE_DIR="$(CURDIR)/.doc-test-cache" python -m pytest --nbval-lax \
 		--ignore=docs/integrations/ACCF.ipynb \
 		--ignore=docs/notebooks/specific-humidity-interpolation.ipynb \
 		--ignore=docs/notebooks/GFS.ipynb \
