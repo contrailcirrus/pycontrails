@@ -11,7 +11,6 @@ This module supports:
 This module requires the following additional dependencies:
 
 - `metview (binaries and python bindings) <https://metview.readthedocs.io/en/latest/python.html>`_
-- `lxml <https://lxml.de/>`_
 - `gcsfs <https://gcsfs.readthedocs.io/en/latest/>`_
 - `zarr <https://zarr.readthedocs.io/en/stable/>`_
 
