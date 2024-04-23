@@ -256,7 +256,7 @@ class ModelLevelERA5(ECMWFAPI):
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:
         """Return cachepath to local ERA5 data file based on datetime.
 
-        This uniquely defines a cached data file ith class parameters.
+        This uniquely defines a cached data file with class parameters.
 
         Parameters
         ----------
