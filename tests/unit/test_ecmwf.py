@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
+from typing import TypeVar
 
 import numpy as np
 import pandas as pd
@@ -14,10 +15,12 @@ from pycontrails.datalib.ecmwf import ECMWF_VARIABLES, ERA5, HRES, ModelLevelERA
 from pycontrails.datalib.ecmwf.hres import get_forecast_filename
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 
-AnyERA5DatalibClass = type[ERA5] | type[ModelLevelERA5]
-AnyHRESDatalibClass = type[HRES] | type[ModelLevelHRES]
-AnyModelLevelDatalibClass = type[ModelLevelERA5] | type[ModelLevelHRES]
-AnyECMWFDatalibClass = AnyERA5DatalibClass | AnyHRESDatalibClass
+AnyERA5DatalibClass = TypeVar("AnyERA5DatalibClass", type[ERA5], type[ModelLevelERA5])
+AnyHRESDatalibClass = TypeVar("AnyHRESDatalibClass", type[HRES], type[ModelLevelHRES])
+AnyModelLevelDatalibClass = TypeVar(
+    "AnyModelLevelDatalibClass", type[ModelLevelERA5], type[ModelLevelHRES]
+)
+AnyECMWFDatalibClass = TypeVar("AnyECMWFDatalibClass", AnyERA5DatalibClass, AnyHRESDatalibClass)
 
 
 def test_environ_keys() -> None:
