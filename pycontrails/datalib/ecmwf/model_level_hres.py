@@ -163,7 +163,7 @@ class ModelLevelHRES(ECMWFAPI):
             grid_min = 0.1
             if grid < grid_min:
                 msg = (
-                    f"The smallest resolution available is {grid_min} degrees. "
+                    f"The highest resolution available is {grid_min} degrees. "
                     f"Your downloaded data will have resolution {grid}, but it is a "
                     f"reinterpolation of the {grid_min} degree data. The same interpolation can be "
                     "achieved directly with xarray."
@@ -184,7 +184,7 @@ class ModelLevelHRES(ECMWFAPI):
         else:
             forecast_time_pd = pd.to_datetime(forecast_time)
             if (hour := forecast_time_pd.hour) % 12:
-                msg = f"Forecast hour must be one one of 00 or 12 but is {hour:02d}."
+                msg = f"Forecast hour must be one of 00 or 12 but is {hour:02d}."
                 raise ValueError(msg)
             self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 12)
 
@@ -210,6 +210,10 @@ class ModelLevelHRES(ECMWFAPI):
             raise ValueError(msg)
 
         self.timesteps = datalib.parse_timesteps(time, freq=timestep_freq)
+        if self.step_offset < 0:
+            msg = f"Selected forecast time {self.forecast_time} is after first timestep."
+            raise ValueError(msg)
+
         if pressure_levels is None:
             pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
         self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
@@ -217,7 +221,13 @@ class ModelLevelHRES(ECMWFAPI):
 
     def __repr__(self) -> str:
         base = super().__repr__()
-        return f"{base}\n\tstream: 'oper'\n\tfield type: 'fc'"
+        return "\n\t".join(
+            [
+                base,
+                f"Forecast time: {getattr(self, 'forecast_time', '')}",
+                f"Steps: {getattr(self, 'steps', '')}",
+            ]
+        )
 
     def get_forecast_steps(self, times: list[datetime]) -> list[int]:
         """Convert list of times to list of forecast steps.
@@ -246,6 +256,28 @@ class ModelLevelHRES(ECMWFAPI):
         return [time_to_step(t) for t in times]
 
     @property
+    def step_offset(self) -> int:
+        """Difference between :attr:`forecast_time` and first timestep.
+
+        Returns
+        -------
+        int
+            Number of steps to offset in order to retrieve data starting from input time.
+        """
+        return self.get_forecast_steps([self.timesteps[0]])[0]
+
+    @property
+    def steps(self) -> list[int]:
+        """Forecast steps from :attr:`forecast_time` corresponding within input :attr:`time`.
+
+        Returns
+        -------
+        list[int]
+            List of forecast steps relative to :attr:`forecast_time`
+        """
+        return self.get_forecast_steps(self.timesteps)
+
+    @property
     def pressure_level_variables(self) -> list[MetVariable]:
         """ECMWF pressure level parameters available on model levels.
 
@@ -270,9 +302,9 @@ class ModelLevelHRES(ECMWFAPI):
 
     @overrides
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:
-        """Return cachepath to local ERA5 data file based on datetime.
+        """Return cachepath to local HRES data file based on datetime.
 
-        This uniquely defines a cached data file ith class parameters.
+        This uniquely defines a cached data file with class parameters.
 
         Parameters
         ----------
@@ -341,7 +373,7 @@ class ModelLevelHRES(ECMWFAPI):
             provider="ECMWF", dataset="HRES", product="forecast", radiation_accumulated=True
         )
 
-    def _mars_request(self, times: list[datetime]) -> str:
+    def mars_request(self, times: list[datetime]) -> str:
         """Generate MARS request for specific list of times.
 
         Parameters
@@ -439,7 +471,7 @@ def _download_convert_cache_handler(
         raise ValueError(msg)
 
     stack = contextlib.ExitStack()
-    request = hres._mars_request(times)
+    request = hres.mars_request(times)
 
     if not hres.cache_grib:
         target = stack.enter_context(temp.temp_file())
