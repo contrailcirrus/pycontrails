@@ -190,6 +190,25 @@ def test_model_level_single_level_variables(datalib: AnyModelLevelDatalibClass) 
     assert dl.single_level_variables == []
 
 
+@pytest.mark.parametrize("datalib", [ModelLevelERA5, ModelLevelHRES])
+def test_model_level_open_metdataset_errors(
+    datalib: AnyModelLevelDatalibClass, met_ecmwf_pl_path: str
+) -> None:
+    """Test open_metdataset error handing."""
+    dl = datalib(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
+    ds = xr.open_dataset(met_ecmwf_pl_path)
+    with pytest.raises(ValueError, match="Parameter 'dataset' is not supported"):
+        dl.open_metdataset(dataset=ds)
+
+    dl = datalib(
+        time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
+        variables=["t", "q"],
+    )
+    dl.cachestore = None
+    with pytest.raises(ValueError, match="Cachestore is required"):
+        dl.open_metdataset()
+
+
 ##################################################
 # ERA5 datalibs (pressure levels and model levels)
 ##################################################
@@ -223,6 +242,42 @@ def test_time_input_two_times_era5_ensemble(datalib: AnyERA5DatalibClass) -> Non
         datetime(2019, 5, 31, 3),
         datetime(2019, 5, 31, 6),
     ]
+
+
+@pytest.mark.parametrize("datalib", [ERA5, ModelLevelERA5])
+@pytest.mark.parametrize(
+    ("product", "grid", "expected", "warn"),
+    [
+        ("reanalysis", None, 0.25, False),
+        ("reanalysis", 0.1, 0.1, True),
+        ("reanalysis", 1.0, 1.0, False),
+        ("ensemble_members", None, 0.5, False),
+        ("ensemble_members", 0.1, 0.1, True),
+        ("ensemble_members", 1.0, 1.0, False),
+    ],
+)
+def test_era5_grid(
+    datalib: AnyERA5DatalibClass, product: str, grid: float, expected: float, warn: bool
+) -> None:
+    """Test horizontal resolution."""
+    if warn:
+        with pytest.warns(UserWarning, match="The highest resolution available"):
+            dl = datalib(
+                time=datetime(2000, 1, 1),
+                variables="vo",
+                pressure_levels=[200],
+                product_type=product,
+                grid=grid,
+            )
+    else:
+        dl = datalib(
+            time=datetime(2000, 1, 1),
+            variables="vo",
+            pressure_levels=[200],
+            product_type=product,
+            grid=grid,
+        )
+    assert dl.grid == expected
 
 
 #############################
@@ -572,6 +627,209 @@ def test_ERA5_met_source_open_metdataset(met_ecmwf_pl_path: str) -> None:
     assert mds.product_attr == "reanalysis"
 
 
+##########################
+# ERA5 model-level datalib
+##########################
+
+
+def test_model_level_era5_repr() -> None:
+    """Test model level ERA5 repr."""
+    era5 = ModelLevelERA5(
+        time=datetime(2000, 1, 1),
+        variables="vo",
+    )
+    out = repr(era5)
+    assert "ERA5" in out
+    assert "Dataset" in out
+    assert "Product type" in out
+
+
+def test_model_level_era5_product_type() -> None:
+    """Test model level ERA5 product type validation."""
+    with pytest.raises(ValueError, match="Unknown product_type"):
+        ModelLevelERA5(time=datetime(2000, 1, 1), variables="vo", product_type="foo")
+
+    with pytest.raises(ValueError, match="No ensemble members available"):
+        ModelLevelERA5(
+            time=datetime(2000, 1, 1),
+            variables="vo",
+            product_type="reanalysis",
+            ensemble_members=[0, 1, 2],
+        )
+
+
+def test_model_level_era5_ensemble_member_selection() -> None:
+    """Test model level ERA5 ensemble member selection."""
+    era5 = ModelLevelERA5(
+        time=datetime(2000, 1, 1),
+        variables="vo",
+        product_type="ensemble_members",
+    )
+    assert era5.ensemble_members == list(range(10))
+
+    era5 = ModelLevelERA5(
+        time=datetime(2000, 1, 1),
+        variables="vo",
+        product_type="ensemble_members",
+        ensemble_members=[1, 3, 4],
+    )
+    assert era5.ensemble_members == [1, 3, 4]
+
+
+@pytest.mark.parametrize(
+    ("product", "timestep_freq", "raises"),
+    [
+        ("reanalysis", "1h", False),
+        ("reanalysis", "4h", False),
+        ("reanalysis", "30min", True),
+        ("reanalysis", "90min", True),
+        ("ensemble_members", "3h", False),
+        ("ensemble_members", "12h", False),
+        ("ensemble_members", "1h", True),
+        ("ensemble_members", "4h", True),
+    ],
+)
+def test_model_level_era_timestep_freq(product: str, timestep_freq: str, raises: bool) -> None:
+    """Test timestep frequency selection and validation."""
+    if raises:
+        with pytest.raises(ValueError, match=f"Product {product} has timestep frequency"):
+            hres = ModelLevelERA5(
+                time=datetime(2000, 1, 1),
+                variables=["t", "q"],
+                timestep_freq=timestep_freq,
+                product_type=product,
+            )
+    else:
+        hres = ModelLevelERA5(
+            time=datetime(2000, 1, 1),
+            variables=["t", "q"],
+            timestep_freq=timestep_freq,
+            product_type=product,
+        )
+        assert hres.timesteps == [datetime(2000, 1, 1)]
+
+
+def test_model_level_era5_dataset() -> None:
+    """Test CDS dataset property."""
+    hres = ModelLevelERA5(
+        time=datetime(2000, 1, 1),
+        variables=["t", "q"],
+    )
+    assert hres.dataset == "reanalysis-era5-complete"
+
+
+def test_model_level_era5_cachepath() -> None:
+    """Test cachepath creation."""
+    era5 = ModelLevelERA5(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
+    p = era5.create_cachepath(datetime(2000, 1, 1))
+    assert "era5ml-6e5805300d4358fb27ced4fe5efe610b.nc" in p
+
+    p1 = era5.create_cachepath(datetime(2000, 1, 1, 1))
+    assert p1 != p
+
+    era5 = ModelLevelERA5(
+        time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
+        variables=["t", "q"],
+        pressure_levels=[150, 200, 250],
+    )
+    p1 = era5.create_cachepath(datetime(2000, 1, 1))
+    assert p1 != p
+
+    era5 = ModelLevelERA5(
+        time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
+        variables=["ciwc"],
+    )
+    p1 = era5.create_cachepath(datetime(2000, 1, 1))
+    assert p1 != p
+
+    era5 = ModelLevelERA5(
+        time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
+        variables=["t", "q"],
+        grid=1.0,
+    )
+    p1 = era5.create_cachepath(datetime(2000, 1, 1))
+    assert p1 != p
+
+    era5.cachestore = None
+    with pytest.raises(ValueError, match="Cachestore is required"):
+        era5.create_cachepath(datetime(2000, 1, 1))
+
+
+def test_model_level_era5_nominal_mars_request() -> None:
+    """Test MARS request generation for nominal reanalysis."""
+    era5 = ModelLevelERA5(
+        time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
+        variables=["t", "q"],
+        levels=[1, 2, 3],
+        timestep_freq="6h",
+    )
+    request = era5.mars_request(era5.timesteps)
+    assert request == {
+        "class": "ea",
+        "date": "2000-01-01/2000-01-02",
+        "expver": "1",
+        "levelist": "1/2/3",
+        "levtype": "ml",
+        "param": "130/133/152",
+        "time": "00:00:00/06:00:00/12:00:00/18:00:00",
+        "type": "an",
+        "grid": "0.25/0.25",
+        "stream": "oper",
+    }
+
+
+def test_model_level_era5_ensemble_mars_request() -> None:
+    """Test MARS request generation for ensemble members."""
+    era5 = ModelLevelERA5(
+        time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
+        variables=["t", "q"],
+        levels=[1, 2, 3],
+        timestep_freq="6h",
+        product_type="ensemble_members",
+        ensemble_members=[1, 4, 5],
+    )
+    request = era5.mars_request(era5.timesteps)
+    assert request == {
+        "class": "ea",
+        "date": "2000-01-01/2000-01-02",
+        "expver": "1",
+        "levelist": "1/2/3",
+        "levtype": "ml",
+        "param": "130/133/152",
+        "time": "00:00:00/06:00:00/12:00:00/18:00:00",
+        "type": "an",
+        "grid": "0.5/0.5",
+        "stream": "enda",
+        "number": "1/4/5",
+    }
+
+
+def test_model_level_era5_set_metadata(met_ecmwf_pl_path: str) -> None:
+    """Test metadata setting."""
+    era5 = ModelLevelERA5(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
+    ds = xr.Dataset()
+    era5.set_metadata(ds)
+    assert ds.attrs["provider"] == "ECMWF"
+    assert ds.attrs["dataset"] == "ERA5"
+    assert ds.attrs["product"] == "reanalysis"
+
+    era5 = ModelLevelERA5(
+        time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
+        variables=["t", "q"],
+        product_type="ensemble_members",
+    )
+    ds = xr.Dataset()
+    era5.set_metadata(ds)
+    assert ds.attrs["provider"] == "ECMWF"
+    assert ds.attrs["dataset"] == "ERA5"
+    assert ds.attrs["product"] == "ensemble"
+
+    era5.product_type = "foo"
+    ds = xr.Dataset()
+    with pytest.raises(ValueError, match="Unknown product type"):
+        era5.set_metadata(ds)
+
+
 ##################################################
 # HRES datalibs (pressure levels and model levels)
 ##################################################
@@ -846,22 +1104,6 @@ def test_model_level_hres_cachepath() -> None:
         hres.create_cachepath(datetime(2000, 1, 1))
 
 
-def test_model_level_hres_open_metdataset_errors(met_ecmwf_pl_path: str) -> None:
-    """Test open_metdataset error handing."""
-    hres = ModelLevelHRES(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
-    ds = xr.open_dataset(met_ecmwf_pl_path)
-    with pytest.raises(ValueError, match="Parameter 'dataset' is not supported"):
-        hres.open_metdataset(dataset=ds)
-
-    hres = ModelLevelHRES(
-        time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
-        variables=["t", "q"],
-    )
-    hres.cachestore = None
-    with pytest.raises(ValueError, match="Cachestore is required"):
-        hres.open_metdataset()
-
-
 def test_model_level_hres_mars_request() -> None:
     """Test MARS request formatting."""
     hres = ModelLevelHRES(
@@ -887,3 +1129,14 @@ def test_model_level_hres_mars_request() -> None:
             "grid=0.1/0.1",
         ]
     )
+
+
+def test_model_level_hres_set_metadata(met_ecmwf_pl_path: str) -> None:
+    """Test metadata setting."""
+    hres = ModelLevelHRES(time=datetime(2000, 1, 1), variables=["t", "q"])
+    ds = xr.Dataset()
+    hres.set_metadata(ds)
+    assert ds.attrs["provider"] == "ECMWF"
+    assert ds.attrs["dataset"] == "HRES"
+    assert ds.attrs["product"] == "forecast"
+    assert ds.attrs["radiation_accumulated"]
