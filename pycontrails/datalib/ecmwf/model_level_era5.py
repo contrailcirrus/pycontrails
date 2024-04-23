@@ -181,7 +181,7 @@ class ModelLevelERA5(ECMWFAPI):
             grid_min = 0.25 if product_type == "reanalysis" else 0.5
             if grid < grid_min:
                 msg = (
-                    f"The smallest resolution available is {grid_min} degrees. "
+                    f"The highest resolution available is {grid_min} degrees. "
                     f"Your downloaded data will have resolution {grid}, but it is a "
                     f"reinterpolation of the {grid_min} degree data. The same interpolation can be "
                     "achieved directly with xarray."
@@ -345,7 +345,7 @@ class ModelLevelERA5(ECMWFAPI):
             product=product,
         )
 
-    def _mars_request(self, times: list[datetime]) -> dict[str, str]:
+    def mars_request(self, times: list[datetime]) -> dict[str, str]:
         """Generate MARS request for specific list of times.
 
         Parameters
@@ -450,7 +450,7 @@ def _download_convert_cache_handler(
         raise ValueError(msg)
 
     stack = contextlib.ExitStack()
-    request = era5._mars_request(times)
+    request = era5.mars_request(times)
 
     if not era5.cache_grib:
         target = stack.enter_context(temp.temp_file())

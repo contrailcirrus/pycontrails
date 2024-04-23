@@ -183,7 +183,7 @@ class ERA5(ECMWFAPI):
             grid_min = 0.25 if product_type == "reanalysis" else 0.5
             if grid < grid_min:
                 warnings.warn(
-                    f"The smallest resolution available through the CDS API is {grid_min} degrees. "
+                    f"The highest resolution available through the CDS API is {grid_min} degrees. "
                     f"Your downloaded data will have resolution {grid}, but it is a "
                     f"reinterpolation of the {grid_min} degree data. The same interpolation can be "
                     "achieved directly with xarray."
