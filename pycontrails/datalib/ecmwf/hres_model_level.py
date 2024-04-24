@@ -322,10 +322,9 @@ class HRESModelLevel(ECMWFAPI):
 
     @overrides
     def download_dataset(self, times: list[datetime]) -> None:
-
         # will always submit a single MARS request since each forecast is a separate file on tape
         LOG.debug(f"Retrieving ERA5 data for times {times} from forecast {self.forecast_time}")
-        _download_convert_cache_handler(self, times)
+        self._download_convert_cache_handler(times)
 
     @overrides
     def open_metdataset(
@@ -407,92 +406,89 @@ class HRESModelLevel(ECMWFAPI):
 
         self.server = ECMWFService("mars", url=self.url, key=self.key, email=self.email)
 
+    def _download_convert_cache_handler(
+        self,
+        times: list[datetime],
+    ) -> None:
+        """Download, convert, and cache HRES model level data.
 
-def _download_convert_cache_handler(
-    hres: HRESModelLevel,
-    times: list[datetime],
-) -> None:
-    """Download, convert, and cache HRES model level data.
+        This function builds a MARS request and retrieves a single GRIB file.
+        The calling function should ensure that all times will be contained
+        in a single file on tape in the MARS archive.
 
-    This function builds a MARS request and retrieves a single GRIB file.
-    The calling function should ensure that all times will be contained
-    in a single file on tape in the MARS archive.
+        Because MARS requests treat dates and times as separate dimensions,
+        retrieved data will include the Cartesian product of all unique
+        dates and times in the list of specified times.
 
-    Because MARS requests treat dates and times as separate dimensions,
-    retrieved data will include the Cartesian product of all unique
-    dates and times in the list of specified times.
+        After retrieval, this function processes the GRIB file
+        to produce the dataset specified by class attributes.
 
-    After retrieval, this function processes the GRIB file
-    to produce the dataset specified by :param:`hres`.
+        Parameters
+        ----------
+        times : list[datetime]
+            Times to download in a single MARS request.
 
-    Parameters
-    ----------
-    hres : HRESModelLevel
-        :class:`HRESModelLevel` instance with specifications for processed dataset.
-    times : list[datetime]
-        Times to download in a single MARS request.
+        Notes
+        -----
+        This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+        python bindings and binaries.
 
-    Notes
-    -----
-    This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-    python bindings and binaries.
+        The lifetime of the metview import must last until processed datasets are cached
+        to avoid premature deletion of metview temporary files.
+        """
+        try:
+            import metview as mv
+        except ModuleNotFoundError as exc:
+            dependencies.raise_module_not_found_error(
+                "model_level.grib_to_dataset function",
+                package_name="metview",
+                module_not_found_error=exc,
+                extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
+            )
+        except ImportError as exc:
+            msg = "Failed to import metview"
+            raise ImportError(msg) from exc
 
-    The lifetime of the metview import must last until processed datasets are cached
-    to avoid premature deletion of metview temporary files.
-    """
-    try:
-        import metview as mv
-    except ModuleNotFoundError as exc:
-        dependencies.raise_module_not_found_error(
-            "model_level.grib_to_dataset function",
-            package_name="metview",
-            module_not_found_error=exc,
-            extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
-        )
-    except ImportError as exc:
-        msg = "Failed to import metview"
-        raise ImportError(msg) from exc
+        if self.cachestore is None:
+            msg = "Cachestore is required to download and cache data"
+            raise ValueError(msg)
 
-    if hres.cachestore is None:
-        msg = "Cachestore is required to download and cache data"
-        raise ValueError(msg)
+        stack = contextlib.ExitStack()
+        request = self.mars_request(times)
 
-    stack = contextlib.ExitStack()
-    request = hres.mars_request(times)
+        if not self.cache_grib:
+            target = stack.enter_context(temp.temp_file())
+        else:
+            name = hashlib.md5(request.encode()).hexdigest()
+            target = self.cachestore.path(f"hresml-{name}.grib")
 
-    if not hres.cache_grib:
-        target = stack.enter_context(temp.temp_file())
-    else:
-        name = hashlib.md5(request.encode()).hexdigest()
-        target = hres.cachestore.path(f"hresml-{name}.grib")
+        with stack:
+            if not self.cache_grib or not self.cachestore.exists(target):
+                if not hasattr(self, "server"):
+                    self._set_server()
+                self.server.execute(request, target)
 
-    with stack:
-        if not hres.cache_grib or not hres.cachestore.exists(target):
-            if not hasattr(hres, "server"):
-                hres._set_server()
-            hres.server.execute(request, target)
+            # Read contents of GRIB file as metview Fieldset
+            LOG.debug("Opening GRIB file")
+            fs_ml = mv.read(target)
 
-        # Read contents of GRIB file as metview Fieldset
-        LOG.debug("Opening GRIB file")
-        fs_ml = mv.read(target)
+            # reduce memory overhead by cacheing one timestep at a time
+            for time, step in zip(times, self.get_forecast_steps(times)):
+                fs_pl = mv.Fieldset()
+                selection = dict(step=step)
+                lnsp = fs_ml.select(shortName="lnsp", **selection)
+                for var in self.variables:
+                    LOG.debug(
+                        f"Converting {var.short_name} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                        + f" (step {step})"
+                    )
+                    f_ml = fs_ml.select(shortName=var.short_name, **selection)
+                    f_pl = mv.mvl_ml2hPa(lnsp, f_ml, self.pressure_levels)
+                    fs_pl = mv.merge(fs_pl, f_pl)
 
-        # reduce memory overhead by cacheing one timestep at a time
-        for time, step in zip(times, hres.get_forecast_steps(times)):
-            fs_pl = mv.Fieldset()
-            selection = dict(step=step)
-            lnsp = fs_ml.select(shortName="lnsp", **selection)
-            for var in hres.variables:
-                LOG.debug(
-                    f"Converting {var.short_name} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
-                    + f" (step {step})"
-                )
-                f_ml = fs_ml.select(shortName=var.short_name, **selection)
-                f_pl = mv.mvl_ml2hPa(lnsp, f_ml, hres.pressure_levels)
-                fs_pl = mv.merge(fs_pl, f_pl)
-
-            # Create, validate, and cache dataset
-            ds = fs_pl.to_dataset()
-            ds = ds.rename(isobaricInhPa="level", time="initialization_time")
-            ds = ds.rename(step="time").assign_coords(time=time).expand_dims("time")
-            ds.attrs["pycontrails_version"] = pycontrails.__version__
-            hres.cache_dataset(ds)
+                # Create, validate, and cache dataset
+                ds = fs_pl.to_dataset()
+                ds = ds.rename(isobaricInhPa="level", time="initialization_time")
+                ds = ds.rename(step="time").assign_coords(time=time).expand_dims("time")
+                ds.attrs["pycontrails_version"] = pycontrails.__version__
+                self.cache_dataset(ds)
