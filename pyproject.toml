@@ -58,12 +58,12 @@ complete = ["pycontrails[ecmwf,gcp,gfs,goes,jupyter,pyproj,vis,zarr]"]
 
 # Development dependencies
 dev = [
-    "black[jupyter]==24.2.0",
+    "black[jupyter]==24.4.1",
     "dep_license",
     "fastparquet>=0.8",
     "ipdb>=0.13",
     "memory_profiler",
-    "mypy>=0.99",
+    "mypy==1.9.0",
     "mypy-extensions>=0.4",
     "platformdirs>=3.0",
     "pre-commit>=2.10",
@@ -72,7 +72,7 @@ dev = [
     "pytest>=8.1",
     "pytest-cov>=2.11",
     "requests>=2.25",
-    "ruff==0.1.15",
+    "ruff==0.4.1",
 ]
 
 # Documentation / Sphinx dependencies
@@ -196,7 +196,7 @@ show_error_codes = true
 [tool.black]
 line-length = 100
 preview = true
-required_version = "24.2.0"
+required_version = "24.4.1"
 
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
