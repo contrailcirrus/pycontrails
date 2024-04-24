@@ -287,7 +287,7 @@ class ERA5ModelLevel(ECMWFAPI):
         # retrieve and process data for each request
         LOG.debug(f"Retrieving ERA5 data for times {times} in {len(requests)} request(s)")
         for times_in_request in requests.values():
-            _download_convert_cache_handler(self, times_in_request)
+            self._download_convert_cache_handler(times_in_request)
 
     @overrides
     def open_metdataset(
@@ -386,99 +386,96 @@ class ERA5ModelLevel(ECMWFAPI):
         except Exception as err:
             raise CDSCredentialsNotFound from err
 
+    def _download_convert_cache_handler(
+        self,
+        times: list[datetime],
+    ) -> None:
+        """Download, convert, and cache ERA5 model level data.
 
-def _download_convert_cache_handler(
-    era5: ERA5ModelLevel,
-    times: list[datetime],
-) -> None:
-    """Download, convert, and cache ERA5 model level data.
+        This function builds a MARS request and retrieves a single GRIB file.
+        The calling function should ensure that all times will be contained
+        in a single file on tape in the MARS archive.
 
-    This function builds a MARS request and retrieves a single GRIB file.
-    The calling function should ensure that all times will be contained
-    in a single file on tape in the MARS archive.
+        Because MARS requests treat dates and times as separate dimensions,
+        retrieved data will include the Cartesian product of all unique
+        dates and times in the list of specified times.
 
-    Because MARS requests treat dates and times as separate dimensions,
-    retrieved data will include the Cartesian product of all unique
-    dates and times in the list of specified times.
+        After retrieval, this function processes the GRIB file
+        to produce the dataset specified by class attributes.
 
-    After retrieval, this function processes the GRIB file
-    to produce the dataset specified by :param:`era5`.
+        Parameters
+        ----------
+        times : list[datetime]
+            Times to download in a single MARS request.
 
-    Parameters
-    ----------
-    era5 : ERA5ModelLevel
-        :class:`ERA5ModelLevel` instance with specifications for processed dataset.
-    times : list[datetime]
-        Times to download in a single MARS request.
+        Notes
+        -----
+        This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
+        python bindings and binaries.
 
-    Notes
-    -----
-    This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-    python bindings and binaries.
+        The lifetime of the metview import must last until processed datasets are cached
+        to avoid premature deletion of metview temporary files.
+        """
+        try:
+            import metview as mv
+        except ModuleNotFoundError as exc:
+            dependencies.raise_module_not_found_error(
+                "model_level.grib_to_dataset function",
+                package_name="metview",
+                module_not_found_error=exc,
+                extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
+            )
+        except ImportError as exc:
+            msg = "Failed to import metview"
+            raise ImportError(msg) from exc
 
-    The lifetime of the metview import must last until processed datasets are cached
-    to avoid premature deletion of metview temporary files.
-    """
-    try:
-        import metview as mv
-    except ModuleNotFoundError as exc:
-        dependencies.raise_module_not_found_error(
-            "model_level.grib_to_dataset function",
-            package_name="metview",
-            module_not_found_error=exc,
-            extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
-        )
-    except ImportError as exc:
-        msg = "Failed to import metview"
-        raise ImportError(msg) from exc
+        if self.cachestore is None:
+            msg = "Cachestore is required to download and cache data"
+            raise ValueError(msg)
 
-    if era5.cachestore is None:
-        msg = "Cachestore is required to download and cache data"
-        raise ValueError(msg)
+        stack = contextlib.ExitStack()
+        request = self.mars_request(times)
 
-    stack = contextlib.ExitStack()
-    request = era5.mars_request(times)
+        if not self.cache_grib:
+            target = stack.enter_context(temp.temp_file())
+        else:
+            request_str = ";".join(f"{p}:{request[p]}" for p in sorted(request.keys()))
+            name = hashlib.md5(request_str.encode()).hexdigest()
+            target = self.cachestore.path(f"era5ml-{name}.grib")
 
-    if not era5.cache_grib:
-        target = stack.enter_context(temp.temp_file())
-    else:
-        request_str = ";".join(f"{p}:{request[p]}" for p in sorted(request.keys()))
-        name = hashlib.md5(request_str.encode()).hexdigest()
-        target = era5.cachestore.path(f"era5ml-{name}.grib")
+        with stack:
+            if not self.cache_grib or not self.cachestore.exists(target):
+                if not hasattr(self, "cds"):
+                    self._set_cds()
+                self.cds.retrieve("reanalysis-era5-complete", request, target)
 
-    with stack:
-        if not era5.cache_grib or not era5.cachestore.exists(target):
-            if not hasattr(era5, "cds"):
-                era5._set_cds()
-            era5.cds.retrieve("reanalysis-era5-complete", request, target)
+            # Read contents of GRIB file as metview Fieldset
+            LOG.debug("Opening GRIB file")
+            fs_ml = mv.read(target)
 
-        # Read contents of GRIB file as metview Fieldset
-        LOG.debug("Opening GRIB file")
-        fs_ml = mv.read(target)
+            # reduce memory overhead by cacheing one timestep at a time
+            for time in times:
+                fs_pl = mv.Fieldset()
+                dimensions = self.ensemble_members if self.ensemble_members else [-1]
+                for ens in dimensions:
+                    date = time.strftime("%Y%m%d")
+                    t = time.strftime("%H%M")
+                    selection = dict(date=date, time=t)
+                    if ens >= 0:
+                        selection |= dict(number=str(ens))
 
-        # reduce memory overhead by cacheing one timestep at a time
-        for time in times:
-            fs_pl = mv.Fieldset()
-            dimensions = era5.ensemble_members if era5.ensemble_members else [-1]
-            for ens in dimensions:
-                date = time.strftime("%Y%m%d")
-                t = time.strftime("%H%M")
-                selection = dict(date=date, time=t)
-                if ens >= 0:
-                    selection |= dict(number=str(ens))
+                    lnsp = fs_ml.select(shortName="lnsp", **selection)
+                    for var in self.variables:
+                        LOG.debug(
+                            f"Converting {var.short_name} at {t}"
+                            + (f" (ensemble member {ens})" if ens else "")
+                        )
+                        f_ml = fs_ml.select(shortName=var.short_name, **selection)
+                        f_pl = mv.mvl_ml2hPa(lnsp, f_ml, self.pressure_levels)
+                        fs_pl = mv.merge(fs_pl, f_pl)
 
-                lnsp = fs_ml.select(shortName="lnsp", **selection)
-                for var in era5.variables:
-                    LOG.debug(
-                        f"Converting {var.short_name} at {t}"
-                        + (f" (ensemble member {ens})" if ens else "")
-                    )
-                    f_ml = fs_ml.select(shortName=var.short_name, **selection)
-                    f_pl = mv.mvl_ml2hPa(lnsp, f_ml, era5.pressure_levels)
-                    fs_pl = mv.merge(fs_pl, f_pl)
-
-            # Create, validate, and cache dataset
-            ds = fs_pl.to_dataset()
-            ds = ds.rename(isobaricInhPa="level").expand_dims("time")
-            ds.attrs["pycontrails_version"] = pycontrails.__version__
-            era5.cache_dataset(ds)
+                # Create, validate, and cache dataset
+                ds = fs_pl.to_dataset()
+                ds = ds.rename(isobaricInhPa="level").expand_dims("time")
+                ds.attrs["pycontrails_version"] = pycontrails.__version__
+                self.cache_dataset(ds)
