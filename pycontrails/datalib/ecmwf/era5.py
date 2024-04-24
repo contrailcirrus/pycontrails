@@ -21,7 +21,7 @@ from overrides import overrides
 import pycontrails
 from pycontrails.core import cache, datalib
 from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.datalib.ecmwf.common import ECMWFAPI
+from pycontrails.datalib.ecmwf.common import ECMWFAPI, CDSCredentialsNotFound
 from pycontrails.datalib.ecmwf.variables import PRESSURE_LEVEL_VARIABLES, SURFACE_VARIABLES
 from pycontrails.utils import dependencies, temp
 
@@ -535,7 +535,3 @@ class ERA5(ECMWFAPI):
 
         ds.attrs["pycontrails_version"] = pycontrails.__version__
         return ds
-
-
-class CDSCredentialsNotFound(Exception):
-    """Raise when CDS credentials are not found by :class:`cdsapi.Client` instance."""
