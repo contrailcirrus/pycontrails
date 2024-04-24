@@ -142,12 +142,11 @@ ensure-gcp-credentials:
 			"See https://cloud.google.com/docs/authentication/application-default-credentials$(END_COLOR)"; \
 		exit 1)
 
-
-# Cache common ERA5 data for nb-tests and doctests in DiskCacheStore(cache_dir=".doc-test-cache")
+# Cache common ERA5 data for nb-tests and doctests in DiskCacheStore
 ensure-era5-cached:
 	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
 		from pycontrails import DiskCacheStore; \
-		cache = DiskCacheStore(cache_dir=".doc-test-cache"); \
+		cache = DiskCacheStore(); \
 		time = "2022-03-01", "2022-03-01T23"; \
 		lev = [300, 250, 200]; \
 		met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
@@ -165,7 +164,7 @@ cache-era5-gcp: ensure-era5-cached
 	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
 
 doctest: ensure-era5-cached ensure-gcp-credentials
-	PYCONTRAILS_CACHE_DIR="$(CURDIR)/.doc-test-cache" pytest --doctest-modules \
+	pytest --doctest-modules \
 		--ignore-glob=pycontrails/ext/* \
 		pycontrails -vv
 
@@ -201,7 +200,7 @@ nb-clean-check:
 #   - Install eccodes on Github Action so GFS notebook can run
 #   - Provide meteorology data for `run-cocip-on-flight` tutorial
 nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
-	PYCONTRAILS_CACHE_DIR="$(CURDIR)/.doc-test-cache" python -m pytest --nbval-lax \
+	python -m pytest --nbval-lax \
 		--ignore=docs/integrations/ACCF.ipynb \
 		--ignore=docs/notebooks/specific-humidity-interpolation.ipynb \
 		--ignore=docs/notebooks/GFS.ipynb \
