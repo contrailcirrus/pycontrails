@@ -30,9 +30,9 @@ from overrides import overrides
 import pycontrails
 from pycontrails.core import cache, datalib
 from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.datalib.ecmwf import MODEL_LEVEL_VARIABLES
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
+from pycontrails.datalib.ecmwf.variables import MODEL_LEVEL_VARIABLES
 from pycontrails.utils import dependencies, temp
 from pycontrails.utils.types import DatetimeLike
 
