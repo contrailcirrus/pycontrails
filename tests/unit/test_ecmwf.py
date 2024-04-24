@@ -11,14 +11,14 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore, MetDataset, MetVariable
 from pycontrails.core.met_var import AirTemperature, SurfacePressure
-from pycontrails.datalib.ecmwf import ECMWF_VARIABLES, ERA5, HRES, ModelLevelERA5, ModelLevelHRES
+from pycontrails.datalib.ecmwf import ECMWF_VARIABLES, ERA5, HRES, ERA5ModelLevel, HRESModelLevel
 from pycontrails.datalib.ecmwf.hres import get_forecast_filename
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 
-AnyERA5DatalibClass = TypeVar("AnyERA5DatalibClass", type[ERA5], type[ModelLevelERA5])
-AnyHRESDatalibClass = TypeVar("AnyHRESDatalibClass", type[HRES], type[ModelLevelHRES])
+AnyERA5DatalibClass = TypeVar("AnyERA5DatalibClass", type[ERA5], type[ERA5ModelLevel])
+AnyHRESDatalibClass = TypeVar("AnyHRESDatalibClass", type[HRES], type[HRESModelLevel])
 AnyModelLevelDatalibClass = TypeVar(
-    "AnyModelLevelDatalibClass", type[ModelLevelERA5], type[ModelLevelHRES]
+    "AnyModelLevelDatalibClass", type[ERA5ModelLevel], type[HRESModelLevel]
 )
 AnyECMWFDatalibClass = TypeVar("AnyECMWFDatalibClass", AnyERA5DatalibClass, AnyHRESDatalibClass)
 
@@ -47,7 +47,7 @@ def test_ECMWF_variables() -> None:
 ##############################
 
 
-@pytest.mark.parametrize("datalib", [ERA5, HRES, ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5, HRES, ERA5ModelLevel, HRESModelLevel])
 def test_single_time_input(datalib: AnyECMWFDatalibClass) -> None:
     """Test TimeInput parsing."""
     # accept single time
@@ -63,7 +63,7 @@ def test_single_time_input(datalib: AnyECMWFDatalibClass) -> None:
     assert dl.timesteps == [datetime(2019, 5, 31, 0), datetime(2019, 5, 31, 1)]
 
 
-@pytest.mark.parametrize("datalib", [ERA5, HRES, ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5, HRES, ERA5ModelLevel, HRESModelLevel])
 def test_time_input_wrong_length(datalib: AnyECMWFDatalibClass) -> None:
     """Test TimeInput parsing."""
 
@@ -80,7 +80,7 @@ def test_time_input_wrong_length(datalib: AnyECMWFDatalibClass) -> None:
         )
 
 
-@pytest.mark.parametrize("datalib", [ERA5, HRES, ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5, HRES, ERA5ModelLevel, HRESModelLevel])
 def test_time_input_two_times_nominal(datalib: AnyECMWFDatalibClass) -> None:
     """Test TimeInput parsing for datalibs with 1 hour default timestep."""
 
@@ -110,7 +110,7 @@ def test_time_input_two_times_nominal(datalib: AnyECMWFDatalibClass) -> None:
     ]
 
 
-@pytest.mark.parametrize("datalib", [ERA5, HRES, ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5, HRES, ERA5ModelLevel, HRESModelLevel])
 def test_time_input_numpy_pandas(datalib: AnyECMWFDatalibClass) -> None:
     """Test TimeInput parsing for alternate time input formats."""
 
@@ -136,7 +136,7 @@ def test_time_input_numpy_pandas(datalib: AnyECMWFDatalibClass) -> None:
     ]
 
 
-@pytest.mark.parametrize("datalib", [ERA5, HRES, ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5, HRES, ERA5ModelLevel, HRESModelLevel])
 def test_inputs(datalib: AnyECMWFDatalibClass) -> None:
     """Test datalib __init__ with different but equivalent inputs."""
     with pytest.raises(ValueError, match="Input time bounds must have length"):
@@ -164,7 +164,7 @@ def test_inputs(datalib: AnyECMWFDatalibClass) -> None:
 ##########################
 
 
-@pytest.mark.parametrize("datalib", [ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
 def test_model_level_retrieved_levels(datalib: AnyModelLevelDatalibClass) -> None:
     """Test model levels included in request."""
     with pytest.raises(ValueError, match="Retrieval levels must be between"):
@@ -179,21 +179,21 @@ def test_model_level_retrieved_levels(datalib: AnyModelLevelDatalibClass) -> Non
     assert dl.levels == [3, 4, 5]
 
 
-@pytest.mark.parametrize("datalib", [ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
 def test_model_level_pressure_levels(datalib: AnyModelLevelDatalibClass) -> None:
     """Test pressure level inputs for model-level datalibs."""
     dl = datalib(time=datetime(2000, 1, 1), variables="vo")
     assert dl.pressure_levels == pressure_levels_at_model_levels(20_000, 50_000)
 
 
-@pytest.mark.parametrize("datalib", [ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
 def test_model_level_single_level_variables(datalib: AnyModelLevelDatalibClass) -> None:
     """Test supported single-level variables."""
     dl = datalib(time=datetime(2000, 1, 1), variables="vo")
     assert dl.single_level_variables == []
 
 
-@pytest.mark.parametrize("datalib", [ModelLevelERA5, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
 def test_model_level_open_metdataset_errors(
     datalib: AnyModelLevelDatalibClass, met_ecmwf_pl_path: str
 ) -> None:
@@ -217,7 +217,7 @@ def test_model_level_open_metdataset_errors(
 ##################################################
 
 
-@pytest.mark.parametrize("datalib", [ERA5, ModelLevelERA5])
+@pytest.mark.parametrize("datalib", [ERA5, ERA5ModelLevel])
 def test_time_input_two_times_era5_ensemble(datalib: AnyERA5DatalibClass) -> None:
     """Test TimeInput parsing for ERA5 ensemble datalibs (3 hour default timestep)."""
 
@@ -247,7 +247,7 @@ def test_time_input_two_times_era5_ensemble(datalib: AnyERA5DatalibClass) -> Non
     ]
 
 
-@pytest.mark.parametrize("datalib", [ERA5, ModelLevelERA5])
+@pytest.mark.parametrize("datalib", [ERA5, ERA5ModelLevel])
 @pytest.mark.parametrize(
     ("product", "grid", "expected", "warn"),
     [
@@ -637,7 +637,7 @@ def test_ERA5_met_source_open_metdataset(met_ecmwf_pl_path: str) -> None:
 
 def test_model_level_era5_repr() -> None:
     """Test model level ERA5 repr."""
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=datetime(2000, 1, 1),
         variables="vo",
     )
@@ -650,10 +650,10 @@ def test_model_level_era5_repr() -> None:
 def test_model_level_era5_product_type() -> None:
     """Test model level ERA5 product type validation."""
     with pytest.raises(ValueError, match="Unknown product_type"):
-        ModelLevelERA5(time=datetime(2000, 1, 1), variables="vo", product_type="foo")
+        ERA5ModelLevel(time=datetime(2000, 1, 1), variables="vo", product_type="foo")
 
     with pytest.raises(ValueError, match="No ensemble members available"):
-        ModelLevelERA5(
+        ERA5ModelLevel(
             time=datetime(2000, 1, 1),
             variables="vo",
             product_type="reanalysis",
@@ -663,14 +663,14 @@ def test_model_level_era5_product_type() -> None:
 
 def test_model_level_era5_ensemble_member_selection() -> None:
     """Test model level ERA5 ensemble member selection."""
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=datetime(2000, 1, 1),
         variables="vo",
         product_type="ensemble_members",
     )
     assert era5.ensemble_members == list(range(10))
 
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=datetime(2000, 1, 1),
         variables="vo",
         product_type="ensemble_members",
@@ -696,14 +696,14 @@ def test_model_level_era_timestep_freq(product: str, timestep_freq: str, raises:
     """Test timestep frequency selection and validation."""
     if raises:
         with pytest.raises(ValueError, match=f"Product {product} has timestep frequency"):
-            hres = ModelLevelERA5(
+            hres = ERA5ModelLevel(
                 time=datetime(2000, 1, 1),
                 variables=["t", "q"],
                 timestep_freq=timestep_freq,
                 product_type=product,
             )
     else:
-        hres = ModelLevelERA5(
+        hres = ERA5ModelLevel(
             time=datetime(2000, 1, 1),
             variables=["t", "q"],
             timestep_freq=timestep_freq,
@@ -714,7 +714,7 @@ def test_model_level_era_timestep_freq(product: str, timestep_freq: str, raises:
 
 def test_model_level_era5_dataset() -> None:
     """Test CDS dataset property."""
-    hres = ModelLevelERA5(
+    hres = ERA5ModelLevel(
         time=datetime(2000, 1, 1),
         variables=["t", "q"],
     )
@@ -723,14 +723,14 @@ def test_model_level_era5_dataset() -> None:
 
 def test_model_level_era5_cachepath() -> None:
     """Test cachepath creation."""
-    era5 = ModelLevelERA5(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
+    era5 = ERA5ModelLevel(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
     p = era5.create_cachepath(datetime(2000, 1, 1))
     assert "era5ml-6e5805300d4358fb27ced4fe5efe610b.nc" in p
 
     p1 = era5.create_cachepath(datetime(2000, 1, 1, 1))
     assert p1 != p
 
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["t", "q"],
         pressure_levels=[150, 200, 250],
@@ -738,14 +738,14 @@ def test_model_level_era5_cachepath() -> None:
     p1 = era5.create_cachepath(datetime(2000, 1, 1))
     assert p1 != p
 
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["ciwc"],
     )
     p1 = era5.create_cachepath(datetime(2000, 1, 1))
     assert p1 != p
 
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["t", "q"],
         grid=1.0,
@@ -760,7 +760,7 @@ def test_model_level_era5_cachepath() -> None:
 
 def test_model_level_era5_nominal_mars_request() -> None:
     """Test MARS request generation for nominal reanalysis."""
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
         variables=["t", "q"],
         levels=[1, 2, 3],
@@ -783,7 +783,7 @@ def test_model_level_era5_nominal_mars_request() -> None:
 
 def test_model_level_era5_ensemble_mars_request() -> None:
     """Test MARS request generation for ensemble members."""
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
         variables=["t", "q"],
         levels=[1, 2, 3],
@@ -809,14 +809,14 @@ def test_model_level_era5_ensemble_mars_request() -> None:
 
 def test_model_level_era5_set_metadata(met_ecmwf_pl_path: str) -> None:
     """Test metadata setting."""
-    era5 = ModelLevelERA5(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
+    era5 = ERA5ModelLevel(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
     ds = xr.Dataset()
     era5.set_metadata(ds)
     assert ds.attrs["provider"] == "ECMWF"
     assert ds.attrs["dataset"] == "ERA5"
     assert ds.attrs["product"] == "reanalysis"
 
-    era5 = ModelLevelERA5(
+    era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["t", "q"],
         product_type="ensemble_members",
@@ -838,7 +838,7 @@ def test_model_level_era5_set_metadata(met_ecmwf_pl_path: str) -> None:
 ##################################################
 
 
-@pytest.mark.parametrize("datalib", [HRES, ModelLevelHRES])
+@pytest.mark.parametrize("datalib", [HRES, HRESModelLevel])
 def test_HRES_inputs(datalib: AnyHRESDatalibClass) -> None:
     """Test HRES time parsing."""
     with pytest.raises(ValueError, match="Input time bounds must have length"):
@@ -964,56 +964,56 @@ def test_hres_set_met_source_metadata(field_type: str, variables: str) -> None:
 
 
 def test_model_level_hres_repr() -> None:
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=datetime(2000, 1, 1),
         variables=["t", "q"],
     )
     out = repr(hres)
-    assert "ModelLevelHRES" in out
+    assert "HRESModelLevel" in out
     assert "Forecast time" in out
     assert "Steps" in out
 
 
 def test_model_level_hres_grid() -> None:
     """Test horizontal resolution."""
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=datetime(2000, 1, 1),
         variables=["t", "q"],
     )
     assert hres.grid == 0.1
 
-    hres = ModelLevelHRES(time=datetime(2000, 1, 1), variables=["t", "q"], grid=1.0)
+    hres = HRESModelLevel(time=datetime(2000, 1, 1), variables=["t", "q"], grid=1.0)
     assert hres.grid == 1.0
 
     with pytest.warns(UserWarning, match="The highest resolution available"):
-        hres = ModelLevelHRES(time=datetime(2000, 1, 1), variables=["t", "q"], grid=0.01)
+        hres = HRESModelLevel(time=datetime(2000, 1, 1), variables=["t", "q"], grid=0.01)
     assert hres.grid == 0.01
 
 
 def test_model_level_hres_forecast_time_validation() -> None:
     """Test forecast time validation."""
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=datetime(2000, 1, 1), variables=["t", "q"], forecast_time="2000-01-01 00:00:00"
     )
     assert hres.forecast_time == datetime(2000, 1, 1, 0)
 
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=datetime(2000, 1, 1), variables=["t", "q"], forecast_time="1999-12-31 12:00:00"
     )
     assert hres.forecast_time == datetime(1999, 12, 31, 12)
 
     with pytest.raises(ValueError, match="Requested times requires forecast steps out to"):
-        hres = ModelLevelHRES(
+        hres = HRESModelLevel(
             time=datetime(2000, 1, 1), variables=["t", "q"], forecast_time="1999-12-21 12:00:00"
         )
 
     with pytest.raises(ValueError, match="Forecast hour must be one of"):
-        hres = ModelLevelHRES(
+        hres = HRESModelLevel(
             time=datetime(2000, 1, 1), variables=["t", "q"], forecast_time="1999-12-31 18:00:00"
         )
 
     with pytest.raises(ValueError, match="Selected forecast time"):
-        hres = ModelLevelHRES(
+        hres = HRESModelLevel(
             time=datetime(2000, 1, 1), variables=["t", "q"], forecast_time="2000-1-1 12:00:00"
         )
 
@@ -1034,14 +1034,14 @@ def test_model_level_hres_timestep_freq(
     """Test timestep frequency selection and validation."""
     if raises:
         with pytest.raises(ValueError, match="Forecast out to step"):
-            hres = ModelLevelHRES(
+            hres = HRESModelLevel(
                 time=time,
                 variables=["t", "q"],
                 forecast_time="2000-01-01 00:00:00",
                 timestep_freq=timestep_freq,
             )
     else:
-        hres = ModelLevelHRES(
+        hres = HRESModelLevel(
             time=time,
             variables=["t", "q"],
             forecast_time="2000-01-01 00:00:00",
@@ -1052,7 +1052,7 @@ def test_model_level_hres_timestep_freq(
 
 def test_model_level_hres_get_forecast_step() -> None:
     """Test forecast step calculation."""
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=datetime(2000, 1, 1), variables=["t", "q"], forecast_time="2000-01-01 00:00:00"
     )
     assert hres.get_forecast_steps([datetime(2000, 1, 1, 0)]) == [0]
@@ -1064,14 +1064,14 @@ def test_model_level_hres_get_forecast_step() -> None:
 
 def test_model_level_hres_cachepath() -> None:
     """Test cachepath creation."""
-    hres = ModelLevelHRES(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
+    hres = HRESModelLevel(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
     p = hres.create_cachepath(datetime(2000, 1, 1))
     assert "hresml-c7ef25c716b87726c24ca848a3f32e79.nc" in p
 
     p1 = hres.create_cachepath(datetime(2000, 1, 1, 1))
     assert p1 != p
 
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["t", "q"],
         forecast_time="1999-12-31 12:00:00",
@@ -1079,7 +1079,7 @@ def test_model_level_hres_cachepath() -> None:
     p1 = hres.create_cachepath(datetime(2000, 1, 1))
     assert p1 != p
 
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["t", "q"],
         pressure_levels=[150, 200, 250],
@@ -1087,14 +1087,14 @@ def test_model_level_hres_cachepath() -> None:
     p1 = hres.create_cachepath(datetime(2000, 1, 1))
     assert p1 != p
 
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["ciwc"],
     )
     p1 = hres.create_cachepath(datetime(2000, 1, 1))
     assert p1 != p
 
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2)),
         variables=["t", "q"],
         grid=1.0,
@@ -1109,7 +1109,7 @@ def test_model_level_hres_cachepath() -> None:
 
 def test_model_level_hres_mars_request() -> None:
     """Test MARS request formatting."""
-    hres = ModelLevelHRES(
+    hres = HRESModelLevel(
         time=(datetime(2000, 1, 1, 3), datetime(2000, 1, 1, 6)),
         forecast_time="2000-01-01 00:00:00",
         variables=["t", "q"],
@@ -1136,7 +1136,7 @@ def test_model_level_hres_mars_request() -> None:
 
 def test_model_level_hres_set_metadata(met_ecmwf_pl_path: str) -> None:
     """Test metadata setting."""
-    hres = ModelLevelHRES(time=datetime(2000, 1, 1), variables=["t", "q"])
+    hres = HRESModelLevel(time=datetime(2000, 1, 1), variables=["t", "q"])
     ds = xr.Dataset()
     hres.set_metadata(ds)
     assert ds.attrs["provider"] == "ECMWF"

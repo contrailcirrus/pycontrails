@@ -1,20 +1,11 @@
-"""Model-level ERA5 data access.
+"""Model-level HRES data access from the ECMWF operational archive.
 
 This module supports
 
-- Retrieving model-level ERA5 data by submitting MARS requests through the Copernicus CDS.
+- Retrieving model-level HRES data by submitting MARS requests through the ECMWF API.
 - Processing retrieved GRIB files to produce netCDF files on target pressure levels.
 - Local caching of processed netCDF files.
 - Opening processed and cached files as a :class:`pycontrails.MetDataset` object.
-
-Consider using :class:`pycontrails.datalib.ecmwf.ARCOERA5`
-to access model-level data from the nominal ERA5 reanalysis between 1959 and 2022.
-:class:`pycontrails.datalib.ecmwf.ARCOERA5` accesses data through Google's
-`Analysis-Ready, Cloud Optimized ERA5 dataset <https://cloud.google.com/storage/docs/public-datasets/era5>`_
-and has lower latency than this module, which retrieves data from the
-`Copernicus Climate Data Store <https://cds.climate.copernicus.eu/#!/home>`_.
-This module must be used to retrieve model-level data from ERA5 ensemble members
-or for more recent dates.
 
 This module requires the following additional dependency:
 
@@ -23,21 +14,18 @@ This module requires the following additional dependency:
 
 from __future__ import annotations
 
-import collections
 import contextlib
 import hashlib
 import logging
-import os
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
-
-from overrides import overrides
 
 LOG = logging.getLogger(__name__)
 
 import pandas as pd
 import xarray as xr
+from overrides import overrides
 
 import pycontrails
 from pycontrails.core import cache, datalib, met_var
@@ -46,6 +34,7 @@ from pycontrails.datalib.ecmwf import variables as ecmwf_var
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.utils import dependencies, temp
+from pycontrails.utils.types import DatetimeLike
 
 MODEL_LEVEL_VARIABLES = [
     met_var.AirTemperature,
@@ -60,66 +49,71 @@ MODEL_LEVEL_VARIABLES = [
     ecmwf_var.SpecificCloudLiquidWaterContent,
 ]
 
-ALL_ENSEMBLE_MEMBERS = list(range(10))
+LAST_STEP_1H = 96  # latest forecast step with 1 hour frequency
+LAST_STEP_3H = 144  # latest forecast step with 3 hour frequency
+LAST_STEP_6H = 240  # latest forecast step with 6 hour frequency
 
 
-class ModelLevelERA5(ECMWFAPI):
-    """Class to support model-level ERA5 data access, download, and organization.
+class HRESModelLevel(ECMWFAPI):
+    """Class to support model-level HRES data access, download, and organization.
 
-    The interface is similar to :class:`pycontrails.datalib.ecmwf.ERA5`, which downloads pressure-level
-    with much lower vertical resolution.
+    The interface is similar to :class:`pycontrails.datalib.ecmwf.HRES`,
+    which downloads pressure-level data with much lower vertical resolution and single-level data.
+    Note, however, that only a subset of the pressure-level data available through the operational
+    archive is available as model-level data. As a consequence, this interface only
+    supports access to nominal HRES forecasts (corresponding to ``stream = "oper"`` and
+    ``field_type = "fc"`` in :class:`pycontrails.datalib.ecmwf.HRES`) initialized at 00z and 12z.
 
-    Requires account with
-    `Copernicus Data Portal <https://cds.climate.copernicus.eu/cdsapp#!/home>`_
-    and local credentials.
+    Requires account with ECMWF and API key.
 
-    API credentials can be stored in a ``~/.cdsapirc`` file
-    or as ``CDSAPI_URL`` and ``CDSAPI_KEY`` environment variables.
+    API credentials can be set in local ``~/.ecmwfapirc`` file:
 
-        export CDSAPI_URL=...
-        export CDSAPI_KEY=...
+    .. code:: json
 
-    Credentials can also be provided directly ``url`` and ``key`` keyword args.
+        {
+            "url": "https://api.ecmwf.int/v1",
+            "email": "<email>",
+            "key": "<key>"
+        }
 
-    See `cdsapi <https://github.com/ecmwf/cdsapi>`_ documentation
+    Credentials can also be provided directly in ``url``, ``key``, and ``email`` keyword args.
+
+    See `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ documentation
     for more information.
 
     Parameters
     ----------
-    time : datalib.TimeInput | None
+    time : datalib.TimeInput
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
         (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
-        GRIB files will be downloaded from CDS in chunks no larger than 1 month
-        for the nominal reanalysis and no larger than 1 day for ensemble members.
-        This ensures that exactly one request is submitted per file on tape accessed.
-        If None, ``paths`` must be defined and all time coordinates will be loaded from files.
+        All times will be downloaded in a single GRIB file, which
+        ensures that exactly one request is submitted per file on tape accessed.
+        If ``forecast_time`` is unspecified, the forecast time will
+        be assumed to be the nearest synoptic hour available in the operational archive (00 or 12).
+        All subsequent times will be downloaded for relative to :attr:`forecast_time`.
     variables : datalib.VariableInput
         Variable name (i.e. "t", "air_temperature", ["air_temperature, specific_humidity"])
     pressure_levels : datalib.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar).
-        To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.ERA5`.
+        To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.HRES`.
         Defaults to pressure levels that match model levels at a nominal surface pressure.
     timestep_freq : str, optional
         Manually set the timestep interval within the bounds defined by :attr:`time`.
-        Supports any string that can be passed to ``pd.date_range(freq=...)``.
-        By default, this is set to "1h" for reanalysis products and "3h" for ensemble products.
-    product_type : str, optional
-        Product type, one of "reanalysis" and "ensemble_members". Unlike
-        :class:`pycontrails.datalib.ecmwf.ERA5`, this class does not support direct access to the
-        ensemble mean and spread, which are not available on model levels.
+        Supports any string that can be passed to ``pandas.date_range(freq=...)``.
+        By default, this is set to the highest frequency that can supported the requested
+        time range ("1h" out to 96 hours, "3h" out to 144 hours, and "6h" out to 240 hours)
     grid : float, optional
         Specify latitude/longitude grid spacing in data.
-        By default, this is set to 0.25 for reanalysis products and 0.5 for ensemble products.
+        By default, this is set to 0.1.
+    forecast_time : DatetimeLike, optional
+        Specify forecast by initialization time.
+        By default, set to the most recent forecast that includes the requested time range.
     levels : list[int], optional
         Specify ECMWF model levels to include in MARS requests.
         By default, this is set to include all model levels.
-    ensemble_members : list[int], optional
-        Specify ensemble members to include.
-        Valid only when the product type is "ensemble_members".
-        By default, includes every available ensemble member.
-    cachestore : cache.CacheStore | None, optional
+    cachestore : CacheStore | None, optional
         Cache data store for staging processed netCDF files.
         Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
@@ -127,10 +121,12 @@ class ModelLevelERA5(ECMWFAPI):
         If True, cache downloaded GRIB files rather than storing them in a temporary file.
         By default, False.
     url : str
-        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ url
+        Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ url
     key : str
-        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ key
-    """  # noqa: E501
+        Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ key
+    email : str
+        Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ email
+    """
 
     __marker = object()
 
@@ -140,45 +136,31 @@ class ModelLevelERA5(ECMWFAPI):
         variables: datalib.VariableInput,
         pressure_levels: datalib.PressureLevelInput | None = None,
         timestep_freq: str | None = None,
-        product_type: str = "reanalysis",
         grid: float | None = None,
+        forecast_time: DatetimeLike | None = None,
         levels: list[int] | None = None,
         ensemble_members: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
-        n_jobs: int = 1,
         cache_grib: bool = False,
         url: str | None = None,
         key: str | None = None,
+        email: str | None = None,
     ) -> None:
+        # Parse and set each parameter to the instance
 
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.cache_grib = cache_grib
 
         self.paths = None
 
-        self.url = url or os.getenv("CDSAPI_URL")
-        self.key = key or os.getenv("CDSAPI_KEY")
-
-        supported = ("reanalysis", "ensemble_members")
-        if product_type not in supported:
-            msg = (
-                f"Unknown product_type {product_type}. "
-                f"Currently support product types: {', '.join(supported)}"
-            )
-            raise ValueError(msg)
-        self.product_type = product_type
-
-        if product_type == "reanalysis" and ensemble_members:
-            msg = "No ensemble members available for reanalysis product type."
-            raise ValueError(msg)
-        if product_type == "ensemble_members" and not ensemble_members:
-            ensemble_members = ALL_ENSEMBLE_MEMBERS
-        self.ensemble_members = ensemble_members
+        self.url = url
+        self.key = key
+        self.email = email
 
         if grid is None:
-            grid = 0.25 if product_type == "reanalysis" else 0.5
+            grid = 0.1
         else:
-            grid_min = 0.25 if product_type == "reanalysis" else 0.5
+            grid_min = 0.1
             if grid < grid_min:
                 msg = (
                     f"The highest resolution available is {grid_min} degrees. "
@@ -196,17 +178,42 @@ class ModelLevelERA5(ECMWFAPI):
             raise ValueError(msg)
         self.levels = levels
 
-        datasource_timestep_freq = "1h" if product_type == "reanalysis" else "3h"
+        forecast_hours = datalib.parse_timesteps(time, freq="1h")
+        if forecast_time is None:
+            self.forecast_time = datalib.round_hour(forecast_hours[0], 12)
+        else:
+            forecast_time_pd = pd.to_datetime(forecast_time)
+            if (hour := forecast_time_pd.hour) % 12:
+                msg = f"Forecast hour must be one of 00 or 12 but is {hour:02d}."
+                raise ValueError(msg)
+            self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 12)
+
+        last_step = (forecast_hours[-1] - self.forecast_time) / timedelta(hours=1)
+        if last_step > LAST_STEP_6H:
+            msg = (
+                f"Requested times requires forecast steps out to {last_step}, "
+                f"which is beyond latest available step of {LAST_STEP_6H}"
+            )
+            raise ValueError(msg)
+
+        datasource_timestep_freq = (
+            "1h" if last_step <= LAST_STEP_1H else "3h" if last_step <= LAST_STEP_3H else "6h"
+        )
         if timestep_freq is None:
             timestep_freq = datasource_timestep_freq
         if not datalib.validate_timestep_freq(timestep_freq, datasource_timestep_freq):
             msg = (
-                f"Product {self.product_type} has timestep frequency of {datasource_timestep_freq} "
+                f"Forecast out to step {last_step} "
+                f"has timestep frequency of {datasource_timestep_freq} "
                 f"and cannot support requested timestep frequency of {timestep_freq}."
             )
             raise ValueError(msg)
 
         self.timesteps = datalib.parse_timesteps(time, freq=timestep_freq)
+        if self.step_offset < 0:
+            msg = f"Selected forecast time {self.forecast_time} is after first timestep."
+            raise ValueError(msg)
+
         if pressure_levels is None:
             pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
         self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
@@ -214,7 +221,61 @@ class ModelLevelERA5(ECMWFAPI):
 
     def __repr__(self) -> str:
         base = super().__repr__()
-        return f"{base}\n\tDataset: {self.dataset}\n\tProduct type: {self.product_type}"
+        return "\n\t".join(
+            [
+                base,
+                f"Forecast time: {getattr(self, 'forecast_time', '')}",
+                f"Steps: {getattr(self, 'steps', '')}",
+            ]
+        )
+
+    def get_forecast_steps(self, times: list[datetime]) -> list[int]:
+        """Convert list of times to list of forecast steps.
+
+        Parameters
+        ----------
+        times : list[datetime]
+            Times to convert to forecast steps
+
+        Returns
+        -------
+        list[int]
+            Forecast step at each time
+        """
+
+        def time_to_step(time: datetime) -> int:
+            step = (time - self.forecast_time) / timedelta(hours=1)
+            if not step.is_integer():
+                msg = (
+                    f"Time-to-step conversion returned fractional forecast step {step} "
+                    f"for timestep {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+                raise ValueError(msg)
+            return int(step)
+
+        return [time_to_step(t) for t in times]
+
+    @property
+    def step_offset(self) -> int:
+        """Difference between :attr:`forecast_time` and first timestep.
+
+        Returns
+        -------
+        int
+            Number of steps to offset in order to retrieve data starting from input time.
+        """
+        return self.get_forecast_steps([self.timesteps[0]])[0]
+
+    @property
+    def steps(self) -> list[int]:
+        """Forecast steps from :attr:`forecast_time` corresponding within input :attr:`time`.
+
+        Returns
+        -------
+        list[int]
+            List of forecast steps relative to :attr:`forecast_time`
+        """
+        return self.get_forecast_steps(self.timesteps)
 
     @property
     def pressure_level_variables(self) -> list[MetVariable]:
@@ -235,26 +296,13 @@ class ModelLevelERA5(ECMWFAPI):
         -------
         list[MetVariable]
             Always returns an empty list.
-            To access single-level variables, used :class:`pycontrails.datalib.ecmwf.ERA5`.
+            To access single-level variables, use :class:`pycontrails.datalib.ecmwf.HRES`.
         """
         return []
 
-    @property
-    def dataset(self) -> str:
-        """Select dataset for downloading model-level data.
-
-        Always returns "reanalysis-era5-complete".
-
-        Returns
-        -------
-        str
-            Model-level ERA5 dataset name in CDS
-        """
-        return "reanalysis-era5-complete"
-
     @overrides
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:
-        """Return cachepath to local ERA5 data file based on datetime.
+        """Return cachepath to local HRES data file based on datetime.
 
         This uniquely defines a cached data file with class parameters.
 
@@ -266,7 +314,7 @@ class ModelLevelERA5(ECMWFAPI):
         Returns
         -------
         str
-            Path to local ERA5 data file
+            Path to local HRES data file
         """
         if self.cachestore is None:
             msg = "Cachestore is required to create cache path"
@@ -274,33 +322,23 @@ class ModelLevelERA5(ECMWFAPI):
 
         string = (
             f"{t:%Y%m%d%H}-"
+            f"{self.forecast_time:%Y%m%d%H}-"
             f"{'.'.join(str(p) for p in self.pressure_levels)}-"
             f"{'.'.join(sorted(self.variable_shortnames))}-"
             f"{self.grid}"
         )
 
         name = hashlib.md5(string.encode()).hexdigest()
-        cache_path = f"era5ml-{name}.nc"
+        cache_path = f"hresml-{name}.nc"
 
         return self.cachestore.path(cache_path)
 
     @overrides
     def download_dataset(self, times: list[datetime]) -> None:
 
-        # group data to request by month (nominal) or by day (ensemble)
-        requests: dict[datetime, list[datetime]] = collections.defaultdict(list)
-        for t in times:
-            request = (
-                datetime(t.year, t.month, 1)
-                if self.product_type == "reanalysis"
-                else datetime(t.year, t.month, t.day)
-            )
-            requests[request].append(t)
-
-        # retrieve and process data for each request
-        LOG.debug(f"Retrieving ERA5 data for times {times} in {len(requests)} request(s)")
-        for times_in_request in requests.values():
-            _download_convert_cache_handler(self, times_in_request)
+        # will always submit a single MARS request since each forecast is a separate file on tape
+        LOG.debug(f"Retrieving ERA5 data for times {times} from forecast {self.forecast_time}")
+        _download_convert_cache_handler(self, times)
 
     @overrides
     def open_metdataset(
@@ -331,21 +369,11 @@ class ModelLevelERA5(ECMWFAPI):
 
     @overrides
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
-        if self.product_type == "reanalysis":
-            product = "reanalysis"
-        elif self.product_type == "ensemble_members":
-            product = "ensemble"
-        else:
-            msg = f"Unknown product type {self.product_type}"
-            raise ValueError(msg)
-
         ds.attrs.update(
-            provider="ECMWF",
-            dataset="ERA5",
-            product=product,
+            provider="ECMWF", dataset="HRES", product="forecast", radiation_accumulated=True
         )
 
-    def mars_request(self, times: list[datetime]) -> dict[str, str]:
+    def mars_request(self, times: list[datetime]) -> str:
         """Generate MARS request for specific list of times.
 
         Parameters
@@ -355,56 +383,49 @@ class ModelLevelERA5(ECMWFAPI):
 
         Returns
         -------
-        dict[str, str]:
-            MARS request for submission to Copernicus CDS.
+        str
+            MARS request for submission to ECMWF API.
         """
-        unique_dates = set(t.strftime("%Y-%m-%d") for t in times)
-        unique_times = set(t.strftime("%H:%M:%S") for t in times)
+        date = self.forecast_time.strftime("%Y-%m-%d")
+        time = self.forecast_time.strftime("%H:%M:%S")
+        steps = self.get_forecast_steps(times)
         # param 152 = log surface pressure, needed for metview level conversion
         grib_params = set(self.variable_ecmwfids + [152])
-        common = {
-            "class": "ea",
-            "date": "/".join(sorted(unique_dates)),
-            "expver": "1",
-            "levelist": "/".join(str(lev) for lev in sorted(self.levels)),
-            "levtype": "ml",
-            "param": "/".join(str(p) for p in sorted(grib_params)),
-            "time": "/".join(sorted(unique_times)),
-            "type": "an",
-            "grid": f"{self.grid}/{self.grid}",
-        }
-        if self.product_type == "reanalysis":
-            specific = {"stream": "oper"}
-        elif self.product_type == "ensemble_members":
-            specific = {"stream": "enda"}
-            if self.ensemble_members is not None:  # always defined; checked to satisfy mypy
-                specific |= {"number": "/".join(str(n) for n in self.ensemble_members)}
-        return common | specific
+        return (
+            f"retrieve,\n"
+            f"class=od,\n"
+            f"date={date},\n"
+            f"expver=1,\n"
+            f"levelist={'/'.join(str(lev) for lev in sorted(self.levels))},\n"
+            f"levtype=ml,\n"
+            f"param={'/'.join(str(p) for p in sorted(grib_params))},\n"
+            f"step={'/'.join(str(s) for s in sorted(steps))},\n"
+            f"stream=oper,\n"
+            f"time={time},\n"
+            f"type=fc,\n"
+            f"grid={self.grid}/{self.grid}"
+        )
 
-    def _set_cds(self) -> None:
-        """Set the cdsapi.Client instance."""
+    def _set_server(self) -> None:
+        """Set the ecmwfapi.ECMWFService instance."""
         try:
-            import cdsapi
+            from ecmwfapi import ECMWFService
         except ModuleNotFoundError as e:
             dependencies.raise_module_not_found_error(
-                name="ModelLevelERA5._set_cds method",
-                package_name="cdsapi",
+                name="HRESModelLevel._set_server method",
+                package_name="ecmwf-api-client",
                 module_not_found_error=e,
                 pycontrails_optional_package="ecmwf",
             )
 
-        try:
-            self.cds = cdsapi.Client(url=self.url, key=self.key)
-        # cdsapi throws base-level Exception
-        except Exception as err:
-            raise CDSCredentialsNotFound from err
+        self.server = ECMWFService("mars", url=self.url, key=self.key, email=self.email)
 
 
 def _download_convert_cache_handler(
-    era5: ModelLevelERA5,
+    hres: HRESModelLevel,
     times: list[datetime],
 ) -> None:
-    """Download, convert, and cache ERA5 model level data.
+    """Download, convert, and cache HRES model level data.
 
     This function builds a MARS request and retrieves a single GRIB file.
     The calling function should ensure that all times will be contained
@@ -415,12 +436,12 @@ def _download_convert_cache_handler(
     dates and times in the list of specified times.
 
     After retrieval, this function processes the GRIB file
-    to produce the dataset specified by :param:`era5`.
+    to produce the dataset specified by :param:`hres`.
 
     Parameters
     ----------
-    era5 : ModelLevelERA5
-        :class:`ModelLevelERA5` instance with specifications for processed dataset.
+    hres : HRESModelLevel
+        :class:`HRESModelLevel` instance with specifications for processed dataset.
     times : list[datetime]
         Times to download in a single MARS request.
 
@@ -445,57 +466,46 @@ def _download_convert_cache_handler(
         msg = "Failed to import metview"
         raise ImportError(msg) from exc
 
-    if era5.cachestore is None:
+    if hres.cachestore is None:
         msg = "Cachestore is required to download and cache data"
         raise ValueError(msg)
 
     stack = contextlib.ExitStack()
-    request = era5.mars_request(times)
+    request = hres.mars_request(times)
 
-    if not era5.cache_grib:
+    if not hres.cache_grib:
         target = stack.enter_context(temp.temp_file())
     else:
-        request_str = ";".join(f"{p}:{request[p]}" for p in sorted(request.keys()))
-        name = hashlib.md5(request_str.encode()).hexdigest()
-        target = era5.cachestore.path(f"era5ml-{name}.grib")
+        name = hashlib.md5(request.encode()).hexdigest()
+        target = hres.cachestore.path(f"hresml-{name}.grib")
 
     with stack:
-        if not era5.cache_grib or not era5.cachestore.exists(target):
-            if not hasattr(era5, "cds"):
-                era5._set_cds()
-            era5.cds.retrieve("reanalysis-era5-complete", request, target)
+        if not hres.cache_grib or not hres.cachestore.exists(target):
+            if not hasattr(hres, "server"):
+                hres._set_server()
+            hres.server.execute(request, target)
 
         # Read contents of GRIB file as metview Fieldset
         LOG.debug("Opening GRIB file")
         fs_ml = mv.read(target)
 
         # reduce memory overhead by cacheing one timestep at a time
-        for time in times:
+        for time, step in zip(times, hres.get_forecast_steps(times)):
             fs_pl = mv.Fieldset()
-            dimensions = era5.ensemble_members if era5.ensemble_members else [-1]
-            for ens in dimensions:
-                date = time.strftime("%Y%m%d")
-                t = time.strftime("%H%M")
-                selection = dict(date=date, time=t)
-                if ens >= 0:
-                    selection |= dict(number=str(ens))
-
-                lnsp = fs_ml.select(shortName="lnsp", **selection)
-                for var in era5.variables:
-                    LOG.debug(
-                        f"Converting {var.short_name} at {t}"
-                        + (f" (ensemble member {ens})" if ens else "")
-                    )
-                    f_ml = fs_ml.select(shortName=var.short_name, **selection)
-                    f_pl = mv.mvl_ml2hPa(lnsp, f_ml, era5.pressure_levels)
-                    fs_pl = mv.merge(fs_pl, f_pl)
+            selection = dict(step=step)
+            lnsp = fs_ml.select(shortName="lnsp", **selection)
+            for var in hres.variables:
+                LOG.debug(
+                    f"Converting {var.short_name} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                    + f" (step {step})"
+                )
+                f_ml = fs_ml.select(shortName=var.short_name, **selection)
+                f_pl = mv.mvl_ml2hPa(lnsp, f_ml, hres.pressure_levels)
+                fs_pl = mv.merge(fs_pl, f_pl)
 
             # Create, validate, and cache dataset
             ds = fs_pl.to_dataset()
-            ds = ds.rename(isobaricInhPa="level").expand_dims("time")
+            ds = ds.rename(isobaricInhPa="level", time="initialization_time")
+            ds = ds.rename(step="time").assign_coords(time=time).expand_dims("time")
             ds.attrs["pycontrails_version"] = pycontrails.__version__
-            era5.cache_dataset(ds)
-
-
-class CDSCredentialsNotFound(Exception):
-    """Raise when CDS credentials are not found by :class:`cdsapi.Client` instance."""
+            hres.cache_dataset(ds)

@@ -5,13 +5,13 @@
 
 ### Features
 
-- Add `ModelLevelERA5` and `ModelLevelHRES` interfaces for accessing ERA5 and HRES data on model levels.
+- Add `ERA5ModelLevel` and `HRESModelLevel` interfaces for accessing ERA5 and HRES data on model levels.
 - Update [ECMWF tutorial notebook](https://py.contrails.org/notebooks/ECMWF.html) with instructions for using model-level datalibs.
 
 ### Internals
 
 - Create static copy of dataframe for determining pressure at ECMWF model levels.
-- Extract model-level utilities in `ARCOERA5` to their own module for reuse in `ModelLevelERA5` and `ModelLevelHRES`.
+- Extract model-level utilities in `ARCOERA5` to their own module for reuse in `ERA5ModelLevel` and `HRESModelLevel`.
 - Update Makefile so `make doctest` and `make nb-test` use data cached by `make ensure-era5-cached` when run locally.
 
 ## v0.50.2
