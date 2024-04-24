@@ -102,3 +102,7 @@ class ECMWFAPI(datalib.MetDataSource):
                 os.remove(cache_path)
 
             ds_t.to_netcdf(cache_path)
+
+
+class CDSCredentialsNotFound(Exception):
+    """Raise when CDS credentials are not found by :class:`cdsapi.Client` instance."""

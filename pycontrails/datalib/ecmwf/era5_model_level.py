@@ -43,7 +43,7 @@ import pycontrails
 from pycontrails.core import cache, datalib, met_var
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib.ecmwf import variables as ecmwf_var
-from pycontrails.datalib.ecmwf.common import ECMWFAPI
+from pycontrails.datalib.ecmwf.common import ECMWFAPI, CDSCredentialsNotFound
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.utils import dependencies, temp
 
@@ -495,7 +495,3 @@ def _download_convert_cache_handler(
             ds = ds.rename(isobaricInhPa="level").expand_dims("time")
             ds.attrs["pycontrails_version"] = pycontrails.__version__
             era5.cache_dataset(ds)
-
-
-class CDSCredentialsNotFound(Exception):
-    """Raise when CDS credentials are not found by :class:`cdsapi.Client` instance."""
