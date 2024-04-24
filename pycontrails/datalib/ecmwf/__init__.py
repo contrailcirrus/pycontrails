@@ -10,6 +10,7 @@ from pycontrails.datalib.ecmwf.hres_model_level import HRESModelLevel
 from pycontrails.datalib.ecmwf.ifs import IFS
 from pycontrails.datalib.ecmwf.variables import (
     ECMWF_VARIABLES,
+    MODEL_LEVEL_VARIABLES,
     PRESSURE_LEVEL_VARIABLES,
     SURFACE_VARIABLES,
     CloudAreaFraction,
@@ -48,4 +49,5 @@ __all__ = [
     "ECMWF_VARIABLES",
     "PRESSURE_LEVEL_VARIABLES",
     "SURFACE_VARIABLES",
+    "MODEL_LEVEL_VARIABLES",
 ]

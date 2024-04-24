@@ -40,25 +40,12 @@ import pandas as pd
 import xarray as xr
 
 import pycontrails
-from pycontrails.core import cache, datalib, met_var
+from pycontrails.core import cache, datalib
 from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.datalib.ecmwf import variables as ecmwf_var
+from pycontrails.datalib.ecmwf import MODEL_LEVEL_VARIABLES
 from pycontrails.datalib.ecmwf.common import ECMWFAPI, CDSCredentialsNotFound
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.utils import dependencies, temp
-
-MODEL_LEVEL_VARIABLES = [
-    met_var.AirTemperature,
-    met_var.SpecificHumidity,
-    met_var.VerticalVelocity,
-    met_var.EastwardWind,
-    met_var.NorthwardWind,
-    ecmwf_var.RelativeVorticity,
-    ecmwf_var.Divergence,
-    ecmwf_var.CloudAreaFractionInLayer,
-    ecmwf_var.SpecificCloudIceWaterContent,
-    ecmwf_var.SpecificCloudLiquidWaterContent,
-]
 
 ALL_ENSEMBLE_MEMBERS = list(range(10))
 

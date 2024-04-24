@@ -28,26 +28,13 @@ import xarray as xr
 from overrides import overrides
 
 import pycontrails
-from pycontrails.core import cache, datalib, met_var
+from pycontrails.core import cache, datalib
 from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.datalib.ecmwf import variables as ecmwf_var
+from pycontrails.datalib.ecmwf import MODEL_LEVEL_VARIABLES
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.utils import dependencies, temp
 from pycontrails.utils.types import DatetimeLike
-
-MODEL_LEVEL_VARIABLES = [
-    met_var.AirTemperature,
-    met_var.SpecificHumidity,
-    met_var.VerticalVelocity,
-    met_var.EastwardWind,
-    met_var.NorthwardWind,
-    ecmwf_var.RelativeVorticity,
-    ecmwf_var.Divergence,
-    ecmwf_var.CloudAreaFractionInLayer,
-    ecmwf_var.SpecificCloudIceWaterContent,
-    ecmwf_var.SpecificCloudLiquidWaterContent,
-]
 
 LAST_STEP_1H = 96  # latest forecast step with 1 hour frequency
 LAST_STEP_3H = 144  # latest forecast step with 3 hour frequency
