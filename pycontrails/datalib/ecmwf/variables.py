@@ -240,5 +240,17 @@ SURFACE_VARIABLES = [
     CloudAreaFraction,
     SurfaceSolarDownwardRadiation,
 ]
+MODEL_LEVEL_VARIABLES = [
+    met_var.AirTemperature,
+    met_var.SpecificHumidity,
+    met_var.VerticalVelocity,
+    met_var.EastwardWind,
+    met_var.NorthwardWind,
+    RelativeVorticity,
+    Divergence,
+    CloudAreaFractionInLayer,
+    SpecificCloudIceWaterContent,
+    SpecificCloudLiquidWaterContent,
+]
 
 ECMWF_VARIABLES = PRESSURE_LEVEL_VARIABLES + SURFACE_VARIABLES
