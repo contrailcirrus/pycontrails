@@ -58,7 +58,6 @@ def support_arraylike(
     - `numpy ufuncs <https://numpy.org/doc/stable/reference/ufuncs.html>`_
     """
 
-    @functools.wraps(func)
     def wrapped(arr: ArrayScalarLike) -> ArrayScalarLike:
         x = np.asarray(arr)
 
@@ -86,7 +85,9 @@ def support_arraylike(
         # Pass numpy `ret` through for anything else
         return ret
 
-    return wrapped
+    # this line produces a mypy error starting on mypy version 1.1.0,
+    # likely due to changes in https://github.com/python/mypy/pull/16942
+    return functools.update_wrapper(wrapped, func)  # type: ignore
 
 
 def apply_nan_mask_to_arraylike(arr: ArrayLike, nan_mask: np.ndarray) -> ArrayLike:
