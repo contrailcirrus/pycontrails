@@ -13,7 +13,8 @@
 - Create static copy of dataframe for determining pressure at ECMWF model levels.
 - Extract model-level utilities in `ARCOERA5` to their own module for reuse in `ERA5ModelLevel` and `HRESModelLevel`.
 - Update Makefile so `make ensure-era5-cached` uses default cache directory when run locally.
-- Pin mypy to version 1.9.0 and bump pinned black and ruff versions.
+- Bump pinned black and ruff versions.
+- Disable mypy type checking on `functools.wraps` in `support_arraylike` decorator to avoid error that appears starting on mypy 1.10.0.
 
 ## v0.50.2
 
