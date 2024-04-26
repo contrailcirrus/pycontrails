@@ -602,7 +602,7 @@ def _load_quantiles() -> pd.DataFrame:
         and the interpolation methodology. The IAOGS quantiles are in the
         ``("iagos", "iagos")`` column.
     """
-    path = pathlib.Path(__file__).parent / "quantiles" / "era5-quantiles.pq"
+    path = pathlib.Path(__file__).parent / "quantiles" / "era5-pressure-level-quantiles.pq"
     return pd.read_parquet(path)
 
 
