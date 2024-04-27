@@ -591,8 +591,14 @@ class HumidityScalingByLevel(HumidityScaling):
 
 
 @functools.cache
-def _load_quantiles() -> pd.DataFrame:
+def _load_quantiles(level_type: str) -> pd.DataFrame:
     """Load precomputed ERA5 and IAGOS quantiles.
+
+    Parameters
+    ----------
+    level_type : {"pressure", "model"}
+        Select whether to load precomputed quantiles from pressure- vs
+        model-level ERA5 data.
 
     Returns
     -------
@@ -602,17 +608,18 @@ def _load_quantiles() -> pd.DataFrame:
         and the interpolation methodology. The IAOGS quantiles are in the
         ``("iagos", "iagos")`` column.
     """
-    path = pathlib.Path(__file__).parent / "quantiles" / "era5-pressure-level-quantiles.pq"
+    path = pathlib.Path(__file__).parent / "quantiles" / f"era5-{level_type}-level-quantiles.pq"
     return pd.read_parquet(path)
 
 
 def histogram_matching(
     era5_rhi: ArrayLike,
     product_type: str,
+    level_type: str,
     member: int | None,
     q_method: str | None,
 ) -> npt.NDArray[np.float64]:
-    """Map ERA5-derived RHi to it's corresponding IAGOS quantile via histogram matching.
+    """Map ERA5-derived RHi to its corresponding IAGOS quantile via histogram matching.
 
     This matching is performed on a **single** ERA5 ensemble member.
 
@@ -622,6 +629,11 @@ def histogram_matching(
         ERA5-derived RHi values for the given ensemble member.
     product_type : {"reanalysis", "ensemble_members"}
         The ERA5 product type.
+    level_type : {"pressure", "model"}
+        Select whether to perform quantile mapping based on quantiles from
+        pressure- or model-level ERA5 data. Selecting ``level_type == "model"``
+        when ``product_type == "ensemble_members"`` will produce a warning
+        and change ``product_type`` to  ``"reanalysis"``.
     member : int | None
         The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
         Only used if ``product_type == "ensemble_members"``.
@@ -634,18 +646,30 @@ def histogram_matching(
         The IAGOS quantiles corresponding to the ERA5-derived RHi values. Returned
         as a numpy array with the same shape and dtype as ``era5_rhi``.
     """
-    df = _load_quantiles()
+    if level_type not in ["pressure", "model"]:
+        msg = f"Invalid level_type '{level_type}'. " "Must be one of ['pressure', 'model']."
+        raise ValueError(msg)
+    df = _load_quantiles(level_type)
     iagos_quantiles = df[("iagos", "iagos")]
+
+    if product_type == "ensemble_members" and level_type == "model":
+        msg = (
+            "No quantiles available for model-level ensemble data. "
+            "Switching to product_type = 'reanalysis'."
+        )
+        warnings.warn(msg)
+        product_type = "reanalysis"
 
     if product_type == "ensemble_members":
         col = f"ensemble{member}", q_method or "linear-q"
     elif product_type == "reanalysis":
         col = "reanalysis", q_method or "linear-q"
     else:
-        raise ValueError(
-            f"Invalid 'product_type' value '{product_type}'. "
+        msg = (
+            f"Invalid product_type '{product_type}'. "
             "Must be one of ['reanalysis', 'ensemble_members']."
         )
+        raise ValueError(msg)
 
     try:
         era5_quantiles = df[col]
@@ -691,7 +715,7 @@ def histogram_matching_all_members(
 
     # Perform histogram matching on the given ensemble member
     ensemble_member_rhi = histogram_matching(
-        era5_rhi_all_members[:, member], "ensemble_members", member, q_method
+        era5_rhi_all_members[:, member], "ensemble_members", "pressure", member, q_method
     )
 
     # Perform histogram matching on all other ensemble members
@@ -702,7 +726,7 @@ def histogram_matching_all_members(
             ensemble_mean_rhi += ensemble_member_rhi
         else:
             ensemble_mean_rhi += histogram_matching(
-                era5_rhi_all_members[:, r], "ensemble_members", r, q_method
+                era5_rhi_all_members[:, r], "ensemble_members", "pressure", r, q_method
             )
 
     # Divide by the number of ensemble members to get the mean
@@ -766,6 +790,9 @@ class HistogramMatchingParams(models.ModelParams):
     #: The ERA5 product. Must be one of ``"reanalysis"`` or ``"ensemble_members"``.
     product_type: str = "reanalysis"
 
+    #: The ERA5 vertical level type. Must be one of ``"pressure"`` or ``"model"``.
+    level_type: str = "pressure"
+
     #: The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
     #: Only used if ``product_type`` is ``"ensemble_members"``.
     member: int | None = None
@@ -778,6 +805,23 @@ class HistogramMatching(HumidityScaling):
     long_name = "IAGOS RHi histogram matching"
     formula = "era5_quantiles -> iagos_quantiles"
     default_params = HistogramMatchingParams
+
+    def __init__(
+        self, met: MetDataset | None = None, params: dict[str, Any] | None = None, **params_kwargs
+    ):
+        if (
+            params is None
+            or "level_type" not in params
+            and params_kwargs is None
+            or "level_type" not in params_kwargs
+        ):
+            msg = (
+                "The default level_type will change from 'pressure' to 'model' "
+                "in a future release. To silence this warning, "
+                "provide a 'level_type' value when instantiating HistogramMatching."
+            )
+            raise DeprecationWarning(msg)
+        super().__init__(met, params, **params_kwargs)
 
     @overrides
     def scale(
@@ -793,6 +837,7 @@ class HistogramMatching(HumidityScaling):
         rhi_1 = histogram_matching(
             rhi,
             self.params["product_type"],
+            self.params["level_type"],
             self.params["member"],
             self.params["interpolation_q_method"],
         )
