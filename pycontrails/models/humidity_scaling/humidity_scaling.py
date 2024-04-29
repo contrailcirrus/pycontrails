@@ -809,7 +809,10 @@ class HistogramMatching(HumidityScaling):
     default_params = HistogramMatchingParams
 
     def __init__(
-        self, met: MetDataset | None = None, params: dict[str, Any] | None = None, **params_kwargs
+        self,
+        met: MetDataset | None = None,
+        params: dict[str, Any] | None = None,
+        **params_kwargs: Any,
     ):
         if (params is None or "level_type" not in params) and (
             params_kwargs is None or "level_type" not in params_kwargs
