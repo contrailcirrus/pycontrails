@@ -212,6 +212,7 @@ filterwarnings = [
     "ignore:Engine 'cfgrib' loading failed:RuntimeWarning:xarray.backends.plugins",
     "ignore:.*IPyNbFile:pytest.PytestRemovedIn9Warning:_pytest.nodes",
     "ignore:.*pkg_resources:DeprecationWarning",
+    "ignore:The default level_type will change:DeprecationWarning"
 ]
 testpaths = ["tests/unit"]
 

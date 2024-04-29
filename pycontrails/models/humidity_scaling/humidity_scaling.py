@@ -609,7 +609,9 @@ def _load_quantiles(level_type: str) -> pd.DataFrame:
         ``("iagos", "iagos")`` column.
     """
     path = pathlib.Path(__file__).parent / "quantiles" / f"era5-{level_type}-level-quantiles.pq"
-    return pd.read_parquet(path)
+    df = pd.read_parquet(path)
+    df.attrs["path"] = str(path)
+    return df
 
 
 def histogram_matching(
@@ -647,7 +649,7 @@ def histogram_matching(
         as a numpy array with the same shape and dtype as ``era5_rhi``.
     """
     if level_type not in ["pressure", "model"]:
-        msg = f"Invalid level_type '{level_type}'. " "Must be one of ['pressure', 'model']."
+        msg = f"Invalid 'level_type' value '{level_type}'. " "Must be one of ['pressure', 'model']."
         raise ValueError(msg)
     df = _load_quantiles(level_type)
     iagos_quantiles = df[("iagos", "iagos")]
@@ -666,7 +668,7 @@ def histogram_matching(
         col = "reanalysis", q_method or "linear-q"
     else:
         msg = (
-            f"Invalid product_type '{product_type}'. "
+            f"Invalid 'product_type' value '{product_type}'. "
             "Must be one of ['reanalysis', 'ensemble_members']."
         )
         raise ValueError(msg)
@@ -809,18 +811,15 @@ class HistogramMatching(HumidityScaling):
     def __init__(
         self, met: MetDataset | None = None, params: dict[str, Any] | None = None, **params_kwargs
     ):
-        if (
-            params is None
-            or "level_type" not in params
-            and params_kwargs is None
-            or "level_type" not in params_kwargs
+        if (params is None or "level_type" not in params) and (
+            params_kwargs is None or "level_type" not in params_kwargs
         ):
             msg = (
                 "The default level_type will change from 'pressure' to 'model' "
                 "in a future release. To silence this warning, "
                 "provide a 'level_type' value when instantiating HistogramMatching."
             )
-            raise DeprecationWarning(msg)
+            warnings.warn(msg, DeprecationWarning)
         super().__init__(met, params, **params_kwargs)
 
     @overrides

@@ -330,10 +330,12 @@ def ensemble_vector(met_issr: MetDataset) -> GeoVectorDataset:
 
 
 @pytest.mark.filterwarnings("ignore:No variable key 'log_specific_humidity'")
+@pytest.mark.parametrize("level_type", ["pressure", "model"])
 @pytest.mark.parametrize("q_method", [None, "cubic-spline", "log-q-log-p"])
 def test_histogram_matching_reanalysis(
     met_issr: MetDataset,
     ensemble_vector: GeoVectorDataset,
+    level_type: str,
     q_method: str,
 ) -> None:
     """Test the HistogramMatching model."""
@@ -341,7 +343,9 @@ def test_histogram_matching_reanalysis(
     models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
     q0 = models.interpolate_met(met_issr, ensemble_vector, "specific_humidity", q_method=q_method)
 
-    model = hs.HistogramMatching(product_type="reanalysis", interpolation_q_method=q_method)
+    model = hs.HistogramMatching(
+        product_type="reanalysis", level_type=level_type, interpolation_q_method=q_method
+    )
     vector = model.eval(ensemble_vector)
     q1 = vector["specific_humidity"]
 
@@ -426,3 +430,97 @@ def test_histogram_matching_members(
         assert rhi2_mean == pytest.approx(0.204, abs=0.01)
     elif q_method == "log-q-log-p":
         assert rhi2_mean == pytest.approx(0.179, abs=0.01)
+
+
+@pytest.mark.filterwarnings("ignore:No variable key 'log_specific_humidity'")
+@pytest.mark.parametrize(
+    ("level_type", "suffix"),
+    [("pressure", "era5-pressure-level-quantiles.pq"), ("model", "era5-model-level-quantiles.pq")],
+)
+def test_histogram_matching_data_file(level_type: str, suffix: str) -> None:
+    """Test source file used for histogram matching data."""
+    df = hs.humidity_scaling._load_quantiles(level_type)
+    assert df.attrs["path"].endswith(suffix)
+
+
+@pytest.mark.filterwarnings("ignore:No variable key 'log_specific_humidity'")
+@pytest.mark.parametrize("q_method", [None, "cubic-spline", "log-q-log-p"])
+def test_histogram_matching_ensemble_members_model_level(
+    met_issr: MetDataset,
+    ensemble_vector: GeoVectorDataset,
+    q_method: str,
+) -> None:
+    """Test histogram matching with ensemble member and model-level quantiles."""
+
+    models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
+    q0 = models.interpolate_met(met_issr, ensemble_vector, "specific_humidity", q_method=q_method)
+
+    model = hs.HistogramMatching(
+        product_type="ensemble_members", level_type="model", interpolation_q_method=q_method
+    )
+    with pytest.warns(UserWarning, match="No quantiles available for"):
+        vector = model.eval(ensemble_vector)
+    q1 = vector["specific_humidity"]
+
+    # Check that the two methods give different results
+    diff = np.abs(np.log(q1) - np.log(q0))
+    assert diff.min() >= 5e-7
+    assert diff.max() <= 2
+    assert 0.02 < diff.mean() < 0.1
+
+    # Check that scaling falls back to reanalysis model-level quantiles
+    model = hs.HistogramMatching(
+        product_type="reanalysis", level_type="model", interpolation_q_method=q_method
+    )
+    vector = model.eval(ensemble_vector)
+    q2 = vector["specific_humidity"]
+    np.testing.assert_array_equal(q1, q2)
+
+
+def test_histogram_matching_level_type() -> None:
+    """Test histogram matching level type selection."""
+    with pytest.warns(DeprecationWarning, match="The default level_type will change"):
+        model = hs.HistogramMatching()
+    assert model.params["level_type"] == "pressure"
+
+    model = hs.HistogramMatching(level_type="pressure")
+    assert model.params["level_type"] == "pressure"
+
+    model = hs.HistogramMatching(level_type="model")
+    assert model.params["level_type"] == "model"
+
+
+def test_histogram_matching_invalid_level_type(
+    met_issr: MetDataset,
+    ensemble_vector: GeoVectorDataset,
+) -> None:
+    """Test histogram matching with invalid level type."""
+    models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
+    models.interpolate_met(met_issr, ensemble_vector, "specific_humidity")
+    model = hs.HistogramMatching(level_type="foo")
+    with pytest.raises(ValueError, match="Invalid 'level_type'"):
+        model.eval(ensemble_vector)
+
+
+def test_histogram_matching_invalid_product_type(
+    met_issr: MetDataset,
+    ensemble_vector: GeoVectorDataset,
+) -> None:
+    """Test histogram matching with invalid product type."""
+    models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
+    models.interpolate_met(met_issr, ensemble_vector, "specific_humidity")
+    model = hs.HistogramMatching(product_type="foo")
+    with pytest.raises(ValueError, match="Invalid 'product_type'"):
+        model.eval(ensemble_vector)
+
+
+def test_histogram_matching_invalid_q_method(
+    met_issr: MetDataset,
+    ensemble_vector: GeoVectorDataset,
+) -> None:
+    """Test histogram matching with ensemble member and model-level quantiles."""
+    models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
+    models.interpolate_met(met_issr, ensemble_vector, "specific_humidity")
+    model = hs.HistogramMatching(interpolation_q_method="foo")
+    with pytest.raises(ValueError, match="Invalid 'q_method'"):
+        model.eval(ensemble_vector)
