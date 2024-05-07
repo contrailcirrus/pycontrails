@@ -3,11 +3,19 @@
 
 ## v0.50.3
 
+### Breaking changes
+
+- Geodesic interpolation is now used in `Flight.resample_and_fill` when the great circle distance between waypoints (rather than the total segment length including vertical displacement) exceeds a threshold. This may change the interpolation method used when resampling flight segments with lengths close to the geodesic interpolation threshold.
+
 ### Features
 
 - Add `ERA5ModelLevel` and `HRESModelLevel` interfaces for accessing ERA5 and HRES data on model levels.
 - Update [ECMWF tutorial notebook](https://py.contrails.org/notebooks/ECMWF.html) with instructions for using model-level datalibs.
 - Add `HistogramMatching` humidity scaling calibrated for model-level ERA5 data.
+
+### Fixes
+
+- Use horizontal great circle distance to determine whether geodesic interpolation is used in `Flight.resample_and_fill`. This ensures geodesic interpolation is used between sufficiently distant waypoints even when one or both waypoints contain NaN altitude data.
 
 ### Internals
 
