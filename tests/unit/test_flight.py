@@ -384,6 +384,19 @@ def test_geodesic_interpolation(fl: Flight) -> None:
         fl_alt.resample_and_fill(fill_method="nearest")
 
 
+def test_geodesic_interpolation_nan_altitude(fl: Flight) -> None:
+    """Test geodesic interpolation with NaN altitudes."""
+    fl_valid_alt = Flight(fl.dataframe)
+    fl_valid_alt["altitude"][:] = 10000.0
+    fl2 = fl_valid_alt.resample_and_fill("1min", "geodesic", geodesic_threshold=1e3)
+    fl_missing_alt = Flight(fl.dataframe)
+    fl_missing_alt["altitude"][:] = 10000.0
+    fl_missing_alt["altitude"][1:-1] = np.nan
+    fl3 = fl_missing_alt.resample_and_fill("1min", "geodesic", geodesic_threshold=1e3)
+    for col in ["longitude", "latitude", "altitude", "time"]:
+        np.testing.assert_array_equal(fl2[col], fl3[col])
+
+
 def test_resample_keep_original(fl: Flight) -> None:
     """Test Flight.resample_and_fill() with keep_original_index=True."""
     fl2 = fl.resample_and_fill("1min", keep_original_index=True)
