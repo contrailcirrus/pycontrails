@@ -447,6 +447,48 @@ class Flight(GeoVectorDataset):
 
         return segment_duration(self.data["time"], dtype=dtype)
 
+    def segment_haversine(self) -> npt.NDArray[np.float64]:
+        """Compute Haversine (great circle) distance between flight waypoints.
+
+        Helper function used in :meth:`resample_and_fill`.
+        `np.nan` appended so the length of the output is the same as number of waypoints.
+
+        To account for vertical displacements when computing segment lengths,
+        use :meth:`segment_length`
+
+        Returns
+        -------
+        npt.NDArray[np.float64]
+            Array of great circle distances in [:math:`m`] between waypoints
+
+        Raises
+        ------
+        NotImplementedError
+            Raises when attr:`attrs["crs"]` is not EPSG:4326
+
+        Examples
+        --------
+        >>> from pycontrails import Flight
+        >>> fl = Flight(
+        ... longitude=np.array([1, 2, 3, 5, 8]),
+        ... latitude=np.arange(5),
+        ... altitude=np.full(shape=(5,), fill_value=11000),
+        ... time=pd.date_range('2021-01-01T12', '2021-01-01T14', periods=5),
+        ... )
+        >>> fl.segment_haversine()
+        array([157255.03346286, 157231.08336815, 248456.48781503, 351047.44358851,
+                           nan])
+
+        See Also
+        --------
+        :func:`segment_haversine`
+        :meth:`segment_length`
+        """
+        if self.attrs["crs"] != "EPSG:4326":
+            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
+
+        return geo.segment_haversine(self["longitude"], self["latitude"])
+
     def segment_length(self) -> npt.NDArray[np.float64]:
         """Compute spherical distance between flight waypoints.
 
@@ -1232,7 +1274,7 @@ class Flight(GeoVectorDataset):
             raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
 
         # Omit the final nan and ensure index + 1 (below) is well defined
-        segs = self.segment_length()[:-1]
+        segs = self.segment_haversine()[:-1]
 
         # For default geodesic_threshold, we expect gap_indices to be very
         # sparse (so the for loop below is cheap)
