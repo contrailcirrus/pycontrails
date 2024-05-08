@@ -20,6 +20,10 @@
     {
       "name": "Tom Dean",
       "affiliation": "Breakthrough Energy"
+    },
+    {
+      "name": "Tristan Abbott",
+      "affiliation": "Breakthrough Energy"
     }
   ],
   "license": "Apache-2.0",
