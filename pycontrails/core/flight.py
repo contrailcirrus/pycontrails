@@ -454,7 +454,7 @@ class Flight(GeoVectorDataset):
         `np.nan` appended so the length of the output is the same as number of waypoints.
 
         To account for vertical displacements when computing segment lengths,
-        use :meth:`segment_length`
+        use :meth:`segment_length`.
 
         Returns
         -------
