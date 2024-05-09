@@ -26,6 +26,7 @@
 - Update Makefile so `make ensure-era5-cached` uses default cache directory when run locally.
 - Bump pinned black and ruff versions.
 - Disable mypy type checking on `functools.wraps` in `support_arraylike` decorator to avoid error that appears starting on mypy 1.10.0.
+- Update pinned CoCiP output values after moist heat capacity bugfix.
 
 ## v0.50.2
 
