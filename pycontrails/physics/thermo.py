@@ -66,7 +66,7 @@ def c_pm(q: ArrayScalarLike) -> ArrayScalarLike:
     Some models (including CoCiP) use a constant value here (1004 :math:`J \ kg^{-1} \ K^{-1}`)
 
     """
-    return constants.c_pd * (1.0 + (constants.c_pv / constants.c_pd + 1.0) * q)
+    return constants.c_pd * (1.0 - q) + constants.c_pv * q
 
 
 def p_vapor(q: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
