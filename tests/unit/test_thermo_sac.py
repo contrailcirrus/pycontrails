@@ -5,7 +5,7 @@ import pytest
 
 from pycontrails import JetA, VectorDataset
 from pycontrails.models.sac import T_sat_liquid, rh_critical_sac, slope_mixing_line
-from pycontrails.physics import thermo
+from pycontrails.physics import constants, thermo
 
 
 @pytest.fixture(scope="module")
@@ -42,6 +42,19 @@ def test_e_sat_increasing(e_sat):
     e_sat_ = e_sat(T)
     assert np.all(e_sat_ > 0)
     assert np.all(np.diff(e_sat_) > 0)
+
+
+@pytest.mark.parametrize("q", [0.0, 0.001, 0.1, 1.0])
+def test_moist_heat_capacity(q):
+    """Check that humidity increases moist heat capacity between correct limits."""
+    c_pm = thermo.c_pm(q)
+    if q == 0.0:
+        assert c_pm == constants.c_pd
+    elif q == 1.0:
+        assert c_pm == constants.c_pv
+    else:
+        assert c_pm > constants.c_pd
+        assert c_pm < constants.c_pv
 
 
 @pytest.mark.parametrize("engine_efficiency", [0.2, 0.4, 0.6])
