@@ -6,6 +6,7 @@
 ### Breaking changes
 
 - Geodesic interpolation is now used in `Flight.resample_and_fill` when the great circle distance between waypoints (rather than the total segment length including vertical displacement) exceeds a threshold. This may change the interpolation method used when resampling flight segments with lengths close to the geodesic interpolation threshold.
+- Bugfix will decrease computed values of moist heat capacity with non-zero specific humidity.
 
 ### Features
 
@@ -16,6 +17,7 @@
 ### Fixes
 
 - Use horizontal great circle distance to determine whether geodesic interpolation is used in `Flight.resample_and_fill`. This ensures geodesic interpolation is used between sufficiently distant waypoints even when one or both waypoints contain NaN altitude data.
+- Fix moist heat capacity bug in `thermo.c_pm`.
 
 ### Internals
 
