@@ -100,6 +100,9 @@ class HRESModelLevel(ECMWFAPI):
     levels : list[int], optional
         Specify ECMWF model levels to include in MARS requests.
         By default, this is set to include all model levels.
+    regrid_locally : bool, optional
+        If True, retrieve fields on the archived grid regrid locally. By default, False.
+        This reduces request latency but increases the time required for local postprocessing.
     cachestore : CacheStore | None, optional
         Cache data store for staging processed netCDF files.
         Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
@@ -126,7 +129,7 @@ class HRESModelLevel(ECMWFAPI):
         grid: float | None = None,
         forecast_time: DatetimeLike | None = None,
         levels: list[int] | None = None,
-        ensemble_members: list[int] | None = None,
+        regrid_locally: bool = False,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
         cache_grib: bool = False,
         url: str | None = None,
@@ -164,6 +167,8 @@ class HRESModelLevel(ECMWFAPI):
             msg = "Retrieval levels must be between 1 and 137, inclusive."
             raise ValueError(msg)
         self.levels = levels
+
+        self.regrid_locally = regrid_locally
 
         forecast_hours = datalib.parse_timesteps(time, freq="1h")
         if forecast_time is None:
@@ -375,6 +380,7 @@ class HRESModelLevel(ECMWFAPI):
         date = self.forecast_time.strftime("%Y-%m-%d")
         time = self.forecast_time.strftime("%H:%M:%S")
         steps = self.get_forecast_steps(times)
+        grid = "av" if self.regrid_locally else f"{self.grid}/{self.grid}"
         # param 152 = log surface pressure, needed for metview level conversion
         grib_params = set(self.variable_ecmwfids + [152])
         return (
@@ -389,7 +395,7 @@ class HRESModelLevel(ECMWFAPI):
             f"stream=oper,\n"
             f"time={time},\n"
             f"type=fc,\n"
-            f"grid={self.grid}/{self.grid}"
+            f"grid={grid}"
         )
 
     def _set_server(self) -> None:
@@ -472,17 +478,23 @@ class HRESModelLevel(ECMWFAPI):
             LOG.debug("Opening GRIB file")
             fs_ml = mv.read(target)
 
+            breakpoint()
+
             # reduce memory overhead by cacheing one timestep at a time
             for time, step in zip(times, self.get_forecast_steps(times)):
                 fs_pl = mv.Fieldset()
                 selection = dict(step=step)
                 lnsp = fs_ml.select(shortName="lnsp", **selection)
+                if self.regrid_locally:
+                    lnsp = mv.regrid(data=lnsp, grid=f"{self.grid}/{self.grid}")
                 for var in self.variables:
                     LOG.debug(
                         f"Converting {var.short_name} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
                         + f" (step {step})"
                     )
                     f_ml = fs_ml.select(shortName=var.short_name, **selection)
+                    if self.regrid_locally:
+                        f_ml = mv.regrid(data=f_ml, grid=f"{self.grid}/{self.grid}")
                     f_pl = mv.mvl_ml2hPa(lnsp, f_ml, self.pressure_levels)
                     fs_pl = mv.merge(fs_pl, f_pl)
 
