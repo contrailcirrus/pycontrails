@@ -106,8 +106,8 @@ def cocip_grid(fl: Flight) -> MetDataset:
     )
     grid["ef_per_m"] = xr.DataArray(np.zeros(grid.shape), coords=grid.coords)
     grid.data["ef_per_m"][:, :, 9, :] = 1e8
-    grid.data["ef_per_m"][3:5, :, 2:5, :] = 5e8
-    grid.data["ef_per_m"][4:5, :, 6, :] = -1e8
+    grid.data["ef_per_m"][10:20, :, 2:5, :] = 5e8
+    grid.data["ef_per_m"][30:40, :, 6, :] = -1e8
 
     return grid
 
@@ -290,3 +290,52 @@ def test_allowed_actions(fl: Flight, cocip_grid: MetDataset, met: MetDataset) ->
     # Past time restriction so we can cruise, climb, descend
     seq = ps_opt._get_allowed_actions(grid, 10, 14, fl_restrict, min_seg_time)
     assert seq == [14, 11]
+
+
+def test_optimizer(fl: Flight, cocip_grid: MetDataset, met: MetDataset) -> None:
+    aircraft_mass = 60000.0
+    climb_rate = 500.0
+    fl_restrict = 1000.0
+    contrail_scale = 1.0
+    cost_index = 60.0
+    min_seg_time = 10
+    min_alt_ft = 31000.0
+    max_alt_ft = 38000.0
+    grid = ps_opt.run_search(
+        fl,
+        met,
+        cocip_grid["ef_per_m"],
+        aircraft_mass,
+        contrail_scale,
+        min_alt_ft,
+        max_alt_ft,
+        climb_rate,
+        fl_restrict,
+        min_seg_time,
+        cost_index,
+    )
+
+    fl_opt_avoid = ps_opt.reconstruct_optimal_flight(fl, grid)
+    ef_per_m = fl_opt_avoid.intersect_met(cocip_grid["ef_per_m"])
+    ef = np.nansum(ef_per_m * fl_opt_avoid.segment_length())
+    assert pytest.approx(ef) == -4590354635773.0
+
+    contrail_scale = 0.0
+    grid = ps_opt.run_search(
+        fl,
+        met,
+        cocip_grid["ef_per_m"],
+        aircraft_mass,
+        contrail_scale,
+        min_alt_ft,
+        max_alt_ft,
+        climb_rate,
+        fl_restrict,
+        min_seg_time,
+        cost_index,
+    )
+
+    fl_opt_no_avoid = ps_opt.reconstruct_optimal_flight(fl, grid)
+    ef_per_m = fl_opt_no_avoid.intersect_met(cocip_grid["ef_per_m"])
+    ef = np.nansum(ef_per_m * fl_opt_no_avoid.segment_length())
+    assert pytest.approx(ef) == 52885052066662.0
