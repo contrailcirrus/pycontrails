@@ -505,7 +505,7 @@ def run_search(
     max_alt_ft: float = 41000.0,
     climb_rate_fpm: float = 500.0,
     fl_restrict: float = 2000.0,
-    min_seg_time_mins: float = 10.0,
+    min_seg_time_mins: int = 10,
     cost_index: float = 60.0,
     mask_threshold: float | None = None,
 ) -> Mapping[str, Any]:
@@ -563,6 +563,10 @@ def run_search(
 
     # Compute optimal speed at starting point as part of initialization
     p1 = _get_grid_point(0, 0, grid)
+
+    if np.isnan(p1["air_temperature"]):
+        raise ValueError("Start of search outside met domain.")
+
     mach_start = opt_mach(
         atyp_param,
         ps_model,
@@ -576,7 +580,7 @@ def run_search(
     )
 
     if np.isnan(mach_start):
-        raise ValueError("Bad configuration")
+        raise ValueError("Aircraft cannot fly at starting altitude/weight.")
 
     grid["mach_num"][0, 0] = mach_start
 
