@@ -2077,3 +2077,122 @@ def _repeat_rows_and_columns(
 
     # Do not repeat final row and column as they are on the edge
     return array_2d_rep[: -(n_reps - 1), : -(n_reps - 1)]
+
+
+# -----------------------------------------
+# Compare CoCiP outputs with GOES satellite
+# -----------------------------------------
+
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+from pycontrails.datalib.goes import GOES, extract_goes_visualization
+
+
+def cocip_goes_flight_matching(
+    flight_waypoints: GeoVectorDataset | pd.DataFrame,
+    contrails: GeoVectorDataset | pd.DataFrame, *,
+    spatial_bbox: tuple[float, float, float, float] = (-160.0, -80.0, 10.0, 80.0),
+    time_bounds: None | tuple[np.timedelta64, np.timedelta64] = None,
+    freq: str = "600s",
+) -> None:
+    # TODO: Documentation
+    # TODO: CONUS vs. full disk?
+
+    # Ensure the required columns are included in `flight_waypoints` and `contrails`
+    flight_waypoints.ensure_vars(["flight_id", "waypoint", "contrail_age"])
+    contrails.ensure_vars(
+        ["flight_id", "waypoint", "sin_a", "cos_a", "width", "tau_contrail", "age_hours"]
+    )
+
+    # Downselect `flight_waypoints` only to spatial domain covered by GOES full disk
+    is_in_lon = flight_waypoints.dataframe["longitude"].between(spatial_bbox[0], spatial_bbox[2])
+    is_in_lat = flight_waypoints.dataframe["latitude"].between(spatial_bbox[1], spatial_bbox[3])
+    is_in_lon_lat = (is_in_lon & is_in_lat)
+
+    if not np.any(is_in_lon_lat):
+        raise ValueError(
+            "Flight trajectory does not intersect with the defined spatial bounding box or spatial "
+            "domain covered by GOES."
+        )
+
+    flight_waypoints = flight_waypoints.filter(is_in_lon_lat)
+
+    # Define time bounds if None
+    if time_bounds is None:
+        time_bounds = (
+            pd.to_datetime(flight_waypoints["time"].min()),
+            pd.to_datetime(flight_waypoints["time"].max())
+        )
+
+    # Filter `flight_waypoints` if time bounds were previously defined.
+    else:
+        is_in_time = flight_waypoints.dataframe["time"].between(time_bounds[0], time_bounds[1])
+
+        if not np.any(is_in_time):
+            raise ValueError(
+                "Flight trajectory does not intersect with the defined time bounds."
+            )
+
+        flight_waypoints = flight_waypoints.filter(is_in_time)
+
+    # Downselect `contrails` only to include flight waypoints covered by GOES full disk
+    is_in_domain = contrails.dataframe["waypoint"].isin(flight_waypoints["waypoint"])
+
+    if not np.any(is_in_domain):
+        raise ValueError(
+            "No persistent contrails were formed within the defined spatial bounding box."
+        )
+
+    contrails = contrails.filter(is_in_domain)
+
+    # CoCiP-GOES matching
+    t_start = time_bounds[0].floor("10min") - pd.Timedelta(1, "h")
+    t_end = (
+        time_bounds[0].ceil("10min")
+        + flight_waypoints["contrail_age"].max()
+        + pd.Timedelta(3, "h")
+    )
+    times = pd.date_range(start=t_start, end=t_end, freq=freq)
+    bbox = spatial_bbox[0], spatial_bbox[2], spatial_bbox[1], spatial_bbox[3]
+
+    # Create .gif image
+    goes = GOES(region="F")
+
+    for time in tqdm(times):
+        da = goes.get(times[0])
+        rgb, transform, extent = extract_goes_visualization(da)
+
+        # TODO: specify figure dimensions based on bbox
+        # Plot GOES image
+        fig = plt.figure(figsize=(16, 8))
+        pc = ccrs.PlateCarree()
+        ax = fig.add_subplot(projection=pc, extent=bbox)
+        ax.coastlines()
+        ax.imshow(rgb, extent=extent, transform=transform)
+
+        # Plot flight trajectory up to `time`
+        is_time = flight_waypoints["time"] <= time
+        ax.plot(
+            flight_waypoints["longitude"][is_time], flight_waypoints["latitude"][is_time],
+            c="r", linewidth=2.5
+        );
+        plt.legend(["Flight trajectory"])
+
+        # Plot persistent contrails at `time`
+        is_time = ((contrails["time"] == time) & (~np.isnan(contrails["age_hours"])))
+        im = ax.scatter(
+            contrails["longitude"][is_time], contrails["latitude"][is_time],
+            c=contrails["tau_contrail"][is_time],
+            s=4, cmap="YlOrRd_r", vmin=0, vmax=0.2
+        );
+        cbar = plt.colorbar(im)
+        ax.set_title(f"{time}")
+        plt.tight_layout()
+
+        # TODO: Save image (cache?)
+
+    # TODO: Construct .gif
+    print(" ")
+    return
