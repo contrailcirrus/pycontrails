@@ -2175,8 +2175,14 @@ def compare_cocip_with_goes(
     rgb, transform, extent = extract_goes_visualization(da)
     bbox = spatial_bbox[0], spatial_bbox[2], spatial_bbox[1], spatial_bbox[3]
 
+    # Calculate optimal figure dimensions
+    d_lon = spatial_bbox[2] - spatial_bbox[0]
+    d_lat = spatial_bbox[3] - spatial_bbox[1]
+    x_dim = 16
+    y_dim = x_dim * (d_lat / d_lon)
+
     # Plot data
-    fig = plt.figure(figsize=(16, 8))
+    fig = plt.figure(figsize=(1.2 * x_dim, y_dim))
     pc = ccrs.PlateCarree()
     ax = fig.add_subplot(projection=pc, extent=bbox)
     ax.coastlines()
