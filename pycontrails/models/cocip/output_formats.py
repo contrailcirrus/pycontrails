@@ -14,13 +14,18 @@ This module includes functions to produce additional output formats, including t
     (6) Increase spatial resolution of natural cirrus properties, required to estimate the
         high-resolution contrail cirrus coverage for (5).
             See :func:`natural_cirrus_properties_to_hi_res_grid`.
+    (7) Comparing simulated contrails from CoCiP with GOES satellite imagery.
+            See :func:`compare_cocip_with_goes`.
 """
 
 from __future__ import annotations
 
+import pathlib
 import warnings
 from collections.abc import Hashable
 
+import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -28,6 +33,7 @@ import xarray as xr
 
 from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.vector import GeoVectorDataset, vector_to_lon_lat_grid
+from pycontrails.datalib.goes import GOES, extract_goes_visualization
 from pycontrails.models.cocip.contrail_properties import contrail_edges, plume_mass_per_distance
 from pycontrails.models.cocip.radiative_forcing import albedo
 from pycontrails.models.humidity_scaling import HumidityScaling
@@ -2083,26 +2089,51 @@ def _repeat_rows_and_columns(
 # Compare CoCiP outputs with GOES satellite
 # -----------------------------------------
 
-import os
-import cartopy.crs as ccrs
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from pycontrails.core import cache
-from pycontrails.datalib.goes import GOES, extract_goes_visualization
 
-
-def cocip_goes_flight_matching(
+def compare_cocip_with_goes(
+    time: np.timedelta64 | pd.Timestamp,
     flight_waypoints: GeoVectorDataset | pd.DataFrame,
     contrails: GeoVectorDataset | pd.DataFrame, *,
+    path_write_img: None | pathlib.Path = None,
     spatial_bbox: tuple[float, float, float, float] = (-160.0, -80.0, 10.0, 80.0),
-    time_bounds: None | tuple[np.timedelta64, np.timedelta64] = None,
-    freq: str = "600s",
-) -> None:
-    # TODO: Documentation
-    # TODO: CONUS vs. full disk?
+    region: str = "F",
+) -> None | pathlib.Path:
+    """
+    Compare simulated persistent contrails from CoCiP with GOES satellite imagery.
+
+    Parameters
+    ----------
+    time : np.timedelta64 | pd.Timestamp
+        Time of GOES satellite image.
+    flight_waypoints : GeoVectorDataset
+        Flight waypoint outputs.
+    contrails : GeoVectorDataset
+        Contrail evolution outputs from CoCiP, `cocip.contrail`.
+    path_write_img : None | pathlib.Path
+        File path to save the CoCiP-GOES image.
+    spatial_bbox : tuple[float, float, float, float]
+        Spatial bounding box, ``(lon_min, lat_min, lon_max, lat_max)``, [:math:`\deg`]
+    region : str
+        'F' for full disk (image provided every 10 m), and 'C' for CONUS (image provided every 5 m)
+
+    Returns
+    -------
+    None | pathlib.Path
+        File path of saved CoCiP-GOES image if `path_write_img` is provided.
+    """
+    # Round `time` to nearest GOES image time slice
+    if isinstance(time, np.timedelta64):
+        time = pd.to_datetime(time)
+
+    if region == "F":
+        time = time.round('10min')
+    elif region == "C":
+        time = time.round('5min')
+    else:
+        raise AssertionError("`region` only accepts inputs of `F` (full disk) or `C` (CONUS)")
 
     # Ensure the required columns are included in `flight_waypoints` and `contrails`
-    flight_waypoints.ensure_vars(["flight_id", "waypoint", "contrail_age"])
+    flight_waypoints.ensure_vars(["flight_id", "waypoint"])
     contrails.ensure_vars(
         ["flight_id", "waypoint", "sin_a", "cos_a", "width", "tau_contrail", "age_hours"]
     )
@@ -2120,25 +2151,15 @@ def cocip_goes_flight_matching(
 
     flight_waypoints = flight_waypoints.filter(is_in_lon_lat)
 
-    # Define time bounds if None
-    if time_bounds is None:
-        time_bounds = (
-            pd.to_datetime(flight_waypoints["time"].min()),
-            pd.to_datetime(flight_waypoints["time"].max())
-        )
-
     # Filter `flight_waypoints` if time bounds were previously defined.
-    else:
-        is_in_time = flight_waypoints.dataframe["time"].between(time_bounds[0], time_bounds[1])
+    is_before_time = flight_waypoints["time"] < time
 
-        if not np.any(is_in_time):
-            raise ValueError(
-                "Flight trajectory does not intersect with the defined time bounds."
-            )
+    if not np.any(is_before_time):
+        raise ValueError("No flight waypoints were recorded before the specified `time`.")
 
-        flight_waypoints = flight_waypoints.filter(is_in_time)
+    flight_waypoints = flight_waypoints.filter(is_before_time)
 
-    # Downselect `contrails` only to include flight waypoints covered by GOES full disk
+    # Downselect `contrails` only to include the filtered flight waypoints
     is_in_domain = contrails.dataframe["waypoint"].isin(flight_waypoints["waypoint"])
 
     if not np.any(is_in_domain):
@@ -2148,66 +2169,45 @@ def cocip_goes_flight_matching(
 
     contrails = contrails.filter(is_in_domain)
 
-    # CoCiP-GOES matching
-    t_start = time_bounds[0].floor("10min") - pd.Timedelta(1, "h")
-    t_end = (
-        time_bounds[0].ceil("10min")
-        + flight_waypoints["contrail_age"].max()
-        + pd.Timedelta(3, "h")
-    )
-    times = pd.date_range(start=t_start, end=t_end, freq=freq)
+    # Download GOES image at `time`
+    goes = GOES(region=region)
+    da = goes.get(time)
+    rgb, transform, extent = extract_goes_visualization(da)
     bbox = spatial_bbox[0], spatial_bbox[2], spatial_bbox[1], spatial_bbox[3]
 
-    # Create .gif image
-    goes = GOES(region="F")
-    file_paths = []
-    cachestore = cache.DiskCacheStore()
+    # Plot data
+    fig = plt.figure(figsize=(16, 8))
+    pc = ccrs.PlateCarree()
+    ax = fig.add_subplot(projection=pc, extent=bbox)
+    ax.coastlines()
+    ax.imshow(rgb, extent=extent, transform=transform)
 
-    # TODO: specify figure dimensions based on bbox
+    # Plot flight trajectory up to `time`
+    is_time = flight_waypoints["time"] <= time
+    ax.plot(
+        flight_waypoints["longitude"][is_time], flight_waypoints["latitude"][is_time],
+        c="r", linewidth=2.5
+    );
+    plt.legend(["Flight trajectory"])
 
-    for time in tqdm(times):
-        da = goes.get(times[0])
-        rgb, transform, extent = extract_goes_visualization(da)
+    # Plot persistent contrails at `time`
+    is_time = ((contrails["time"] == time) & (~np.isnan(contrails["age_hours"])))
+    im = ax.scatter(
+        contrails["longitude"][is_time], contrails["latitude"][is_time],
+        c=contrails["tau_contrail"][is_time], s=4, cmap="YlOrRd_r", vmin=0, vmax=0.2
+    );
+    cbar = plt.colorbar(im)
+    ax.set_title(f"{time}")
+    plt.tight_layout()
 
-        # Plot GOES image
-        fig = plt.figure(figsize=(16, 8))
-        pc = ccrs.PlateCarree()
-        ax = fig.add_subplot(projection=pc, extent=bbox)
-        ax.coastlines()
-        ax.imshow(rgb, extent=extent, transform=transform)
+    if path_write_img is None:
+        return
 
-        # Plot flight trajectory up to `time`
-        is_time = flight_waypoints["time"] <= time
-        ax.plot(
-            flight_waypoints["longitude"][is_time], flight_waypoints["latitude"][is_time],
-            c="r", linewidth=2.5
-        );
-        plt.legend(["Flight trajectory"])
-
-        # Plot persistent contrails at `time`
-        is_time = ((contrails["time"] == time) & (~np.isnan(contrails["age_hours"])))
-        im = ax.scatter(
-            contrails["longitude"][is_time], contrails["latitude"][is_time],
-            c=contrails["tau_contrail"][is_time],
-            s=4, cmap="YlOrRd_r", vmin=0, vmax=0.2
-        );
-        cbar = plt.colorbar(im)
-        ax.set_title(f"{time}")
-        plt.tight_layout()
-
-        # Save image to cache
-        t_str = time.strftime("%Y%m%d-%H%M%S")
-        fpath = cachestore.path(f'goes_{t_str}.png')
-        file_paths.append(fpath)
-        plt.savefig(fpath, dpi=150, bbox_inches='tight')
+    # Save image
+    else:
+        t_str = time.strftime("%Y%m%d_%H%M%S")
+        file_name = f"goes_{t_str}.png"
+        output_path = path_write_img.joinpath(file_name)
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
-
-    # TODO: Construct .gif
-
-    print(" ")
-
-    # Clean up cache
-    for fpath in file_paths:
-        os.remove(fpath)
-
-    return
+        return output_path
