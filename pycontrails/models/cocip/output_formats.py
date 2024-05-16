@@ -2083,10 +2083,11 @@ def _repeat_rows_and_columns(
 # Compare CoCiP outputs with GOES satellite
 # -----------------------------------------
 
+import os
 import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from pycontrails.core import cache
 from pycontrails.datalib.goes import GOES, extract_goes_visualization
 
 
@@ -2159,12 +2160,15 @@ def cocip_goes_flight_matching(
 
     # Create .gif image
     goes = GOES(region="F")
+    file_paths = []
+    cachestore = cache.DiskCacheStore()
+
+    # TODO: specify figure dimensions based on bbox
 
     for time in tqdm(times):
         da = goes.get(times[0])
         rgb, transform, extent = extract_goes_visualization(da)
 
-        # TODO: specify figure dimensions based on bbox
         # Plot GOES image
         fig = plt.figure(figsize=(16, 8))
         pc = ccrs.PlateCarree()
@@ -2191,8 +2195,19 @@ def cocip_goes_flight_matching(
         ax.set_title(f"{time}")
         plt.tight_layout()
 
-        # TODO: Save image (cache?)
+        # Save image to cache
+        t_str = time.strftime("%Y%m%d-%H%M%S")
+        fpath = cachestore.path(f'goes_{t_str}.png')
+        file_paths.append(fpath)
+        plt.savefig(fpath, dpi=150, bbox_inches='tight')
+        plt.close()
 
     # TODO: Construct .gif
+
     print(" ")
+
+    # Clean up cache
+    for fpath in file_paths:
+        os.remove(fpath)
+
     return
