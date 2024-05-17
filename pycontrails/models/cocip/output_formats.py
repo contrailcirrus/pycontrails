@@ -31,6 +31,7 @@ import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.vector import GeoVectorDataset, vector_to_lon_lat_grid
 from pycontrails.datalib.goes import GOES, extract_goes_visualization
@@ -2144,7 +2145,7 @@ def compare_cocip_with_goes(
     is_in_lon_lat = (is_in_lon & is_in_lat)
 
     if not np.any(is_in_lon_lat):
-        raise ValueError(
+        warnings.warn(
             "Flight trajectory does not intersect with the defined spatial bounding box or spatial "
             "domain covered by GOES."
         )
@@ -2155,7 +2156,7 @@ def compare_cocip_with_goes(
     is_before_time = flight_waypoints["time"] < time
 
     if not np.any(is_before_time):
-        raise ValueError("No flight waypoints were recorded before the specified `time`.")
+        warnings.warn("No flight waypoints were recorded before the specified `time`.")
 
     flight_waypoints = flight_waypoints.filter(is_before_time)
 
@@ -2163,7 +2164,7 @@ def compare_cocip_with_goes(
     is_in_domain = contrails.dataframe["waypoint"].isin(flight_waypoints["waypoint"])
 
     if not np.any(is_in_domain):
-        raise ValueError(
+        warnings.warn(
             "No persistent contrails were formed within the defined spatial bounding box."
         )
 
@@ -2178,7 +2179,7 @@ def compare_cocip_with_goes(
     # Calculate optimal figure dimensions
     d_lon = spatial_bbox[2] - spatial_bbox[0]
     d_lat = spatial_bbox[3] - spatial_bbox[1]
-    x_dim = 16
+    x_dim = 9.99
     y_dim = x_dim * (d_lat / d_lon)
 
     # Plot data
@@ -2187,6 +2188,13 @@ def compare_cocip_with_goes(
     ax = fig.add_subplot(projection=pc, extent=bbox)
     ax.coastlines()
     ax.imshow(rgb, extent=extent, transform=transform)
+
+    ax.set_xticks([spatial_bbox[0], spatial_bbox[2]], crs=ccrs.PlateCarree())
+    ax.set_yticks([spatial_bbox[1], spatial_bbox[3]], crs=ccrs.PlateCarree())
+    lon_formatter = LongitudeFormatter(zero_direction_label=True)
+    lat_formatter = LatitudeFormatter()
+    ax.xaxis.set_major_formatter(lon_formatter)
+    ax.yaxis.set_major_formatter(lat_formatter)
 
     # Plot flight trajectory up to `time`
     is_time = flight_waypoints["time"] <= time
@@ -2203,6 +2211,7 @@ def compare_cocip_with_goes(
         c=contrails["tau_contrail"][is_time], s=4, cmap="YlOrRd_r", vmin=0, vmax=0.2
     );
     cbar = plt.colorbar(im)
+    cbar.set_label(r'$\tau_{\rm contrail}$')
     ax.set_title(f"{time}")
     plt.tight_layout()
 
