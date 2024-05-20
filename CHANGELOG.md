@@ -13,6 +13,7 @@
 - Add `ERA5ModelLevel` and `HRESModelLevel` interfaces for accessing ERA5 and HRES data on model levels.
 - Update [ECMWF tutorial notebook](https://py.contrails.org/notebooks/ECMWF.html) with instructions for using model-level datalibs.
 - Add `HistogramMatching` humidity scaling calibrated for model-level ERA5 data.
+- Add ability to use `polygon.find_multipolygon` to find regions with values below a threshold.
 
 ### Fixes
 
