@@ -336,6 +336,18 @@ def island_binary(zero_like_da: xr.DataArray) -> MetDataArray:
 
 
 @pytest.fixture()
+def island_binary_nan(zero_like_da: xr.DataArray) -> MetDataArray:
+    # create 9 x 9 island and 5 x 5 region of nan
+
+    da = zero_like_da
+    island = (np.abs(da["latitude"]) < 5) & (np.abs(da["longitude"]) < 5)
+    da = xr.where(island, 1.0, da)
+    nan_island = (da["latitude"] >= 10) & (da["latitude"] < 15) & (np.abs(da["longitude"]) < 3)
+    da = xr.where(nan_island, np.nan, da)
+    return MetDataArray(da)
+
+
+@pytest.fixture()
 def antimeridian_binary(zero_like_da: xr.DataArray) -> MetDataArray:
     # create 9 x 9 island spanning antimeridian
 
@@ -680,6 +692,51 @@ def test_polygon_island_binary(island_slice: MetDataArray) -> None:
     for coord in coords:
         for component in coord:
             assert component in [-4.5, -4, 4, 4.5]
+
+
+@pytest.fixture()
+def island_slice_nan(island_binary_nan: MetDataArray) -> MetDataArray:
+    # every (level, time) slice of island_binary_nan is identical -- just grab one
+    return MetDataArray(island_binary_nan.data.isel(level=[0], time=[0]))
+
+
+def test_polygon_island_nan_handling(island_slice_nan: MetDataArray) -> None:
+    """Test for identical results with retained nan and fill value below threshold"""
+
+    # expect identical results with finite fill value below threshold...
+    gj1 = island_slice_nan.to_polygon_feature(
+        iso_value=0.5, fill_value=np.nan, epsilon=0.01, precision=2
+    )
+    gj2 = island_slice_nan.to_polygon_feature(
+        iso_value=0.5, fill_value=0.0, epsilon=0.01, precision=2
+    )
+    assert json.dumps(gj1, sort_keys=True) == json.dumps(gj2, sort_keys=True)
+
+    # ... but not with finite fill value above threshold
+    gj3 = island_slice_nan.to_polygon_feature(
+        iso_value=0.5, fill_value=1.0, epsilon=0.01, precision=2
+    )
+    assert json.dumps(gj1, sort_keys=True) != json.dumps(gj3, sort_keys=True)
+
+
+@pytest.fixture()
+def island_slice_neg(island_binary_nan: MetDataArray) -> MetDataArray:
+    # negate values in slice of island_binary_nan
+    return MetDataArray(-island_binary_nan.data.isel(level=[0], time=[0]))
+
+
+def test_polygon_island_lower_upper_bound(
+    island_slice_nan: MetDataArray, island_slice_neg: MetDataArray
+) -> None:
+    """Test polygon generation with lower and upper bound."""
+
+    gj1 = island_slice_nan.to_polygon_feature(
+        iso_value=0.5, lower_bound=True, epsilon=0.01, precision=2
+    )
+    gj2 = island_slice_neg.to_polygon_feature(
+        iso_value=-0.5, lower_bound=False, epsilon=0.01, precision=2
+    )
+    assert json.dumps(gj1, sort_keys=True) == json.dumps(gj2, sort_keys=True)
 
 
 @pytest.mark.parametrize("interiors", [True, False])
@@ -1163,7 +1220,7 @@ def test_include_altitude_raises(met_ecmwf_sl_path: str):
 
 
 @pytest.mark.filterwarnings("ignore:Longitude is not evenly spaced")
-def test_to_polygon_feature_collection(met_ecmwf_pl_path: str):
+def test_to_polygon_feature_collection(met_ecmwf_pl_path: str) -> None:
     """Confirm that `to_polygon_feature_collection` works."""
     ds = xr.open_dataset(met_ecmwf_pl_path)
     mds = MetDataset(ds[dict(time=[0])])
@@ -1176,6 +1233,19 @@ def test_to_polygon_feature_collection(met_ecmwf_pl_path: str):
     assert len(features) == len(ds.level)
     for feature in features:
         assert feature["properties"]
+
+
+@pytest.mark.filterwarnings("ignore:Longitude is not evenly spaced")
+def test_to_polygon_feature_collection_lower_upper_bound(met_ecmwf_pl_path: str) -> None:
+    """Test `to_polygon_feature_collection` with lower vs upper bound."""
+    ds = xr.open_dataset(met_ecmwf_pl_path)
+    mds = MetDataset(ds[dict(time=[0])])
+    mda1 = mds["q"]
+    mda2 = MetDataArray(-mds["q"].data)
+
+    fc1 = mda1.to_polygon_feature_collection(iso_value=0.0001, lower_bound=True)
+    fc2 = mda2.to_polygon_feature_collection(iso_value=-0.0001, lower_bound=False)
+    assert json.dumps(fc1, sort_keys=True) == json.dumps(fc2, sort_keys=True)
 
 
 def test_wrap_longitude_new_patterns():
