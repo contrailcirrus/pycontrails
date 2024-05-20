@@ -1793,10 +1793,11 @@ class MetDataArray(MetBase):
         self,
         level: float | int | None = None,
         time: np.datetime64 | datetime | None = None,
-        fill_value: float = 0.0,
+        fill_value: float = np.nan,
         iso_value: float | None = None,
         min_area: float = 0.0,
         epsilon: float = 0.0,
+        lower_bound: bool = True,
         precision: int | None = None,
         interiors: bool = True,
         convex_hull: bool = False,
@@ -1848,7 +1849,8 @@ class MetDataArray(MetBase):
             automatically.
         fill_value : float, optional
             Value used for filling missing data and for padding the underlying data array.
-            Expected to be less than the ``iso_value`` parameter. By default, 0.0.
+            Set to ``np.nan`` by default, which ensures that regions with missing data are
+            never included in polygons.
         iso_value : float, optional
             Value in field to create iso-surface.
             Defaults to the average of the min and max value of the array. (This is the
@@ -1862,6 +1864,9 @@ class MetDataArray(MetBase):
             Control the extent to which the polygon is simplified. A value of 0 does not alter
             the geometry of the polygon. The unit of this parameter is in longitude/latitude
             degrees. By default, 0.0.
+        lower_bound : bool, optional
+            Whether to use ``iso_value`` as a lower or upper bound on values in polygon interiors.
+            By default, True.
         precision : int, optional
             Number of decimal places to round coordinates to. If None, no rounding is performed.
         interiors : bool, optional
@@ -1925,11 +1930,12 @@ class MetDataArray(MetBase):
                 "include_altitude=False."
             )
 
-        np.nan_to_num(arr, copy=False, nan=fill_value)
+        if not np.isnan(fill_value):
+            np.nan_to_num(arr, copy=False, nan=fill_value)
 
         # default iso_value
         if iso_value is None:
-            iso_value = (np.max(arr) + np.min(arr)) / 2
+            iso_value = (np.nanmax(arr) + np.nanmin(arr)) / 2
             warnings.warn(f"The 'iso_value' parameter was not specified. Using value: {iso_value}")
 
         # We'll get a nice error message if dependencies are not installed
@@ -1945,6 +1951,7 @@ class MetDataArray(MetBase):
             threshold=iso_value,
             min_area=min_area,
             epsilon=epsilon,
+            lower_bound=lower_bound,
             interiors=interiors,
             convex_hull=convex_hull,
             longitude=longitude,
@@ -1957,10 +1964,11 @@ class MetDataArray(MetBase):
     def to_polygon_feature_collection(
         self,
         time: np.datetime64 | datetime | None = None,
-        fill_value: float = 0.0,
+        fill_value: float = np.nan,
         iso_value: float | None = None,
         min_area: float = 0.0,
         epsilon: float = 0.0,
+        lower_bound: bool = True,
         precision: int | None = None,
         interiors: bool = True,
         convex_hull: bool = False,
@@ -1991,6 +1999,7 @@ class MetDataArray(MetBase):
                 iso_value=iso_value,
                 min_area=min_area,
                 epsilon=epsilon,
+                lower_bound=lower_bound,
                 precision=precision,
                 interiors=interiors,
                 convex_hull=convex_hull,
