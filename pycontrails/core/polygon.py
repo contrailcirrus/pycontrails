@@ -283,6 +283,7 @@ def find_multipolygon(
     threshold: float,
     min_area: float,
     epsilon: float,
+    lower_bound: bool = True,
     interiors: bool = True,
     convex_hull: bool = False,
     longitude: npt.NDArray[np.float64] | None = None,
@@ -304,10 +305,13 @@ def find_multipolygon(
     epsilon : float
         Epsilon value to use when simplifying the polygons. Passed into shapely's
         :meth:`shapely.geometry.Polygon.simplify` method.
+    lower_bound : bool, optional
+        Whether to treat ``threshold`` as a lower or upper bound on values in polygon interiors.
+        By default, True.
     interiors : bool, optional
-        Whether to include interior polygons.
+        Whether to include interior polygons. By default, True.
     convex_hull : bool, optional
-        Experimental. Whether to take the convex hull of each polygon.
+        Experimental. Whether to take the convex hull of each polygon. By default, False.
     longitude : npt.NDArray[np.float64] | None, optional
         If provided, the coordinates values corresponding to the longitude dimensions of ``arr``.
         The contour coordinates will be converted to longitude-latitude values by indexing
@@ -339,7 +343,10 @@ def find_multipolygon(
         buffer = 0.5
 
     arr_bin = np.empty(arr.shape, dtype=np.uint8)
-    np.greater_equal(arr, threshold, out=arr_bin)
+    if lower_bound:
+        np.greater_equal(arr, threshold, out=arr_bin)
+    else:
+        np.less_equal(arr, threshold, out=arr_bin)
 
     mode = cv2.RETR_CCOMP if interiors else cv2.RETR_EXTERNAL
     contours, hierarchy = cv2.findContours(arr_bin, mode, cv2.CHAIN_APPROX_SIMPLE)
