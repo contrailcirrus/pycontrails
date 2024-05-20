@@ -29,6 +29,18 @@ def barr() -> np.ndarray:
 
 
 @pytest.fixture()
+def sarr() -> np.ndarray:
+    """Fixture with signed continuous padded data."""
+    rng = np.random.default_rng(654)
+    arr = rng.uniform(-0.8, 0.8, size=(100, 100))
+    arr[25:35, 55:70] = 1  # big positive island
+    arr[45:55, 80:95] = -1  # big negative island
+    arr[5:10, 5:10] = 1  # small positive island
+    arr[80:85, 5:10] = -1  # small negative island
+    return np.pad(arr, 1, constant_values=0)
+
+
+@pytest.fixture()
 def hawaiian_earrings() -> np.ndarray:
     """Fixture reminiscent of Hawaiian earrings."""
     img = np.zeros((10, 10))
@@ -264,3 +276,22 @@ def test_polygon_roundoff_error(polygon_bug: MetDataArray, iso_value: float, min
             assert not np.array_equal(ring[1], ring[-2])
             # Check that no other vertices are duplicated
             assert len(np.unique(ring, axis=0)) == len(ring) - 1
+
+
+@pytest.mark.parametrize("iso_magnitude", [0.0, 0.1, 0.5, 0.9, 1.0])
+def test_find_multipolygon_signed(sarr: np.ndarray, iso_magnitude: float):
+    """Test polygon matching with positive and negative thresholds."""
+
+    mp1 = polygon.find_multipolygon(
+        sarr,
+        threshold=iso_magnitude,
+        min_area=0,
+        epsilon=0.1,
+        interiors=False,
+    )
+
+    mp2 = polygon.find_multipolygon(
+        -sarr, threshold=-iso_magnitude, lower_bound=False, min_area=0, epsilon=0.1, interiors=False
+    )
+
+    assert mp1.equals(mp2)
