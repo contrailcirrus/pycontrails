@@ -6,7 +6,7 @@
 ### Breaking changes
 
 - Geodesic interpolation is now used in `Flight.resample_and_fill` when the great circle distance between waypoints (rather than the total segment length including vertical displacement) exceeds a threshold. This may change the interpolation method used when resampling flight segments with lengths close to the geodesic interpolation threshold.
-- Bugfix will decrease computed values of moist heat capacity with non-zero specific humidity.
+- Fixed typo in `thermo.c_pm`  will decrease computed values of moist heat capacity with non-zero specific humidity. We expect the downstream impact on contrail predictions by `ISSR`, `SAC`, `PCR, and `Cocip` models to be minimal.
 
 ### Features
 
