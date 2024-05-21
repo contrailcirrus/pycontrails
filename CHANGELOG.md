@@ -7,13 +7,14 @@
 
 - Geodesic interpolation is now used in `Flight.resample_and_fill` when the great circle distance between waypoints (rather than the total segment length including vertical displacement) exceeds a threshold. This may change the interpolation method used when resampling flight segments with lengths close to the geodesic interpolation threshold.
 - Fixed typo in `thermo.c_pm`  will decrease computed values of moist heat capacity with non-zero specific humidity. We expect the downstream impact on contrail predictions by `ISSR`, `SAC`, `PCR, and `Cocip` models to be minimal.
+- `np.nan` is now used as the default `fill_value` in `MetDataArray.to_polygon_feature` and `MetDataArray.to_polygon_feature_collection`. This ensures that NaN values are never included in polygon interiors unless a non-NaN `fill_value` is explicitly passed as a keyword argument.
 
 ### Features
 
 - Add `ERA5ModelLevel` and `HRESModelLevel` interfaces for accessing ERA5 and HRES data on model levels.
 - Update [ECMWF tutorial notebook](https://py.contrails.org/notebooks/ECMWF.html) with instructions for using model-level datalibs.
 - Add `HistogramMatching` humidity scaling calibrated for model-level ERA5 data.
-- Add ability to use `polygon.find_multipolygon` to find regions with values below a threshold.
+- Modify `polygon.find_multipolygon`, `MetDataArray.to_polygon_feature`, `MetDataArray.to_polygon_feature_collection`, and `MetDataArray.to_polyhedra` to permit finding regions with values above or below a threshold.
 
 ### Fixes
 
