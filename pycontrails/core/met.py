@@ -1887,6 +1887,14 @@ class MetDataArray(MetBase):
         dict[str, Any]
             Python representation of GeoJSON Feature with MultiPolygon geometry.
 
+        Notes
+        -----
+        :class:`Cocip` and :class:`CocipGrid` set some quantities to 0 and other quantities
+        to ``np.nan`` in regions where no contrails form. When computing polygons from
+        :class:`Cocip` or :class:`CocipGrid` output, take care that the choice of
+        ``fill_value`` correctly includes or excludes contrail-free regions. See the
+        :class:`Cocip` documentation for details about ``np.nan`` in model output.
+
         See Also
         --------
         :meth:`to_polyhedra`
