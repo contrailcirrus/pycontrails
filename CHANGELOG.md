@@ -17,7 +17,7 @@
 ### Fixes
 
 - Use horizontal great circle distance to determine whether geodesic interpolation is used in `Flight.resample_and_fill`. This ensures geodesic interpolation is used between sufficiently distant waypoints even when one or both waypoints contain NaN altitude data.
-- Fix moist heat capacity bug in `thermo.c_pm`.
+- Fix typo in moist heat capacity equation `thermo.c_pm`.
 
 ### Internals
 
