@@ -704,19 +704,19 @@ def test_polygon_island_nan_handling(island_slice_nan: MetDataArray) -> None:
     """Test for identical results with retained nan and fill value below threshold"""
 
     # expect identical results with finite fill value below threshold...
-    gj1 = island_slice_nan.to_polygon_feature(
+    geojson1 = island_slice_nan.to_polygon_feature(
         iso_value=0.5, fill_value=np.nan, epsilon=0.01, precision=2
     )
-    gj2 = island_slice_nan.to_polygon_feature(
+    geojson2 = island_slice_nan.to_polygon_feature(
         iso_value=0.5, fill_value=0.0, epsilon=0.01, precision=2
     )
-    assert json.dumps(gj1, sort_keys=True) == json.dumps(gj2, sort_keys=True)
+    assert geojson1 == geojson2
 
     # ... but not with finite fill value above threshold
-    gj3 = island_slice_nan.to_polygon_feature(
+    geojson3 = island_slice_nan.to_polygon_feature(
         iso_value=0.5, fill_value=1.0, epsilon=0.01, precision=2
     )
-    assert json.dumps(gj1, sort_keys=True) != json.dumps(gj3, sort_keys=True)
+    assert geojson1 != geojson3
 
 
 @pytest.fixture()
@@ -730,13 +730,13 @@ def test_polygon_island_lower_upper_bound(
 ) -> None:
     """Test polygon generation with lower and upper bound."""
 
-    gj1 = island_slice_nan.to_polygon_feature(
+    geojson1 = island_slice_nan.to_polygon_feature(
         iso_value=0.5, lower_bound=True, epsilon=0.01, precision=2
     )
-    gj2 = island_slice_neg.to_polygon_feature(
+    geojson2 = island_slice_neg.to_polygon_feature(
         iso_value=-0.5, lower_bound=False, epsilon=0.01, precision=2
     )
-    assert json.dumps(gj1, sort_keys=True) == json.dumps(gj2, sort_keys=True)
+    assert geojson1 == geojson2
 
 
 @pytest.mark.parametrize("interiors", [True, False])
@@ -826,13 +826,18 @@ def test_polygon_iso_value(island_slice: MetDataArray, iso_value: float) -> None
     assert len(coords[0][0]) == 9
 
 
+@pytest.fixture()
+def median_binary_slice(median_binary: MetDataArray) -> MetDataArray:
+    return MetDataArray(median_binary.data.isel(time=[0]))
+
+
 @pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")
 @pytest.mark.parametrize("return_type", ["geojson", "mesh"])
-def test_polyhedra_save(median_binary: MetDataArray, return_type: str) -> None:
-    assert len(median_binary.data["time"]) == 1
+def test_polyhedra_save(median_binary_slice: MetDataArray, return_type: str) -> None:
+    assert len(median_binary_slice.data["time"]) == 1
     path: str | pathlib.Path
     path = "test_mesh.json" if return_type == "geojson" else "test_mesh.ply"
-    median_binary.to_polyhedra(return_type=return_type, path=path)
+    median_binary_slice.to_polyhedra(return_type=return_type, path=path)
 
     path = pathlib.Path(path)
     assert path.is_file()
@@ -898,6 +903,19 @@ def test_polyhedra_geojson(sparse_binary: tuple[MetDataArray, dict]) -> None:
     mda_altitude = set(mda.data["altitude"].values.astype(int))
     geojson_altitude = set([int(point[2]) for poly in coords for face in poly for point in face])
     assert geojson_altitude.issubset(mda_altitude)
+
+
+@pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")
+def test_polyhedra_lower_upper_bound(sparse_binary: tuple[MetDataArray, dict]) -> None:
+    """Test the `to_polyhedra` method with lower and upper bounds on interior values."""
+
+    mda, _ = sparse_binary
+    mda1 = MetDataArray(mda.data.isel(time=[0]))
+    mda2 = MetDataArray(-mda.data.isel(time=[0]))
+
+    geojson1 = mda1.to_polyhedra(iso_value=0.5)
+    geojson2 = mda2.to_polyhedra(iso_value=-0.5)
+    assert geojson1 == geojson2
 
 
 def test_save_load(met_ecmwf_pl_path: str, met_era5_fake: MetDataset) -> None:
