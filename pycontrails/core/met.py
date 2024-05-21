@@ -2020,6 +2020,7 @@ class MetDataArray(MetBase):
         time: datetime | None = ...,
         iso_value: float = ...,
         simplify_fraction: float = ...,
+        lower_bound: bool = ...,
         return_type: Literal["geojson"],
         path: str | None = ...,
         altitude_scale: float = ...,
@@ -2034,6 +2035,7 @@ class MetDataArray(MetBase):
         time: datetime | None = ...,
         iso_value: float = ...,
         simplify_fraction: float = ...,
+        lower_bound: bool = ...,
         return_type: Literal["mesh"],
         path: str | None = ...,
         altitude_scale: float = ...,
@@ -2047,6 +2049,7 @@ class MetDataArray(MetBase):
         time: datetime | None = None,
         iso_value: float = 0.0,
         simplify_fraction: float = 1.0,
+        lower_bound: bool = True,
         return_type: str = "geojson",
         path: str | None = None,
         altitude_scale: float = 1.0,
@@ -2067,6 +2070,9 @@ class MetDataArray(MetBase):
             Apply `open3d` `simplify_quadric_decimation` method to simplify the polyhedra geometry.
             This parameter must be in the half-open interval (0.0, 1.0].
             Defaults to 1.0, corresponding to no reduction.
+        lower_bound : bool, optional
+            Whether to use ``iso_value`` as a lower or upper bound on values in polyhedra interiors.
+            By default, True.
         return_type : str, optional
             Must be one of "geojson" or "mesh". Defaults to "geojson".
             If "geojson", this method returns a dictionary representation of a geojson MultiPolygon
@@ -2153,6 +2159,11 @@ class MetDataArray(MetBase):
 
         # 3d array of longitude, latitude, altitude values
         volume = self.data.sel(time=time).values
+
+        # invert if iso_value is an upper bound on interior values
+        if not lower_bound:
+            volume = -volume
+            iso_value = -iso_value
 
         # convert from array index back to coordinates
         longitude = self.indexes["longitude"].values

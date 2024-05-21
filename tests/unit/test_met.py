@@ -734,9 +734,13 @@ def test_polygon_island_lower_upper_bound(
         iso_value=0.5, lower_bound=True, epsilon=0.01, precision=2
     )
     geojson2 = island_slice_neg.to_polygon_feature(
+        iso_value=-0.5, lower_bound=True, epsilon=0.01, precision=2
+    )
+    geojson3 = island_slice_neg.to_polygon_feature(
         iso_value=-0.5, lower_bound=False, epsilon=0.01, precision=2
     )
-    assert geojson1 == geojson2
+    assert geojson1 != geojson2
+    assert geojson1 == geojson3
 
 
 @pytest.mark.parametrize("interiors", [True, False])
@@ -913,9 +917,11 @@ def test_polyhedra_lower_upper_bound(sparse_binary: tuple[MetDataArray, dict]) -
     mda1 = MetDataArray(mda.data.isel(time=[0]))
     mda2 = MetDataArray(-mda.data.isel(time=[0]))
 
-    geojson1 = mda1.to_polyhedra(iso_value=0.5)
-    geojson2 = mda2.to_polyhedra(iso_value=-0.5)
-    assert geojson1 == geojson2
+    geojson1 = mda1.to_polyhedra(iso_value=0.5, lower_bound=True)
+    geojson2 = mda2.to_polyhedra(iso_value=-0.5, lower_bound=True)
+    geojson3 = mda2.to_polyhedra(iso_value=-0.5, lower_bound=False)
+    assert geojson1 != geojson2
+    assert geojson1 == geojson3
 
 
 def test_save_load(met_ecmwf_pl_path: str, met_era5_fake: MetDataset) -> None:
