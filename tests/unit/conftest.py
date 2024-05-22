@@ -431,7 +431,11 @@ def bada_model() -> AircraftPerformance:
 def bada_grid_model() -> AircraftPerformanceGrid:
     """Construct generic ``BADAGrid`` gridded AP model."""
 
-    BADAGrid = pytest.importorskip("pycontrails.ext.bada").BADAGrid
+    # pycontrails raises ImportError if pycontrails-BADA is not installed
+    # starting 8.2, pytest.importorskip produces a warning when ImportError
+    # (as opposed to the more specific ModuleNotFoundError) is raised
+    # unless the exc_type keyword argument is set to ImportError.
+    BADAGrid = pytest.importorskip("pycontrails.ext.bada", exc_type=ImportError).BADAGrid
 
     if not BADA_AVAILABLE:
         pytest.skip("BADA data not available")
