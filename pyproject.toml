@@ -69,7 +69,7 @@ dev = [
     "pre-commit>=2.10",
     "psutil",
     "pyarrow>=5.0",
-    "pytest>=8.1",
+    "pytest>=8.2",
     "pytest-cov>=2.11",
     "requests>=2.25",
     "ruff==0.4.1",
