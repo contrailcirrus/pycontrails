@@ -159,8 +159,9 @@ exclude = ["docs*", "tests*"]
 # https://mypy.readthedocs.io/en/stable/installed_packages.html#creating-pep-561-compatible-packages
 [tool.setuptools.package-data]
 "pycontrails" = ["py.typed"]
+"pycontrails.datalib.ecmwf" = ["static/*.csv"]
 "pycontrails.models.emissions" = ["static/*.csv"]
-"pycontrails.models.humidity_scaling" = ["quantiles/era5-quantiles.pq"]
+"pycontrails.models.humidity_scaling" = ["quantiles/*.pq"]
 "pycontrails.models.ps_model" = ["static/*.csv"]
 
 # https://github.com/pypa/setuptools_scm/
