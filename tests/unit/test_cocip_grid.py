@@ -725,7 +725,9 @@ def syn_fl(instance_params: dict[str, Any], source: MetDataset) -> SyntheticFlig
         "level": source.data["level"].values,
         "time": np.array([t_start, t_stop]),
     }
-    SyntheticFlight = pytest.importorskip("pycontrails.ext.synthetic_flight").SyntheticFlight
+    SyntheticFlight = pytest.importorskip(
+        "pycontrails.ext.synthetic_flight", exc_type=ImportError
+    ).SyntheticFlight
 
     return SyntheticFlight(
         seed=5,
