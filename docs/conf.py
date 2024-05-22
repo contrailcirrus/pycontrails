@@ -270,3 +270,7 @@ html_sourcelink_suffix = ""
 html_js_files = [
     ("https://plausible.io/js/script.js", {"data-domain": "py.contrails.org", "defer": "defer"}),
 ]
+
+# -- Options for Latex output -------------------------------------------------
+
+latex_logo = "_static/img/logo.png"

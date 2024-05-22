@@ -249,4 +249,13 @@ docs-serve: doc8
 
 docs-pdf: doc8
 	sphinx-build -b latex $(DOCS_DIR) $(DOCS_BUILD_DIR)/latex
+
+	# GIF in notebooks/advection.ipynb kills the pdflatex process
+	# If advection notebook changes, this will have to get updated
+	rm docs/_build/latex/notebooks_advection_20_0.png
+
+	# this needs to get run twice
 	cd $(DOCS_BUILD_DIR)/latex && make
+	cd $(DOCS_BUILD_DIR)/latex && make
+
+	echo "PDF exported to $(DOCS_BUILD_DIR)/latex/pycontrails.pdf"
