@@ -2153,7 +2153,9 @@ def segment_phase(
 
 
 def segment_rocd(
-    segment_duration: npt.NDArray[np.float64], altitude_ft: npt.NDArray[np.float64]
+    segment_duration: npt.NDArray[np.float64],
+    altitude_ft: npt.NDArray[np.float64],
+    air_temperature: None | npt.NDArray[np.float64] = None,
 ) -> npt.NDArray[np.float64]:
     """Calculate the rate of climb and descent (ROCD).
 
@@ -2165,11 +2167,21 @@ def segment_rocd(
         See output from :func:`segment_duration`.
     altitude_ft: npt.NDArray[np.float64]
         Altitude of each waypoint, [:math:`ft`]
+    air_temperature: None | npt.NDArray[np.float64]
+        Air temperature of each flight waypoint, [:math:`K`]
 
     Returns
     -------
     npt.NDArray[np.float64]
         Rate of climb and descent over segment, [:math:`ft min^{-1}`]
+
+    Notes
+    -----
+    The hydrostatic equation will be used to estimate the ROCD if `air_temperature` is provided.
+    This will improve the accuracy of the estimated ROCD with a temperature correction. The
+    estimated ROCD with the temperature correction are expected to differ by up to +-5% compared to
+    those without the correction. These differences are important when the ROCD estimates are used
+    as inputs to aircraft performance models.
 
     See Also
     --------
@@ -2181,7 +2193,20 @@ def segment_rocd(
     out[:-1] = np.diff(altitude_ft) / dt_min[:-1]
     out[-1] = np.nan
 
-    return out
+    if air_temperature is None:
+        return out
+
+    else:
+        altitude_m = units.ft_to_m(altitude_ft)
+        T_isa = units.m_to_T_isa(altitude_m)
+
+        T_correction = np.empty_like(altitude_ft)
+        T_correction[:-1] = (
+            (0.5 * (air_temperature[:-1] + air_temperature[1:]))
+            / (0.5 * (T_isa[:-1] + T_isa[1:]))
+        )
+        T_correction[-1] = np.nan
+        return T_correction * out
 
 
 def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
