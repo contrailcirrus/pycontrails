@@ -1171,3 +1171,25 @@ def test_resample_and_fill_non_float(fl: Flight, keep: bool) -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         fl.resample_and_fill(drop=False, keep_original_index=keep)
+
+
+def test_rocd_hydrostatic_equation() -> None:
+    """Test the segment_rocd method with and without the hydrostatic equation."""
+    altitude_m = np.array([1069.5, 1203.0, 1459.4, 1824.8, 2225.6])
+    altitude_ft = units.m_to_ft(altitude_m)
+
+    segment_duration = np.array([25.0, 25.0, 25.0, 25.0, 25.0])
+    air_temperature = np.array([269.15, 268.15, 266.9, 263.9, 261.4])
+
+    # No temperature correction
+    rocd = flight.segment_rocd(segment_duration, altitude_ft)
+    np.testing.assert_array_almost_equal(
+        rocd[:-1], [1051.2, 2018.9, 2877.2, 3155.9], decimal=1
+    )
+
+    # Hydrostatic equation
+    rocd_corr = flight.segment_rocd(segment_duration, altitude_ft, air_temperature)
+    np.testing.assert_array_almost_equal(
+        rocd_corr[:-1], [1005.8, 1932.4, 2751.9, 3014.3], decimal=1
+    )
+    return
