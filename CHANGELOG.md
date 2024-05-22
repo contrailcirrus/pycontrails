@@ -30,6 +30,7 @@
 - Disable mypy type checking on `functools.wraps` in `support_arraylike` decorator to avoid error that appears starting on mypy 1.10.0.
 - Update pinned `Cocip` test output values after moist heat capacity bugfix.
 - Add static files with ECMWF model levels and model-level ERA5 RHI quantiles to packaged data.
+- Pass `exc_type=ImportError` to `pytest.importorskip` in BADA test fixture to suppress pytest warning when pycontrails-BADA is not installed.
 
 ## v0.50.2
 
