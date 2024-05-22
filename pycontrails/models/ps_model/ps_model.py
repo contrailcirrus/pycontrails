@@ -242,7 +242,7 @@ class PSFlight(AircraftPerformance):
 
         elif isinstance(time, np.ndarray):
             dt_sec = flight.segment_duration(time, dtype=altitude_ft.dtype)
-            rocd = flight.segment_rocd(dt_sec, altitude_ft)
+            rocd = flight.segment_rocd(dt_sec, altitude_ft, air_temperature)
             dv_dt = jet.acceleration(true_airspeed, dt_sec)
             theta = jet.climb_descent_angle(true_airspeed, rocd)
 
@@ -299,7 +299,7 @@ class PSFlight(AircraftPerformance):
 
         # Flight phase
         segment_duration = flight.segment_duration(time, dtype=altitude_ft.dtype)
-        rocd = flight.segment_rocd(segment_duration, altitude_ft)
+        rocd = flight.segment_rocd(segment_duration, altitude_ft, air_temperature)
 
         if correct_fuel_flow:
             flight_phase = flight.segment_phase(rocd, altitude_ft)
