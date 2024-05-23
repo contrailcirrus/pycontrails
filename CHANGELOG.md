@@ -1,7 +1,7 @@
 
 # Changelog
 
-## v0.50.3
+## v0.51.0
 
 ### Breaking changes
 
