@@ -163,6 +163,18 @@ ACCF
     models.accf.ACCFParams
 
 
+APCEMM
+""""""
+
+    This model is an interface to the `APCEMM <https://github.com/MIT-LAE/APCEMM>`__ plume model.
+
+.. autosummary::
+    :toctree: api/
+
+    models.apcemm.APCEMM
+    models.apcemm.APCEMMParams
+
+
 Aircraft Performance
 """"""""""""""""""""
 
