@@ -25,7 +25,8 @@ class APCEMMYaml:
     #: Number of APCEMM threads
     n_threads: int = 1
 
-    #: APCEMM root directory
+    #: APCEMM root directory, required to find engine emissions database and
+    #: atmospheric background conditions files distributed with APCEMM
     apcemm_root: str = os.path.expanduser("~/APCEMM")
 
     #: Maximum APCEMM simulation time
@@ -127,10 +128,10 @@ class APCEMMYaml:
         Use FFTW WISDOM (T/F): F
         Dir w/ write permission (string): n/a
     
-    Input background condition (string): {os.path.join(
-        self.apcemm_root, "input_data", "init.txt")}
-    Input engine emissions (string): {os.path.join(
-        self.apcemm_root, "input_data", "ENG_EI.txt")}
+    Input background condition (string): "{os.path.join(
+        self.apcemm_root, 'input_data', 'init.txt')}"
+    Input engine emissions (string): "{os.path.join(
+        self.apcemm_root, 'input_data', 'ENG_EI.txt')}"
     
     SAVE FORWARD RESULTS SUBMENU:
         Save forward results (T/F): F
