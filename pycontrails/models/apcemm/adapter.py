@@ -84,6 +84,9 @@ class APCEMMParams(models.ModelParams):
     #: By default, runs a simulation for every segment.
     segments: list[int] | None = None
 
+    #: If defined, override the ``apcemm_root`` value in :class:`APCEMMYaml`
+    apcemm_root: str | None = None
+
     #: If True, delete existing run directories before running APCEMM simulations.
     #: If False (default), raise an exception if a run directory already exists.
     overwrite: bool = False
@@ -109,13 +112,16 @@ class APCEMM(models.Model):
     met : MetDataset
         Pressure level dataset containing :attr:`met_variables` variables.
         See *Notes* for variable names by data source.
-    apcemm : str, optional
-        Path to APCEMM executable. If not provided, pycontrails will attempt
-        to find an executable called ``APCEMM`` on the ``PATH`` and raise
-        an exception if one is not found. See *Notes* for information about
+    apcemm : str
+        Path to APCEMM executable. See *Notes* for information about
         acquiring and compiling APCEMM.
+    apcemm_root : str, optional
+        Path to APCEMM root directory. If not provided, pycontrails will use the
+        default path defined in :class:`APCEMMYaml`.
     yaml : APCEMMYaml, optional
-        Configuration for YAML file generated as APCEMM input.
+        Configuration for YAML file generated as APCEMM input. If provided, the
+        value of the ``apcemm_root`` attribute in this instance will override
+        the value of :param:`apcemm_root` if the latter is provided.
         See *Notes* for detailed information about YAML file generation.
     cachestore : CacheStore, optional
         :class:`CacheStore` used to store APCEMM run directories. If not
@@ -210,10 +216,10 @@ class APCEMM(models.Model):
       contains the content of APCEMM ``Micro_000000.out`` output files, which
       contains time series starting during the early wake vorted stage and continuing
       through the end of the simulation.
-    - A :class:`pd.DataFrame` is created and stored in :attr:`contrail`. This dataframe
-      contains paths to netCDF files, saved at prescribed time intervals during the
-      APCEMM simulation, and can be used to open APCEMM output (e.g., using
-      :func:`xr.open_dataset`) for further analysis.
+    - A :class:`pd.DataFrame` is created and stored in :attr:`contrail` provided APCEMM
+      simulated at least one persistent contrail. This dataframe contains paths to netCDF
+      files, saved at prescribed time intervals during the APCEMM simulation, and can be
+      used to open APCEMM output (e.g., using :func:`xr.open_dataset`) for further analysis.
 
     References
     ----------
@@ -267,7 +273,8 @@ class APCEMM(models.Model):
     def __init__(
         self,
         met: MetDataset,
-        apcemm: str | None = None,
+        apcemm: str,
+        apcemm_root: str | None = None,
         yaml: APCEMMYaml | None = None,
         cachestore: DiskCacheStore | None = None,
         params: dict[str, Any] | None = None,
@@ -275,22 +282,20 @@ class APCEMM(models.Model):
     ) -> None:
         super().__init__(met, params=params, **params_kwargs)
 
+        self.apcemm = apcemm
+
         if cachestore is None:
             cachestore = DiskCacheStore(allow_clear=True)
         self.cachestore = cachestore
 
         self._trajectory_downsampling = self._validate_downsampling()
 
-        apcemm = apcemm or shutil.which("APCEMM")
-        if apcemm is None:
-            msg = (
-                "Could not find APCEMM executable. "
-                "Provide apcemm parameter or add APCEMM executable to path."
-            )
-            raise ValueError(msg)
-        self.apcemm = apcemm
-
-        self.yaml = yaml or APCEMMYaml()
+        if yaml is not None:
+            self.yaml = yaml
+        elif apcemm_root is not None:
+            self.yaml = APCEMMYaml(apcemm_root=apcemm_root)
+        else:
+            self.yaml = APCEMMYaml()
 
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
@@ -457,7 +462,7 @@ class APCEMM(models.Model):
         for segment in self.source.dataframe.index[:-1]:  # no segment starting at last waypoint
 
             # Mark segment as skipped if no APCEMM simulation ran
-            if not self.cachestore.exists(self.apcemm_file(segment)):
+            if segment not in self.params["segments"]:
                 statuses.append("NoSimulation")
                 continue
 
@@ -511,7 +516,8 @@ class APCEMM(models.Model):
 
         # Attach wake vortex and contrail outputs to model
         self.vortex = pd.concat(vortexes, axis="index", ignore_index=True)
-        self.contrail = pd.concat(contrails, axis="index", ignore_index=True)
+        if len(contrails) > 0:  # only present if APCEMM simulates persistent contrails
+            self.contrail = pd.concat(contrails, axis="index", ignore_index=True)
 
     @property
     def dynamic_yaml_params(self) -> list[str]:
@@ -574,7 +580,7 @@ class APCEMM(models.Model):
             msg = (
                 f"Timestep for Lagrangian trajectories "
                 f"({self.params['dt_lagrangian']}) "
-                f"must be shorter than timestep for APCEMM meteorology input "
+                f"must be no longer than timestep for APCEMM meteorology input "
                 f"({self.params['dt_input_met']})."
             )
             raise ValueError(msg)
