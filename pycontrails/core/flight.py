@@ -728,8 +728,16 @@ class Flight(GeoVectorDataset):
         """
         return units.tas_to_mach_number(true_airspeed, air_temperature)
 
-    def segment_rocd(self) -> npt.NDArray[np.float64]:
+    def segment_rocd(
+        self,
+        air_temperature: None | npt.NDArray[np.float64] = None,
+    ) -> npt.NDArray[np.float64]:
         """Calculate the rate of climb and descent (ROCD).
+
+        Parameters
+        ----------
+        air_temperature: None | npt.NDArray[np.float64]
+            Air temperature of each flight waypoint, [:math:`K`]
 
         Returns
         -------
@@ -740,12 +748,13 @@ class Flight(GeoVectorDataset):
         --------
         :func:`segment_rocd`
         """
-        return segment_rocd(self.segment_duration(), self.altitude_ft)
+        return segment_rocd(self.segment_duration(), self.altitude_ft, air_temperature)
 
     def segment_phase(
         self,
         threshold_rocd: float = 250.0,
         min_cruise_altitude_ft: float = 20000.0,
+        air_temperature: None | npt.NDArray[np.float64] = None,
     ) -> npt.NDArray[np.uint8]:
         """Identify the phase of flight (climb, cruise, descent) for each segment.
 
@@ -759,6 +768,8 @@ class Flight(GeoVectorDataset):
             This is specific for each aircraft type,
             and can be approximated as 50% of the altitude ceiling.
             Defaults to 20000 ft.
+        air_temperature: None | npt.NDArray[np.float64]
+            Air temperature of each flight waypoint, [:math:`K`]
 
         Returns
         -------
@@ -773,7 +784,7 @@ class Flight(GeoVectorDataset):
         :func:`segment_rocd`
         """
         return segment_phase(
-            self.segment_rocd(),
+            self.segment_rocd(air_temperature),
             self.altitude_ft,
             threshold_rocd=threshold_rocd,
             min_cruise_altitude_ft=min_cruise_altitude_ft,
@@ -1952,6 +1963,7 @@ def filter_altitude(
     altitude_ft: npt.NDArray[np.float64],
     kernel_size: int = 17,
     cruise_threshold: float = 120,
+    air_temperature: None | npt.NDArray[np.float64] = None,
 ) -> npt.NDArray[np.float64]:
     """
     Filter noisy altitude on a single flight.
@@ -1971,6 +1983,8 @@ def filter_altitude(
         Passed also to :func:`scipy.signal.medfilt`
     cruise_theshold : int, optional
         Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
+    air_temperature: None | npt.NDArray[np.float64]
+        Air temperature of each flight waypoint, [:math:`K`]
 
     Returns
     -------
@@ -2017,7 +2031,7 @@ def filter_altitude(
 
     # Find cruise phase in filtered profile
     seg_duration = segment_duration(time)
-    seg_rocd = segment_rocd(seg_duration, altitude_filt)
+    seg_rocd = segment_rocd(seg_duration, altitude_filt, air_temperature)
     seg_phase = segment_phase(seg_rocd, altitude_filt)
     is_cruise = seg_phase == FlightPhase.CRUISE
 
