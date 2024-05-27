@@ -83,7 +83,7 @@ class PSGrid(AircraftPerformanceGrid):
             from the :attr:`met` attribute of the :class:`PSGrid` instance.
             The aircraft type is taken from ``source.attrs["aircraft_type"]``. If this field
             is not present, ``params["aircraft_type"]`` is used instead. See the
-            static CSV file :file:`ps-aircraft-params-20231117.csv` for a list of supported
+            static CSV file :file:`ps-aircraft-params-20240524.csv` for a list of supported
             aircraft types.
         **params : Any
             Override the default parameters of the :class:`PSGrid` instance.
