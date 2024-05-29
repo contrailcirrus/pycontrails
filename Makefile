@@ -202,6 +202,7 @@ nb-clean-check:
 nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
 	python -m pytest --nbval-lax \
 		--ignore=docs/integrations/ACCF.ipynb \
+		--ignore=docs/integrations/APCEMM.ipynb \
 		--ignore=docs/notebooks/specific-humidity-interpolation.ipynb \
 		--ignore=docs/notebooks/GFS.ipynb \
 		--ignore=docs/notebooks/run-cocip-on-flight.ipynb \
