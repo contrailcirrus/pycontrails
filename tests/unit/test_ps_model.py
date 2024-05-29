@@ -53,7 +53,7 @@ def test_synonym_list() -> None:
 
 
 def test_derived_aircraft_engine_params() -> None:
-    """Test derived aircraft-engine parameters for PS model. """
+    """Test derived aircraft-engine parameters for PS model."""
     # Input parameters are for the following aircraft types: A320, A359
 
     # Test turbine entry temperature at maximum take-off rating

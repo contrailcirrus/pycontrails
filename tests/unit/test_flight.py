@@ -1183,13 +1183,10 @@ def test_rocd_hydrostatic_equation() -> None:
 
     # No temperature correction
     rocd = flight.segment_rocd(segment_duration, altitude_ft)
-    np.testing.assert_array_almost_equal(
-        rocd[:-1], [1051.2, 2018.9, 2877.2, 3155.9], decimal=1
-    )
+    np.testing.assert_array_almost_equal(rocd[:-1], [1051.2, 2018.9, 2877.2, 3155.9], decimal=1)
 
     # Hydrostatic equation
     rocd_corr = flight.segment_rocd(segment_duration, altitude_ft, air_temperature)
     np.testing.assert_array_almost_equal(
         rocd_corr[:-1], [1005.8, 1932.4, 2751.9, 3014.3], decimal=1
     )
-    return
