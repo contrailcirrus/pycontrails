@@ -39,6 +39,15 @@ else:
     GCP_CREDENTIALS = True
 
 try:
+    from google.cloud import bigquery
+
+    bigquery.Client()
+except Exception:
+    BIGQUERY_ACCESS = False
+else:
+    BIGQUERY_ACCESS = True
+
+try:
     requests.get("https://github.com", timeout=5)
 except Exception:
     OFFLINE = True
