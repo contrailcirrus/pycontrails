@@ -11,9 +11,8 @@ from typing import Any, NoReturn, overload
 import numpy as np
 import pandas as pd
 
-from pycontrails.core import models
+from pycontrails.core import cache, models
 from pycontrails.core.aircraft_performance import AircraftPerformance
-from pycontrails.core.cache import CacheStore, DiskCacheStore
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.met import MetDataset
@@ -124,8 +123,8 @@ class APCEMM(models.Model):
         the value of :param:`apcemm_root` if the latter is provided.
         See *Notes* for detailed information about YAML file generation.
     cachestore : CacheStore, optional
-        :class:`CacheStore` used to store APCEMM run directories. If not
-        provided, uses the default pycontrails :class:`DiskCacheStore`.
+        :class:`CacheStore` used to store APCEMM run directories.
+        If not provided, uses a :class:`DiskCacheStore`.
         See *Notes* for detailed information about the file structure for APCEMM
         simulations.
     params : dict[str, Any], optional
@@ -252,7 +251,7 @@ class APCEMM(models.Model):
     yaml: APCEMMYaml
 
     #: CacheStore for APCEMM run directories
-    cachestore: CacheStore
+    cachestore: cache.CacheStore
 
     #: Last flight processed in :meth:`eval`
     source: Flight
@@ -276,7 +275,7 @@ class APCEMM(models.Model):
         apcemm: str,
         apcemm_root: str | None = None,
         yaml: APCEMMYaml | None = None,
-        cachestore: DiskCacheStore | None = None,
+        cachestore: cache.CacheStore | None = None,
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
     ) -> None:
@@ -285,7 +284,9 @@ class APCEMM(models.Model):
         self.apcemm = apcemm
 
         if cachestore is None:
-            cachestore = DiskCacheStore(allow_clear=True)
+            cache_root = cache._get_user_cache_dir()
+            cache_dir = f"{cache_root}/apcemm"
+            cachestore = cache.DiskCacheStore(cache_dir=cache_dir)
         self.cachestore = cachestore
 
         self._trajectory_downsampling = self._validate_downsampling()
@@ -521,10 +522,10 @@ class APCEMM(models.Model):
 
     @property
     def dynamic_yaml_params(self) -> list[str]:
-        """List of :class:`APCEMMYaml` attributes set dynamically by this interface.
+        """List of :class:`APCEMMYaml` attributes set dynamically by this model.
 
         Other :class:`APCEMMYaml` attributes can be set statically by passing a custom instance of
-        :class:`APCEMMYaml` when the interface is instantiated.
+        :class:`APCEMMYaml` when the model is created.
         """
         return [
             "max_age",
@@ -569,7 +570,7 @@ class APCEMM(models.Model):
             Path to a file in the APCEMM simulation root directory, if ``name``
             is provided, or the path to the APCEMM simulation root directory otherwise.
         """
-        rpath = f"apcemm_{segment}"
+        rpath = f"apcemm_segment_{segment}"
         if name is not None:
             rpath = os.path.join(rpath, name)
         return self.cachestore.path(rpath)
