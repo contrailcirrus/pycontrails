@@ -249,7 +249,7 @@ class Landsat:
         xr.DataArray
             DataArray of Landsat data.
         """
-        if reflective not in ["raw", "reflectance"]:
+        if reflective not in ["raw", "radiance", "reflectance"]:
             msg = "reflective band processing must be one of ['raw', 'radiance', 'reflectance']"
             raise ValueError(msg)
 

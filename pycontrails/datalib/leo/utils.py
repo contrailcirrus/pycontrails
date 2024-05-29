@@ -36,16 +36,16 @@ class ROI:
     extent: str = GLOBAL_EXTENT
 
     def __post_init__(self) -> None:
-        """Validate region of interest.
-
-        Will mutate the instance by setting an explicit
-        global extent if :attr:`extent` is not provided.
-        """
+        """Validate region of interest."""
         if self.start_time > self.end_time:
             msg = "start_time must be before end_time"
             raise ValueError(msg)
 
-        decoded = geojson.loads(self.extent)
+        try:
+            decoded = geojson.Feature(geometry=geojson.loads(self.extent))
+        except Exception as exc:
+            msg = "extent cannot be converted to GeoJSON structure"
+            raise ValueError(msg) from exc
         if not decoded.is_valid:
             msg = "extent is not valid GeoJSON"
             raise ValueError(msg)
@@ -98,6 +98,7 @@ def track_to_geojson(lon: np.ndarray, lat: np.ndarray) -> str:
         lon = lon[idx + 1 :]
         lat_split = lat[: idx + 1]
         lat = lat[idx + 1 :]
+        crossings -= lon_split.size
 
         # fill gaps around antimeridian if necessary
         if np.abs(lon_split[-1]) < 180.0:

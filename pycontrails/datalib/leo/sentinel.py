@@ -312,7 +312,7 @@ def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
     if isinstance(bands, str):
         bands = (bands,)
 
-    available = {f"B{i:02d}" for i in range(1, 12)} | {"B8A"}
+    available = {f"B{i:02d}" for i in range(1, 13)} | {"B8A"}
     bands = {b.upper() for b in bands}
     if len(bands) == 0:
         msg = "At least one band must be provided"
