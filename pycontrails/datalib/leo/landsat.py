@@ -68,7 +68,7 @@ def query(roi: ROI, columns: list[str] | None = None) -> pd.DataFrame:
     columns : list[str], optional.
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-        By default, returns imagery base URL.
+        By default, returns imagery base URL and sensing time.
 
     Returns
     -------
@@ -85,7 +85,7 @@ def query(roi: ROI, columns: list[str] | None = None) -> pd.DataFrame:
             pycontrails_optional_package="landsat",
         )
 
-    columns = columns or ["base_url"]
+    columns = columns or ["base_url", "sensing_time"]
 
     start_time = pd.Timestamp(roi.start_time).strftime("%Y-%m-%d %H:%M:%S")
     end_time = pd.Timestamp(roi.end_time).strftime("%Y-%m-%d %H:%M:%S")
@@ -119,14 +119,14 @@ def intersect(flight: Flight, columns: list[str] | None = None) -> pd.DataFrame:
     columns : list[str], optional.
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-        By default, returns imagery base URL.
+        By default, returns imagery base URL and sensing time.
 
     Returns
     -------
     pd.DataFrame
         Query results in pandas DataFrame
     """
-    columns = columns or ["base_url"]
+    columns = columns or ["base_url", "sensing_time"]
 
     # create ROI with time span between flight start and end
     # and spatial extent set to flight track
@@ -547,7 +547,7 @@ def to_google_contrails(ds: xr.Dataset) -> tuple[np.ndarray, pyproj.CRS]:
     References
     ----------
     - `Google human-labeled Landsat contrails dataset <https://research.google/pubs/a-human-labeled-landsat-contrails-dataset/>`__
-    - :cite:`mccloskeyHumandLabeledLandsat2021`
+    - :cite:`mccloskeyHumanLabeledLandsat2021`
     """
     rc = ds["B9"]  # cirrus band reflectance
     tb11 = ds["B10"]  # 11 um brightness temperature
