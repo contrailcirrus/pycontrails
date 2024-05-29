@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.52.0
+
+### Features
+
+- Create tools for querying Landsat and Sentinel-2 imagery for intersections with user-defined regions or flights. These tools use BigQuery tables and require a Google Cloud Platform account with access to the BigQuery API.
+- Add `Landsat` and `Sentinel` datalibs for retrieving and visualizing Landsat 8-9 and Sentinel-2 imagery. These tools retrieve data anonymously from Google Cloud Platform storage buckets and can b e used without a Google Cloud Platform account.
+- Add tutorial notebooks demonstrating how to use `Landsat` and `Sentinel` datalibs to find flights in high-resolution satellite imagery.
+
+### Internals
+
+- Add units tests for Landsat and Sentinel search tools and datalibs, but disable any tests that retrieve imagery data when running tests in GitHub Actions to limit resource consumption in GitHub runners.
+
 ## v0.51.2
 
 ### Features
