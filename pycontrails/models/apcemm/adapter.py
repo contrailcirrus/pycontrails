@@ -1,5 +1,7 @@
 """Adapter between APCEMM and pycontrails :class:`Model` interfaces."""
 
+from __future__ import annotations
+
 import dataclasses
 import glob
 import logging

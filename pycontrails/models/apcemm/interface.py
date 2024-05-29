@@ -1,5 +1,7 @@
 """Thin python wrapper over native APCEMM interface."""
 
+from __future__ import annotations
+
 import dataclasses
 import os
 import subprocess
