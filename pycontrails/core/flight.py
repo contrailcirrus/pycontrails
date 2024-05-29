@@ -2215,9 +2215,8 @@ def segment_rocd(
         T_isa = units.m_to_T_isa(altitude_m)
 
         T_correction = np.empty_like(altitude_ft)
-        T_correction[:-1] = (
-            (0.5 * (air_temperature[:-1] + air_temperature[1:]))
-            / (0.5 * (T_isa[:-1] + T_isa[1:]))
+        T_correction[:-1] = (0.5 * (air_temperature[:-1] + air_temperature[1:])) / (
+            0.5 * (T_isa[:-1] + T_isa[1:])
         )
         T_correction[-1] = np.nan
         return T_correction * out
