@@ -11,6 +11,7 @@
 - Add interfaces for running [APCEMM](https://github.com/MIT-LAE/APCEMM) from within pycontrails. The interface includes:
     - a low-level wrapper around the native APCEMM interface (`pycontrails.models.apcemm.interface`) than allows users to generate APCEMM input files and run a compiled APCEMM binary manually.
     - a high-level adapter (`pycontrails.models.apcemm.APCEMM`) that allows users to run APCEMM through the pycontrails `Model` interface.
+- Add [APCEMM tutorial notebook](https://py.contrails.org/integrations/APCEMM.html).
 - Add `Landsat` and `Sentinel` datalibs for searching, retrieving, and visualizing Landsat 8-9 and Sentinel-2 imagery. The datalibs include:
     - Tools for querying Landsat and Sentinel-2 imagery for intersections with user-defined regions (`landsat.query`, `sentinel.query`) or flights (`landsat.intersect`, `sentinel.intersect`). These tools use BigQuery tables and require a Google Cloud Platform account with access to the BigQuery API.
     - Tools for downloading and visualizing imagery from Landsat (`Landsat`) and Sentinel-2 (`Sentinel`). These tools retrieve data anonymously from Google Cloud Platform storage buckets and can be used without a Google Cloud Platform account.
@@ -27,6 +28,7 @@
 ### Internals
 
 - Create unit tests for the `APCEMM` interface that run if an `APCEMM` executable is found on the `PATH` inside a clean APCEMM git repository with a pinned git hash. These tests will be skipped unless users carefully configure their local test environment and will not run in CI.
+- Exclude APCEMM tutorial notebook from notebook tests.
 - Add unit tests for Landsat and Sentinel search tools and datalibs, but disable any tests that retrieve imagery data when running tests in GitHub Actions to limit resource consumption in GitHub runners. Users can disable these units tests locally by setting the environment variable `GITHUB_ACTIONS=true`.
 - Skip cells that retrieve imagery data when running tests on Landsat and Sentinel tutorial notebooks.
 - Add tests for `Flight.to_geojson_multilinestring` with grouping key omitted and update tests with multiple antimeridian crossings.
