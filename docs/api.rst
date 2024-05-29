@@ -92,6 +92,16 @@ GOES
     datalib.goes
 
 
+Low Earth Orbit Satellites
+""""""""""""""""""""""""""
+
+.. autosummary::
+    :toctree: api/
+
+    datalib.leo.landsat
+    datalib.leo.sentinel
+
+
 Models
 ------
 

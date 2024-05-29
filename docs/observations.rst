@@ -9,4 +9,6 @@ Observations
    :caption: Notebooks
 
    notebooks/GOES
+   notebooks/Landsat
+   notebooks/Sentinel
 

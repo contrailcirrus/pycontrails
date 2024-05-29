@@ -70,7 +70,7 @@ def query(roi: ROI, columns: list[str] | None = None) -> pd.DataFrame:
     columns : list[str], optional.
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-        By default, returns imagery base URL and granule ID.
+        By default, returns imagery base URL, granule ID, and sensing time.
 
     Returns
     -------
@@ -87,7 +87,7 @@ def query(roi: ROI, columns: list[str] | None = None) -> pd.DataFrame:
             pycontrails_optional_package="landsat",
         )
 
-    columns = columns or ["base_url", "granule_id"]
+    columns = columns or ["base_url", "granule_id", "sensing_time"]
 
     start_time = pd.Timestamp(roi.start_time).strftime("%Y-%m-%d %H:%M:%S")
     end_time = pd.Timestamp(roi.end_time).strftime("%Y-%m-%d %H:%M:%S")
@@ -121,14 +121,14 @@ def intersect(flight: Flight, columns: list[str] | None = None) -> pd.DataFrame:
     columns : list[str], optional.
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-        By default, returns imagery base URL and granule ID.
+        By default, returns imagery base URL, granule ID, and sensing time.
 
     Returns
     -------
     pd.DataFrame
         Query results in pandas DataFrame
     """
-    columns = columns or ["base_url", "granule_id"]
+    columns = columns or ["base_url", "granule_id", "sensing_time"]
 
     # create ROI with time span between flight start and end
     # and spatial extent set to flight track
@@ -312,7 +312,7 @@ def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
     if isinstance(bands, str):
         bands = (bands,)
 
-    available = {f"B{i:2d}" for i in range(1, 12)} | {"B8A"}
+    available = {f"B{i:02d}" for i in range(1, 12)} | {"B8A"}
     bands = {b.upper() for b in bands}
     if len(bands) == 0:
         msg = "At least one band must be provided"
@@ -462,7 +462,7 @@ def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarra
 
     # compute pixel coordinates
     xlim = (ulx, ulx + (nx - 1) * dx)
-    ylim = (uly, uly - (ny - 1) * dy)
+    ylim = (uly, uly + (ny - 1) * dy)  # dy is < 0
     x = np.linspace(xlim[0], xlim[1], nx)
     y = np.linspace(ylim[0], ylim[1], ny)
 
@@ -490,11 +490,6 @@ def extract_sentinel_visualization(
         Imagery projection
     src_extent : tuple[float, float, float, float]
         Imagery extent in projected coordinates
-
-    References
-    ----------
-    :cite:`mccloskeyHumanLabeledLandsat2021`
-
     """
 
     if color_scheme == "true":
