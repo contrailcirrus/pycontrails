@@ -157,7 +157,7 @@ DIAGNOSTIC MENU:
     
     AEROSOL TIMESERIES SUBMENU:
         Save aerosol timeseries (T/F): {save_aerosol_timeseries_bool}
-        Inst timeseries file (string): {inst_timeseries_file_str}
+        Inst timeseries file (string): ts_aerosol_hhmm.nc
         Aerosol indices to include (list of ints): {aerosol_indices_list_int}
         Save frequency [min] (double): {save_frequency_min}
     

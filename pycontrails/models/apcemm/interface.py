@@ -50,9 +50,6 @@ class APCEMMYaml:
     #: Enable APCEMM netCDF outputs
     do_apcemm_nc_output: bool = True
 
-    #: Template for APCEMM netCDF output filenames
-    apcemm_nc_output_template: str = "ts_aerosol_hhmm.nc"
-
     #: Indices of aerosol species to include in APCEMM netCDF output
     apcemm_nc_output_species: tuple[int] = (1,)
 
@@ -280,7 +277,6 @@ class APCEMMYaml:
             vert_veloc_time_series_input_bool=_yaml_bool(self.vertical_advection),
             interpolate_vert_veloc_met_data_bool=_yaml_bool(self.vertical_advection),
             save_aerosol_timeseries_bool=_yaml_bool(self.do_apcemm_nc_output),
-            inst_timeseries_file_str=self.apcemm_nc_output_template,
             aerosol_indices_list_int=",".join(str(i) for i in self.apcemm_nc_output_species),
             save_frequency_min=self.dt_apcemm_nc_output / np.timedelta64(1, "m"),
             nx_pos_int=self.nx,
