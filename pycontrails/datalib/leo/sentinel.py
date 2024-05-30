@@ -9,7 +9,7 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.core import Flight, cache
-from pycontrails.datalib.leo.utils import ROI, track_to_geojson
+from pycontrails.datalib.leo import search
 from pycontrails.datalib.leo.vis import equalize, normalize
 from pycontrails.utils import dependencies
 
@@ -47,6 +47,15 @@ except ModuleNotFoundError as exc:
 _path_to_static = pathlib.Path(__file__).parent / "static"
 ROI_QUERY_FILENAME = _path_to_static / "sentinel_roi_query.sql"
 
+#: BigQuery table with imagery metadata
+BQ_TABLE = "bigquery-public-data.cloud_storage_geo_index.sentinel_2_index"
+
+#: Default columns to include in queries
+BQ_DEFAULT_COLUMNS = ["base_url", "granule_id", "sensing_time"]
+
+#: Default spatial extent for queries
+BQ_DEFAULT_EXTENT = search.GLOBAL_EXTENT
+
 #: Default Sentinel channels to use if none are specified.
 #: These are visible bands for producing a true color composite.
 DEFAULT_BANDS = ["B02", "B03", "B04"]
@@ -55,8 +64,13 @@ DEFAULT_BANDS = ["B02", "B03", "B04"]
 GCP_STRIP_PREFIX = "gs://gcp-public-data-sentinel-2/"
 
 
-def query(roi: ROI, columns: list[str] | None = None) -> pd.DataFrame:
-    """Query Sentinel-2 imagery within region of interest.
+def query(
+    start_time: np.datetime64,
+    end_time: np.datetime64,
+    extent: str | None = None,
+    columns: list[str] | None = None,
+) -> pd.DataFrame:
+    """Find Sentinel-2 imagery within spatiotemporal region of interest.
 
     This function requires access to the
     `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
@@ -64,8 +78,15 @@ def query(roi: ROI, columns: list[str] | None = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    roi : ROI
-        Region of interest
+    start_time : np.datetime64
+        Start of time period for search
+
+    end_time : np.datetime64
+        End of time period for search
+
+    extent : str, optional
+        Spatial region of interest as a GeoJSON string. If not provided, defaults
+        to a global extent.
 
     columns : list[str], optional.
         Columns to return from Google
@@ -76,34 +97,21 @@ def query(roi: ROI, columns: list[str] | None = None) -> pd.DataFrame:
     -------
     pd.DataFrame
         Query results in pandas DataFrame
+
+    See Also
+    --------
+    `func`:search.query:
     """
-    try:
-        from google.cloud import bigquery
-    except ModuleNotFoundError as exc:
-        dependencies.raise_module_not_found_error(
-            name="sentinel module",
-            package_name="google-cloud-bigquery",
-            module_not_found_error=exc,
-            pycontrails_optional_package="landsat",
-        )
-
-    columns = columns or ["base_url", "granule_id", "sensing_time"]
-
-    start_time = pd.Timestamp(roi.start_time).strftime("%Y-%m-%d %H:%M:%S")
-    end_time = pd.Timestamp(roi.end_time).strftime("%Y-%m-%d %H:%M:%S")
-    extent = roi.extent.replace('"', "'")
-
-    client = bigquery.Client()
-    with open(ROI_QUERY_FILENAME) as f:
-        query_str = f.read().format(
-            columns=",".join(columns), start_time=start_time, end_time=end_time, geojson_str=extent
-        )
-
-    result = client.query(query_str)
-    return result.to_dataframe()
+    extent = extent or BQ_DEFAULT_EXTENT
+    roi = search.ROI(start_time, end_time, extent)
+    columns = columns or BQ_DEFAULT_COLUMNS
+    return search.query(BQ_TABLE, roi, columns)
 
 
-def intersect(flight: Flight, columns: list[str] | None = None) -> pd.DataFrame:
+def intersect(
+    flight: Flight,
+    columns: list[str] | None = None,
+) -> pd.DataFrame:
     """Find Sentinel-2 imagery intersecting with flight track.
 
     This function will return all scenes with a bounding box that includes flight waypoints
@@ -127,47 +135,13 @@ def intersect(flight: Flight, columns: list[str] | None = None) -> pd.DataFrame:
     -------
     pd.DataFrame
         Query results in pandas DataFrame
+
+    See Also
+    --------
+    :func"`search.intersect`
     """
-    columns = columns or ["base_url", "granule_id", "sensing_time"]
-
-    # create ROI with time span between flight start and end
-    # and spatial extent set to flight track
-    extent = track_to_geojson(flight["longitude"], flight["latitude"])
-    roi = ROI(start_time=flight["time"].min(), end_time=flight["time"].max(), extent=extent)
-
-    # first pass: query for intersections with ROI
-    # requires additional columns for final intersection with flight
-    required_columns = set(["sensing_time", "west_lon", "east_lon", "south_lat", "north_lat"])
-    queried_columns = list(required_columns.union(set(columns)))
-    candidates = query(roi, columns=queried_columns)
-
-    if len(candidates) == 0:  # already know there are no intersections
-        return candidates[columns]
-
-    # second pass: keep images with where flight waypoints
-    # bounding sensing time are both within bounding box
-    flight_data = flight.dataframe
-
-    def intersects(scene: pd.Series) -> bool:
-        if scene["west_lon"] <= scene["east_lon"]:  # scene does not span antimeridian
-            bbox_data = flight_data[
-                flight_data["longitude"].between(scene["west_lon"], scene["east_lon"])
-                & flight_data["latitude"].between(scene["south_lat"], scene["north_lat"])
-            ]
-        else:  # scene spans antimeridian
-            bbox_data = flight_data[
-                (
-                    flight_data["longitude"]
-                    > scene["west_lon"] | flight.data["longitude"]
-                    < scene["east_lon"]
-                )
-                & flight_data["latitude"].between(scene["south_lat"], scene["north_lat"])
-            ]
-        sensing_time = pd.Timestamp(scene["sensing_time"]).tz_localize(None)
-        return bbox_data["time"].min() <= sensing_time and bbox_data["time"].max() >= sensing_time
-
-    mask = candidates.apply(intersects, axis="columns")
-    return candidates[columns][mask]
+    columns = columns or BQ_DEFAULT_COLUMNS
+    return search.intersect(BQ_TABLE, flight, columns)
 
 
 class Sentinel:
