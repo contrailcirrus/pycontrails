@@ -9,7 +9,7 @@ import pytest
 import xarray as xr
 
 from pycontrails.core import Flight, cache
-from pycontrails.datalib.leo import landsat, sentinel, utils
+from pycontrails.datalib.leo import landsat, search, sentinel
 from tests import BIGQUERY_ACCESS, OFFLINE
 
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
@@ -25,14 +25,14 @@ IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
         (
             np.datetime64("2019-01-01 00:00"),
             np.datetime64("2019-01-01 01:00"),
-            utils.GLOBAL_EXTENT,
+            search.GLOBAL_EXTENT,
             True,
             "",
         ),
         (
             np.datetime64("2019-01-01 02:00"),
             np.datetime64("2019-01-01 01:00"),
-            utils.GLOBAL_EXTENT,
+            search.GLOBAL_EXTENT,
             False,
             "start_time must be before",
         ),
@@ -57,13 +57,13 @@ def test_roi_validation(
 ) -> None:
     """Test region of interest validation."""
     if valid:
-        roi = utils.ROI(start_time, end_time, extent)
+        roi = search.ROI(start_time, end_time, extent)
         assert roi.start_time == start_time
         assert roi.end_time == end_time
         assert roi.extent == extent
         return
     with pytest.raises(ValueError, match=match):
-        _ = utils.ROI(start_time, end_time, extent)
+        _ = search.ROI(start_time, end_time, extent)
 
 
 @pytest.mark.parametrize(
@@ -177,7 +177,7 @@ def test_roi_validation(
 )
 def test_track_to_geojson(lon: np.ndarray, lat: np.ndarray, result: str) -> None:
     """Test GeoJSON string creation with antimeridian splitting."""
-    assert utils.track_to_geojson(lon, lat) == result
+    assert search.track_to_geojson(lon, lat) == result
 
 
 # ========
@@ -207,7 +207,7 @@ def test_landsat_empty_query() -> None:
     end_time = np.datetime64("2019-01-01 00:15:00")
     extent = geojson.dumps(geojson.Point((0, 0)))
 
-    df = landsat.query(utils.ROI(start_time, end_time, extent))
+    df = landsat.query(start_time, end_time, extent)
     assert set(df.columns) == {"base_url", "sensing_time"}
     assert len(df) == 0
 
@@ -220,7 +220,7 @@ def test_landsat_query(landsat_base_url: str) -> None:
     end_time = np.datetime64("2019-01-01 00:15:00")
     extent = geojson.dumps(geojson.Point((151, 7)))
 
-    df = landsat.query(utils.ROI(start_time, end_time, extent))
+    df = landsat.query(start_time, end_time, extent)
     assert set(df.columns) == {"base_url", "sensing_time"}
     assert len(df) == 1
     assert df["base_url"].item() == landsat_base_url
@@ -427,7 +427,7 @@ def test_sentinel_empty_query() -> None:
     end_time = np.datetime64("2019-01-01 00:01:00")
     extent = geojson.dumps(geojson.Point((0, 0)))
 
-    df = sentinel.query(utils.ROI(start_time, end_time, extent))
+    df = sentinel.query(start_time, end_time, extent)
     assert set(df.columns) == {"base_url", "granule_id", "sensing_time"}
     assert len(df) == 0
 
@@ -440,7 +440,7 @@ def test_sentinel_query(sentinel_base_url: str, sentinel_granule_id: str) -> Non
     end_time = np.datetime64("2019-01-01 00:01:00")
     extent = geojson.dumps(geojson.Point((171, 57)))
 
-    df = sentinel.query(utils.ROI(start_time, end_time, extent))
+    df = sentinel.query(start_time, end_time, extent)
     assert set(df.columns) == {"base_url", "granule_id", "sensing_time"}
     assert len(df) == 2
     assert df["base_url"][0] == sentinel_base_url
