@@ -94,6 +94,9 @@ class APCEMMParams(models.ModelParams):
     #: If False (default), raise an exception if a run directory already exists.
     overwrite: bool = False
 
+    #: Name of output directory within run directory
+    output_directory: str = "out"
+
     #: Number of threads to use within individual APCEMM simulations.
     apcemm_threads: int = 1
 
@@ -463,6 +466,8 @@ class APCEMM(models.Model):
         contents of APCEMM output files, see :class:`APCEMM` notes.
         """
 
+        output_directory = self.params["output_directory"]
+
         statuses: list[str] = []
         vortexes: list[pd.DataFrame] = []
         contrails: list[pd.DataFrame] = []
@@ -475,7 +480,9 @@ class APCEMM(models.Model):
                 continue
 
             # Otherwise, record status of APCEMM simulation
-            with open(self.apcemm_file(segment, "out/status_case0")) as f:
+            with open(
+                self.apcemm_file(segment, os.path.join(output_directory, "status_case0"))
+            ) as f:
                 status = f.read().strip()
                 statuses.append(status)
 
@@ -486,7 +493,8 @@ class APCEMM(models.Model):
             # Convert contents of wake vortex output to pandas dataframe
             # with elapsed times converted to absolute times
             vortex = pd.read_csv(
-                self.apcemm_file(segment, "out/Micro000000.out"), skiprows=[1]
+                self.apcemm_file(segment, os.path.join(output_directory, "Micro000000.out")),
+                skiprows=[1],
             ).rename(columns=lambda x: x.strip())
             time = (base_time + pd.to_timedelta(vortex["Time [s]"], unit="s")).rename("time")
             waypoint = pd.Series(np.full((len(vortex),), segment), name="waypoint")
@@ -495,7 +503,13 @@ class APCEMM(models.Model):
 
             # Record paths to contrail output (netCDF files) in pandas dataframe
             # get paths to contrail output
-            files = sorted(glob.glob(f"{self.apcemm_file(segment, 'out')}/ts_aerosol_case0_*.nc"))
+            files = sorted(
+                glob.glob(
+                    self.apcemm_file(
+                        segment, os.path.join(output_directory, "ts_aerosol_case0_*.nc")
+                    )
+                )
+            )
             if len(files) == 0:
                 continue
             time = []
@@ -557,6 +571,7 @@ class APCEMM(models.Model):
             "true_airspeed",
             "n_engine",
             "wingspan",
+            "output_directory",
         ]
 
     def apcemm_file(self, segment: int, name: str | None = None) -> str:
