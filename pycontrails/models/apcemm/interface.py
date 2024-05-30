@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import pathlib
 import subprocess
 from typing import Any
 
@@ -15,6 +16,12 @@ from pycontrails.models.apcemm import utils
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, thermo
 
+_path_to_static = pathlib.Path(__file__).parent / "static"
+YAML_TEMPLATE = _path_to_static / "apcemm_yaml_template.yaml"
+
+#: Assumed default APCEMM root directory
+APCEMM_DEFAULT_ROOT = os.path.expanduser("~/APCEMM")
+
 
 @dataclasses.dataclass
 class APCEMMYaml:
@@ -22,17 +29,50 @@ class APCEMMYaml:
 
     Physical parameters in this class are defined using MKS units, and units are converted
     as required at the time of YAML file generation.
+
+    This class exposes many but not all of the parameters in APCEMM YAML files. To request
+    that additional parameters be exposed,
+    `open an issue on GitHub <https://github.com/contrailcirrus/pycontrails/issues>`__
+    and provide:
+    - a short description of each parameter (suitable for a docstring), and
+    - a sensible default value for each parameter.
     """
 
     #: Number of APCEMM threads
     n_threads: int = 1
 
-    #: APCEMM root directory, required to find engine emissions database and
-    #: atmospheric background conditions files distributed with APCEMM
-    apcemm_root: str = os.path.expanduser("~/APCEMM")
+    #: Output directory name
+    output_directory: str = "out"
+
+    #: Overwrite existing output directories
+    overwrite_output: bool = True
+
+    #: Enable APCEMM netCDF outputs
+    do_apcemm_nc_output: bool = True
+
+    #: Template for APCEMM netCDF output filenames
+    apcemm_nc_output_template: str = "ts_aerosol_hhmm.nc"
+
+    #: Indices of aerosol species to include in APCEMM netCDF output
+    apcemm_nc_output_species: tuple[int] = (1,)
+
+    #: APCEMM netCDF output frequency
+    dt_apcemm_nc_output: np.timedelta64 = np.timedelta64(1, "m")
+
+    #: Path to background conditions input file (distributed with APCEMM)
+    input_background_conditions: str = os.path.join(APCEMM_DEFAULT_ROOT, "input_data", "init.txt")
+
+    #: Path to engine emissions input file (distributed with APCEMM)
+    input_engine_emissions: str = os.path.join(APCEMM_DEFAULT_ROOT, "input_data", "ENG_EI.txt")
 
     #: Maximum APCEMM simulation time
     max_age: np.timedelta64 = np.timedelta64(20, "h")
+
+    #: Initial longitude [WGS84]
+    longitude: float = 0.0
+
+    #: Initial latitude [WGS84]
+    latitude: float = 0.0
 
     #: Day of year at model initialization
     day_of_year: int = 1
@@ -40,11 +80,23 @@ class APCEMMYaml:
     #: Fractional hour of day at model initialization
     hour_of_day: float = 0.0
 
-    #: Initial longitude [WGS84]
-    longitude: float = 0.0
+    #: Background NOx volume mixing ratio [nondim]
+    nox_vmr: float = 5100e-12
 
-    #: Initial latitude [WGS84]
-    latitude: float = 0.0
+    #: Background HNO3 volume mixing ratio [nondim]
+    hno3_vmr: float = 81.5e-12
+
+    #: Background O3 volume mixing ratio [nondim]
+    o3_vmr: float = 100e-9
+
+    #: Background CO volume mixing ratio [nondim]
+    co_vmr: float = 40e-9
+
+    #: Background CH4 volume mixing ratio [nondim]
+    ch4_vmr: float = 1.76e-6
+
+    #: Background SO2 volume mixing ratio [nondim]
+    so2_vmr: float = 7.25e-12
 
     #: Initial pressure [:math:`Pa`]
     air_pressure: float = 24_000.0
@@ -55,14 +107,20 @@ class APCEMMYaml:
     #: Initial RH over liquid water [dimensionless]
     rhw: float = 0.85
 
+    #: Horizontal diffusion coefficient [:math:`m^2/s`]
+    horiz_diff: float = 15.0
+
+    #: Vertical diffusion coefficient [:math:`m^2/s`]
+    vert_diff: float = 0.15
+
     #: Initial contrail-normal wind shear [:math:`1/s`]
     normal_shear: float = 0.0015
 
     #: Initial Brunt-Vaisala frequency [:math:`1/s`]
     brunt_vaisala_frequency: float = 0.008
 
-    #: Time step of input met data
-    dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
+    #: APCEMM transport timestep
+    dt_apcemm_transport: np.timedelta64 = np.timedelta64(1, "m")
 
     #: Engine NOx emissions index [:math:`kg(NO2)/kg`]
     nox_ei: float = 10.0e-3
@@ -75,6 +133,9 @@ class APCEMMYaml:
 
     #: Engine SO2 emissions index [:math:`kg/kg`]
     so2_ei = 1.0e-3
+
+    #: Engine SO2 to SO4 conversion factor [dimensionless]
+    so2_to_so4_conversion: float = 0.02
 
     #: Engine soot emissions index [:math:`kg/kg`]
     nvpm_ei_m = 0.05e-3
@@ -103,200 +164,141 @@ class APCEMMYaml:
     #: Engine bypass area [:math:`m^2`]
     bypass_area: float = 1.0
 
+    #: Enable gravitational settling
+    do_gravitational_setting: bool = True
+
+    #: Enable solid coagulation
+    do_solid_coagulation: bool = True
+
+    #: Enable liquid coagulation
+    do_liquid_coagulation: bool = False
+
+    #: Enable ice growth
+    do_ice_growth: bool = True
+
+    #: APCEMM coagulation timestep
+    dt_apcemm_coagulation: np.timedelta64 = np.timedelta64(1, "m")
+
+    #: APCEMM ice growth timestep
+    dt_apcemm_ice_growth: np.timedelta64 = np.timedelta64(1, "m")
+
+    #: Path to meteorology input
+    input_met_file: str = "input.nc"
+
+    #: Time step of input met data
+    dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
+
     #: If True, include plume transport by vertical winds.
-    #: APCEMM implementation of vertical advection is currently buggy,
+    #: Currently produces strange behavior in APCEMM output,
     #: so default setting (False) is recommended.
     vertical_advection: bool = False
+
+    #: Number of horizontal gridpoints
+    nx: int = 200
+
+    #: Number of vertical gridpoints
+    ny: int = 180
+
+    #: Initial distance to right edge of domain [:math:`m`]
+    xlim_right: float = 1000.0
+
+    #: Initial distance to left edge of domain [:math:`m`]
+    xlim_left: float = 1000.0
+
+    #: Initial distance to top of domain [:math:`m`]
+    ylim_up: float = 300.0
+
+    #: Initial distance to bottom of domain [:math:`m`]
+    ylim_down: float = 1500.0
+
+    #: Offset applied to initial contrail depth [:math:`m`]
+    initial_contrail_depth_offset: float = 0.0
+
+    #: Scale factor applied to initial contrail depth [dimensionless]
+    initial_contrail_depth_scale_factor: float = 1.0
+
+    #: Offset applied to initial contrail width [:math:`m`]
+    initial_contrail_width_offset: float = 0.0
+
+    #: Scale factor applied to initial contrail width [dimensionless]
+    initial_contrail_width_scale_factor: float = 1.0
 
     def generate_yaml(self) -> str:
         """Generate YAML file from parameters."""
 
-        return f"""SIMULATION MENU:
-        
-    OpenMP Num Threads (positive int): {self.n_threads}
-    
-    PARAM SWEEP SUBMENU:
-        Parameter sweep (T/F): T
-        Run Monte Carlo (T/F): F
-        Num Monte Carlo runs (int): -1
-    
-    OUTPUT SUBMENU:
-        Output folder (string): out
-        Overwrite if folder exists (T/F): T
-    
-    Use threaded FFT (T/F): F
-    
-    FFTW WISDOM SUBMENU:
-        Use FFTW WISDOM (T/F): F
-        Dir w/ write permission (string): n/a
-    
-    Input background condition (string): "{os.path.join(
-        self.apcemm_root, 'input_data', 'init.txt')}"
-    Input engine emissions (string): "{os.path.join(
-        self.apcemm_root, 'input_data', 'ENG_EI.txt')}"
-    
-    SAVE FORWARD RESULTS SUBMENU:
-        Save forward results (T/F): F
-        netCDF filename format (string): n/a
-    
-    ADJOINT OPTIMIZATION SUBMENU:
-        Turn on adjoint optim. (T/F): F
-        netCDF filename format (string): n/a
-    
-    BOX MODEL SUBMENU:
-        Run box model (T/F): F
-        netCDF filename format (string): n/a            
-    
-PARAMETER MENU:
-    
-    Plume Process [hr] (double): {self.max_age/np.timedelta64(1, "h")}
-    
-    METEOROLOGICAL PARAMETERS SUBMENU:
-        Temperature [K] (double): {self.air_temperature}
-        R.Hum. wrt water [%] (double): {1e2*self.rhw}
-        Pressure [hPa] (double): {self.air_pressure/1e2}
-        Horiz. diff. coeff. [m^2/s] (double): 15.0
-        Verti. diff. [m^2/s] (double): 0.15
-        Wind shear [1/s] (double): {self.normal_shear}
-        Brunt-Vaisala Frequency [s^-1] (double): {self.brunt_vaisala_frequency}
-    
-    LOCATION AND TIME SUBMENU:
-        LON [deg] (double): {self.longitude}
-        LAT [deg] (double): {self.latitude}
-        Emission day [1-365] (int): {self.day_of_year}
-        Emission time [hr] (double): {self.hour_of_day}
-           
-    BACKGROUND MIXING RATIOS SUBMENU:
-        NOx [ppt] (double): 5100
-        HNO3 [ppt] (double): 81.5
-        O3 [ppb] (double): 100
-        CO [ppb] (double): 40
-        CH4 [ppm] (double): 1.76
-        SO2 [ppt] (double): 7.25
-    
-    EMISSION INDICES SUBMENU:
-        NOx [g(NO2)/kg_fuel] (double): {1e3*self.nox_ei}
-        CO [g/kg_fuel] (double): {1e3*self.co_ei}
-        UHC [g/kg_fuel] (double): {1e3*self.hc_ei}
-        SO2 [g/kg_fuel] (double): {1e3*self.so2_ei}
-        SO2 to SO4 conv [%] (double): 2
-        Soot [g/kg_fuel] (double): {1e3*self.nvpm_ei_m}
-        
-    Soot Radius [m] (double): {self.soot_radius}
-    Total fuel flow [kg/s] (double): {self.fuel_flow}
-    Aircraft mass [kg] (double): {self.aircraft_mass}
-    Flight speed [m/s] (double): {self.true_airspeed}
-    Num. of engines [2/4] (int): {self.n_engine}
-    Wingspan [m] (double): {self.wingspan}
-    Core exit temp. [K] (double): {self.exhaust_exit_temp}
-    Exit bypass area [m^2] (double): {self.bypass_area}
-    
-TRANSPORT MENU:
-    
-    Turn on Transport (T/F): T
-    Fill Negative Values (T/F): T
-    Transport Timestep [min] (double): 1
-    
-    PLUME UPDRAFT SUBMENU:
-        Turn on plume updraft (T/F): F
-        Updraft timescale [s] (double): -1
-        Updraft veloc. [cm/s] (double): -1
-    
-CHEMISTRY MENU:
-    
-    Turn on Chemistry (T/F): F
-    Perform hetero. chem. (T/F): F
-    Chemistry Timestep [min] (double): -1
-    Photolysis rates folder (string): n/a
-    
-AEROSOL MENU:
-    
-    Turn on grav. settling (T/F): T
-    Turn on solid coagulation (T/F): T
-    Turn on liquid coagulation (T/F): F
-    Coag. timestep [min] (double): 1
-    Turn on ice growth (T/F): T
-    Ice growth timestep [min] (double): 1
-    
-METEOROLOGY MENU:
-    
-    METEOROLOGICAL INPUT SUBMENU:
-        Use met. input (T/F): T
-        Met input file path (string): "input.nc"
-        Time series data timestep [hr] (double): {self.dt_input_met/np.timedelta64(1, "h")}
-        Init temp. from met. (T/F): T
-        Temp. time series input (T/F): T
-        Interpolate temp. met. data (T/F): T
-        Init RH from met. (T/F): T
-        RH time series input (T/F): T
-        Interpolate RH met. data (T/F): T
-        Init wind shear from met. (T/F): T
-        Wind shear time series input (T/F): T
-        Interpolate shear met. data (T/F): T
-        Init vert. veloc. from met. data (T/F): {'T' if self.vertical_advection else 'F'}
-        Vert. veloc. time series input (T/F): {'T' if self.vertical_advection else 'F'}
-        Interpolate vert. veloc. met. data (T/F): {'T' if self.vertical_advection else 'F'}
-    
-        HUMIDITY SCALING OPTIONS:
-            Humidity modification scheme (none / constant / scaling): none
-            Constant RHi [%] (double): -1
-            Humidity scaling constant a (double): -1
-            Humidity scaling constant b (double): -1
-    
-    
-    IMPOSE MOIST LAYER DEPTH SUBMENU:
-        Impose moist layer depth (T/F): F
-        Moist layer depth [m] (double): -1
-        Subsaturated air RHi [%] (double): -1
-    
-    IMPOSE LAPSE RATE SUBMENU:
-        Impose lapse rate (T/F): F
-        Lapse rate [K/m] (T/F): -1
-        
-    Add diurnal variations (T/F): F
-            
-    TEMPERATURE PERTURBATION SUBMENU:
-        Enable Temp. Pert. (T/F): F
-        Temp. Perturb. Amplitude (double): -1
-        Temp. Perturb. Timescale (min): -1
-    
-DIAGNOSTIC MENU:
-    
-    netCDF filename format (string): trac_avg.apcemm.hhmm
-    
-    SPECIES TIMESERIES SUBMENU:
-        Save species timeseries (T/F): F
-        Inst timeseries file (string): n/a
-        Species indices to include (list of ints): -1
-        Save frequency [min] (double): -1
-    
-    AEROSOL TIMESERIES SUBMENU:
-        Save aerosol timeseries (T/F): T
-        Inst timeseries file (string): ts_aerosol_hhmm.nc
-        Aerosol indices to include (list of ints): 1
-        Save frequency [min] (double): 1
-    
-    PRODUCTION & LOSS SUBMENU:
-        Turn on P/L diag (T/F): F
-        Save O3 P/L (T/F): F
-    
-ADVANCED OPTIONS MENU:
-    
-    GRID SUBMENU:
-        NX (positive int): 200
-        NY (positive int): 180
-        XLIM_RIGHT (positive double): 1000
-        XLIM_LEFT (positive double): 1000
-        YLIM_UP (positive double): 300
-        YLIM_DOWN (positive double): 1500
-    INITIAL CONTRAIL SIZE SUBMENU:
-        Base Contrail Depth [m] (double): 0.0
-        Contrail Depth Scaling Factor [-] (double): 1.0
-        Base Contrail Width [m] (double): 0.0
-        Contrail Width Scaling Factor [-] (double): 1.0
-    Ambient Lapse Rate [K/km] (double): -1
-    Tropopause Pressure [Pa] (double): -1
-"""
+        with open(YAML_TEMPLATE) as f:
+            template = f.read()
+
+        return template.format(
+            n_threads_int=self.n_threads,
+            output_folder_str=self.output_directory,
+            overwrite_output_bool=_yaml_bool(self.overwrite_output),
+            input_background_conditions_str=self.input_background_conditions,
+            input_engine_emissions_str=self.input_engine_emissions,
+            max_age_hr=self.max_age / np.timedelta64(1, "h"),
+            temperature_k=self.air_temperature,
+            rhw_percent=self.rhw * 100,
+            horiz_diff_coeff_m2_per_s=self.horiz_diff,
+            vert_diff_coeff_m2_per_s=self.vert_diff,
+            pressure_hpa=self.air_pressure / 100,
+            wind_shear_per_s=self.normal_shear,
+            brunt_vaisala_frequency_per_s=self.brunt_vaisala_frequency,
+            longitude_deg=self.longitude,
+            latitude_deg=self.latitude,
+            emission_day_dayofyear=self.day_of_year,
+            emission_time_hourofday=self.hour_of_day,
+            nox_ppt=self.nox_vmr * 1e12,
+            hno3_ppt=self.hno3_vmr * 1e12,
+            o3_ppb=self.o3_vmr * 1e9,
+            co_ppb=self.co_vmr * 1e9,
+            ch4_ppm=self.ch4_vmr * 1e6,
+            so2_ppt=self.so2_vmr * 1e12,
+            nox_g_per_kg=self.nox_ei * 1000,
+            co_g_per_kg=self.co_ei * 1000,
+            uhc_g_per_kg=self.hc_ei * 1000,
+            so2_g_per_kg=self.so2_ei * 1000,
+            so2_to_so4_conv_percent=self.so2_to_so4_conversion * 100,
+            soot_g_per_kg=self.nvpm_ei_m * 1000,
+            soot_radius_m=self.soot_radius,
+            total_fuel_flow_kg_per_s=self.fuel_flow,
+            aircraft_mass_kg=self.aircraft_mass,
+            flight_speed_m_per_s=self.true_airspeed,
+            num_of_engines_int=self.n_engine,
+            wingspan_m=self.wingspan,
+            core_exit_temp_k=self.exhaust_exit_temp,
+            exit_bypass_area_m2=self.bypass_area,
+            transport_timestep_min=self.dt_apcemm_transport / np.timedelta64(1, "m"),
+            gravitational_settling_bool=_yaml_bool(self.do_gravitational_setting),
+            solid_coagulation_bool=_yaml_bool(self.do_solid_coagulation),
+            liquid_coagulation_bool=_yaml_bool(self.do_liquid_coagulation),
+            ice_growth_bool=_yaml_bool(self.do_ice_growth),
+            coag_timestep_min=self.dt_apcemm_coagulation / np.timedelta64(1, "m"),
+            ice_growth_timestep_min=self.dt_apcemm_ice_growth / np.timedelta64(1, "m"),
+            met_input_file_path_str=self.input_met_file,
+            time_series_data_timestep_hr=self.dt_input_met / np.timedelta64(1, "h"),
+            init_vert_veloc_from_met_data_bool=_yaml_bool(self.vertical_advection),
+            vert_veloc_time_series_input_bool=_yaml_bool(self.vertical_advection),
+            interpolate_vert_veloc_met_data_bool=_yaml_bool(self.vertical_advection),
+            save_aerosol_timeseries_bool=_yaml_bool(self.do_apcemm_nc_output),
+            inst_timeseries_file_str=self.apcemm_nc_output_template,
+            aerosol_indices_list_int=",".join(str(i) for i in self.apcemm_nc_output_species),
+            save_frequency_min=self.dt_apcemm_nc_output / np.timedelta64(1, "m"),
+            nx_pos_int=self.nx,
+            ny_pos_int=self.ny,
+            xlim_right_pos_m=self.xlim_right,
+            xlim_left_pos_m=self.xlim_left,
+            ylim_up_pos_m=self.ylim_up,
+            ylim_down_pos_m=self.ylim_down,
+            base_contrail_depth_m=self.initial_contrail_depth_offset,
+            contrail_depth_scaling_factor_nondim=self.initial_contrail_depth_scale_factor,
+            base_contrail_width_m=self.initial_contrail_width_offset,
+            contrail_width_scaling_factor_nondim=self.initial_contrail_width_scale_factor,
+        )
+
+
+def _yaml_bool(param: bool) -> str:
+    """Convert boolean to T/F for YAML file."""
+    return "T" if param else "F"
 
 
 @dataclasses.dataclass

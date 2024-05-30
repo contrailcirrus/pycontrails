@@ -212,7 +212,12 @@ def test_apcemm_default_root_directory(
     """Test APCEMM default root directory."""
     apcemm, _ = apcemm_paths
     model = APCEMM(met=met_apcemm, apcemm=apcemm, humidity_scaling=ConstantHumidityScaling())
-    assert model.yaml.apcemm_root == os.path.expanduser("~/APCEMM")
+    assert model.yaml.input_background_conditions == os.path.join(
+        os.path.expanduser("~/APCEMM"), "input_data", "init.txt"
+    )
+    assert model.yaml.input_engine_emissions == os.path.join(
+        os.path.expanduser("~/APCEMM"), "input_data", "ENG_EI.txt"
+    )
 
 
 def test_apcemm_root_directory_param(met_apcemm: MetDataset, apcemm_paths: tuple[str, str]) -> None:
@@ -224,7 +229,12 @@ def test_apcemm_root_directory_param(met_apcemm: MetDataset, apcemm_paths: tuple
         apcemm_root=apcemm_root,
         humidity_scaling=ConstantHumidityScaling(),
     )
-    assert model.yaml.apcemm_root == apcemm_root
+    assert model.yaml.input_background_conditions == os.path.join(
+        apcemm_root, "input_data", "init.txt"
+    )
+    assert model.yaml.input_engine_emissions == os.path.join(
+        apcemm_root, "input_data", "ENG_EI.txt"
+    )
 
 
 def test_apcemm_root_directory_yaml(met_apcemm: MetDataset, apcemm_paths: tuple[str, str]) -> None:
@@ -234,10 +244,11 @@ def test_apcemm_root_directory_yaml(met_apcemm: MetDataset, apcemm_paths: tuple[
         met=met_apcemm,
         apcemm=apcemm,
         apcemm_root="foo",
-        yaml=APCEMMYaml(apcemm_root=apcemm_root),
+        yaml=APCEMMYaml(input_background_conditions="bar", input_engine_emissions="baz"),
         humidity_scaling=ConstantHumidityScaling(),
     )
-    assert model.yaml.apcemm_root == apcemm_root
+    assert model.yaml.input_background_conditions == "bar"
+    assert model.yaml.input_engine_emissions == "baz"
 
 
 def test_apcemm_overwrite_protection(

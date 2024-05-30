@@ -1,0 +1,183 @@
+SIMULATION MENU:
+        
+    OpenMP Num Threads (positive int): {n_threads_int}
+    
+    PARAM SWEEP SUBMENU:
+        Parameter sweep (T/F): T
+        Run Monte Carlo (T/F): F
+        Num Monte Carlo runs (int): -1
+    
+    OUTPUT SUBMENU:
+        Output folder (string): {output_folder_str}
+        Overwrite if folder exists (T/F): {overwrite_output_bool}
+    
+    Use threaded FFT (T/F): F
+    
+    FFTW WISDOM SUBMENU:
+        Use FFTW WISDOM (T/F): F
+        Dir w/ write permission (string): n/a
+    
+    Input background condition (string): {input_background_conditions_str}
+    Input engine emissions (string): {input_engine_emissions_str}
+    
+    SAVE FORWARD RESULTS SUBMENU:
+        Save forward results (T/F): F
+        netCDF filename format (string): n/a
+    
+    ADJOINT OPTIMIZATION SUBMENU:
+        Turn on adjoint optim. (T/F): F
+        netCDF filename format (string): n/a
+    
+    BOX MODEL SUBMENU:
+        Run box model (T/F): F
+        netCDF filename format (string): n/a            
+    
+PARAMETER MENU:
+    
+    Plume Process [hr] (double): {max_age_hr}
+    
+    METEOROLOGICAL PARAMETERS SUBMENU:
+        Temperature [K] (double): {temperature_k}
+        R.Hum. wrt water [%] (double): {rhw_percent}
+        Pressure [hPa] (double): {pressure_hpa}
+        Horiz. diff. coeff. [m^2/s] (double): {horiz_diff_coeff_m2_per_s}
+        Verti. diff. [m^2/s] (double): {vert_diff_coeff_m2_per_s}
+        Wind shear [1/s] (double): {wind_shear_per_s}
+        Brunt-Vaisala Frequency [s^-1] (double): {brunt_vaisala_frequency_per_s}
+    
+    LOCATION AND TIME SUBMENU:
+        LON [deg] (double): {longitude_deg}
+        LAT [deg] (double): {latitude_deg}
+        Emission day [1-365] (int): {emission_day_dayofyear}
+        Emission time [hr] (double): {emission_time_hourofday}
+           
+    BACKGROUND MIXING RATIOS SUBMENU:
+        NOx [ppt] (double): {nox_ppt}
+        HNO3 [ppt] (double): {hno3_ppt}
+        O3 [ppb] (double): {o3_ppb}
+        CO [ppb] (double): {co_ppb}
+        CH4 [ppm] (double): {ch4_ppm}
+        SO2 [ppt] (double): {so2_ppt}
+    
+    EMISSION INDICES SUBMENU:
+        NOx [g(NO2)/kg_fuel] (double): {nox_g_per_kg}
+        CO [g/kg_fuel] (double): {co_g_per_kg}
+        UHC [g/kg_fuel] (double): {uhc_g_per_kg}
+        SO2 [g/kg_fuel] (double): {so2_g_per_kg}
+        SO2 to SO4 conv [%] (double): {so2_to_so4_conv_percent}
+        Soot [g/kg_fuel] (double): {soot_g_per_kg}
+        
+    Soot Radius [m] (double): {soot_radius_m}
+    Total fuel flow [kg/s] (double): {total_fuel_flow_kg_per_s}
+    Aircraft mass [kg] (double): {aircraft_mass_kg}
+    Flight speed [m/s] (double): {flight_speed_m_per_s}
+    Num. of engines [2/4] (int): {num_of_engines_int}
+    Wingspan [m] (double): {wingspan_m}
+    Core exit temp. [K] (double): {core_exit_temp_k}
+    Exit bypass area [m^2] (double): {exit_bypass_area_m2}
+    
+TRANSPORT MENU:
+    
+    Turn on Transport (T/F): T
+    Fill Negative Values (T/F): T
+    Transport Timestep [min] (double): {transport_timestep_min}
+    
+    PLUME UPDRAFT SUBMENU:
+        Turn on plume updraft (T/F): F
+        Updraft timescale [s] (double): -1
+        Updraft veloc. [cm/s] (double): -1
+    
+CHEMISTRY MENU:
+    
+    Turn on Chemistry (T/F): F
+    Perform hetero. chem. (T/F): F
+    Chemistry Timestep [min] (double): -1
+    Photolysis rates folder (string): n/a
+    
+AEROSOL MENU:
+    
+    Turn on grav. settling (T/F): {gravitational_settling_bool}
+    Turn on solid coagulation (T/F): {solid_coagulation_bool}
+    Turn on liquid coagulation (T/F): {liquid_coagulation_bool}
+    Coag. timestep [min] (double): {coag_timestep_min}
+    Turn on ice growth (T/F): {ice_growth_bool}
+    Ice growth timestep [min] (double): {ice_growth_timestep_min}
+    
+METEOROLOGY MENU:
+    
+    METEOROLOGICAL INPUT SUBMENU:
+        Use met. input (T/F): T
+        Met input file path (string): {met_input_file_path_str}
+        Time series data timestep [hr] (double): {time_series_data_timestep_hr}
+        Init temp. from met. (T/F): T
+        Temp. time series input (T/F): T
+        Interpolate temp. met. data (T/F): T
+        Init RH from met. (T/F): T
+        RH time series input (T/F): T
+        Interpolate RH met. data (T/F): T
+        Init wind shear from met. (T/F): T
+        Wind shear time series input (T/F): T
+        Interpolate shear met. data (T/F): T
+        Init vert. veloc. from met. data (T/F): {init_vert_veloc_from_met_data_bool}
+        Vert. veloc. time series input (T/F): {vert_veloc_time_series_input_bool}
+        Interpolate vert. veloc. met. data (T/F): {interpolate_vert_veloc_met_data_bool}
+    
+        HUMIDITY SCALING OPTIONS:
+            Humidity modification scheme (none / constant / scaling): none
+            Constant RHi [%] (double): -1
+            Humidity scaling constant a (double): -1
+            Humidity scaling constant b (double): -1
+    
+    
+    IMPOSE MOIST LAYER DEPTH SUBMENU:
+        Impose moist layer depth (T/F): F
+        Moist layer depth [m] (double): -1
+        Subsaturated air RHi [%] (double): -1
+    
+    IMPOSE LAPSE RATE SUBMENU:
+        Impose lapse rate (T/F): F
+        Lapse rate [K/m] (T/F): -1
+        
+    Add diurnal variations (T/F): F
+            
+    TEMPERATURE PERTURBATION SUBMENU:
+        Enable Temp. Pert. (T/F): F
+        Temp. Perturb. Amplitude (double): -1
+        Temp. Perturb. Timescale (min): -1
+    
+DIAGNOSTIC MENU:
+    
+    netCDF filename format (string): trac_avg.apcemm.hhmm
+    
+    SPECIES TIMESERIES SUBMENU:
+        Save species timeseries (T/F): F
+        Inst timeseries file (string): n/a
+        Species indices to include (list of ints): -1
+        Save frequency [min] (double): -1
+    
+    AEROSOL TIMESERIES SUBMENU:
+        Save aerosol timeseries (T/F): {save_aerosol_timeseries_bool}
+        Inst timeseries file (string): {inst_timeseries_file_str}
+        Aerosol indices to include (list of ints): {aerosol_indices_list_int}
+        Save frequency [min] (double): {save_frequency_min}
+    
+    PRODUCTION & LOSS SUBMENU:
+        Turn on P/L diag (T/F): F
+        Save O3 P/L (T/F): F
+    
+ADVANCED OPTIONS MENU:
+    
+    GRID SUBMENU:
+        NX (positive int): {nx_pos_int}
+        NY (positive int): {ny_pos_int}
+        XLIM_RIGHT (positive double): {xlim_right_pos_m}
+        XLIM_LEFT (positive double): {xlim_left_pos_m}
+        YLIM_UP (positive double): {ylim_up_pos_m}
+        YLIM_DOWN (positive double): {ylim_down_pos_m}
+    INITIAL CONTRAIL SIZE SUBMENU:
+        Base Contrail Depth [m] (double): {base_contrail_depth_m}
+        Contrail Depth Scaling Factor [-] (double): {contrail_depth_scaling_factor_nondim}
+        Base Contrail Width [m] (double): {base_contrail_width_m}
+        Contrail Width Scaling Factor [-] (double): {contrail_width_scaling_factor_nondim}
+    Ambient Lapse Rate [K/km] (double): -1
+    Tropopause Pressure [Pa] (double): -1

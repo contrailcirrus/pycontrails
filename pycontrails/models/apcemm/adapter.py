@@ -85,7 +85,9 @@ class APCEMMParams(models.ModelParams):
     #: By default, runs a simulation for every segment.
     segments: list[int] | None = None
 
-    #: If defined, override the ``apcemm_root`` value in :class:`APCEMMYaml`
+    #: If defined, use to override ``input_background_conditions`` and
+    #: ``input_engine_emissions`` in :class:`APCEMMYaml` assuming that
+    #: ``apcemm_root`` points to the root of the APCEMM git repository.
     apcemm_root: str | None = None
 
     #: If True, delete existing run directories before running APCEMM simulations.
@@ -296,7 +298,10 @@ class APCEMM(models.Model):
         if yaml is not None:
             self.yaml = yaml
         elif apcemm_root is not None:
-            self.yaml = APCEMMYaml(apcemm_root=apcemm_root)
+            self.yaml = APCEMMYaml(
+                input_background_conditions=os.path.join(apcemm_root, "input_data", "init.txt"),
+                input_engine_emissions=os.path.join(apcemm_root, "input_data", "ENG_EI.txt"),
+            )
         else:
             self.yaml = APCEMMYaml()
 
