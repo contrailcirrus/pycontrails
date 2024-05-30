@@ -20,7 +20,7 @@ from pycontrails.utils import dependencies
 
 # optional imports
 if TYPE_CHECKING:
-    import google
+    import google.cloud.storage
 
 
 @functools.cache
