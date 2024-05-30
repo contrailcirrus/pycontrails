@@ -1,5 +1,7 @@
 """Support for LANDSAT 8-9 imagery retrieval through Google Cloud Platform."""
 
+from __future__ import annotations
+
 from collections.abc import Iterable
 
 import numpy as np

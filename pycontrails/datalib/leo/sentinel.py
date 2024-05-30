@@ -1,5 +1,7 @@
 """Support for Sentinel-2 imagery retrieval through Google Cloud Platform."""
 
+from __future__ import annotations
+
 import pathlib
 from collections.abc import Iterable
 from xml import etree
