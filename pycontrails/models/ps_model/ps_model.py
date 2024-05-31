@@ -50,7 +50,7 @@ class PSFlightParams(AircraftPerformanceParams):
     # Reference:
     # Gurrola Arrieta, M.D.J., Botez, R.M. and Lasne, A., 2024. An Engine Deterioration Model for
     # Predicting Fuel Consumption Impact in a Regional Aircraft. Aerospace, 11(6), p.426.
-    engine_deterioration_factor: float | None = 0.025
+    engine_deterioration_factor: float = 0.025
 
 
 class PSFlight(AircraftPerformance):
