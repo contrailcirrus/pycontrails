@@ -450,23 +450,20 @@ class APCEMMMet:
         )
 
 
-def run(apcemm: str, rundir: str, stdout_log: str, stderr_log: str) -> None:
+def run(apcemm: str, input_yaml: str, rundir: str, stdout_log: str, stderr_log: str) -> None:
     """
     Run APCEMM executable.
 
     Parameters
     ----------
     apcemm : str
-        Path to APCEMM executable
-
+        Path to APCEMM executable.
+    input_yaml : str
+        Path to APCEMM input yaml file.
     rundir : str
-        Path to APCEMM simulation directory. This directory must at minimum
-        contain an ``input.yaml`` file along with any other assets required
-        for the simulation.
-
+        Path to APCEMM simulation directory.
     stdout_log : str
         Path to file used to log APCEMM stdout
-
     stderr_log  : str
         Path to file used to log APCEMM stderr
 
@@ -478,7 +475,7 @@ def run(apcemm: str, rundir: str, stdout_log: str, stderr_log: str) -> None:
 
     with open(stdout_log, "w") as stdout, open(stderr_log, "w") as stderr:
         result = subprocess.run(
-            [apcemm, "input.yaml"], stdout=stdout, stderr=stderr, cwd=rundir, check=False
+            [apcemm, input_yaml], stdout=stdout, stderr=stderr, cwd=rundir, check=False
         )
         if result.returncode != 0:
             msg = (
