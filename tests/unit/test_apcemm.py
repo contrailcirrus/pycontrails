@@ -10,7 +10,7 @@ import xarray as xr
 
 from pycontrails.core import Flight, MetDataset
 from pycontrails.models.apcemm import APCEMM
-from pycontrails.models.apcemm.interface import APCEMMYaml
+from pycontrails.models.apcemm.input import APCEMMInput
 from pycontrails.models.humidity_scaling import (
     ConstantHumidityScaling,
     ExponentialBoostHumidityScaling,
@@ -250,7 +250,7 @@ def test_apcemm_root_directory_yaml(met_apcemm: MetDataset, apcemm_paths: tuple[
         met=met_apcemm,
         apcemm=apcemm,
         apcemm_root="foo",
-        yaml=APCEMMYaml(input_background_conditions="bar", input_engine_emissions="baz"),
+        yaml=APCEMMInput(input_background_conditions="bar", input_engine_emissions="baz"),
         humidity_scaling=ConstantHumidityScaling(),
     )
     assert model.yaml.input_background_conditions == "bar"
