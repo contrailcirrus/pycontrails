@@ -193,7 +193,7 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
 
 @functools.cache
 def load_aircraft_engine_params(
-    engine_deterioration_factor: float = 0.025
+    engine_deterioration_factor: float = 0.025,
 ) -> Mapping[str, PSAircraftEngineParams]:
     """
     Extract aircraft-engine parameters for each aircraft type supported by the PS model.

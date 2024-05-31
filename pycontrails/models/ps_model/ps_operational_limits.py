@@ -148,7 +148,7 @@ def max_available_thrust_coefficient(
         atyp_param.tet_mcc,
         atyp_param.tr_ec,
         atyp_param.m_ec,
-        buffer=buffer
+        buffer=buffer,
     )
     c_t_max_over_c_t_eta_b = 1.0 + 2.5 * (tr_max - 1.0)
     return c_t_max_over_c_t_eta_b * c_t_eta_b
@@ -270,9 +270,11 @@ def _normalised_max_throttle_parameter(
     entry to the freestream total temperature, normalised with its value for maximum engine
     overall efficiency at the same freestream Mach number.
     """
-    return (tet_mcc / air_temperature) / (
-        tr_ec * (1.0 - 0.53 * (mach_number - m_ec) ** 2) * (1.0 + 0.2 * mach_number**2)
-    ) * (1.0 + buffer)
+    return (
+        (tet_mcc / air_temperature)
+        / (tr_ec * (1.0 - 0.53 * (mach_number - m_ec) ** 2) * (1.0 + 0.2 * mach_number**2))
+        * (1.0 + buffer)
+    )
 
 
 # --------------------
