@@ -118,7 +118,7 @@ def max_available_thrust_coefficient(
     c_t_eta_b: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
     *,
-    buffer: float = 0.50,
+    buffer: float = 0.20,
 ) -> ArrayOrFloat:
     """
     Calculate maximum available thrust coefficient.
@@ -134,8 +134,8 @@ def max_available_thrust_coefficient(
     atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
     buffer : float, optional
-        Additional buffer for maximum available thrust coefficient. The default value is 0.05,
-        which increases the maximum available thrust coefficient by 5%.
+        Additional buffer for maximum throttle parameter `tr_max`. The default value recommended by
+        Ian Poll is 0.2, which increases the maximum throttle parameter by 20%.
 
     Returns
     -------
@@ -148,9 +148,10 @@ def max_available_thrust_coefficient(
         atyp_param.tet_mcc,
         atyp_param.tr_ec,
         atyp_param.m_ec,
+        buffer=buffer
     )
     c_t_max_over_c_t_eta_b = 1.0 + 2.5 * (tr_max - 1.0)
-    return c_t_max_over_c_t_eta_b * c_t_eta_b * (1.0 + buffer)
+    return c_t_max_over_c_t_eta_b * c_t_eta_b
 
 
 def get_excess_thrust_available(
@@ -234,6 +235,8 @@ def _normalised_max_throttle_parameter(
     tet_mcc: float,
     tr_ec: float,
     m_ec: float,
+    *,
+    buffer: float = 0.20,
 ) -> ArrayOrFloat:
     """
     Calculate normalised maximum throttle parameter.
@@ -251,6 +254,10 @@ def _normalised_max_throttle_parameter(
         temperature for maximum overall efficiency.
     m_ec : float
         Engine characteristic Mach number associated with `tr_ec`.
+    buffer : float, optional
+        Additional buffer for maximum throttle parameter. The default value recommended by Ian Poll
+        is 0.2, which increases the maximum throttle parameter by 20%. This affects the maximum
+        available thrust coefficient calculated downstream.
 
     Returns
     -------
@@ -265,7 +272,7 @@ def _normalised_max_throttle_parameter(
     """
     return (tet_mcc / air_temperature) / (
         tr_ec * (1.0 - 0.53 * (mach_number - m_ec) ** 2) * (1.0 + 0.2 * mach_number**2)
-    )
+    ) * (1.0 + buffer)
 
 
 # --------------------
