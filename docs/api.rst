@@ -166,7 +166,7 @@ ACCF
 APCEMM
 """"""
 
-    This model is an interface to the `APCEMM <https://github.com/MIT-LAE/APCEMM>`__ plume model.
+    This model is an interface to the MIT `APCEMM <https://github.com/MIT-LAE/APCEMM>`__ plume model.
 
 .. autosummary::
     :toctree: api/
