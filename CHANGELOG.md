@@ -1,5 +1,22 @@
-
 # Changelog
+
+## v0.51.1
+
+### Breaking changes
+
+- Average fuel burn in the PS model is increased by 2.5\% unless `engine_deterioration_factor` is overriden.
+
+### Features
+
+- PS model: Support four aircraft types, including `E75L`, `E75S`, `E290`, and `E295`
+- PS model: Integrate `ps_synonym_list` to increase PS model aircraft type coverage to 102
+- PS model: Account for increase in fuel consumption due to engine deterioration between maintenance cycle
+
+### Internals
+
+- Calculate rate of climb and descent (ROCD) using hydrostatic equation to improve accuracy.
+- PS model: Move engine performance buffer from `c_t_available` to `tr_max`.
+- Set `tr_max` buffer to +20%, as recommended by Ian Poll.
 
 ## v0.51.0
 
@@ -8,7 +25,6 @@
 - Geodesic interpolation is now used in `Flight.resample_and_fill` when the great circle distance between waypoints (rather than the total segment length including vertical displacement) exceeds a threshold. This may change the interpolation method used when resampling flight segments with lengths close to the geodesic interpolation threshold.
 - Fixed typo in `thermo.c_pm`  will decrease computed values of moist heat capacity with non-zero specific humidity. We expect the downstream impact on contrail predictions by `ISSR`, `SAC`, `PCR`, and `Cocip` models to be minimal.
 - `np.nan` is now used as the default `fill_value` in `MetDataArray.to_polygon_feature` and `MetDataArray.to_polygon_feature_collection`. This ensures that NaN values are never included in polygon interiors unless a non-NaN `fill_value` is explicitly passed as a keyword argument.
-- Average fuel burn in the PS model is increased by 2.5\% unless `engine_deterioration_factor` is overriden.  
 
 ### Features
 
@@ -16,9 +32,6 @@
 - Update [ECMWF tutorial notebook](https://py.contrails.org/notebooks/ECMWF.html) with instructions for using model-level datalibs.
 - Add `HistogramMatching` humidity scaling calibrated for model-level ERA5 data.
 - Modify `polygon.find_multipolygon`, `MetDataArray.to_polygon_feature`, `MetDataArray.to_polygon_feature_collection`, and `MetDataArray.to_polyhedra` to permit finding regions with values above or below a threshold.
-- PS model: Support four aircraft types, including `E75L`, `E75S`, `E290`, and `E295`
-- PS model: Integrate `ps_synonym_list` to increase PS model aircraft type coverage to 102
-- PS model: Account for increase in fuel consumption due to engine deterioration between maintenance cycle
 
 ### Fixes
 
@@ -36,9 +49,6 @@
 - Add static files with ECMWF model levels and model-level ERA5 RHI quantiles to packaged data.
 - Pass `exc_type=ImportError` to `pytest.importorskip` in test fixtures that use pycontrails extensions to suppress pytest warning when extensions are not installed.
 - Bump minimum pytest version 8.2 to ensure the `exc_type` kwarg is available.
-- Calculate rate of climb and descent (ROCD) using hydrostatic equation to improve accuracy.
-- PS model: Move engine performance buffer from `c_t_available` to `tr_max`.
-- Set `tr_max` buffer to +20%, as recommended by Ian Poll.
 
 ## v0.50.2
 
