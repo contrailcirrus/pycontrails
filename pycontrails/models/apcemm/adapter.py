@@ -109,7 +109,8 @@ class APCEMM(models.Model):
 
     This class acts as an adapter between the pycontrails :class:`Model` interface
     (shared with other contrail models) and APCEMM's native interface.
-    `APCEMM <https://github.com/MIT-LAE/APCEMM>__` was developed at the
+    
+    `APCEMM <https://github.com/MIT-LAE/APCEMM>`__ was developed at the
     `MIT Laboratory for Aviation and the Environment <https://lae.mit.edu/>`__
     and is described in :cite:`fritzRolePlumescaleProcesses2020`.
 
