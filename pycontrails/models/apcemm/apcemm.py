@@ -26,7 +26,7 @@ from pycontrails.core.met_var import (
     VerticalVelocity,
 )
 from pycontrails.models.apcemm import utils
-from pycontrails.models.apcemm.interface import APCEMMMet, APCEMMYaml, run
+from pycontrails.models.apcemm.input import APCEMMInput
 from pycontrails.models.dry_advection import DryAdvection
 from pycontrails.models.emissions import Emissions
 from pycontrails.models.humidity_scaling import HumidityScaling
@@ -86,7 +86,7 @@ class APCEMMParams(models.ModelParams):
     segments: list[int] | None = None
 
     #: If defined, use to override ``input_background_conditions`` and
-    #: ``input_engine_emissions`` in :class:`APCEMMYaml` assuming that
+    #: ``input_engine_emissions`` in :class:`APCEMMInput` assuming that
     #: ``apcemm_root`` points to the root of the APCEMM git repository.
     apcemm_root: str | None = None
 
@@ -124,8 +124,8 @@ class APCEMM(models.Model):
         acquiring and compiling APCEMM.
     apcemm_root : str, optional
         Path to APCEMM root directory. If not provided, pycontrails will use the
-        default path defined in :class:`APCEMMYaml`.
-    yaml : APCEMMYaml, optional
+        default path defined in :class:`APCEMMInput`.
+    yaml : APCEMMInput, optional
         Configuration for YAML file generated as APCEMM input. If provided, the
         value of the ``apcemm_root`` attribute in this instance will override
         the value of :param:`apcemm_root` if the latter is provided.
@@ -185,9 +185,9 @@ class APCEMM(models.Model):
 
     **Configuring APCEMM YAML files**
 
-    :class:`APCEMMYaml` provides low-level contrail over the contents of YAML files used
+    :class:`APCEMMInput` provides low-level contrail over the contents of YAML files used
     as APCEMM input. YAML file contents can be controlled by passing an instance of
-    :class:`APCEMMYaml` with customized parameters to the :class:`APCEMM` constructor.
+    :class:`APCEMMInput` with customized parameters to the :class:`APCEMM` constructor.
     Note, however, that :class:`APCEMM` will overwrite YAML parameters that are controlled
     by the model parameters defined in :class:`APCEMMParams`. A list of overwritten YAML
     parameters is available in :attr:`dynamic_yaml_params`.
@@ -256,7 +256,7 @@ class APCEMM(models.Model):
     apcemm: str
 
     #: APCEMM YAML input configuration
-    yaml: APCEMMYaml
+    yaml: APCEMMInput
 
     #: CacheStore for APCEMM run directories
     cachestore: cache.CacheStore
@@ -282,7 +282,7 @@ class APCEMM(models.Model):
         met: MetDataset,
         apcemm: str,
         apcemm_root: str | None = None,
-        yaml: APCEMMYaml | None = None,
+        yaml: APCEMMInput | None = None,
         cachestore: cache.CacheStore | None = None,
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
@@ -302,12 +302,12 @@ class APCEMM(models.Model):
         if yaml is not None:
             self.yaml = yaml
         elif apcemm_root is not None:
-            self.yaml = APCEMMYaml(
+            self.yaml = APCEMMInput(
                 input_background_conditions=os.path.join(apcemm_root, "input_data", "init.txt"),
                 input_engine_emissions=os.path.join(apcemm_root, "input_data", "ENG_EI.txt"),
             )
         else:
-            self.yaml = APCEMMYaml()
+            self.yaml = APCEMMInput()
 
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
@@ -437,7 +437,7 @@ class APCEMM(models.Model):
         # run in series
         if self.params["n_jobs"] == 1:
             for segment in segments:
-                run(
+                utils.run(
                     apcemm=self.apcemm,
                     input_yaml=self.apcemm_file(segment, "input.yaml"),
                     rundir=self.apcemm_file(segment),
@@ -458,7 +458,7 @@ class APCEMM(models.Model):
                     )
                     for segment in segments
                 )
-                p.starmap(run, args)
+                p.starmap(utils.run, args)
 
     def process_apcemm_output(self) -> None:
         """Process APCEMM output.
@@ -546,10 +546,10 @@ class APCEMM(models.Model):
 
     @property
     def dynamic_yaml_params(self) -> list[str]:
-        """List of :class:`APCEMMYaml` attributes set dynamically by this model.
+        """List of :class:`APCEMMInput` attributes set dynamically by this model.
 
-        Other :class:`APCEMMYaml` attributes can be set statically by passing a custom instance of
-        :class:`APCEMMYaml` when the model is created.
+        Other :class:`APCEMMInput` attributes can be set statically by passing a custom instance of
+        :class:`APCEMMInput` when the model is created.
         """
         return [
             "max_age",
@@ -751,7 +751,7 @@ class APCEMM(models.Model):
         )
 
         # Generate and write YAML file
-        yaml_contents = self.yaml.generate_yaml()
+        yaml_contents = utils.generate_apcemm_input_yaml(self.yaml)
         path = self.apcemm_file(segment, "input.yaml")
         with open(path, "w") as f:
             f.write(yaml_contents)
@@ -778,19 +778,17 @@ class APCEMM(models.Model):
         traj = pd.concat((head, tail), axis="index").reset_index()
 
         step = self._trajectory_downsampling
-        nc = APCEMMMet(
+        ds = utils.generate_apcemm_input_met(
             time=traj["time"].values[0::step],
             longitude=traj["longitude"].values[0::step],
             latitude=traj["latitude"].values[0::step],
             azimuth=traj["azimuth"].values[0::step],
             air_pressure=1e2 * self.met["level"].values,
+            met=self.met,
             humidity_scaling=self.params["humidity_scaling"],
             dz_m=self.params["dz_m"],
+            interp_kwargs=self.interp_kwargs,
         )
-
-        nc_source = nc.generate_met_source()
-        met = nc_source.downselect_met(self.met, copy=False)
-        ds = nc.generate_met(nc_source, met, self.interp_kwargs)
 
         path = self.apcemm_file(segment, "input.nc")
         ds.to_netcdf(path)
