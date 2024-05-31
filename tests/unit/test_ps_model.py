@@ -93,7 +93,7 @@ def test_ps_model() -> None:
     dv_dt = np.array([0.0, 0.0])
 
     # Extract aircraft properties for aircraft type
-    ps_model = ps.PSFlight()
+    ps_model = ps.PSFlight(params={"engine_deterioration_factor": 0.0})
     atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
 
     # Test Reynolds Number
@@ -231,7 +231,7 @@ def test_thrust_coefficient_limits():
         air_temperature, mach_number, c_t_eta_b, atyp_param
     )
     np.testing.assert_array_almost_equal(
-        c_t_max_avail, [0.075, 0.068, 0.062, 0.056, 0.050], decimal=3
+        c_t_max_avail, [0.070, 0.065, 0.060, 0.055, 0.051], decimal=3
     )
 
 
@@ -380,13 +380,13 @@ def test_total_fuel_burn(load_factor: float) -> None:
     out = ps_model.eval(flight)
 
     if load_factor == 0.5:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(4812, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4966, abs=1.0)
     elif load_factor == 0.6:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5181, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5288, abs=1.0)
     elif load_factor == 0.7:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5382, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5434, abs=1.0)
     elif load_factor == 0.8:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5497, abs=1.0)
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5549, abs=1.0)
     else:
         pytest.fail("Unexpected load factor")
 
@@ -481,14 +481,14 @@ def test_ps_grid_met_source(met_era5_fake: MetDataset) -> None:
 
     # Pin some output values
     abs = 1e-2
-    assert ds["fuel_flow"].min() == pytest.approx(0.56, abs=abs)
-    assert ds["fuel_flow"].max() == pytest.approx(0.78, abs=abs)
-    assert ds["fuel_flow"].mean() == pytest.approx(0.66, abs=abs)
+    assert ds["fuel_flow"].min() == pytest.approx(0.58, abs=abs)
+    assert ds["fuel_flow"].max() == pytest.approx(0.80, abs=abs)
+    assert ds["fuel_flow"].mean() == pytest.approx(0.68, abs=abs)
 
     abs = 1e-3
-    assert ds["engine_efficiency"].min() == pytest.approx(0.269, abs=abs)
-    assert ds["engine_efficiency"].max() == pytest.approx(0.279, abs=abs)
-    assert ds["engine_efficiency"].mean() == pytest.approx(0.275, abs=abs)
+    assert ds["engine_efficiency"].min() == pytest.approx(0.262, abs=abs)
+    assert ds["engine_efficiency"].max() == pytest.approx(0.272, abs=abs)
+    assert ds["engine_efficiency"].mean() == pytest.approx(0.269, abs=abs)
 
     abs = 1e3
     assert ds["aircraft_mass"].min() == pytest.approx(53000, abs=abs)
