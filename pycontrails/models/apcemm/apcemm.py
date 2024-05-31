@@ -7,6 +7,7 @@ import glob
 import logging
 import multiprocessing as mp
 import os
+import pathlib
 import shutil
 from typing import Any, NoReturn, overload
 
@@ -88,7 +89,7 @@ class APCEMMParams(models.ModelParams):
     #: If defined, use to override ``input_background_conditions`` and
     #: ``input_engine_emissions`` in :class:`APCEMMInput` assuming that
     #: ``apcemm_root`` points to the root of the APCEMM git repository.
-    apcemm_root: str | None = None
+    apcemm_root: pathlib.Path | str | None = None
 
     #: If True, delete existing run directories before running APCEMM simulations.
     #: If False (default), raise an exception if a run directory already exists.
@@ -119,10 +120,10 @@ class APCEMM(models.Model):
     met : MetDataset
         Pressure level dataset containing :attr:`met_variables` variables.
         See *Notes* for variable names by data source.
-    apcemm : str
+    apcemm_path : pathlib.Path | str
         Path to APCEMM executable. See *Notes* for information about
         acquiring and compiling APCEMM.
-    apcemm_root : str, optional
+    apcemm_root : pathlib.Path | str, optional
         Path to APCEMM root directory. If not provided, pycontrails will use the
         default path defined in :class:`APCEMMInput`.
     yaml : APCEMMInput, optional
@@ -234,7 +235,7 @@ class APCEMM(models.Model):
     """
 
     __slots__ = (
-        "apcemm",
+        "apcemm_path",
         "yaml",
         "cachestore",
         "trajectories",
@@ -253,7 +254,7 @@ class APCEMM(models.Model):
     met_required = True
 
     #: Path to APCEMM executable
-    apcemm: str
+    apcemm_path: pathlib.Path
 
     #: APCEMM YAML input configuration
     yaml: APCEMMInput
@@ -280,8 +281,8 @@ class APCEMM(models.Model):
     def __init__(
         self,
         met: MetDataset,
-        apcemm: str,
-        apcemm_root: str | None = None,
+        apcemm_path: pathlib.Path | str,
+        apcemm_root: pathlib.Path | str | None = None,
         yaml: APCEMMInput | None = None,
         cachestore: cache.CacheStore | None = None,
         params: dict[str, Any] | None = None,
@@ -289,7 +290,9 @@ class APCEMM(models.Model):
     ) -> None:
         super().__init__(met, params=params, **params_kwargs)
 
-        self.apcemm = apcemm
+        if isinstance(apcemm_path, str):
+            apcemm_path = pathlib.Path(apcemm_path)
+        self.apcemm_path = apcemm_path
 
         if cachestore is None:
             cache_root = cache._get_user_cache_dir()
@@ -438,7 +441,7 @@ class APCEMM(models.Model):
         if self.params["n_jobs"] == 1:
             for segment in segments:
                 utils.run(
-                    apcemm=self.apcemm,
+                    apcemm_path=self.apcemm_path,
                     input_yaml=self.apcemm_file(segment, "input.yaml"),
                     rundir=self.apcemm_file(segment),
                     stdout_log=self.apcemm_file(segment, "stdout.log"),
@@ -450,7 +453,7 @@ class APCEMM(models.Model):
             with mp.Pool(self.params["n_jobs"]) as p:
                 args = (
                     (
-                        self.apcemm,
+                        self.apcemm_path,
                         self.apcemm_file(segment, "input.yaml"),
                         self.apcemm_file(segment),
                         self.apcemm_file(segment, "stdout.log"),

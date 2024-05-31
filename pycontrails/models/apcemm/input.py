@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import pathlib
 
 import numpy as np
 
@@ -29,8 +30,8 @@ class APCEMMInput:
     #: Number of APCEMM threads
     n_threads: int = 1
 
-    #: Output directory name
-    output_directory: str = "out"
+    #: Output directory name (relative to APCEMM simulation directory)
+    output_directory: pathlib.Path | str = "out"
 
     #: Overwrite existing output directories
     overwrite_output: bool = True
@@ -45,10 +46,14 @@ class APCEMMInput:
     dt_apcemm_nc_output: np.timedelta64 = np.timedelta64(1, "m")
 
     #: Path to background conditions input file (distributed with APCEMM)
-    input_background_conditions: str = os.path.join(APCEMM_DEFAULT_ROOT, "input_data", "init.txt")
+    input_background_conditions: pathlib.Path | str = os.path.join(
+        APCEMM_DEFAULT_ROOT, "input_data", "init.txt"
+    )
 
     #: Path to engine emissions input file (distributed with APCEMM)
-    input_engine_emissions: str = os.path.join(APCEMM_DEFAULT_ROOT, "input_data", "ENG_EI.txt")
+    input_engine_emissions: pathlib.Path | str = os.path.join(
+        APCEMM_DEFAULT_ROOT, "input_data", "ENG_EI.txt"
+    )
 
     #: Maximum APCEMM simulation time
     max_age: np.timedelta64 = np.timedelta64(20, "h")
@@ -168,7 +173,7 @@ class APCEMMInput:
     dt_apcemm_ice_growth: np.timedelta64 = np.timedelta64(1, "m")
 
     #: Path to meteorology input
-    input_met_file: str = "input.nc"
+    input_met_file: pathlib.Path | str = "input.nc"
 
     #: Time step of input met data
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")

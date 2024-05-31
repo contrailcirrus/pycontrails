@@ -40,12 +40,12 @@ def apcemm_paths() -> tuple[str, str]:
     git = pytest.importorskip("git")
 
     # Attempt to find APCEMM executable
-    apcemm = shutil.which("APCEMM")
-    if apcemm is None:
+    apcemm_path = shutil.which("APCEMM")
+    if apcemm_path is None:
         pytest.skip("APCEMM executable not found")
 
     # If found, check that it is in a directory called build...
-    dirname = os.path.dirname(apcemm)
+    dirname = os.path.dirname(apcemm_path)
     if os.path.basename(dirname) != "build":
         msg = "APCEMM executable is not in a directory called 'build'"
         raise ValueError(msg)
@@ -77,7 +77,7 @@ def apcemm_paths() -> tuple[str, str]:
         msg = "APCEMM working directory contains staged changes"
         raise ValueError(msg)
 
-    return apcemm, apcemm_root
+    return apcemm_path, apcemm_root
 
 
 @pytest.fixture()
@@ -120,7 +120,7 @@ def apcemm_persistent(
     flight_apcemm: Flight, met_apcemm: MetDataset, apcemm_paths: tuple[str, str]
 ) -> tuple[APCEMM, Flight]:
     """Return `APCEMM` instance and result from evaluation on `flight_apcemm`."""
-    apcemm, apcemm_root = apcemm_paths
+    apcemm_path, apcemm_root = apcemm_paths
     params = {
         "max_age": np.timedelta64(10, "m"),  # to limit runtime
         "dt_lagrangian": np.timedelta64(1, "m"),
@@ -130,7 +130,7 @@ def apcemm_persistent(
         "segments": [1, 13],
         "overwrite": True,
     }
-    model = APCEMM(met_apcemm, apcemm=apcemm, apcemm_root=apcemm_root, params=params)
+    model = APCEMM(met_apcemm, apcemm_path=apcemm_path, apcemm_root=apcemm_root, params=params)
     result = model.eval(flight_apcemm)
     return model, result
 
@@ -150,21 +150,21 @@ def test_apcemm_validate_met(
     drop_var: str | None, met_apcemm: MetDataset, apcemm_paths: tuple[str, str]
 ) -> None:
     """Test APCEMM met validation."""
-    apcemm, apcemm_root = apcemm_paths
+    apcemm_path, apcemm_root = apcemm_paths
 
     if drop_var is not None:
         met = MetDataset(met_apcemm.data.drop_vars(drop_var))
         with pytest.raises(KeyError, match="Dataset does not contain"):
             _ = APCEMM(
                 met=met,
-                apcemm=apcemm,
+                apcemm_path=apcemm_path,
                 apcemm_root=apcemm_root,
                 humidity_scaling=ConstantHumidityScaling(),
             )
     else:
         _ = APCEMM(
             met=met_apcemm,
-            apcemm=apcemm,
+            apcemm_path=apcemm_path,
             apcemm_root=apcemm_root,
             humidity_scaling=ConstantHumidityScaling(),
         )
@@ -187,13 +187,13 @@ def test_apcemm_validate_downsampling(
     apcemm_paths: tuple[str, str],
 ) -> None:
     """Test timestep validation."""
-    apcemm, apcemm_root = apcemm_paths
+    apcemm_path, apcemm_root = apcemm_paths
 
     if downsampling is None:
         with pytest.raises(ValueError, match="Timestep for Lagrangian trajectories"):
             _ = APCEMM(
                 met=met_apcemm,
-                apcemm=apcemm,
+                apcemm_path=apcemm_path,
                 apcemm_root=apcemm_root,
                 humidity_scaling=ConstantHumidityScaling(),
                 dt_lagrangian=dt_lagrangian,
@@ -203,7 +203,7 @@ def test_apcemm_validate_downsampling(
     else:
         model = APCEMM(
             met=met_apcemm,
-            apcemm=apcemm,
+            apcemm_path=apcemm_path,
             apcemm_root=apcemm_root,
             humidity_scaling=ConstantHumidityScaling(),
             dt_lagrangian=dt_lagrangian,
@@ -216,8 +216,10 @@ def test_apcemm_default_root_directory(
     met_apcemm: MetDataset, apcemm_paths: tuple[str, str]
 ) -> None:
     """Test APCEMM default root directory."""
-    apcemm, _ = apcemm_paths
-    model = APCEMM(met=met_apcemm, apcemm=apcemm, humidity_scaling=ConstantHumidityScaling())
+    apcemm_path, _ = apcemm_paths
+    model = APCEMM(
+        met=met_apcemm, apcemm_path=apcemm_path, humidity_scaling=ConstantHumidityScaling()
+    )
     assert model.yaml.input_background_conditions == os.path.join(
         os.path.expanduser("~/APCEMM"), "input_data", "init.txt"
     )
@@ -228,10 +230,10 @@ def test_apcemm_default_root_directory(
 
 def test_apcemm_root_directory_param(met_apcemm: MetDataset, apcemm_paths: tuple[str, str]) -> None:
     """Test apcemm root directory set by constructor parameter."""
-    apcemm, apcemm_root = apcemm_paths
+    apcemm_path, apcemm_root = apcemm_paths
     model = APCEMM(
         met=met_apcemm,
-        apcemm=apcemm,
+        apcemm_path=apcemm_path,
         apcemm_root=apcemm_root,
         humidity_scaling=ConstantHumidityScaling(),
     )
@@ -245,10 +247,10 @@ def test_apcemm_root_directory_param(met_apcemm: MetDataset, apcemm_paths: tuple
 
 def test_apcemm_root_directory_yaml(met_apcemm: MetDataset, apcemm_paths: tuple[str, str]) -> None:
     """Test APCEMM root directory based on YAML parameter."""
-    apcemm, apcemm_root = apcemm_paths
+    apcemm_path, apcemm_root = apcemm_paths
     model = APCEMM(
         met=met_apcemm,
-        apcemm=apcemm,
+        apcemm_path=apcemm_path,
         apcemm_root="foo",
         yaml=APCEMMInput(input_background_conditions="bar", input_engine_emissions="baz"),
         humidity_scaling=ConstantHumidityScaling(),
@@ -270,7 +272,7 @@ def test_apcemm_overwrite_protection(
     assert os.path.exists(model.apcemm_file(1))
 
     # re-running simulation on same segment should produce an error
-    apcemm, apcemm_root = apcemm_paths
+    apcemm_path, apcemm_root = apcemm_paths
     params = {
         "max_age": np.timedelta64(10, "m"),  # to limit runtime
         "dt_lagrangian": np.timedelta64(1, "m"),
@@ -278,7 +280,7 @@ def test_apcemm_overwrite_protection(
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "aircraft_performance": PSFlight(),
     }
-    model = APCEMM(met_apcemm, apcemm=apcemm, apcemm_root=apcemm_root, params=params)
+    model = APCEMM(met_apcemm, apcemm_path=apcemm_path, apcemm_root=apcemm_root, params=params)
     with pytest.raises(ValueError, match="APCEMM run directory already exists"):
         _ = model.eval(flight_apcemm, segments=[1])
 
