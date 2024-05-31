@@ -47,29 +47,35 @@ def apcemm_paths() -> tuple[str, str]:
     # If found, check that it is in a directory called build...
     dirname = os.path.dirname(apcemm)
     if os.path.basename(dirname) != "build":
-        pytest.skip("APCEMM executable is not in a directory called 'build'")
+        msg = "APCEMM executable is not in a directory called 'build'"
+        raise ValueError(msg)
 
     # ... and check that the parent of the build directory is a git repository
     apcemm_root = os.path.dirname(dirname)
     try:
         repo = git.Repo(apcemm_root)
-    except git.InvalidGitRepositoryError:
-        pytest.skip(f"{apcemm_root} is not a valid git repository")
+    except git.InvalidGitRepositoryError as exc:
+        msg = f"{apcemm_root} is not a valid git repository"
+        raise ValueError(msg) from exc
 
     # Check commit hash
     if repo.head.object.hexsha != APCEMM_GIT_COMMIT:
-        pytest.skip("APCEMM repository has wrong commit hash")
+        msg = "APCEMM repository has wrong commit hash"
+        raise ValueError(msg)
 
     # Check repository state:
     # - no untracked files outside of build directory
     if any(f.split(os.path.sep)[0] != "build" for f in repo.untracked_files):
-        pytest.skip("APCEMM repository has untracked files outside build directory")
+        msg = "APCEMM repository has untracked files outside build directory"
+        raise ValueError(msg)
     # - no unstaged changes to working directory
     if len(repo.index.diff(None)) != 0:
-        pytest.skip("APCEMM working directory contains unstaged changes")
+        msg = "APCEMM working directory contains unstaged changes"
+        raise ValueError(msg)
     # - no uncommitted changes in staging area
     if len(repo.index.diff(repo.head.object.hexsha)) != 0:
-        pytest.skip("APCEMM working directory contains staged changes")
+        msg = "APCEMM working directory contains staged changes"
+        raise ValueError(msg)
 
     return apcemm, apcemm_root
 
