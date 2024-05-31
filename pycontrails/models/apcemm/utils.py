@@ -20,19 +20,14 @@ def normal_wind_shear(
     ----------
     u_hi : ArrayScalarLike
         Eastward wind at upper level [:math:`m/s`]
-
     u_lo : ArrayScalarLike
         Eastward wind at lower level [:math:`m/s`]
-
     v_hi : ArrayScalarLike
         Northward wind at upper level [:math:`m/s`]
-
     v_lo : ArrayScalarLike
         Northward wind at lower level [:math:`m/s`]
-
     azimuth : ArrayScalarLike
         Segment azimuth [:math:`\deg`]
-
     dz : float
         Distance between upper and lower level [:math:`m`]
 
@@ -58,10 +53,8 @@ def soot_radius(
     ----------
     nvpm_ei_m : ArrayScalarLike
         Soot mass emissions index [:math:`kg/kg`]
-
     nvpm_ei_n : ArrayScalarLike
         Soot number emissions index [:math:`1/kg`]
-
     rho_bc : float, optional
         Density of black carbon [:math:`kg/m^3`]. By default, 1770.
     """

@@ -109,7 +109,7 @@ class APCEMM(models.Model):
 
     This class acts as an adapter between the pycontrails :class:`Model` interface
     (shared with other contrail models) and APCEMM's native interface.
-    
+
     `APCEMM <https://github.com/MIT-LAE/APCEMM>`__ was developed at the
     `MIT Laboratory for Aviation and the Environment <https://lae.mit.edu/>`__
     and is described in :cite:`fritzRolePlumescaleProcesses2020`.
@@ -439,6 +439,7 @@ class APCEMM(models.Model):
             for segment in segments:
                 run(
                     apcemm=self.apcemm,
+                    input_yaml=self.apcemm_file(segment, "input.yaml"),
                     rundir=self.apcemm_file(segment),
                     stdout_log=self.apcemm_file(segment, "stdout.log"),
                     stderr_log=self.apcemm_file(segment, "stderr.log"),
@@ -450,6 +451,7 @@ class APCEMM(models.Model):
                 args = (
                     (
                         self.apcemm,
+                        self.apcemm_file(segment, "input.yaml"),
                         self.apcemm_file(segment),
                         self.apcemm_file(segment, "stdout.log"),
                         self.apcemm_file(segment, "stderr.log"),
@@ -582,7 +584,6 @@ class APCEMM(models.Model):
         ----------
         segment : int
             Segment index
-
         name : str, optional
             If provided, the path to the file relative to the APCEMM simulation
             root directory.
@@ -802,10 +803,8 @@ def _set_with_fallbacks(instance: object, attrs: list[str], sources: list[dict])
     ----------
     instance : object
         Class instance.
-
     attrs : list[str]
         List of instance attributes to attempt to set.
-
     sources : list[dict]
         List of dictionaries to attempt to set instance attributes from.
         If the attribute is present as a key in the first dictionary, it
