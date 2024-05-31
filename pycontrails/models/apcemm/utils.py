@@ -278,13 +278,15 @@ def generate_apcemm_input_met(
     )
 
 
-def run(apcemm: str, input_yaml: str, rundir: str, stdout_log: str, stderr_log: str) -> None:
+def run(
+    apcemm_path: pathlib.Path | str, input_yaml: str, rundir: str, stdout_log: str, stderr_log: str
+) -> None:
     """
     Run APCEMM executable.
 
     Parameters
     ----------
-    apcemm : str
+    apcemm_path : pathlib.Path | str
         Path to APCEMM executable.
     input_yaml : str
         Path to APCEMM input yaml file.
@@ -303,7 +305,7 @@ def run(apcemm: str, input_yaml: str, rundir: str, stdout_log: str, stderr_log: 
 
     with open(stdout_log, "w") as stdout, open(stderr_log, "w") as stderr:
         result = subprocess.run(
-            [apcemm, input_yaml], stdout=stdout, stderr=stderr, cwd=rundir, check=False
+            [apcemm_path, input_yaml], stdout=stdout, stderr=stderr, cwd=rundir, check=False
         )
         if result.returncode != 0:
             msg = (
