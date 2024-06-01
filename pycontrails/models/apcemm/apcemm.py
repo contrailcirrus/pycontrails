@@ -27,12 +27,12 @@ from pycontrails.core.met_var import (
     VerticalVelocity,
 )
 from pycontrails.models.apcemm import utils
-from pycontrails.models.apcemm.input import APCEMMInput
+from pycontrails.models.apcemm.inputs import APCEMMInput
 from pycontrails.models.dry_advection import DryAdvection
 from pycontrails.models.emissions import Emissions
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.ps_model import PSFlight
-from pycontrails.physics import thermo
+from pycontrails.physics import geo, thermo
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,6 @@ class APCEMMParams(models.ModelParams):
     lagrangian_sedimentation_rate: float = 0.0
 
     #: Time step of meteorology in generated APCEMM input file.
-    #: Must be a multiple of :attr:`dt_lagrangian`.
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
 
     #: Humidity scaling
@@ -82,9 +81,9 @@ class APCEMMParams(models.ModelParams):
     #: Fuel type
     fuel: Fuel = JetA()
 
-    #: List of segments (indexed from start of flight) to simulate in APCEMM.
-    #: By default, runs a simulation for every segment.
-    segments: list[int] | None = None
+    #: List of flight waypoints to simulated in APCEMM.
+    #: By default, runs a simulation for every waypoint.
+    waypoints: list[int] | None = None
 
     #: If defined, use to override ``input_background_conditions`` and
     #: ``input_engine_emissions`` in :class:`APCEMMInput` assuming that
@@ -124,12 +123,15 @@ class APCEMM(models.Model):
         Path to APCEMM executable. See *Notes* for information about
         acquiring and compiling APCEMM.
     apcemm_root : pathlib.Path | str, optional
-        Path to APCEMM root directory. If not provided, pycontrails will use the
-        default path defined in :class:`APCEMMInput`.
-    yaml : APCEMMInput, optional
-        Configuration for YAML file generated as APCEMM input. If provided, the
-        value of the ``apcemm_root`` attribute in this instance will override
-        the value of :param:`apcemm_root` if the latter is provided.
+        Path to APCEMM root directory, used to set ``input_background_conditions`` and
+        ``input_engine_emissions`` based on the structure of the
+        `APCEMM GitHub repository <>`__. If not provided, pycontrails will use the
+        default paths defined in :class:`APCEMMInput`.
+    apcemm_input_params : APCEMMInput, optional
+        Value for APCEMM input parameters defined in :class:`APCEMMInput`. If provided, values
+        for ``input_background_condition`` or ``input_engine_emissions`` will override values
+        set based on :param:`apcemm_root`. Attempting to provide values for input parameters
+        that are determined automatically by this interface will result in an error.
         See *Notes* for detailed information about YAML file generation.
     cachestore : CacheStore, optional
         :class:`CacheStore` used to store APCEMM run directories.
@@ -186,40 +188,43 @@ class APCEMM(models.Model):
 
     **Configuring APCEMM YAML files**
 
-    :class:`APCEMMInput` provides low-level contrail over the contents of YAML files used
-    as APCEMM input. YAML file contents can be controlled by passing an instance of
-    :class:`APCEMMInput` with customized parameters to the :class:`APCEMM` constructor.
-    Note, however, that :class:`APCEMM` will overwrite YAML parameters that are controlled
-    by the model parameters defined in :class:`APCEMMParams`. A list of overwritten YAML
-    parameters is available in :attr:`dynamic_yaml_params`.
+    :class:`APCEMMInput` provides low-level control over the contents of YAML files used
+    as APCEMM input. YAML file contents can be controlled by passing custom parameters
+    in a dictionary through the :param:`apcemm_input_params` parameter. Note, however, that
+    :class:`APCEMM` sets a number of APCEMM input parameters automatically, and attempting
+    to override any automatically-determined parameters using :param:`apcemm_input_params`
+    will result in an error. A list of automatically-determined parameters is available in
+    :attr:`dynamic_yaml_params`.
 
     **Simulation initialization, execution, and postprocessing**
 
     This interface initializes, runs, and postprocesses APCEMM simulations in four stages:
 
     1. A :class:`DryAdvection` model is used to generate trajectories for contrails
-       formed from each flight segment. This is a necessary preprocessing step because
+       initialized at each flight waypoint. This is a necessary preprocessing step because
        APCEMM is a Lagrangian model and does not explicitly track changes in plume
-       location over time.
+       location over time. This step also provides time-dependent azimuths that define the
+       orientation of advected contrails, which is required to compute contrail-normal
+       wind shear from horizontal winds.
        Results from the trajectory calculation are stored in :attr:`trajectories`.
     2. Model parameters and results from the trajectory calculation are used to generate
        YAML files with APCEMM input parameters and netCDF files with meteorology data
        used by APCEMM simulations. A separate pair of files is generated for each
-       segment processed by APCEMM. Files are saved as ``apcemm_<segment>/input.yaml``
-       and ``apcemm_<segment>/input.nc`` in the model :attr:`cachestore`,
-       where ``<segment>`` is replaced by the index of each simulated flight segment.
+       waypoint processed by APCEMM. Files are saved as ``apcemm_waypoint_<i>/input.yaml``
+       and ``apcemm_waypoint_<i>/input.nc`` in the model :attr:`cachestore`,
+       where ``<i>`` is replaced by the index of each simulated flight waypoint.
     3. A separate APCEMM simulation is run in each run directory inside the model
        :attr:`cachestore`. Simulations are independent and can be run in parallel
        (controlled by the ``n_jobs`` parameter in :class:`APCEMMParams`.) Standard output
-       and error streams from each simulation are saved in ``apcemm_<segment>/stdout.log``
-       and ``apcemm_<segment>/stderr.log``, and APCEMM output is saved ``apcemm_<segment>/out``
-       directories.
+       and error streams from each simulation are saved in ``apcemm_waypoint_<i>/stdout.log``
+       and ``apcemm_waypoint_<i>/stderr.log``, and APCEMM output is saved
+       in a subdirectory specified by the ``output_directory`` model parameter ("out" by default).
     4. APCEMM simulation output is postprocessed. After postprocessing:
 
     - A ``status`` column is attached to the ``Flight`` returned by :meth:`eval`.
-      This column contains ``"NoSimulation"`` for segments where no simulation
+      This column contains ``"NoSimulation"`` for waypoints where no simulation
       was run and the contents of the APCEMM ``status_case0`` output file for
-      other segments.
+      other waypoints.
     - A :class:`pd.DataFrame` is created and stored in :attr:`vortex`. This dataframe
       contains the content of APCEMM ``Micro_000000.out`` output files, which
       contains time series starting during the early wake vorted stage and continuing
@@ -229,6 +234,15 @@ class APCEMM(models.Model):
       files, saved at prescribed time intervals during the APCEMM simulation, and can be
       used to open APCEMM output (e.g., using :func:`xr.open_dataset`) for further analysis.
 
+    **Numerics***
+
+    APCEMM simulations are initialized at flight waypoints and represent the evolution of the
+    cross-section of contrails formed at each waypoint. APCEMM does not explicitly model the length
+    of contrail segments and does not include any representation of deformation by divergent flow.
+    APCEMM output represents properties of cross-sections of contrails formed at flight waypoints,
+    not properties of contrail segments that form between flight waypoints. Unlike :class:`Cocip`,
+    output produced by this interface does not include trailing NaN values.
+
     References
     ----------
     - :cite:`fritzRolePlumescaleProcesses2020`
@@ -236,7 +250,7 @@ class APCEMM(models.Model):
 
     __slots__ = (
         "apcemm_path",
-        "yaml",
+        "apcemm_input_params",
         "cachestore",
         "trajectories",
         "vortex",
@@ -256,8 +270,8 @@ class APCEMM(models.Model):
     #: Path to APCEMM executable
     apcemm_path: pathlib.Path
 
-    #: APCEMM YAML input configuration
-    yaml: APCEMMInput
+    #: Overridden APCEMM input parameters
+    apcemm_input_params: dict[str, Any]
 
     #: CacheStore for APCEMM run directories
     cachestore: cache.CacheStore
@@ -283,7 +297,7 @@ class APCEMM(models.Model):
         met: MetDataset,
         apcemm_path: pathlib.Path | str,
         apcemm_root: pathlib.Path | str | None = None,
-        yaml: APCEMMInput | None = None,
+        apcemm_input_params: dict[str, Any] | None = None,
         cachestore: cache.CacheStore | None = None,
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
@@ -300,17 +314,21 @@ class APCEMM(models.Model):
             cachestore = cache.DiskCacheStore(cache_dir=cache_dir)
         self.cachestore = cachestore
 
-        self._trajectory_downsampling = self._validate_downsampling()
-
-        if yaml is not None:
-            self.yaml = yaml
-        elif apcemm_root is not None:
-            self.yaml = APCEMMInput(
-                input_background_conditions=os.path.join(apcemm_root, "input_data", "init.txt"),
-                input_engine_emissions=os.path.join(apcemm_root, "input_data", "ENG_EI.txt"),
+        # Validate overridden input parameters
+        apcemm_input_params = apcemm_input_params or {}
+        if apcemm_root is not None:
+            apcemm_input_params = {
+                "input_background_conditions": os.path.join(apcemm_root, "input_data", "init.txt"),
+                "input_engine_emissions": os.path.join(apcemm_root, "input_data", "ENG_EI.txt"),
+            } | apcemm_input_params
+        cannot_override = set(apcemm_input_params.keys()).intersection(self.dynamic_yaml_params)
+        if len(cannot_override) > 0:
+            msg = (
+                f"Cannot override APCEMM input parameters {cannot_override}, "
+                "as these parameters are set automatically by the APCEMM interface."
             )
-        else:
-            self.yaml = APCEMMInput()
+            raise ValueError(msg)
+        self.apcemm_input_params = apcemm_input_params
 
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
@@ -328,7 +346,10 @@ class APCEMM(models.Model):
         Parameters
         ----------
         source : Flight | None
-            Input Flight to model.
+            Input Flight to model. The sampling frequency of flight waypoints must be a
+            constant even multiple of the timestep ``dt_lagrangian`` used for the Lagrangian
+            trajectory calculation. To resample flight tracks to a constant frequency, see
+            :func:`Flight.resample_and_fill`.
         **params : Any
             Overwrite model parameters before eval.
 
@@ -348,32 +369,36 @@ class APCEMM(models.Model):
         self.set_source(source)
         self.source = self.require_source_type(Flight)
 
+        # Assign waypoints to flight if not already present
+        if "waypoint" not in self.source:
+            self.source["waypoint"] = np.arange(self.source.size)
+
         logger.info("Attaching APCEMM initial conditions to source")
         self.attach_apcemm_initial_conditions()
 
         logger.info("Computing Lagrangian trajectories")
         self.compute_lagrangian_trajectories()
 
-        # Select segments to run in APCEMM
-        # Defaults to all segments, but allows user to select a subset
-        segments = self.params["segments"]
-        if segments is None:
-            segments = sorted(self.source.dataframe.index.unique())
+        # Select waypoints to run in APCEMM
+        # Defaults to all waypoints, but allows user to select a subset
+        waypoints = self.params["waypoints"]
+        if waypoints is None:
+            waypoints = list(self.source["waypoints"])
 
         # Generate input files (serial)
         logger.info("Generating APCEMM input files")  # serial
-        for segment in segments:
-            rundir = self.apcemm_file(segment)
+        for waypoint in waypoints:
+            rundir = self.apcemm_file(waypoint)
             if self.cachestore.exists(rundir) and not self.params["overwrite"]:
                 msg = f"APCEMM run directory already exists at {rundir}"
                 raise ValueError(msg)
             if self.cachestore.exists(rundir) and self.params["overwrite"]:
                 shutil.rmtree(rundir)
-            self.generate_apcemm_input(segment)
+            self.generate_apcemm_input(waypoint)
 
         # Run APCEMM (parallelizable)
         logger.info("Running APCEMM")
-        self.run_apcemm(segments)
+        self.run_apcemm(waypoints)
 
         # Process output (serial)
         logger.info("Postprocessing APCEMM output")
@@ -395,6 +420,19 @@ class APCEMM(models.Model):
     def compute_lagrangian_trajectories(self) -> None:
         """Calculate Lagrangian trajectories using a :class:`DryAdvection` model.
 
+        Lagrangian trajectories provide the expected time-dependent location
+        (longitude, latitude, and altitude) and orientation (azimuth) of
+        contrails formed by the input source. This information is used to
+        extract time series of meteorological profiles at the contrail location
+        from input meteorology data, and to compute contrail-normal horizontal shear
+        from horizontal winds.
+
+        The length of Lagrangian trajectories is set by the ``max_age`` parameter,
+        and trajectories are integrated using a time step set by the ``dt_lagrangian``
+        parameter. Contrails are advected both horizontally and vertically, and a
+        fixed sedimentation velocity (set by the ``sedimentation_rate`` parameter)
+        can be included to represent contrail sedimentation.
+
         Results of the trajectory calculation are attached to :attr:`trajectories`.
         """
 
@@ -408,44 +446,45 @@ class APCEMM(models.Model):
             met=met,
             dt_integration=self.params["dt_lagrangian"],
             max_age=self.params["max_age"],
+            sedimentation_rate=self.params["lagrangian_sedimentation_rate"],
         )
         self.trajectories = model.eval(self.source)
 
-    def generate_apcemm_input(self, segment: int) -> None:
-        """Generate APCEMM yaml and netCDF input files for a single segment.
+    def generate_apcemm_input(self, waypoint: int) -> None:
+        """Generate APCEMM yaml and netCDF input files for a single waypoint.
 
         For details about generated input files, see :class:`APCEMM` notes.
 
         Parameters
         ----------
-        segment : int
-            Segment for which to generate input files.
+        waypoint : int
+            Waypoint for which to generate input files.
         """
 
-        self._gen_apcemm_yaml(segment)
-        self._gen_apcemm_nc(segment)
+        self._gen_apcemm_yaml(waypoint)
+        self._gen_apcemm_nc(waypoint)
 
-    def run_apcemm(self, segments: list[int]) -> None:
-        """Run APCEMM over a list of segments.
+    def run_apcemm(self, waypoints: list[int]) -> None:
+        """Run APCEMM over multiple waypoints.
 
-        Multiple segments will be processed in parallel if the interface parameter ``n_jobs``
+        Multiple waypoints will be processed in parallel if the interface parameter ``n_jobs``
         is set to a value larger than 1.
 
         Parameters
         ----------
-        segments : list[int]
-            List of segments for which to run simulations.
+        waypoints : list[int]
+            List of waypoints at which to initialize simulations.
         """
 
         # run in series
         if self.params["n_jobs"] == 1:
-            for segment in segments:
+            for waypoint in waypoints:
                 utils.run(
                     apcemm_path=self.apcemm_path,
-                    input_yaml=self.apcemm_file(segment, "input.yaml"),
-                    rundir=self.apcemm_file(segment),
-                    stdout_log=self.apcemm_file(segment, "stdout.log"),
-                    stderr_log=self.apcemm_file(segment, "stderr.log"),
+                    input_yaml=self.apcemm_file(waypoint, "input.yaml"),
+                    rundir=self.apcemm_file(waypoint),
+                    stdout_log=self.apcemm_file(waypoint, "stdout.log"),
+                    stderr_log=self.apcemm_file(waypoint, "stderr.log"),
                 )
 
         # run in parallel
@@ -454,12 +493,12 @@ class APCEMM(models.Model):
                 args = (
                     (
                         self.apcemm_path,
-                        self.apcemm_file(segment, "input.yaml"),
-                        self.apcemm_file(segment),
-                        self.apcemm_file(segment, "stdout.log"),
-                        self.apcemm_file(segment, "stderr.log"),
+                        self.apcemm_file(waypoint, "input.yaml"),
+                        self.apcemm_file(waypoint),
+                        self.apcemm_file(waypoint, "stdout.log"),
+                        self.apcemm_file(waypoint, "stderr.log"),
                     )
-                    for segment in segments
+                    for waypoint in waypoints
                 )
                 p.starmap(utils.run, args)
 
@@ -478,33 +517,36 @@ class APCEMM(models.Model):
         vortexes: list[pd.DataFrame] = []
         contrails: list[pd.DataFrame] = []
 
-        for segment in self.source.dataframe.index[:-1]:  # no segment starting at last waypoint
+        for _, row in self.source.dataframe.iterrows():
 
-            # Mark segment as skipped if no APCEMM simulation ran
-            if segment not in self.params["segments"]:
+            waypoint = row["waypoint"]
+
+            # Mark waypoint as skipped if no APCEMM simulation ran
+            if waypoint not in self.params["waypoints"]:
                 statuses.append("NoSimulation")
                 continue
 
             # Otherwise, record status of APCEMM simulation
             with open(
-                self.apcemm_file(segment, os.path.join(output_directory, "status_case0"))
+                self.apcemm_file(waypoint, os.path.join(output_directory, "status_case0"))
             ) as f:
                 status = f.read().strip()
                 statuses.append(status)
 
-            # Get segment initialization time, estimated as
-            # average of waypoint times at segment start and end
-            base_time = self.source.dataframe.iloc[segment : segment + 1]["time"].mean()
+            # Get waypoint initialization time
+            base_time = row["time"]
 
             # Convert contents of wake vortex output to pandas dataframe
             # with elapsed times converted to absolute times
             vortex = pd.read_csv(
-                self.apcemm_file(segment, os.path.join(output_directory, "Micro000000.out")),
+                self.apcemm_file(waypoint, os.path.join(output_directory, "Micro000000.out")),
                 skiprows=[1],
             ).rename(columns=lambda x: x.strip())
             time = (base_time + pd.to_timedelta(vortex["Time [s]"], unit="s")).rename("time")
-            waypoint = pd.Series(np.full((len(vortex),), segment), name="waypoint")
-            vortex = pd.concat((waypoint, time, vortex.drop(columns="Time [s]")), axis="columns")
+            waypoint_col = pd.Series(np.full((len(vortex),), waypoint), name="waypoint")
+            vortex = pd.concat(
+                (waypoint_col, time, vortex.drop(columns="Time [s]")), axis="columns"
+            )
             vortexes.append(vortex)
 
             # Record paths to contrail output (netCDF files) in pandas dataframe
@@ -512,7 +554,7 @@ class APCEMM(models.Model):
             files = sorted(
                 glob.glob(
                     self.apcemm_file(
-                        segment, os.path.join(output_directory, "ts_aerosol_case0_*.nc")
+                        waypoint, os.path.join(output_directory, "ts_aerosol_case0_*.nc")
                     )
                 )
             )
@@ -526,18 +568,15 @@ class APCEMM(models.Model):
                 elapsed_time = elapsed_hours + elapsed_minutes
                 time.append(base_time + elapsed_time)
                 path.append(file)
-            waypoint = pd.Series(np.full((len(time),), segment), name="waypoint")
+            waypoint_col = pd.Series(np.full((len(time),), waypoint), name="waypoint")
             contrail = pd.DataFrame.from_dict(
                 {
-                    "waypoint": waypoint,
+                    "waypoint": waypoint_col,
                     "time": time,
                     "path": path,
                 }
             )
             contrails.append(contrail)
-
-        # Mark status of final waypoint as n/a (no segment)
-        statuses.append("N/A")
 
         # Attach status to self
         self.source["status"] = statuses
@@ -548,13 +587,13 @@ class APCEMM(models.Model):
             self.contrail = pd.concat(contrails, axis="index", ignore_index=True)
 
     @property
-    def dynamic_yaml_params(self) -> list[str]:
-        """List of :class:`APCEMMInput` attributes set dynamically by this model.
+    def dynamic_yaml_params(self) -> set[str]:
+        """Set of :class:`APCEMMInput` attributes set dynamically by this model.
 
         Other :class:`APCEMMInput` attributes can be set statically by passing a custom instance of
         :class:`APCEMMInput` when the model is created.
         """
-        return [
+        return {
             "max_age",
             "day_of_year",
             "hour_of_day",
@@ -578,14 +617,14 @@ class APCEMM(models.Model):
             "n_engine",
             "wingspan",
             "output_directory",
-        ]
+        }
 
-    def apcemm_file(self, segment: int, name: str | None = None) -> str:
-        """Get path to file from an APCEMM simulation of a specific segment.
+    def apcemm_file(self, waypoint: int, name: str | None = None) -> str:
+        """Get path to file from an APCEMM simulation initialized at a specific waypoint.
 
         Parameters
         ----------
-        segment : int
+        waypoint : int
             Segment index
         name : str, optional
             If provided, the path to the file relative to the APCEMM simulation
@@ -597,36 +636,17 @@ class APCEMM(models.Model):
             Path to a file in the APCEMM simulation root directory, if ``name``
             is provided, or the path to the APCEMM simulation root directory otherwise.
         """
-        rpath = f"apcemm_segment_{segment}"
+        rpath = f"apcemm_waypoint_{waypoint}"
         if name is not None:
             rpath = os.path.join(rpath, name)
         return self.cachestore.path(rpath)
 
-    def _validate_downsampling(self) -> int:
-        """Validate combination of dt_lagrangian and dt_input_met."""
-        if self.params["dt_input_met"] < self.params["dt_lagrangian"]:
-            msg = (
-                f"Timestep for Lagrangian trajectories "
-                f"({self.params['dt_lagrangian']}) "
-                f"must be no longer than timestep for APCEMM meteorology input "
-                f"({self.params['dt_input_met']})."
-            )
-            raise ValueError(msg)
-        if self.params["dt_input_met"] % self.params["dt_lagrangian"] != 0:
-            msg = (
-                f"Timestep for Lagrangian trajectories "
-                f"({self.params['dt_lagrangian']}) "
-                f"must evenly divide timestep for APCEMM meteorology input "
-                f"({self.params['dt_input_met']})."
-            )
-            raise ValueError(msg)
-        return self.params["dt_input_met"] // self.params["dt_lagrangian"]
-
     def _attach_apcemm_time(self) -> None:
         """Attach day of year and fractional hour of day.
 
-        Mutates :attr:`self.source` by adding ``day_of_year`` and ``hour_of_day``
-        keys if not already present.
+        Mutates :attr:`self.source` by adding the following keys if not already present:
+        - ``day_of_year``
+        - ``hour_of_day``
         """
 
         self.source.setdefault(
@@ -644,10 +664,18 @@ class APCEMM(models.Model):
     def _attach_initial_met(self) -> None:
         """Attach meteorological fields for APCEMM initialization.
 
-        Mutates :attr:`self.source` by adding ``rhw``, ``brunt_vaisala_frequency``,
-        ``azimuth``, and ``normal_shear`` keys if not already present.
+        Mutates :attr:`source` by adding the following keys if not already present:
+        - ``air_temperature``
+        - ``eastward_wind``
+        - ``northward_wind``
+        - ``specific_humidity``
+        - ``air_temperature_lower``
+        - ``eastward_wind_lower``
+        - ``northward_wind_lower``
+        - ``rhw``
+        - ``brunt_vaisala_frequency``
+        - ``normal_shear``
         """
-
         humidity_scaling = self.params["humidity_scaling"]
         scale_humidity = humidity_scaling is not None and "specific_humidity" not in self.source
 
@@ -657,9 +685,11 @@ class APCEMM(models.Model):
         level_buffer = 0, self.params["met_level_buffer"][1]
         met = self.source.downselect_met(self.met, level_buffer=level_buffer)
 
+        # Interpolate meteorology data onto vector
         for met_key in ("air_temperature", "eastward_wind", "northward_wind", "specific_humidity"):
             models.interpolate_met(met, self.source, met_key, **self.interp_kwargs)
 
+        # Interpolate fields at lower levels for vertical derivative calculation
         air_pressure_lower = thermo.pressure_dz(
             self.source["air_temperature"], self.source.air_pressure, self.params["dz_m"]
         )
@@ -670,9 +700,11 @@ class APCEMM(models.Model):
                 met, self.source, met_key, source_key, **self.interp_kwargs, level=lower_level
             )
 
+        # Apply humidity scaling
         if scale_humidity:
             humidity_scaling.eval(self.source, copy_source=False)
 
+        # Compute RH over liquid water
         self.source.setdefault(
             "rhw",
             thermo.rh(
@@ -682,6 +714,7 @@ class APCEMM(models.Model):
             ),
         )
 
+        # Compute Brunt-Vaisala frequency
         dT_dz = thermo.T_potential_gradient(
             self.source["air_temperature"],
             self.source.air_pressure,
@@ -696,7 +729,18 @@ class APCEMM(models.Model):
             ),
         )
 
-        self.source.setdefault("azimuth", self.source.segment_azimuth())
+        # Compute azimuth
+        # Use forward and backward differences for first and last waypoints
+        # and centered differences elsewhere
+        ileft = [0] + list(range(self.source.size - 1))
+        iright = list(range(1, self.source.size)) + [self.source.size - 1]
+        lon0 = self.source["longitude"][ileft]
+        lat0 = self.source["latitude"][ileft]
+        lon1 = self.source["longitude"][iright]
+        lat1 = self.source["latitude"][iright]
+        self.source.setdefault("azimuth", geo.azimuth(lon0, lat0, lon1, lat1))
+
+        # Compute normal shear
         self.source.setdefault(
             "normal_shear",
             utils.normal_wind_shear(
@@ -712,80 +756,138 @@ class APCEMM(models.Model):
     def _attach_aircraft_performance(self) -> None:
         """Attach aircraft performance and emissions parameters.
 
-        Mutates :attr:`self.source` by adding running aircraft performance and emissions
-        models. In addition, adds ``aircraft_type``, ``fuel``, ``so2_ei``,
-        ``engine_uid``, and ``soot_radius`` keys if not already present.
+        Mutates :attr:`source evaluating the aircraft performance model provided by
+        the ``aircraft_performance`` model parameter and a :class:`Emissions` models. In addition:
+            - MetDatasetutates :attr:`source` by adding the following keys if not already present:
+            - ``soot_radius``
+        - Mutates :attr:`source.attrs` by adding the following keys if not already present:
+            - ``so2_ei``
         """
 
+        ap_model = self.params["aircraft_performance"]
+        emissions = Emissions()
+        humidity_scaling = self.params["humidity_scaling"]
+        scale_humidity = humidity_scaling is not None and "specific_humidity" not in self.source
+
+        # Ensure required met data is present.
+        # No buffers needed for interpolation!
+        vars = ap_model.met_variables + ap_model.optional_met_variables + emissions.met_variables
+        met = self.source.downselect_met(self.met, copy=False)
+        met.ensure_vars(vars)
+        met.standardize_variables(vars)
+        for var in vars:
+            models.interpolate_met(met, self.source, var.standard_name, **self.interp_kwargs)
+
+        # Apply humidity scaling
+        if scale_humidity:
+            humidity_scaling.eval(self.source, copy_source=False)
+
+        # Ensure flight has aircraft type, fuel, and engine UID if defined
         self.source.attrs.setdefault("aircraft_type", self.params["aircraft_type"])
         self.source.attrs.setdefault("fuel", self.params["fuel"])
-        self.source.attrs.setdefault("so2_ei", self.source.attrs["fuel"].ei_so2)
         if self.params["engine_uid"]:
             self.source.attrs.setdefault("engine_uid", self.params["engine_uid"])
 
-        ap_model = self.params["aircraft_performance"]
+        # Run performance and emissions calculations
         ap_model.eval(self.source, copy_source=False)
-
-        emissions = Emissions()
         emissions.eval(self.source, copy_source=False)
 
-        self.source["soot_radius"] = utils.soot_radius(
-            self.source["nvpm_ei_m"], self.source["nvpm_ei_n"]
-        )
+        # Attach additional required quantities
+        soot_radius = utils.soot_radius(self.source["nvpm_ei_m"], self.source["nvpm_ei_n"])
+        self.source.setdefault("soot_radius", soot_radius)
+        self.source.attrs.setdefault("so2_ei", self.source.attrs["fuel"].ei_so2)
 
-    def _gen_apcemm_yaml(self, segment: int) -> None:
+    def _gen_apcemm_yaml(self, waypoint: int) -> None:
         """Generate APCEMM yaml file.
 
         Parameters
         ----------
-        segment : int
-            Segment for which to generate the yaml file.
+        waypoint : int
+            Waypoint for which to generate the yaml file.
         """
 
-        # Update APCEMM yaml parameters
-        _set_with_fallbacks(
-            self.yaml,
+        # Collect parameters determined by this interface
+        dyn_params = _combine_prioritized(
             self.dynamic_yaml_params,
             [
-                self.source.dataframe.loc[segment],  # flight segment
+                self.source.dataframe.loc[waypoint],  # flight waypoint
                 self.source.attrs,  # flight attributes
                 self.params,  # class parameters
             ],
         )
 
+        # Combine with other overridden parameters
+        params = self.apcemm_input_params | dyn_params
+
+        # We should be setting these parameters based on aircraft data,
+        # but we don't currently have an easy way to do this.
+        # For now, stubbing in static values.
+        params = params | {"core_exit_temp": 550.0, "core_exit_area": 1.0}
+
         # Generate and write YAML file
-        yaml_contents = utils.generate_apcemm_input_yaml(self.yaml)
-        path = self.apcemm_file(segment, "input.yaml")
+        yaml = APCEMMInput(**params)
+        yaml_contents = utils.generate_apcemm_input_yaml(yaml)
+        path = self.apcemm_file(waypoint, "input.yaml")
         with open(path, "w") as f:
             f.write(yaml_contents)
 
-    def _gen_apcemm_nc(self, segment: int) -> None:
+    def _gen_apcemm_nc(self, waypoint: int) -> None:
         """Generate APCEMM meteorology netCDF file.
 
         Parameters
         ----------
-        segment : int
-            Segment for which to generate the meteorology file.
+        waypoint : int
+            Waypoint for which to generate the meteorology file.
         """
+        # Extract trajectories of advected contrails, include initial position
         columns = ["longitude", "latitude", "time", "azimuth"]
         if self.trajectories is None:
             msg = (
-                "APCEMM meteorology input generation requires preocmputed trajectories. "
+                "APCEMM meteorology input generation requires precomputed trajectories. "
                 "To compute trajectories, call `compute_lagrangian_trajectories`."
             )
             raise ValueError(msg)
         tail = self.trajectories.dataframe
-        tail = tail[tail["waypoint"] == segment][columns]
+        tail = tail[tail["waypoint"] == waypoint][columns]
         head = self.source.dataframe
-        head = head[head.index == segment][columns]
+        head = head[head["waypoint"] == waypoint][columns]
         traj = pd.concat((head, tail), axis="index").reset_index()
 
-        step = self._trajectory_downsampling
+        # APCEMM requires atmospheric profiles at even time intervals,
+        # but the time coordinates of the initial position plus subsequent
+        # trajectory may not be evenly spaced. To fix this, we interpolate
+        # horizontal location and azimuth to an evenly-spaced set of time
+        # coordinates.
+        time = traj["time"].values
+        n_profiles = int(self.params["max_age"] / self.params["dt_input_met"]) + 1
+        tick = np.timedelta64(1, "s")
+        target_elapsed = np.linspace(
+            0, (n_profiles - 1) * self.params["dt_input_met"] / tick, n_profiles
+        )
+        target_time = time[0] + target_elapsed * tick
+        elapsed = (traj["time"] - traj["time"][0]) / tick
+
+        # Need to deal with antimeridian crossing.
+        # Detecting antimeridian crossing follows Flight.resample_and_fill,
+        # but rather than applying a variable shift we just convert longitudes to
+        # [0, 360) before interpolating flights that cross the antimeridian,
+        # and un-convert any longitudes above 180 degree after interpolation.
+        lon = traj["longitude"].values
+        min_pos = np.min(lon[lon > 0], initial=np.inf)
+        max_neg = np.max(lon[lon < 0], initial=-np.inf)
+        if (180 - min_pos) + (180 + max_neg) < 180 and min_pos < np.inf and max_neg > -np.inf:
+            lon = np.where(lon < 0, lon + 360, lon)
+        interp_lon = np.interp(target_elapsed, elapsed, lon)
+        lon = np.where(lon > 180, lon - 360, lon)
+
+        interp_lat = np.interp(target_elapsed, elapsed, traj["latitude"].values)
+        interp_az = np.interp(target_elapsed, elapsed, traj["azimuth"].values)
+
         ds = utils.generate_apcemm_input_met(
-            time=traj["time"].values[0::step],
-            longitude=traj["longitude"].values[0::step],
-            latitude=traj["latitude"].values[0::step],
-            azimuth=traj["azimuth"].values[0::step],
+            time=target_time,
+            longitude=interp_lon,
+            latitude=interp_lat,
+            azimuth=interp_az,
             air_pressure=1e2 * self.met["level"].values,
             met=self.met,
             humidity_scaling=self.params["humidity_scaling"],
@@ -793,40 +895,40 @@ class APCEMM(models.Model):
             interp_kwargs=self.interp_kwargs,
         )
 
-        path = self.apcemm_file(segment, "input.nc")
+        path = self.apcemm_file(waypoint, "input.nc")
         ds.to_netcdf(path)
 
 
-def _set_with_fallbacks(instance: object, attrs: list[str], sources: list[dict]) -> None:
-    """Set class instance attributes from prioritized list of dictionaries.
+def _combine_prioritized(keys: set[str], sources: list[dict[str, Any]]) -> dict[str, Any]:
+    """Combine dictionary keys from prioritized list of source dictionaries.
 
     Parameters
     ----------
-    instance : object
-        Class instance.
-    attrs : list[str]
-        List of instance attributes to attempt to set.
-    sources : list[dict]
-        List of dictionaries to attempt to set instance attributes from.
-        If the attribute is present as a key in the first dictionary, it
-        will be set to the corresponding value. Otherwise, the method
-        will fall back to the rest of the list of dictionaries.
+    keys : set[str]
+        Set of keys to attempt to extract from source dictionary.
+    sources : list[dict[str, Any]]
+        List of dictionaries from which to attempt to extract key-value pairs.
+        If the key is in the first dictionary, it will be set in the returned dictionary
+        with the corresponding value. Otherwise, the method will fall on the remaining
+        dictionaries in the order provided.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing key-value pairs from :param:`sources`.
 
     Raises
     ------
     ValueError
-        Any element of ``attrs`` is not a instance attribute or is not found
-        in any dictionary in ``sources``.
+        Any key is not found in any dictionary in ``sources``.
     """
-    for attr in attrs:
-        if not hasattr(instance, attr):
-            msg = f"Attribute {attr} does not exist in instance of type {type(instance)}."
-            raise ValueError(msg)
-
+    dest = {}
+    for key in keys:
         for source in sources:
-            if attr in source:
-                setattr(instance, attr, source[attr])
+            if key in source:
+                dest[key] = source[key]
                 break
         else:
-            msg = f"Attribute {attr} not found in any source dictionary."
+            msg = f"Key {key} not found in any source dictionary."
             raise ValueError(msg)
+    return dest

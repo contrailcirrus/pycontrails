@@ -176,9 +176,11 @@ class DryAdvection(models.Model):
         """
 
         self.source.setdefault("level", self.source.level)
-        self.source = GeoVectorDataset(
-            self.source.select(("longitude", "latitude", "level", "time"), copy=False)
-        )
+
+        columns: tuple[str, ...] = ("longitude", "latitude", "level", "time")
+        if "azimuth" in self.source:
+            columns += ("azimuth",)
+        self.source = GeoVectorDataset(self.source.select(columns, copy=False))
 
         # Get waypoint index if not already set
         self.source.setdefault("waypoint", np.arange(self.source.size))
@@ -217,7 +219,8 @@ class DryAdvection(models.Model):
             if val is not None and pointwise_only:
                 raise ValueError(f"Cannot specify '{key}' without specifying 'azimuth'.")
 
-            self.source[key] = np.full_like(self.source["longitude"], val)
+            if not pointwise_only:
+                self.source[key] = np.full_like(self.source["longitude"], val)
 
         if pointwise_only:
             return

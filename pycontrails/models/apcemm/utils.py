@@ -1,5 +1,7 @@
 """APCEMM interface utility functions."""
 
+from __future__ import annotations
+
 import pathlib
 import subprocess
 from typing import Any
@@ -8,7 +10,7 @@ import numpy as np
 import xarray as xr
 
 from pycontrails.core import GeoVectorDataset, MetDataset, met_var, models
-from pycontrails.models.apcemm.input import APCEMMInput
+from pycontrails.models.apcemm.inputs import APCEMMInput
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, thermo, units
 from pycontrails.utils.types import ArrayScalarLike
@@ -70,8 +72,8 @@ def generate_apcemm_input_yaml(params: APCEMMInput) -> str:
         flight_speed_m_per_s=params.true_airspeed,
         num_of_engines_int=params.n_engine,
         wingspan_m=params.wingspan,
-        core_exit_temp_k=params.exhaust_exit_temp,
-        exit_bypass_area_m2=params.bypass_area,
+        core_exit_temp_k=params.core_exit_temp,
+        exit_bypass_area_m2=params.core_exit_area,
         transport_timestep_min=params.dt_apcemm_transport / np.timedelta64(1, "m"),
         gravitational_settling_bool=_yaml_bool(params.do_gravitational_setting),
         solid_coagulation_bool=_yaml_bool(params.do_solid_coagulation),
@@ -263,16 +265,21 @@ def generate_apcemm_input_met(
     virtual_temperature = temperature * (1 + qv / constants.epsilon) / (1 + qv)
     density = pressure[:, np.newaxis] / (constants.R_d * virtual_temperature)
     w = -omega / (density * constants.g)
+
     return xr.Dataset(
         data_vars={
-            "pressure": (("altitude",), pressure / 1e2, {"units": "hPa"}),
-            "temperature": (("altitude", "time"), temperature, {"units": "K"}),
-            "relative_humidity_ice": (("altitude", "time"), 1e2 * rhi, {"units": "percent"}),
-            "shear": (("altitude", "time"), shear, {"units": "s**-1"}),
-            "w": (("altitude", "time"), w, {"units": "m s**-1"}),
+            "pressure": (("altitude",), pressure.astype("float32") / 1e2, {"units": "hPa"}),
+            "temperature": (("altitude", "time"), temperature.astype("float32"), {"units": "K"}),
+            "relative_humidity_ice": (
+                ("altitude", "time"),
+                1e2 * rhi.astype("float32"),
+                {"units": "percent"},
+            ),
+            "shear": (("altitude", "time"), shear.astype("float32"), {"units": "s**-1"}),
+            "w": (("altitude", "time"), w.astype("float32"), {"units": "m s**-1"}),
         },
         coords={
-            "altitude": ("altitude", altitude / 1e3, {"units": "km"}),
+            "altitude": ("altitude", altitude.astype("float32") / 1e3, {"units": "km"}),
             "time": ("time", time, {"units": "hours"}),
         },
     )

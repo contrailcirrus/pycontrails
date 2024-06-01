@@ -19,6 +19,15 @@ class APCEMMInput:
     Physical parameters in this class are defined using MKS units, and units are converted
     as required at the time of YAML file generation.
 
+    Parameters without default values must be provided each time a YAML file is generated.
+    :class:`APCEMM` provides a convenient interface for determining parameter values
+    based in flight and meterology data.
+
+    Parameters with default values are set to sensible defaults, based in part on
+    values provided in example input YAML files in the
+    `APCEMM GitHub repository <https://github.com/MIT-LAE/APCEMM>`__, but users may
+    with to override default parameters when configuring APCEMM simulations.
+
     This class exposes many but not all of the parameters in APCEMM YAML files. To request
     that additional parameters be exposed,
     `open an issue on GitHub <https://github.com/contrailcirrus/pycontrails/issues>`__
@@ -27,8 +36,85 @@ class APCEMMInput:
     - a sensible default value for each parameter.
     """
 
+    # =================================
+    # Parameters without default values
+    # =================================
+
+    #: Initial longitude [WGS84]
+    longitude: float
+
+    #: Initial latitude [WGS84]
+    latitude: float
+
+    #: Day of year at model initialization
+    day_of_year: int
+
+    #: Fractional hour of day at model initialization
+    hour_of_day: float
+
+    #: Initial pressure [:math:`Pa`]
+    air_pressure: float
+
+    #: Initial air temperature [:math:`K`]
+    air_temperature: float
+
+    #: Initial RH over liquid water [dimensionless]
+    rhw: float
+
+    #: Initial contrail-normal wind shear [:math:`1/s`]
+    normal_shear: float
+
+    #: Initial Brunt-Vaisala frequency [:math:`1/s`]
+    brunt_vaisala_frequency: float
+
+    #: Engine NOx emissions index [:math:`kg(NO2)/kg`]
+    nox_ei: float
+
+    #: Engine CO emissions index [:math:`kg/kg`]
+    co_ei: float
+
+    #: Engine unburned hydrocarbons emissions index [:math:`kg/kg`]
+    hc_ei: float
+
+    #: Engine SO2 emissions index [:math:`kg/kg`]
+    so2_ei: float
+
+    #: Engine soot emissions index [:math:`kg/kg`]
+    nvpm_ei_m: float
+
+    #: Emitted soot aerosol radius [:math:`m`]
+    soot_radius: float
+
+    #: Fuel flow [:math:`kg/s`]
+    fuel_flow: float
+
+    #: Aircraft mass [:math:`kg`]
+    aircraft_mass: float
+
+    #: Aircraft true airspeed [:math:`m/s`]
+    true_airspeed: float
+
+    #: Number of engines
+    n_engine: int
+
+    #: Wingspan [:math:`m`]
+    wingspan: float
+
+    #: Engine core exit temperature [:math:`K`]
+    core_exit_temp: float
+
+    #: Engine core exit area [:math:`m^2`]
+    core_exit_area: float
+
+    # ==============================
+    # Parameters with default values
+    # ==============================
+
     #: Number of APCEMM threads
     n_threads: int = 1
+
+    #: Maximum APCEMM simulation time
+    max_age: np.timedelta64 = np.timedelta64(20, "h")
 
     #: Output directory name (relative to APCEMM simulation directory)
     output_directory: pathlib.Path | str = "out"
@@ -55,21 +141,6 @@ class APCEMMInput:
         APCEMM_DEFAULT_ROOT, "input_data", "ENG_EI.txt"
     )
 
-    #: Maximum APCEMM simulation time
-    max_age: np.timedelta64 = np.timedelta64(20, "h")
-
-    #: Initial longitude [WGS84]
-    longitude: float = 0.0
-
-    #: Initial latitude [WGS84]
-    latitude: float = 0.0
-
-    #: Day of year at model initialization
-    day_of_year: int = 1
-
-    #: Fractional hour of day at model initialization
-    hour_of_day: float = 0.0
-
     #: Background NOx volume mixing ratio [nondim]
     nox_vmr: float = 5100e-12
 
@@ -88,71 +159,17 @@ class APCEMMInput:
     #: Background SO2 volume mixing ratio [nondim]
     so2_vmr: float = 7.25e-12
 
-    #: Initial pressure [:math:`Pa`]
-    air_pressure: float = 24_000.0
-
-    #: Initial air temperature [:math:`K`]
-    air_temperature: float = 220.0
-
-    #: Initial RH over liquid water [dimensionless]
-    rhw: float = 0.85
-
     #: Horizontal diffusion coefficient [:math:`m^2/s`]
     horiz_diff: float = 15.0
 
     #: Vertical diffusion coefficient [:math:`m^2/s`]
     vert_diff: float = 0.15
 
-    #: Initial contrail-normal wind shear [:math:`1/s`]
-    normal_shear: float = 0.0015
-
-    #: Initial Brunt-Vaisala frequency [:math:`1/s`]
-    brunt_vaisala_frequency: float = 0.008
-
-    #: APCEMM transport timestep
-    dt_apcemm_transport: np.timedelta64 = np.timedelta64(1, "m")
-
-    #: Engine NOx emissions index [:math:`kg(NO2)/kg`]
-    nox_ei: float = 10.0e-3
-
-    #: Engine CO emissions index [:math:`kg/kg`]
-    co_ei = 0.3e-3
-
-    #: Engine unburned hydrocarbons emissions index [:math:`kg/kg`]
-    hc_ei = 0.04e-3
-
-    #: Engine SO2 emissions index [:math:`kg/kg`]
-    so2_ei = 1.0e-3
-
     #: Engine SO2 to SO4 conversion factor [dimensionless]
     so2_to_so4_conversion: float = 0.02
 
-    #: Engine soot emissions index [:math:`kg/kg`]
-    nvpm_ei_m = 0.05e-3
-
-    #: Emitted soot aerosol radius [:math:`m`]
-    soot_radius: float = 1.7e-8
-
-    #: Fuel flow [:math:`kg/s`]
-    fuel_flow: float = 0.7
-
-    #: Aircraft mass [:math:`kg`]
-    aircraft_mass: float = 60_000.0
-
-    #: Aircraft true airspeed [:math:`m/s`]
-    true_airspeed: float = 240.0
-
-    #: Number of engines
-    n_engine: int = 2
-
-    #: Wingspan [:math:`m`]
-    wingspan: float = 35.0
-
-    #: Engine exhaust exit temperature [:math:`K`]
-    exhaust_exit_temp: float = 550.0
-
-    #: Engine bypass area [:math:`m^2`]
-    bypass_area: float = 1.0
+    #: APCEMM transport timestep
+    dt_apcemm_transport: np.timedelta64 = np.timedelta64(1, "m")
 
     #: Enable gravitational settling
     do_gravitational_setting: bool = True
