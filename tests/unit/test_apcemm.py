@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -10,7 +11,6 @@ import xarray as xr
 
 from pycontrails.core import Flight, MetDataset
 from pycontrails.models.apcemm import APCEMM
-from pycontrails.models.apcemm.input import APCEMMInput
 from pycontrails.models.humidity_scaling import (
     ConstantHumidityScaling,
     ExponentialBoostHumidityScaling,
@@ -108,10 +108,10 @@ def flight_apcemm() -> Flight:
         "flight_id": "test",
     }
     df = pd.DataFrame()
-    df["longitude"] = np.linspace(-29, -32, 20)
-    df["latitude"] = np.linspace(56, 57, 20)
-    df["altitude"] = np.linspace(10900, 10900, 20)
-    df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:30:00", periods=20)
+    df["longitude"] = np.linspace(-29, -32, 11)
+    df["latitude"] = np.linspace(56, 57, 11)
+    df["altitude"] = np.linspace(10900, 10900, 11)
+    df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:30:00", periods=11)
     return Flight(df, attrs=attrs)
 
 
@@ -127,7 +127,7 @@ def apcemm_persistent(
         "dt_input_met": np.timedelta64(5, "m"),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "aircraft_performance": PSFlight(),
-        "segments": [1, 13],
+        "waypoints": [1, 7],
         "overwrite": True,
     }
     model = APCEMM(met_apcemm, apcemm_path=apcemm_path, apcemm_root=apcemm_root, params=params)
@@ -171,45 +171,48 @@ def test_apcemm_validate_met(
 
 
 @pytest.mark.parametrize(
-    ("dt_lagrangian", "dt_input_met", "downsampling"),
+    ("params", "valid"),
     [
-        (np.timedelta64(30, "m"), np.timedelta64(1, "h"), 2),
-        (np.timedelta64(1, "h"), np.timedelta64(1, "h"), 1),
-        (np.timedelta64(2, "h"), np.timedelta64(1, "h"), None),
-        (np.timedelta64(45, "h"), np.timedelta64(1, "h"), None),
+        (
+            {},
+            True,
+        ),
+        (
+            {"horiz_diff": 30.0},
+            True,
+        ),
+        (
+            {"rhw": 0.50},
+            False,
+        ),
+        (
+            {"output_directory": "foo", "max_age": np.timedelta64(20, "h")},
+            False,
+        ),
     ],
 )
-def test_apcemm_validate_downsampling(
-    dt_lagrangian: np.timedelta64,
-    dt_input_met: np.timedelta64,
-    downsampling: int | None,
-    met_apcemm: MetDataset,
-    apcemm_paths: tuple[str, str],
+def test_apcemm_input_param_validation(
+    params: dict[str, Any], valid: bool, met_apcemm: MetDataset, apcemm_paths: tuple[str, str]
 ) -> None:
-    """Test timestep validation."""
-    apcemm_path, apcemm_root = apcemm_paths
-
-    if downsampling is None:
-        with pytest.raises(ValueError, match="Timestep for Lagrangian trajectories"):
-            _ = APCEMM(
+    """Test validation of APCEMM input parameter overrides."""
+    apcemm_path, _ = apcemm_paths
+    if not valid:
+        with pytest.raises(ValueError, match="Cannot override APCEMM input"):
+            model = APCEMM(
                 met=met_apcemm,
                 apcemm_path=apcemm_path,
-                apcemm_root=apcemm_root,
+                apcemm_input_params=params,
                 humidity_scaling=ConstantHumidityScaling(),
-                dt_lagrangian=dt_lagrangian,
-                dt_input_met=dt_input_met,
             )
+        return
 
-    else:
-        model = APCEMM(
-            met=met_apcemm,
-            apcemm_path=apcemm_path,
-            apcemm_root=apcemm_root,
-            humidity_scaling=ConstantHumidityScaling(),
-            dt_lagrangian=dt_lagrangian,
-            dt_input_met=dt_input_met,
-        )
-        assert model._trajectory_downsampling == downsampling
+    model = APCEMM(
+        met=met_apcemm,
+        apcemm_path=apcemm_path,
+        apcemm_input_params=params,
+        humidity_scaling=ConstantHumidityScaling(),
+    )
+    assert model.apcemm_input_params == params
 
 
 def test_apcemm_default_root_directory(
@@ -220,12 +223,8 @@ def test_apcemm_default_root_directory(
     model = APCEMM(
         met=met_apcemm, apcemm_path=apcemm_path, humidity_scaling=ConstantHumidityScaling()
     )
-    assert model.yaml.input_background_conditions == os.path.join(
-        os.path.expanduser("~/APCEMM"), "input_data", "init.txt"
-    )
-    assert model.yaml.input_engine_emissions == os.path.join(
-        os.path.expanduser("~/APCEMM"), "input_data", "ENG_EI.txt"
-    )
+    assert "input_background_conditions" not in model.apcemm_input_params
+    assert "input_engine_emissions" not in model.apcemm_input_params
 
 
 def test_apcemm_root_directory_param(met_apcemm: MetDataset, apcemm_paths: tuple[str, str]) -> None:
@@ -237,26 +236,26 @@ def test_apcemm_root_directory_param(met_apcemm: MetDataset, apcemm_paths: tuple
         apcemm_root=apcemm_root,
         humidity_scaling=ConstantHumidityScaling(),
     )
-    assert model.yaml.input_background_conditions == os.path.join(
+    assert model.apcemm_input_params["input_background_conditions"] == os.path.join(
         apcemm_root, "input_data", "init.txt"
     )
-    assert model.yaml.input_engine_emissions == os.path.join(
+    assert model.apcemm_input_params["input_engine_emissions"] == os.path.join(
         apcemm_root, "input_data", "ENG_EI.txt"
     )
 
 
 def test_apcemm_root_directory_yaml(met_apcemm: MetDataset, apcemm_paths: tuple[str, str]) -> None:
-    """Test APCEMM root directory based on YAML parameter."""
+    """Test APCEMM root directory based on input parameters."""
     apcemm_path, apcemm_root = apcemm_paths
     model = APCEMM(
         met=met_apcemm,
         apcemm_path=apcemm_path,
         apcemm_root="foo",
-        yaml=APCEMMInput(input_background_conditions="bar", input_engine_emissions="baz"),
+        apcemm_input_params=dict(input_background_conditions="bar", input_engine_emissions="baz"),
         humidity_scaling=ConstantHumidityScaling(),
     )
-    assert model.yaml.input_background_conditions == "bar"
-    assert model.yaml.input_engine_emissions == "baz"
+    assert model.apcemm_input_params["input_background_conditions"] == "bar"
+    assert model.apcemm_input_params["input_engine_emissions"] == "baz"
 
 
 def test_apcemm_overwrite_protection(
@@ -271,7 +270,7 @@ def test_apcemm_overwrite_protection(
     model, _ = apcemm_persistent
     assert os.path.exists(model.apcemm_file(1))
 
-    # re-running simulation on same segment should produce an error
+    # re-running simulation on same waypoint should produce an error
     apcemm_path, apcemm_root = apcemm_paths
     params = {
         "max_age": np.timedelta64(10, "m"),  # to limit runtime
@@ -282,7 +281,7 @@ def test_apcemm_overwrite_protection(
     }
     model = APCEMM(met_apcemm, apcemm_path=apcemm_path, apcemm_root=apcemm_root, params=params)
     with pytest.raises(ValueError, match="APCEMM run directory already exists"):
-        _ = model.eval(flight_apcemm, segments=[1])
+        _ = model.eval(flight_apcemm, waypoints=[1])
 
 
 def test_apcemm_output_status(apcemm_persistent: tuple[APCEMM, Flight]) -> None:
@@ -290,8 +289,8 @@ def test_apcemm_output_status(apcemm_persistent: tuple[APCEMM, Flight]) -> None:
     _, result = apcemm_persistent
     assert result.dataframe.iloc[0]["status"] == "NoSimulation"
     assert result.dataframe.iloc[1]["status"] == "NoPersistence"
-    assert result.dataframe.iloc[13]["status"] == "Incomplete"
-    assert result.dataframe.iloc[-1]["status"] == "N/A"
+    assert result.dataframe.iloc[7]["status"] == "Incomplete"
+    assert result.dataframe.iloc[-1]["status"] == "NoSimulation"
 
 
 def test_apcemm_output_time_series(apcemm_persistent: tuple[APCEMM, Flight]) -> None:
@@ -303,7 +302,7 @@ def test_apcemm_output_time_series(apcemm_persistent: tuple[APCEMM, Flight]) -> 
     df = model.vortex
     assert isinstance(df, pd.DataFrame)
     assert df.shape == (600, 20)
-    assert set(df["waypoint"]) == set([1, 13])
+    assert set(df["waypoint"]) == {1, 7}
 
 
 def test_apcemm_output_contrail(apcemm_persistent: tuple[APCEMM, Flight]) -> None:
@@ -314,7 +313,7 @@ def test_apcemm_output_contrail(apcemm_persistent: tuple[APCEMM, Flight]) -> Non
     model, _ = apcemm_persistent
     df = model.contrail
     assert isinstance(df, pd.DataFrame)
-    assert set(df["waypoint"]) == set([13])
+    assert set(df["waypoint"]) == {7}
     assert df.shape == (11, 3)
     for _, row in df.iterrows():
         path = row["path"]
