@@ -125,8 +125,8 @@ class APCEMM(models.Model):
     apcemm_root : pathlib.Path | str, optional
         Path to APCEMM root directory, used to set ``input_background_conditions`` and
         ``input_engine_emissions`` based on the structure of the
-        `APCEMM GitHub repository <>`__. If not provided, pycontrails will use the
-        default paths defined in :class:`APCEMMInput`.
+        `APCEMM GitHub repository <https://github.com/MIT-LAE/APCEMM>`__.
+        If not provided, pycontrails will use the default paths defined in :class:`APCEMMInput`.
     apcemm_input_params : APCEMMInput, optional
         Value for APCEMM input parameters defined in :class:`APCEMMInput`. If provided, values
         for ``input_background_condition`` or ``input_engine_emissions`` will override values
