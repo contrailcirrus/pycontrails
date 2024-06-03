@@ -73,6 +73,7 @@ dev = [
     "pytest-cov>=2.11",
     "requests>=2.25",
     "ruff==0.4.1",
+    "setuptools"
 ]
 
 # Documentation / Sphinx dependencies
