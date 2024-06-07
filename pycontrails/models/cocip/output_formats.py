@@ -24,14 +24,12 @@ import pathlib
 import warnings
 from collections.abc import Hashable
 
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.vector import GeoVectorDataset, vector_to_lon_lat_grid
 from pycontrails.datalib.goes import GOES, extract_goes_visualization
@@ -2093,56 +2091,75 @@ def _repeat_rows_and_columns(
 
 def compare_cocip_with_goes(
     time: np.timedelta64 | pd.Timestamp,
-    flight_waypoints: GeoVectorDataset | pd.DataFrame,
-    contrails: GeoVectorDataset | pd.DataFrame, *,
-    path_write_img: None | pathlib.Path = None,
+    flight: GeoVectorDataset | pd.DataFrame,
+    contrail: GeoVectorDataset | pd.DataFrame,
+    *,
     spatial_bbox: tuple[float, float, float, float] = (-160.0, -80.0, 10.0, 80.0),
     region: str = "F",
+    path_write_img: pathlib.Path | None = None,
 ) -> None | pathlib.Path:
-    """
+    r"""
     Compare simulated persistent contrails from CoCiP with GOES satellite imagery.
 
     Parameters
     ----------
     time : np.timedelta64 | pd.Timestamp
         Time of GOES satellite image.
-    flight_waypoints : GeoVectorDataset
-        Flight waypoint outputs.
-    contrails : GeoVectorDataset
-        Contrail evolution outputs from CoCiP, `cocip.contrail`.
-    path_write_img : None | pathlib.Path
-        File path to save the CoCiP-GOES image.
+    flight : GeoVectorDataset | pd.DataFrame
+        Flight waypoints.
+        Best to use the returned output :class:`Flight` from
+        :meth:`pycontrails.models.cocip.Cocip.eval`.
+    contrail : GeoVectorDataset | pd.DataFrame,
+        Contrail evolution outputs (:attr:`pycontrails.models.cocip.Cocip.contrail`)
+        set during :meth:`pycontrails.models.cocip.Cocip.eval`.
     spatial_bbox : tuple[float, float, float, float]
         Spatial bounding box, ``(lon_min, lat_min, lon_max, lat_max)``, [:math:`\deg`]
     region : str
         'F' for full disk (image provided every 10 m), and 'C' for CONUS (image provided every 5 m)
+    path_write_img : None | pathlib.Path
+        File path to save the CoCiP-GOES image.
 
     Returns
     -------
     None | pathlib.Path
-        File path of saved CoCiP-GOES image if `path_write_img` is provided.
+        File path of saved CoCiP-GOES image if ``path_write_img`` is provided.
     """
+
+    try:
+        import cartopy.crs as ccrs
+        from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
+    except ModuleNotFoundError as e:
+        dependencies.raise_module_not_found_error(
+            name="compare_cocip_with_goes function",
+            package_name="cartopy",
+            module_not_found_error=e,
+            pycontrails_optional_package="goes",
+        )
+
     # Round `time` to nearest GOES image time slice
     if isinstance(time, np.timedelta64):
         time = pd.to_datetime(time)
 
     if region == "F":
-        time = time.round('10min')
+        time = time.round("10min")
     elif region == "C":
-        time = time.round('5min')
+        time = time.round("5min")
     else:
         raise AssertionError("`region` only accepts inputs of `F` (full disk) or `C` (CONUS)")
 
+    _flight = GeoVectorDataset(flight)
+    _contrail = GeoVectorDataset(contrail)
+
     # Ensure the required columns are included in `flight_waypoints` and `contrails`
-    flight_waypoints.ensure_vars(["flight_id", "waypoint"])
-    contrails.ensure_vars(
+    _flight.ensure_vars(["flight_id", "waypoint"])
+    _contrail.ensure_vars(
         ["flight_id", "waypoint", "sin_a", "cos_a", "width", "tau_contrail", "age_hours"]
     )
 
-    # Downselect `flight_waypoints` only to spatial domain covered by GOES full disk
-    is_in_lon = flight_waypoints.dataframe["longitude"].between(spatial_bbox[0], spatial_bbox[2])
-    is_in_lat = flight_waypoints.dataframe["latitude"].between(spatial_bbox[1], spatial_bbox[3])
-    is_in_lon_lat = (is_in_lon & is_in_lat)
+    # Downselect `_flight` only to spatial domain covered by GOES full disk
+    is_in_lon = _flight.dataframe["longitude"].between(spatial_bbox[0], spatial_bbox[2])
+    is_in_lat = _flight.dataframe["latitude"].between(spatial_bbox[1], spatial_bbox[3])
+    is_in_lon_lat = is_in_lon & is_in_lat
 
     if not np.any(is_in_lon_lat):
         warnings.warn(
@@ -2150,25 +2167,25 @@ def compare_cocip_with_goes(
             "domain covered by GOES."
         )
 
-    flight_waypoints = flight_waypoints.filter(is_in_lon_lat)
+    _flight = _flight.filter(is_in_lon_lat)
 
-    # Filter `flight_waypoints` if time bounds were previously defined.
-    is_before_time = flight_waypoints["time"] < time
+    # Filter `_flight` if time bounds were previously defined.
+    is_before_time = _flight["time"] < time
 
     if not np.any(is_before_time):
         warnings.warn("No flight waypoints were recorded before the specified `time`.")
 
-    flight_waypoints = flight_waypoints.filter(is_before_time)
+    _flight = _flight.filter(is_before_time)
 
-    # Downselect `contrails` only to include the filtered flight waypoints
-    is_in_domain = contrails.dataframe["waypoint"].isin(flight_waypoints["waypoint"])
+    # Downselect `_contrail` only to include the filtered flight waypoints
+    is_in_domain = _contrail.dataframe["waypoint"].isin(_flight["waypoint"])
 
     if not np.any(is_in_domain):
         warnings.warn(
             "No persistent contrails were formed within the defined spatial bounding box."
         )
 
-    contrails = contrails.filter(is_in_domain)
+    _contrail = _contrail.filter(is_in_domain)
 
     # Download GOES image at `time`
     goes = GOES(region=region)
@@ -2197,32 +2214,31 @@ def compare_cocip_with_goes(
     ax.yaxis.set_major_formatter(lat_formatter)
 
     # Plot flight trajectory up to `time`
-    is_time = flight_waypoints["time"] <= time
-    ax.plot(
-        flight_waypoints["longitude"][is_time], flight_waypoints["latitude"][is_time],
-        c="r", linewidth=2.5
-    );
+    ax.plot(_flight["longitude"], _flight["latitude"], c="k", linewidth=2.5)
     plt.legend(["Flight trajectory"])
 
     # Plot persistent contrails at `time`
-    is_time = ((contrails["time"] == time) & (~np.isnan(contrails["age_hours"])))
+    is_time = (_contrail["time"] == time) & (~np.isnan(_contrail["age_hours"]))
     im = ax.scatter(
-        contrails["longitude"][is_time], contrails["latitude"][is_time],
-        c=contrails["tau_contrail"][is_time], s=4, cmap="YlOrRd_r", vmin=0, vmax=0.2
-    );
+        _contrail["longitude"][is_time],
+        _contrail["latitude"][is_time],
+        c=_contrail["tau_contrail"][is_time],
+        s=4,
+        cmap="YlOrRd_r",
+        vmin=0,
+        vmax=0.2,
+    )
     cbar = plt.colorbar(im)
-    cbar.set_label(r'$\tau_{\rm contrail}$')
+    cbar.set_label(r"$\tau_{\rm contrail}$")
     ax.set_title(f"{time}")
     plt.tight_layout()
 
-    if path_write_img is None:
-        return
-
-    # Save image
-    else:
+    # return output path if `path_write_img` is not None
+    if path_write_img is not None:
         t_str = time.strftime("%Y%m%d_%H%M%S")
         file_name = f"goes_{t_str}.png"
         output_path = path_write_img.joinpath(file_name)
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
         plt.close()
+
         return output_path
