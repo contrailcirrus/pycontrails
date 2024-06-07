@@ -19,8 +19,9 @@ import xarray as xr
 from overrides import overrides
 
 import pycontrails
-from pycontrails.core import cache, datalib
+from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf.common import ECMWFAPI, CDSCredentialsNotFound
 from pycontrails.datalib.ecmwf.variables import PRESSURE_LEVEL_VARIABLES, SURFACE_VARIABLES
 from pycontrails.utils import dependencies, temp
@@ -49,16 +50,16 @@ class ERA5(ECMWFAPI):
 
     Parameters
     ----------
-    time : datalib.TimeInput | None
+    time : metsource.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
         (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         Datafiles will be downloaded from CDS for each day to reduce requests.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
-    variables : datalib.VariableInput
+    variables : metsource.VariableInput
         Variable name (i.e. "t", "air_temperature", ["air_temperature, relative_humidity"])
-    pressure_levels : datalib.PressureLevelInput, optional
+    pressure_levels : metsource.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar)
         Set to -1 for to download surface level parameters.
         Defaults to -1.
@@ -145,9 +146,9 @@ class ERA5(ECMWFAPI):
 
     def __init__(
         self,
-        time: datalib.TimeInput | None,
-        variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput = -1,
+        time: metsource.TimeInput | None,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         timestep_freq: str | None = None,
         product_type: str = "reanalysis",
@@ -193,11 +194,11 @@ class ERA5(ECMWFAPI):
         if timestep_freq is None:
             timestep_freq = "1h" if product_type == "reanalysis" else "3h"
 
-        self.timesteps = datalib.parse_timesteps(time, freq=timestep_freq)
-        self.pressure_levels = datalib.parse_pressure_levels(
+        self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
+        self.pressure_levels = metsource.parse_pressure_levels(
             pressure_levels, self.supported_pressure_levels
         )
-        self.variables = datalib.parse_variables(variables, self.supported_variables)
+        self.variables = metsource.parse_variables(variables, self.supported_variables)
 
         # ensemble_mean, etc - time is only available on the 0, 3, 6, etc
         if product_type.startswith("ensemble") and any(t.hour % 3 for t in self.timesteps):
@@ -482,7 +483,7 @@ class ERA5(ECMWFAPI):
 
             # open file, edit, and save for each hourly time step
             ds = stack.enter_context(
-                xr.open_dataset(cds_temp_filename, engine=datalib.NETCDF_ENGINE)
+                xr.open_dataset(cds_temp_filename, engine=metsource.NETCDF_ENGINE)
             )
 
             # run preprocessing before cache

@@ -22,7 +22,8 @@ import xarray as xr
 from overrides import overrides
 
 import pycontrails
-from pycontrails.core import cache, datalib, met
+from pycontrails.core import cache, met
+from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.gfs.variables import (
     PRESSURE_LEVEL_VARIABLES,
     SURFACE_VARIABLES,
@@ -43,12 +44,12 @@ logger = logging.getLogger(__name__)
 GFS_FORECAST_BUCKET = "noaa-gfs-bdp-pds"
 
 
-class GFSForecast(datalib.MetDataSource):
+class GFSForecast(metsource.MetDataSource):
     """GFS Forecast data access.
 
     Parameters
     ----------
-    time : `datalib.TimeInput`
+    time : `metsource.TimeInput`
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be a single datetime-like or tuple of datetime-like (datetime,
         :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
@@ -56,10 +57,10 @@ class GFSForecast(datalib.MetDataSource):
         All times will be downloaded for a single forecast model run nearest to the start time
         (see :attr:`forecast_time`)
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
-    variables : `datalib.VariableInput`
+    variables : `metsource.VariableInput`
         Variable name (i.e. "temperature", ["temperature, relative_humidity"])
         See :attr:`pressure_level_variables` for the list of available variables.
-    pressure_levels : `datalib.PressureLevelInput`, optional
+    pressure_levels : `metsource.PressureLevelInput`, optional
         Pressure levels for data, in hPa (mbar)
         Set to [-1] for to download surface level parameters.
         Defaults to [-1].
@@ -132,9 +133,9 @@ class GFSForecast(datalib.MetDataSource):
 
     def __init__(
         self,
-        time: datalib.TimeInput | None,
-        variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput = -1,
+        time: metsource.TimeInput | None,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float = 0.25,
         forecast_time: DatetimeLike | None = None,
@@ -175,13 +176,13 @@ class GFSForecast(datalib.MetDataSource):
         # 3 hourly for 0.5 and 1 degree grid
         # https://www.nco.ncep.noaa.gov/pmb/products/gfs/
         freq = "1h" if grid == 0.25 else "3h"
-        self.timesteps = datalib.parse_timesteps(time, freq=freq)
+        self.timesteps = metsource.parse_timesteps(time, freq=freq)
 
-        self.pressure_levels = datalib.parse_pressure_levels(
+        self.pressure_levels = metsource.parse_pressure_levels(
             pressure_levels, self.supported_pressure_levels
         )
-        self.variables = datalib.parse_variables(variables, self.supported_variables)
-        self.grid = datalib.parse_grid(grid, (0.25, 0.5, 1))
+        self.variables = metsource.parse_variables(variables, self.supported_variables)
+        self.grid = metsource.parse_grid(grid, (0.25, 0.5, 1))
 
         # note GFS allows unsigned requests (no credentials)
         # https://stackoverflow.com/questions/34865927/can-i-use-boto3-anonymously/34866092#34866092
@@ -195,12 +196,12 @@ class GFSForecast(datalib.MetDataSource):
             if forecast_time_pd.hour % 6:
                 raise ValueError("Forecast hour must be on one of 00, 06, 12, 18")
 
-            self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 6)
+            self.forecast_time = metsource.round_hour(forecast_time_pd.to_pydatetime(), 6)
 
         # if no specific forecast is requested, set the forecast time using timesteps
         else:
             # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) for forecast_time
-            self.forecast_time = datalib.round_hour(self.timesteps[0], 6)
+            self.forecast_time = metsource.round_hour(self.timesteps[0], 6)
 
     def __repr__(self) -> str:
         base = super().__repr__()

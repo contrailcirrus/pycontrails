@@ -1,4 +1,4 @@
-"""Datalib utilities."""
+"""Met datalib definitions and utilities."""
 
 from __future__ import annotations
 
