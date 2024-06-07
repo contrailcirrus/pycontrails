@@ -13,10 +13,10 @@ try:
     import geojson
 except ModuleNotFoundError as exc:
     dependencies.raise_module_not_found_error(
-        name="leo.utils module",
+        name="datalib._leo_utils module",
         package_name="geojson",
         module_not_found_error=exc,
-        pycontrails_optional_package="leo",
+        pycontrails_optional_package="sat",
     )
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
