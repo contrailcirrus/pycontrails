@@ -354,7 +354,7 @@ def find_multipolygon(
         return shapely.MultiPolygon()
 
     assert len(hierarchy) == 1
-    hierarchy = hierarchy[0]
+    hierarchy = hierarchy[0]  # type: ignore[index]
 
     polygons = _contours_to_polygons(
         contours,  # type: ignore[arg-type]
