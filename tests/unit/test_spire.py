@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from pycontrails.datalib import spire
-from pycontrails.datalib.spire.spire import (
+from pycontrails.datalib.spire import (
     _clean_trajectory_altitude,
     _separate_by_cruise_phase,
     _separate_by_on_ground,
