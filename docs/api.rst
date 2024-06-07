@@ -98,8 +98,8 @@ Low Earth Orbit Satellites
 .. autosummary::
     :toctree: api/
 
-    datalib.leo.landsat
-    datalib.leo.sentinel
+    datalib.landsat
+    datalib.sentinel
 
 
 Models

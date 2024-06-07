@@ -35,7 +35,7 @@ except ModuleNotFoundError as exc:
         name="goes module",
         package_name="cartopy",
         module_not_found_error=exc,
-        pycontrails_optional_package="goes",
+        pycontrails_optional_package="sat",
     )
 
 try:
@@ -45,7 +45,7 @@ except ModuleNotFoundError as exc:
         name="goes module",
         package_name="gcsfs",
         module_not_found_error=exc,
-        pycontrails_optional_package="goes",
+        pycontrails_optional_package="sat",
     )
 
 

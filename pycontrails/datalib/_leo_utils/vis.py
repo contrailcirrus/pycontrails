@@ -13,7 +13,7 @@ except ModuleNotFoundError as exc:
         name="landsat module",
         package_name="scikit-image",
         module_not_found_error=exc,
-        pycontrails_optional_package="leo",
+        pycontrails_optional_package="sat",
     )
 
 

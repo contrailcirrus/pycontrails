@@ -9,8 +9,8 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.core import Flight, cache
-from pycontrails.datalib.leo import search
-from pycontrails.datalib.leo.vis import equalize, normalize
+from pycontrails.datalib._leo_utils import search
+from pycontrails.datalib._leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
 
 try:
@@ -20,7 +20,7 @@ except ModuleNotFoundError as exc:
         name="landsat module",
         package_name="gcsfs",
         module_not_found_error=exc,
-        pycontrails_optional_package="leo",
+        pycontrails_optional_package="sat",
     )
 
 try:
@@ -30,7 +30,7 @@ except ModuleNotFoundError as exc:
         name="landsat module",
         package_name="pyproj",
         module_not_found_error=exc,
-        pycontrails_optional_package="leo",
+        pycontrails_optional_package="sat",
     )
 
 try:
@@ -40,7 +40,7 @@ except ModuleNotFoundError as exc:
         name="landsat module",
         package_name="rasterio",
         module_not_found_error=exc,
-        pycontrails_optional_package="leo",
+        pycontrails_optional_package="sat",
     )
 
 #: BigQuery table with imagery metadata
