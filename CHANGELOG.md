@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.51.2
+
+### Features
+
+- Add functionality to automatically compare  simulated contrails from `cocip.Cocip` with GOES satellite imagery (`compare_cocip_with_goes`)
+
+### Internals
+
+- Fix documentation build in CI
+
 ## v0.51.1
 
 ### Breaking changes
