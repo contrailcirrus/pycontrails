@@ -40,7 +40,6 @@ def equalize(channel: np.ndarray, **equalize_kwargs: Any) -> np.ndarray:
     ----------
     channel: np.ndarray
         Array of channel values for equalization.
-
     **equalize_kwargs : Any
         Keyword arguments passed to :py:func:`ski.exposure.equalize_adapthist`.
 
