@@ -68,7 +68,6 @@ def track_to_geojson(lon: np.ndarray, lat: np.ndarray) -> str:
     ----------
     lon : np.ndarray
         Longitude coordinates of track [WGS84]
-
     lat : np.ndarray
         Latitude coordinates of track [WGS84]
 
@@ -144,14 +143,11 @@ def query(table: str, roi: ROI, columns: list[str], extra_filters: str = "") -> 
     ----------
     table : str
         Name of BigQuery table to query
-
     roi : ROI
         Region of interest
-
     columns : list[str]
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-
     extra_filters : str, optional
         Additional selection filters, injected verbatim into constructed query.
 
@@ -209,14 +205,11 @@ def intersect(
     ----------
     table : str
         Name of BigQuery table to query
-
     flight : Flight
         Flight for intersection
-
     columns : list[str]
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-
     extra_filters : str, optional
         Additional selection filters, injected verbatim into constructed query.
 
