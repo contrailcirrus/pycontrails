@@ -17,8 +17,9 @@ import xarray as xr
 from overrides import overrides
 
 import pycontrails
-from pycontrails.core import cache, datalib
+from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
 from pycontrails.datalib.ecmwf.variables import PRESSURE_LEVEL_VARIABLES, SURFACE_VARIABLES
 from pycontrails.utils import dependencies, iteration, temp
@@ -120,7 +121,7 @@ class HRES(ECMWFAPI):
 
     Parameters
     ----------
-    time : datalib.TimeInput | None
+    time : metsource.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be a datetime-like or tuple of datetime-like
         (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
@@ -129,10 +130,10 @@ class HRES(ECMWFAPI):
         be assumed to be the nearest synoptic hour: 00, 06, 12, 18.
         All subsequent times will be downloaded for relative to :attr:`forecast_time`.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
-    variables : datalib.VariableInput
+    variables : metsource.VariableInput
         Variable name (i.e. "air_temperature", ["air_temperature, relative_humidity"])
         See :attr:`pressure_level_variables` for the list of available variables.
-    pressure_levels : datalib.PressureLevelInput, optional
+    pressure_levels : metsource.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar)
         Set to -1 for to download surface level parameters.
         Defaults to -1.
@@ -241,9 +242,9 @@ class HRES(ECMWFAPI):
 
     def __init__(
         self,
-        time: datalib.TimeInput | None,
-        variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput = -1,
+        time: metsource.TimeInput | None,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         cachepath: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float = 0.25,
@@ -277,13 +278,13 @@ class HRES(ECMWFAPI):
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
 
-        self.timesteps = datalib.parse_timesteps(time, freq="1h")
-        self.pressure_levels = datalib.parse_pressure_levels(
+        self.timesteps = metsource.parse_timesteps(time, freq="1h")
+        self.pressure_levels = metsource.parse_pressure_levels(
             pressure_levels, self.supported_pressure_levels
         )
-        self.variables = datalib.parse_variables(variables, self.supported_variables)
+        self.variables = metsource.parse_variables(variables, self.supported_variables)
 
-        self.grid = datalib.parse_grid(grid, [0.1, 0.25, 0.5, 1])  # lat/lon degree resolution
+        self.grid = metsource.parse_grid(grid, [0.1, 0.25, 0.5, 1])  # lat/lon degree resolution
 
         # "enfo" = ensemble forecast
         # "oper" = atmospheric model/HRES
@@ -309,12 +310,12 @@ class HRES(ECMWFAPI):
             if forecast_time_pd.hour % 6:
                 raise ValueError("Forecast hour must be on one of 00, 06, 12, 18")
 
-            self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 6)
+            self.forecast_time = metsource.round_hour(forecast_time_pd.to_pydatetime(), 6)
 
         # if no specific forecast is requested, set the forecast time using timesteps
         elif self.timesteps:
             # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) for forecast_time
-            self.forecast_time = datalib.round_hour(self.timesteps[0], 6)
+            self.forecast_time = metsource.round_hour(self.timesteps[0], 6)
 
         # when no forecast_time or time input, forecast_time is defined in _open_and_cache
 

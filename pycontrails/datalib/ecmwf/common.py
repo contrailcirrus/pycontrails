@@ -13,10 +13,11 @@ import pandas as pd
 import xarray as xr
 from overrides import overrides
 
-from pycontrails.core import datalib, met
+from pycontrails.core import met
+from pycontrails.datalib._met_utils import metsource
 
 
-class ECMWFAPI(datalib.MetDataSource):
+class ECMWFAPI(metsource.MetDataSource):
     """Abstract class for all ECMWF data accessed remotely through CDS / MARS."""
 
     @property

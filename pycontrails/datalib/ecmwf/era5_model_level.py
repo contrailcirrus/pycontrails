@@ -40,8 +40,9 @@ import pandas as pd
 import xarray as xr
 
 import pycontrails
-from pycontrails.core import cache, datalib
+from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf.common import ECMWFAPI, CDSCredentialsNotFound
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.datalib.ecmwf.variables import MODEL_LEVEL_VARIABLES
@@ -73,7 +74,7 @@ class ERA5ModelLevel(ECMWFAPI):
 
     Parameters
     ----------
-    time : datalib.TimeInput | None
+    time : metsource.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
         (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
@@ -82,9 +83,9 @@ class ERA5ModelLevel(ECMWFAPI):
         for the nominal reanalysis and no larger than 1 day for ensemble members.
         This ensures that exactly one request is submitted per file on tape accessed.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
-    variables : datalib.VariableInput
+    variables : metsource.VariableInput
         Variable name (i.e. "t", "air_temperature", ["air_temperature, specific_humidity"])
-    pressure_levels : datalib.PressureLevelInput, optional
+    pressure_levels : metsource.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar).
         To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.ERA5`.
         Defaults to pressure levels that match model levels at a nominal surface pressure.
@@ -123,9 +124,9 @@ class ERA5ModelLevel(ECMWFAPI):
 
     def __init__(
         self,
-        time: datalib.TimeInput,
-        variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput | None = None,
+        time: metsource.TimeInput,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput | None = None,
         timestep_freq: str | None = None,
         product_type: str = "reanalysis",
         grid: float | None = None,
@@ -186,18 +187,18 @@ class ERA5ModelLevel(ECMWFAPI):
         datasource_timestep_freq = "1h" if product_type == "reanalysis" else "3h"
         if timestep_freq is None:
             timestep_freq = datasource_timestep_freq
-        if not datalib.validate_timestep_freq(timestep_freq, datasource_timestep_freq):
+        if not metsource.validate_timestep_freq(timestep_freq, datasource_timestep_freq):
             msg = (
                 f"Product {self.product_type} has timestep frequency of {datasource_timestep_freq} "
                 f"and cannot support requested timestep frequency of {timestep_freq}."
             )
             raise ValueError(msg)
 
-        self.timesteps = datalib.parse_timesteps(time, freq=timestep_freq)
+        self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
         if pressure_levels is None:
             pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
-        self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
-        self.variables = datalib.parse_variables(variables, self.pressure_level_variables)
+        self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
+        self.variables = metsource.parse_variables(variables, self.pressure_level_variables)
 
     def __repr__(self) -> str:
         base = super().__repr__()
