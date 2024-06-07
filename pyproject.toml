@@ -97,6 +97,7 @@ ecmwf = [
     "cdsapi>=0.4",
     "cfgrib>=0.9",
     "eccodes>=1.4",
+    "ecmwflibs>=0.5",
     "ecmwf-api-client>=1.6",
     "netcdf4>=1.6.1",
     "platformdirs>=3.0",
