@@ -28,8 +28,9 @@ import xarray as xr
 from overrides import overrides
 
 import pycontrails
-from pycontrails.core import cache, datalib
+from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 from pycontrails.datalib.ecmwf.variables import MODEL_LEVEL_VARIABLES
@@ -70,7 +71,7 @@ class HRESModelLevel(ECMWFAPI):
 
     Parameters
     ----------
-    time : datalib.TimeInput
+    time : metsource.TimeInput
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
         (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
@@ -80,9 +81,9 @@ class HRESModelLevel(ECMWFAPI):
         If ``forecast_time`` is unspecified, the forecast time will
         be assumed to be the nearest synoptic hour available in the operational archive (00 or 12).
         All subsequent times will be downloaded for relative to :attr:`forecast_time`.
-    variables : datalib.VariableInput
+    variables : metsource.VariableInput
         Variable name (i.e. "t", "air_temperature", ["air_temperature, specific_humidity"])
-    pressure_levels : datalib.PressureLevelInput, optional
+    pressure_levels : metsource.PressureLevelInput, optional
         Pressure levels for data, in hPa (mbar).
         To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.HRES`.
         Defaults to pressure levels that match model levels at a nominal surface pressure.
@@ -119,9 +120,9 @@ class HRESModelLevel(ECMWFAPI):
 
     def __init__(
         self,
-        time: datalib.TimeInput,
-        variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput | None = None,
+        time: metsource.TimeInput,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput | None = None,
         timestep_freq: str | None = None,
         grid: float | None = None,
         forecast_time: DatetimeLike | None = None,
@@ -165,15 +166,15 @@ class HRESModelLevel(ECMWFAPI):
             raise ValueError(msg)
         self.levels = levels
 
-        forecast_hours = datalib.parse_timesteps(time, freq="1h")
+        forecast_hours = metsource.parse_timesteps(time, freq="1h")
         if forecast_time is None:
-            self.forecast_time = datalib.round_hour(forecast_hours[0], 12)
+            self.forecast_time = metsource.round_hour(forecast_hours[0], 12)
         else:
             forecast_time_pd = pd.to_datetime(forecast_time)
             if (hour := forecast_time_pd.hour) % 12:
                 msg = f"Forecast hour must be one of 00 or 12 but is {hour:02d}."
                 raise ValueError(msg)
-            self.forecast_time = datalib.round_hour(forecast_time_pd.to_pydatetime(), 12)
+            self.forecast_time = metsource.round_hour(forecast_time_pd.to_pydatetime(), 12)
 
         last_step = (forecast_hours[-1] - self.forecast_time) / timedelta(hours=1)
         if last_step > LAST_STEP_6H:
@@ -188,7 +189,7 @@ class HRESModelLevel(ECMWFAPI):
         )
         if timestep_freq is None:
             timestep_freq = datasource_timestep_freq
-        if not datalib.validate_timestep_freq(timestep_freq, datasource_timestep_freq):
+        if not metsource.validate_timestep_freq(timestep_freq, datasource_timestep_freq):
             msg = (
                 f"Forecast out to step {last_step} "
                 f"has timestep frequency of {datasource_timestep_freq} "
@@ -196,15 +197,15 @@ class HRESModelLevel(ECMWFAPI):
             )
             raise ValueError(msg)
 
-        self.timesteps = datalib.parse_timesteps(time, freq=timestep_freq)
+        self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
         if self.step_offset < 0:
             msg = f"Selected forecast time {self.forecast_time} is after first timestep."
             raise ValueError(msg)
 
         if pressure_levels is None:
             pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
-        self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
-        self.variables = datalib.parse_variables(variables, self.pressure_level_variables)
+        self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
+        self.variables = metsource.parse_variables(variables, self.pressure_level_variables)
 
     def __repr__(self) -> str:
         base = super().__repr__()

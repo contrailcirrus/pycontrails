@@ -32,8 +32,9 @@ from typing import Any
 import xarray as xr
 from overrides import overrides
 
-from pycontrails.core import cache, datalib, met_var
+from pycontrails.core import cache, met_var
 from pycontrails.core.met import MetDataset
+from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf import common as ecmwf_common
 from pycontrails.datalib.ecmwf import variables as ecmwf_variables
 from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
@@ -374,23 +375,23 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
 
     def __init__(
         self,
-        time: datalib.TimeInput,
-        variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput | None = None,
+        time: metsource.TimeInput,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput | None = None,
         grid: float = 0.25,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         n_jobs: int = 1,
         cleanup_metview_tempfiles: bool = True,
     ) -> None:
-        self.timesteps = datalib.parse_timesteps(time)
+        self.timesteps = metsource.parse_timesteps(time)
 
         if pressure_levels is None:
             self.pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
         else:
-            self.pressure_levels = datalib.parse_pressure_levels(pressure_levels)
+            self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
 
         self.paths = None
-        self.variables = datalib.parse_variables(variables, self.supported_variables)
+        self.variables = metsource.parse_variables(variables, self.supported_variables)
         self.grid = grid
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.n_jobs = max(1, n_jobs)

@@ -30,7 +30,6 @@ with contextlib.suppress(ImportError):
     import netCDF4  # noqa: F401
 
 from pycontrails.core.cache import DiskCacheStore, GCPCacheStore
-from pycontrails.core.datalib import MetDataSource
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight, FlightPhase
 from pycontrails.core.fuel import Fuel, HydrogenFuel, JetA, SAFBlend
@@ -38,6 +37,7 @@ from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.met_var import MetVariable
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
+from pycontrails.datalib._met_utils.metsource import MetDataSource
 
 __version__ = metadata.version("pycontrails")
 __license__ = "Apache-2.0"

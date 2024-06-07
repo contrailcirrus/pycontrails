@@ -15,13 +15,14 @@ import pandas as pd
 import xarray as xr
 from overrides import overrides
 
-from pycontrails.core import datalib, met
+from pycontrails.core import met
+from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf.variables import ECMWF_VARIABLES
 from pycontrails.physics import constants
 from pycontrails.utils.types import DatetimeLike
 
 
-class IFS(datalib.MetDataSource):
+class IFS(metsource.MetDataSource):
     """
     ECMWF Integrated Forecasting System (IFS) data source.
 
@@ -31,16 +32,16 @@ class IFS(datalib.MetDataSource):
 
     Parameters
     ----------
-    time : datalib.TimeInput | None
+    time : metsource.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be a single datetime-like or tuple of datetime-like
         (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         If None, all time coordinates will be loaded.
-    variables : datalib.VariableInput
+    variables : metsource.VariableInput
         Variable name (i.e. "air_temperature", ["air_temperature, relative_humidity"])
         See :attr:`pressure_level_variables` for the list of available variables.
-    pressure_levels : datalib.PressureLevelInput, optional
+    pressure_levels : metsource.PressureLevelInput, optional
         Pressure level bounds for data (min, max), in hPa (mbar)
         Set to -1 for to download surface level parameters.
         Defaults to -1.
@@ -69,9 +70,9 @@ class IFS(datalib.MetDataSource):
 
     def __init__(
         self,
-        time: datalib.TimeInput | None,
-        variables: datalib.VariableInput,
-        pressure_levels: datalib.PressureLevelInput = -1,
+        time: metsource.TimeInput | None,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float | None = None,
         forecast_path: str | pathlib.Path | None = None,
@@ -89,9 +90,9 @@ class IFS(datalib.MetDataSource):
         self.forecast_date = pd.to_datetime(forecast_date).to_pydatetime()
 
         # parse inputs
-        self.timesteps = datalib.parse_timesteps(time, freq="3h")
-        self.pressure_levels = datalib.parse_pressure_levels(pressure_levels, None)
-        self.variables = datalib.parse_variables(variables, self.supported_variables)
+        self.timesteps = metsource.parse_timesteps(time, freq="3h")
+        self.pressure_levels = metsource.parse_pressure_levels(pressure_levels, None)
+        self.variables = metsource.parse_variables(variables, self.supported_variables)
 
     def __repr__(self) -> str:
         base = super().__repr__()
@@ -221,8 +222,8 @@ class IFS(datalib.MetDataSource):
         LOG.debug(f"Loading IFS forecast date {date_str}")
 
         # load each dataset
-        xr_kwargs.setdefault("chunks", datalib.DEFAULT_CHUNKS)
-        xr_kwargs.setdefault("engine", datalib.NETCDF_ENGINE)
+        xr_kwargs.setdefault("chunks", metsource.DEFAULT_CHUNKS)
+        xr_kwargs.setdefault("engine", metsource.NETCDF_ENGINE)
         ds_full = xr.open_dataset(path_full, **xr_kwargs)
         ds_fl = xr.open_dataset(path_fl, **xr_kwargs)
         ds_surface = xr.open_dataset(path_surface, **xr_kwargs)
