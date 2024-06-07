@@ -79,14 +79,11 @@ def query(
     ----------
     start_time : np.datetime64
         Start of time period for search
-
     end_time : np.datetime64
         End of time period for search
-
     extent : str, optional
         Spatial region of interest as a GeoJSON string. If not provided, defaults
         to a global extent.
-
     columns : list[str], optional.
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
@@ -124,7 +121,6 @@ def intersect(
     ----------
     flight : Flight
         Flight for intersection
-
     columns : list[str], optional.
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
@@ -151,7 +147,6 @@ class Landsat:
     base_url : str
         Base URL of Landsat scene. To find URLs for Landsat scenes at
         specific locations and times, see :func:`query` and :func:`intersect`.
-
     bands : str | set[str] | None
         Set of bands to retrieve. The 11 possible bands are represented by
         the string "B1" to "B11". For the Google Landsat contrails color scheme,
@@ -214,7 +209,6 @@ class Landsat:
         reflective : str = {"raw", "radiance", "reflectance"}, optional
             Whether to return raw values or rescaled radiances or reflectances for reflective bands.
             By default, return reflectances.
-
         thermal : str = {"raw", "radiance", "brightness_temperature"}, optional
             Whether to return raw values or rescaled radiances or brightness temperatures
             for thermal bands. By default, return brightness temperatures.
