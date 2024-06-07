@@ -55,7 +55,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 [project.optional-dependencies]
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = ["pycontrails[ecmwf,leo,gcp,gfs,goes,jupyter,pyproj,vis,zarr]"]
+complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -117,21 +117,21 @@ gfs = [
     "tqdm>=4.61",
 ]
 
-goes = ["cartopy>=0.22", "gcsfs>=2022.3", "h5netcdf>=1.2"]
-
 # Jupyter notebook and lab interface
 jupyter = ["ipywidgets>=7.6", "jupyterlab>=2.2"]
 
-# Low Earth orbit satellite datalibs
-leo = [
-   "db-dtypes>=1.2",
-   "gcsfs>=2022.3",
-   "geojson>=3.1",
-   "google-cloud-bigquery>=3.23",
-   "pillow>=10.3",
-   "pyproj>=3.5",
-   "rasterio>=1.3",
-   "scikit-image>=0.18"
+# Satellite datalibs
+sat = [
+    "cartopy>=0.22",
+    "db-dtypes>=1.2",
+    "gcsfs>=2022.3",
+    "geojson>=3.1",
+    "google-cloud-bigquery>=3.23",
+    "h5netcdf>=1.2",
+    "pillow>=10.3",
+    "pyproj>=3.5",
+    "rasterio>=1.3",
+    "scikit-image>=0.18"
 ]
 
 # Polyhedra contruction methods
@@ -170,7 +170,7 @@ exclude = ["docs*", "tests*"]
 [tool.setuptools.package-data]
 "pycontrails" = ["py.typed"]
 "pycontrails.datalib.ecmwf" = ["static/*.csv"]
-"pycontrails.datalib.leo" = ["static/*.sql"]
+"pycontrails.datalib._leo_utils" = ["static/*.sql"]
 "pycontrails.models.emissions" = ["static/*.csv"]
 "pycontrails.models.humidity_scaling" = ["quantiles/*.pq"]
 "pycontrails.models.ps_model" = ["static/*.csv"]
