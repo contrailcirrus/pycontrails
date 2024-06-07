@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pathlib
 from collections.abc import Iterable
-from xml import etree
+from xml.etree import ElementTree
 
 import numpy as np
 import pandas as pd
@@ -316,7 +316,7 @@ def _read(path: str, granule_meta: str, safe_meta: str, band: str, processing: s
         gain, offset = _read_band_reflectance_rescaling(safe_meta, band)
         img = np.where(img == 0, np.nan, (img + offset) / gain).astype("float32")
 
-    tree = etree.ElementTree.parse(granule_meta)
+    tree = ElementTree.parse(granule_meta)
     elem = tree.find(".//HORIZONTAL_CS_CODE")
     if elem is None or elem.text is None:
         msg = "Could not find imagery projection in metadata."
@@ -365,7 +365,7 @@ def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float
     and https://scihub.copernicus.eu/news/News00931.
     """
     # Find quantization gain (present in all files)
-    tree = etree.ElementTree.parse(meta)
+    tree = ElementTree.parse(meta)
     elem = tree.find(".//QUANTIFICATION_VALUE")
     if elem is None or elem.text is None:
         msg = "Could not find reflectance quantization gain."
@@ -396,7 +396,7 @@ def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarra
     """Read image x and y coordinates."""
 
     # convenience function that satisfies mypy
-    def _text_from_tag(parent: etree.ElementTree.Element, tag: str) -> str:
+    def _text_from_tag(parent: ElementTree.Element, tag: str) -> str:
         elem = parent.find(tag)
         if elem is None or elem.text is None:
             msg = f"Could not find text in {tag} element"
@@ -406,7 +406,7 @@ def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarra
     resolution = _band_resolution(band)
 
     # find coordinates of upper left corner and pixel size
-    tree = etree.ElementTree.parse(meta)
+    tree = ElementTree.parse(meta)
     elems = tree.findall(".//Geoposition")
     for elem in elems:
         if int(elem.attrib["resolution"]) == resolution:
