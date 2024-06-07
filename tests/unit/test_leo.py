@@ -9,7 +9,8 @@ import pytest
 import xarray as xr
 
 from pycontrails.core import Flight, cache
-from pycontrails.datalib.leo import landsat, search, sentinel
+from pycontrails.datalib import landsat, sentinel
+from pycontrails.datalib._leo_utils import search
 from tests import BIGQUERY_ACCESS, OFFLINE
 
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
