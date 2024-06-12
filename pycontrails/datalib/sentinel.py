@@ -136,7 +136,7 @@ def intersect(
 
     See Also
     --------
-    :func"`search.intersect`
+    :func:`search.intersect`
     """
     columns = columns or BQ_DEFAULT_COLUMNS
     return search.intersect(BQ_TABLE, flight, columns)
