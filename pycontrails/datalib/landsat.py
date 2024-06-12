@@ -399,7 +399,7 @@ def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarra
         msg = "Retrieved Landsat image is not aligned with X and Y coordinates"
         raise ValueError(msg)
     xlim = (ulx, urx)
-    ylim = (lly, uly)
+    ylim = (uly, lly)
 
     # Get size of pixels
     category = (
@@ -409,7 +409,7 @@ def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarra
 
     # Compute pixel coordinates
     nx = np.round((xlim[1] - xlim[0]) / pixel_size).astype(int) + 1
-    ny = np.round((ylim[1] - ylim[0]) / pixel_size).astype(int) + 1
+    ny = np.round((ylim[0] - ylim[1]) / pixel_size).astype(int) + 1
     x = np.linspace(xlim[0], xlim[1], nx)
     y = np.linspace(ylim[0], ylim[1], ny)
 
