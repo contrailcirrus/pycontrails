@@ -96,7 +96,7 @@ def query(
 
     See Also
     --------
-    `func`:search.query:
+    :func:`search.query`
     """
     extent = extent or BQ_DEFAULT_EXTENT
     roi = search.ROI(start_time, end_time, extent)
