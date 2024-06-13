@@ -195,11 +195,6 @@ class APCEMMInput:
     #: Time step of input met data
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
 
-    #: If True, include plume transport by vertical winds.
-    #: Currently produces strange behavior in APCEMM output,
-    #: so default setting (False) is recommended.
-    vertical_advection: bool = False
-
     #: Number of horizontal gridpoints
     nx: int = 200
 

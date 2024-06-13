@@ -8,9 +8,9 @@
 
 ### Features
 
-- Add interfaces for running [APCEMM](https://github.com/MIT-LAE/APCEMM) from within pycontrails. The interface includes:
-    - a low-level wrapper around the native APCEMM interface (`pycontrails.models.apcemm.interface`) than allows users to generate APCEMM input files and run a compiled APCEMM binary manually.
-    - a high-level adapter (`pycontrails.models.apcemm.APCEMM`) that allows users to run APCEMM through the pycontrails `Model` interface.
+- Add tools for running [APCEMM](https://github.com/MIT-LAE/APCEMM) from within pycontrails. This includes:
+    - utilities for generating APCEMM input files and running APCEMM (`pycontrails.models.apcemm.utils`)
+    - an interface (`pycontrails.models.apcemm.apcemm`) that allows users to run APCEMM as a pycontrails `Model`.
 - Add [APCEMM tutorial notebook](https://py.contrails.org/integrations/APCEMM.html).
 - Add prescribed sedimentation rate to `DryAdvection` model.
 - Add `Landsat` and `Sentinel` datalibs for searching, retrieving, and visualizing Landsat 8-9 and Sentinel-2 imagery. The datalibs include:

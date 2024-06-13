@@ -1,4 +1,4 @@
-"""Adapter between APCEMM and pycontrails :class:`Model` interfaces."""
+"""Pycontrails :class:`Model` interface to APCEMM."""
 
 from __future__ import annotations
 
@@ -22,6 +22,8 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import (
     AirTemperature,
     EastwardWind,
+    Geopotential,
+    GeopotentialHeight,
     NorthwardWind,
     SpecificHumidity,
     VerticalVelocity,
@@ -32,7 +34,7 @@ from pycontrails.models.dry_advection import DryAdvection
 from pycontrails.models.emissions import Emissions
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.ps_model import PSFlight
-from pycontrails.physics import geo, thermo
+from pycontrails.physics import constants, geo, thermo
 
 logger = logging.getLogger(__name__)
 
@@ -149,8 +151,10 @@ class APCEMM(models.Model):
     -----
     **Meteorology**
 
-    APCEMM requires temperature, humidity, and winds. See :attr:`met_variables` for the list
-    of required variables.
+    APCEMM requires temperature, humidity, gepotential height, and winds.
+    Geopotential height is required because APCEMM expects meteorological fields
+    on height rather than pressure surfaces. See :attr:`met_variables` for the
+    list of required variables.
 
     .. list-table:: Variable keys for pressure level data
         :header-rows: 1
@@ -164,6 +168,9 @@ class APCEMM(models.Model):
         * - Specific Humidity
           - ``specific_humidity``
           - ``specific_humidity``
+        * - Geopotential/Geopotential Height
+          - ``geopotential``
+          - ``geopotential_height``
         * - Eastward wind
           - ``eastward_wind``
           - ``eastward_wind``
@@ -215,7 +222,7 @@ class APCEMM(models.Model):
        where ``<i>`` is replaced by the index of each simulated flight waypoint.
     3. A separate APCEMM simulation is run in each run directory inside the model
        :attr:`cachestore`. Simulations are independent and can be run in parallel
-       (controlled by the ``n_jobs`` parameter in :class:`APCEMMParams`.) Standard output
+       (controlled by the ``n_jobs`` parameter in :class:`APCEMMParams`). Standard output
        and error streams from each simulation are saved in ``apcemm_waypoint_<i>/stdout.log``
        and ``apcemm_waypoint_<i>/stderr.log``, and APCEMM output is saved
        in a subdirectory specified by the ``output_directory`` model parameter ("out" by default).
@@ -227,8 +234,8 @@ class APCEMM(models.Model):
       other waypoints.
     - A :class:`pd.DataFrame` is created and stored in :attr:`vortex`. This dataframe
       contains the content of APCEMM ``Micro_000000.out`` output files, which
-      contains time series starting during the early wake vorted stage and continuing
-      through the end of the simulation.
+      contains time series output from the APCEMM "early plume model" of the aircraft
+      exhaust plume and downwash vortex.
     - A :class:`pd.DataFrame` is created and stored in :attr:`contrail` provided APCEMM
       simulated at least one persistent contrail. This dataframe contains paths to netCDF
       files, saved at prescribed time intervals during the APCEMM simulation, and can be
@@ -242,6 +249,12 @@ class APCEMM(models.Model):
     APCEMM output represents properties of cross-sections of contrails formed at flight waypoints,
     not properties of contrail segments that form between flight waypoints. Unlike :class:`Cocip`,
     output produced by this interface does not include trailing NaN values.
+
+    **Known limitations**
+
+    - APCEMM does not compute contrail radiative forcing internally. Radiative forcing must be
+      computed offline by the user. Tools for radiative forcing calculations may be included
+      in a future version of the interface.
 
     References
     ----------
@@ -260,7 +273,14 @@ class APCEMM(models.Model):
 
     name = "apcemm"
     long_name = "Interface to APCEMM plume model"
-    met_variables = AirTemperature, SpecificHumidity, EastwardWind, NorthwardWind, VerticalVelocity
+    met_variables = (
+        AirTemperature,
+        SpecificHumidity,
+        (Geopotential, GeopotentialHeight),
+        EastwardWind,
+        NorthwardWind,
+        VerticalVelocity,
+    )
     default_params = APCEMMParams
 
     #: Met data is not optional
@@ -303,6 +323,7 @@ class APCEMM(models.Model):
         **params_kwargs: Any,
     ) -> None:
         super().__init__(met, params=params, **params_kwargs)
+        self._ensure_geopotential_height()
 
         if isinstance(apcemm_path, str):
             apcemm_path = pathlib.Path(apcemm_path)
@@ -641,6 +662,18 @@ class APCEMM(models.Model):
             rpath = os.path.join(rpath, name)
         return self.cachestore.path(rpath)
 
+    def _ensure_geopotential_height(self) -> None:
+        """Ensure that :attr:`self.met` contains geopotential height."""
+        geopotential = Geopotential.standard_name
+        geopotential_height = GeopotentialHeight.standard_name
+
+        if geopotential not in self.met and geopotential_height not in self.met:
+            msg = f"APCEMM MetDataset must contain either {geopotential} or {geopotential_height}."
+            raise ValueError(msg)
+
+        if geopotential_height not in self.met:
+            self.met.update({geopotential_height: self.met[geopotential].data / constants.g})
+
     def _attach_apcemm_time(self) -> None:
         """Attach day of year and fractional hour of day.
 
@@ -888,7 +921,7 @@ class APCEMM(models.Model):
             longitude=interp_lon,
             latitude=interp_lat,
             azimuth=interp_az,
-            air_pressure=1e2 * self.met["level"].values,
+            altitude=self.met["altitude"].values,
             met=self.met,
             humidity_scaling=self.params["humidity_scaling"],
             dz_m=self.params["dz_m"],
