@@ -362,7 +362,7 @@ class APCEMM(models.Model):
 
         Simulates the formation and evolution of contrails from a Flight
         using the APCEMM plume model described in Fritz et. al. (2020)
-        :cite:`schumannRolePlumescaleProcesses2020`.
+        :cite:`fritzRolePlumescaleProcesses2020`.
 
         Parameters
         ----------
