@@ -4,6 +4,7 @@ import os
 
 import geojson
 import numpy as np
+import pandas as pd
 import pyproj
 import pytest
 import xarray as xr
@@ -68,22 +69,30 @@ def test_roi_validation(
 
 
 @pytest.mark.parametrize(
-    ("lon", "lat", "result"),
+    ("flight", "result"),
     [
         (
             # no antimeridian crossing
-            np.array([120, 125, 130, 135, 140]),
-            np.array([-2, -1, 0, 1, 2]),
+            Flight(
+                longitude=np.array([120, 125, 130, 135, 140]),
+                latitude=np.array([-2, -1, 0, 1, 2]),
+                altitude=np.full((5,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 04:00", freq="1h"),
+            ),
             geojson.dumps(
-                geojson.LineString(
-                    [(120.0, -2.0), (125.0, -1.0), (130.0, 0.0), (135.0, 1.0), (140.0, 2.0)]
+                geojson.MultiLineString(
+                    [[(120.0, -2.0), (125.0, -1.0), (130.0, 0.0), (135.0, 1.0), (140.0, 2.0)]]
                 )
             ),
         ),
         (
             # single eastward antimeridian crossing
-            np.array([170, 175, 180, -175, -170]),
-            np.array([-2, -1, 0, 1, 2]),
+            Flight(
+                longitude=np.array([170, 175, 180, -175, -170]),
+                latitude=np.array([-2, -1, 0, 1, 2]),
+                altitude=np.full((5,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 04:00", freq="1h"),
+            ),
             geojson.dumps(
                 geojson.MultiLineString(
                     [
@@ -95,8 +104,12 @@ def test_roi_validation(
         ),
         (
             # single eastward antimeridian crossing with gap filling
-            np.array([170, 175, -175, -170]),
-            np.array([-2, -1, 1, 2]),
+            Flight(
+                longitude=np.array([170, 175, -175, -170]),
+                latitude=np.array([-2, -1, 1, 2]),
+                altitude=np.full((4,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 03:00", freq="1h"),
+            ),
             geojson.dumps(
                 geojson.MultiLineString(
                     [
@@ -108,8 +121,12 @@ def test_roi_validation(
         ),
         (
             # single westward antimeridian crossing
-            np.array([-170, -175, -180, 175, 170]),
-            np.array([-2, -1, 0, 1, 2]),
+            Flight(
+                longitude=np.array([-170, -175, -180, 175, 170]),
+                latitude=np.array([-2, -1, 0, 1, 2]),
+                altitude=np.full((5,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 04:00", freq="1h"),
+            ),
             geojson.dumps(
                 geojson.MultiLineString(
                     [
@@ -121,8 +138,12 @@ def test_roi_validation(
         ),
         (
             # single westward antimeridian crossing with gap filling
-            np.array([-170, -175, 175, 170]),
-            np.array([-2, -1, 1, 2]),
+            Flight(
+                longitude=np.array([-170, -175, 175, 170]),
+                latitude=np.array([-2, -1, 1, 2]),
+                altitude=np.full((4,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 03:00", freq="1h"),
+            ),
             geojson.dumps(
                 geojson.MultiLineString(
                     [
@@ -134,8 +155,14 @@ def test_roi_validation(
         ),
         (
             # multiple antimeridian crossings
-            np.array([170, 175, 180, -175, -170, -175, -180, 175, 170, 175, 180, -175, -170]),
-            np.array([-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]),
+            Flight(
+                longitude=np.array(
+                    [170, 175, 180, -175, -170, -175, -180, 175, 170, 175, 180, -175, -170]
+                ),
+                latitude=np.array([-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]),
+                altitude=np.full((13,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 12:00", freq="1h"),
+            ),
             geojson.dumps(
                 geojson.MultiLineString(
                     [
@@ -155,8 +182,12 @@ def test_roi_validation(
         ),
         (
             # multiple antimeridian crossings with gap filling
-            np.array([170, 175, -175, -170, -175, 175, 170, 175, -175, -170]),
-            np.array([-6, -5, -3, -2, -1, 1, 2, 3, 5, 6]),
+            Flight(
+                longitude=np.array([170, 175, -175, -170, -175, 175, 170, 175, -175, -170]),
+                latitude=np.array([-6, -5, -3, -2, -1, 1, 2, 3, 5, 6]),
+                altitude=np.full((10,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 09:00", freq="1h"),
+            ),
             geojson.dumps(
                 geojson.MultiLineString(
                     [
@@ -174,11 +205,36 @@ def test_roi_validation(
                 )
             ),
         ),
+        (
+            # multiple antimeridian crossings with uneven gaps
+            Flight(
+                longitude=np.array([170, -175, -170, -175, 170, -170]),
+                latitude=np.array([-6, -3, -2, -1, 2, 6]),
+                altitude=np.full((6,), 10000.0),
+                time=pd.date_range("2024-01-01 00:00", "2024-01-01 05:00", freq="1h"),
+            ),
+            geojson.dumps(
+                geojson.MultiLineString(
+                    [
+                        [(170.0, -6.0), (180.0, -4.0)],
+                        [
+                            (-180.0, -4.0),
+                            (-175.0, -3.0),
+                            (-170.0, -2.0),
+                            (-175.0, -1.0),
+                            (-180.0, 0.0),
+                        ],
+                        [(180.0, 0.0), (170.0, 2.0), (180.0, 4.0)],
+                        [(-180.0, 4.0), (-170.0, 6.0)],
+                    ]
+                )
+            ),
+        ),
     ],
 )
-def test_track_to_geojson(lon: np.ndarray, lat: np.ndarray, result: str) -> None:
+def test_track_to_geojson(flight: Flight, result: str) -> None:
     """Test GeoJSON string creation with antimeridian splitting."""
-    assert search.track_to_geojson(lon, lat) == result
+    assert search.track_to_geojson(flight) == result
 
 
 # ========

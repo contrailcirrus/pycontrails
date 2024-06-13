@@ -2,12 +2,17 @@
 
 ## v0.52.0
 
+### Breaking changes
+
+- The `_antimeridian_index` helper method in the `flight` module now returns a list of integers rather than an integer. This allows `Flight.to_geojson_multilinestring` to support multiple antimeridian crossings (see below).
+
 ### Features
 
 - Add `Landsat` and `Sentinel` datalibs for searching, retrieving, and visualizing Landsat 8-9 and Sentinel-2 imagery. The datalibs include:
     - Tools for querying Landsat and Sentinel-2 imagery for intersections with user-defined regions (`landsat.query`, `sentinel.query`) or flights (`landsat.intersect`, `sentinel.intersect`). These tools use BigQuery tables and require a Google Cloud Platform account with access to the BigQuery API.
     - Tools for downloading and visualizing imagery from Landsat (`Landsat`) and Sentinel-2 (`Sentinel`). These tools retrieve data anonymously from Google Cloud Platform storage buckets and can be used without a Google Cloud Platform account.
 - Add tutorial notebooks demonstrating how to use `Landsat` and `Sentinel` datalibs to find flights in high-resolution satellite imagery.
+- Modify `Flight.to_geojson_multilinestring` to make grouping key optional and to support multiple antimeridian crossings.
 - Update the `pycontrails` build system to require `numpy 2.0` per the [official numpy guidelines](https://numpy.org/devdocs/dev/depending_on_numpy.html#numpy-2-0-specific-advice). Note that the runtime requirement for `pycontrails` remains `numpy>=1.22`.
 - Update `pycontrails` for breaking changes introduced in `numpy 2.0` (e.g., [NEP 50](https://numpy.org/neps/nep-0050-scalar-promotion.html)). All changes are backward compatible with `numpy>=1.22`.
 
@@ -23,6 +28,7 @@
 ### Internals
 
 - Add unit tests for Landsat and Sentinel search tools and datalibs, but disable any tests that retrieve imagery data when running tests in GitHub Actions to limit resource consumption in GitHub runners. Users can disable these units tests locally by setting the environment variable `GITHUB_ACTIONS=true`.
+- Add tests for `Flight.to_geojson_multilinestring` with grouping key omitted and update tests with multiple antimeridian crossings.
 
 ## v0.51.2
 

@@ -1374,21 +1374,20 @@ class Flight(GeoVectorDataset):
         return {"type": "FeatureCollection", "features": [linestring]}
 
     def to_geojson_multilinestring(
-        self, key: str, split_antimeridian: bool = True
+        self, key: str | None = None, split_antimeridian: bool = True
     ) -> dict[str, Any]:
         """Return trajectory as GeoJSON FeatureCollection of MultiLineStrings.
 
-        Flight :attr:`data` is grouped according to values of ``key``. Each group gives rise to a
-        Feature containing a MultiLineString geometry. LineStrings can be split over the
-        antimeridian.
+        If `key` is provided, Flight :attr:`data` is grouped according to values of ``key``.
+        Each group gives rise to a Feature containing a MultiLineString geometry.
+        Each MultiLineString can optionally be split over the antimeridian.
 
         Parameters
         ----------
-        key : str
-            Name of :attr:`data` column to group by
+        key : str, optional
+            If provided, name of :attr:`data` column to group by.
         split_antimeridian : bool, optional
-            Split linestrings that cross the antimeridian.
-            Defaults to True
+            Split linestrings that cross the antimeridian. Defaults to True.
 
         Returns
         -------
@@ -1398,31 +1397,41 @@ class Flight(GeoVectorDataset):
         Raises
         ------
         KeyError
-            :attr:`data` does not contain column ``key``
+            ``key`` is provided but :attr:`data` does not contain column ``key``
         """
-        if key not in self.dataframe.columns:
+        if key is not None and key not in self.dataframe.columns:
             raise KeyError(f"Column {key} does not exist in data.")
 
-        jump_index = _antimeridian_index(pd.Series(self["longitude"]), self.attrs["crs"])
+        jump_indices = _antimeridian_index(pd.Series(self["longitude"]), self.attrs["crs"])
 
         def _group_to_feature(group: pd.DataFrame) -> dict[str, str | dict[str, Any]]:
+            # assigns a different value to each group of consecutive indices
             subgrouping = group.index.to_series().diff().ne(1).cumsum()
-            # additional splitting at antimeridian
-            if jump_index in subgrouping and split_antimeridian:
-                subgrouping.loc[jump_index:] += 1
+
+            # increments values after antimeridian crossings
+            if split_antimeridian:
+                for jump_index in jump_indices:
+                    if jump_index in subgrouping:
+                        subgrouping.loc[jump_index:] += 1
+
+            # creates separate linestrings for sets of points
+            # - with non-consecutive indices
+            # - before and after antimeridian crossings
             multi_ls = [_return_linestring(g) for _, g in group.groupby(subgrouping)]
             geometry = {"type": "MultiLineString", "coordinates": multi_ls}
 
             # adding in static properties
-            properties: dict[str, Any] = {key: group.name}
+            properties: dict[str, Any] = {key: group.name} if key is not None else {}
             properties.update(self.constants)
             return {"type": "Feature", "geometry": geometry, "properties": properties}
 
-        features = (
-            self.dataframe.groupby(key)
-            .apply(_group_to_feature, include_groups=False)
-            .values.tolist()
-        )
+        if key is not None:
+            groups = self.dataframe.groupby(key)
+        else:
+            # create a single group containing all rows of dataframe
+            groups = self.dataframe.groupby(lambda _: 0)
+
+        features = groups.apply(_group_to_feature, include_groups=False).values.tolist()
         return {"type": "FeatureCollection", "features": features}
 
     def to_traffic(self) -> traffic.core.Flight:
@@ -1609,8 +1618,8 @@ def _return_linestring(data: dict[str, npt.NDArray[np.float64]]) -> list[list[fl
     return [list(p) for p in points]
 
 
-def _antimeridian_index(longitude: pd.Series, crs: str = "EPSG:4326") -> int:
-    """Return index after flight crosses antimeridian, or -1 if flight does not cross.
+def _antimeridian_index(longitude: pd.Series, crs: str = "EPSG:4326") -> list[int]:
+    """Return indices after flight crosses antimeridian, or an empty list if flight does not cross.
 
     Parameters
     ----------
@@ -1658,12 +1667,7 @@ def _antimeridian_index(longitude: pd.Series, crs: str = "EPSG:4326") -> int:
     jump21 = longitude[s1.shift() & s2]
     jump_index = pd.concat([jump12, jump21]).index.to_list()
 
-    if len(jump_index) > 1:
-        raise ValueError("Only implemented for trajectories jumping the antimeridian at most once.")
-    if len(jump_index) == 1:
-        return jump_index[0]
-
-    return -1
+    return jump_index
 
 
 def _sg_filter(
