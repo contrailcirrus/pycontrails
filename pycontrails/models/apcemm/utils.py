@@ -280,13 +280,19 @@ def generate_apcemm_input_met(
     w_on_z = np.zeros(shape_on_z, dtype=w.dtype)
 
     # Fields should already be on pressure levels close to target
-    # altitudes, so this just uses linear interpolation on fields
-    # expected by APCEMM with constant extrapolation when required.
-    # NaNs are preserved at the start and end of interpolate profiles
+    # altitudes, so this just uses linear interpolation and constant
+    # extrapolation on fields expected by APCEMM.
+    # NaNs are preserved at the start and end of interpolated profiles
     # but removed in interiors.
     def interp(z: np.ndarray, z0: np.ndarray, f0: np.ndarray) -> np.ndarray:
         # mask nans
         mask = np.isnan(z0) | np.isnan(f0)
+        if np.all(mask):
+            msg = (
+                "Found all-NaN profile during APCEMM meterology input file creation. "
+                "MetDataset may have insufficient spatiotemporal coverage."
+            )
+            raise ValueError(msg)
         z0 = z0[~mask]
         f0 = f0[~mask]
 
