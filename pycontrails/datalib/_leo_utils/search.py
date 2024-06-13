@@ -58,78 +58,69 @@ class ROI:
             raise ValueError(msg)
 
 
-def track_to_geojson(lon: np.ndarray, lat: np.ndarray) -> str:
+def track_to_geojson(flight: Flight) -> str:
     """Convert ground track to GeoJSON string, splitting at antimeridian crossings.
 
-    Antimeridian crossings are defined as successive points with one longitude coordinate
-    greater than 90 degrees and the other longitude coordinate less than -90 degrees.
+    Coordinates contain longitude and latitude only (no altitude coordinate)
+    and are padded to terminate and restart exactly at the antimeridian when
+    antimeridian crossings are encountered.
 
     Parameters
     ----------
-    lon : np.ndarray
-        Longitude coordinates of track [WGS84]
-    lat : np.ndarray
-        Latitude coordinates of track [WGS84]
+    flight : Flight
+        Flight with ground track to convert to GeoJSON string.
 
     Returns
     -------
     str
-        String encoding of GeoJSON LineString (if track does not contain antimeridian crossings)
-        or GeoJSON MultiLineString (if track contains one or more antimeridian crossings).
+        String encoding of a GeoJSON MultiLineString containing ground track split at
+        antimeridian crossings.
+
+    See Also
+    --------
+    :meth:`Flight.to_geojson_multilinestring`
     """
-    crossings = np.flatnonzero(
-        ((lon[:-1] > 90.0) & (lon[1:] < -90.0))  # eastward
-        | ((lon[:-1] < -90.0) & (lon[1:] > 90.0))  # westward
-    )
 
-    # can just return a LineString if no antimeridian crossings
-    if crossings.sum() == 0:
-        feature = geojson.LineString(list(zip(lon.astype(float), lat.astype(float))))
-        return geojson.dumps(feature)
+    # Logic assumes longitudes are between -180 and 180.
+    # Raise an error if this is not the case.
+    if np.abs(flight["longitude"]).max() > 180.0:
+        msg = "Flight longitudes must be between -180 and 180."
+        raise ValueError(msg)
 
-    # otherwise, need to split at crossings
-    lon_splits = []
-    lat_splits = []
-    for i in range(crossings.size):
-        idx = crossings[i]
-        eastward = lon[idx] > 0
+    # Get feature collection containing a single multilinestring
+    # split at antimeridian crossings
+    fc = flight.to_geojson_multilinestring(split_antimeridian=True)
 
-        bounding_lon = lon[idx : idx + 2]
-        bounding_lat = lat[idx : idx + 2]
-        rotated = np.where(bounding_lon < 0, bounding_lon + 360, bounding_lon)
-        isort = np.argsort(rotated)  # ensure rotated longitudes are ascending
-        crossing_lat = np.interp(180.0, rotated[isort], bounding_lat[isort])
+    # Extract multilinestring
+    mls = fc["features"][0]["geometry"]
 
-        lon_split = lon[: idx + 1]
-        lon = lon[idx + 1 :]
-        lat_split = lat[: idx + 1]
-        lat = lat[idx + 1 :]
-        crossings -= lon_split.size
+    # Strip altitude coordinates
+    coords = [[[c[0], c[1]] for c in linestring] for linestring in mls["coordinates"]]
 
-        # fill gaps around antimeridian if necessary
-        if np.abs(lon_split[-1]) < 180.0:
-            lon_split = np.append(lon_split, 180.0 if eastward else -180.0)
-            lat_split = np.append(lat_split, crossing_lat)
-        if np.abs(lon[0]) < 180.0:
-            lon = np.insert(lon, 0, -180.0 if eastward else 180.0)
-            lat = np.insert(lat, 0, crossing_lat)
-            crossings += 1
+    # No padding required if no antimeridian crossings were encountered
+    if len(coords) == 1:
+        return geojson.dumps(geojson.MultiLineString(coords))
 
-        lon_splits.append(lon_split)
-        lat_splits.append(lat_split)
+    # Pad at crossings
+    for i in range(len(coords) - 1):
+        x0 = coords[i][-1][0]
+        x1 = coords[i + 1][0][0]
+        if abs(x0) == 180.0 and abs(x1) == 180.0:
+            continue
+        y0 = coords[i][-1][1]
+        y1 = coords[i + 1][0][1]
+        xl = 180.0 * np.sign(x0)
+        xr = 180.0 * np.sign(x1)
+        w0 = np.abs(xr - x1)
+        w1 = np.abs(xl - x0)
+        yc = (w0 * y0 + w1 * y1) / (w0 + w1)
+        if abs(x0) < 180.0:
+            coords[i].append([xl, yc])
+        if abs(x1) < 180.0:
+            coords[i + 1].insert(0, [xr, yc])
 
-    # add remaining segment as final split
-    lon_splits.append(lon)
-    lat_splits.append(lat)
-
-    # return MultiLineString based on splits
-    feature = geojson.MultiLineString(
-        [
-            list(zip(lon.astype(float), lat.astype(float)))
-            for lon, lat in zip(lon_splits, lat_splits)
-        ]
-    )
-    return geojson.dumps(feature)
+    # Encode as string
+    return geojson.dumps(geojson.MultiLineString(coords))
 
 
 def query(table: str, roi: ROI, columns: list[str], extra_filters: str = "") -> pd.DataFrame:
@@ -221,7 +212,7 @@ def intersect(
 
     # create ROI with time span between flight start and end
     # and spatial extent set to flight track
-    extent = track_to_geojson(flight["longitude"], flight["latitude"])
+    extent = track_to_geojson(flight)
     roi = ROI(start_time=flight["time"].min(), end_time=flight["time"].max(), extent=extent)
 
     # first pass: query for intersections with ROI

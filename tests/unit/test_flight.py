@@ -542,12 +542,17 @@ def test_geojson_methods(fl: Flight, rng: np.random.Generator) -> None:
     d3 = fl.to_geojson_multilinestring("issr")
     assert d3["type"] == "FeatureCollection"
     assert len(d3["features"]) == 2
+    d4 = fl.to_geojson_multilinestring()
+    assert d4["type"] == "FeatureCollection"
+    assert len(d4["features"]) == 1
 
     coords1 = [f["geometry"]["coordinates"] for f in d3["features"]]
+    coords2 = [f["geometry"]["coordinates"] for f in d4["features"]]
     # flattening, casting to tuple to allow inclusion into a set
     coords1 = [tuple(c) for c2 in coords1 for c1 in c2 for c in c1]
-    coords2 = [tuple(c) for c in d2["features"][0]["geometry"]["coordinates"]]
-    assert set(coords1) == set(coords2)
+    coords2 = [tuple(c) for c2 in coords2 for c1 in c2 for c in c1]
+    coords3 = [tuple(c) for c in d2["features"][0]["geometry"]["coordinates"]]
+    assert set(coords1) == set(coords2) == set(coords3)
 
 
 def test_to_traffic(fl: Flight) -> None:
@@ -619,11 +624,18 @@ def test_antimeridian_jump() -> None:
     _, lon, idx = fl.distance_to_coords(np.array([200000.0, 300000.0, 400000.0, 500000.0]))
     np.testing.assert_array_equal(idx, [0, 1, 1, 2])
     np.testing.assert_array_equal(np.sign(lon), [-1, -1, 1, 1])
+
     df["longitude"] = [-177, -179, 179, -178]
     fl = Flight(df)
-    # jumps antimeridian twice
-    with pytest.raises(ValueError, match="Only implemented for trajectories jumping"):
-        fl.to_geojson_multilinestring("issr", split_antimeridian=True)
+    d = fl.to_geojson_multilinestring("issr", split_antimeridian=True)
+    issr_feature = d["features"][1]
+    assert len(issr_feature["geometry"]["coordinates"]) == 3
+    d = fl.to_geojson_multilinestring("issr", split_antimeridian=False)
+    issr_feature = d["features"][1]
+    assert len(issr_feature["geometry"]["coordinates"]) == 1
+    d = fl.to_geojson_multilinestring(split_antimeridian=True)
+    feature = d["features"][0]
+    assert len(feature["geometry"]["coordinates"]) == 3
 
 
 def test_segment_properties(fl: Flight, rng: np.random.Generator) -> None:
