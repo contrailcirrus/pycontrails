@@ -264,7 +264,7 @@ def generate_apcemm_input_met(
     z = vector["geopotential_height"].reshape(shape)
     rhi = vector["rhi"].reshape(shape)
     shear = vector["normal_shear"].reshape(shape)
-    shear[-1, :] = shear[-2, :]  # lowest level will be nan
+    shear[:, -1] = shear[:, -2]  # lowest level will be nan
     omega = vector["lagrangian_tendency_of_air_pressure"].reshape(shape)
     virtual_temperature = temperature * (1 + qv / constants.epsilon) / (1 + qv)
     density = pressure[np.newaxis, :] / (constants.R_d * virtual_temperature)
@@ -316,7 +316,7 @@ def generate_apcemm_input_met(
         w_on_z[i, :] = interp(altitude, z[i, :], w[i, :])
 
     # APCEMM also requires initial pressure profile
-    pressure_on_z = np.interp(altitude, z[0, :], pressure)
+    pressure_on_z = interp(altitude, z[0, :], pressure)
 
     # Create APCEMM input dataset.
     # Transpose require because APCEMM expects (altitude, time) arrays.
