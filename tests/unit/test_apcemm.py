@@ -16,6 +16,7 @@ from pycontrails.models.humidity_scaling import (
     ExponentialBoostHumidityScaling,
 )
 from pycontrails.models.ps_model import PSFlight
+from pycontrails.physics import constants
 
 from .conftest import get_static_path
 
@@ -89,11 +90,13 @@ def met_apcemm() -> MetDataset:
         [
             "air_temperature",
             "specific_humidity",
+            "geopotential",
             "eastward_wind",
             "northward_wind",
             "lagrangian_tendency_of_air_pressure",
         ]
     ]
+    ds["geopotential_height"] = ds["geopotential"] / constants.g
     ds["air_pressure"] = ds["air_pressure"].astype("float32")
     ds["altitude"] = ds["altitude"].astype("float32")
     ds.attrs.update(provider="ECMWF", dataset="ERA5", product="reanalysis")
@@ -140,6 +143,7 @@ def apcemm_persistent(
     [
         "air_temperature",
         "specific_humidity",
+        ("geopotential", "geopotential_height"),
         "eastward_wind",
         "northward_wind",
         "lagrangian_tendency_of_air_pressure",
@@ -147,7 +151,7 @@ def apcemm_persistent(
     ],
 )
 def test_apcemm_validate_met(
-    drop_var: str | None, met_apcemm: MetDataset, apcemm_paths: tuple[str, str]
+    drop_var: str | tuple[str] | None, met_apcemm: MetDataset, apcemm_paths: tuple[str, str]
 ) -> None:
     """Test APCEMM met validation."""
     apcemm_path, apcemm_root = apcemm_paths
@@ -168,6 +172,49 @@ def test_apcemm_validate_met(
             apcemm_root=apcemm_root,
             humidity_scaling=ConstantHumidityScaling(),
         )
+
+
+@pytest.mark.parametrize(
+    "drop_var",
+    [
+        (),
+        ("geopotential",),
+        ("geopotential_height",),
+        ("geopotential", "geopotential_height"),
+    ],
+)
+def test_apcemm_ensure_geopotential_height(
+    drop_var: tuple[str], met_apcemm: MetDataset, apcemm_paths: tuple[str, str]
+) -> None:
+    """Test APCEMM met validation."""
+    apcemm_path, apcemm_root = apcemm_paths
+    met = MetDataset(met_apcemm.data.drop_vars(drop_var))
+
+    if len(drop_var) < 2:
+        model = APCEMM(
+            met=met,
+            apcemm_path=apcemm_path,
+            apcemm_root=apcemm_root,
+            humidity_scaling=ConstantHumidityScaling(),
+        )
+        assert "geopotential_height" in model.met
+
+    else:
+        with pytest.raises(KeyError, match="Dataset does not contain"):
+            _ = APCEMM(
+                met=met,
+                apcemm_path=apcemm_path,
+                apcemm_root=apcemm_root,
+                humidity_scaling=ConstantHumidityScaling(),
+            )
+        with pytest.raises(ValueError, match="APCEMM MetDataset must contain"):
+            _ = APCEMM(
+                met=met,
+                apcemm_path=apcemm_path,
+                apcemm_root=apcemm_root,
+                humidity_scaling=ConstantHumidityScaling(),
+                verify_met=False,
+            )
 
 
 @pytest.mark.parametrize(

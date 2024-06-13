@@ -83,9 +83,6 @@ def generate_apcemm_input_yaml(params: APCEMMInput) -> str:
         ice_growth_timestep_min=params.dt_apcemm_ice_growth / np.timedelta64(1, "m"),
         met_input_file_path_str=params.input_met_file,
         time_series_data_timestep_hr=params.dt_input_met / np.timedelta64(1, "h"),
-        init_vert_veloc_from_met_data_bool=_yaml_bool(params.vertical_advection),
-        vert_veloc_time_series_input_bool=_yaml_bool(params.vertical_advection),
-        interpolate_vert_veloc_met_data_bool=_yaml_bool(params.vertical_advection),
         save_aerosol_timeseries_bool=_yaml_bool(params.do_apcemm_nc_output),
         aerosol_indices_list_int=",".join(str(i) for i in params.apcemm_nc_output_species),
         save_frequency_min=params.dt_apcemm_nc_output / np.timedelta64(1, "m"),
@@ -112,7 +109,7 @@ def generate_apcemm_input_met(
     longitude: np.ndarray,
     latitude: np.ndarray,
     azimuth: np.ndarray,
-    air_pressure: np.ndarray,
+    altitude: np.ndarray,
     met: MetDataset,
     humidity_scaling: HumidityScaling,
     dz_m: float,
@@ -148,15 +145,16 @@ def generate_apcemm_input_met(
         the segment. The azimuth is used to convert horizontal winds into segment-normal
         wind shear. Must have the same shape as :param:`time`.
         Will be flattened before use if not 1-dimensional.
-    air_pressure : np.ndarray
-        Defines pressure levels [:math:`Pa`] on which atmospheric profiles are computed.
-        Profiles are defined using the same set of pressure levels at every point
+    altitude : np.ndarray
+        Defines altitudes [:math:`m`] on which atmospheric profiles are computed.
+        Profiles are defined using the same set of altitudes at every point
         along the Lagrangian trajectory of the advected flight segment. Note that
         this parameter does not have to have the same shape as :param:`time`.
     met : MetDataset
         Meteorology used to generate the sequence of atmospheric profiles. Must contain:
         - air temperature [:math:`K`]
         - specific humidity [:math:`kg/kg`]
+        - geopotential height [:math:`m`]
         - eastward wind [:math:`m/s`]
         - northward wind [:math:`m/s`]
         - vertical velocity [:math:`Pa/s`]
@@ -177,6 +175,7 @@ def generate_apcemm_input_met(
     vars = (
         met_var.AirTemperature,
         met_var.SpecificHumidity,
+        met_var.GeopotentialHeight,
         met_var.EastwardWind,
         met_var.NorthwardWind,
         met_var.VerticalVelocity,
@@ -189,10 +188,14 @@ def generate_apcemm_input_met(
     longitude = longitude.ravel()
     latitude = latitude.ravel()
     azimuth = azimuth.ravel()
-    level = air_pressure.ravel() / 1e2
+    altitude = altitude.ravel()
 
-    # Broadcast to required shape and create vector for interpolation
-    shape = (time.size, level.size)
+    # Estimate pressure levels close to target altitudes.
+    level = units.m_to_pl(altitude)
+
+    # Broadcast to required shape and create vector for initial interpolation
+    # onto original pressure levels at target horizontal location.
+    shape = (time.size, altitude.size)
     time = np.broadcast_to(time[:, np.newaxis], shape).ravel()
     longitude = np.broadcast_to(longitude[:, np.newaxis], shape).ravel()
     latitude = np.broadcast_to(latitude[:, np.newaxis], shape).ravel()
@@ -214,6 +217,7 @@ def generate_apcemm_input_met(
     for met_key in (
         "air_temperature",
         "eastward_wind",
+        "geopotential_height",
         "northward_wind",
         "specific_humidity",
         "lagrangian_tendency_of_air_pressure",
@@ -248,35 +252,83 @@ def generate_apcemm_input_met(
         ),
     )
 
-    # Create dataset
+    # Reshape interpolated fields to (time, level).
     nlev = met["air_pressure"].size
     ntime = len(vector) // nlev
     shape = (ntime, nlev)
     pressure = met["air_pressure"].values
-    altitude = met["altitude"].values
     time = np.unique(vector["time"])
     time = (time - time[0]) / np.timedelta64(1, "h")
-    temperature = vector["air_temperature"].reshape(shape).T
-    qv = vector["specific_humidity"].reshape(shape).T
-    rhi = vector["rhi"].reshape(shape).T
-    shear = vector["normal_shear"].reshape(shape).T
+    temperature = vector["air_temperature"].reshape(shape)
+    qv = vector["specific_humidity"].reshape(shape)
+    z = vector["geopotential_height"].reshape(shape)
+    rhi = vector["rhi"].reshape(shape)
+    shear = vector["normal_shear"].reshape(shape)
     shear[-1, :] = shear[-2, :]  # lowest level will be nan
-    omega = vector["lagrangian_tendency_of_air_pressure"].reshape(shape).T
+    omega = vector["lagrangian_tendency_of_air_pressure"].reshape(shape)
     virtual_temperature = temperature * (1 + qv / constants.epsilon) / (1 + qv)
-    density = pressure[:, np.newaxis] / (constants.R_d * virtual_temperature)
+    density = pressure[np.newaxis, :] / (constants.R_d * virtual_temperature)
     w = -omega / (density * constants.g)
 
+    # Interpolate fields to target altitudes profile-by-profile
+    # to obtain 2D arrays with dimensions (time, altitude).
+    nalt = altitude.size
+    shape_on_z = (ntime, nalt)
+    temperature_on_z = np.zeros(shape_on_z, dtype=temperature.dtype)
+    rhi_on_z = np.zeros(shape_on_z, dtype=rhi.dtype)
+    shear_on_z = np.zeros(shape_on_z, dtype=shear.dtype)
+    w_on_z = np.zeros(shape_on_z, dtype=w.dtype)
+
+    # Fields should already be on pressure levels close to target
+    # altitudes, so this just uses linear interpolation on fields
+    # expected by APCEMM with constant extrapolation when required.
+    # NaNs are preserved at the start and end of interpolate profiles
+    # but removed in interiors.
+    def interp(z: np.ndarray, z0: np.ndarray, f0: np.ndarray) -> np.ndarray:
+        # mask nans
+        mask = np.isnan(z0) | np.isnan(f0)
+        z0 = z0[~mask]
+        f0 = f0[~mask]
+
+        # interpolate
+        assert np.all(np.diff(z0) < 0)  # expect decreasing altitudes
+        fi = np.interp(-z, -z0, f0, left=f0[0], right=f0[1])
+
+        # restore nans at start and end of profile
+        if mask[0]:  # nans at top of profile
+            fi[z > z0.max()] = np.nan
+        if mask[-1]:  # nans at end of profile
+            fi[z < z0.min()] = np.nan
+        return fi
+
+    # The manual for loop is unlikely to be a bottleneck since a
+    # substantial amount of work is done within each iteration.
+    for i in range(ntime):
+        temperature_on_z[i, :] = interp(altitude, z[i, :], temperature[i, :])
+        rhi_on_z[i, :] = interp(altitude, z[i, :], rhi[i, :])
+        shear_on_z[i, :] = interp(altitude, z[i, :], shear[i, :])
+        w_on_z[i, :] = interp(altitude, z[i, :], w[i, :])
+
+    # APCEMM also requires initial pressure profile
+    pressure_on_z = np.interp(altitude, z[0, :], pressure)
+
+    # Create APCEMM input dataset.
+    # Transpose require because APCEMM expects (altitude, time) arrays.
     return xr.Dataset(
         data_vars={
-            "pressure": (("altitude",), pressure.astype("float32") / 1e2, {"units": "hPa"}),
-            "temperature": (("altitude", "time"), temperature.astype("float32"), {"units": "K"}),
+            "pressure": (("altitude",), pressure_on_z.astype("float32") / 1e2, {"units": "hPa"}),
+            "temperature": (
+                ("altitude", "time"),
+                temperature_on_z.astype("float32").T,
+                {"units": "K"},
+            ),
             "relative_humidity_ice": (
                 ("altitude", "time"),
-                1e2 * rhi.astype("float32"),
+                1e2 * rhi_on_z.astype("float32").T,
                 {"units": "percent"},
             ),
-            "shear": (("altitude", "time"), shear.astype("float32"), {"units": "s**-1"}),
-            "w": (("altitude", "time"), w.astype("float32"), {"units": "m s**-1"}),
+            "shear": (("altitude", "time"), shear_on_z.astype("float32").T, {"units": "s**-1"}),
+            "w": (("altitude", "time"), w_on_z.astype("float32").T, {"units": "m s**-1"}),
         },
         coords={
             "altitude": ("altitude", altitude.astype("float32") / 1e3, {"units": "km"}),
