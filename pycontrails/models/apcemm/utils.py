@@ -171,6 +171,9 @@ def generate_apcemm_input_met(
         Meteorology dataset in required format for APCEMM input.
     """
 
+    # Ensure that altitudes are sorted ascending
+    altitude = np.sort(altitude)
+
     # Check for required fields in met
     vars = (
         met_var.AirTemperature,
@@ -295,8 +298,8 @@ def generate_apcemm_input_met(
         f0 = f0[~mask]
 
         # interpolate
-        assert np.all(np.diff(z0) < 0)  # expect decreasing altitudes
-        fi = np.interp(-z, -z0, f0, left=f0[0], right=f0[-1])
+        assert np.all(np.diff(z0) > 0)  # expect increasing altitudes
+        fi = np.interp(z, z0, f0, left=f0[0], right=f0[-1])
 
         # restore nans at start and end of profile
         if mask[0]:  # nans at top of profile
