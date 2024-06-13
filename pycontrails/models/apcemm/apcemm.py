@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class APCEMMParams(models.ModelParams):
-    """Default parameters for the pycontrails :class:`APCEMM` adapter."""
+    """Default parameters for the pycontrails :class:`APCEMM` interface."""
 
     #: Maximum contrail age
     max_age: np.timedelta64 = np.timedelta64(20, "h")
@@ -83,7 +83,7 @@ class APCEMMParams(models.ModelParams):
     #: Fuel type
     fuel: Fuel = JetA()
 
-    #: List of flight waypoints to simulated in APCEMM.
+    #: List of flight waypoints to simulate in APCEMM.
     #: By default, runs a simulation for every waypoint.
     waypoints: list[int] | None = None
 
@@ -132,7 +132,7 @@ class APCEMM(models.Model):
     apcemm_input_params : APCEMMInput, optional
         Value for APCEMM input parameters defined in :class:`APCEMMInput`. If provided, values
         for ``input_background_condition`` or ``input_engine_emissions`` will override values
-        set based on :param:`apcemm_root`. Attempting to provide values for input parameters
+        set based on ``apcemm_root``. Attempting to provide values for input parameters
         that are determined automatically by this interface will result in an error.
         See *Notes* for detailed information about YAML file generation.
     cachestore : CacheStore, optional
@@ -140,7 +140,7 @@ class APCEMM(models.Model):
         If not provided, uses a :class:`DiskCacheStore`.
         See *Notes* for detailed information about the file structure for APCEMM
         simulations.
-    params : dict[str, Any], optional
+    params : dict[str,Any], optional
         Override APCEMM model parameters with dictionary.
         See :class:`APCEMMParams` for model parameters.
     **params_kwargs : Any
@@ -197,9 +197,9 @@ class APCEMM(models.Model):
 
     :class:`APCEMMInput` provides low-level control over the contents of YAML files used
     as APCEMM input. YAML file contents can be controlled by passing custom parameters
-    in a dictionary through the :param:`apcemm_input_params` parameter. Note, however, that
+    in a dictionary through the ``apcemm_input_params`` parameter. Note, however, that
     :class:`APCEMM` sets a number of APCEMM input parameters automatically, and attempting
-    to override any automatically-determined parameters using :param:`apcemm_input_params`
+    to override any automatically-determined parameters using ``apcemm_input_params``
     will result in an error. A list of automatically-determined parameters is available in
     :attr:`dynamic_yaml_params`.
 
@@ -233,15 +233,15 @@ class APCEMM(models.Model):
       was run and the contents of the APCEMM ``status_case0`` output file for
       other waypoints.
     - A :class:`pd.DataFrame` is created and stored in :attr:`vortex`. This dataframe
-      contains the content of APCEMM ``Micro_000000.out`` output files, which
       contains time series output from the APCEMM "early plume model" of the aircraft
-      exhaust plume and downwash vortex.
-    - A :class:`pd.DataFrame` is created and stored in :attr:`contrail` provided APCEMM
-      simulated at least one persistent contrail. This dataframe contains paths to netCDF
+      exhaust plume and downwash vortex, read from ``Micro_000000.out`` output files
+      saved by APCEMM.
+    - If APCEMM simulated at least one persistent contrail, A :class:`pd.DataFrame` is
+      created and stored in :attr:`contrail`. This dataframe contains paths to netCDF
       files, saved at prescribed time intervals during the APCEMM simulation, and can be
       used to open APCEMM output (e.g., using :func:`xr.open_dataset`) for further analysis.
 
-    **Numerics***
+    **Numerics**
 
     APCEMM simulations are initialized at flight waypoints and represent the evolution of the
     cross-section of contrails formed at each waypoint. APCEMM does not explicitly model the length
@@ -302,7 +302,7 @@ class APCEMM(models.Model):
     #: Output from trajectory calculation
     trajectories: Flight | None
 
-    #: APCEMM time series output, starting from early vortex stage
+    #: Time series output from the APCEMM early plume model
     vortex: pd.DataFrame | None
 
     #: Paths to APCEMM netCDF output at prescribed time intervals
@@ -358,7 +358,7 @@ class APCEMM(models.Model):
     def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
     def eval(self, source: Flight | None = None, **params: Any) -> Flight | NoReturn:
-        """Run APCEMM simulation on flight.
+        """Set up and run APCEMM simulations initialized at flight waypoints.
 
         Simulates the formation and evolution of contrails from a Flight
         using the APCEMM plume model described in Fritz et. al. (2020)
@@ -367,10 +367,7 @@ class APCEMM(models.Model):
         Parameters
         ----------
         source : Flight | None
-            Input Flight to model. The sampling frequency of flight waypoints must be a
-            constant even multiple of the timestep ``dt_lagrangian`` used for the Lagrangian
-            trajectory calculation. To resample flight tracks to a constant frequency, see
-            :func:`Flight.resample_and_fill`.
+            Input Flight to model.
         **params : Any
             Overwrite model parameters before eval.
 
@@ -428,7 +425,7 @@ class APCEMM(models.Model):
         return self.source
 
     def attach_apcemm_initial_conditions(self) -> None:
-        """Compute fields required for APCEMM initial conditions and attach to source.
+        """Compute fields required for APCEMM initial conditions and attach to :attr:`source`.
 
         This modifies :attr:`source` by attaching quantities derived from meterology
         data and aircraft performance calculations.
@@ -488,8 +485,8 @@ class APCEMM(models.Model):
     def run_apcemm(self, waypoints: list[int]) -> None:
         """Run APCEMM over multiple waypoints.
 
-        Multiple waypoints will be processed in parallel if the interface parameter ``n_jobs``
-        is set to a value larger than 1.
+        Multiple waypoints will be processed in parallel if the :class:`APCEMM`
+        ``n_jobs`` parameter is set to a value larger than 1.
 
         Parameters
         ----------
@@ -611,8 +608,8 @@ class APCEMM(models.Model):
     def dynamic_yaml_params(self) -> set[str]:
         """Set of :class:`APCEMMInput` attributes set dynamically by this model.
 
-        Other :class:`APCEMMInput` attributes can be set statically by passing a custom instance of
-        :class:`APCEMMInput` when the model is created.
+        Other :class:`APCEMMInput` attributes can be set statically by passing
+        parameters in ``apcemm_input_params`` to the :class:`APCEMM` constructor.
         """
         return {
             "max_age",
