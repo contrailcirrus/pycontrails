@@ -34,9 +34,11 @@ from pycontrails.models.dry_advection import DryAdvection
 from pycontrails.models.emissions import Emissions
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.ps_model import PSFlight
-from pycontrails.physics import constants, geo, thermo
+from pycontrails.physics import constants, geo, thermo, units
 
 logger = logging.getLogger(__name__)
+
+#: Minimum altitude
 
 
 @dataclasses.dataclass
@@ -63,6 +65,11 @@ class APCEMMParams(models.ModelParams):
 
     #: Time step of meteorology in generated APCEMM input file.
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
+
+    #: Altitude coordinates [:math:`m`] for meteorology in generated APCEMM input file.
+    #: If not provided, uses estimated altitudes for levels in input :class:`Metdataset`,
+    #: limited to a minimum of 20,0000 feet and a maximum of 50,000 feet.
+    altitude_input_met: list[float] | None = None
 
     #: Humidity scaling
     humidity_scaling: HumidityScaling | None = None
@@ -908,17 +915,24 @@ class APCEMM(models.Model):
         if (180 - min_pos) + (180 + max_neg) < 180 and min_pos < np.inf and max_neg > -np.inf:
             lon = np.where(lon < 0, lon + 360, lon)
         interp_lon = np.interp(target_elapsed, elapsed, lon)
-        lon = np.where(lon > 180, lon - 360, lon)
+        interp_lon = np.where(interp_lon > 180, interp_lon - 360, interp_lon)
 
         interp_lat = np.interp(target_elapsed, elapsed, traj["latitude"].values)
         interp_az = np.interp(target_elapsed, elapsed, traj["azimuth"].values)
+
+        if self.params["altitude_input_met"] is None:
+            altitude = self.met["altitude"].values
+            mask = (altitude >= units.ft_to_m(20_000.0)) & (altitude <= units.ft_to_m(50_000.0))
+            altitude = altitude[mask]
+        else:
+            altitude = np.array(self.params["altitude_input_met"])
 
         ds = utils.generate_apcemm_input_met(
             time=target_time,
             longitude=interp_lon,
             latitude=interp_lat,
             azimuth=interp_az,
-            altitude=self.met["altitude"].values,
+            altitude=altitude,
             met=self.met,
             humidity_scaling=self.params["humidity_scaling"],
             dz_m=self.params["dz_m"],
