@@ -190,8 +190,9 @@ def generate_apcemm_input_met(
     azimuth = azimuth.ravel()
     altitude = altitude.ravel()
 
-    # Estimate pressure levels close to target altitudes.
-    level = units.m_to_pl(altitude)
+    # Estimate pressure levels close to target altitudes
+    # (not exact because this assumes the ISA temperature profile)
+    pressure = units.m_to_pl(altitude) * 1e2
 
     # Broadcast to required shape and create vector for initial interpolation
     # onto original pressure levels at target horizontal location.
@@ -200,7 +201,7 @@ def generate_apcemm_input_met(
     longitude = np.broadcast_to(longitude[:, np.newaxis], shape).ravel()
     latitude = np.broadcast_to(latitude[:, np.newaxis], shape).ravel()
     azimuth = np.broadcast_to(azimuth[:, np.newaxis], shape).ravel()
-    level = np.broadcast_to(level[np.newaxis, :], shape).ravel()
+    level = np.broadcast_to(pressure[np.newaxis, :] / 1e2, shape).ravel()
     vector = GeoVectorDataset(
         data={"azimuth": azimuth},
         longitude=longitude,
@@ -253,10 +254,9 @@ def generate_apcemm_input_met(
     )
 
     # Reshape interpolated fields to (time, level).
-    nlev = met["air_pressure"].size
+    nlev = altitude.size
     ntime = len(vector) // nlev
     shape = (ntime, nlev)
-    pressure = met["air_pressure"].values
     time = np.unique(vector["time"])
     time = (time - time[0]) / np.timedelta64(1, "h")
     temperature = vector["air_temperature"].reshape(shape)
@@ -272,12 +272,10 @@ def generate_apcemm_input_met(
 
     # Interpolate fields to target altitudes profile-by-profile
     # to obtain 2D arrays with dimensions (time, altitude).
-    nalt = altitude.size
-    shape_on_z = (ntime, nalt)
-    temperature_on_z = np.zeros(shape_on_z, dtype=temperature.dtype)
-    rhi_on_z = np.zeros(shape_on_z, dtype=rhi.dtype)
-    shear_on_z = np.zeros(shape_on_z, dtype=shear.dtype)
-    w_on_z = np.zeros(shape_on_z, dtype=w.dtype)
+    temperature_on_z = np.zeros(shape, dtype=temperature.dtype)
+    rhi_on_z = np.zeros(shape, dtype=rhi.dtype)
+    shear_on_z = np.zeros(shape, dtype=shear.dtype)
+    w_on_z = np.zeros(shape, dtype=w.dtype)
 
     # Fields should already be on pressure levels close to target
     # altitudes, so this just uses linear interpolation and constant
@@ -298,7 +296,7 @@ def generate_apcemm_input_met(
 
         # interpolate
         assert np.all(np.diff(z0) < 0)  # expect decreasing altitudes
-        fi = np.interp(-z, -z0, f0, left=f0[0], right=f0[1])
+        fi = np.interp(-z, -z0, f0, left=f0[0], right=f0[-1])
 
         # restore nans at start and end of profile
         if mask[0]:  # nans at top of profile
