@@ -70,15 +70,16 @@ def test_unspecified_seed() -> None:
 def test_rng_class_variable() -> None:
     """Test class variable `rng`."""
     c1 = CocipUncertaintyParams(seed=5)
-    state1 = CocipUncertaintyParams.rng.__getstate__()
+    rng1 = CocipUncertaintyParams.rng
     c2 = CocipUncertaintyParams()
-    state2 = CocipUncertaintyParams.rng.__getstate__()
-    assert state1 != state2
+    rng2 = CocipUncertaintyParams.rng
+    assert rng1 is rng2
 
     c3 = CocipUncertaintyParams(seed=5)
-    assert state1 == CocipUncertaintyParams.rng.__getstate__()
+    rng3 = CocipUncertaintyParams.rng
     c4 = CocipUncertaintyParams()
-    assert state2 == CocipUncertaintyParams.rng.__getstate__()
+    rng4 = CocipUncertaintyParams.rng
+    assert rng3 is rng4
 
     for param in _get_overriden(c1):
         assert getattr(c1, param) == getattr(c3, param)
