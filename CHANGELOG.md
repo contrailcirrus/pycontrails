@@ -6,15 +6,20 @@
 
 - Exclude netCDF version 1.7.0, which causes non-deterministic failures in unit tests primarily due to segmentation faults.
 
+### Features
+
+- Update the `pycontrails` build system to require `numpy 2.0` per the [official numpy guidelines](https://numpy.org/devdocs/dev/depending_on_numpy.html#numpy-2-0-specific-advice). Note that the runtime requirement for `pycontrails` remains `numpy>=1.22`.
+- Update `pycontrails` for breaking changes introduced in `numpy 2.0` (e.g., [NEP 50](https://numpy.org/neps/nep-0050-scalar-promotion.html)). All changes are backward compatible with `numpy>=1.22`.
+
 ## v0.51.2
 
 ### Features
 
-- Add functionality to automatically compare  simulated contrails from `cocip.Cocip` with GOES satellite imagery (`compare_cocip_with_goes`)
+- Add functionality to automatically compare  simulated contrails from `cocip.Cocip` with GOES satellite imagery (`compare_cocip_with_goes`).
 
 ### Internals
 
-- Fix documentation build in CI
+- Fix documentation build in CI.
 
 ## v0.51.1
 
@@ -24,9 +29,9 @@
 
 ### Features
 
-- PS model: Support four aircraft types, including `E75L`, `E75S`, `E290`, and `E295`
-- PS model: Integrate `ps_synonym_list` to increase PS model aircraft type coverage to 102
-- PS model: Account for increase in fuel consumption due to engine deterioration between maintenance cycle
+- PS model: Support four aircraft types, including `E75L`, `E75S`, `E290`, and `E295`.
+- PS model: Integrate `ps_synonym_list` to increase PS model aircraft type coverage to 102.
+- PS model: Account for increase in fuel consumption due to engine deterioration between maintenance cycle.
 
 ### Internals
 
