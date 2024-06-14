@@ -34,7 +34,7 @@ from pycontrails.models.dry_advection import DryAdvection
 from pycontrails.models.emissions import Emissions
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.ps_model import PSFlight
-from pycontrails.physics import constants, geo, thermo, units
+from pycontrails.physics import constants, geo, thermo
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +67,7 @@ class APCEMMParams(models.ModelParams):
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
 
     #: Altitude coordinates [:math:`m`] for meteorology in generated APCEMM input file.
-    #: If not provided, uses estimated altitudes for levels in input :class:`Metdataset`,
-    #: limited to a minimum of 20,0000 feet and a maximum of 50,000 feet.
+    #: If not provided, uses estimated altitudes for levels in input :class:`Metdataset`.
     altitude_input_met: list[float] | None = None
 
     #: Humidity scaling
@@ -922,8 +921,6 @@ class APCEMM(models.Model):
 
         if self.params["altitude_input_met"] is None:
             altitude = self.met["altitude"].values
-            mask = (altitude >= units.ft_to_m(20_000.0)) & (altitude <= units.ft_to_m(50_000.0))
-            altitude = altitude[mask]
         else:
             altitude = np.array(self.params["altitude_input_met"])
 
