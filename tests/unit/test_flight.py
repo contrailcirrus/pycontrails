@@ -446,7 +446,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
     # confirm that all values exist in previous resampling
     fl11 = fl_alt.resample_and_fill("5min")
     assert _check_rocd(fl11)
-    assert np.in1d(fl11["altitude"], fl10["altitude"]).all()
+    assert np.isin(fl11["altitude"], fl10["altitude"]).all()
 
     # test altitude interpolation with level
     fl_lev = Flight(
