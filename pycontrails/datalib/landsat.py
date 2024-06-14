@@ -142,6 +142,12 @@ def intersect(
 class Landsat:
     """Support for Landsat 8 and 9 data handling.
 
+    This class uses the `PROJ <https://proj.org/en/9.4/index.html>`__ coordinate
+    transformation software through the
+    `pyproj <https://pyproj4.github.io/pyproj/stable/index.html>`__ python interface.
+    pyproj is installed as part of the ``sat`` set of optional dependencies
+    (``pip install pycontrails[sat]``), but PROJ must be installed manually.
+
     Parameters
     ----------
     base_url : str
@@ -437,13 +443,12 @@ def extract_landsat_visualization(
         3D RGB array of shape ``(height, width, 3)``.
     src_crs : pyproj.CRS
         Imagery projection
-    src_extent : tuple[float, float, float, float]
+    src_extent : tuple[float,float,float,float]
         Imagery extent in projected coordinates
 
     References
     ----------
-    :cite:`mccloskeyHumanLabeledLandsat2021`
-
+    :cite:`mccloskeyHumanlabeledLandsatContrails2021`
     """
 
     if color_scheme == "true":
@@ -516,7 +521,7 @@ def to_google_contrails(ds: xr.Dataset) -> tuple[np.ndarray, pyproj.CRS]:
     References
     ----------
     - `Google human-labeled Landsat contrails dataset <https://research.google/pubs/a-human-labeled-landsat-contrails-dataset/>`__
-    - :cite:`mccloskeyHumanLabeledLandsat2021`
+    - :cite:`mccloskeyHumanlabeledLandsatContrails2021`
     """
     rc = ds["B9"]  # cirrus band reflectance
     tb11 = ds["B10"]  # 11 um brightness temperature
