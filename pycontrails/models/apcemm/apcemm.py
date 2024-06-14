@@ -261,6 +261,11 @@ class APCEMM(models.Model):
     - APCEMM does not compute contrail radiative forcing internally. Radiative forcing must be
       computed offline by the user. Tools for radiative forcing calculations may be included
       in a future version of the interface.
+    - APCEMM currently produces different results in simulations that do not read vertical
+      velocity data from netCDF input files and in simulations that read vertical velocities
+      that are set to 0 everywhere (see https://github.com/MIT-LAE/APCEMM/issues/17).
+      Reading of vertical velocity data from netCDF input files will be disabled in this
+      interface until this issue is resolved.
 
     References
     ----------
