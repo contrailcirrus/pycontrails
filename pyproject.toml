@@ -74,7 +74,7 @@ dev = [
     "pytest-cov>=2.11",
     "requests>=2.25",
     "ruff==0.4.1",
-    "setuptools"
+    "setuptools",
 ]
 
 # Documentation / Sphinx dependencies
@@ -102,7 +102,7 @@ ecmwf = [
     "netcdf4>=1.6.1,<1.7.0",
     "platformdirs>=3.0",
     "requests>=2.25",
-    "lxml>=5.1.0"
+    "lxml>=5.1.0",
 ]
 
 # Google Cloud Platform caching interface
@@ -117,11 +117,7 @@ gfs = [
     "tqdm>=4.61",
 ]
 
-goes = [
-    "cartopy>=0.22",
-    "gcsfs>=2022.3",
-    "h5netcdf>=1.2",
-]
+goes = ["cartopy>=0.22", "gcsfs>=2022.3", "h5netcdf>=1.2"]
 
 # Jupyter notebook and lab interface
 jupyter = ["ipywidgets>=7.6", "jupyterlab>=2.2"]
@@ -215,7 +211,7 @@ filterwarnings = [
     "ignore:Engine 'cfgrib' loading failed:RuntimeWarning:xarray.backends.plugins",
     "ignore:.*IPyNbFile:pytest.PytestRemovedIn9Warning:_pytest.nodes",
     "ignore:.*pkg_resources:DeprecationWarning",
-    "ignore:The default level_type will change:DeprecationWarning"
+    "ignore:The default level_type will change:DeprecationWarning",
 ]
 testpaths = ["tests/unit"]
 
