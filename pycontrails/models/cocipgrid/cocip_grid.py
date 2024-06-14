@@ -749,12 +749,13 @@ class CocipGrid(models.Model):
 
         # These should probably not be included in model input ... so
         # we'll get a warning if they get overwritten
-        vector["longitude_head"], vector["latitude_head"] = geo.forward_azimuth(
-            lons=lons, lats=lats, az=azimuth, dist=dist
-        )
-        vector["longitude_tail"], vector["latitude_tail"] = geo.forward_azimuth(
-            lons=lons, lats=lats, az=azimuth, dist=-dist
-        )
+        lon_head, lat_head = geo.forward_azimuth(lons=lons, lats=lats, az=azimuth, dist=dist)
+        vector["longitude_head"] = lon_head.astype(self._target_dtype, copy=False)
+        vector["latitude_head"] = lat_head.astype(self._target_dtype, copy=False)
+
+        lon_tail, lat_tail = geo.forward_azimuth(lons=lons, lats=lats, az=azimuth, dist=-dist)
+        vector["longitude_tail"] = lon_tail.astype(self._target_dtype, copy=False)
+        vector["latitude_tail"] = lat_tail.astype(self._target_dtype, copy=False)
 
         return vector
 
