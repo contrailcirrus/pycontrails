@@ -199,7 +199,7 @@ show_error_codes = true
 [tool.black]
 line-length = 100
 preview = true
-required_version = "24.4.1"
+required-version = "24.4.1"
 
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
