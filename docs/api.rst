@@ -237,7 +237,6 @@ Core
     core.airports
     core.cache
     core.coordinates
-    core.datalib
     core.fleet
     core.flight
     core.fuel

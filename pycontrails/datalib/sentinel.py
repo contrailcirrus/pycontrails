@@ -87,7 +87,7 @@ def query(
     extent : str, optional
         Spatial region of interest as a GeoJSON string. If not provided, defaults
         to a global extent.
-    columns : list[str], optional.
+    columns : list[str], optional
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
         By default, returns imagery base URL, granule ID, and sensing time.
@@ -144,6 +144,12 @@ def intersect(
 
 class Sentinel:
     """Support for Sentinel-2 data handling.
+
+    This class uses the `PROJ <https://proj.org/en/9.4/index.html>`__ coordinate
+    transformation software through the
+    `pyproj <https://pyproj4.github.io/pyproj/stable/index.html>`__ python interface.
+    pyproj is installed as part of the ``sat`` set of optional dependencies
+    (``pip install pycontrails[sat]``), but PROJ must be installed manually.
 
     Parameters
     ----------
@@ -458,7 +464,7 @@ def extract_sentinel_visualization(
         3D RGB array of shape ``(height, width, 3)``.
     src_crs : pyproj.CRS
         Imagery projection
-    src_extent : tuple[float, float, float, float]
+    src_extent : tuple[float,float,float,float]
         Imagery extent in projected coordinates
     """
 

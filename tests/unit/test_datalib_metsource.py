@@ -1,4 +1,4 @@
-"""Test `pycontrails.core.datalib` module."""
+"""Test `pycontrails.datalib._met_utils.metsource` module."""
 
 from __future__ import annotations
 
