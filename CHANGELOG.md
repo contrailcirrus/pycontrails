@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.52.0
+
+### Fixes
+
+- Exclude netCDF version 1.7.0, which causes non-deterministic failures in unit tests primarily due to segmentation faults.
+
 ## v0.51.2
 
 ### Features
