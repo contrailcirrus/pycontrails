@@ -118,9 +118,9 @@ METEOROLOGY MENU:
         Init wind shear from met. (T/F): T
         Wind shear time series input (T/F): T
         Interpolate shear met. data (T/F): T
-        Init vert. veloc. from met. data (T/F): T
-        Vert. veloc. time series input (T/F): T
-        Interpolate vert. veloc. met. data (T/F): T
+        Init vert. veloc. from met. data (T/F): F
+        Vert. veloc. time series input (T/F): F
+        Interpolate vert. veloc. met. data (T/F): F
     
         HUMIDITY SCALING OPTIONS:
             Humidity modification scheme (none / constant / scaling): none
