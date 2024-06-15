@@ -2,14 +2,18 @@
 
 ## v0.52.0
 
-### Fixes
-
-- Exclude netCDF version 1.7.0, which causes non-deterministic failures in unit tests primarily due to segmentation faults.
-
 ### Features
 
 - Update the `pycontrails` build system to require `numpy 2.0` per the [official numpy guidelines](https://numpy.org/devdocs/dev/depending_on_numpy.html#numpy-2-0-specific-advice). Note that the runtime requirement for `pycontrails` remains `numpy>=1.22`.
 - Update `pycontrails` for breaking changes introduced in `numpy 2.0` (e.g., [NEP 50](https://numpy.org/neps/nep-0050-scalar-promotion.html)). All changes are backward compatible with `numpy>=1.22`.
+
+### Fixes
+
+- Exclude netCDF version 1.7.0, which causes non-deterministic failures in unit tests primarily due to segmentation faults.
+
+### Internals
+
+- Upgrade minimum `mypy` dependencies
 
 ## v0.51.2
 
