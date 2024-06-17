@@ -258,6 +258,9 @@ class APCEMM(models.Model):
 
     **Known limitations**
 
+    - Engine core exit temperature and bypass area are not provided as output by pycontrails
+      aircraft performance models and are currently set to static values in APCEMM input files.
+      These parameters will be computed dynamically in a future release.
     - APCEMM does not compute contrail radiative forcing internally. Radiative forcing must be
       computed offline by the user. Tools for radiative forcing calculations may be included
       in a future version of the interface.
