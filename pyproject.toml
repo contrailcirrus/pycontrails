@@ -38,7 +38,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 
 dependencies = [
     "dask>=2022.3",
-    "numpy>=1.22",
+    "numpy>=1.22,<2.0.0",
     "overrides>=6.1",
     "pandas>=1.4",
     "scipy>=1.10",
