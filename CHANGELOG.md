@@ -10,6 +10,7 @@
 ### Fixes
 
 - Exclude netCDF version 1.7.0, which causes non-deterministic failures in unit tests primarily due to segmentation faults.
+- Pin numpy to 1.x in runtime dependencies until a working numpy 2.x-compatible netCDF4 release is available.
 
 ### Internals
 
