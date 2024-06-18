@@ -50,6 +50,10 @@ jobs:
           # Completely isolate tests to prevent cibuildwheel from importing the
           # source instead of the wheel. This happens when tests/__init__.py is read.
           CIBW_TEST_EXTRAS: "complete,dev"
+          # Make sure GITHUB_ACTIONS
+          # (used to selectively skip expensive unit test)
+          # is passed through when testing linux wheels
+          CIBW_ENVIRONMENT_PASS_LINUX: GITHUB_ACTIONS
           CIBW_TEST_COMMAND: >
             mv {project}/pycontrails {project}/pycontrails-bak &&
             python -m pytest {project}/tests -vv &&
