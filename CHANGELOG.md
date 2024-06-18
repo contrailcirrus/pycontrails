@@ -33,6 +33,7 @@
 - Create unit tests for the `APCEMM` interface that run if an `APCEMM` executable is found on the `PATH` inside a clean APCEMM git repository with a pinned git hash. These tests will be skipped unless users carefully configure their local test environment and will not run in CI.
 - Exclude APCEMM tutorial notebook from notebook tests.
 - Add unit tests for Landsat and Sentinel search tools and datalibs, but disable any tests that retrieve imagery data when running tests in GitHub Actions to limit resource consumption in GitHub runners. Users can disable these units tests locally by setting the environment variable `GITHUB_ACTIONS=true`.
+- Ensure `GITHUB_ACTIONS` environment variable is available when building and testing wheels on linux.
 - Skip cells that retrieve imagery data when running tests on Landsat and Sentinel tutorial notebooks.
 - Add tests for `Flight.to_geojson_multilinestring` with grouping key omitted and update tests with multiple antimeridian crossings.
 - Minimum pandas version is bumped to 2.2 to ensure the the `include_groups` keyword argument used in `Flight.to_geojson_multilinestring` is available.
