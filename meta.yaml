@@ -1,0 +1,100 @@
+{% set name = "pycontrails" %}
+{% set version = "0.51.2" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/pycontrails-{{ version }}.tar.gz
+  sha256: 5516975fc2edd958c6619168e9cea93976fa5fb7c5fa337b6df726903a1d06f5
+
+build:
+  skip: true  # [py<39]
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  number: 0
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+  host:
+    - python >=3.9
+    - setuptools
+    - setuptools-scm
+    - wheel
+    - cython
+    - oldest-supported-numpy
+    - numpy
+    - pip
+  run:
+    - python >=3.9
+    - dask-core >=2022.3
+    - overrides >=6.1
+    - pandas >=1.4
+    - scipy >=1.10
+    - xarray >=2022.3
+    - {{ pin_compatible('numpy') }}
+
+    # [ecmwf]
+    - cdsapi >=0.4
+    - cfgrib >=0.9
+    - eccodes >=1.4
+    - ecmwf-api-client >=1.6
+    - netcdf4 >=1.6
+    - platformdirs >=3.0
+    - requests >=2.25
+    - lxml >=5.1.0
+
+    # [gcp]
+    - google-cloud-storage >=2.1
+    - platformdirs >=3.0
+    - tqdm >=4.61
+
+    # [gfs]
+    - boto3 >=1.20
+    - tqdm >=4.61
+
+    # [goes]
+    - cartopy >=0.22
+    - gcsfs >=2022.7
+    - h5netcdf >=1.2
+
+    # [jupyter]
+    - ipywidgets >=7.6
+    - jupyterlab >=2.2
+
+    # [pyproj]
+    - pyproj >=3.5
+
+    # [vis]
+    - matplotlib >=3.3
+    - opencv-python-headless >=4.5
+    - scikit-learn >=0.23
+    - scikit-image >=0.18
+    - seaborn >=0.11
+    - shapely >=2.0
+
+    # [zarr]
+    - fsspec >=2022.7
+    - zarr >=2.12
+
+test:
+  imports:
+    - pycontrails
+  commands:
+    - pip check
+  requires:
+    - pip
+
+about:
+  summary: Python library for modeling aviation climate impacts
+  license: Apache-2.0
+  license_file:
+    - LICENSE
+    - NOTICE
+
+extra:
+  recipe-maintainers:
+    - mlshapiro
+    - thabbott
+    - zebengberg

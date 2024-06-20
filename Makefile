@@ -39,6 +39,7 @@ clean: docs-clean
 	rm -rf .mypy_cache \
 		   .pytest_cache \
 		   .ruff_cache \
+		   .staged-recipes \
 		   build \
 		   dist \
 		   pycontrails.egg-info \
@@ -56,6 +57,27 @@ licenses:
 
 check-licenses:
 	deplic -c setup.cfg .
+
+setup-conda-forge:
+	git clone git@github.com:contrailcirrus/staged-recipes.git .staged-recipes
+	cd .staged-recipes && git remote add upstream https://github.com/conda-forge/staged-recipes.git
+	cd .staged-recipes && git fetch upstream
+
+rebase-conda-forge:
+	test -d .staged-recipes || make setup-conda-forge
+
+	cd .staged-recipes && git pull --rebase upstream main
+
+push-conda-forge: rebase-conda-forge
+	# make sure to copy the most recent SHA256 by clicking the 
+	# "view hashes" next to the latest release on pypi
+	# https://pypi.org/project/pycontrails/#files
+	mkdir -p .staged-recipes/recipes/pycontrails
+	cp meta.yaml .staged-recipes/recipes/pycontrails/meta.yaml
+	cd .staged-recipes && git add recipes/pycontrails/meta.yaml
+	git push origin main --force
+
+	echo "Create a Pull Request at https://github.com/contrailcirrus/staged-recipes to conda-forge/staged-recipes"
 
 # -----------
 # Extensions

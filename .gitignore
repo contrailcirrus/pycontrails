@@ -26,6 +26,7 @@ _version.py
 rgi_cython.c
 rgi_cython*.so
 rgi_cython*.pyd
+.staged-recipes
 
 # test
 .mypy_cache
