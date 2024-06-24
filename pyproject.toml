@@ -6,7 +6,7 @@ requires = [
     "wheel",
     "cython",
     # https://numpy.org/devdocs/dev/depending_on_numpy.html#numpy-2-abi-handling
-    "numpy>=2.0.0rc2",
+    "numpy>=2.0.0",
 ]
 build-backend = "setuptools.build_meta"
 
