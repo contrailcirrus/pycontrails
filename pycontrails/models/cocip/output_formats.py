@@ -217,7 +217,7 @@ def contrail_flight_summary_statistics(flight_waypoints: GeoVectorDataset) -> pd
     )
 
     flight_waypoints["persistent_contrail_length"] = np.where(
-        np.isnan(flight_waypoints["ef"]), 0.0, flight_waypoints["segment_length"]
+        np.nan_to_num(flight_waypoints["ef"]) == 0.0, 0.0, flight_waypoints["segment_length"]
     )
 
     # Calculate contrail statistics for each flight
