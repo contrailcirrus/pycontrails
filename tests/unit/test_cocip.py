@@ -1022,6 +1022,9 @@ def test_flight_waypoint_and_flight_summary_statistics() -> None:
     assert (flight_summary["total_persistent_contrails_formed"] == 0.0).sum() == (
         np.nan_to_num(flight_summary["total_energy_forcing"]) == 0.0
     ).sum()
+    assert (flight_summary["total_persistent_contrails_formed"] == 0.0).sum() >= (
+        flight_summary["mean_lifetime_rf_net"].isna()
+    ).sum()
     np.testing.assert_allclose(
         np.nansum(flight_summary["total_energy_forcing"]),
         np.nansum(flight_waypoints_out["ef"]),
