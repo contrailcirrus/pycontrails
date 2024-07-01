@@ -38,7 +38,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 
 dependencies = [
     "dask>=2022.3",
-    "numpy>=1.22,<2.0.0",
+    "numpy>=1.22",
     "overrides>=6.1",
     "pandas>=2.2",
     "scipy>=1.10",
@@ -99,7 +99,7 @@ ecmwf = [
     "cfgrib>=0.9",
     "eccodes>=1.4",
     "ecmwf-api-client>=1.6",
-    "netcdf4>=1.6.1,<1.7.0",
+    "netcdf4>=1.6.1",
     "platformdirs>=3.0",
     "requests>=2.25",
     "lxml>=5.1.0",
