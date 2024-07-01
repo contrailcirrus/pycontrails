@@ -35,9 +35,6 @@ DEFAULT_CHUNKS: dict[str, int] = {"time": 1}
 #: Whether to open multi-file datasets in parallel
 OPEN_IN_PARALLEL: bool = False
 
-#: Whether to use file locking when opening multi-file datasets
-OPEN_WITH_LOCK: bool = False
-
 
 def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[datetime]:
     """Parse time input into set of time steps.
@@ -741,5 +738,4 @@ class MetDataSource(abc.ABC):
         xr_kwargs.setdefault("engine", NETCDF_ENGINE)
         xr_kwargs.setdefault("chunks", DEFAULT_CHUNKS)
         xr_kwargs.setdefault("parallel", OPEN_IN_PARALLEL)
-        xr_kwargs.setdefault("lock", OPEN_WITH_LOCK)
         return xr.open_mfdataset(disk_paths, **xr_kwargs)

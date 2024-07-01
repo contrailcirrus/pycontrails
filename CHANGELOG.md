@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.52.1
+
+### Breaking changes
+
+- Remove `lock=False` as a default keyword argument to `xr.open_mfdataset` in the `MetDataSource.open_dataset` method. This reverts a change from [v0.44.1](https://github.com/contrailcirrus/pycontrails/releases/tag/v0.44.1) and prevents segmentation faults when using recent versions of [netCDF4](https://pypi.org/project/netCDF4/) (1.7.0 and above).
+
+### Internals
+
+- Remove upper limits on netCDF4 and numpy versions.
+
 ## v0.52.0
 
 ### Breaking changes
