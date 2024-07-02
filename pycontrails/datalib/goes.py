@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import datetime
 import enum
-import io
+import tempfile
 from collections.abc import Iterable
 
 import numpy as np
@@ -535,7 +535,7 @@ class GOES:
             da_dict = {}
             for rpath, init_bytes in data.items():
                 channel = _extract_channel_from_rpath(rpath)
-                ds = xr.open_dataset(io.BytesIO(init_bytes), engine="h5netcdf")
+                ds = _load_via_tempfile(init_bytes)
 
                 da = ds["CMI"]
                 da = da.expand_dims(band_id=ds["band_id"].values)
@@ -551,7 +551,7 @@ class GOES:
                 da = xr.concat(da_dict.values(), dim="band_id")
 
         else:
-            ds = xr.open_dataset(io.BytesIO(data), engine="h5netcdf")
+            ds = _load_via_tempfile(data)
             da = ds["CMI"]
             da = da.expand_dims(band_id=ds["band_id"].values)
 
@@ -562,6 +562,14 @@ class GOES:
         da.attrs["geospatial_lat_lon_extent"] = ds.geospatial_lat_lon_extent.attrs
 
         return da
+
+
+def _load_via_tempfile(data: bytes) -> xr.Dataset:
+    """Load xarray dataset via temporary file."""
+    with tempfile.NamedTemporaryFile(buffering=0) as tmp:
+        tmp.write(data)
+        ds = xr.load_dataset(tmp.name)
+    return ds
 
 
 def _concat_c02(ds1: XArrayType, ds2: XArrayType) -> XArrayType:
