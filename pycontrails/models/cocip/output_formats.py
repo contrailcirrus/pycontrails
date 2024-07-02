@@ -32,7 +32,6 @@ import xarray as xr
 
 from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.vector import GeoVectorDataset, vector_to_lon_lat_grid
-from pycontrails.datalib.goes import GOES, extract_goes_visualization
 from pycontrails.models.cocip.contrail_properties import contrail_edges, plume_mass_per_distance
 from pycontrails.models.cocip.radiative_forcing import albedo
 from pycontrails.models.humidity_scaling import HumidityScaling
@@ -2124,6 +2123,8 @@ def compare_cocip_with_goes(
     None | pathlib.Path
         File path of saved CoCiP-GOES image if ``path_write_img`` is provided.
     """
+
+    from pycontrails.datalib.goes import GOES, extract_goes_visualization
 
     try:
         import cartopy.crs as ccrs
