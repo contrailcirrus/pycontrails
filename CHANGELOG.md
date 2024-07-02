@@ -11,6 +11,7 @@
 
 - Remove upper limits on netCDF4 and numpy versions.
 - Remove h5netcdf dependency.
+- Update doctests with numpy 2 scalar representation (see [NEP 51](https://numpy.org/neps/nep-0051-scalar-representation.html)).
 
 ## v0.52.0
 

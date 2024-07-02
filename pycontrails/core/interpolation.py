@@ -621,11 +621,11 @@ class EmissionsProfileInterpolator:
     >>> epi = EmissionsProfileInterpolator(xp, fp)
     >>> # Interpolate a single value
     >>> epi.interp(5)
-    0.150000...
+    np.float64(0.150000...)
 
     >>> # Interpolate a single value on a logarithmic scale
     >>> epi.log_interp(5)
-    1.105171...
+    np.float64(1.105171...)
 
     >>> # Demonstrate speed up compared with xarray.DataArray interpolation
     >>> import time, xarray as xr

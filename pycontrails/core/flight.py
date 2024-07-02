@@ -384,7 +384,7 @@ class Flight(GeoVectorDataset):
         ...     time=pd.date_range('2021-01-01T12', '2021-01-01T14', periods=200),
         ... )
         >>> fl.max_distance_gap
-        7391.27...
+        np.float64(7391.27...)
         """
         if self.attrs["crs"] != "EPSG:4326":
             raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
@@ -415,7 +415,7 @@ class Flight(GeoVectorDataset):
         ...     time=pd.date_range('2021-01-01T12', '2021-01-01T14', periods=200),
         ... )
         >>> fl.length
-        1436924.67...
+        np.float64(1436924.67...)
         """
         if self.attrs["crs"] != "EPSG:4326":
             raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
@@ -1520,11 +1520,11 @@ class Flight(GeoVectorDataset):
 
         >>> # Length (in meters) of waypoints whose temperature exceeds 236K
         >>> fl.length_met("air_temperature", threshold=236)
-        4132178.159...
+        np.float64(4132178.159...)
 
         >>> # Proportion (with respect to distance) of waypoints whose temperature exceeds 236K
         >>> fl.proportion_met("air_temperature", threshold=236)
-        0.663552...
+        np.float64(0.663552...)
         """
         if key not in self.data:
             raise KeyError(f"Column {key} does not exist in data.")
