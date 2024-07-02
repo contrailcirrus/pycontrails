@@ -536,7 +536,7 @@ def multipolygon_to_geojson(
             else:
                 shape = len(ring.coords), 3
                 coords = np.empty(shape)
-                coords[:, :2] = ring.coords
+                coords[:, :2] = np.asarray(ring.coords)
                 coords[:, 2] = altitude
 
             poly_coords.append(coords.tolist())
