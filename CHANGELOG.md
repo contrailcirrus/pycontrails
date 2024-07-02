@@ -5,10 +5,12 @@
 ### Breaking changes
 
 - Remove `lock=False` as a default keyword argument to `xr.open_mfdataset` in the `MetDataSource.open_dataset` method. This reverts a change from [v0.44.1](https://github.com/contrailcirrus/pycontrails/releases/tag/v0.44.1) and prevents segmentation faults when using recent versions of [netCDF4](https://pypi.org/project/netCDF4/) (1.7.0 and above).
+- GOES imagery is now loaded from a temporary file on disk rather than directly from memory when using `GOES.get` without a cachestore.
 
 ### Internals
 
 - Remove upper limits on netCDF4 and numpy versions.
+- Remove h5netcdf dependency.
 
 ## v0.52.0
 
