@@ -886,7 +886,7 @@ def spatial_bounding_box(
     >>> lon = rng.uniform(-180, 180, size=30)
     >>> lat = rng.uniform(-90, 90, size=30)
     >>> spatial_bounding_box(lon, lat)
-    (-168.0, -77.0, 155.0, 82.0)
+    (np.float64(-168.0), np.float64(-77.0), np.float64(155.0), np.float64(82.0))
     """
     lon_min = max(np.floor(np.min(longitude) - buffer), -180.0)
     lon_max = min(np.ceil(np.max(longitude) + buffer), 179.99)

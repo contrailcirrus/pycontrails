@@ -2057,7 +2057,7 @@ def vector_to_lon_lat_grid(
            [2.97, 0.12, 1.33, ..., 3.54, 0.74, 2.59]])
 
     >>> da.sum().item() == vector["foo"].sum()
-    True
+    np.True_
 
     """
     df = vector.select(("longitude", "latitude", *agg), copy=False).dataframe

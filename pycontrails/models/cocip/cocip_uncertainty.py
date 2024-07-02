@@ -92,12 +92,12 @@ class CocipUncertaintyParams(CocipParams):
     >>> distr = scipy.stats.uniform(loc=0.4, scale=0.2)
     >>> params = CocipUncertaintyParams(seed=123, initial_wake_vortex_depth_uncertainty=distr)
     >>> params.initial_wake_vortex_depth
-    0.41076420
+    np.float64(0.41076420...)
 
     >>> # Once seeded, calling the class again gives a new value
     >>> params = CocipUncertaintyParams(initial_wake_vortex_depth=distr)
     >>> params.initial_wake_vortex_depth
-    0.43526372
+    np.float64(0.43526372...)
 
     >>> # To retain the default value, set the uncertainty to None
     >>> params = CocipUncertaintyParams(rf_lw_enhancement_factor_uncertainty=None)
@@ -212,7 +212,7 @@ class CocipUncertaintyParams(CocipParams):
 
         return out
 
-    def rvs(self, size: None | int = None) -> dict[str, float | npt.NDArray[np.float64]]:
+    def rvs(self, size: None | int = None) -> dict[str, np.float64 | npt.NDArray[np.float64]]:
         """Call each distribution's `rvs` method to generate random parameters.
 
         Seed calls to `rvs` with class variable `rng`.
@@ -247,12 +247,12 @@ class CocipUncertaintyParams(CocipParams):
                [7.9063961e-04, 3.0336906e-03, 7.7571563e-04, 2.0577813e-02,
                 9.4205803e-01, 4.3379897e-03, 3.6786550e-03, 2.4747452e-02]],
               dtype=float32),
-         'initial_wake_vortex_depth': 0.39805019708566847,
-         'nvpm_ei_n_enhancement_factor': 0.9371878437312526,
-         'rf_lw_enhancement_factor': 1.1017491252832377,
-         'rf_sw_enhancement_factor': 0.99721639115012,
-         'sedimentation_impact_factor': 0.5071779847244678,
-         'wind_shear_enhancement_exponent': 0.34100931239701004}
+         'initial_wake_vortex_depth': np.float64(0.39805019708566847),
+         'nvpm_ei_n_enhancement_factor': np.float64(0.9371878437312526),
+         'rf_lw_enhancement_factor': np.float64(1.1017491252832377),
+         'rf_sw_enhancement_factor': np.float64(0.99721639115012),
+         'sedimentation_impact_factor': np.float64(0.5071779847244678),
+         'wind_shear_enhancement_exponent': np.float64(0.34100931239701004)}
         """
         return {
             param: distr.rvs(size=size, random_state=self.rng)

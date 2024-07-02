@@ -59,27 +59,27 @@ def slice_domain(
     >>> # Call with request as np.array
     >>> request = np.linspace(-20, 20, 100)
     >>> slice_domain(domain, request)
-    slice(640, 801, None)
+    slice(np.int64(640), np.int64(801), None)
 
     >>> # Call with request as tuple
     >>> request = -20, 20
     >>> slice_domain(domain, request)
-    slice(640, 801, None)
+    slice(np.int64(640), np.int64(801), None)
 
     >>> # Call with a buffer
     >>> request = -16, 13
     >>> buffer = 4, 7
     >>> slice_domain(domain, request, buffer)
-    slice(640, 801, None)
+    slice(np.int64(640), np.int64(801), None)
 
     >>> # Call with request as a single number
     >>> request = -20
     >>> slice_domain(domain, request)
-    slice(640, 641, None)
+    slice(np.int64(640), np.int64(641), None)
 
     >>> request = -19.9
     >>> slice_domain(domain, request)
-    slice(640, 642, None)
+    slice(np.int64(640), np.int64(642), None)
 
     """
     # if the length of domain coordinates is <= 2, return the whole domain
