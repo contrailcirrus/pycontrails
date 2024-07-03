@@ -7,6 +7,7 @@ import pathlib
 from datetime import datetime
 from typing import Any
 
+import dask
 import numpy as np
 import pandas as pd
 import pytest
@@ -442,3 +443,15 @@ def polygon_bug() -> MetDataArray:
     path = get_static_path("polygon-bug.nc")
     da = xr.open_dataarray(path)
     return MetDataArray(da)
+
+
+@pytest.fixture()
+def _dask_single_threaded():
+    """Run test using single-threaded dask scheduler.
+
+    As of v0.52.1, using the default multi-threaded scheduler can cause
+    some tests to hang while waiting to acquire a lock that is never released.
+    This fixture can be used to run those tests using a single-threaded scheduler.
+    """
+    with dask.config.set(scheduler="single-threaded"):
+        yield
