@@ -12,6 +12,7 @@
 - Remove upper limits on netCDF4 and numpy versions.
 - Remove h5netcdf dependency.
 - Update doctests with numpy 2 scalar representation (see [NEP 51](https://numpy.org/neps/nep-0051-scalar-representation.html)). Doctests will now fail when run with numpy 1.
+- Run certain tests in `test_ecmwf.py` using the single-threaded dask scheduler to prevent tests from hanging while waiting for a lock that is never released. (This issue was [encountered previously](https://github.com/contrailcirrus/pycontrails/pull/68), and removing `lock=False` in `MetDataSrouce.open_dataset` reverts the fix.)
 
 ## v0.52.0
 
