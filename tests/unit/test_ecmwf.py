@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from typing import TypeVar
 
+import dask
 import numpy as np
 import pandas as pd
 import pytest
@@ -21,6 +22,18 @@ AnyModelLevelDatalibClass = TypeVar(
     "AnyModelLevelDatalibClass", type[ERA5ModelLevel], type[HRESModelLevel]
 )
 AnyECMWFDatalibClass = TypeVar("AnyECMWFDatalibClass", AnyERA5DatalibClass, AnyHRESDatalibClass)
+
+
+@pytest.fixture()
+def _dask_single_threaded():
+    """Run test using single-threaded dask scheduler.
+
+    As of v0.52.1, using the default multi-threaded scheduler causes
+    some tests to hang while waiting to acquire a lock that is never released.
+    This fixture can be used to run those tests using a single-threaded scheduler.
+    """
+    with dask.config.set(scheduler="single-threaded"):
+        yield
 
 
 def test_environ_keys() -> None:
@@ -296,6 +309,7 @@ def test_ERA5_repr() -> None:
     assert "Dataset:" in out
 
 
+@pytest.mark.usefixtures("_dask_single_threaded")
 def test_ERA5_cachestore(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> None:
     """Test ERA5 cachestore input."""
 
@@ -342,6 +356,7 @@ def test_ERA5_cachestore(met_ecmwf_pl_path: str, override_cache: DiskCacheStore)
     assert pre_init_size == post_init_size
 
 
+@pytest.mark.usefixtures("_dask_single_threaded")
 def test_ERA5_pressure_levels(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> None:
     """Test ERA5 pressure_level parsing."""
     times = [datetime(2019, 5, 31, 5, 0, 0)]
@@ -432,6 +447,7 @@ def test_ERA5_hash() -> None:
     assert era5.hash != era52.hash
 
 
+@pytest.mark.usefixtures("_dask_single_threaded")
 def test_ERA5_paths_with_time(
     met_ecmwf_pl_path: str,
     met_ecmwf_sl_path: str,
@@ -465,6 +481,7 @@ def test_ERA5_paths_with_time(
     assert override_cache.size > 0
 
 
+@pytest.mark.usefixtures("_dask_single_threaded")
 def test_ERA5_paths_without_time(
     met_ecmwf_pl_path: str,
     override_cache: DiskCacheStore,
@@ -498,6 +515,7 @@ def test_ERA5_paths_without_time(
     assert pre_init_size == post_init_size
 
 
+@pytest.mark.usefixtures("_dask_single_threaded")
 def test_ERA5_paths_with_error(
     met_ecmwf_pl_path: str,
     override_cache: DiskCacheStore,
@@ -614,6 +632,7 @@ def test_ERA5_set_met_source_metadata(product_type: str, variables: str) -> None
     assert ds.attrs["product"] == product_type.split("_")[0]
 
 
+@pytest.mark.usefixtures("_dask_single_threaded")
 def test_ERA5_met_source_open_metdataset(met_ecmwf_pl_path: str) -> None:
     """Test the met_source attribute on the MetDataset arising from ERA5."""
     era5 = ERA5(
@@ -807,7 +826,7 @@ def test_model_level_era5_ensemble_mars_request() -> None:
     }
 
 
-def test_model_level_era5_set_metadata(met_ecmwf_pl_path: str) -> None:
+def test_model_level_era5_set_metadata() -> None:
     """Test metadata setting."""
     era5 = ERA5ModelLevel(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
     ds = xr.Dataset()
@@ -1134,7 +1153,7 @@ def test_model_level_hres_mars_request() -> None:
     )
 
 
-def test_model_level_hres_set_metadata(met_ecmwf_pl_path: str) -> None:
+def test_model_level_hres_set_metadata() -> None:
     """Test metadata setting."""
     hres = HRESModelLevel(time=datetime(2000, 1, 1), variables=["t", "q"])
     ds = xr.Dataset()
