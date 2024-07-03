@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 from typing import TypeVar
 
-import dask
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,18 +21,6 @@ AnyModelLevelDatalibClass = TypeVar(
     "AnyModelLevelDatalibClass", type[ERA5ModelLevel], type[HRESModelLevel]
 )
 AnyECMWFDatalibClass = TypeVar("AnyECMWFDatalibClass", AnyERA5DatalibClass, AnyHRESDatalibClass)
-
-
-@pytest.fixture()
-def _dask_single_threaded():
-    """Run test using single-threaded dask scheduler.
-
-    As of v0.52.1, using the default multi-threaded scheduler causes
-    some tests to hang while waiting to acquire a lock that is never released.
-    This fixture can be used to run those tests using a single-threaded scheduler.
-    """
-    with dask.config.set(scheduler="single-threaded"):
-        yield
 
 
 def test_environ_keys() -> None:

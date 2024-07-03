@@ -1013,6 +1013,7 @@ def test_met_copy(met_ecmwf_pl_path: str) -> None:
     assert round(mds2["t"].data[5][5][2][0].item()) == 235
 
 
+@pytest.mark.usefixtures("_dask_single_threaded")
 def test_met_wrap_longitude_chunks(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> None:
     """Check that the wrap_longitude method increments longitudinal chunks."""
     # Using the xr.open_dataset method
