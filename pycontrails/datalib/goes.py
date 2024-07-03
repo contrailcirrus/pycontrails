@@ -568,8 +568,7 @@ def _load_via_tempfile(data: bytes) -> xr.Dataset:
     """Load xarray dataset via temporary file."""
     with tempfile.NamedTemporaryFile(buffering=0) as tmp:
         tmp.write(data)
-        ds = xr.load_dataset(tmp.name)
-    return ds
+        return xr.load_dataset(tmp.name)
 
 
 def _concat_c02(ds1: XArrayType, ds2: XArrayType) -> XArrayType:
