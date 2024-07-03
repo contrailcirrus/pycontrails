@@ -133,6 +133,13 @@ main-test-status:
 DOCS_DIR = docs
 DOCS_BUILD_DIR = docs/_build
 
+# Check that numpy 2 is being used
+ensure-numpy-2:
+	[[ $$(python -c 'import numpy as np; print(np.__version__)') == 2.* ]] \
+	|| ( \
+		echo -e "$(COLOR_YELLOW)NumPy 2 required for doctests$(END_COLOR)"; \
+		exit 1)
+
 # Check for GCP credentials
 ensure-gcp-credentials:
 	python -c 'from google.cloud import storage; storage.Client()' \
@@ -163,7 +170,7 @@ ensure-era5-cached:
 cache-era5-gcp: ensure-era5-cached
 	gcloud storage cp -r -n .doc-test-cache/* gs://contrails-301217-unit-test/doc-test-cache/
 
-doctest: ensure-era5-cached ensure-gcp-credentials
+doctest: ensure-numpy-2 ensure-era5-cached ensure-gcp-credentials
 	pytest --doctest-modules \
 		--ignore-glob=pycontrails/ext/* \
 		pycontrails -vv
