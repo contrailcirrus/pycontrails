@@ -2610,13 +2610,14 @@ def _load(hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Datas
 
 
 def _add_vertical_coords(data: XArrayType) -> XArrayType:
-    """Add "air_pressure" and "altitude" coordinates to data."""
+    """Add "air_pressure" and "altitude" coordinates to data.
+
+    .. versionchanged:: 0.52.2
+        Ensure that the ``dtype`` of the additional vertical coordinates agree
+        with the ``dtype`` of the underlying gridded data.
+    """
 
     data["level"].attrs.update(units="hPa", long_name="Pressure", positive="down")
-
-    coords = data.coords
-    if "air_pressure" in coords and "altitude" in coords:
-        return data
 
     # XXX: use the dtype of the data to determine the precision of these coordinates
     # There are two competing conventions here:
@@ -2626,25 +2627,47 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
     # It is more important for air_pressure and altitude to be grid-aligned than to be
     # coordinate-aligned, so we use the dtype of the data to determine the precision of
     # these coordinates
-    if isinstance(data, xr.Dataset):
-        dtype = np.result_type(*data.data_vars.values(), np.float32)
+    dtype = (
+        np.result_type(*data.data_vars.values(), np.float32)
+        if isinstance(data, xr.Dataset)
+        else data.dtype
+    )
+
+    coords = data.coords
+    try:
+        air_pressure = coords["air_pressure"]
+        altitude = coords["altitude"]
+    except KeyError:
+        pass
     else:
-        dtype = data.dtype
+        if air_pressure.dtype == dtype and altitude.dtype == dtype:
+            return data
+        # At least one of 'air_pressure' or 'altitude' has the wrong dtype
+        data.coords["air_pressure"] = air_pressure.astype(dtype, copy=False)
+        data.coords["altitude"] = altitude.astype(dtype, copy=False)
+        return data
+
     level = data["level"].values.astype(dtype, copy=False)
 
-    if "air_pressure" not in coords:
+    # We're missing at least one of 'air_pressure' or 'altitude'
+    if "air_pressure" not in data:
         data = data.assign_coords(air_pressure=("level", level * 100.0))
         data.coords["air_pressure"].attrs.update(
             standard_name=AirPressure.standard_name,
             long_name=AirPressure.long_name,
             units=AirPressure.units,
         )
-    if "altitude" not in coords:
+    else:
+        data.coords["air_pressure"] = data.coords["air_pressure"].astype(dtype, copy=False)
+
+    if "altitude" not in data:
         data = data.assign_coords(altitude=("level", units.pl_to_m(level)))
         data.coords["altitude"].attrs.update(
             standard_name=Altitude.standard_name,
             long_name=Altitude.long_name,
             units=Altitude.units,
         )
+    else:
+        data.coords["altitude"] = data.coords["altitude"].astype(dtype, copy=False)
 
     return data
