@@ -1363,3 +1363,26 @@ def test_provider_attr_warning(met_ecmwf_sl_path: str, provider: str) -> None:
     mds.attrs["provider"] = provider
     with pytest.warns(UserWarning, match=f"Unknown provider '{provider}'."):
         assert mds.provider_attr == provider
+
+
+@pytest.mark.parametrize("coord", ["air_pressure", "altitude"])
+def test_vertical_coord(met_ecmwf_pl_path: str, coord: str) -> None:
+    """Test the nature of assigning new vertical coordinates in the MetDataset constructor."""
+    ds = xr.open_dataset(met_ecmwf_pl_path)
+    assert coord not in ds
+
+    # The MetDataset constructor adds the vertical coordinate
+    mds = MetDataset(ds)
+    assert coord in mds.data.coords
+
+    # Assign a fictitious vertical coordinate with the wrong dtype
+    # and the MetDataset constructor will fix it
+    fake_coord = xr.DataArray(
+        np.arange(len(ds["level"]), dtype=np.float32),
+        dims=["level"],
+        coords={"level": ds["level"]},
+    )
+    ds = ds.assign_coords({coord: fake_coord})
+    mds = MetDataset(ds)
+    assert np.all(mds.data.coords[coord] == fake_coord)
+    assert mds.data.coords[coord].values.dtype == np.float64
