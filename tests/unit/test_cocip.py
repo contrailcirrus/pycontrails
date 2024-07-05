@@ -1188,6 +1188,8 @@ def test_cocip_fleet(fl: Flight, met: MetDataset, rad: MetDataset):
     """
     initial_keys = set(fl)
     fls = [fl.copy() for _ in range(10)]
+    del fl  # we don't want to accidentally use this below
+
     cocip = Cocip(
         met=met,
         rad=rad,
