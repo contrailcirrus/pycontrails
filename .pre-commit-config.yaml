@@ -5,7 +5,7 @@ repos:
         name: ruff
         language_version: python3
         language: python
-        entry: ruff
+        entry: ruff check
         args: [--fix, --exit-non-zero-on-fix]
         types: [python]
       - id: doc8
