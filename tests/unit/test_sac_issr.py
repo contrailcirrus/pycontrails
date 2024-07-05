@@ -39,6 +39,7 @@ def test_ISSR_met_source(met_issr: MetDataset) -> None:
     assert isinstance(out1.data, xr.Dataset)
     assert isinstance(model.met, MetDataset)
     assert set(out1.data) == {"air_temperature", "specific_humidity", "rhi", "issr"}
+    assert all(v == np.float32 for v in out1.data.dtypes.values())
     assert out1["issr"].name == "issr"
 
     assert out1.attrs["humidity_scaling_name"] == "exponential_boost"
@@ -65,6 +66,7 @@ def test_ISSR_met_source(met_issr: MetDataset) -> None:
     # undergo humidity scaling. This is why the counts below are lower.
     assert "humidity_scaling" not in out2.attrs
     assert isinstance(out2, MetDataset)
+    all(v == np.float32 for v in out2.data.dtypes.values())
 
     # Pin some counts
     vals, counts = np.unique(out2.data["issr"], return_counts=True)
@@ -84,6 +86,7 @@ def test_SAC_met_source(met_issr: MetDataset) -> None:
     assert isinstance(out1, MetDataset)
     assert isinstance(out1.data, xr.Dataset)
     assert isinstance(model.met, MetDataset)
+    assert all(v == np.float32 for v in out1.data.dtypes.values())
     assert set(out1.data) == {
         "G",
         "T_sat_liquid",
@@ -107,6 +110,7 @@ def test_SAC_met_source(met_issr: MetDataset) -> None:
 
     assert isinstance(out2, MetDataset)
     assert np.all(out2.data["engine_efficiency"] == 0.35)
+    assert all(v == np.float32 for v in out1.data.dtypes.values())
 
     # Pin some counts
     # Values are now different because humidity was not scaled
@@ -123,6 +127,7 @@ def test_SAC_with_nan(met_issr: MetDataset) -> None:
 
     model = SAC(met, humidity_scaling=ExponentialBoostHumidityScaling())
     out = model.eval()["sac"]
+    assert out.data.dtype == np.float32
     np.testing.assert_array_equal(np.nonzero(np.isnan(out.values)), [[4], [3], [2], [1]])
 
     actual = np.unique(out.data)
@@ -142,6 +147,7 @@ def test_PCR_grid(met_issr: MetDataset) -> None:
     assert isinstance(out1, MetDataset)
     assert isinstance(out1.data, xr.Dataset)
     assert isinstance(model.met, MetDataset)
+    assert all(v == np.float32 for v in out1.data.dtypes.values())
 
     assert out1.attrs.pop("pycontrails_version")
     assert out1.attrs == {
@@ -162,10 +168,11 @@ def test_PCR_grid(met_issr: MetDataset) -> None:
 
     met_copy = met_issr.copy()
     del met_copy.data["air_temperature"]
-    met_copy.data["engine_efficiency"] = 0.35
+    met_copy.data["engine_efficiency"] = np.float32(0.35)
     out2 = model.eval(source=met_copy)
 
     assert isinstance(out2, MetDataset)
+    assert all(v == np.float32 for v in out2.data.dtypes.values())
     assert np.all(out2.data["engine_efficiency"] == 0.35)
 
     # Pin some counts
@@ -182,6 +189,7 @@ def test_era5_as_expected(met_era5_fake: MetDataset) -> None:
     issr = ISSR(met=met_era5_fake).eval()["issr"]
     assert isinstance(issr, MetDataArray)
     assert issr.proportion == 0.2
+    assert issr.data.dtype == np.result_type(*met_era5_fake.data.dtypes.values())
 
     # ISSR exist exactly when longitude is a multiple of 5
     # demonstrating this behavior on a few arbitrary selections
@@ -195,6 +203,7 @@ def test_era5_as_expected(met_era5_fake: MetDataset) -> None:
     # In particular, on levels 150, 175, and 200, the two diverge
     pcr = PCR(met_era5_fake).eval()["pcr"]
     assert isinstance(pcr, MetDataArray)
+    assert pcr.data.dtype == np.result_type(*met_era5_fake.data.dtypes.values())
     pcr_low = pcr.data.isel(level=slice(3, None))
     issr_low = issr.data.isel(level=slice(3, None))
     xr.testing.assert_equal(pcr_low, issr_low)
