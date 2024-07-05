@@ -1375,9 +1375,10 @@ class MetDataArray(MetBase):
 
         # try to create DataArray out of input data and **kwargs
         if not isinstance(data, xr.DataArray):
-            DeprecationWarning(
+            warnings.warn(
                 "Input 'data' must be an xarray DataArray. "
-                "Passing arbitrary kwargs will be removed in future versions."
+                "Passing arbitrary kwargs will be removed in future versions.",
+                DeprecationWarning,
             )
             data = xr.DataArray(data, **kwargs)
 
