@@ -2612,7 +2612,7 @@ def _load(hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Datas
 def _add_vertical_coords(data: XArrayType) -> XArrayType:
     """Add "air_pressure" and "altitude" coordinates to data.
 
-    .. versionchanged:: 0.52.2
+    .. versionchanged:: 0.52.1
         Ensure that the ``dtype`` of the additional vertical coordinates agree
         with the ``dtype`` of the underlying gridded data.
     """
