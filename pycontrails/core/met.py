@@ -2633,7 +2633,7 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
         else data.dtype
     )
 
-    level = data["level"].values.astype(dtype, copy=False)
+    level = data["level"].values
 
     if "air_pressure" not in data.coords:
         data = data.assign_coords(air_pressure=("level", level * 100.0))
@@ -2642,7 +2642,7 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
             long_name=AirPressure.long_name,
             units=AirPressure.units,
         )
-    elif data.coords["air_pressure"].dtype != dtype:
+    if data.coords["air_pressure"].dtype != dtype:
         data.coords["air_pressure"] = data.coords["air_pressure"].astype(dtype, copy=False)
 
     if "altitude" not in data.coords:
@@ -2652,7 +2652,7 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
             long_name=Altitude.long_name,
             units=Altitude.units,
         )
-    elif data.coords["altitude"].dtype != dtype:
+    if data.coords["altitude"].dtype != dtype:
         data.coords["altitude"] = data.coords["altitude"].astype(dtype, copy=False)
 
     return data
