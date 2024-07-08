@@ -11,7 +11,7 @@ Learn more on `contrails.org <https://contrails.org>`_.
    :header-rows: 0
 
    * - **Version**
-     - |PyPI version| |Supported python versions| |conda-forge version|
+     - |PyPI version| |conda-forge version| |Supported python versions|
    * - **Citation**
      - |DOI|
    * - **Tests**
