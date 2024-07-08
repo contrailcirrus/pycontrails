@@ -11,11 +11,11 @@ Learn more on `contrails.org <https://contrails.org>`_.
    :header-rows: 0
 
    * - **Version**
-     - |PyPI version| |Supported python versions|
+     - |PyPI version| |Supported python versions| |conda-forge version|
    * - **Citation**
      - |DOI|
    * - **Tests**
-     - |Unit test| |Docs| |Release|
+     - |Unit test| |Docs| |Release| |OpenSSF scorecard|
    * - **License**
      - |Apache License 2.0|
    * - **Community**
@@ -80,6 +80,10 @@ Learn more on `contrails.org <https://contrails.org>`_.
    :alt: Supported python versions
    :target: https://pypi.python.org/pypi/pycontrails
 
+.. |conda-forge version| image:: https://anaconda.org/conda-forge/pycontrails/badges/version.svg
+   :alt: conda-forge version
+   :target: https://anaconda.org/conda-forge/pycontrails
+
 .. |DOI| image:: https://zenodo.org/badge/617248930.svg
    :alt: DOI
    :target: https://zenodo.org/badge/latestdoi/617248930
@@ -95,6 +99,10 @@ Learn more on `contrails.org <https://contrails.org>`_.
 .. |Release| image:: https://github.com/contrailcirrus/pycontrails/actions/workflows/release.yaml/badge.svg
    :alt: Release
    :target: https://github.com/contrailcirrus/pycontrails/actions/workflows/release.yaml
+
+.. |OpenSSF scorecard| image:: https://api.securityscorecards.dev/projects/github.com/contrailcirrus/pycontrails/badge
+   :alt: OpenSSF scorecard
+   :target: https://securityscorecards.dev/viewer?uri=github.com/contrailcirrus/pycontrails
 
 .. |Apache License 2.0| image:: https://img.shields.io/pypi/l/pycontrails.svg
    :alt: Apache License 2.0
