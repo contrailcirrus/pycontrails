@@ -13,6 +13,11 @@
 - Remove h5netcdf dependency.
 - Update doctests with numpy 2 scalar representation (see [NEP 51](https://numpy.org/neps/nep-0051-scalar-representation.html)). Doctests will now fail when run with numpy 1.
 - Run certain tests in `test_ecmwf.py` and `test_met.py` using the single-threaded dask scheduler to prevent tests from hanging while waiting for a lock that is never released. (This issue was [encountered previously](https://github.com/contrailcirrus/pycontrails/pull/68), and removing `lock=False` in `MetDataSource.open_dataset` reverts the fix.)
+- Document pycontrails installation from conda-forge.
+
+### Fixes
+
+- Ensure the `MetDataset` vertical coordinates `"air_pressure"` and `"altitude"` have the correct dtype.
 
 ## v0.52.0
 
