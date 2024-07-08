@@ -23,7 +23,9 @@ Documentation and examples available at [py.contrails.org](https://py.contrails.
 
 ## Install
 
-Requires Python (3.9 or later)
+### Install with pip
+
+You can install pycontrails from PyPI with `pip` (Python 3.9 or later required):
 
 ```bash
 $ pip install pycontrails
@@ -38,7 +40,17 @@ Install the latest development version directly from GitHub:
 pip install git+https://github.com/contrailcirrus/pycontrails.git
 ```
 
-See more options in the [install documentation](https://py.contrails.org/install).
+### Install with conda
+
+You can install pycontrails from the [conda-forge](https://conda-forge.org/) channel with `conda` (or other `conda`-like package managers such as `mamba`):
+
+```bash
+conda install -c conda-forge pycontrails
+```
+
+The conda-forge package includes all optional runtime dependencies.
+
+See more installation options in the [install documentation](https://py.contrails.org/install).
 
 ## Get Involved
 
