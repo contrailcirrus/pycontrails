@@ -66,7 +66,7 @@ def test_ISSR_met_source(met_issr: MetDataset) -> None:
     # undergo humidity scaling. This is why the counts below are lower.
     assert "humidity_scaling" not in out2.attrs
     assert isinstance(out2, MetDataset)
-    all(v == np.float32 for v in out2.data.dtypes.values())
+    assert all(v == np.float32 for v in out2.data.dtypes.values())
 
     # Pin some counts
     vals, counts = np.unique(out2.data["issr"], return_counts=True)
