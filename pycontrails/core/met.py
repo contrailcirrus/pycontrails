@@ -2650,7 +2650,7 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
     level = data["level"].values.astype(dtype, copy=False)
 
     # We're missing at least one of 'air_pressure' or 'altitude'
-    if "air_pressure" not in data:
+    if "air_pressure" not in data.coords:
         data = data.assign_coords(air_pressure=("level", level * 100.0))
         data.coords["air_pressure"].attrs.update(
             standard_name=AirPressure.standard_name,
@@ -2660,7 +2660,7 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
     else:
         data.coords["air_pressure"] = data.coords["air_pressure"].astype(dtype, copy=False)
 
-    if "altitude" not in data:
+    if "altitude" not in data.coords:
         data = data.assign_coords(altitude=("level", units.pl_to_m(level)))
         data.coords["altitude"].attrs.update(
             standard_name=Altitude.standard_name,
