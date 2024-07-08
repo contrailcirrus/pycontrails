@@ -2633,23 +2633,8 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
         else data.dtype
     )
 
-    coords = data.coords
-    try:
-        air_pressure = coords["air_pressure"]
-        altitude = coords["altitude"]
-    except KeyError:
-        pass
-    else:
-        if air_pressure.dtype == dtype and altitude.dtype == dtype:
-            return data
-        # At least one of 'air_pressure' or 'altitude' has the wrong dtype
-        data.coords["air_pressure"] = air_pressure.astype(dtype, copy=False)
-        data.coords["altitude"] = altitude.astype(dtype, copy=False)
-        return data
-
     level = data["level"].values.astype(dtype, copy=False)
 
-    # We're missing at least one of 'air_pressure' or 'altitude'
     if "air_pressure" not in data.coords:
         data = data.assign_coords(air_pressure=("level", level * 100.0))
         data.coords["air_pressure"].attrs.update(
@@ -2657,7 +2642,7 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
             long_name=AirPressure.long_name,
             units=AirPressure.units,
         )
-    else:
+    elif data.coords["air_pressure"].dtype != dtype:
         data.coords["air_pressure"] = data.coords["air_pressure"].astype(dtype, copy=False)
 
     if "altitude" not in data.coords:
@@ -2667,7 +2652,7 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
             long_name=Altitude.long_name,
             units=Altitude.units,
         )
-    else:
+    elif data.coords["altitude"].dtype != dtype:
         data.coords["altitude"] = data.coords["altitude"].astype(dtype, copy=False)
 
     return data
