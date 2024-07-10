@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.52.2
+
+### Fixes
+
+- Fix missing `Fuel Flow Idle (kg/sec)` value in the `1ZM001` engine in the `edb-gaseous-v29b-engines.csv`
+
 ## v0.52.1
 
 ### Breaking changes
@@ -157,7 +163,7 @@ The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new 
 - Update flight resampling logic to align with expected behavior for very short flights, which is now detailed in the `Flight.resample_and_fill` docstring.
 
 ### Internals
-  
+
 - Adds a parameter to `CoCipParams`, `unterstrasser_ice_survival_fraction`, that activates the Unterstrasser (2016) survival parameterization when set to `True`. This is disabled by default, and only implemented for `CoCiP`. `CoCiPGrid` will produce an error if run with `unterstrasser_ice_surival_fraction=True`.
 - Modifies `CoCiPGrid` so that setting `compute_atr_20` (defined in `CoCipParams`) to `True` adds `global_yearly_mean_rf` and `atr20` to CoCiP-grid output.
 - Replaces `pycontrails.datalib.GOES` ash convention label "MIT" with "SEVIRI"
@@ -188,7 +194,7 @@ The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new 
 - Add new `MetDataSource.is_single_level` property.
 - Add `ecmwf.Divergence` (a subclass of `MetVariable`) for accessing ERA5 divergence data.
 - Update the [specific humidity interpolation notebook](https://py.contrails.org/notebooks/specific-humidity-interpolation.html) to use the new `ARCOERA5` interface.
-- Adds two parameters to `CoCipParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output. 
+- Adds two parameters to `CoCipParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output.
 - Bump minimum pytest version to 8.1 to avoid failures in release workflow.
 
 ## v0.49.5
