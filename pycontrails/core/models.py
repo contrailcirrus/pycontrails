@@ -585,16 +585,7 @@ class Model(ABC):
         KeyError
             Variable not found in :attr:`source` or :attr:`met`.
         """
-        variables: Sequence[MetVariable | tuple[MetVariable, ...]]
-        if variable is None:
-            if optional:
-                variables = (*self.met_variables, *self.optional_met_variables)
-            else:
-                variables = self.met_variables
-        elif isinstance(variable, MetVariable):
-            variables = (variable,)
-        else:
-            variables = variable
+        variables = self._determine_relevant_variables(optional, variable)
 
         q_method = self.params["interpolation_q_method"]
 
@@ -639,6 +630,20 @@ class Model(ABC):
                 self.source[met_key] = _interp_grid_to_grid(
                     met_key, da, self.source, self.params, q_method
                 )
+
+    def _determine_relevant_variables(
+        self,
+        optional: bool,
+        variable: MetVariable | Sequence[MetVariable] | None,
+    ) -> Sequence[MetVariable | tuple[MetVariable, ...]]:
+        """Determine the relevant variables used in :meth:`set_source_met`."""
+        if variable is None:
+            if optional:
+                return (*self.met_variables, *self.optional_met_variables)
+            return self.met_variables
+        if isinstance(variable, MetVariable):
+            return (variable,)
+        return variable
 
     # Following python implementation
     # https://github.com/python/cpython/blob/618b7a8260bb40290d6551f24885931077309590/Lib/collections/__init__.py#L231
