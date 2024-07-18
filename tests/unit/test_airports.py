@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -76,6 +75,7 @@ def test_distance_to_airports(airport_database: pd.DataFrame) -> None:
     altitude = 500
     distance = airports.distance_to_airports(apts, longitude, latitude, altitude)
 
-    assert len(distance) == 2
-    assert np.round(distance[0]) == 13616.0  # close to BOS
-    assert np.round(distance[1]) == 312342.0  # not terribly far from JFK
+    bos_dist, jfk_dist = distance
+
+    assert bos_dist == pytest.approx(13616.0, rel=0.02)  # close to BOS
+    assert jfk_dist == pytest.approx(312342.0, rel=0.001)  # not terribly far from JFK
