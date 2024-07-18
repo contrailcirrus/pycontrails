@@ -953,6 +953,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         q2d = np.empty((len(self.source), self.n_members), dtype=q.dtype)
 
         interp_kwargs = self.interp_kwargs
+        del interp_kwargs["fill_low_alt_with_isa_temperature"]
         q_method = interp_kwargs.pop("q_method")
 
         ensemble_specific_humidity: list[MetDataArray] = self.params["ensemble_specific_humidity"]
