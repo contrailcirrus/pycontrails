@@ -88,6 +88,11 @@ class ModelParams:
     #: Only used by models calling to :func:`interpolate_met`.
     interpolation_q_method: str | None = None
 
+    #: Experimental. If True, fill points below the lowest altitude met level
+    #: with ISA temperature when interpolating "air_temperature" or "t".
+    #: Only used by models calling to :func:`interpolate_met`.
+    interpolation_fill_low_alt_with_isa_temperature: bool = False
+
     # -----------
     # Meteorology
     # -----------
@@ -362,6 +367,8 @@ class Model(ABC):
     def interp_kwargs(self) -> dict[str, Any]:
         """Shortcut to create interpolation arguments from :attr:`params`.
 
+        The output of this is useful for passing to :func:`interpolate_met`.
+
         Returns
         -------
         dict[str, Any]
@@ -373,16 +380,21 @@ class Model(ABC):
             - "localize"
             - "use_indices"
             - "q_method"
+            - "fill_low_alt_with_isa_temperature"
 
             as determined by :attr:`params`.
         """
+        params = self.params
         return {
-            "method": self.params["interpolation_method"],
-            "bounds_error": self.params["interpolation_bounds_error"],
-            "fill_value": self.params["interpolation_fill_value"],
-            "localize": self.params["interpolation_localize"],
-            "use_indices": self.params["interpolation_use_indices"],
-            "q_method": self.params["interpolation_q_method"],
+            "method": params["interpolation_method"],
+            "bounds_error": params["interpolation_bounds_error"],
+            "fill_value": params["interpolation_fill_value"],
+            "localize": params["interpolation_localize"],
+            "use_indices": params["interpolation_use_indices"],
+            "q_method": params["interpolation_q_method"],
+            "fill_low_alt_with_isa_temperature": params[
+                "interpolation_fill_low_alt_with_isa_temperature"
+            ],
         }
 
     def require_met(self) -> MetDataset:
@@ -819,7 +831,9 @@ def interpolate_met(
     vector: GeoVectorDataset,
     met_key: str,
     vector_key: str | None = None,
+    *,
     q_method: str | None = None,
+    fill_low_alt_with_isa_temperature: bool = False,
     **interp_kwargs: Any,
 ) -> npt.NDArray[np.float64]:
     """Interpolate ``vector`` against ``met`` gridded data.
@@ -844,6 +858,10 @@ def interpolate_met(
     q_method : str, optional
         Experimental method to use for interpolating specific humidity. See
         :class:`ModelParams` for more information.
+    fill_low_alt_with_isa_temperature : bool, optional
+        If True, fill low altitude temperature with ISA temperature.
+        Only applies when ``met_key`` is "t" or "air_temperature"
+        for waypoints below the lowest-altitude met level.
     **interp_kwargs : Any,
         Additional keyword only arguments passed to :meth:`GeoVectorDataset.intersect_met`.
         For example, ``level=[...]``.
@@ -881,6 +899,9 @@ def interpolate_met(
             raise KeyError(msg) from exc
 
         out = vector.intersect_met(mda, **interp_kwargs)
+
+    if met_key in ("t", "air_temperature") and fill_low_alt_with_isa_temperature:
+        out = _fill_low_alt_with_isa_temperature(vector, out, met.data["level"][-1].item())
 
     vector[vector_key] = out
     return out
@@ -1175,3 +1196,36 @@ def update_param_dict(param_dict: dict[str, Any], new_params: dict[str, Any]) ->
             value = pd.to_timedelta(value).to_numpy()
 
         param_dict[param] = value
+
+
+def _fill_low_alt_with_isa_temperature(
+    vector: GeoVectorDataset,
+    air_temperature: npt.NDArray[np.float64],
+    met_level_max: float,
+) -> npt.NDArray[np.float64]:
+    """Fill low-altitude NaN values in ``air_temperature`` with ISA values.
+
+    The ``air_temperature`` param is assumed to have been computed by
+    interpolating against a gridded air temperature field that did not
+    necessarily extend to the surface. This function fills points below the
+    lowest altitude in the gridded data with ISA temperature values.
+
+    Parameters
+    ----------
+    vector : GeoVectorDataset
+        GeoVectorDataset instance associated with the ``air_temperature`` data.
+    air_temperature : npt.NDArray[np.float64]
+        Air temperature data to fill.
+    met_level_max : float
+        The maximum level in the met data, [:math:`hPa`].
+
+    Returns
+    -------
+    npt.NDArray[np.float64]
+        Filled air temperature data. This array agrees with the input array
+        except for NaN values at altitudes below the lowest met level, which
+        are replaced with ISA temperature values.
+    """
+    is_nan = np.isnan(air_temperature)
+    low_alt = vector.level > met_level_max
+    return np.where(is_nan & low_alt, vector.T_isa(), air_temperature)
