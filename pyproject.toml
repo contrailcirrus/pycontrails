@@ -59,7 +59,7 @@ complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
-    "black[jupyter]==24.4.1",
+    "black[jupyter]==24.4.2",
     "dep_license",
     "fastparquet>=0.8",
     "ipdb>=0.13",
@@ -73,7 +73,7 @@ dev = [
     "pytest>=8.2",
     "pytest-cov>=2.11",
     "requests>=2.25",
-    "ruff==0.4.1",
+    "ruff==0.5.3",
     "setuptools",
 ]
 
@@ -209,7 +209,7 @@ show_error_codes = true
 [tool.black]
 line-length = 100
 preview = true
-required-version = "24.4.1"
+required-version = "24.4.2"
 
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
