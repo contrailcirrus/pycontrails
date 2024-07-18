@@ -170,6 +170,19 @@ def test_model_type_guards(met_era5_fake: MetDataset, flight_fake: Flight) -> No
     model.require_source_type(Flight)
 
 
+@pytest.mark.parametrize("model_class", [ModelTestGrid, ModelTestFlight])
+def test_model_hash(met_era5_fake: MetDataset, model_class: type[Model]) -> None:
+    """Check the pinned model hash as a way to test for model degradation.
+
+    This hash will change anytime a new model parameter is added or changed.
+    """
+    model = model_class(met=met_era5_fake)
+    if isinstance(model, ModelTestFlight):
+        assert model.hash == "b5202fb6d75e1ac8a0fe08bd33c5a8efa4a6a392"
+    else:
+        assert model.hash == "441a2445585bc10e024a9031fac17753af3b9e1e"
+
+
 # ----------------
 # Grid-like Tests
 # ----------------
@@ -217,12 +230,6 @@ def test_model_grid_required_met_variables(met_era5_fake: MetDataset) -> None:
 
     with pytest.raises(KeyError, match="other"):
         ModelTestGridMissingRequiredVariables(met_era5_fake)
-
-
-def test_model_grid_hash(met_era5_fake: MetDataset) -> None:
-    """Model hash."""
-    grid_model = ModelTestGrid(met=met_era5_fake)
-    assert grid_model.hash == "b0c26d747887f86ab1942667c3befcb5693688a3"
 
 
 def test_model_met_not_copied(met_era5_fake: MetDataset) -> None:
@@ -325,12 +332,6 @@ def test_model_flight_required_met_variables(met_era5_fake: MetDataset) -> None:
 
     with pytest.raises(KeyError, match="other"):
         ModelTestFlightMissingRequiredVariables(met_era5_fake)
-
-
-def test_model_flight_hash(met_era5_fake: MetDataset) -> None:
-    """Ensure pinned hash matches as check for model degradation."""
-    flight_model = ModelTestFlight(met_era5_fake)
-    assert flight_model.hash == "a5b35e16632ff819e49499a832a1ba1787d3dd27"
 
 
 def test_model_flight_met_not_copied(met_era5_fake: MetDataset) -> None:
