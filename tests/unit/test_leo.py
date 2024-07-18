@@ -15,6 +15,7 @@ from pycontrails.datalib._leo_utils import search
 from tests import BIGQUERY_ACCESS, OFFLINE
 
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+PYCONTRAILS_SKIP_LEO_TESTS = bool(os.getenv("PYCONTRAILS_SKIP_LEO_TESTS"))
 
 # ==========
 # Utilities
@@ -342,6 +343,7 @@ def test_landsat_band_resolution(bands: set[str], succeed: bool) -> None:
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="data retrieval tests skipped in GitHub actions")
+@pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("band", [f"B{i}" for i in range(1, 9)])
 @pytest.mark.parametrize("processing", ["raw", "radiance", "reflectance"])
@@ -372,6 +374,7 @@ def test_landsat_get_reflective_bands(
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="data retrieval tests skipped in GitHub actions")
+@pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("band", ["B10", "B11"])
 @pytest.mark.parametrize("processing", ["raw", "radiance", "brightness_temperature"])
@@ -402,6 +405,7 @@ def test_landsat_get_thermal_bands(
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="data retrieval tests skipped in GitHub actions")
+@pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_landsat_generate_true_color_rgb(
     landsat_cachestore: cache.DiskCacheStore, landsat_base_url: str
@@ -426,6 +430,7 @@ def test_landsat_generate_true_color_rgb(
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="data retrieval tests skipped in GitHub actions")
+@pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_landsat_generate_google_contrails_rgb(
     landsat_cachestore: cache.DiskCacheStore, landsat_base_url: str
@@ -568,6 +573,7 @@ def test_sentinel_band_resolution(bands: set[str], succeed: bool) -> None:
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="data retrieval tests skipped in GitHub actions")
+@pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("band", [f"B{i:02d}" for i in range(1, 13)] + ["B8A"])
 @pytest.mark.parametrize("processing", ["raw", "reflectance"])
@@ -599,6 +605,7 @@ def test_sentinel_get_reflective_bands(
 
 
 @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="data retrieval tests skipped in GitHub actions")
+@pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_sentinel_generate_true_color_rgb(
     sentinel_cachestore: cache.DiskCacheStore, sentinel_base_url: str, sentinel_granule_id: str
