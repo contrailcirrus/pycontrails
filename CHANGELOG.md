@@ -1,6 +1,10 @@
 # Changelog
 
-## v0.52.2
+## v0.52.2 (unreleased)
+
+### Features
+
+- Add experimental `interpolation_fill_low_alt_with_isa_temperature` model parameter. When set to `True`, models with `GeoVectorDataset` sources will fill points below the lowest altitude in the ``met["air_temperature]`` data with the ISA temperature. This is useful for aircraft performance calculations when the met data does not extend to the surface. In this case, we can still estimate fuel flow and other performance metrics through the entire climb phase. By default, this parameter is set to `False`.
 
 ### Fixes
 
