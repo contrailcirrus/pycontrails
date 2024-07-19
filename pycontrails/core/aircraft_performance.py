@@ -120,7 +120,10 @@ class AircraftPerformance(Model):
     def set_source_met(self, *args: Any, **kwargs: Any) -> None:
         fill_with_isa = self.params["fill_low_altitude_with_isa_temperature"]
         if fill_with_isa and (self.met is None or "air_temperature" not in self.met):
-            self.source["air_temperature"] = self.source.T_isa()
+            if "air_temperature" in self.source:
+                _fill_low_altitude_with_isa_temperature(self.source, 0.0)
+            else:
+                self.source["air_temperature"] = self.source.T_isa()
             fill_with_isa = False  # we've just filled it
 
         super().set_source_met(*args, **kwargs)
@@ -452,42 +455,37 @@ class AircraftPerformance(Model):
             on :attr:`source`, this is returned directly. Otherwise, it is calculated
             using :meth:`Flight.segment_true_airspeed`.
         """
-        # If true_airspeed is already present, return it and do nothing
-        try:
-            return self.source["true_airspeed"]
-        except KeyError:
-            pass
+        tas = self.source.get("true_airspeed")
+        fill_with_groundspeed = self.params["fill_low_altitude_with_zero_wind"]
 
-        # If self.met is None, either raise or fill with groundspeed
-        fill_low_altitude_with_zero_wind = self.params["fill_low_altitude_with_zero_wind"]
-        if self.met is None:
-            if not fill_low_altitude_with_zero_wind:
-                msg = (
-                    "Cannot compute 'true_airspeed' without 'met' data. Either include "
-                    "met data in the model constructorm, define 'true_airspeed' data on "
-                    "the flight, or set 'fill_low_altitude_with_zero_wind' to True."
-                )
-                raise ValueError(msg)
+        if tas is not None:
+            if not fill_with_groundspeed:
+                return tas
+            cond = np.isnan(tas)
+            tas[cond] = self.source.segment_groundspeed()[cond]
+            return tas
 
-            groundspeed = self.source.segment_groundspeed()
-            self.source["true_airspeed"] = groundspeed
-            return groundspeed
+        met_incomplete = (
+            self.met is None or "eastward_wind" not in self.met or "northward_wind" not in self.met
+        )
+        if met_incomplete:
+            if fill_with_groundspeed:
+                tas = self.source.segment_groundspeed()
+                self.source["true_airspeed"] = tas
+                return tas
+            msg = (
+                "Cannot compute 'true_airspeed' without 'eastward_wind' and 'northward_wind' "
+                "met data. Either include met data in the model constructor, define "
+                "'true_airspeed' data on the flight, or set "
+                "'fill_low_altitude_with_zero_wind' to True."
+            )
+            raise ValueError(msg)
 
-        # Interpolate u_wind and v_wind
-        try:
-            u = interpolate_met(self.met, self.source, "eastward_wind", **self.interp_kwargs)
-            v = interpolate_met(self.met, self.source, "northward_wind", **self.interp_kwargs)
+        u = interpolate_met(self.met, self.source, "eastward_wind", **self.interp_kwargs)
+        v = interpolate_met(self.met, self.source, "northward_wind", **self.interp_kwargs)
 
-        except (ValueError, KeyError) as exc:
-            raise ValueError(
-                "Variable 'true_airspeed' not found. Include 'eastward_wind' and"
-                " 'northward_wind' variables on 'met' in model constructor, or define"
-                " 'true_airspeed' data on flight. This can be achieved by calling the"
-                " 'Flight.segment_true_airspeed' method."
-            ) from exc
-
-        if fill_low_altitude_with_zero_wind:
-            met_level_max = self.met.data["level"][-1].item()
+        if fill_with_groundspeed:
+            met_level_max = self.met.data["level"][-1].item()  # type: ignore[union-attr]
             cond = self.source.level > met_level_max
             # We DON'T overwrite the original u and v arrays already attached to the source
             u = np.where(cond, 0.0, u)
