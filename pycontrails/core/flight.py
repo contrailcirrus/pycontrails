@@ -1591,8 +1591,28 @@ class Flight(GeoVectorDataset):
         :class:`matplotlib.axes.Axes`
             Plot
         """
-        ax = self.dataframe.plot(x="longitude", y="latitude", legend=False, **kwargs)
+        kwargs.setdefault("legend", False)
+        ax = self.dataframe.plot(x="longitude", y="latitude", **kwargs)
         ax.set(xlabel="longitude", ylabel="latitude")
+        return ax
+
+    def plot_profile(self, **kwargs: Any) -> matplotlib.axes.Axes:
+        """Plot flight trajectory time-altitude values.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Additional plot properties to passed to `pd.DataFrame.plot`
+
+        Returns
+        -------
+        :class:`matplotlib.axes.Axes`
+            Plot
+        """
+        kwargs.setdefault("legend", False)
+        df = self.dataframe.assign(altitude_ft=self.altitude_ft)
+        ax = df.plot(x="time", y="altitude_ft", **kwargs)
+        ax.set(xlabel="time", ylabel="altitude_ft")
         return ax
 
 
