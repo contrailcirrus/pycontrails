@@ -11,7 +11,7 @@ import pycontrails.models.ps_model.ps_aircraft_params as ps_params
 import pycontrails.models.ps_model.ps_model as ps
 import pycontrails.models.ps_model.ps_operational_limits as ps_lims
 from pycontrails import Flight, FlightPhase, GeoVectorDataset, MetDataset
-from pycontrails.models.ps_model import PSGrid, ps_nominal_grid
+from pycontrails.models.ps_model import PSFlight, PSGrid, ps_nominal_grid
 from pycontrails.physics import units
 
 from .conftest import get_static_path
@@ -506,3 +506,47 @@ def test_ps_grid_raises(met_era5_fake: MetDataset) -> None:
     model = PSGrid(met_era5_fake, aircraft_mass=60000)
     with pytest.raises(NotImplementedError, match="The 'aircraft_mass' parameter must be None."):
         model.eval()
+
+
+def test_fill_low_altitude_with_isa_temperature(
+    flight_fake: Flight,
+    met_era5_fake: MetDataset,
+) -> None:
+    """Smoke test the ``fill_low_altitude_with_isa_temperature`` param."""
+
+    flight_fake["true_airspeed"] = np.full(flight_fake.size, 230.0)
+    flight_fake.attrs["aircraft_type"] = "B738"
+
+    model1 = PSFlight(met=met_era5_fake, fill_low_altitude_with_isa_temperature=True)
+    model2 = PSFlight(met=met_era5_fake, fill_low_altitude_with_isa_temperature=False)
+
+    fl1 = model1.eval(flight_fake)
+    fl2 = model2.eval(flight_fake)
+
+    # if air temperature is computed, the model can estimate fuel flow
+    assert np.sum(np.isfinite(fl1["fuel_flow"])) == 499  # all but the last value
+    assert np.sum(np.isfinite(fl2["fuel_flow"])) == 242  # missing everything below lowest met level
+
+
+def test_fill_low_altitude_with_zero_wind(
+    flight_fake: Flight,
+    met_era5_fake: MetDataset,
+) -> None:
+    """Smoke test the ``fill_low_altitude_with_zero_wind`` param."""
+
+    flight_fake["air_temperature"] = flight_fake.T_isa()
+    flight_fake.attrs["aircraft_type"] = "B738"
+
+    rng = np.random.default_rng(555444333)
+    met_era5_fake["eastward_wind"] = met_era5_fake.data.dims, rng.normal(0, 5, met_era5_fake.shape)
+    met_era5_fake["northward_wind"] = met_era5_fake.data.dims, rng.normal(0, 5, met_era5_fake.shape)
+
+    model1 = PSFlight(met=met_era5_fake, fill_low_altitude_with_zero_wind=True)
+    model2 = PSFlight(met=met_era5_fake, fill_low_altitude_with_zero_wind=False)
+
+    fl1 = model1.eval(flight_fake)
+    fl2 = model2.eval(flight_fake)
+
+    # if air temperature is computed, the model can estimate fuel flow
+    assert np.sum(np.isfinite(fl1["fuel_flow"])) == 499  # all but the last value
+    assert np.sum(np.isfinite(fl2["fuel_flow"])) == 242  # missing everything below lowest met level
