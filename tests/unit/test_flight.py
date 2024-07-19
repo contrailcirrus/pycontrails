@@ -266,6 +266,7 @@ def test_ensure_vars(fl: Flight) -> None:
 
 
 def test_plot(fl: Flight) -> None:
+    """Test the Flight.plot() method."""
     ax = fl.plot()
     assert isinstance(ax, matplotlib.axes.Axes)
     assert ax.get_xlabel() == "longitude"
@@ -275,6 +276,14 @@ def test_plot(fl: Flight) -> None:
     assert isinstance(fl.plot(figsize=(20, 20)), matplotlib.axes.Axes)
     assert isinstance(fl.plot(alpha=0.5), matplotlib.axes.Axes)
     assert isinstance(fl.plot(marker="o", linestyle=""), matplotlib.axes.Axes)
+
+
+def test_plot_profile(fl: Flight) -> None:
+    """Test the Flight.plot_profile() method."""
+    ax = fl.plot_profile()
+    assert isinstance(ax, matplotlib.axes.Axes)
+    assert ax.get_xlabel() == "time"
+    assert ax.get_ylabel() == "altitude_ft"
 
 
 def test_flight_time_methods(fl: Flight) -> None:
