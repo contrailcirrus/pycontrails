@@ -127,7 +127,7 @@ class AircraftPerformance(Model):
         if not fill_with_isa:
             return
 
-        met_level_0 = self.met.data["level"][-1].item()
+        met_level_0 = self.met.data["level"][-1].item()  # type: ignore[union-attr]
         _fill_low_altitude_with_isa_temperature(self.source, met_level_0)
 
     def simulate_fuel_and_performance(
