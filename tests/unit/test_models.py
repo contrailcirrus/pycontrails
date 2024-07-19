@@ -10,7 +10,6 @@ import pytest
 
 from pycontrails import Flight, MetDataArray, MetDataset, Model, ModelParams
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
-from pycontrails.models.ps_model import PSFlight
 
 
 @dataclass
@@ -178,9 +177,9 @@ def test_model_hash(met_era5_fake: MetDataset, model_class: type[Model]) -> None
     """
     model = model_class(met=met_era5_fake)
     if isinstance(model, ModelTestFlight):
-        assert model.hash == "b5202fb6d75e1ac8a0fe08bd33c5a8efa4a6a392"
+        assert model.hash == "a5b35e16632ff819e49499a832a1ba1787d3dd27"
     else:
-        assert model.hash == "441a2445585bc10e024a9031fac17753af3b9e1e"
+        assert model.hash == "b0c26d747887f86ab1942667c3befcb5693688a3"
 
 
 # ----------------
@@ -462,23 +461,3 @@ def test_verify_met_when_met_none(flight_fake: Flight) -> None:
 
     out = model.eval(flight_fake)
     assert isinstance(out, Flight)
-
-
-def test_fill_low_alt_with_isa_temperature(
-    flight_fake: Flight,
-    met_era5_fake: MetDataset,
-) -> None:
-    """Smoke test the ``interpolation_fill_low_alt_with_isa_temperature`` param."""
-
-    flight_fake["true_airspeed"] = np.full(flight_fake.size, 230.0)
-    flight_fake.attrs["aircraft_type"] = "B738"
-
-    model1 = PSFlight(met=met_era5_fake, interpolation_fill_low_alt_with_isa_temperature=True)
-    model2 = PSFlight(met=met_era5_fake, interpolation_fill_low_alt_with_isa_temperature=False)
-
-    fl1 = model1.eval(flight_fake)
-    fl2 = model2.eval(flight_fake)
-
-    # if air temperature is computed, the model can estimate fuel flow
-    assert np.sum(np.isfinite(fl1["fuel_flow"])) == 499  # all but the last value
-    assert np.sum(np.isfinite(fl2["fuel_flow"])) == 242  # missing everything below lowest met level
