@@ -118,11 +118,16 @@ class AircraftPerformance(Model):
 
     @overrides
     def set_source_met(self, *args: Any, **kwargs: Any) -> None:
+        fill_with_isa = self.params["fill_low_altitude_with_isa_temperature"]
+        if fill_with_isa and (self.met is None or "air_temperature" not in self.met):
+            self.source["air_temperature"] = self.source.T_isa()
+            fill_with_isa = False  # we've just filled it
+
         super().set_source_met(*args, **kwargs)
-        if not self.params["fill_low_altitude_with_isa_temperature"]:
+        if not fill_with_isa:
             return
 
-        met_level_0 = 0.0 if self.met is None else self.met.data["level"][-1].item()
+        met_level_0 = self.met.data["level"][-1].item()
         _fill_low_altitude_with_isa_temperature(self.source, met_level_0)
 
     def simulate_fuel_and_performance(
