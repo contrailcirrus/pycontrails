@@ -657,7 +657,7 @@ class VectorDataset:
         8  15  18
 
         """
-        vectors = [v for v in vectors if v]  # remove empty vectors
+        vectors = [v for v in vectors if v is not None]  # remove None values
 
         if not vectors:
             return cls()
