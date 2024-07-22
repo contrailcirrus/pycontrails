@@ -1166,9 +1166,10 @@ class Cocip(Model):
         # ---
         # Create contrail dataframe (self.contrail)
         # ---
-        dfs = [contrail.dataframe for contrail in self.contrail_list]
-        dfs = [df.assign(timestep=t_idx) for t_idx, df in enumerate(dfs)]
-        self.contrail = pd.concat(dfs)
+        for t_idx, contrail in enumerate(self.contrail_list):
+            contrail["timestep"] = np.full(contrail.size, t_idx)
+
+        self.contrail = GeoVectorDataset.sum(self.contrail_list).dataframe
 
         # add age in hours to the contrail waypoint outputs
         age_hours = np.empty_like(self.contrail["ef"])
