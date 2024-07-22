@@ -721,12 +721,12 @@ def test_vector_copy(random_path: VectorDataset) -> None:
     assert len(data) == 3
 
     # Here, when we grab the original data, the base is None
-    random_path4 = VectorDataset(data, copy=False)
+    random_path4 = VectorDataset(data, copy=False, attrs=random_path.attrs)
     assert random_path4 == random_path
     assert random_path4["a"].base is None
     assert np.may_share_memory(random_path4["a"], random_path["a"])
 
-    random_path5 = VectorDataset(data, copy=True)
+    random_path5 = VectorDataset(data, copy=True, attrs=random_path.attrs)
     assert random_path5 == random_path
     assert random_path5["a"].base is None
     assert not np.may_share_memory(random_path5["a"], random_path["a"])

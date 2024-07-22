@@ -707,36 +707,33 @@ class VectorDataset:
         bool
             True if both instances have identical :attr:`data` and :attr:`attrs`.
         """
-        if isinstance(other, VectorDataset):
-            # assert attrs equal
-            for key in self.attrs:
-                if isinstance(self.attrs[key], np.ndarray):
-                    # equal_nan not supported for non-numeric data
-                    equal_nan = not np.issubdtype(self.attrs[key].dtype, "O")
-                    try:
-                        eq = np.array_equal(self.attrs[key], other.attrs[key], equal_nan=equal_nan)
-                    except KeyError:
-                        return False
-                else:
-                    eq = self.attrs[key] == other.attrs[key]
+        if not isinstance(other, VectorDataset):
+            return False
 
-                if not eq:
+        # Check attrs
+        if self.attrs.keys() != other.attrs.keys():
+            return False
+
+        for key, val in self.attrs.items():
+            if isinstance(val, np.ndarray):
+                # equal_nan not supported for non-numeric data
+                equal_nan = not np.issubdtype(val.dtype, "O")
+                if not np.array_equal(val, other.attrs[key], equal_nan=equal_nan):
                     return False
+            elif val != other.attrs[key]:
+                return False
 
-            # assert data equal
-            for key in self:
-                # equal_nan not supported for non-numeric data (e.g. strings)
-                equal_nan = not np.issubdtype(self[key].dtype, "O")
-                try:
-                    eq = np.array_equal(self[key], other[key], equal_nan=equal_nan)
-                except KeyError:
-                    return False
+        # Check data
+        if self.data.keys() != other.data.keys():
+            return False
 
-                if not eq:
-                    return False
+        for key, val in self.data.items():
+            # equal_nan not supported for non-numeric data (e.g. strings)
+            equal_nan = not np.issubdtype(val.dtype, "O")
+            if not np.array_equal(val, other[key], equal_nan=equal_nan):
+                return False
 
-            return True
-        return False
+        return True
 
     @property
     def size(self) -> int:
