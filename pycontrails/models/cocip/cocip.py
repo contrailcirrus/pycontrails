@@ -1176,40 +1176,33 @@ class Cocip(Model):
         np.divide(self.contrail["age"], np.timedelta64(1, "h"), out=age_hours)
         self.contrail["age_hours"] = age_hours
 
-        if self.params["verbose_outputs"]:
+        verbose_outputs = self.params["verbose_outputs"]
+        if verbose_outputs:
             # Compute dt_integration -- logic is somewhat complicated, but
             # we're simply addressing that the first dt_integration
             # is different from the rest
 
-            # We call reset_index twice. The first call introduces an `index`
-            # column, and the second introduces a `level_0` column. This `level_0`
-            # is a RangeIndex, which we use in the `groupby` to identify the
+            # We call reset_index to introduces an `index` RangeIndex column,
+            # Which we use in the `groupby` to identify the
             # index of the first evolution step at each waypoint.
-            # The `level_0` is used to insert back into the `seq_index` dataframe,
-            # then it is dropped in replace of the original `index`.
-            seq_index = self.contrail.reset_index().reset_index()
-            cols = ["formation_time", "time", "level_0"]
-            first_form_time = seq_index.groupby("waypoint")[cols].first()
+            tmp = self.contrail.reset_index()
+            cols = ["formation_time", "time", "index"]
+            first_form_time = tmp.groupby("waypoint")[cols].first()
             first_dt = first_form_time["time"] - first_form_time["formation_time"]
-            first_dt.index = first_form_time["level_0"]
+            first_dt = first_dt.set_axis(first_form_time["index"])
 
-            seq_index = seq_index.set_index("level_0")
-            seq_index["dt_integration"] = first_dt
-            seq_index.fillna({"dt_integration": self.params["dt_integration"]}, inplace=True)
-
-            self.contrail = seq_index.set_index("index")
+            self.contrail = tmp.set_index("index")
+            self.contrail["dt_integration"] = first_dt
+            self.contrail.fillna({"dt_integration": self.params["dt_integration"]}, inplace=True)
 
             # ---
             # Create contrail xr.Dataset (self.contrail_dataset)
             # ---
             if isinstance(self.source, Fleet):
-                self.contrail_dataset = xr.Dataset.from_dataframe(
-                    self.contrail.set_index(["flight_id", "timestep", "waypoint"])
-                )
+                keys = ["flight_id", "timestep", "waypoint"]
             else:
-                self.contrail_dataset = xr.Dataset.from_dataframe(
-                    self.contrail.set_index(["timestep", "waypoint"])
-                )
+                keys = ["timestep", "waypoint"]
+            self.contrail_dataset = xr.Dataset.from_dataframe(self.contrail.set_index(keys))
 
         # ---
         # Create output Flight / Fleet (self.source)
@@ -1230,7 +1223,7 @@ class Cocip(Model):
         ]
 
         # add additional columns
-        if self.params["verbose_outputs"]:
+        if verbose_outputs:
             sac_cols += ["dT_dz", "ds_dz", "dz_max"]
 
         downwash_cols = ["rho_air_1", "iwc_1", "n_ice_per_m_1"]
@@ -1254,7 +1247,7 @@ class Cocip(Model):
 
         rad_keys = ["sdr", "rsr", "olr", "rf_sw", "rf_lw", "rf_net"]
         for key in rad_keys:
-            if self.params["verbose_outputs"]:
+            if verbose_outputs:
                 agg_dict[key] = ["mean", "min", "max"]
             else:
                 agg_dict[key] = ["mean"]
