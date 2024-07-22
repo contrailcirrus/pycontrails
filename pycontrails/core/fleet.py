@@ -226,28 +226,29 @@ class Fleet(Flight):
         return len(self.fl_attrs)
 
     def to_flight_list(self, copy: bool = True) -> list[Flight]:
-        """De-concatenate merged waypoints into a list of Flight instances.
+        """De-concatenate merged waypoints into a list of :class:`Flight` instances.
 
         Any global :attr:`attrs` are lost.
 
         Parameters
         ----------
         copy : bool, optional
-            If True, make copy of each flight instance in `seq`.
+            If True, make copy of each :class:`Flight` instance.
 
         Returns
         -------
         list[Flight]
-            List of Flights in the same order as was passed into the `Fleet` instance.
+            List of Flights in the same order as was passed into the ``Fleet`` instance.
         """
-
-        # Avoid self.dataframe to purposely drop global attrs
-        tmp = pd.DataFrame(self.data, copy=copy)
-        grouped = tmp.groupby("flight_id", sort=False)
-
+        indices = self.dataframe.groupby("flight_id", sort=False).indices
         return [
-            Flight(df, attrs=self.fl_attrs[flight_id], fuel=self.fuel, copy=copy)
-            for flight_id, df in grouped
+            Flight(
+                data=VectorDataDict({k: v[idx] for k, v in self.data.items()}),
+                attrs=self.fl_attrs[flight_id],
+                copy=copy,
+                fuel=self.fuel,
+            )
+            for flight_id, idx in indices.items()
         ]
 
     ###################################
