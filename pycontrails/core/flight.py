@@ -2234,16 +2234,14 @@ def segment_rocd(
     if air_temperature is None:
         return out
 
-    else:
-        altitude_m = units.ft_to_m(altitude_ft)
-        T_isa = units.m_to_T_isa(altitude_m)
+    altitude_m = units.ft_to_m(altitude_ft)
+    T_isa = units.m_to_T_isa(altitude_m)
 
-        T_correction = np.empty_like(altitude_ft)
-        T_correction[:-1] = (0.5 * (air_temperature[:-1] + air_temperature[1:])) / (
-            0.5 * (T_isa[:-1] + T_isa[1:])
-        )
-        T_correction[-1] = np.nan
-        return T_correction * out
+    T_correction = np.empty_like(altitude_ft)
+    T_correction[:-1] = (air_temperature[:-1] + air_temperature[1:]) / (T_isa[:-1] + T_isa[1:])
+    T_correction[-1] = np.nan
+
+    return T_correction * out
 
 
 def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
