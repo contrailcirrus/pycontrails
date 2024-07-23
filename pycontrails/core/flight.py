@@ -1898,7 +1898,7 @@ def _altitude_interpolation_climb_descend_middle(
     s = pd.Series(altitude)
 
     # Check to see if we have gaps greater than two hours
-    step_threshold = 120.0 * freq / np.timedelta64(1, "m")
+    step_threshold = np.timedelta64(2, "h") / freq
     step_groups = na_group_size > step_threshold
     if np.any(step_groups):
         # If there are gaps greater than two hours, step through one by one
