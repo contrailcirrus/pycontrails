@@ -10,7 +10,14 @@
 
 ### Fixes
 
-- Fix missing `Fuel Flow Idle (kg/sec)` value in the `1ZM001` engine in the `edb-gaseous-v29b-engines.csv`
+- Fix missing `Fuel Flow Idle (kg/sec)` value in the `1ZM001` engine in the `edb-gaseous-v29b-engines.csv`.
+- Fix the `step_threshold` in `Flight._altitude_interpolation`. This correction is only relevant when passing in a non-default value for `freq` in `Flight.resample_and_fill`.
+- Fix the `VectorDataset.__eq__` method to check for the same keys. Previously, if the other dataset had a superset of the instance keys, the method may still return `True`.
+
+### Internals
+
+- Improve the runtime performance of `Fleet.to_flight_list`. For a large `Fleet`, this method is now 5x faster.
+- Improve the runtime performance and memory footprint of `Cocip._bundle_results`. When running `Cocip` with a large `Fleet` source, `Cocip.eval` is now slightly faster and uses much less memory.
 
 ## v0.52.1
 
