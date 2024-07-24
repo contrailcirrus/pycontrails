@@ -43,12 +43,14 @@ class AircraftPerformanceParams(ModelParams):
     #: Experimental. If True, fill waypoints below the lowest altitude met
     #: level with ISA temperature when interpolating "air_temperature" or "t".
     #: If the ``met`` data is not provided, the entire air temperature array
-    #: is approximated with the ISA temperature.
+    #: is approximated with the ISA temperature. Enabling this does NOT
+    #: remove any NaN values in the ``met`` data itself.
     fill_low_altitude_with_isa_temperature: bool = False
 
     #: Experimental. If True, fill waypoints below the lowest altitude met
     #: level with zero wind when computing true airspeed. In other words,
-    #: approximate low-altitude true airspeed with the ground speed.
+    #: approximate low-altitude true airspeed with the ground speed. Enabling
+    #: this does NOT remove any NaN values in the ``met`` data itself.
     fill_low_altitude_with_zero_wind: bool = False
 
 
