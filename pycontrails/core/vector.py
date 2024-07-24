@@ -983,7 +983,7 @@ class VectorDataset:
         numeric_attrs = (
             attr
             for attr, val in self.attrs.items()
-            if (isinstance(val, (int, float)) and attr not in ignore_keys)
+            if (isinstance(val, (int, float, np.number)) and attr not in ignore_keys)
         )
         self.broadcast_attrs(numeric_attrs, overwrite)
 
