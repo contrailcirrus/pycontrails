@@ -1506,25 +1506,25 @@ class Flight(GeoVectorDataset):
 
         >>> # Build flight
         >>> df = pd.DataFrame()
-        >>> df['time'] = pd.date_range('2022-03-01T00', '2022-03-01T03', periods=11)
-        >>> df['longitude'] = np.linspace(-20, 20, 11)
-        >>> df['latitude'] = np.linspace(-20, 20, 11)
-        >>> df['altitude'] = np.linspace(9500, 10000, 11)
-        >>> fl = Flight(df).resample_and_fill('10s')
+        >>> df["time"] = pd.date_range("2022-03-01T00", "2022-03-01T03", periods=11)
+        >>> df["longitude"] = np.linspace(-20, 20, 11)
+        >>> df["latitude"] = np.linspace(-20, 20, 11)
+        >>> df["altitude"] = np.linspace(9500, 10000, 11)
+        >>> fl = Flight(df).resample_and_fill("10s")
 
         >>> # Intersect and attach
-        >>> fl["air_temperature"] = fl.intersect_met(met['air_temperature'])
+        >>> fl["air_temperature"] = fl.intersect_met(met["air_temperature"])
         >>> fl["air_temperature"]
-        array([235.94657007, 235.95766965, 235.96873412, ..., 234.59917962,
+        array([235.94657007, 235.55745645, 235.56709768, ..., 234.59917962,
                234.60387402, 234.60845312])
 
         >>> # Length (in meters) of waypoints whose temperature exceeds 236K
         >>> fl.length_met("air_temperature", threshold=236)
-        np.float64(4132178.159...)
+        np.float64(3589705.998...)
 
         >>> # Proportion (with respect to distance) of waypoints whose temperature exceeds 236K
         >>> fl.proportion_met("air_temperature", threshold=236)
-        np.float64(0.663552...)
+        np.float64(0.576...)
         """
         if key not in self.data:
             raise KeyError(f"Column {key} does not exist in data.")
