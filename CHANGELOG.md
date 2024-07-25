@@ -2,15 +2,15 @@
 
 ## v0.52.2 (unreleased)
 
+### Breaking changes
+
+- Flight antimeridian crossings are now detected based on individual flight segments rather than minimum and maximum longitude values. This allows for correct detection of antimeridian crossings for flights that span more than 180 degrees longitude, and may change the output of `Flight.resample_and_fill` for such flights.
+
 ### Features
 
 - Add experimental `fill_low_alt_with_isa_temperature` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models with `Flight` sources will fill points below the lowest altitude in the ``met["air_temperature]`` data with the ISA temperature. This is useful when the met data does not extend to the surface. In this case, we can still estimate fuel flow and other performance metrics through the entire climb phase. By default, this parameter is set to `False`.
 - Add experimental `fill_low_altitude_with_zero_wind` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models will estimate the true airspeed at low altitudes by assuming the wind speed is zero.
 - Add convenience `Flight.plot_profile` method.
-
-### Breaking changes
-
-- Flight antimeridian crossings are now detected based on individual flight segments rather than minimum and maximum longitude values. This allows for correct detection of antimeridian crossings for flights that span more than 180 degrees longitude.
 
 ### Fixes
 
