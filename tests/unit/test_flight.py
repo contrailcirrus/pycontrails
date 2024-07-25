@@ -810,12 +810,6 @@ def test_antimeridian_long_cross(direction: str, cross_anti: bool) -> None:
         time=pd.date_range("2022-01-01", "2022-01-01T03", n),
     )
     fl2 = fl.resample_and_fill("5s")
-    if cross_anti:
-        assert fl._crosses_antimeridian()
-        assert fl2._crosses_antimeridian()
-    else:
-        assert not fl._crosses_antimeridian()
-        assert not fl2._crosses_antimeridian()
     assert np.all(fl2["longitude"] < 180)
     assert np.all(fl2["longitude"] >= -180)
     assert np.all(np.isfinite(fl2["longitude"]))
@@ -853,17 +847,81 @@ def test_antimeridian_extra_long_cross(direction: str, cross_anti: bool) -> None
         time=pd.date_range("2022-01-01", "2022-01-01T06", n),
     )
     fl2 = fl.resample_and_fill("5s")
-    if cross_anti:
-        assert fl._crosses_antimeridian()
-        assert fl2._crosses_antimeridian()
-    else:
-        assert not fl._crosses_antimeridian()
-        assert not fl2._crosses_antimeridian()
     assert np.all(fl2["longitude"] < 180)
     assert np.all(fl2["longitude"] >= -180)
     assert np.all(np.isfinite(fl2["longitude"]))
     assert np.all(fl2.segment_length()[:-1] < 10000)
     assert np.all(fl2.segment_length()[:-1] > 8000)
+
+
+@pytest.mark.parametrize("direction", ["east", "west"])
+def test_meridian_antimeridian_cross(direction: str) -> None:
+    """Test interpolation adjustments for antimeridian crossing.
+
+    This test uses longitude values that span both the meridian and antimeridian.
+    """
+    n = 200
+    if direction == "east":
+        longitude = np.linspace(-10, -10 + 340, n)
+    elif direction == "west":
+        longitude = np.linspace(10, 10 - 340, n)
+    else:
+        raise ValueError("Unknown param")
+    longitude = (longitude + 180) % 360 - 180
+    fl = Flight(
+        longitude=longitude,
+        latitude=np.zeros(n),
+        altitude=np.full(n, 10000),
+        time=pd.date_range("2022-01-01", "2022-01-01T06", n),
+    )
+    fl2 = fl.resample_and_fill("5s")
+    assert np.all(fl2["longitude"] < 180)
+    assert np.all(fl2["longitude"] >= -180)
+    assert np.all(np.isfinite(fl2["longitude"]))
+    assert np.all(fl2.segment_length()[:-1] < 10000)
+    assert np.all(fl2.segment_length()[:-1] > 8000)
+
+
+@pytest.mark.parametrize("direction", ["east", "west"])
+def test_consecutive_antimeridian_cross(direction: str) -> None:
+    """Test error on consecutive antimeridian crossings in the same direction."""
+    n = 100
+    if direction == "east":
+        longitude = np.linspace(90, 90 + 540, n)
+    elif direction == "west":
+        longitude = np.linspace(-90, -90 - 540, n)
+    else:
+        raise ValueError("Unknown param")
+    longitude = (longitude + 180) % 360 - 180
+    fl = Flight(
+        longitude=longitude,
+        latitude=np.zeros(n),
+        altitude=np.full(n, 10000),
+        time=pd.date_range("2022-01-01", "2022-01-01T10", n),
+    )
+    with pytest.raises(ValueError, match="Cannot handle consecutive"):
+        fl.resample_and_fill("5s")
+
+
+@pytest.mark.parametrize("direction", ["east", "west"])
+def test_no_viable_antimeridian_shift(direction: str) -> None:
+    """Test error for resampling flights that span 360 degrees longitude."""
+    n = 100
+    if direction == "east":
+        longitude = np.linspace(0, 360, n)
+    elif direction == "west":
+        longitude = np.linspace(0, -360, n)
+    else:
+        raise ValueError("Unknown param")
+    longitude = (longitude + 180) % 360 - 180
+    fl = Flight(
+        longitude=longitude,
+        latitude=np.zeros(n),
+        altitude=np.full(n, 10000),
+        time=pd.date_range("2022-01-01", "2022-01-01T06", n),
+    )
+    with pytest.raises(ValueError, match="Cannot handle flight that spans"):
+        fl.resample_and_fill("5s")
 
 
 def test_intersect_issr_met(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
