@@ -8,6 +8,10 @@
 - Add experimental `fill_low_altitude_with_zero_wind` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models will estimate the true airspeed at low altitudes by assuming the wind speed is zero.
 - Add convenience `Flight.plot_profile` method.
 
+### Breaking changes
+
+- Flight antimeridian crossings are now detected based on individual flight segments rather than minimum and maximum longitude values. This allows for correct detection of antimeridian crossings for flights that span more than 180 degrees longitude.
+
 ### Fixes
 
 - Fix missing `Fuel Flow Idle (kg/sec)` value in the `1ZM001` engine in the `edb-gaseous-v29b-engines.csv`.
@@ -15,6 +19,7 @@
 - Fix the `VectorDataset.__eq__` method to check for the same keys. Previously, if the other dataset had a superset of the instance keys, the method may still return `True`.
 - Fix minor bug in `cocip.output_formats.radiation_time_slice_statistics` in which the function previously threw an error if `t_end` did not directly align with the time index in the `rad` dataset.
 - Remove the residual constraint in `cocip.output_formats.contrails_to_hi_res_grid` used during debugging.
+- Improve detection of antimeridian crossings for flights that span more than 180 degrees longitude.
 
 ### Internals
 

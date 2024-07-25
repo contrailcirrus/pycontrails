@@ -1250,7 +1250,7 @@ class Flight(GeoVectorDataset):
     def _crosses_antimeridian(self) -> bool:
         """Determine whether a flight crosses the antimeridian.
 
-        Because flights sometimes span more than half a great circle (for example,
+        Because flights sometimes span more than 180 degree longitude (for example,
         when flight-level winds favor travel in a specific direction, typically eastward),
         antimeridian crossings cannot reliably be detected by looking only at minimum
         and maximum longitudes.
