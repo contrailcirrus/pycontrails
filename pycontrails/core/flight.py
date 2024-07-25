@@ -958,13 +958,9 @@ class Flight(GeoVectorDataset):
         # For flights spanning the antimeridian, we translate them to a
         # common "chart" away from the antimeridian (see variable `shift`),
         # then apply the interpolation, then shift back to their original position.
-        if self._crosses_antimeridian():
-            lon = df["longitude"].to_numpy()
-            sign_ = np.sign(lon)
-            shift = np.min(lon[sign_ == 1.0], initial=np.inf)
+        shift = self._antimeridian_shift()
+        if shift is not None:
             df["longitude"] = (df["longitude"] - shift) % 360.0
-        else:
-            shift = None
 
         # STEP 5: Resample flight to freq
         # Save altitudes to copy over - these just get rounded down in time.
@@ -1181,12 +1177,9 @@ class Flight(GeoVectorDataset):
         # If it does, shift longitude chart to remove jump
         lon_ = self["longitude"]
         lat_ = self["latitude"]
-        if self._crosses_antimeridian():
-            sign_ = np.sign(lon_)
-            shift = np.min(lon_[sign_ == 1.0], initial=np.inf)
+        shift = self._antimeridian_shift()
+        if shift is not None:
             lon_ = (lon_ - shift) % 360.0
-        else:
-            shift = None
 
         # Make a fake flight that flies at constant height so distance is just
         # distance traveled across groud
@@ -1247,8 +1240,8 @@ class Flight(GeoVectorDataset):
 
         return lat, lon, seg_idx
 
-    def _crosses_antimeridian(self) -> bool:
-        """Determine whether a flight crosses the antimeridian.
+    def _antimeridian_shift(self) -> float | None:
+        """Determine shift required for resampling trajectories that cross antimeridian.
 
         Because flights sometimes span more than 180 degree longitude (for example,
         when flight-level winds favor travel in a specific direction, typically eastward),
@@ -1260,11 +1253,12 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        bool
-            True if the flight crosses the antimeridian; False otherwise.
+        float | None
+            Longitude shift for handling antimeridian crossings, or None if the
+            flight does not cross the antimeridian.
         """
 
-        # logic is consistent with _antimeridian_crossing,
+        # logic for detecting crossings is consistent with _antimeridian_crossing,
         # but implementation is separate to keep performance costs as low as possible
         lon = self["longitude"]
         if np.any(np.isnan(lon)):
@@ -1272,9 +1266,26 @@ class Flight(GeoVectorDataset):
 
         s1 = (lon >= -180) & (lon <= -90)
         s2 = (lon <= 180) & (lon >= 90)
-        jump12 = s1[:-1] & s2[1:]
-        jump21 = s2[:-1] & s1[1:]
-        return np.any(jump12 | jump21).item()
+        jump12 = s1[:-1] & s2[1:]  # westward
+        jump21 = s2[:-1] & s1[1:]  # eastward
+        if not np.any(jump12 | jump21):
+            return None
+
+        # separate flight into segments that are east and west of crossings
+        net_westward = np.insert(np.cumsum(jump12.astype(int) - jump21.astype(int)), 0, 0)
+        if net_westward.max() - net_westward.min() > 1:
+            msg = "Cannot handle consecutive antimeridian crossings in the same direction"
+            raise ValueError(msg)
+        east = (net_westward == 0) if net_westward.max() == 1 else (net_westward == -1)
+
+        # shift must be between maximum longitude east of crossings
+        # and minimum longitude west of crossings
+        shift_min = np.nanmax(lon[east])
+        shift_max = np.nanmin(lon[~east])
+        if shift_min >= shift_max:
+            msg = "Cannot handle flight that spans more than 360 degrees longitude"
+            raise ValueError(msg)
+        return (shift_min + shift_max) / 2
 
     def _geodesic_interpolation(self, geodesic_threshold: float) -> pd.DataFrame | None:
         """Geodesic interpolate between large gaps between waypoints.
