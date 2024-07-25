@@ -954,25 +954,14 @@ class Flight(GeoVectorDataset):
         # STEP 3: Set the time index, and sort it
         df = df.set_index("time", verify_integrity=True).sort_index()
 
-        # STEP 4: Some adhoc code for dealing with antimeridian.
-        # Idea: A flight likely crosses the antimeridian if
-        #   `min_pos > 90` and `max_neg < -90`
-        # This is not foolproof: it assumes the full trajectory will not
-        # span more than 180 longitude degrees. There could be flights that
-        # violate this near the poles (but this would be very rare -- flights
-        # would instead wrap the other way). For this flights spanning the
-        # antimeridian, we translate them to a common "chart" away from the
-        # antimeridian (see variable `shift`), then apply the interpolation,
-        # then shift back to their original position.
-        lon = df["longitude"].to_numpy()
-        sign_ = np.sign(lon)
-        min_pos = np.min(lon[sign_ == 1.0], initial=np.inf)
-        max_neg = np.max(lon[sign_ == -1.0], initial=-np.inf)
-
-        if (180.0 - min_pos) + (180.0 + max_neg) < 180.0 and min_pos < np.inf and max_neg > -np.inf:
-            # In this case, we believe the flight crosses the antimeridian
-            shift = min_pos
-            # So we shift the longitude "chart"
+        # STEP 4: handle antimeridian crossings
+        # For flights spanning the antimeridian, we translate them to a
+        # common "chart" away from the antimeridian (see variable `shift`),
+        # then apply the interpolation, then shift back to their original position.
+        if self._crosses_antimeridian():
+            lon = df["longitude"].to_numpy()
+            sign_ = np.sign(lon)
+            shift = np.min(lon[sign_ == 1.0], initial=np.inf)
             df["longitude"] = (df["longitude"] - shift) % 360.0
         else:
             shift = None
@@ -1189,16 +1178,12 @@ class Flight(GeoVectorDataset):
         """
 
         # Check if flight crosses antimeridian line
+        # If it does, shift longitude chart to remove jump
         lon_ = self["longitude"]
         lat_ = self["latitude"]
-        sign_ = np.sign(lon_)
-        min_pos = np.min(lon_[sign_ == 1.0], initial=np.inf)
-        max_neg = np.max(lon_[sign_ == -1.0], initial=-np.inf)
-
-        if (180.0 - min_pos) + (180.0 + max_neg) < 180.0 and min_pos < np.inf and max_neg > -np.inf:
-            # In this case, we believe the flight crosses the antimeridian
-            shift = min_pos
-            # So we shift the longitude "chart"
+        if self._crosses_antimeridian():
+            sign_ = np.sign(lon_)
+            shift = np.min(lon_[sign_ == 1.0], initial=np.inf)
             lon_ = (lon_ - shift) % 360.0
         else:
             shift = None
@@ -1261,6 +1246,35 @@ class Flight(GeoVectorDataset):
             lon = ((lon + 180.0) % 360.0) - 180.0
 
         return lat, lon, seg_idx
+
+    def _crosses_antimeridian(self) -> bool:
+        """Determine whether a flight crosses the antimeridian.
+
+        Because flights sometimes span more than half a great circle (for example,
+        when flight-level winds favor travel in a specific direction, typically eastward),
+        antimeridian crossings cannot reliably be detected by looking only at minimum
+        and maximum longitudes.
+
+        Instead, this function checks each flight segment for an antimeridian crossing,
+        and returns True if at least one segment crosses the antimeridian.
+
+        Returns
+        -------
+        bool
+            True if the flight crosses the antimeridian; False otherwise.
+        """
+
+        # logic is consistent with _antimeridian_crossing,
+        # but implementation is separate to keep performance costs as low as possible
+        lon = self["longitude"]
+        if np.any(np.isnan(lon)):
+            warnings.warn("Anti-meridian crossings can't be reliably detected with nan longitudes")
+
+        s1 = (lon >= -180) & (lon <= -90)
+        s2 = (lon <= 180) & (lon >= 90)
+        jump12 = s1[:-1] & s2[1:]
+        jump21 = s2[:-1] & s1[1:]
+        return np.any(jump12 | jump21).item()
 
     def _geodesic_interpolation(self, geodesic_threshold: float) -> pd.DataFrame | None:
         """Geodesic interpolate between large gaps between waypoints.
@@ -1651,18 +1665,14 @@ def _antimeridian_index(longitude: pd.Series, crs: str = "EPSG:4326") -> list[in
 
     Returns
     -------
-    int
-        Index after jump or -1
+    list[int]
+        Indices after jump, or empty list of flight does not cross antimeridian.
 
     Raises
     ------
     ValueError
         CRS is not supported.
-        Flight crosses antimeridian several times.
     """
-    # FIXME: This logic here is somewhat outdated - the _interpolate_altitude
-    # method handles this somewhat more reliably
-    # This function should get updated to follow the logic there.
     # WGS84
     if crs in ["EPSG:4326"]:
         l1 = (-180.0, -90.0)

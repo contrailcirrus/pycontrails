@@ -770,7 +770,8 @@ def test_interpolation_edge_cases(shift: int, freq: str) -> None:
         time=pd.date_range("2022-01-01", "2022-01-01T03", 20),
     )
     fl["longitude"][3] = np.nan  # make test more interesting
-    fl2 = fl.resample_and_fill(freq)
+    with pytest.warns(UserWarning, match="Anti-meridian crossings can't be reliably detected"):
+        fl2 = fl.resample_and_fill(freq)
     jump = np.nonzero(np.diff(fl2["longitude"]) < 0)[0]
     if shift == -180:
         assert jump.size == 0
@@ -802,7 +803,6 @@ def test_antimeridian_long_cross(direction: str, cross_anti: bool) -> None:
     else:
         raise ValueError("Unknown param")
     longitude = (longitude + 180) % 360 - 180
-    breakpoint()
     fl = Flight(
         longitude=longitude,
         latitude=np.zeros(n),
@@ -810,6 +810,12 @@ def test_antimeridian_long_cross(direction: str, cross_anti: bool) -> None:
         time=pd.date_range("2022-01-01", "2022-01-01T03", n),
     )
     fl2 = fl.resample_and_fill("5s")
+    if cross_anti:
+        assert fl._crosses_antimeridian()
+        assert fl2._crosses_antimeridian()
+    else:
+        assert not fl._crosses_antimeridian()
+        assert not fl2._crosses_antimeridian()
     assert np.all(fl2["longitude"] < 180)
     assert np.all(fl2["longitude"] >= -180)
     assert np.all(np.isfinite(fl2["longitude"]))
@@ -847,6 +853,12 @@ def test_antimeridian_extra_long_cross(direction: str, cross_anti: bool) -> None
         time=pd.date_range("2022-01-01", "2022-01-01T06", n),
     )
     fl2 = fl.resample_and_fill("5s")
+    if cross_anti:
+        assert fl._crosses_antimeridian()
+        assert fl2._crosses_antimeridian()
+    else:
+        assert not fl._crosses_antimeridian()
+        assert not fl2._crosses_antimeridian()
     assert np.all(fl2["longitude"] < 180)
     assert np.all(fl2["longitude"] >= -180)
     assert np.all(np.isfinite(fl2["longitude"]))
