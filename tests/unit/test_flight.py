@@ -802,11 +802,49 @@ def test_antimeridian_long_cross(direction: str, cross_anti: bool) -> None:
     else:
         raise ValueError("Unknown param")
     longitude = (longitude + 180) % 360 - 180
+    breakpoint()
     fl = Flight(
         longitude=longitude,
         latitude=np.zeros(n),
         altitude=np.full(n, 10000),
         time=pd.date_range("2022-01-01", "2022-01-01T03", n),
+    )
+    fl2 = fl.resample_and_fill("5s")
+    assert np.all(fl2["longitude"] < 180)
+    assert np.all(fl2["longitude"] >= -180)
+    assert np.all(np.isfinite(fl2["longitude"]))
+    assert np.all(fl2.segment_length()[:-1] < 10000)
+    assert np.all(fl2.segment_length()[:-1] > 8000)
+
+
+@pytest.mark.parametrize("direction", ["east", "west"])
+@pytest.mark.parametrize("cross_anti", [True, False])
+def test_antimeridian_extra_long_cross(direction: str, cross_anti: bool) -> None:
+    """Test interpolation adjustments for antimeridian crossing.
+
+    This test uses longitude values that span over 180 degrees. This is important
+    because flights may cover more than 180 degrees longitude when strong flight-level
+    winds favor travel in a particular direction (typically eastward).
+    """
+    # Intentionally keep the logic very boilerplate
+    # In all cases, d_lon = 340
+    n = 200
+    if direction == "east" and cross_anti:
+        longitude = np.linspace(10, 10 + 340, n)
+    elif direction == "east" and not cross_anti:
+        longitude = np.linspace(-170, -170 + 340, n)
+    elif direction == "west" and cross_anti:
+        longitude = np.linspace(350, 350 - 340, n)
+    elif direction == "west" and not cross_anti:
+        longitude = np.linspace(170, 170 - 340, n)
+    else:
+        raise ValueError("Unknown param")
+    longitude = (longitude + 180) % 360 - 180
+    fl = Flight(
+        longitude=longitude,
+        latitude=np.zeros(n),
+        altitude=np.full(n, 10000),
+        time=pd.date_range("2022-01-01", "2022-01-01T06", n),
     )
     fl2 = fl.resample_and_fill("5s")
     assert np.all(fl2["longitude"] < 180)
