@@ -1249,7 +1249,8 @@ class Flight(GeoVectorDataset):
         and maximum longitudes.
 
         Instead, this function checks each flight segment for an antimeridian crossing,
-        and returns True if at least one segment crosses the antimeridian.
+        and if it finds one returns the coordinate of a meridian that is not crossed by
+        the flight.
 
         Returns
         -------
