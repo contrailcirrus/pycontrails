@@ -1502,6 +1502,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
+        prelocalize_by_time: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[False] = ...,
     ) -> npt.NDArray[np.float64]: ...
@@ -1518,6 +1519,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
+        prelocalize_by_time: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[True],
     ) -> tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]: ...
@@ -1533,6 +1535,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = False,
         fill_value: float | np.float64 | None = np.nan,
         localize: bool = False,
+        prelocalize_by_time: bool = False,
         indices: interpolation.RGIArtifacts | None = None,
         return_indices: bool = False,
     ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
@@ -1540,7 +1543,9 @@ class MetDataArray(MetBase):
 
         Zero dimensional coordinates are reshaped to 1D arrays.
 
-        Method automatically loads underlying :attr:`data` into memory.
+        If ``prelocalize_by_time == False``, method automatically loads underlying :attr:`data` into
+        memory. Otherwise, method iterates through smaller subsets of :attr:`data` and releases
+        subsets from memory once interpolation against each subset is finished.
 
         If ``method == "nearest"``, the out array will have the same ``dtype`` as
         the underlying :attr:`data`.
@@ -1586,6 +1591,12 @@ class MetDataArray(MetBase):
         localize: bool, optional
             Experimental. If True, downselect gridded data to smallest bounding box containing
             all points.  By default False.
+        prelocalize_by_time: bool, optional
+            Experimental. If True, iterate through points binned by the time coordinate of the
+            grided data, and downselect gridded data to the smallest bounding box containing
+            each binned set of point *before loading into memory*. This can significantly reduce
+            memory consumption with large numbers of points, but significantly increases runtime.
+            By default False.
         indices: tuple | None, optional
             Experimental. See :func:`interpolation.interp`. None by default.
         return_indices: bool, optional
@@ -1636,6 +1647,19 @@ class MetDataArray(MetBase):
                231.10858599, 233.54857391, 235.71504913, 237.86478872,
                239.99274623, 242.10792167])
         """
+        if prelocalize_by_time:
+            return self._interp_prelocalize(
+                longitude,
+                latitude,
+                level,
+                time,
+                method=method,
+                bounds_error=bounds_error,
+                fill_value=fill_value,
+                indices=indices,
+                return_indices=return_indices,
+            )
+
         # Load if necessary
         if not self.in_memory:
             self._check_memory("Interpolation over")
@@ -1659,6 +1683,102 @@ class MetDataArray(MetBase):
             indices=indices,
             return_indices=return_indices,
         )
+
+    def _interp_prelocalize(
+        self,
+        longitude: float | npt.NDArray[np.float64],
+        latitude: float | npt.NDArray[np.float64],
+        level: float | npt.NDArray[np.float64],
+        time: np.datetime64 | npt.NDArray[np.datetime64],
+        *,
+        method: str = "linear",
+        bounds_error: bool = False,
+        fill_value: float | np.float64 | None = np.nan,
+        minimize_memory: bool = False,
+        indices: interpolation.RGIArtifacts | None = None,
+        return_indices: bool = False,
+    ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
+        """Interpolate values against underlying DataArray.
+
+        This method is used by :meth:``interpolate`` when ``prelocalize_by_time=True``.
+        Parameters and return types are identical to :meth:``interpolate``, except
+        that the ``localize`` keyword argument is omitted.
+        """
+        # Convert all inputs to 1d arrays
+        # Not validating against ndim >= 2
+        longitude, latitude, level, time = np.atleast_1d(longitude, latitude, level, time)
+
+        # Get earliest and latest required time steps in gridded data
+        t_met = self.data["time"].values
+        istart = np.flatnonzero(t_met <= time.min()).max()
+        iend = np.flatnonzero(t_met >= time.max()).min()
+
+        # Create buffers for holding interpolation output
+        out = np.full(longitude.shape, np.nan)
+        if return_indices:
+            rgi_artifacts = interpolation.RGIArtifacts(
+                xi_indices=np.full((4, longitude.size), 0),
+                norm_distances=np.full((4, longitude.size), 0.0),
+                out_of_bounds=np.full((longitude.size,), False),
+            )
+
+        # Iterate over portions of points between adjacent time steps in gridded data
+        for i in range(istart, iend):
+            mask = np.logical_and(
+                (time >= t_met[i]) if i == 0 else (time > t_met[i]), time <= t_met[i + 1]
+            )
+            if not np.any(mask):
+                continue
+
+            lon_sl = longitude[mask]
+            lat_sl = latitude[mask]
+            lev_sl = level[mask]
+            t_sl = time[mask]
+            if indices is not None:
+                indices_sl = interpolation.RGIArtifacts(
+                    xi_indices=indices.xi_indices[:, mask],
+                    norm_distances=indices.norm_distances[:, mask],
+                    out_of_bounds=indices.out_of_bounds[mask],
+                )
+            else:
+                indices_sl = None
+
+            coords = {"longitude": lon_sl, "latitude": lat_sl, "level": lev_sl, "time": t_sl}
+            da = interpolation._localize(self.data, coords)
+            if not da._in_memory:
+                logger.debug(
+                    "Loading %s MB subset of %s into memory.",
+                    round(da.nbytes / 1_000_000, 2),
+                    da.name,
+                )
+                da.load()
+
+            tmp = interpolation.interp(
+                longitude=lon_sl,
+                latitude=lat_sl,
+                level=lev_sl,
+                time=t_sl,
+                da=da,
+                method=method,
+                bounds_error=bounds_error,
+                fill_value=fill_value,
+                localize=False,  # would be no-op; da is localized already
+                indices=indices_sl,
+                return_indices=return_indices,
+            )
+
+            if return_indices:
+                out[mask] = tmp[0]
+                rgi_sl = tmp[1]
+                rgi_artifacts.xi_indices[:, mask] = rgi_sl.xi_indices
+                rgi_artifacts.norm_distances[:, mask] = rgi_sl.norm_distances
+                rgi_artifacts.out_of_bounds[mask] = rgi_sl.out_of_bounds
+            else:
+                out[mask] = tmp
+
+        if return_indices:
+            return out, rgi_artifacts
+        return out
 
     def _check_memory(self, msg_start: str) -> None:
         """Check the memory usage of the underlying data.
