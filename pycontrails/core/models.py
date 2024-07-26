@@ -384,6 +384,7 @@ class Model(ABC):
             "bounds_error": params["interpolation_bounds_error"],
             "fill_value": params["interpolation_fill_value"],
             "localize": params["interpolation_localize"],
+            "prelocalize_by_time": False,
             "use_indices": params["interpolation_use_indices"],
             "q_method": params["interpolation_q_method"],
         }
