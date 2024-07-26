@@ -1191,6 +1191,7 @@ def meteorological_time_slice_statistics(
     # ISSR: Volume of airspace with RHi > 100% between FL300 and FL450
     met = humidity_scaling.eval(met)
     rhi = met["rhi"].data.sel(level=slice(150, 300))
+    rhi = rhi.interp(time=time)
     is_issr = rhi > 1
 
     # Cirrus in a longitude-latitude grid
@@ -1245,9 +1246,15 @@ def radiation_time_slice_statistics(
     surface_area = geo.grid_surface_area(rad["longitude"].values, rad["latitude"].values)
     weights = surface_area.values / np.nansum(surface_area)
     stats = {
-        "mean_sdr_domain": np.nansum(rad["sdr"].data.sel(level=-1, time=time).values * weights),
-        "mean_rsr_domain": np.nansum(rad["rsr"].data.sel(level=-1, time=time).values * weights),
-        "mean_olr_domain": np.nansum(rad["olr"].data.sel(level=-1, time=time).values * weights),
+        "mean_sdr_domain": np.nansum(
+            np.squeeze(rad["sdr"].data.interp(time=time).values) * weights
+        ),
+        "mean_rsr_domain": np.nansum(
+            np.squeeze(rad["rsr"].data.interp(time=time).values) * weights
+        ),
+        "mean_olr_domain": np.nansum(
+            np.squeeze(rad["olr"].data.interp(time=time).values) * weights
+        ),
     }
     return pd.Series(stats)
 
