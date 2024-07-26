@@ -1605,7 +1605,7 @@ def contrails_to_hi_res_grid(
             module_not_found_error=exc,
         )
 
-    for i in tqdm(heads_t.index[:2000]):
+    for i in tqdm(heads_t.index):
         contrail_segment = GeoVectorDataset(
             pd.concat([heads_t[cols_req].loc[i], tails_t[cols_req].loc[i]], axis=1).T, copy=True
         )
