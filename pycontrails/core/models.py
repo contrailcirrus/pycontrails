@@ -75,6 +75,12 @@ class ModelParams:
     #: Experimental. See :mod:`pycontrails.core.interpolation`.
     interpolation_localize: bool = False
 
+    #: Experimental. Alternative implementation of :meth:`MetDataArray.interpolate`
+    #: that can significantly reduce memory consumption at the cost of increased runtime.
+    #: Will not be used by models that bypass :meth:`MetDataArray.interpolate` by calling
+    #: :func:`pycontrails.core.interpolation.interpolate` directly.
+    interpolation_lowmem: bool = False
+
     #: Experimental. See :mod:`pycontrails.core.interpolation`.
     interpolation_use_indices: bool = False
 
@@ -384,7 +390,7 @@ class Model(ABC):
             "bounds_error": params["interpolation_bounds_error"],
             "fill_value": params["interpolation_fill_value"],
             "localize": params["interpolation_localize"],
-            "prelocalize_by_time": False,
+            "lowmem": params["interpolation_lowmem"],
             "use_indices": params["interpolation_use_indices"],
             "q_method": params["interpolation_q_method"],
         }

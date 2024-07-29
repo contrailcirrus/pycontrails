@@ -28,9 +28,15 @@ def test_basic_interpolation(mda: MetDataArray, caplog: pytest.LogCaptureFixture
     t0 = np.datetime64("2019-05-31T05:30")
     time = np.array([t0, t0, t0])
 
+    assert not mda.in_memory
+    out0 = mda.interpolate(longitude, latitude, level, time, bounds_error=True, lowmem=True)
+    assert not mda.in_memory  # should not retain gridded data in memory
+    assert out0.dtype == mda.data.dtype
+
     with caplog.at_level("DEBUG", logger="pycontrails.core.interpolation"):
         out1 = mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=False)
         assert len(caplog.records) == 0
+        assert mda.in_memory  # gridded data should now be in memory
         out2 = mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=True)
         # Confirm that the logger in _localize emitted messages
         assert len(caplog.records) == 4
@@ -55,17 +61,21 @@ def test_basic_interpolation(mda: MetDataArray, caplog: pytest.LogCaptureFixture
     assert out3.dtype == mda.data.dtype
     assert out4.dtype == mda.data.dtype
 
+    np.testing.assert_array_equal(out0, out1)
     np.testing.assert_array_equal(out1, out2)
     np.testing.assert_array_equal(out3, out4)
     np.testing.assert_allclose(out1, out3, rtol=2e-7)
 
-    for out in [out1, out2, out3, out4]:
+    for out in [out0, out1, out2, out3, out4]:
         assert np.all(np.isfinite(out))
 
 
 @pytest.mark.parametrize("localize", [True, False])
+@pytest.mark.parametrize("lowmem", [True, False])
 @pytest.mark.parametrize("dim", ["longitude", "latitude", "level", "time"])
-def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, localize: bool) -> None:
+def test_interpolation_singleton_dim_not_nan(
+    dim: str, mda: MetDataArray, localize: bool, lowmem: bool
+) -> None:
     """Confirm that interpolation output is not nan when singleton dimension encountered."""
     out_of_bounds_da = mda.data.isel(**{dim: [-1]})
     mda.data = mda.data.isel(**{dim: [0]})
@@ -83,7 +93,7 @@ def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, locali
 
     # Overwrite coords to include the singleton dimension
     coords[dim] = mda.data[dim].values
-    out = mda.interpolate(**coords, bounds_error=True, localize=localize)
+    out = mda.interpolate(**coords, bounds_error=True, localize=localize, lowmem=lowmem)
     assert np.all(np.isfinite(out))
 
     # Overwrite coords to include an out of bounds value at the singleton dimension
@@ -91,17 +101,20 @@ def test_interpolation_singleton_dim_not_nan(dim: str, mda: MetDataArray, locali
     axis = mda.data.get_axis_num(dim)
     match = f"One of the requested xi is out of bounds in dimension {axis}"
     with pytest.raises(ValueError, match=match):
-        mda.interpolate(**coords, bounds_error=True, localize=localize)
+        mda.interpolate(**coords, bounds_error=True, localize=localize, lowmem=lowmem)
 
-    out = mda.interpolate(**coords, bounds_error=False, localize=localize)
+    out = mda.interpolate(**coords, bounds_error=False, localize=localize, lowmem=lowmem)
     np.testing.assert_array_equal(out, [np.nan])
 
-    out = mda.interpolate(**coords, bounds_error=False, localize=localize, fill_value=999)
+    out = mda.interpolate(
+        **coords, bounds_error=False, localize=localize, lowmem=lowmem, fill_value=999
+    )
     np.testing.assert_array_equal(out, [999])
 
 
 @pytest.mark.parametrize("localize", [True, False])
-def test_interpolation_single_level(mda: MetDataArray, localize: bool) -> None:
+@pytest.mark.parametrize("lowmem", [True, False])
+def test_interpolation_single_level(mda: MetDataArray, localize: bool, lowmem: bool) -> None:
     """Confirm interpolation works with single level (level = -1) DataArray."""
     # Convert mda to a DataArray with a single level
     mda.data = mda.data.isel(level=[0]).assign_coords(level=[-1.0])
@@ -119,10 +132,14 @@ def test_interpolation_single_level(mda: MetDataArray, localize: bool) -> None:
 
     # Longitude is out of bounds
     with pytest.raises(ValueError, match="One of the requested xi is out of bounds in dimension 0"):
-        mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=localize)
+        mda.interpolate(
+            longitude, latitude, level, time, bounds_error=True, localize=localize, lowmem=lowmem
+        )
 
     # Only the third coordinate is out of bounds .... level interpolation works as intended
-    out = mda.interpolate(longitude, latitude, level, time, bounds_error=False, localize=localize)
+    out = mda.interpolate(
+        longitude, latitude, level, time, bounds_error=False, localize=localize, lowmem=lowmem
+    )
     np.testing.assert_array_equal(np.isnan(out), [False, False, True])
 
 
@@ -167,7 +184,8 @@ def test_localize(mda: MetDataArray) -> None:
 
 
 @pytest.mark.parametrize("localize", [True, False])
-def test_interpolation_time_resolution(mda: MetDataArray, localize: bool) -> None:
+@pytest.mark.parametrize("lowmem", [True, False])
+def test_interpolation_time_resolution(mda: MetDataArray, localize: bool, lowmem: bool) -> None:
     """Confirm interpolation works as expected with time to float conversions."""
     longitude = 30
     latitude = 31
@@ -177,18 +195,24 @@ def test_interpolation_time_resolution(mda: MetDataArray, localize: bool) -> Non
     # Time is out of bounds
     match = "One of the requested xi is out of bounds in dimension 3"
     with pytest.raises(ValueError, match=match):
-        mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=localize)
+        mda.interpolate(
+            longitude, latitude, level, time, bounds_error=True, localize=localize, lowmem=lowmem
+        )
 
     # If time is identical with the endpoint of the time dimension,
     # it should be in bounds.
     time = np.datetime64("2019-05-31T06:00:00")
 
-    out = mda.interpolate(longitude, latitude, level, time, bounds_error=False, localize=localize)
+    out = mda.interpolate(
+        longitude, latitude, level, time, bounds_error=False, localize=localize, lowmem=lowmem
+    )
     assert np.isfinite(out)
 
     # Increasing it by 1 us makes it out of bounds
     time += np.timedelta64(1, "us")
-    out = mda.interpolate(longitude, latitude, level, time, bounds_error=False, localize=localize)
+    out = mda.interpolate(
+        longitude, latitude, level, time, bounds_error=False, localize=localize, lowmem=lowmem
+    )
     assert np.isnan(out)
 
 
@@ -341,6 +365,24 @@ def arbitrary_coords() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     return longitude, latitude, level, time
 
 
+@pytest.fixture()
+def out_of_bounds_coords() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    longitude = np.array([-55, -43, -55, -170, -17, -18], dtype=np.float32)
+    latitude = np.array([12, 17, -88, -44, 22, 23], dtype=np.float32)
+    level = np.array([227, 205, 231, 233, 231, 230], dtype=np.float32)
+    time = np.array(
+        [
+            np.datetime64("2019-05-31T05:30"),
+            np.datetime64("2019-05-31T05:33"),
+            np.datetime64("2019-05-31T05:36"),
+            np.datetime64("2019-05-31T05:40"),
+            np.datetime64("2019-05-31T05:43"),
+            np.datetime64("2019-05-31T06:46"),
+        ]
+    )
+    return longitude, latitude, level, time
+
+
 def test_indices_distinct_vars(
     met_pcc_pl: MetDataset,
     arbitrary_coords: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
@@ -417,11 +459,71 @@ def test_indices_same_var(
     np.testing.assert_array_equal(out1, out2)
 
 
+@pytest.mark.parametrize(
+    ("coords_label", "num_inbounds"), [("arbitrary_coords", 6), ("out_of_bounds_coords", 2)]
+)
+@pytest.mark.parametrize(
+    "var",
+    ["air_temperature", "specific_humidity", "specific_cloud_ice_water_content"],
+)
+@pytest.mark.parametrize(
+    "other",
+    ["air_temperature", "specific_humidity", "specific_cloud_ice_water_content"],
+)
+def test_indices_lowmem(
+    met_pcc_pl: MetDataset,
+    coords_label: str,
+    num_inbounds: int,
+    var: str,
+    other: str,
+    request: pytest.FixtureRequest,
+) -> None:
+    """Test use of indices in low-memory interpolations."""
+
+    mda1 = met_pcc_pl[var]
+    mda2 = met_pcc_pl[other]
+
+    coords = request.getfixturevalue(coords_label)
+
+    # check for same result
+    if var == other:
+        out1, indices = mda2.interpolate(
+            *coords, bounds_error=False, localize=False, lowmem=True, return_indices=True
+        )
+        out2 = mda2.interpolate(
+            *coords,
+            bounds_error=False,
+            localize=False,
+            lowmem=True,
+            indices=indices,
+            return_indices=False,
+        )
+        np.testing.assert_array_equal(out1, out2)
+
+    # check for consistent indices
+    else:
+        out1, indices1 = mda1.interpolate(
+            *coords, bounds_error=False, localize=False, lowmem=True, return_indices=True
+        )
+        assert np.isfinite(out1).sum() == num_inbounds
+        assert (~indices1.out_of_bounds).sum() == num_inbounds
+        out2, indices2 = mda2.interpolate(
+            *coords, bounds_error=False, localize=False, lowmem=True, return_indices=True
+        )
+        assert np.isfinite(out2).sum() == num_inbounds
+        assert (~indices2.out_of_bounds).sum() == num_inbounds
+
+        np.testing.assert_array_equal(indices1.xi_indices, indices2.xi_indices)
+        np.testing.assert_array_equal(indices1.norm_distances, indices2.norm_distances)
+        np.testing.assert_array_equal(indices1.out_of_bounds, indices2.out_of_bounds)
+
+
 @pytest.mark.parametrize("bounds_error", [False, True])
+@pytest.mark.parametrize("lowmem", [True, False])
 @pytest.mark.parametrize("idx", range(5))
 @pytest.mark.parametrize("coord", ["longitude", "latitude", "level", "time"])
 def test_interpolation_propagate_nan(
-    mda: MetDataArray, bounds_error: bool, idx: int, coord: str
+    mda: MetDataArray, bounds_error: bool, lowmem: bool, idx: int, coord: str
 ) -> None:
     """Ensure nan values propagate through interpolation."""
 
@@ -446,10 +548,14 @@ def test_interpolation_propagate_nan(
     if bounds_error:
         match = f"One of the requested xi is out of bounds in dimension {dim}"
         with pytest.raises(ValueError, match=match):
-            mda.interpolate(longitude, latitude, level, time, bounds_error=bounds_error)
+            mda.interpolate(
+                longitude, latitude, level, time, bounds_error=bounds_error, lowmem=lowmem
+            )
         return
 
-    out = mda.interpolate(longitude, latitude, level, time, bounds_error=bounds_error)
+    out = mda.interpolate(
+        longitude, latitude, level, time, bounds_error=bounds_error, lowmem=lowmem
+    )
     assert np.flatnonzero(np.isnan(out)).item() == idx
 
 

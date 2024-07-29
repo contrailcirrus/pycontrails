@@ -9,7 +9,15 @@ import pathlib
 import typing
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Generator,
+    Hashable,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from contextlib import ExitStack
 from datetime import datetime
 from typing import (
@@ -1502,7 +1510,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        prelocalize_by_time: bool = ...,
+        lowmem: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[False] = ...,
     ) -> npt.NDArray[np.float64]: ...
@@ -1519,7 +1527,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = ...,
         fill_value: float | np.float64 | None = ...,
         localize: bool = ...,
-        prelocalize_by_time: bool = ...,
+        lowmem: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[True],
     ) -> tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]: ...
@@ -1535,7 +1543,7 @@ class MetDataArray(MetBase):
         bounds_error: bool = False,
         fill_value: float | np.float64 | None = np.nan,
         localize: bool = False,
-        prelocalize_by_time: bool = False,
+        lowmem: bool = False,
         indices: interpolation.RGIArtifacts | None = None,
         return_indices: bool = False,
     ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
@@ -1543,7 +1551,7 @@ class MetDataArray(MetBase):
 
         Zero dimensional coordinates are reshaped to 1D arrays.
 
-        If ``prelocalize_by_time == False``, method automatically loads underlying :attr:`data` into
+        If ``lowmem == False``, method automatically loads underlying :attr:`data` into
         memory. Otherwise, method iterates through smaller subsets of :attr:`data` and releases
         subsets from memory once interpolation against each subset is finished.
 
@@ -1591,16 +1599,18 @@ class MetDataArray(MetBase):
         localize: bool, optional
             Experimental. If True, downselect gridded data to smallest bounding box containing
             all points.  By default False.
-        prelocalize_by_time: bool, optional
+        lowmem: bool, optional
             Experimental. If True, iterate through points binned by the time coordinate of the
             grided data, and downselect gridded data to the smallest bounding box containing
             each binned set of point *before loading into memory*. This can significantly reduce
-            memory consumption with large numbers of points, but significantly increases runtime.
+            memory consumption with large numbers of points at the cost of increased runtime.
             By default False.
         indices: tuple | None, optional
             Experimental. See :func:`interpolation.interp`. None by default.
         return_indices: bool, optional
             Experimental. See :func:`interpolation.interp`. False by default.
+            Note that values returned differ when ``lowmem=True`` and ``lowmem=False``,
+            so output should only be re-used in calls with the same ``lowmem`` value.
 
         Returns
         -------
@@ -1646,9 +1656,15 @@ class MetDataArray(MetBase):
         array([220.44347694, 223.08900738, 225.74338924, 228.41642088,
                231.10858599, 233.54857391, 235.71504913, 237.86478872,
                239.99274623, 242.10792167])
+
+        >>> # Can easily switch to alternative low-memory implementation
+        >>> mda.interpolate(longitude, latitude, level, time, lowmem=True)
+        array([220.44347694, 223.08900738, 225.74338924, 228.41642088,
+               231.10858599, 233.54857391, 235.71504913, 237.86478872,
+               239.99274623, 242.10792167])
         """
-        if prelocalize_by_time:
-            return self._interp_prelocalize(
+        if lowmem:
+            return self._interp_lowmem(
                 longitude,
                 latitude,
                 level,
@@ -1684,7 +1700,7 @@ class MetDataArray(MetBase):
             return_indices=return_indices,
         )
 
-    def _interp_prelocalize(
+    def _interp_lowmem(
         self,
         longitude: float | npt.NDArray[np.float64],
         latitude: float | npt.NDArray[np.float64],
@@ -1700,7 +1716,7 @@ class MetDataArray(MetBase):
     ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
         """Interpolate values against underlying DataArray.
 
-        This method is used by :meth:``interpolate`` when ``prelocalize_by_time=True``.
+        This method is used by :meth:``interpolate`` when ``lowmem=True``.
         Parameters and return types are identical to :meth:``interpolate``, except
         that the ``localize`` keyword argument is omitted.
         """
@@ -1708,26 +1724,22 @@ class MetDataArray(MetBase):
         # Not validating against ndim >= 2
         longitude, latitude, level, time = np.atleast_1d(longitude, latitude, level, time)
 
-        # Get earliest and latest required time steps in gridded data
-        t_met = self.data["time"].values
-        istart = np.flatnonzero(t_met <= time.min()).max()
-        iend = np.flatnonzero(t_met >= time.max()).min()
+        if bounds_error:
+            _lowmem_boundscheck(time, self.data)
 
         # Create buffers for holding interpolation output
-        out = np.full(longitude.shape, np.nan)
+        # Initialize to values for out-of-bounds points
+        out = np.full(longitude.shape, fill_value, dtype=self.data.dtype)
         if return_indices:
             rgi_artifacts = interpolation.RGIArtifacts(
-                xi_indices=np.full((4, longitude.size), 0),
-                norm_distances=np.full((4, longitude.size), 0.0),
-                out_of_bounds=np.full((longitude.size,), False),
+                xi_indices=np.full((4, longitude.size), -1, dtype=np.int64),
+                norm_distances=np.full((4, longitude.size), np.nan, dtype=np.float64),
+                out_of_bounds=np.full((longitude.size,), True, dtype=np.bool_),
             )
 
         # Iterate over portions of points between adjacent time steps in gridded data
-        for i in range(istart, iend):
-            mask = np.logical_and(
-                (time >= t_met[i]) if i == 0 else (time > t_met[i]), time <= t_met[i + 1]
-            )
-            if not np.any(mask):
+        for mask in _lowmem_masks(time, self.data["time"].values):
+            if mask is None or not np.any(mask):
                 continue
 
             lon_sl = longitude[mask]
@@ -1744,6 +1756,8 @@ class MetDataArray(MetBase):
                 indices_sl = None
 
             coords = {"longitude": lon_sl, "latitude": lat_sl, "level": lev_sl, "time": t_sl}
+            if any(np.all(np.isnan(coord)) for coord in coords.values()):
+                continue
             da = interpolation._localize(self.data, coords)
             if not da._in_memory:
                 logger.debug(
@@ -2776,3 +2790,38 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
         data.coords["altitude"] = data.coords["altitude"].astype(dtype, copy=False)
 
     return data
+
+
+def _lowmem_boundscheck(time: npt.NDArray[np.datetime64], da: xr.DataArray) -> None:
+    """Extra bounds check required with low-memory interpolation strategy.
+
+    Because the main loop in `_interp_lowmem` processes points between time steps
+    in gridded data, it will never encounter points that are out-of-bounds in time
+    and may fail to produce requested out-of-bounds errors.
+    """
+    if not np.all((time >= da["time"].min().to_numpy()) & (time <= da["time"].max().to_numpy())):
+        axis = da.get_axis_num("time")
+        msg = f"One of the requested xi is out of bounds in dimension {axis}"
+        raise ValueError(msg)
+
+
+def _lowmem_masks(
+    time: npt.NDArray[np.datetime64], t_met: npt.NDArray[np.datetime64]
+) -> Generator[npt.NDArray[np.bool_], None, None]:
+    """Generate sequence of masks for low-memory interpolation."""
+    inbounds = (time >= t_met.min()) & (time <= t_met.max())
+    if not np.any(inbounds):
+        return
+
+    earliest = np.nanmin(time)
+    istart = 0 if earliest < t_met.min() else np.flatnonzero(t_met <= earliest).max()
+    latest = np.nanmax(time)
+    iend = t_met.size - 1 if latest > t_met.max() else np.flatnonzero(t_met >= latest).min()
+    if istart == iend:
+        yield inbounds
+        return
+
+    for i in range(istart, iend):
+        mask = ((time >= t_met[i]) if i == istart else (time > t_met[i])) & (time <= t_met[i + 1])
+        if np.any(mask):
+            yield mask

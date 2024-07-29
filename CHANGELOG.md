@@ -11,6 +11,7 @@
 - Add experimental `fill_low_alt_with_isa_temperature` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models with `Flight` sources will fill points below the lowest altitude in the ``met["air_temperature]`` data with the ISA temperature. This is useful when the met data does not extend to the surface. In this case, we can still estimate fuel flow and other performance metrics through the entire climb phase. By default, this parameter is set to `False`.
 - Add experimental `fill_low_altitude_with_zero_wind` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models will estimate the true airspeed at low altitudes by assuming the wind speed is zero.
 - Add convenience `Flight.plot_profile` method.
+- Add experimental `interpolation_lowmem` parameter to the `Model` base class. When set to `True`, models will use an implementation of `MetDataArray.interpolate` that prioritizes a small memory footprint but may increase model runtime.
 
 ### Fixes
 
@@ -20,6 +21,7 @@
 - Fix minor bug in `cocip.output_formats.radiation_time_slice_statistics` in which the function previously threw an error if `t_end` did not directly align with the time index in the `rad` dataset.
 - Remove the residual constraint in `cocip.output_formats.contrails_to_hi_res_grid` used during debugging.
 - Improve detection of antimeridian crossings for flights that span more than 180 degrees longitude.
+- Fix bug in `PycontrailsRegularGridInterpolator` that caused errors when dispatching to 1-d linear interpolation from in `rgi_cython.pyx`.
 
 ### Internals
 

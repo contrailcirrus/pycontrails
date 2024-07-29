@@ -215,7 +215,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         if ndim == 1:
             # np.interp could be better ... although that may also promote the dtype
-            return rgi_cython.evaluate_linear_1d(values, indices, norm_distances, out)
+            # 1-d view is required for evaluate_linear_1d
+            return rgi_cython.evaluate_linear_1d(values, indices[0, :], norm_distances[0, :], out)
 
         msg = f"Invalid number of dimensions: {ndim}"
         raise ValueError(msg)
