@@ -84,9 +84,19 @@ class CocipParams(ModelParams):
     #: Humidity scaling
     humidity_scaling: HumidityScaling | None = None
 
-    #: Experimental. Uses alternative implementation of :meth:`MetDataArray.interpolate`
-    #: to significantly reduce memory consumption during aircraft performance and initial
-    #: contrail formation/persistence calculations.
+    #: Experimental. If ``True``, attempt to reduce memory consumption during
+    #: aircraft performance and initial contrail formation/persistent calculations
+    #: by calling :meth:`MetDataArray.interpolate` with ``lowmem=True`.
+    #: **IMPORTANT**:
+    #:   - Memory optimizations used when ``proprocess_lowmem=True`` are designed for
+    #:     meteorology backed by dask arrays with a chunk size of 1 along
+    #:     the time dimension. This option may degrade performance if dask if not used
+    #:     or if chunks contain more than a single time step.
+    #:   - Changes to data access patterns with ``preprocess_lowmem=True`` alter locations
+    #:     where interpolation is in- vs out-of-bounds. As a consequence,
+    #:     Cocip output with ``preprocess_lowmem=True`` is only guaranteed to match output
+    #:     with ``preprocess_lowmem=False`` when run with ``interpolation_bounds_error=True``
+    #:     to ensure no out-of-bounds interpolation occurs.
     preprocess_lowmem: bool = False
 
     # --------------
