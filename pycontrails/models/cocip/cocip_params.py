@@ -84,6 +84,11 @@ class CocipParams(ModelParams):
     #: Humidity scaling
     humidity_scaling: HumidityScaling | None = None
 
+    #: Experimental. Uses alternative implementation of :meth:`MetDataArray.interpolate`
+    #: to significantly reduce memory consumption during aircraft performance and initial
+    #: contrail formation/persistence calculations.
+    preprocess_lowmem: bool = False
+
     # --------------
     # Downselect met
     # --------------

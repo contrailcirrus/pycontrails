@@ -165,7 +165,7 @@ def cocip_no_ef_lowmem(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
         "max_age": np.timedelta64(3, "h"),
         "process_emissions": False,
         "humidity_scaling": ExponentialBoostHumidityScaling(),
-        "interpolation_lowmem": True,
+        "preprocess_lowmem": True,
     }
     cocip = Cocip(met.copy(), rad=rad2, params=params)
     cocip.eval(source=fl)
@@ -185,7 +185,7 @@ def cocip_no_ef_lowmem_indices(fl: Flight, met: MetDataset, rad: MetDataset) -> 
         "max_age": np.timedelta64(3, "h"),
         "process_emissions": False,
         "humidity_scaling": ExponentialBoostHumidityScaling(),
-        "interpolation_lowmem": True,
+        "preprocess_lowmem": True,
         "interpolation_use_indices": True,
     }
     cocip = Cocip(met.copy(), rad=rad2, params=params)
@@ -235,7 +235,7 @@ def cocip_persistent_lowmem(fl: Flight, met: MetDataset, rad: MetDataset) -> Coc
         "met_time_buffer": (np.timedelta64(0, "h"), np.timedelta64(1, "h")),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
-        "interpolation_lowmem": True,
+        "preprocess_lowmem": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
     with pytest.warns(UserWarning, match="At time .* contrail has no intersection with the met"):
@@ -256,7 +256,7 @@ def cocip_persistent_lowmem_indices(fl: Flight, met: MetDataset, rad: MetDataset
         "met_time_buffer": (np.timedelta64(0, "h"), np.timedelta64(1, "h")),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
-        "interpolation_lowmem": True,
+        "preprocess_lowmem": True,
         "interpolation_use_indices": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
@@ -298,7 +298,7 @@ def cocip_persistent2_lowmem(
         "verbose_outputs": True,
         "interpolation_bounds_error": True,
         "humidity_scaling": ExponentialBoostHumidityScaling(),
-        "interpolation_lowmem": True,
+        "preprocess_lowmem": True,
     }
     cocip = Cocip(met=met_cocip2.copy(), rad=rad_cocip2.copy(), params=params)
     cocip.eval(source=flight_cocip2)
@@ -316,7 +316,7 @@ def cocip_persistent2_lowmem_indices(
         "verbose_outputs": True,
         "interpolation_bounds_error": True,
         "humidity_scaling": ExponentialBoostHumidityScaling(),
-        "interpolation_lowmem": True,
+        "preprocess_lowmem": True,
         "interpolation_use_indices": True,
     }
     cocip = Cocip(met=met_cocip2.copy(), rad=rad_cocip2.copy(), params=params)
