@@ -548,6 +548,8 @@ class Cocip(Model):
         verbose_outputs = self.params["verbose_outputs"]
 
         interp_kwargs = self.interp_kwargs
+        if self.params["preprocess_lowmem"]:
+            interp_kwargs["lowmem"] = True
         interpolate_met(met, self.source, "air_temperature", **interp_kwargs)
         interpolate_met(met, self.source, "specific_humidity", **interp_kwargs)
         interpolate_met(met, self.source, "eastward_wind", "u_wind", **interp_kwargs)
@@ -749,6 +751,8 @@ class Cocip(Model):
 
         # get full met grid or flight data interpolated to the pressure level `p_dz`
         interp_kwargs = self.interp_kwargs
+        if self.params["preprocess_lowmem"]:
+            interp_kwargs["lowmem"] = True
         air_temperature_lower = interpolate_met(
             met,
             self._sac_flight,
@@ -860,6 +864,8 @@ class Cocip(Model):
 
         # get met post wake vortex along initial contrail
         interp_kwargs = self.interp_kwargs
+        if self.params["preprocess_lowmem"]:
+            interp_kwargs["lowmem"] = True
         air_temperature_1 = interpolate_met(met, contrail_1, "air_temperature", **interp_kwargs)
         interpolate_met(met, contrail_1, "specific_humidity", **interp_kwargs)
 
@@ -951,11 +957,14 @@ class Cocip(Model):
             )
             logger.debug("None are filtered out!")
 
-    def _simulate_contrail_evolution(self) -> None:
-        """Simulate contrail evolution."""
-        # Calculate all properties for "downwash_contrail" which is
-        # a contrail representation of the waypoints of the downwash flight.
-        # The downwash_contrail has already been filtered for initial persistent waypoints.
+    def _process_downwash_flight(self) -> tuple[MetDataset | None, MetDataset | None]:
+        """Create and calculate properties of contrails created by downwash vortex.
+
+        ``_downwash_contrail`` is a contrail representation of the waypoints of
+        ``_downwash_flight``, which has already been filtered for initial persistent waypoints.
+
+        Returns MetDatasets for subsequent use if ``preprocess_lowmem=False``.
+        """
         self._downwash_contrail = self._create_downwash_contrail()
         buffers = {
             f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
@@ -970,6 +979,8 @@ class Cocip(Model):
         calc_timestep_geometry(self._downwash_contrail)
 
         interp_kwargs = self.interp_kwargs
+        if self.params["preprocess_lowmem"]:
+            interp_kwargs["lowmem"] = True
         calc_timestep_meteorology(self._downwash_contrail, met, self.params, **interp_kwargs)
         calc_shortwave_radiation(rad, self._downwash_contrail, **interp_kwargs)
         calc_outgoing_longwave_radiation(rad, self._downwash_contrail, **interp_kwargs)
@@ -983,6 +994,20 @@ class Cocip(Model):
 
         # Intersect with rad dataset
         calc_radiative_properties(self._downwash_contrail, self.params)
+
+        if self.params["preprocess_lowmem"]:
+            return None, None
+        return met, rad
+
+    def _simulate_contrail_evolution(self) -> None:
+        """Simulate contrail evolution."""
+
+        met, rad = self._process_downwash_flight()
+        buffers = {
+            f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
+            for coord in ("longitude", "latitude", "level")
+        }
+        interp_kwargs = self.interp_kwargs
 
         contrail_contrail_overlapping = self.params["contrail_contrail_overlapping"]
         if contrail_contrail_overlapping and not isinstance(self.source, Fleet):
@@ -1026,15 +1051,19 @@ class Cocip(Model):
             # has constant time at "time_end", hence the buffer we apply below.
             # After the downwash_contrails is all used up, these updates are intended
             # to happen once each hour
+            buffers = {
+                f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
+                for coord in ("longitude", "latitude", "level")
+            }
             buffers["time_buffer"] = (
                 np.timedelta64(0, "ns"),
                 time_end - latest_contrail["time"].max(),
             )
-            if time_end > met.indexes["time"].to_numpy()[-1]:
+            if met is None or time_end > met.indexes["time"].to_numpy()[-1]:
                 logger.debug("Downselect met at time_end %s within Cocip evolution", time_end)
                 met = latest_contrail.downselect_met(self.met, **buffers, copy=False)
                 met = add_tau_cirrus(met)
-            if time_end > rad.indexes["time"].to_numpy()[-1]:
+            if rad is None or time_end > rad.indexes["time"].to_numpy()[-1]:
                 logger.debug("Downselect rad at time_end %s within Cocip evolution", time_end)
                 rad = latest_contrail.downselect_met(self.rad, **buffers, copy=False)
 
