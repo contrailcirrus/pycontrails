@@ -13,6 +13,8 @@
 - Fix missing `Fuel Flow Idle (kg/sec)` value in the `1ZM001` engine in the `edb-gaseous-v29b-engines.csv`.
 - Fix the `step_threshold` in `Flight._altitude_interpolation`. This correction is only relevant when passing in a non-default value for `freq` in `Flight.resample_and_fill`.
 - Fix the `VectorDataset.__eq__` method to check for the same keys. Previously, if the other dataset had a superset of the instance keys, the method may still return `True`.
+- Fix minor bug in `cocip.output_formats.radiation_time_slice_statistics` in which the function previously threw an error if `t_end` did not directly align with the time index in the `rad` dataset.
+- Remove the residual constraint in `cocip.output_formats.contrails_to_hi_res_grid` used during debugging.
 
 ### Internals
 
