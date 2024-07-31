@@ -28,6 +28,7 @@
 
 - Improve the runtime performance of `Fleet.to_flight_list`. For a large `Fleet`, this method is now 5x faster.
 - Improve the runtime performance and memory footprint of `Cocip._bundle_results`. When running `Cocip` with a large `Fleet` source, `Cocip.eval` is now slightly faster and uses much less memory.
+- Implement low-memory paths in `Cocip.eval` and `MetDataArray.interpolate`.
 
 ## v0.52.1
 
