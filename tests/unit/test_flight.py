@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from pyproj import Geod
+from scipy import signal
 
 from pycontrails import Flight, GeoVectorDataset, MetDataArray, MetDataset, SAFBlend, VectorDataset
 from pycontrails.core import flight
@@ -880,6 +881,43 @@ def test_meridian_antimeridian_cross(direction: str) -> None:
     assert np.all(np.isfinite(fl2["longitude"]))
     assert np.all(fl2.segment_length()[:-1] < 10000)
     assert np.all(fl2.segment_length()[:-1] > 8000)
+
+
+@pytest.mark.parametrize("where", ["meridian", "antimeridian"])
+@pytest.mark.parametrize("direction", ["east", "west"])
+@pytest.mark.parametrize("period", [2, 4, 6, 8])
+def test_interpolation_zipper(where: str, direction: str, period: int) -> None:
+    """Test interpolation with rapidly-oscillating longitude.
+
+    Include oscillations that cross meridian and antimeridian starting in both directions.
+    """
+    n = 200
+    if direction == "east":
+        longitude = (
+            period / 4 * signal.sawtooth(np.linspace(0, 2 * np.pi * (n - 1) / period, n), 0.5)
+        )
+    elif direction == "west":
+        longitude = (
+            -period / 4 * signal.sawtooth(np.linspace(0, 2 * np.pi * (n - 1) / period, n), 0.5)
+        )
+    else:
+        raise ValueError("Unknown param")
+    if where == "antimeridian":
+        longitude = longitude % 360 - 180
+    # speed of this flight is 1 degree/minute ~ 1850 m/s
+    fl = Flight(
+        longitude=longitude,
+        latitude=np.zeros(n),
+        altitude=np.full(n, 10000),
+        time=pd.date_range("2022-01-01", periods=n, freq="1min"),
+    )
+    # expect resampled trajectories to have lengths of ~9250 m
+    fl2 = fl.resample_and_fill("5s")
+    assert np.all(fl2["longitude"] < 180)
+    assert np.all(fl2["longitude"] >= -180)
+    assert np.all(np.isfinite(fl2["longitude"]))
+    assert np.all(fl2.segment_length()[:-1] < 9500)
+    assert np.all(fl2.segment_length()[:-1] > 9000)
 
 
 @pytest.mark.parametrize("direction", ["east", "west"])
