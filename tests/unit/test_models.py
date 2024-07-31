@@ -177,9 +177,9 @@ def test_model_hash(met_era5_fake: MetDataset, model_class: type[Model]) -> None
     """
     model = model_class(met=met_era5_fake)
     if isinstance(model, ModelTestFlight):
-        assert model.hash == "72316d593517fc504e4420949dedf44286c7d80b"
+        assert model.hash == "a5b35e16632ff819e49499a832a1ba1787d3dd27"
     else:
-        assert model.hash == "0097cf5279472aa867af825c1819c3a4f55e9b30"
+        assert model.hash == "b0c26d747887f86ab1942667c3befcb5693688a3"
 
 
 # ----------------
