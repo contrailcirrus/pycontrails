@@ -1274,10 +1274,11 @@ class Flight(GeoVectorDataset):
 
         # separate flight into segments that are east and west of crossings
         net_westward = np.insert(np.cumsum(jump12.astype(int) - jump21.astype(int)), 0, 0)
-        if net_westward.max() - net_westward.min() > 1:
+        max_westward = net_westward.max()
+        if max_westward - net_westward.min() > 1:
             msg = "Cannot handle consecutive antimeridian crossings in the same direction"
             raise ValueError(msg)
-        east = (net_westward == 0) if net_westward.max() == 1 else (net_westward == -1)
+        east = (net_westward == 0) if max_westward == 1 else (net_westward == -1)
 
         # shift must be between maximum longitude east of crossings
         # and minimum longitude west of crossings
