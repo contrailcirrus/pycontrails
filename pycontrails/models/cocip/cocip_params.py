@@ -92,6 +92,10 @@ class CocipParams(ModelParams):
     #:     meteorology backed by dask arrays with a chunk size of 1 along
     #:     the time dimension. This option may degrade performance if dask if not used
     #:     or if chunks contain more than a single time step.
+    #:   - The impact on runtime of setting ``preprocess_lowmem=True`` depends on how
+    #:     meteorology data is chunked. Runtime is likely to increase if meteorology
+    #:     data is chunked in time only, but may decrease if meteorology data is also
+    #:     chunked in longitude, latitude, and level.
     #:   - Changes to data access patterns with ``preprocess_lowmem=True`` alter locations
     #:     where interpolation is in- vs out-of-bounds. As a consequence,
     #:     Cocip output with ``preprocess_lowmem=True`` is only guaranteed to match output
