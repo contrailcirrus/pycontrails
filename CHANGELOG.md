@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.52.3 (unreleased)
+
+### Fixes
+
+- Defer import of `matplotlib` in `models.cocip.output_formats`.
+
 ## v0.52.2
 
 ### Breaking changes

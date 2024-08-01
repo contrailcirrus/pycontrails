@@ -24,7 +24,6 @@ import pathlib
 import warnings
 from collections.abc import Hashable
 
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -2141,7 +2140,17 @@ def compare_cocip_with_goes(
             name="compare_cocip_with_goes function",
             package_name="cartopy",
             module_not_found_error=e,
-            pycontrails_optional_package="goes",
+            pycontrails_optional_package="sat",
+        )
+
+    try:
+        import matplotlib.pyplot as plt
+    except ModuleNotFoundError as e:
+        dependencies.raise_module_not_found_error(
+            name="compare_cocip_with_goes function",
+            package_name="matplotlib",
+            module_not_found_error=e,
+            pycontrails_optional_package="vis",
         )
 
     # Round `time` to nearest GOES image time slice
