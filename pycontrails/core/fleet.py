@@ -333,6 +333,14 @@ class Fleet(Flight):
     @override
     def resample_and_fill(self, *args: Any, **kwargs: Any) -> Fleet:
         flights = self.to_flight_list(copy=False)
+
+        # We need to ensure that each flight has an flight_id attrs field
+        # When we call fl.resample_and_fill, any flight_id data field
+        # will be lost, so the call to Fleet.from_seq will fail.
+        for fl in flights:
+            if "flight_id" not in fl.attrs:
+                fl.attrs["flight_id"] = _extract_flight_id(fl)
+
         flights = [fl.resample_and_fill(*args, **kwargs) for fl in flights]
         return type(self).from_seq(flights, copy=False, broadcast_numeric=False, attrs=self.attrs)
 

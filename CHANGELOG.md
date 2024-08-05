@@ -10,6 +10,7 @@
 - By default, don't interpolate air temperature when running the `DryAdvection` model in a point-wise manner (no wind-shear simulation).
 - Use native python types (as opposed to `numpy` scalars) in the `PSAircraftEngineParams` dataclass.
 - Ensure the `PSGrid` model maintains the precision of the `source`. Previously, float32 precision was lost per [NEP 50](https://numpy.org/neps/nep-0050-scalar-promotion.html).
+- Fix `Fleet.resample_and_fill` when the the "flight_id" field is included on `Fleet.data` (as opposed to `Fleet.fl_attrs`). Previously, this would raise a ValueError.
 
 ### Internals
 
