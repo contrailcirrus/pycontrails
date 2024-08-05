@@ -148,7 +148,6 @@ class Cocip(Model):
 
     This implementation is regression tested against
     results from :cite:`teohAviationContrailClimate2022`.
-    See `tests/benchmark/north-atlantic-study/validate.py`.
 
     **Outputs**
 
