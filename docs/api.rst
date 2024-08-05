@@ -134,6 +134,7 @@ CoCiP
 
     models.cocip.Cocip
     models.cocip.CocipParams
+    models.cocip.CocipFlightParams
     models.cocip.contrail_properties
     models.cocip.radiative_forcing
     models.cocip.wake_vortex
