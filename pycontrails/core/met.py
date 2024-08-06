@@ -1728,7 +1728,8 @@ class MetDataArray(MetBase):
             _lowmem_boundscheck(time, self.data)
 
         # Create buffers for holding interpolation output
-        # Initialize to values for out-of-bounds points
+        # Use np.full rather than np.empty so points not covered
+        # by masks are filled with correct out-of-bounds values.
         out = np.full(longitude.shape, fill_value, dtype=self.data.dtype)
         if return_indices:
             rgi_artifacts = interpolation.RGIArtifacts(
