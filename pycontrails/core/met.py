@@ -1783,8 +1783,7 @@ class MetDataArray(MetBase):
             )
 
             if return_indices:
-                out[mask] = tmp[0]
-                rgi_sl = tmp[1]
+                out[mask], rgi_sl = tmp
                 rgi_artifacts.xi_indices[:, mask] = rgi_sl.xi_indices
                 rgi_artifacts.norm_distances[:, mask] = rgi_sl.norm_distances
                 rgi_artifacts.out_of_bounds[mask] = rgi_sl.out_of_bounds
