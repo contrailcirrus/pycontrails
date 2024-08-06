@@ -2799,7 +2799,8 @@ def _lowmem_boundscheck(time: npt.NDArray[np.datetime64], da: xr.DataArray) -> N
     in gridded data, it will never encounter points that are out-of-bounds in time
     and may fail to produce requested out-of-bounds errors.
     """
-    if not np.all((time >= da["time"].min().to_numpy()) & (time <= da["time"].max().to_numpy())):
+    da_time = da["time"].to_numpy()
+    if not np.all((time >= da_time.min()) & (time <= da_time.max())):
         axis = da.get_axis_num("time")
         msg = f"One of the requested xi is out of bounds in dimension {axis}"
         raise ValueError(msg)
