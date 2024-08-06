@@ -12,7 +12,7 @@
 - Add experimental `fill_low_altitude_with_zero_wind` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models will estimate the true airspeed at low altitudes by assuming the wind speed is zero.
 - Add convenience `Flight.plot_profile` method.
 - Add experimental `preprocess_lowmem` parameter to `Cocip`. When set to `True`, `Cocip` will attempt to reduce memory consumption during flight preprocessing and initial formation/persistence calculations by using an alternate implementation of `MetDataArray.interpolate` (see below).
-- Add `lowmem` keyword argument to `MetDataArray.interpolate`. When `True`, attempt to reduce memory consumption by using an alternative interpolation strategy that loads at most two time steps of meteorology data into memory at a time.
+- Add `lowmem` keyword-only argument to `MetDataArray.interpolate`. When `True`, attempt to reduce memory consumption by using an alternative interpolation strategy that loads at most two time steps of meteorology data into memory at a time.
 
 ### Fixes
 
