@@ -2810,14 +2810,16 @@ def _lowmem_masks(
     time: npt.NDArray[np.datetime64], t_met: npt.NDArray[np.datetime64]
 ) -> Generator[npt.NDArray[np.bool_], None, None]:
     """Generate sequence of masks for low-memory interpolation."""
-    inbounds = (time >= t_met.min()) & (time <= t_met.max())
+    t_met_max = t_met.max()
+    t_met_min = t_met.min()
+    inbounds = (time >= t_met_min) & (time <= t_met_max)
     if not np.any(inbounds):
         return
 
     earliest = np.nanmin(time)
-    istart = 0 if earliest < t_met.min() else np.flatnonzero(t_met <= earliest).max()
+    istart = 0 if earliest < t_met_min else np.flatnonzero(t_met <= earliest).max()
     latest = np.nanmax(time)
-    iend = t_met.size - 1 if latest > t_met.max() else np.flatnonzero(t_met >= latest).min()
+    iend = t_met.size - 1 if latest > t_met_max else np.flatnonzero(t_met >= latest).min()
     if istart == iend:
         yield inbounds
         return
