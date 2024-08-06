@@ -2824,6 +2824,11 @@ def _lowmem_masks(
         yield inbounds
         return
 
+    # Sequence of masks covers elements in time in the interval [t_met[istart], t_met[iend]].
+    # The first iteration masks elements in the interval [t_met[istart], t_met[istart+1]]
+    # (inclusive of both endpoints).
+    # Subsequent iterations mask elements in the interval (t_met[i], t_met[i+1]]
+    # (inclusive of right endpoint only).
     for i in range(istart, iend):
         mask = ((time >= t_met[i]) if i == istart else (time > t_met[i])) & (time <= t_met[i + 1])
         if np.any(mask):
