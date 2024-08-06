@@ -1098,71 +1098,57 @@ class Cocip(Model):
         plus a user-defined buffer.
         """
         if met is None or time_end > met.indexes["time"].to_numpy()[-1]:
-            # compute lookahead for future contrails from downwash_flight
-            met_time = self.met.indexes["time"].to_numpy()
-            mask = met_time >= time_end
-            lookahead = np.min(met_time[mask]) if np.any(mask) else time_end
-
-            # create vector for downselection based on current + future contrails
-            future_contrails = self._downwash_flight.filter(
-                (self._downwash_flight["time"] >= time_end)
-                & (self._downwash_flight["time"] <= lookahead),
-                copy=False,
-            )
-            vector = GeoVectorDataset(
-                {
-                    key: np.concat((latest_contrail[key], future_contrails[key]))
-                    for key in ("longitude", "latitude", "level", "time")
-                }
-            )
-
-            # compute time buffer to ensure downselection extends to time_end
-            buffers = {
-                f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
-                for coord in ("longitude", "latitude", "level")
-            }
-            buffers["time_buffer"] = (
-                np.timedelta64(0, "ns"),
-                max(np.timedelta64(0, "ns"), time_end - vector["time"].max()),
-            )
-
             logger.debug("Downselect met at time_end %s within Cocip evolution", time_end)
-            met = vector.downselect_met(self.met, **buffers, copy=False)
+            met = self._definitely_downselect_met_or_rad(self.met, latest_contrail, time_end)
             met = add_tau_cirrus(met)
 
         if rad is None or time_end > rad.indexes["time"].to_numpy()[-1]:
-            # compute lookahead for future contrails from downwash_flight
-            rad_time = self.rad.indexes["time"].to_numpy()
-            mask = rad_time >= time_end
-            lookahead = np.min(rad_time[mask]) if np.any(mask) else time_end
-
-            # create vector for downselection based on current + future contrails
-            future_contrails = self._downwash_flight.filter(
-                (self._downwash_flight["time"] >= time_end)
-                & (self._downwash_flight["time"] <= lookahead),
-                copy=False,
-            )
-            vector = GeoVectorDataset(
-                **{
-                    key: np.concat((latest_contrail[key], future_contrails[key]))
-                    for key in ("longitude", "latitude", "level", "time")
-                }
-            )
-
-            # compute time buffer to ensure downselection extends to time_end
-            buffers = {
-                f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
-                for coord in ("longitude", "latitude", "level")
-            }
-            buffers["time_buffer"] = (
-                np.timedelta64(0, "ns"),
-                max(np.timedelta64(0, "ns"), time_end - vector["time"].max()),
-            )
-
             logger.debug("Downselect rad at time_end %s within Cocip evolution", time_end)
-            rad = vector.downselect_met(self.rad, **buffers, copy=False)
+            rad = self._definitely_downselect_met_or_rad(self.rad, latest_contrail, time_end)
 
         return met, rad
+
+    def _definitely_downselect_met_or_rad(
+        self, met: MetDataset, latest_contrail: GeoVectorDataset, time_end: np.datetime64
+    ) -> MetDataset:
+        """Perform downselection when required by :meth:`_maybe_downselect_met_rad`.
+
+        Downselects ``met`` (which should be one of ``self.met`` or ``self.rad``)
+        to cover ``time_end``. Downselection in space covers
+        - locations of current contrails (``latest_contrail``),
+        - locations of additional contrails that will be loaded from ``self._downwash_flight``
+          before the new slices expire,
+        plus a user-defined buffer, as described in :meth:`_maybe_downselect_met_rad`.
+        """
+        # compute lookahead for future contrails from downwash_flight
+        met_time = met.indexes["time"].to_numpy()
+        mask = met_time >= time_end
+        lookahead = np.min(met_time[mask]) if np.any(mask) else time_end
+
+        # create vector for downselection based on current + future contrails
+        future_contrails = self._downwash_flight.filter(
+            (self._downwash_flight["time"] >= time_end)
+            & (self._downwash_flight["time"] <= lookahead),
+            copy=False,
+        )
+        vector = GeoVectorDataset(
+            {
+                key: np.concat((latest_contrail[key], future_contrails[key]))
+                for key in ("longitude", "latitude", "level", "time")
+            }
+        )
+
+        # compute time buffer to ensure downselection extends to time_end
+        buffers = {
+            f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
+            for coord in ("longitude", "latitude", "level")
+        }
+        buffers["time_buffer"] = (
+            np.timedelta64(0, "ns"),
+            max(np.timedelta64(0, "ns"), time_end - vector["time"].max()),
+        )
+
+        return vector.downselect_met(met, **buffers, copy=False)
 
     def _create_downwash_contrail(self) -> GeoVectorDataset:
         """Get Contrail representation of downwash flight."""
