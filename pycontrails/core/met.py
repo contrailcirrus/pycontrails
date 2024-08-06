@@ -1716,8 +1716,8 @@ class MetDataArray(MetBase):
     ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
         """Interpolate values against underlying DataArray.
 
-        This method is used by :meth:``interpolate`` when ``lowmem=True``.
-        Parameters and return types are identical to :meth:``interpolate``, except
+        This method is used by :meth:`interpolate` when ``lowmem=True``.
+        Parameters and return types are identical to :meth:`interpolate`, except
         that the ``localize`` keyword argument is omitted.
         """
         # Convert all inputs to 1d arrays
