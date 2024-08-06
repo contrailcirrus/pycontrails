@@ -86,21 +86,23 @@ class CocipParams(ModelParams):
 
     #: Experimental. If ``True``, attempt to reduce memory consumption during
     #: aircraft performance and initial contrail formation/persistent calculations
-    #: by calling :meth:`MetDataArray.interpolate` with ``lowmem=True`.
+    #: by calling :meth:`MetDataArray.interpolate` with ``lowmem=True``.
+    #:
     #: **IMPORTANT**:
-    #:   - Memory optimizations used when ``proprocess_lowmem=True`` are designed for
-    #:     meteorology backed by dask arrays with a chunk size of 1 along
-    #:     the time dimension. This option may degrade performance if dask if not used
-    #:     or if chunks contain more than a single time step.
-    #:   - The impact on runtime of setting ``preprocess_lowmem=True`` depends on how
-    #:     meteorology data is chunked. Runtime is likely to increase if meteorology
-    #:     data is chunked in time only, but may decrease if meteorology data is also
-    #:     chunked in longitude, latitude, and level.
-    #:   - Changes to data access patterns with ``preprocess_lowmem=True`` alter locations
-    #:     where interpolation is in- vs out-of-bounds. As a consequence,
-    #:     Cocip output with ``preprocess_lowmem=True`` is only guaranteed to match output
-    #:     with ``preprocess_lowmem=False`` when run with ``interpolation_bounds_error=True``
-    #:     to ensure no out-of-bounds interpolation occurs.
+    #:
+    #: * Memory optimizations used when ``proprocess_lowmem=True`` are designed for
+    #:   meteorology backed by dask arrays with a chunk size of 1 along
+    #:   the time dimension. This option may degrade performance if dask if not used
+    #:   or if chunks contain more than a single time step.
+    #: * The impact on runtime of setting ``preprocess_lowmem=True`` depends on how
+    #:   meteorology data is chunked. Runtime is likely to increase if meteorology
+    #:   data is chunked in time only, but may decrease if meteorology data is also
+    #:   chunked in longitude, latitude, and level.
+    #: * Changes to data access patterns with ``preprocess_lowmem=True`` alter locations
+    #:   where interpolation is in- vs out-of-bounds. As a consequence,
+    #:   Cocip output with ``preprocess_lowmem=True`` is only guaranteed to match output
+    #:   with ``preprocess_lowmem=False`` when run with ``interpolation_bounds_error=True``
+    #:   to ensure no out-of-bounds interpolation occurs.
     preprocess_lowmem: bool = False
 
     # --------------
