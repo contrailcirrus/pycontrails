@@ -1356,7 +1356,7 @@ class Flight(GeoVectorDataset):
             # NOTE: geod.npts does not return the initial or terminal points
             lonlats: list[tuple[float, float]] = geod.npts(lon0, lat0, lon1, lat1, n_steps)
 
-            lons, lats = zip(*lonlats)
+            lons, lats = zip(*lonlats, strict=True)
             longitudes.extend(lons)
             latitudes.extend(lats)
 
@@ -1657,10 +1657,11 @@ def _return_linestring(data: dict[str, npt.NDArray[np.float64]]) -> list[list[fl
         The list of coordinates
     """
     # rounding to reduce the size of resultant json arrays
-    points = zip(  # pylint: disable=zip-builtin-not-iterating
+    points = zip(
         np.round(data["longitude"], decimals=4),
         np.round(data["latitude"], decimals=4),
         np.round(data["altitude"], decimals=4),
+        strict=True,
     )
     return [list(p) for p in points]
 
@@ -1949,7 +1950,9 @@ def _altitude_interpolation_climb_descend_middle(
     # Form array of cumulative altitude values if the flight were to climb
     # at nominal_rocd over each group of nan
     cumalt_list = []
-    for start_na_idx, end_na_idx, size in zip(start_na_idxs, end_na_idxs, na_group_size):
+    for start_na_idx, end_na_idx, size in zip(
+        start_na_idxs, end_na_idxs, na_group_size, strict=True
+    ):
         if s[start_na_idx] <= s[end_na_idx]:
             cumalt_list.append(np.arange(1, size, dtype=float))
         else:
@@ -2114,7 +2117,7 @@ def filter_altitude(
 
     result = np.copy(altitude_ft)
     if np.any(start_idxs):
-        for i0, i1 in zip(start_idxs, end_idxs):
+        for i0, i1 in zip(start_idxs, end_idxs, strict=True):
             result[i0:i1] = altitude_filt[i0:i1]
 
     # reapply Savitzky-Golay filter to smooth climb and descent
