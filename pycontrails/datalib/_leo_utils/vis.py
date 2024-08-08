@@ -7,8 +7,6 @@ import numpy as np
 from pycontrails.utils import dependencies
 
 
-
-
 def normalize(channel: np.ndarray) -> np.ndarray:
     """Normalize channel values to range [0, 1], preserving ``np.nan`` in output.
 
@@ -57,5 +55,5 @@ def equalize(channel: np.ndarray, **equalize_kwargs: Any) -> np.ndarray:
     return np.where(
         np.isnan(channel),
         np.nan,
-        ski.exposure.equalize_adapthist(np.nan_to_num(channel, nan=0), **equalize_kwargs),
+        skimage.exposure.equalize_adapthist(np.nan_to_num(channel, nan=0.0), **equalize_kwargs),
     )
