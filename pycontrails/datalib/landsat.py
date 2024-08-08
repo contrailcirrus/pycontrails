@@ -33,15 +33,6 @@ except ModuleNotFoundError as exc:
         pycontrails_optional_package="sat",
     )
 
-try:
-    import rasterio
-except ModuleNotFoundError as exc:
-    dependencies.raise_module_not_found_error(
-        name="landsat module",
-        package_name="rasterio",
-        module_not_found_error=exc,
-        pycontrails_optional_package="sat",
-    )
 
 #: BigQuery table with imagery metadata
 BQ_TABLE = "bigquery-public-data.cloud_storage_geo_index.landsat_index"
@@ -313,6 +304,16 @@ def _check_band_resolution(bands: set[str]) -> None:
 
 def _read(path: str, meta: str, band: str, processing: str) -> xr.DataArray:
     """Read imagery data from Landsat files."""
+    try:
+        import rasterio
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            name="landsat module",
+            package_name="rasterio",
+            module_not_found_error=exc,
+            pycontrails_optional_package="sat",
+        )
+
     src = rasterio.open(path)
     img = src.read(1)
     crs = pyproj.CRS.from_epsg(src.crs.to_epsg())

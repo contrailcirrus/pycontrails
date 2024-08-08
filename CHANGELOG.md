@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.53.0 (unreleased)
+
+### Breaking changes
+
+- Drop python 3.9 support per [NEP 29](https://numpy.org/neps/nep-0029-deprecation_policy.html).
+
+### Features
+
+- Build wheels for [python 3.13](https://peps.python.org/pep-0719/). (These wheels are available on PyPI, but other pycontrails dependencies may not yet support python 3.13.)
+
+### Fixes
+
+- Fix `PycontrailsRegularGridInterpolator` for compatibility with the latest scipy version.
+
+### Internals
+
+- Defer import of `skimage` and `rasterio`.
+
 ## v0.52.3
 
 ### Features

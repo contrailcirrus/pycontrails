@@ -320,7 +320,7 @@ def test_to_dataframe(random_path: VectorDataset, random_geo_path: GeoVectorData
     # reverse gives same data dictionary
     data = df.to_dict(orient="list")
     assert random_path.data.keys() == data.keys()
-    for arr1, arr2 in zip(random_path.data.values(), data.values()):
+    for arr1, arr2 in zip(random_path.data.values(), data.values(), strict=True):
         np.testing.assert_array_equal(arr1, arr2)
 
     df = random_geo_path.to_dataframe()

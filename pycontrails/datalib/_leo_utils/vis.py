@@ -6,16 +6,6 @@ import numpy as np
 
 from pycontrails.utils import dependencies
 
-try:
-    import skimage as ski
-except ModuleNotFoundError as exc:
-    dependencies.raise_module_not_found_error(
-        name="landsat module",
-        package_name="scikit-image",
-        module_not_found_error=exc,
-        pycontrails_optional_package="sat",
-    )
-
 
 def normalize(channel: np.ndarray) -> np.ndarray:
     """Normalize channel values to range [0, 1], preserving ``np.nan`` in output.
@@ -53,8 +43,17 @@ def equalize(channel: np.ndarray, **equalize_kwargs: Any) -> np.ndarray:
     NaN values are converted to 0 before passing to :py:func:`ski.exposure.equalize_adapthist`
     and may affect equalized values in the neighborhood where they occur.
     """
+    try:
+        import skimage.exposure
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            name="landsat module",
+            package_name="scikit-image",
+            module_not_found_error=exc,
+            pycontrails_optional_package="sat",
+        )
     return np.where(
         np.isnan(channel),
         np.nan,
-        ski.exposure.equalize_adapthist(np.nan_to_num(channel, nan=0), **equalize_kwargs),
+        skimage.exposure.equalize_adapthist(np.nan_to_num(channel, nan=0.0), **equalize_kwargs),
     )

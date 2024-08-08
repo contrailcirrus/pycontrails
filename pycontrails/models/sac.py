@@ -150,7 +150,7 @@ class SAC(Model):
         if scale_humidity:
             for k, v in humidity_scaling.description.items():
                 self.source.attrs[f"humidity_scaling_{k}"] = v
-        if isinstance(engine_efficiency, (int, float)):
+        if isinstance(engine_efficiency, int | float):
             self.source.attrs["engine_efficiency"] = engine_efficiency
 
         return self.source

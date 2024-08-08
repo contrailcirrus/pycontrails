@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, TypeVar, Union
+from typing import Any, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -12,11 +13,11 @@ import pandas as pd
 import xarray as xr
 
 #: Array like (np.ndarray, xr.DataArray)
-ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray, Union[xr.DataArray, np.ndarray])
+ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray, xr.DataArray | np.ndarray)
 
 #: Array or Float (np.ndarray, float)
 ArrayOrFloat = TypeVar(
-    "ArrayOrFloat", npt.NDArray[np.float64], float, Union[float, npt.NDArray[np.float64]]
+    "ArrayOrFloat", npt.NDArray[np.float64], float, float | npt.NDArray[np.float64]
 )
 
 #: Array like input (np.ndarray, xr.DataArray, np.float64, float)
@@ -26,8 +27,8 @@ ArrayScalarLike = TypeVar(
     xr.DataArray,
     np.float64,
     float,
-    Union[np.ndarray, float],
-    Union[xr.DataArray, np.ndarray],
+    np.ndarray | float,
+    xr.DataArray | np.ndarray,
 )
 
 #: Datetime like input (datetime, pd.Timestamp, np.datetime64)
@@ -71,7 +72,7 @@ def support_arraylike(
             return ret
 
         # Keep python native numeric types native
-        if isinstance(arr, (float, int, np.float64)):
+        if isinstance(arr, float | int | np.float64):
             return ret.item()
 
         # Recreate pd.Series

@@ -157,13 +157,13 @@ def test_arraylike_support(func):
     # Some functions can handle Series or DataArrays
     # Others convert to numpy
     da = xr.DataArray(z)
-    assert isinstance(func(da), (xr.DataArray, np.ndarray))
+    assert isinstance(func(da), xr.DataArray | np.ndarray)
 
     # Calling xr.apply_ufunc gives same result
     xr.testing.assert_equal(func(da), xr.apply_ufunc(func, da))
 
     s = pd.Series(z)
-    assert isinstance(func(s), (pd.Series, np.ndarray))
+    assert isinstance(func(s), pd.Series | np.ndarray)
 
 
 @pytest.mark.parametrize("func", [units.pl_to_m, units.m_to_pl])

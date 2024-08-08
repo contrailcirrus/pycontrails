@@ -11,7 +11,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, fields
-from typing import Any, NoReturn, TypeVar, Union, overload
+from typing import Any, NoReturn, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -30,13 +30,13 @@ from pycontrails.utils.types import type_guard
 logger = logging.getLogger(__name__)
 
 #: Model input source types
-ModelInput = Union[MetDataset, GeoVectorDataset, Flight, Sequence[Flight], None]
+ModelInput = MetDataset | GeoVectorDataset | Flight | Sequence[Flight] | None
 
 #: Model output source types
-ModelOutput = Union[MetDataArray, MetDataset, GeoVectorDataset, Flight, list[Flight], NoReturn]
+ModelOutput = MetDataArray | MetDataset | GeoVectorDataset | Flight | list[Flight] | NoReturn
 
 #: Model attribute source types
-SourceType = Union[MetDataset, GeoVectorDataset, Flight, Fleet]
+SourceType = MetDataset | GeoVectorDataset | Flight | Fleet
 
 _Source = TypeVar("_Source")
 
@@ -453,7 +453,7 @@ class Model(ABC):
             return Fleet.from_seq(source)
 
         # Raise error if source is not a MetDataset or GeoVectorDataset
-        if not isinstance(source, (MetDataset, GeoVectorDataset)):
+        if not isinstance(source, MetDataset | GeoVectorDataset):
             msg = f"Unknown source type: {type(source)}"
             raise TypeError(msg)
 

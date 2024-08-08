@@ -151,6 +151,16 @@ Gridded CoCiP
     models.cocipgrid.CocipGridParams
 
 
+Dry Advection
+"""""""""""""
+
+.. autosummary::
+    :toctree: api/
+
+    models.dry_advection.DryAdvection
+    models.dry_advection.DryAdvectionParams
+
+
 ACCF
 """"
 

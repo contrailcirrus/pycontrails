@@ -146,7 +146,7 @@ class CacheStore(ABC):
         """
 
         # TODO: run in parallel?
-        return [self.put(d, cp) for d, cp in zip(data_path, cache_path)]
+        return [self.put(d, cp) for d, cp in zip(data_path, cache_path, strict=True)]
 
     # In the three methods below, child classes have a complete docstring.
 

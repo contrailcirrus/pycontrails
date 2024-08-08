@@ -17,7 +17,7 @@ The conda-forge package includes all optional runtime dependencies.
 pip install
 -----------
 
-With Python 3.9 or later, install the latest release from PyPI using ``pip``:
+With Python 3.10 or later, install the latest release from PyPI using ``pip``:
 
 .. code-block:: bash
 
