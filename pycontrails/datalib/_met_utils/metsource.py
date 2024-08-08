@@ -8,7 +8,7 @@ import logging
 import pathlib
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,8 @@ from pycontrails.utils.types import DatetimeLike
 
 logger = logging.getLogger(__name__)
 
-TimeInput = str | DatetimeLike | Sequence[str | DatetimeLike]
+# https://github.com/python/mypy/issues/14824
+TimeInput: TypeAlias = str | DatetimeLike | Sequence[str | DatetimeLike]
 VariableInput = (
     str | int | MetVariable | np.ndarray | Sequence[str | int | MetVariable | Sequence[MetVariable]]
 )
