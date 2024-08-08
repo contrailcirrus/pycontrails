@@ -76,6 +76,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         self.method = _pick_method(scipy.__version__, method)
         self.bounds_error = bounds_error
         self.fill_value = fill_value
+        self._spline = None
 
     def _prepare_xi_simple(self, xi: npt.NDArray[np.float64]) -> npt.NDArray[np.bool_]:
         """Run looser version of :meth:`_prepare_xi`.
