@@ -41,7 +41,7 @@ def test_fleet_io(syn: SyntheticFlight) -> None:
     assert fleet.n_flights == 100
 
     out_fls = fleet.to_flight_list()
-    for fl1, fl2 in zip(in_fls, out_fls):
+    for fl1, fl2 in zip(in_fls, out_fls, strict=True):
         assert fl1 == fl2
 
 
@@ -135,7 +135,7 @@ def test_fleet_waypoints(syn: SyntheticFlight) -> None:
 
     flight_ids = fleet.filter(~continuous)["flight_id"]
     # expect one of each flight_id
-    for id1, id2 in zip(flight_ids, fleet.fl_attrs):
+    for id1, id2 in zip(flight_ids, fleet.fl_attrs, strict=True):
         assert id1 == id2
 
 
