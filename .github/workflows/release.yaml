@@ -48,7 +48,7 @@ jobs:
           # If python = 3.13, install numpy from nightly build
           # This can be removed once numpy wheels are available for 3.13
           CIBW_BEFORE_BUILD: |
-            if [[ $CIBW_BUILD == *cp313-* ]]; then
+            if [[ python -V | grep "3.13" ]]; then
               pip install --pre --only-binary --index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy;
             fi
 
