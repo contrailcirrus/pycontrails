@@ -8,7 +8,7 @@ import logging
 import pathlib
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -20,11 +20,12 @@ from pycontrails.utils.types import DatetimeLike
 
 logger = logging.getLogger(__name__)
 
-TimeInput = Union[str, DatetimeLike, Sequence[Union[str, DatetimeLike]]]
-VariableInput = Union[
-    str, int, MetVariable, np.ndarray, Sequence[Union[str, int, MetVariable, Sequence[MetVariable]]]
-]
-PressureLevelInput = Union[int, float, np.ndarray, Sequence[Union[int, float]]]
+TimeInput = str | DatetimeLike | Sequence[str | DatetimeLike]
+VariableInput = (
+    str | int | MetVariable | np.ndarray | Sequence[str | int | MetVariable | Sequence[MetVariable]]
+)
+
+PressureLevelInput = int | float | np.ndarray | Sequence[int | float]
 
 #: NetCDF engine to use for parsing netcdf files
 NETCDF_ENGINE: str = "netcdf4"
@@ -72,7 +73,7 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[dat
         return []
 
     # confirm input is tuple or list-like of length 2
-    if isinstance(time, (str, datetime, pd.Timestamp, np.datetime64)):
+    if isinstance(time, str | datetime | pd.Timestamp | np.datetime64):
         time = (time, time)
     elif len(time) == 1:
         time = (time[0], time[0])
@@ -151,7 +152,7 @@ def parse_pressure_levels(
         Raises ValueError if pressure level is not supported by ECMWF data source
     """
     # Ensure pressure_levels is array-like
-    if isinstance(pressure_levels, (int, float)):
+    if isinstance(pressure_levels, int | float):
         pressure_levels = [pressure_levels]
 
     # Cast array-like to int dtype and sort
@@ -212,7 +213,7 @@ def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> l
     met_var_list: list[MetVariable] = []
 
     # ensure input variables are a list of str
-    if isinstance(variables, (str, int, MetVariable)):
+    if isinstance(variables, str | int | MetVariable):
         parsed_variables = [variables]
     elif isinstance(variables, np.ndarray):
         parsed_variables = variables.tolist()
@@ -257,7 +258,7 @@ def _find_match(
 
     # list of MetVariable options
     # here we extract the first MetVariable in var that is supported
-    elif isinstance(var, (list, tuple)):
+    elif isinstance(var, list | tuple):
         for v in var:
             # sanity check since we don't support other types as lists
             if not isinstance(v, MetVariable):

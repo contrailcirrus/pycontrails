@@ -13,8 +13,9 @@ import hashlib
 import logging
 import pathlib
 import warnings
+from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
