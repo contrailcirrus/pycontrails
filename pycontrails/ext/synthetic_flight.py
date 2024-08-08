@@ -417,7 +417,7 @@ class SyntheticFlight:
         times_arr = np.asarray(times).T
         data = [
             {"longitude": lon, "latitude": lat, "level": level, "time": time}
-            for lon, lat, level, time in zip(lons_arr, lats_arr, level, times_arr)
+            for lon, lat, level, time in zip(lons_arr, lats_arr, level, times_arr, strict=True)
         ]
         dfs = [pd.DataFrame(d).dropna() for d in data]
         dfs = [df for df in dfs if len(df) >= self.min_n_waypoints]

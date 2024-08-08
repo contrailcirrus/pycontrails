@@ -489,7 +489,7 @@ class MetBase(ABC, Generic[XArrayType]):
         self.cachestore = self.cachestore or DiskCacheStore()
 
         # group by hour and save one dataset for each hour to temp file
-        times, datasets = zip(*dataset.groupby("time", squeeze=False))
+        times, datasets = zip(*dataset.groupby("time", squeeze=False), strict=True)
 
         # Open ExitStack to control temp_file context manager
         with ExitStack() as stack:
@@ -1074,7 +1074,7 @@ class MetDataset(MetBase):
         coords_vals = [indexes[key].values for key in coords_keys]
         coords_meshes = np.meshgrid(*coords_vals, indexing="ij")
         raveled_coords = (mesh.ravel() for mesh in coords_meshes)
-        data = dict(zip(coords_keys, raveled_coords))
+        data = dict(zip(coords_keys, raveled_coords, strict=True))
 
         out = vector_module.GeoVectorDataset(data, copy=False)
         for key, da in self.data.items():

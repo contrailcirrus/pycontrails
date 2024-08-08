@@ -473,8 +473,8 @@ class HRESModelLevel(ECMWFAPI):
             LOG.debug("Opening GRIB file")
             fs_ml = mv.read(target)
 
-            # reduce memory overhead by cacheing one timestep at a time
-            for time, step in zip(times, self.get_forecast_steps(times)):
+            # reduce memory overhead by caching one timestep at a time
+            for time, step in zip(times, self.get_forecast_steps(times), strict=True):
                 fs_pl = mv.Fieldset()
                 selection = dict(step=step)
                 lnsp = fs_ml.select(shortName="lnsp", **selection)
