@@ -48,23 +48,21 @@ class NumpyEncoder(json.JSONEncoder):
         """
         if isinstance(
             obj,
-            (
-                np.int_,
-                np.intc,
-                np.intp,
-                np.int8,
-                np.int16,
-                np.int32,
-                np.int64,
-                np.uint8,
-                np.uint16,
-                np.uint32,
-                np.uint64,
-            ),
+            np.int_
+            | np.intc
+            | np.intp
+            | np.int8
+            | np.int16
+            | np.int32
+            | np.int64
+            | np.uint8
+            | np.uint16
+            | np.uint32
+            | np.uint64,
         ):
             return int(obj)
 
-        if isinstance(obj, (np.float16, np.float32, np.float64)):
+        if isinstance(obj, np.float16 | np.float32 | np.float64):
             return float(obj)
 
         # TODO: this is not easily reversible - np.timedelta64(str(np.timedelta64(1, "h"))) raises
@@ -74,10 +72,10 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, (np.datetime64)):
             return str(obj)
 
-        if isinstance(obj, (np.complex64, np.complex128)):
+        if isinstance(obj, np.complex64 | np.complex128):
             return {"real": obj.real, "imag": obj.imag}
 
-        if isinstance(obj, (np.ndarray,)):
+        if isinstance(obj, np.ndarray):
             return obj.tolist()
 
         if isinstance(obj, (np.bool_)):
@@ -86,7 +84,7 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, (np.void)):
             return None
 
-        if isinstance(obj, (pd.Series, pd.Index)):
+        if isinstance(obj, pd.Series | pd.Index):
             return obj.to_numpy().tolist()
 
         try:

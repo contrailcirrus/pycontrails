@@ -446,9 +446,9 @@ class CocipGrid(models.Model):
         if ap_model := self.params["aircraft_performance"]:
             attrs["ap_model"] = type(ap_model).__name__
 
-        if isinstance(azimuth, (np.floating, np.integer)):
+        if isinstance(azimuth, np.floating | np.integer):
             attrs["azimuth"] = azimuth.item()
-        elif isinstance(azimuth, (float, int)):
+        elif isinstance(azimuth, float | int):
             attrs["azimuth"] = azimuth
 
         if isinstance(self.source, MetDataset):
@@ -897,7 +897,7 @@ def _setdefault_from_params(key: str, vector: GeoVectorDataset, params: dict[str
     if scalar is None:
         return
 
-    if not isinstance(scalar, (int, float)):
+    if not isinstance(scalar, int | float):
         msg = (
             f"Parameter {key} must be a scalar. For non-scalar values, directly "
             "set the data on the 'source'."

@@ -233,7 +233,7 @@ def _m_to_T_isa(h: np.ndarray) -> np.ndarray:
     T_stratosphere_isa = constants.T_msl + (constants.T_lapse_rate * constants.h_tropopause)
 
     # array
-    if isinstance(T_isa, (np.ndarray, xr.DataArray)):
+    if isinstance(T_isa, np.ndarray | xr.DataArray):
         # If h is ArrayLike, it supports indexing
         T_isa[h > constants.h_tropopause] = T_stratosphere_isa
         return T_isa
@@ -274,7 +274,7 @@ def m_to_pl(h: np.ndarray) -> np.ndarray:
     TODO: reference
     """
     # array
-    if isinstance(h, (np.ndarray, xr.DataArray)):
+    if isinstance(h, np.ndarray | xr.DataArray):
         pl = _low_altitude_m_to_pl(h)
         pl[h > constants.h_tropopause] = _high_altitude_m_to_pl(h[h > constants.h_tropopause])
         return pl

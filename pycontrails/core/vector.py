@@ -983,7 +983,7 @@ class VectorDataset:
         numeric_attrs = (
             attr
             for attr, val in self.attrs.items()
-            if (isinstance(val, (int, float, np.number)) and attr not in ignore_keys)
+            if (isinstance(val, int | float | np.number) and attr not in ignore_keys)
         )
         self.broadcast_attrs(numeric_attrs, overwrite)
 
@@ -1072,7 +1072,7 @@ class VectorDataset:
                 obj = obj.to_numpy()
 
             # Convert numpy objects to python objects
-            if isinstance(obj, (np.ndarray, np.generic)):
+            if isinstance(obj, np.ndarray | np.generic):
 
                 # round time to unix seconds
                 if key == "time":
@@ -1166,7 +1166,7 @@ class VectorDataset:
         attrs = {}
 
         for k, v in {**obj, **obj_kwargs}.items():
-            if isinstance(v, (list, np.ndarray)):
+            if isinstance(v, list | np.ndarray):
                 data[k] = v
             else:
                 attrs[k] = v

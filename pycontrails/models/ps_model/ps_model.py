@@ -312,7 +312,7 @@ class PSFlight(AircraftPerformance):
                 atyp_param.wing_surface_area,
                 q_fuel,
             )
-        elif isinstance(fuel_flow, (int, float)):
+        elif isinstance(fuel_flow, int | float):
             fuel_flow = np.full_like(true_airspeed, fuel_flow)
 
         # Flight phase
@@ -339,11 +339,11 @@ class PSFlight(AircraftPerformance):
 
         # XXX: Explicitly broadcast scalar inputs as needed to keep a consistent
         # output spec.
-        if isinstance(aircraft_mass, (int, float)):
+        if isinstance(aircraft_mass, int | float):
             aircraft_mass = np.full_like(true_airspeed, aircraft_mass)
-        if isinstance(engine_efficiency, (int, float)):
+        if isinstance(engine_efficiency, int | float):
             engine_efficiency = np.full_like(true_airspeed, engine_efficiency)
-        if isinstance(thrust, (int, float)):
+        if isinstance(thrust, int | float):
             thrust = np.full_like(true_airspeed, thrust)
 
         return AircraftPerformanceData(
