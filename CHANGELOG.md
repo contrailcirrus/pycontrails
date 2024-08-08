@@ -1,10 +1,20 @@
 # Changelog
 
-## v0.52.3 (unreleased)
+## v0.52.3
+
+### Features
+
+- Add experimental `preprocess_lowmem` parameter to `Cocip`. When set to `True`, `Cocip` will attempt to reduce memory consumption during flight preprocessing and initial formation/persistence calculations by using an alternate implementation of `MetDataArray.interpolate` (see below).
+- Add `lowmem` keyword-only argument to `MetDataArray.interpolate`. When `True`, attempt to reduce memory consumption by using an alternative interpolation strategy that loads at most two time steps of meteorology data into memory at a time.
 
 ### Fixes
 
 - Defer import of `matplotlib` in `models.cocip.output_formats`.
+- Fix bug in `PycontrailsRegularGridInterpolator` that caused errors when dispatching to 1-d linear interpolation from in `rgi_cython.pyx`.
+
+### Internals
+
+- Implement low-memory paths in `Cocip.eval` and `MetDataArray.interpolate`.
 
 ## v0.52.2
 
@@ -17,8 +27,6 @@
 - Add experimental `fill_low_alt_with_isa_temperature` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models with `Flight` sources will fill points below the lowest altitude in the ``met["air_temperature]`` data with the ISA temperature. This is useful when the met data does not extend to the surface. In this case, we can still estimate fuel flow and other performance metrics through the entire climb phase. By default, this parameter is set to `False`.
 - Add experimental `fill_low_altitude_with_zero_wind` parameter on the `AircraftPerformance` base class. When set to `True`, aircraft performance models will estimate the true airspeed at low altitudes by assuming the wind speed is zero.
 - Add convenience `Flight.plot_profile` method.
-- Add experimental `preprocess_lowmem` parameter to `Cocip`. When set to `True`, `Cocip` will attempt to reduce memory consumption during flight preprocessing and initial formation/persistence calculations by using an alternate implementation of `MetDataArray.interpolate` (see below).
-- Add `lowmem` keyword-only argument to `MetDataArray.interpolate`. When `True`, attempt to reduce memory consumption by using an alternative interpolation strategy that loads at most two time steps of meteorology data into memory at a time.
 
 ### Fixes
 
@@ -28,13 +36,11 @@
 - Fix minor bug in `cocip.output_formats.radiation_time_slice_statistics` in which the function previously threw an error if `t_end` did not directly align with the time index in the `rad` dataset.
 - Remove the residual constraint in `cocip.output_formats.contrails_to_hi_res_grid` used during debugging.
 - Improve detection of antimeridian crossings for flights that span more than 180 degrees longitude.
-- Fix bug in `PycontrailsRegularGridInterpolator` that caused errors when dispatching to 1-d linear interpolation from in `rgi_cython.pyx`.
 
 ### Internals
 
 - Improve the runtime performance of `Fleet.to_flight_list`. For a large `Fleet`, this method is now 5x faster.
 - Improve the runtime performance and memory footprint of `Cocip._bundle_results`. When running `Cocip` with a large `Fleet` source, `Cocip.eval` is now slightly faster and uses much less memory.
-- Implement low-memory paths in `Cocip.eval` and `MetDataArray.interpolate`.
 
 ## v0.52.1
 
