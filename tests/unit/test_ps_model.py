@@ -201,7 +201,7 @@ def test_mach_number_limits():
     mmin = []
     mmax = []
     air_temperature = units.m_to_T_isa(units.ft_to_m(altitude_ft))
-    for alt, pres, temp in zip(altitude_ft, air_pressure, air_temperature):
+    for alt, pres, temp in zip(altitude_ft, air_pressure, air_temperature, strict=True):
         mmin.append(ps_lims.minimum_mach_num(pres, aircraft_mass, atyp_param))
         mmax.append(ps_lims.maximum_mach_num(alt, pres, aircraft_mass, temp, 0.0, atyp_param))
 

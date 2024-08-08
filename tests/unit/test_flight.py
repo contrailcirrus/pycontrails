@@ -543,7 +543,9 @@ def test_geojson_methods(fl: Flight, rng: np.random.Generator) -> None:
     assert d2["type"] == "FeatureCollection"
     assert json.dumps(d2)
     assert len(d1["features"]) == len(d2["features"][0]["geometry"]["coordinates"])
-    for feature, coord in zip(d1["features"], d2["features"][0]["geometry"]["coordinates"]):
+    for feature, coord in zip(
+        d1["features"], d2["features"][0]["geometry"]["coordinates"], strict=True
+    ):
         assert feature["geometry"]["coordinates"] == coord
 
     with pytest.raises(KeyError):
