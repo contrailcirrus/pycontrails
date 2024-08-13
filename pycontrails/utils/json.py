@@ -144,7 +144,7 @@ def dataframe_to_geojson_points(
         )
 
     # downselect dataframe
-    cols = ["longitude", "latitude", "altitude", "time"] + properties
+    cols = ["longitude", "latitude", "altitude", "time", *properties]
     df = df[cols]
 
     # filter out coords with nan values, or filter just on "filter_nan" labels
