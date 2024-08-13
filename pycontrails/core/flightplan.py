@@ -93,7 +93,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     See Also
     --------
     :func:`to_atc_plan`
-    """  # noqa: E501
+    """
     atc_plan = atc_plan.replace("\r", "")
     atc_plan = atc_plan.replace("\n", "")
     atc_plan = atc_plan.upper()

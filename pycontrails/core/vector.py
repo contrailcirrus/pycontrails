@@ -847,7 +847,7 @@ class VectorDataset:
         ------
         TypeError
             If ``mask`` is not a boolean array.
-        """  # noqa: E501
+        """
         self.data._validate_array(mask)
         if mask.dtype != bool:
             raise TypeError("Parameter `mask` must be a boolean array.")
@@ -1194,7 +1194,7 @@ class VectorDataset:
         See Also
         --------
         :func:`numpy.array_split`
-        """  # noqa: E501
+        """
         full_index = np.arange(self.size)
         index_splits = np.array_split(full_index, n_splits)
         for index in index_splits:

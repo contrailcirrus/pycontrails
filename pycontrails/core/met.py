@@ -1020,7 +1020,7 @@ class MetDataset(MetBase):
 
     @overrides
     def broadcast_coords(self, name: str) -> xr.DataArray:
-        da = xr.ones_like(self.data[list(self.data.keys())[0]]) * self.data[name]
+        da = xr.ones_like(self.data[next(iter(self.data.keys()))]) * self.data[name]
         da.name = name
 
         return da
@@ -1863,7 +1863,7 @@ class MetDataArray(MetBase):
         cachestore = cachestore or DiskCacheStore()
         chunks = chunks or {}
         data = _load(hash, cachestore, chunks)
-        return cls(data[list(data.data_vars)[0]])
+        return cls(data[next(iter(data.data_vars))])
 
     @property
     def proportion(self) -> float:
@@ -2256,7 +2256,7 @@ class MetDataArray(MetBase):
         -----
         Uses the `scikit-image Marching Cubes  <https://scikit-image.org/docs/dev/auto_examples/edges/plot_marching_cubes.html>`_
         algorithm to reconstruct a surface from the point-cloud like arrays.
-        """  # noqa: E501
+        """
         try:
             from skimage import measure
         except ModuleNotFoundError as e:
