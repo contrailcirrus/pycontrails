@@ -68,7 +68,7 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[dat
     ------
     ValueError
         Raises when the time has len > 2 or when time elements fail to be parsed with pd.to_datetime
-    """  # noqa: E501
+    """
 
     if time is None:
         return []

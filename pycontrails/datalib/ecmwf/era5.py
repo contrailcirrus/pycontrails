@@ -121,7 +121,7 @@ class ERA5(ECMWFAPI):
     ...     pressure_levels=[350, 300],
     ...     cachestore=gcp_cache
     ... )
-    """  # noqa: E501
+    """
 
     __slots__ = (
         "product_type",
