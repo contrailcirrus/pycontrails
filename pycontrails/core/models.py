@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 ModelInput = MetDataset | GeoVectorDataset | Flight | Sequence[Flight] | None
 
 #: Model output source types
-ModelOutput = MetDataArray | MetDataset | GeoVectorDataset | Flight | list[Flight] | NoReturn
+ModelOutput = MetDataArray | MetDataset | GeoVectorDataset | Flight | list[Flight]
 
 #: Model attribute source types
 SourceType = MetDataset | GeoVectorDataset | Flight | Fleet

@@ -22,7 +22,7 @@ class MetVariable:
     - `NCEP Grib v2 Code Table <https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-2.shtml>`_
 
     Used for defining support parameters in a grib-like fashion.
-    """  # noqa: E501
+    """
 
     #: Short variable name.
     #: Chosen for greatest consistency between data sources.

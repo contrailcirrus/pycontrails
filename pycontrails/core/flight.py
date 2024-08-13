@@ -2056,7 +2056,7 @@ def filter_altitude(
     --------
     :meth:`traffic.core.flight.Flight.filter`
     :func:`scipy.signal.medfilt`
-    """  # noqa: E501
+    """
     if not len(altitude_ft):
         raise ValueError("Altitude must have non-zero length to filter")
 
