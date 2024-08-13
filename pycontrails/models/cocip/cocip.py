@@ -1132,7 +1132,7 @@ class Cocip(Model):
         )
         vector = GeoVectorDataset(
             {
-                key: np.concat((latest_contrail[key], future_contrails[key]))
+                key: np.concatenate((latest_contrail[key], future_contrails[key]))
                 for key in ("longitude", "latitude", "level", "time")
             }
         )
