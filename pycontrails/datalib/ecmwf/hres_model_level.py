@@ -377,7 +377,7 @@ class HRESModelLevel(ECMWFAPI):
         time = self.forecast_time.strftime("%H:%M:%S")
         steps = self.get_forecast_steps(times)
         # param 152 = log surface pressure, needed for metview level conversion
-        grib_params = set(self.variable_ecmwfids + [152])
+        grib_params = set((*self.variable_ecmwfids, 152))
         return (
             f"retrieve,\n"
             f"class=od,\n"

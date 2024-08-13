@@ -349,7 +349,7 @@ class ERA5ModelLevel(ECMWFAPI):
         unique_dates = set(t.strftime("%Y-%m-%d") for t in times)
         unique_times = set(t.strftime("%H:%M:%S") for t in times)
         # param 152 = log surface pressure, needed for metview level conversion
-        grib_params = set(self.variable_ecmwfids + [152])
+        grib_params = set((*self.variable_ecmwfids, 152))
         common = {
             "class": "ea",
             "date": "/".join(sorted(unique_dates)),

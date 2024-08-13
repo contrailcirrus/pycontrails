@@ -118,7 +118,7 @@ RelativeHumidity = MetVariable(
         "At temperatures below -23°C it is calculated for saturation over ice. "
         "Between -23°C and 0°C this parameter is calculated by interpolating between the ice and"
         " water values using a quadratic function."
-        "See https://www.ecmwf.int/sites/default/files/elibrary/2016/17117-part-iv-physical-processes.pdf#subsection.7.4.2"  # noqa: E501
+        "See https://www.ecmwf.int/sites/default/files/elibrary/2016/17117-part-iv-physical-processes.pdf#subsection.7.4.2"
     ),
 )
 
@@ -166,7 +166,7 @@ TopNetSolarRadiation = MetVariable(
         "The incoming solar radiation is the amount received from the Sun. "
         "The outgoing solar radiation is the amount reflected and scattered by the Earth's"
         " atmosphere and surface"
-        "See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf"  # noqa: E501
+        "See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf"
     ),
 )
 
@@ -183,7 +183,7 @@ TopNetThermalRadiation = MetVariable(
         "radiation emitted to space at the top of the atmosphere is commonly known as the Outgoing"
         " Longwave Radiation (OLR). "
         "The top net thermal radiation (this parameter) is equal to the negative of OLR."
-        "See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf"  # noqa: E501
+        "See https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf"
     ),
 )
 
