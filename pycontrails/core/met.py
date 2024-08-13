@@ -70,12 +70,12 @@ class MetBase(ABC, Generic[XArrayType]):
     cachestore: CacheStore | None
 
     #: Default dimension order for DataArray or Dataset (x, y, z, t)
-    dim_order: list[Hashable] = [
+    dim_order: tuple[Hashable, Hashable, Hashable, Hashable] = (
         "longitude",
         "latitude",
         "level",
         "time",
-    ]
+    )
 
     def __repr__(self) -> str:
         data = getattr(self, "data", None)
@@ -200,10 +200,8 @@ class MetBase(ABC, Generic[XArrayType]):
     def _validate_transpose(self) -> None:
         """Check that data is transposed according to :attr:`dim_order`."""
 
-        dims_tuple = tuple(self.dim_order)
-
         def _check_da(da: xr.DataArray, key: Hashable | None = None) -> None:
-            if da.dims != dims_tuple:
+            if da.dims != self.dim_order:
                 if key is not None:
                     msg = (
                         f"Data dimension not transposed on variable '{key}'. Initiate with"
@@ -271,7 +269,7 @@ class MetBase(ABC, Generic[XArrayType]):
         self.data["time"] = self.data["time"].astype("datetime64[ns]", copy=False)
 
         # sortby to ensure each coordinate has ascending order
-        self.data = self.data.sortby(self.dim_order, ascending=True)
+        self.data = self.data.sortby(list(self.dim_order), ascending=True)
 
         if not self.is_wrapped:
             # Ensure longitude is contained in interval [-180, 180)
@@ -293,7 +291,7 @@ class MetBase(ABC, Generic[XArrayType]):
         self._validate_latitude()
 
         # transpose to have ordering (x, y, z, t, ...)
-        dim_order = self.dim_order + [d for d in self.data.dims if d not in self.dim_order]
+        dim_order = [*self.dim_order, *(d for d in self.data.dims if d not in self.dim_order)]
         self.data = self.data.transpose(*dim_order)
 
         # single level data
