@@ -7,7 +7,7 @@ requires = [
     "cython",
     # https://numpy.org/devdocs/dev/depending_on_numpy.html#numpy-2-abi-handling
     "numpy>=2.0.0; python_version<'3.13'",
-    "numpy>=2.1.0rc1; python_version>='3.13'"
+    "numpy>=2.1.0rc1; python_version>='3.13'",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -132,7 +132,7 @@ sat = [
     "pillow>=10.3",
     "pyproj>=3.5",
     "rasterio>=1.3",
-    "scikit-image>=0.18"
+    "scikit-image>=0.18",
 ]
 
 # Polyhedra contruction methods
