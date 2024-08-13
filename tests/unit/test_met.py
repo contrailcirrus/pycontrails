@@ -28,7 +28,7 @@ def test_sl_path_to_met(met_ecmwf_sl_path: str) -> None:
     assert list(ds.data_vars) == ["sp"]
 
     mds = MetDataset(ds)
-    assert mds.dim_order == ["longitude", "latitude", "level", "time"]
+    assert mds.dim_order == ("longitude", "latitude", "level", "time")
 
     # longitude and latitude correctly translated
     assert np.all(mds.data["longitude"].values >= -180)
@@ -73,7 +73,7 @@ def test_pl_path_to_met(met_ecmwf_pl_path: str) -> None:
     assert list(ds.data_vars) == ["t", "r", "q", "ciwc"]
 
     mds = MetDataset(ds)
-    assert mds.dim_order == ["longitude", "latitude", "level", "time"]
+    assert mds.dim_order == ("longitude", "latitude", "level", "time")
 
     # longitude and latitude correctly translated
     assert np.all(mds.data["longitude"].values < 180)

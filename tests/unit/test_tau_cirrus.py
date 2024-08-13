@@ -25,7 +25,7 @@ def test_shape_and_coords(met_cocip1: MetDataset, formula: Callable) -> None:
     assert da.dtype == np.float32
 
     assert da.sizes == met_cocip1.data.sizes
-    assert list(da.dims) == met_cocip1.dim_order
+    assert da.dims == met_cocip1.dim_order
 
     xr.testing.assert_equal(da.level, met_cocip1.data["level"])
     xr.testing.assert_equal(da.time, met_cocip1.data["time"])
