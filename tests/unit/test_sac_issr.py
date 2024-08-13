@@ -168,7 +168,10 @@ def test_PCR_grid(met_issr: MetDataset) -> None:
 
     met_copy = met_issr.copy()
     del met_copy.data["air_temperature"]
-    met_copy.data["engine_efficiency"] = np.float32(0.35)
+    met_copy.data["engine_efficiency"] = (
+        met_copy.data.dims,
+        np.full(met_copy.shape, 0.35, dtype=np.float32),
+    )
     out2 = model.eval(source=met_copy)
 
     assert isinstance(out2, MetDataset)
