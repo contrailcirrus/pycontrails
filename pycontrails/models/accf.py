@@ -154,7 +154,7 @@ class ACCF(Model):
     sur_variables = (ecmwf.SurfaceSolarDownwardRadiation, ecmwf.TopNetThermalRadiation)
     default_params = ACCFParams
 
-    short_vars = {v.short_name for v in (*met_variables, *sur_variables)}
+    short_vars = frozenset(v.short_name for v in (*met_variables, *sur_variables))
 
     # This variable won't get used since we are not writing the output
     # anywhere, but the library will complain if it's not defined

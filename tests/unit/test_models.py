@@ -101,7 +101,7 @@ class ModelTestGridMissingRequiredVariables(Model):
 
     name = "grid"
     long_name = "missing required met variables"
-    met_variables = [AirTemperature, OtherVar]
+    met_variables = (AirTemperature, OtherVar)
 
     def eval(self, source: None = None) -> MetDataArray:
         pass
@@ -112,7 +112,7 @@ class ModelTestFlightMissingRequiredVariables(Model):
 
     name = "flight"
     long_name = "missing required met variables"
-    met_variables = [AirTemperature, OtherVar]
+    met_variables = (AirTemperature, OtherVar)
     default_params = ModelParams
 
     def eval(self, source: None = None) -> MetDataArray:
@@ -406,7 +406,7 @@ class ModelTestVerifyMet(Model):
     name = "flight"
     long_name = "two variable flight model"
     default_params = VerifyMetParams
-    met_variables = [AirTemperature, SpecificHumidity]
+    met_variables = (AirTemperature, SpecificHumidity)
 
     source: Flight | MetDataset
 
