@@ -74,7 +74,7 @@ dev = [
     "pytest>=8.2",
     "pytest-cov>=2.11",
     "requests>=2.25",
-    "ruff==0.5.3",
+    "ruff==0.5.7",
     "setuptools",
 ]
 
