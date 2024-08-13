@@ -143,7 +143,7 @@ class CocipGrid(models.Model):
 
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
-    ) -> GeoVectorDataset | MetDataset | NoReturn:
+    ) -> GeoVectorDataset | MetDataset:
         """Run CoCiP simulation on a 4d coordinate grid or arbitrary set of 4d points.
 
         If the :attr:`params` ``verbose_outputs_evolution`` is True, the model holds

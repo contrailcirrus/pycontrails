@@ -942,7 +942,7 @@ def contrail_contrail_overlap_radiative_effects(
     References
     ----------
     - Schumann et al. (2021) Air traffic and contrail changes over Europe during COVID-19:
-        A model study, Atmos. Chem. Phys., 21, 7429–7450, https://doi.org/10.5194/ACP-21-7429-2021.
+        A model study, Atmos. Chem. Phys., 21, 7429-7450, https://doi.org/10.5194/ACP-21-7429-2021.
     - Teoh et al. (2023) Global aviation contrail climate effects from 2019 to 2021.
 
     Notes

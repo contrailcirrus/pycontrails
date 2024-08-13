@@ -335,7 +335,7 @@ class Cocip(Model):
         self,
         source: Flight | Sequence[Flight] | None = None,
         **params: Any,
-    ) -> Flight | list[Flight] | NoReturn:
+    ) -> Flight | list[Flight]:
         """Run CoCiP simulation on flight.
 
         Simulates the formation and evolution of contrails from a Flight
@@ -1516,7 +1516,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
     -----
     - https://www.ecmwf.int/sites/default/files/elibrary/2015/18490-radiation-quantities-ecmwf-model-and-mars.pdf
     - https://confluence.ecmwf.int/pages/viewpage.action?pageId=155337784
-    """  # noqa: E501
+    """
     # If the time coordinate has already been shifted, early return
     if "shift_radiation_time" in rad["time"].attrs:
         return rad
