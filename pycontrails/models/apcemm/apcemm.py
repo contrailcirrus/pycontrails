@@ -84,10 +84,10 @@ class APCEMMParams(models.ModelParams):
     engine_uid: str | None = None
 
     #: Aircraft performance model
-    aircraft_performance: AircraftPerformance = PSFlight()
+    aircraft_performance: AircraftPerformance = dataclasses.field(default_factory=PSFlight)
 
     #: Fuel type
-    fuel: Fuel = JetA()
+    fuel: Fuel = dataclasses.field(default_factory=JetA)
 
     #: List of flight waypoints to simulate in APCEMM.
     #: By default, runs a simulation for every waypoint.
@@ -371,7 +371,7 @@ class APCEMM(models.Model):
     @overload
     def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
-    def eval(self, source: Flight | None = None, **params: Any) -> Flight | NoReturn:
+    def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         """Set up and run APCEMM simulations initialized at flight waypoints.
 
         Simulates the formation and evolution of contrails from a Flight
@@ -776,8 +776,8 @@ class APCEMM(models.Model):
         # Compute azimuth
         # Use forward and backward differences for first and last waypoints
         # and centered differences elsewhere
-        ileft = [0] + list(range(self.source.size - 1))
-        iright = list(range(1, self.source.size)) + [self.source.size - 1]
+        ileft = [0, *range(self.source.size - 1)]
+        iright = [*range(1, self.source.size), self.source.size - 1]
         lon0 = self.source["longitude"][ileft]
         lat0 = self.source["latitude"][ileft]
         lon1 = self.source["longitude"][iright]

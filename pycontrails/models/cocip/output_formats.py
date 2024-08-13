@@ -638,7 +638,7 @@ def regional_statistics(da_var: xr.DataArray, *, agg: str) -> pd.Series:
     -----
     - The spatial bounding box for each region is defined in Teoh et al. (2023)
     - Teoh, R., Engberg, Z., Shapiro, M., Dray, L., and Stettler, M.: A high-resolution Global
-        Aviation emissions Inventory based on ADS-B (GAIA) for 2019–2021, EGUsphere [preprint],
+        Aviation emissions Inventory based on ADS-B (GAIA) for 2019-2021, EGUsphere [preprint],
         https://doi.org/10.5194/egusphere-2023-724, 2023.
     """
     if (agg == "mean") and (len(da_var.time) > 1):
@@ -715,7 +715,7 @@ def _regional_data_arrays(da_global: xr.DataArray) -> dict[str, xr.DataArray]:
     -----
     - The spatial bounding box for each region is defined in Teoh et al. (2023)
     - Teoh, R., Engberg, Z., Shapiro, M., Dray, L., and Stettler, M.: A high-resolution Global
-        Aviation emissions Inventory based on ADS-B (GAIA) for 2019–2021, EGUsphere [preprint],
+        Aviation emissions Inventory based on ADS-B (GAIA) for 2019-2021, EGUsphere [preprint],
         https://doi.org/10.5194/egusphere-2023-724, 2023.
     """
     return {
