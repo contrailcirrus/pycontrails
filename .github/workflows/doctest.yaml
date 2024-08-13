@@ -80,6 +80,8 @@ jobs:
         run: |
           make nb-test
 
+      # The doctests require numpy 2.0 or higher
       - name: Test docstrings
         run: |
+          pip install "numpy>=2.0"
           make doctest
