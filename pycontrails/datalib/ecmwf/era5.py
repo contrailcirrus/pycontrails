@@ -488,6 +488,11 @@ class ERA5(ECMWFAPI):
 
             # run preprocessing before cache
             ds = self._preprocess_era5_dataset(ds)
+            # renaming to comply with new CDS-beta
+            # date of shutdown of the previous API: September 3rd, 2024
+            ds = ds.rename({"valid_time": "time"}).drop_vars("number")
+            if len(self.pressure_levels) > 1:
+                ds = ds.rename({"pressure_level": "level"})
 
             self.cache_dataset(ds)
 
