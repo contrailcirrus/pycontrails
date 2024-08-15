@@ -267,7 +267,7 @@ class ACCF(Model):
         aCCFs, _ = clim_imp.get_xarray()
 
         # assign ACCF outputs to source
-        maCCFs = MetDataset(aCCFs, sort=True)
+        maCCFs = MetDataset(aCCFs, sort=False)
         for key, arr in maCCFs.data.items():
             # skip met variables
             if key in self.short_vars:
