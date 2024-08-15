@@ -229,7 +229,7 @@ class MetBase(ABC, Generic[XArrayType]):
         self._validate_latitude()
         self._validate_transpose()
 
-    def _preprocess_dims(self, wrap_longitude: bool) -> None:
+    def _preprocess_dims(self, wrap_longitude: bool, sort: bool = True) -> None:
         """Confirm DataArray or Dataset include required dimension in a consistent format.
 
         Expects DataArray or Dataset to contain dimensions ``latitude`, ``longitude``, ``time``,
@@ -250,6 +250,8 @@ class MetBase(ABC, Generic[XArrayType]):
         ----------
         wrap_longitude : bool
             If True, ensure longitude values cover the interval ``[-180, 180]``.
+        sort : bool
+            If True, coordinates are sorted with ascending order.
 
         Raises
         ------
@@ -266,7 +268,8 @@ class MetBase(ABC, Generic[XArrayType]):
                 self.data[coord] = arr.astype(COORD_DTYPE)
 
         # Ensure time is np.datetime64[ns]
-        self.data["time"] = self.data["time"].astype("datetime64[ns]", copy=False)
+        if sort:
+            self.data["time"] = self.data["time"].astype("datetime64[ns]", copy=False)
 
         # sortby to ensure each coordinate has ascending order
         self.data = self.data.sortby(list(self.dim_order), ascending=True)
@@ -280,7 +283,7 @@ class MetBase(ABC, Generic[XArrayType]):
             # Only shift if necessary
             if np.any(lon >= 180.0) or np.any(lon < -180.0):
                 self.data = shift_longitude(self.data)
-            else:
+            elif sort:
                 self.data = self.data.sortby("longitude", ascending=True)
 
             # wrap longitude, if requested
@@ -697,6 +700,7 @@ class MetDataset(MetBase):
         data: xr.Dataset,
         cachestore: CacheStore | None = None,
         wrap_longitude: bool = False,
+        sort: bool = True,
         copy: bool = True,
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
@@ -712,7 +716,7 @@ class MetDataset(MetBase):
         # copy Dataset into data
         if copy:
             self.data = data.copy()
-            self._preprocess_dims(wrap_longitude)
+            self._preprocess_dims(wrap_longitude, sort)
 
         else:
             if wrap_longitude:
