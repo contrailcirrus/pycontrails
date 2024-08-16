@@ -522,17 +522,17 @@ class ERA5(ECMWFAPI):
         xr.Dataset
             Processed :class:`xr.Dataset`
         """
-
-        if "pycontrails_version" in ds.attrs:
-            LOG.debug("Input dataset processed with pycontrails > 0.29")
-            return ds
-
-        # not pre-processed source file from `download` or `paths`
-
-        # for "reanalysis-era5-single-levels" or if self.pressure_levels length == 1,
+        # For "reanalysis-era5-single-levels" or if self.pressure_levels length == 1,
         # then the netcdf file does not contain the dimension "level"
         if len(self.pressure_levels) == 1:
-            ds = ds.expand_dims({"level": self.pressure_levels})
+            ds = ds.expand_dims(level=self.pressure_levels)
+
+        # New CDS-beta gives "valid_time" instead of "time"
+        # Legacy CDS gives "time"
+        if "valid_time" in ds:
+            ds = ds.rename(valid_time="time")
+        if "pressure_level" in ds:
+            ds = ds.rename(pressure_level="level")
 
         ds.attrs["pycontrails_version"] = pycontrails.__version__
         return ds
