@@ -79,12 +79,12 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[dat
     elif len(time) == 1:
         time = (time[0], time[0])
     elif len(time) != 2:
-        msg = f"Input time bounds must have length < 2 and > 0, got {len(time)}"
+        msg = f"Input time bounds must have length 1 or 2, got {len(time)}"
         raise ValueError(msg)
 
     # convert all to pandas Timestamp
     try:
-        timestamps = [pd.to_datetime(t) for t in time]
+        t0, t1 = (pd.to_datetime(t) for t in time)
     except ValueError as e:
         msg = (
             f"Failed to parse time input {time}. "
@@ -93,10 +93,13 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[dat
         raise ValueError(msg) from e
 
     if freq is None:
-        daterange = pd.DatetimeIndex([timestamps[0], timestamps[1]])
+        daterange = pd.DatetimeIndex([t0, t1])
     else:
         # get date range that encompasses all whole hours
-        daterange = pd.date_range(timestamps[0].floor(freq), timestamps[1].ceil(freq), freq=freq)
+        daterange = pd.date_range(t0.floor(freq), t1.ceil(freq), freq=freq)
+        if len(daterange) == 0:
+            msg = f"Time range {t0} to {t1} with freq {freq} has no valid time steps."
+            raise ValueError(msg)
 
     # return list of datetimes
     return daterange.to_pydatetime().tolist()
