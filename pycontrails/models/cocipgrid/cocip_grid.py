@@ -322,7 +322,7 @@ class CocipGrid(models.Model):
 
         if met is None:
             # idx is the first index at which self.met.variables["time"].to_numpy() >= time_end
-            idx = np.searchsorted(self.met.indexes["time"].to_numpy(), time_end)
+            idx = np.searchsorted(self.met.indexes["time"].to_numpy(), time_end).item()
             sl = slice(max(0, idx - 1), idx + 1)
             logger.debug("Select met slice %s", sl)
             met = MetDataset(self.met.data.isel(time=sl), copy=False)
@@ -331,7 +331,7 @@ class CocipGrid(models.Model):
             current_times = met.indexes["time"].to_numpy()
             all_times = self.met.indexes["time"].to_numpy()
             # idx is the first index at which all_times >= time_end
-            idx = np.searchsorted(all_times, time_end)
+            idx = np.searchsorted(all_times, time_end).item()
             sl = slice(max(0, idx - 1), idx + 1)
 
             # case 1: cannot re-use end of current met as start of new met
@@ -353,7 +353,7 @@ class CocipGrid(models.Model):
 
         if rad is None:
             # idx is the first index at which self.rad.variables["time"].to_numpy() >= time_end
-            idx = np.searchsorted(self.rad.indexes["time"].to_numpy(), time_end)
+            idx = np.searchsorted(self.rad.indexes["time"].to_numpy(), time_end).item()
             sl = slice(max(0, idx - 1), idx + 1)
             logger.debug("Select rad slice %s", sl)
             rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
@@ -362,7 +362,7 @@ class CocipGrid(models.Model):
             current_times = rad.indexes["time"].to_numpy()
             all_times = self.rad.indexes["time"].to_numpy()
             # idx is the first index at which all_times >= time_end
-            idx = np.searchsorted(all_times, time_end)
+            idx = np.searchsorted(all_times, time_end).item()
             sl = slice(max(0, idx - 1), idx + 1)
 
             # case 1: cannot re-use end of current rad as start of new rad
