@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.53.1
+
+### Features
+
+- Support `ERA5` downloads from [CDS-Beta](https://cds-beta.climate.copernicus.eu/). The updated interface is backwards compatible with the legacy CDS server. The choice of CDS server is governed by the `url` parameter in the `ERA5` constructor.
+
 ## v0.53.0
 
 ### Breaking changes
@@ -88,13 +94,13 @@
 ### Features
 
 - Add tools for running [APCEMM](https://github.com/MIT-LAE/APCEMM) from within pycontrails. This includes:
-    - utilities for generating APCEMM input files and running APCEMM (`pycontrails.models.apcemm.utils`)
-    - an interface (`pycontrails.models.apcemm.apcemm`) that allows users to run APCEMM as a pycontrails `Model`.
+  - utilities for generating APCEMM input files and running APCEMM (`pycontrails.models.apcemm.utils`)
+  - an interface (`pycontrails.models.apcemm.apcemm`) that allows users to run APCEMM as a pycontrails `Model`.
 - Add [APCEMM tutorial notebook](https://py.contrails.org/integrations/APCEMM.html).
 - Add prescribed sedimentation rate to `DryAdvection` model.
 - Add `Landsat` and `Sentinel` datalibs for searching, retrieving, and visualizing Landsat 8-9 and Sentinel-2 imagery. The datalibs include:
-    - Tools for querying Landsat and Sentinel-2 imagery for intersections with user-defined regions (`landsat.query`, `sentinel.query`) or flights (`landsat.intersect`, `sentinel.intersect`). These tools use BigQuery tables and require a Google Cloud Platform account with access to the BigQuery API.
-    - Tools for downloading and visualizing imagery from Landsat (`Landsat`) and Sentinel-2 (`Sentinel`). These tools retrieve data anonymously from Google Cloud Platform storage buckets and can be used without a Google Cloud Platform account.
+  - Tools for querying Landsat and Sentinel-2 imagery for intersections with user-defined regions (`landsat.query`, `sentinel.query`) or flights (`landsat.intersect`, `sentinel.intersect`). These tools use BigQuery tables and require a Google Cloud Platform account with access to the BigQuery API.
+  - Tools for downloading and visualizing imagery from Landsat (`Landsat`) and Sentinel-2 (`Sentinel`). These tools retrieve data anonymously from Google Cloud Platform storage buckets and can be used without a Google Cloud Platform account.
 - Add tutorial notebooks demonstrating how to use `Landsat` and `Sentinel` datalibs to find flights in high-resolution satellite imagery.
 - Modify `Flight.to_geojson_multilinestring` to make grouping key optional and to support multiple antimeridian crossings.
 - Update the `pycontrails` build system to require `numpy 2.0` per the [official numpy guidelines](https://numpy.org/devdocs/dev/depending_on_numpy.html#numpy-2-0-specific-advice). Note that the runtime requirement for `pycontrails` remains `numpy>=1.22`.
