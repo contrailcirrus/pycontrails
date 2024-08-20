@@ -63,7 +63,7 @@ class ECMWFAPI(metsource.MetDataSource):
             except KeyError as exc:
                 # this snippet shows the missing times for convenience
                 np_timesteps = {np.datetime64(t, "ns") for t in self.timesteps}
-                missing_times = sorted(np_timesteps.difference(ds["time"].values))
+                missing_times = sorted(np_timesteps.difference(ds["time"].values))  # type: ignore[type-var]
                 msg = f"Input dataset is missing time coordinates {[str(t) for t in missing_times]}"
                 raise KeyError(msg) from exc
 
