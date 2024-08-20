@@ -247,8 +247,8 @@ ignore-path = [
 ]
 
 # Python linter
-# https://beta.ruff.rs/docs/
-# https://beta.ruff.rs/docs/settings/#select
+# https://docs.astral.sh/ruff/
+# https://docs.astral.sh/ruff/settings/#select
 # https://www.pydocstyle.org/en/6.3.0/error_codes.html
 [tool.ruff]
 lint.select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "SIM", "UP"]
@@ -270,7 +270,11 @@ lint.ignore = [
 "docs/conf.py" = ["E501"]
 "tests/*" = ["D"]
 
-# https://beta.ruff.rs/docs/settings/#pydocstyle
+# https://docs.astral.sh/ruff/settings/#pydocstyle
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 ignore-decorators = ["overrides.overrides"]
+
+# https://docs.astral.sh/ruff/settings/#flake8-pytest-style
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = true
