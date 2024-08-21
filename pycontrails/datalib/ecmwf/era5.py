@@ -80,10 +80,17 @@ class ERA5(ECMWFAPI):
         Cache data store for staging ECMWF ERA5 files.
         Defaults to :class:`cache.DiskCacheStore`.
         If None, cache is turned off.
-    url : str
-        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ url
-    key : str
-        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ key
+    url : str | None
+        Override the default `cdsapi <https://github.com/ecmwf/cdsapi>`_ url.
+        As of August 2024, the url for the `CDS-Beta <https://cds-beta.climate.copernicus.eu>`_
+        is "https://cds-beta.climate.copernicus.eu/api", and the url for the legacy server is
+        "https://cds.climate.copernicus.eu/api/v2". If None, the url is set
+        by the ``CDSAPI_URL`` environment variable. If this is not defined, the
+        ``cdsapi`` package will determine the url.
+    key : str | None
+        Override default `cdsapi <https://github.com/ecmwf/cdsapi>`_ key. If None,
+        the key is set by the ``CDSAPI_KEY`` environment variable. If this is not defined,
+        the ``cdsapi`` package will determine the key.
 
     Notes
     -----
