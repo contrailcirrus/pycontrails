@@ -54,8 +54,8 @@ ALL_ENSEMBLE_MEMBERS = list(range(10))
 class ERA5ModelLevel(ECMWFAPI):
     """Class to support model-level ERA5 data access, download, and organization.
 
-    The interface is similar to :class:`pycontrails.datalib.ecmwf.ERA5`, which downloads pressure-level
-    with much lower vertical resolution.
+    The interface is similar to :class:`pycontrails.datalib.ecmwf.ERA5`, which downloads
+    pressure-level with much lower vertical resolution.
 
     Requires account with
     `Copernicus Data Portal <https://cds.climate.copernicus.eu/cdsapp#!/home>`_
@@ -114,11 +114,18 @@ class ERA5ModelLevel(ECMWFAPI):
     cache_grib: bool, optional
         If True, cache downloaded GRIB files rather than storing them in a temporary file.
         By default, False.
-    url : str
-        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ url
-    key : str
-        Override `cdsapi <https://github.com/ecmwf/cdsapi>`_ key
-    """  # noqa: E501
+    url : str | None
+        Override the default `cdsapi <https://github.com/ecmwf/cdsapi>`_ url.
+        As of August 2024, the url for the `CDS-Beta <https://cds-beta.climate.copernicus.eu>`_
+        is "https://cds-beta.climate.copernicus.eu/api", and the url for the legacy server is
+        "https://cds.climate.copernicus.eu/api/v2". If None, the url is set
+        by the ``CDSAPI_URL`` environment variable. If this is not defined, the
+        ``cdsapi`` package will determine the url.
+    key : str | None
+        Override default `cdsapi <https://github.com/ecmwf/cdsapi>`_ key. If None,
+        the key is set by the ``CDSAPI_KEY`` environment variable. If this is not defined,
+        the ``cdsapi`` package will determine the key.
+    """
 
     __marker = object()
 
