@@ -1,13 +1,21 @@
 repos:
   - repo: local
     hooks:
-      - id: ruff
-        name: ruff
+      - id: ruff-format
+        name: ruff format
+        language_version: python3
+        language: python
+        entry: ruff format
+        types: [file]
+        files: \.(py|ipynb)$
+      - id: ruff-lint
+        name: ruff lint
         language_version: python3
         language: python
         entry: ruff check
         args: [--fix, --exit-non-zero-on-fix]
-        types: [python]
+        types: [file]
+        files: \.(py|ipynb)$
       - id: doc8
         name: doc8
         language_version: python3
@@ -15,13 +23,6 @@ repos:
         entry: doc8
         types: [file]
         files: \.(rst)$
-      - id: black
-        name: black
-        language_version: python3
-        language: python
-        entry: black
-        types: [file]
-        files: \.(py|ipynb)$
       - id: nb-clean
         name: nb-clean
         language_version: python3
