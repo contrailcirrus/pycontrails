@@ -91,17 +91,17 @@ but should also be run locally before submitting PRs:
 
     $ make test
 
-Lint the repository with `ruff <https://beta.ruff.rs/docs/>`__:
+Lint the repository with `ruff <https://docs.astral.sh/ruff/>`__:
 
 .. code-block:: bash
 
-    $ make ruff
+    $ make lint
 
-Autoformat the repository with `black <https://black.readthedocs.io/en/stable/>`__:
+Autoformat the repository with `ruff <https://docs.astral.sh/ruff/formatter/>`__:
 
 .. code-block:: bash
 
-    $ make black
+    $ make format
 
 Run type checking with `mypy <https://www.mypy-lang.org/>`__:
 
@@ -109,7 +109,7 @@ Run type checking with `mypy <https://www.mypy-lang.org/>`__:
 
     $ make mypy
 
-Run unit tests with `pytest <https://docs.pytest.org/en/7.2.x/>`__:
+Run unit tests with `pytest <https://docs.pytest.org/en/latest/>`__:
 
 .. code-block:: bash
 
@@ -121,7 +121,7 @@ Run notebook validation with `nbval <https://github.com/computationalmodelling/n
 
     $ make nb-test
 
-Run doctests with `pytest <https://docs.pytest.org/en/7.2.x/>`__:
+Run doctests with `pytest <https://docs.pytest.org/en/latest/>`__:
 
 .. code-block:: bash
 
@@ -294,7 +294,7 @@ The project uses `Black <https://black.readthedocs.io/en/stable/>`__,
 standardize code-formatting. These tools are run automatically in a
 pre-commit hook.
 
-The project uses `pytest <https://docs.pytest.org/en/7.2.x/>`__ to run
+The project uses `pytest <https://docs.pytest.org/en/latest/>`__ to run
 unit tests. New code should include clear unit tests for implementation
 and output values. New test files should be included in the
 `/tests/unit/ directory <https://github.com/contrailcirrus/pycontrails/tree/main/tests/unit>`__.
