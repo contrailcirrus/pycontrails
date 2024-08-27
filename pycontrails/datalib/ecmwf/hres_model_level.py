@@ -334,7 +334,6 @@ class HRESModelLevel(ECMWFAPI):
         xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> MetDataset:
-
         if dataset:
             msg = "Parameter 'dataset' is not supported for Model-level ERA5 data"
             raise ValueError(msg)

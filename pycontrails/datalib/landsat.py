@@ -170,7 +170,6 @@ class Landsat:
         bands: str | Iterable[str] | None = None,
         cachestore: cache.CacheStore | None = None,
     ) -> None:
-
         self.base_url = base_url
         self.bands = _parse_bands(bands)
         _check_band_resolution(self.bands)
@@ -343,7 +342,9 @@ def _read(path: str, meta: str, band: str, processing: str) -> xr.DataArray:
                 else (
                     "nondim"
                     if processing == "reflectance"
-                    else "K" if processing == "brightness_temperature" else "none"
+                    else "K"
+                    if processing == "brightness_temperature"
+                    else "none"
                 )
             ),
             "crs": crs,

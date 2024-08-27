@@ -185,7 +185,6 @@ class Sentinel:
         bands: str | Iterable[str] | None = None,
         cachestore: cache.CacheStore | None = None,
     ) -> None:
-
         self.base_url = base_url
         self.granule_id = granule_id
         self.bands = _parse_bands(bands)
