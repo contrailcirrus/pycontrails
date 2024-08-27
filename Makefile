@@ -78,14 +78,6 @@ lint:
 format:
 	ruff format pycontrails tests docs
 
-ruff:
-	@echo -e "$(COLOR_YELLOW)The 'ruff' target is deprecated. Use 'make lint' instead.\n"
-	make lint
-
-black:
-	@echo -e "$(COLOR_YELLOW)The 'black' target is deprecated. Use 'make format' instead.\n"
-	make format
-
 # https://taplo.tamasfe.dev/
 taplo:
 	taplo format pyproject.toml --option indent_string='    '
