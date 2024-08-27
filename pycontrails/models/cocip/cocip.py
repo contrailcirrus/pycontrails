@@ -1545,7 +1545,6 @@ def _process_rad(rad: MetDataset) -> MetDataset:
             )
             raise ValueError(msg) from exc
         if radiation_accumulated:
-
             # Don't assume that radiation data is uniformly spaced in time
             # Instead, infer the appropriate time shift
             time_diff = rad.data["time"].diff("time", label="upper")

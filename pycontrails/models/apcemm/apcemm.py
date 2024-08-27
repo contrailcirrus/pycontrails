@@ -550,7 +550,6 @@ class APCEMM(models.Model):
         contrails: list[pd.DataFrame] = []
 
         for _, row in self.source.dataframe.iterrows():
-
             waypoint = row["waypoint"]
 
             # Mark waypoint as skipped if no APCEMM simulation ran

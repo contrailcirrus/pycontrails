@@ -146,7 +146,6 @@ class ERA5ModelLevel(ECMWFAPI):
         url: str | None = None,
         key: str | None = None,
     ) -> None:
-
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.cache_grib = cache_grib
 
@@ -282,7 +281,6 @@ class ERA5ModelLevel(ECMWFAPI):
 
     @overrides
     def download_dataset(self, times: list[datetime]) -> None:
-
         # group data to request by month (nominal) or by day (ensemble)
         requests: dict[datetime, list[datetime]] = collections.defaultdict(list)
         for t in times:
@@ -305,7 +303,6 @@ class ERA5ModelLevel(ECMWFAPI):
         xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> MetDataset:
-
         if dataset:
             msg = "Parameter 'dataset' is not supported for Model-level ERA5 data"
             raise ValueError(msg)

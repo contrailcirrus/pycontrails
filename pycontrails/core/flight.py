@@ -1151,7 +1151,9 @@ class Flight(GeoVectorDataset):
         out.data.pop("level", None)  # avoid any ambiguity
         return out
 
-    def distance_to_coords(self: Flight, distance: ArrayOrFloat) -> tuple[
+    def distance_to_coords(
+        self: Flight, distance: ArrayOrFloat
+    ) -> tuple[
         ArrayOrFloat,
         ArrayOrFloat,
         np.intp | npt.NDArray[np.intp],

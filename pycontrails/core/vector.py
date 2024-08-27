@@ -1073,7 +1073,6 @@ class VectorDataset:
 
             # Convert numpy objects to python objects
             if isinstance(obj, np.ndarray | np.generic):
-
                 # round time to unix seconds
                 if key == "time":
                     return np_encoder.default(obj.astype("datetime64[s]").astype(int))
