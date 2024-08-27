@@ -58,7 +58,6 @@ complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
-    "black[jupyter]==24.8.0",
     "dep_license",
     "fastparquet>=0.8",
     "ipdb>=0.13",
@@ -72,7 +71,7 @@ dev = [
     "pytest>=8.2",
     "pytest-cov>=2.11",
     "requests>=2.25",
-    "ruff==0.5.7",
+    "ruff==0.6.2",
     "setuptools",
 ]
 
@@ -203,13 +202,6 @@ show_error_codes = true
 # strict_equality = true
 # # --strict end
 
-# black code formatting
-# https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
-[tool.black]
-line-length = 100
-preview = true
-required-version = "24.8.0"
-
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
 [tool.pytest.ini_options]
@@ -266,6 +258,7 @@ lint.ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "docs/conf.py" = ["E501"]
+"docs/**/*.ipynb" = ["D103", "E501"]
 "tests/*" = ["D"]
 
 # https://docs.astral.sh/ruff/settings/#pydocstyle
