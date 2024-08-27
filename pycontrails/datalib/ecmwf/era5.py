@@ -41,6 +41,7 @@ class ERA5(ECMWFAPI):
     or as ``CDSAPI_URL`` and ``CDSAPI_KEY`` environment variables.
 
         export CDSAPI_URL=...
+
         export CDSAPI_KEY=...
 
     Credentials can also be provided directly ``url`` and ``key`` keyword args.
