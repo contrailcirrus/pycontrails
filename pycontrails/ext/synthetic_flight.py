@@ -301,7 +301,11 @@ class SyntheticFlight:
             return self._generate_single_flight_no_wind(timestep)  # recursive
 
         result = self.geod.fwd_intermediate(
-            *src, az, npts, m_per_timestep, return_back_azimuth=False  # type: ignore
+            *src,
+            az,
+            npts,
+            m_per_timestep,  # type: ignore
+            return_back_azimuth=False,  # type: ignore
         )
         longitude = np.asarray(result.lons)
         latitude = np.asarray(result.lats)
