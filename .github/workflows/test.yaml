@@ -123,7 +123,6 @@ jobs:
         shell: bash
         run: |
           pip check
-          make black-check
-          make ruff
+          make lint
           make mypy
           make pytest
