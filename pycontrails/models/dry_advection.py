@@ -6,6 +6,7 @@ import dataclasses
 from typing import Any, NoReturn, overload
 
 import numpy as np
+import numpy.typing as npt
 
 from pycontrails.core import models
 from pycontrails.core.flight import Flight
@@ -329,7 +330,7 @@ def _perform_interp_for_step(
 def _calc_geometry(
     vector: GeoVectorDataset,
     dz_m: float,
-    dt: np.timedelta64,
+    dt: npt.NDArray[np.timedelta64] | np.timedelta64,
     max_depth: float | None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Calculate wind-shear-derived geometry of evolved plume."""
@@ -455,7 +456,11 @@ def _evolve_one_step(
     longitude_2 = geo.advect_longitude(longitude, latitude, u_wind, dt)  # type: ignore[arg-type]
     latitude_2 = geo.advect_latitude(latitude, v_wind, dt)  # type: ignore[arg-type]
     level_2 = geo.advect_level(
-        vector.level, vertical_velocity, 0.0, 0.0, dt  # type: ignore[arg-type]
+        vector.level,
+        vertical_velocity,
+        0.0,
+        0.0,
+        dt,  # type: ignore[arg-type]
     )
 
     out = GeoVectorDataset(
@@ -475,7 +480,10 @@ def _evolve_one_step(
 
     # Attach wind-shear-derived geometry to output vector
     azimuth_2, width_2, depth_2, sigma_yz_2, area_eff_2 = _calc_geometry(
-        vector, dz_m, dt, max_depth  # type: ignore[arg-type]
+        vector,
+        dz_m,
+        dt,  # type: ignore[arg-type]
+        max_depth,  # type: ignore[arg-type]
     )
     out["azimuth"] = azimuth_2
     out["width"] = width_2
