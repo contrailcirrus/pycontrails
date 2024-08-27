@@ -71,14 +71,20 @@ dev-pycontrails-bada:
 # QC, Test
 # -----------
 
-ruff: black-check
-	ruff check pycontrails tests
+lint:
+	ruff check pycontrails tests docs
+	ruff format --check pycontrails tests docs
+
+format:
+	ruff format pycontrails tests docs
+
+ruff:
+	@echo -e "$(COLOR_YELLOW)The 'ruff' target is deprecated. Use 'make lint' instead.\n"
+	make lint
 
 black:
-	black pycontrails tests
-
-black-check:
-	black pycontrails tests --check
+	@echo -e "$(COLOR_YELLOW)The 'black' target is deprecated. Use 'make format' instead.\n"
+	make format
 
 # https://taplo.tamasfe.dev/
 taplo:
@@ -107,7 +113,7 @@ pytest-cov:
 		--ignore=tests/unit/test_zarr.py \
 		tests/unit
 
-test: ruff mypy black-check nb-black-check pytest doctest nb-test
+test: lint mypy pytest doctest nb-test
 
 profile:
 	python -m cProfile -o $(script).prof $(script)
@@ -178,11 +184,8 @@ doctest: ensure-numpy-2 ensure-era5-cached ensure-gcp-credentials
 doc8:
 	doc8 docs
 
-nb-black:
-	black docs/**/*.ipynb
-
-nb-black-check:
-	black docs/**/*.ipynb --check
+nb-format-check:
+	ruff format --check docs/**/*.ipynb
 
 # Note must be kept in sync with 
 # `.pre-commit-config.yaml` and `make nb-clean-check`
@@ -206,7 +209,7 @@ nb-clean-check:
 # TODO: 
 #   - Install eccodes on Github Action so GFS notebook can run
 #   - Provide meteorology data for `run-cocip-on-flight` tutorial
-nb-test: ensure-era5-cached nb-clean-check nb-black-check nb-check-links
+nb-test: ensure-era5-cached nb-clean-check nb-format-check nb-check-links
 	python -m pytest --nbval-lax \
 		--ignore=docs/integrations/ACCF.ipynb \
 		--ignore=docs/integrations/APCEMM.ipynb \
@@ -231,7 +234,7 @@ nb-check-links:
 # NOTE notebooks from docs/integrations/ manually
 # Add `skip-execution` cell tag if you want to skip a cell
 # Add `raises-exception` cell tag if you know the cell raises exception
-nb-execute: ensure-era5-cached nb-black-check nb-check-links
+nb-execute: ensure-era5-cached nb-format-check nb-check-links
 	jupyter nbconvert --inplace \
 		--to notebook \
 		--execute \
