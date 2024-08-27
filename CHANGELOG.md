@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.53.2 (unreleased)
+
+### Internals
+
+- Use `ruff` to format the codebase in place of `black`.
+- Run `ruff` linting and formatting over the notebook examples in the documentation.
+- Update development documentation with new links.
+
 ## v0.53.1
 
 ### Features
