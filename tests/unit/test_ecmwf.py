@@ -13,7 +13,9 @@ from pycontrails import DiskCacheStore, MetDataset, MetVariable
 from pycontrails.core.met_var import AirTemperature, SurfacePressure
 from pycontrails.datalib.ecmwf import ECMWF_VARIABLES, ERA5, HRES, ERA5ModelLevel, HRESModelLevel
 from pycontrails.datalib.ecmwf.hres import get_forecast_filename
-from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
+from pycontrails.datalib.ecmwf.model_levels import (
+    pressure_levels_at_model_levels_constant_surface_pressure,
+)
 
 AnyERA5DatalibClass = TypeVar("AnyERA5DatalibClass", type[ERA5], type[ERA5ModelLevel])
 AnyHRESDatalibClass = TypeVar("AnyHRESDatalibClass", type[HRES], type[HRESModelLevel])
@@ -183,7 +185,9 @@ def test_model_level_retrieved_levels(datalib: AnyModelLevelDatalibClass) -> Non
 def test_model_level_pressure_levels(datalib: AnyModelLevelDatalibClass) -> None:
     """Test pressure level inputs for model-level datalibs."""
     dl = datalib(time=datetime(2000, 1, 1), variables="vo")
-    assert dl.pressure_levels == pressure_levels_at_model_levels(20_000, 50_000)
+    assert dl.pressure_levels == pressure_levels_at_model_levels_constant_surface_pressure(
+        20_000, 50_000
+    )
 
 
 @pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
