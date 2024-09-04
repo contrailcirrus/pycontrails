@@ -44,7 +44,9 @@ from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf.common import ECMWFAPI, CDSCredentialsNotFound
-from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
+from pycontrails.datalib.ecmwf.model_levels import (
+    pressure_levels_at_model_levels_constant_surface_pressure,
+)
 from pycontrails.datalib.ecmwf.variables import MODEL_LEVEL_VARIABLES
 from pycontrails.utils import dependencies, temp
 
@@ -203,7 +205,9 @@ class ERA5ModelLevel(ECMWFAPI):
 
         self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
         if pressure_levels is None:
-            pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
+            pressure_levels = pressure_levels_at_model_levels_constant_surface_pressure(
+                20_000.0, 50_000.0
+            )
         self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
         self.variables = metsource.parse_variables(variables, self.pressure_level_variables)
 

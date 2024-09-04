@@ -9,13 +9,15 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.physics import units
-from pycontrails.utils import dependencies
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
 MODEL_LEVELS_PATH = _path_to_static / "model_level_dataframe_v20240418.csv"
 
 
-def pressure_levels_at_model_levels(alt_ft_min: float, alt_ft_max: float) -> list[int]:
+def pressure_levels_at_model_levels_constant_surface_pressure(
+    alt_ft_min: float | None = None,
+    alt_ft_max: float | None = None,
+) -> list[int]:
     """Return the pressure levels at each model level assuming a constant surface pressure.
 
     This function assumes 137 model levels.
@@ -24,20 +26,29 @@ def pressure_levels_at_model_levels(alt_ft_min: float, alt_ft_max: float) -> lis
 
     Parameters
     ----------
-    alt_ft_min : float
-        Minimum altitude, [:math:`ft`].
-    alt_ft_max : float
-        Maximum altitude, [:math:`ft`].
+    alt_ft_min : float | None
+        Minimum altitude, [:math:`ft`]. If None, there is no minimum altitude
+        used in filtering the ``MODEL_LEVELS_PATH`` table.
+    alt_ft_max : float | None
+        Maximum altitude, [:math:`ft`]. If None, there is no maximum altitude
+        used in filtering the ``MODEL_LEVELS_PATH`` table.
 
     Returns
     -------
     list[int]
         List of pressure levels, [:math:`hPa`].
     """
-    df = pd.read_csv(MODEL_LEVELS_PATH)
-    alt_m_min = units.ft_to_m(alt_ft_min)
-    alt_m_max = units.ft_to_m(alt_ft_max)
-    filt = df["Geometric Altitude [m]"].between(alt_m_min, alt_m_max)
+    usecols = ["n", "Geometric Altitude [m]", "pf [hPa]"]
+    df = pd.read_csv(MODEL_LEVELS_PATH, usecols=usecols, index_col="n")
+
+    filt = df.index >= 1  # exclude degenerate model level 0
+    if alt_ft_min is not None:
+        alt_m_min = units.ft_to_m(alt_ft_min)
+        filt &= df["Geometric Altitude [m]"] >= alt_m_min
+    if alt_ft_max is not None:
+        alt_m_max = units.ft_to_m(alt_ft_max)
+        filt &= df["Geometric Altitude [m]"] <= alt_m_max
+
     return df.loc[filt, "pf [hPa]"].round().astype(int).tolist()
 
 

@@ -37,7 +37,9 @@ from pycontrails.core.met import MetDataset
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ecmwf import common as ecmwf_common
 from pycontrails.datalib.ecmwf import variables as ecmwf_variables
-from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
+from pycontrails.datalib.ecmwf.model_levels import (
+    pressure_levels_at_model_levels_constant_surface_pressure,
+)
 from pycontrails.utils import dependencies
 
 try:
@@ -386,7 +388,9 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         self.timesteps = metsource.parse_timesteps(time)
 
         if pressure_levels is None:
-            self.pressure_levels = pressure_levels_at_model_levels(20_000.0, 50_000.0)
+            self.pressure_levels = pressure_levels_at_model_levels_constant_surface_pressure(
+                20_000.0, 50_000.0
+            )
         else:
             self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
 
