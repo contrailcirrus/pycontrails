@@ -37,6 +37,10 @@ def pressure_levels_at_model_levels_constant_surface_pressure(
     -------
     list[int]
         List of pressure levels, [:math:`hPa`].
+
+    See Also
+    --------
+    pressure_level_at_model_levels
     """
     usecols = ["n", "Geometric Altitude [m]", "pf [hPa]"]
     df = pd.read_csv(MODEL_LEVELS_PATH, usecols=usecols, index_col="n")
@@ -74,3 +78,77 @@ def _cache_model_level_dataframe() -> pd.DataFrame:
         raise ValueError(msg)
 
     df.to_csv(new_file_path)
+
+
+def pressure_level_at_model_levels(
+    lnsp: xr.DataArray, model_levels: npt.NDArray[np.integer]
+) -> xr.DataArray:
+    r"""Return the pressure levels at each model level given the surface pressure.
+
+    This function assumes 137 model levels.
+
+    FIXME: generate citations
+    https://confluence.ecmwf.int/display/CKB/ERA5%3A+compute+pressure+and+geopotential+on+model+levels%2C+geopotential+height+and+geometric+height
+    https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions
+
+    Parameters
+    ----------
+    lnsp : xr.DataArray
+        Natural logarithm of surface pressure, [:math:`\ln(\text{Pa})`].
+    model_levels : npt.ArrayLike
+        Target model levels. Expected to be a one-dimensional array of integers between 1 and 137.
+
+    Returns
+    -------
+    xr.DataArray
+        Pressure levels at each model level, [:math:`hPa`]. The shape of the output is
+        the product of the shape of the input and the length of `model_levels`. In
+        other words, the output will have dimensions of the input plus a new dimension
+        for ``model_levels``.
+
+        If ``lnsp`` is not dask-backed, the output will be computed eagerly. In particular,
+        if ``lnsp`` has a large size and ``model_levels`` is a large range, this function
+        may consume a large amount of memory.
+
+    See Also
+    --------
+    pressure_levels_at_model_levels_constant_surface_pressure
+    """
+    model_levels = np.asarray(model_levels, dtype=int)
+    if not np.all((model_levels >= 1) & (model_levels <= 137)):
+        msg = "model_levels must be integers between 1 and 137"
+        raise ValueError(msg)
+
+    usecols = ["n", "a [Pa]", "b"]
+    df = (
+        pd.read_csv(MODEL_LEVELS_PATH, usecols=usecols)
+        .rename(columns={"n": "model_level", "a [Pa]": "a"})
+        .set_index("model_level")
+    )
+
+    a = df["a"].to_xarray()
+    b = df["b"].to_xarray()
+
+    if "model_level" in lnsp.dims:
+        lnsp_model_levels = lnsp["model_level"]
+        if len(lnsp_model_levels) != 1:
+            msg = "Found multiple model levels in lnsp, expected at most one"
+            raise ValueError(msg)
+        if lnsp_model_levels.item() != 1:
+            msg = "lnsp must be at model level 1, found model level {lnsp_model_levels.item()}"
+            raise ValueError(msg)
+        lnsp = lnsp.squeeze("model_level")
+
+    sp = np.exp(lnsp)
+    dtype = sp.dtype
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
+
+    indexer = {"model_level": model_levels}
+    p_half_below = a.sel(indexer) + b.sel(indexer) * sp
+
+    indexer = {"model_level": model_levels - 1}
+    p_half_above = (a.sel(indexer) + b.sel(indexer) * sp).assign_coords(model_level=model_levels)
+
+    p_full = (p_half_above + p_half_below) / 2.0
+    return p_full / 100.0
