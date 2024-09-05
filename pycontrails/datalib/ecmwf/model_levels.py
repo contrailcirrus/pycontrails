@@ -3,6 +3,7 @@
 import datetime
 import pathlib
 
+import dask.array
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -20,9 +21,11 @@ def pressure_levels_at_model_levels_constant_surface_pressure(
 ) -> list[int]:
     """Return the pressure levels at each model level assuming a constant surface pressure.
 
-    This function assumes 137 model levels.
+    This function assumes
+    `137 model levels <https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions>`_
+    and the constant ICAO ISA surface pressure of 1013.25 hPa.
 
-    The pressure levels are rounded to the nearest hPa.
+    The returned pressure levels are rounded to the nearest hPa.
 
     Parameters
     ----------
@@ -36,7 +39,7 @@ def pressure_levels_at_model_levels_constant_surface_pressure(
     Returns
     -------
     list[int]
-        List of pressure levels, [:math:`hPa`].
+        List of pressure levels, [:math:`hPa`] between the minimum and maximum altitudes.
 
     See Also
     --------
@@ -56,7 +59,7 @@ def pressure_levels_at_model_levels_constant_surface_pressure(
     return df.loc[filt, "pf [hPa]"].round().astype(int).tolist()
 
 
-def _cache_model_level_dataframe() -> pd.DataFrame:
+def _cache_model_level_dataframe() -> None:
     """Regenerate static model level data file.
 
     Read the ERA5 L137 model level definitions published by ECMWF
@@ -85,11 +88,13 @@ def pressure_level_at_model_levels(
 ) -> xr.DataArray:
     r"""Return the pressure levels at each model level given the surface pressure.
 
-    This function assumes 137 model levels.
-
-    FIXME: generate citations
-    https://confluence.ecmwf.int/display/CKB/ERA5%3A+compute+pressure+and+geopotential+on+model+levels%2C+geopotential+height+and+geometric+height
-    https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions
+    This function assumes
+    `137 model levels <https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions>`_.
+    Unlike :func:`pressure_levels_at_model_levels_constant_surface_pressure`, this function
+    does not assume constant pressure. Instead, it uses the
+    `half-level pressure formula <https://confluence.ecmwf.int/display/CKB/ERA5%3A+compute+pressure+and+geopotential+on+model+levels%2C+geopotential+height+and+geometric+height#heading-Pressureonmodellevels>`_
+    :math:`p = a + b \cdot \exp(\ln(\text{sp}))` where :math:`a` and :math:`b` are constants
+    for each model level.
 
     Parameters
     ----------
@@ -102,13 +107,41 @@ def pressure_level_at_model_levels(
     -------
     xr.DataArray
         Pressure levels at each model level, [:math:`hPa`]. The shape of the output is
-        the product of the shape of the input and the length of `model_levels`. In
+        the product of the shape of the input and the length of ``model_levels``. In
         other words, the output will have dimensions of the input plus a new dimension
         for ``model_levels``.
 
         If ``lnsp`` is not dask-backed, the output will be computed eagerly. In particular,
         if ``lnsp`` has a large size and ``model_levels`` is a large range, this function
         may consume a large amount of memory.
+
+        The ``dtype`` of the output is the same as the ``dtype`` of the ``lnsp`` parameter.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import xarray as xr
+
+    >>> sp = np.linspace(101325.0, 90000.0, 16).reshape(4, 4)
+    >>> longitude = np.linspace(-180, 180, 4)
+    >>> latitude = np.linspace(-90, 90, 4)
+    >>> lnsp = xr.DataArray(np.log(sp), coords={"longitude": longitude, "latitude": latitude})
+
+    >>> model_levels = [80, 100]
+    >>> pressure_level_at_model_levels(lnsp, model_levels)
+    <xarray.DataArray (model_level: 2, longitude: 4, latitude: 4)> Size: 256B
+    array([[[259.75493944, 259.27107504, 258.78721064, 258.30334624],
+            [257.81948184, 257.33561744, 256.85175304, 256.36788864],
+            [255.88402424, 255.40015984, 254.91629544, 254.43243104],
+            [253.94856664, 253.46470224, 252.98083784, 252.49697344]],
+           [[589.67975444, 586.47283154, 583.26590864, 580.05898574],
+            [576.85206284, 573.64513994, 570.43821704, 567.23129414],
+            [564.02437124, 560.81744834, 557.61052544, 554.40360254],
+            [551.19667964, 547.98975674, 544.78283384, 541.57591094]]])
+    Coordinates:
+      * longitude    (longitude) float64 32B -180.0 -60.0 60.0 180.0
+      * latitude     (latitude) float64 32B -90.0 -30.0 30.0 90.0
+      * model_level  (model_level) int64 16B 80 100
 
     See Also
     --------
@@ -135,11 +168,12 @@ def pressure_level_at_model_levels(
             msg = "Found multiple model levels in lnsp, expected at most one"
             raise ValueError(msg)
         if lnsp_model_levels.item() != 1:
-            msg = "lnsp must be at model level 1, found model level {lnsp_model_levels.item()}"
+            msg = f"lnsp must be at model level 1, found model level {lnsp_model_levels.item()}"
             raise ValueError(msg)
+        # Remove the model level dimension to allow automatic broadcasting below
         lnsp = lnsp.squeeze("model_level")
 
-    sp = np.exp(lnsp)
+    sp = dask.array.exp(lnsp)
     dtype = sp.dtype
     a = a.astype(dtype, copy=False)
     b = b.astype(dtype, copy=False)
