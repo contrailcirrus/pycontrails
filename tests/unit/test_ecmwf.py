@@ -15,6 +15,7 @@ from pycontrails.datalib.ecmwf import ECMWF_VARIABLES, ERA5, HRES, ERA5ModelLeve
 from pycontrails.datalib.ecmwf.hres import get_forecast_filename
 from pycontrails.datalib.ecmwf.model_levels import (
     MODEL_LEVELS_PATH,
+    ml_to_pl,
     pressure_level_at_model_levels,
     pressure_levels_at_model_levels_constant_surface_pressure,
 )
@@ -1181,3 +1182,58 @@ def test_pressure_level_at_model_levels_agrees_with_ecmwf() -> None:
     s2 = pd.read_csv(MODEL_LEVELS_PATH, index_col=0)["pf [hPa]"].loc[1:137]
 
     pd.testing.assert_series_equal(s1, s2, check_names=False, check_exact=True, atol=5e-4)
+
+
+def test_ml_to_pl_conversion_output(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
+    """Test ml_to_pl conversion output."""
+    target_pl = [200, 210, 220, 230, 240, 250]
+    ds = ml_to_pl(era5_ml, lnsp, target_pl)
+    assert isinstance(ds, xr.Dataset)
+    np.testing.assert_array_equal(ds["level"], target_pl)
+
+    # No null values for these pressure levels
+    for v in ds.data_vars:
+        assert not ds[v].isnull().any()
+
+
+def test_ml_to_pl_conversion_output_with_null(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
+    """Test ml_to_pl conversion with null values in the output."""
+    target_pl = [190, 200]
+    ds = ml_to_pl(era5_ml, lnsp, target_pl)
+    assert isinstance(ds, xr.Dataset)
+    np.testing.assert_array_equal(ds["level"], target_pl)
+
+    # All the values on PL 190 are null
+    for v in ds.data_vars:
+        assert ds[v].sel(level=190).isnull().all()
+        assert not ds[v].sel(level=200).isnull().any()
+
+
+def test_ml_to_pl_close_to_era5_pl(
+    era5_ml: xr.Dataset,
+    lnsp: xr.DataArray,
+    met_ecmwf_pl_path: str,
+) -> None:
+    """Comfirm that the ml_to_pl conversion is close to what the CDS API provides."""
+    era5_ml = era5_ml.rename(valid_time="time")
+    lnsp = lnsp.rename(valid_time="time")
+    ds_pl = xr.open_dataset(met_ecmwf_pl_path).sel(time=era5_ml["time"])
+
+    target_pl = ds_pl["level"].values
+    np.testing.assert_array_equal(target_pl, [300, 250, 225])
+
+    ds_ml = ml_to_pl(era5_ml, lnsp, target_pl)
+
+    # 19 nulls got introduced in the conversion, all on level 300
+    for v in ds_ml.data_vars:
+        assert ds_ml[v].sel(level=[300]).isnull().sum() == 19
+        assert ds_ml[v].sel(level=[225, 250]).notnull().all()
+
+        # Fill the nulls in the converted dataset with the values ds_pl
+        # and compare the two
+        # We don't expect equality to be close to exact here -- the ERA5 PL data
+        # and the ERA5 ML data were generated separately and are not expected to
+        # be derived from a common source
+        # Still, the agreement isn't bad
+        da = ds_ml[v].fillna(ds_pl[v])
+        xr.testing.assert_allclose(da, ds_pl[v], rtol=0.001, atol=1e-5, check_dim_order=False)
