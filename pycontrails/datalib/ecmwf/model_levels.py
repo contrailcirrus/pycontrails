@@ -83,16 +83,14 @@ def _cache_model_level_dataframe() -> None:
     df.to_csv(new_file_path)
 
 
-def pressure_level_at_model_levels(
-    lnsp: xr.DataArray, model_levels: npt.NDArray[np.integer]
-) -> xr.DataArray:
+def pressure_level_at_model_levels(lnsp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.DataArray:
     r"""Return the pressure levels at each model level given the surface pressure.
 
     This function assumes
     `137 model levels <https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions>`_.
     Unlike :func:`pressure_levels_at_model_levels_constant_surface_pressure`, this function
     does not assume constant pressure. Instead, it uses the
-    `half-level pressure formula <https://confluence.ecmwf.int/display/CKB/ERA5%3A+compute+pressure+and+geopotential+on+model+levels%2C+geopotential+height+and+geometric+height#heading-Pressureonmodellevels>`_
+    `half-level pressure formula <https://confluence.ecmwf.int/x/JJh0CQ#heading-Pressureonmodellevels>`_
     :math:`p = a + b \cdot \exp(\ln(\text{sp}))` where :math:`a` and :math:`b` are constants
     for each model level.
 
@@ -185,4 +183,215 @@ def pressure_level_at_model_levels(
     p_half_above = (a.sel(indexer) + b.sel(indexer) * sp).assign_coords(model_level=model_levels)
 
     p_full = (p_half_above + p_half_below) / 2.0
-    return p_full / 100.0
+    return p_full / 100.0  # Pa -> hPa
+
+
+def searchsorted2d(
+    a: npt.NDArray[np.floating],
+    v: npt.NDArray[np.floating],
+) -> npt.NDArray[np.int64]:
+    """Return the indices where elements in ``v`` would be inserted in ``a`` along its second axis.
+
+    Implementation based on a `StackOverflow answer <https://stackoverflow.com/a/40588862>`_.
+
+    Parameters
+    ----------
+    a : npt.NDArray[np.floating]
+        2D array of shape ``(m, n)`` that is sorted along its second axis. This is not checked.
+    v : npt.NDArray[np.floating]
+        1D array of values of shape ``(k,)`` to insert into the second axis of ``a``.
+        The current implementation could be extended to handle 2D arrays as well.
+
+    Returns
+    -------
+    npt.NDArray[np.int64]
+        2D array of indices where elements in ``v`` would be inserted in ``a`` along its
+        second axis. The shape of the output is ``(m, k)``.
+
+    Examples
+    --------
+    >>> a = np.array([
+    ...  [ 1.,  8., 11., 12.],
+    ...  [ 5.,  8.,  9., 14.],
+    ...  [ 4.,  5.,  6., 17.],
+    ...  ])
+    >>> v = np.array([3., 7., 10., 13., 15.])
+    >>> searchsorted2d(a, v)
+    array([[1, 1, 2, 4, 4],
+           [0, 1, 3, 3, 4],
+           [0, 3, 3, 3, 3]])
+    """
+    if a.ndim != 2:
+        msg = "The parameter 'a' must be a 2D array"
+        raise ValueError(msg)
+    if v.ndim != 1:
+        msg = "The parameter 'v' must be a 1D array"
+        raise ValueError(msg)
+
+    m, n = a.shape
+
+    offset_scalar = max(np.ptp(a).item(), np.ptp(v).item()) + 1.0
+
+    # IMPORTANT: Keep the dtype as float64 to avoid round-off error
+    # when computing a_scaled and v_scaled
+    # If we used float32 here, the searchsorted output below can be off by 1
+    # or 2 if offset_scalar is large and m is large
+    steps = np.arange(m, dtype=np.float64).reshape(-1, 1)
+    offset = steps * offset_scalar
+    a_scaled = a + offset  # float32 + float64 = float64
+    v_scaled = v + offset  # float32 + float64 = float64
+
+    idx_scaled = np.searchsorted(a_scaled.reshape(-1), v_scaled.reshape(-1)).reshape(v_scaled.shape)
+    return idx_scaled - n * steps.astype(np.int64)
+
+
+def _interp_artifacts(
+    xp: npt.NDArray[np.floating], x: npt.NDArray[np.floating]
+) -> tuple[npt.NDArray[np.int64], npt.NDArray[np.floating], npt.NDArray[np.bool_]]:
+    """Compute the indices and distances for linear interpolation."""
+    idx = searchsorted2d(xp, x)
+    out_of_bounds = (idx == 0) | (idx == xp.shape[1])
+    idx.clip(1, xp.shape[1] - 1, out=idx)
+
+    x0 = np.take_along_axis(xp, idx - 1, axis=1)
+    x1 = np.take_along_axis(xp, idx, axis=1)
+    dist = (x.reshape(1, -1) - x0) / (x1 - x0)
+
+    return idx, dist, out_of_bounds
+
+
+def _interp_on_chunk(ds_chunk: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.Dataset:
+    """Interpolate the data on a chunk to the target pressure levels.
+
+    Parameters
+    ----------
+    ds_chunk : xr.Dataset
+        Chunk of the dataset. The last dimension must be "model_level".
+        The dataset from which ``ds_chunk`` is taken must not split the
+        "model_level" dimension across chunks.
+    target_pl : npt.NDArray[np.floating]
+        Target pressure levels, [:math:`hPa`].
+
+    Returns
+    -------
+    xr.Dataset
+        Interpolated data on the target pressure levels. This has the same
+        dimensions as ``ds_chunk`` except that the "model_level" dimension
+        is replaced with "level". The shape of the "level" dimension is
+        the length of ``target_pl``.
+    """
+    if any(da_chunk.dims[-1] != "model_level" for da_chunk in ds_chunk.values()):
+        msg = "The last dimension of the dataset must be 'model_level'"
+        raise ValueError(msg)
+
+    pl_chunk = ds_chunk["pressure_level"]
+
+    # Put the model_level column in the second dimension
+    # And stack the horizontal dimensions into the first dimension
+    xp = pl_chunk.values.reshape(-1, len(pl_chunk["model_level"]))
+
+    # AFAICT, metview performs linear interpolation in xp and target_pl by default
+    # However, the conversion_from_ml_to_pl.py script in https://confluence.ecmwf.int/x/JJh0CQ
+    # suggests interpolating in the log space. If using consecutive model levels,
+    # the difference between the two methods is negligible. We use the log space
+    # method here for consistency with the ECMWF script. This only changes
+    # the `dist` calculation below.
+    idx, dist, out_of_bounds = _interp_artifacts(np.log(xp), np.log(target_pl))
+
+    shape4d = pl_chunk.shape[:-1] + target_pl.shape
+    idx = idx.reshape(shape4d)
+    dist = dist.reshape(shape4d)
+    out_of_bounds = out_of_bounds.reshape(shape4d)
+
+    interped_dict = {}
+
+    for name, da in ds_chunk.items():
+        if name == "pressure_level":
+            continue
+
+        fp = da.values
+        f0 = np.take_along_axis(fp, idx - 1, axis=-1)
+        f1 = np.take_along_axis(fp, idx, axis=-1)
+        interped = f0 + dist * (f1 - f0)
+        interped[out_of_bounds] = np.nan  # we could extrapolate here like RGI(..., fill_value=None)
+
+        coords = {k: da.coords[k] for k in da.dims[:-1]}
+        coords["level"] = target_pl
+
+        interped_dict[name] = xr.DataArray(
+            interped,
+            dims=tuple(coords),
+            coords=coords,
+            attrs=da.attrs,
+        )
+
+    return xr.Dataset(interped_dict)
+
+
+def _build_template(ds: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.Dataset:
+    """Build the template dataset for the interpolated data."""
+    coords = {k: ds.coords[k] for k in ds.dims if k != "model_level"} | {"level": target_pl}
+
+    dims = tuple(coords)
+    shape = tuple(len(v) for v in coords.values())
+
+    vars = {
+        k: (dims, dask.array.empty(shape=shape, dtype=da.dtype))
+        for k, da in ds.items()
+        if k != "pressure_level"
+    }
+
+    chunks = {k: v for k, v in ds.chunks.items() if k != "model_level"}
+    chunks["level"] = (len(target_pl),)
+
+    return xr.Dataset(data_vars=vars, coords=coords, attrs=ds.attrs).chunk(chunks)
+
+
+def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.NDArray[np.floating]) -> xr.Dataset:
+    r"""Interpolate L137 model-level meteorology data to pressure levels.
+
+    The implementation is here is consistent with ECMWF's
+    `suggested implementation <https://confluence.ecmwf.int/x/JJh0CQ#heading-Step2Interpolatevariablesonmodellevelstocustompressurelevels>`_.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset with model-level meteorology data. Must include a "model_level" dimension
+        which is not split across chunks. The non-"model_level" dimensions must be
+        aligned with the "lnsp" parameter. Can include any number of variables.
+        Any `non-dimensional coordinates <https://docs.xarray.dev/en/latest/user-guide/terminology.html#term-Non-dimension-coordinate>`_
+        will be dropped.
+    lnsp : xr.DataArray
+        Natural logarithm of surface pressure, [:math:`\ln(\text{Pa})`].
+    target_pl : npt.NDArray[np.floating]
+        Target pressure levels, [:math:`hPa`].
+
+    Returns
+    -------
+    xr.Dataset
+        Interpolated data on the target pressure levels. This has the same
+        dimensions as ``ds`` except that the "model_level" dimension
+        is replaced with "level". The shape of the "level" dimension is
+        the length of ``target_pl``. If ``ds`` is dask-backed, the output
+        will be as well. Call ``.compute()`` to compute the result eagerly.
+    """
+    target_pl = np.asarray(target_pl, dtype=lnsp.dtype)
+    model_levels = ds["model_level"]
+
+    if "pressure_level" in ds:
+        msg = "The dataset must not contain a 'pressure_level' variable"
+        raise ValueError(msg)
+
+    pl = pressure_level_at_model_levels(lnsp, model_levels)
+    ds = ds.assign(pressure_level=pl)
+    ds = ds.reset_coords(drop=True)  # drop "expver"
+    # IMPORTANT: model_level must be the last dimension for _interp_on_chunk
+    ds = ds.transpose(..., "model_level")
+
+    # Raise if chunks over model level
+    if ds.chunks and len(ds.chunks["model_level"]) > 1:
+        msg = "The 'model_level' dimension must not be split across chunks"
+        raise ValueError(msg)
+
+    template = _build_template(ds, target_pl)
+    return xr.map_blocks(_interp_on_chunk, ds, (target_pl,), template=template)
