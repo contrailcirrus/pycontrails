@@ -143,7 +143,6 @@ class ERA5ModelLevel(ECMWFAPI):
         levels: list[int] | None = None,
         ensemble_members: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
-        n_jobs: int = 1,
         cache_grib: bool = False,
         url: str | None = None,
         key: str | None = None,
@@ -188,7 +187,7 @@ class ERA5ModelLevel(ECMWFAPI):
 
         if levels is None:
             levels = list(range(1, 138))
-        if min(levels) < 1 or max(levels) > 137:
+        elif min(levels) < 1 or max(levels) > 137:
             msg = "Retrieval levels must be between 1 and 137, inclusive."
             raise ValueError(msg)
         self.levels = levels
