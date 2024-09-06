@@ -15,10 +15,6 @@ and has lower latency than this module, which retrieves data from the
 `Copernicus Climate Data Store <https://cds.climate.copernicus.eu/#!/home>`_.
 This module must be used to retrieve model-level data from ERA5 ensemble members
 or for more recent dates.
-
-This module requires the following additional dependency:
-
-- `metview (binaries and python bindings) <https://metview.readthedocs.io/en/latest/python.html>`_
 """
 
 from __future__ import annotations
@@ -43,10 +39,8 @@ import pycontrails
 from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib._met_utils import metsource
+from pycontrails.datalib.ecmwf import model_levels as mlmod
 from pycontrails.datalib.ecmwf.common import ECMWFAPI, CDSCredentialsNotFound
-from pycontrails.datalib.ecmwf.model_levels import (
-    pressure_levels_at_model_levels_constant_surface_pressure,
-)
 from pycontrails.datalib.ecmwf.variables import MODEL_LEVEL_VARIABLES
 from pycontrails.utils import dependencies, temp
 
@@ -103,7 +97,7 @@ class ERA5ModelLevel(ECMWFAPI):
     grid : float, optional
         Specify latitude/longitude grid spacing in data.
         By default, this is set to 0.25 for reanalysis products and 0.5 for ensemble products.
-    levels : list[int], optional
+    model_levels : list[int], optional
         Specify ECMWF model levels to include in MARS requests.
         By default, this is set to include all model levels.
     ensemble_members : list[int], optional
@@ -114,8 +108,8 @@ class ERA5ModelLevel(ECMWFAPI):
         Cache data store for staging processed netCDF files.
         Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
-    cache_grib: bool, optional
-        If True, cache downloaded GRIB files rather than storing them in a temporary file.
+    cache_raw: bool, optional
+        If True, cache downloaded model-level files rather than storing them in a temporary file.
         By default, False.
     url : str | None
         Override the default `cdsapi <https://github.com/ecmwf/cdsapi>`_ url.
@@ -136,19 +130,20 @@ class ERA5ModelLevel(ECMWFAPI):
         self,
         time: metsource.TimeInput,
         variables: metsource.VariableInput,
+        *,
         pressure_levels: metsource.PressureLevelInput | None = None,
         timestep_freq: str | None = None,
         product_type: str = "reanalysis",
         grid: float | None = None,
-        levels: list[int] | None = None,
+        model_levels: list[int] | None = None,
         ensemble_members: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
-        cache_grib: bool = False,
+        cache_raw: bool = False,
         url: str | None = None,
         key: str | None = None,
     ) -> None:
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
-        self.cache_grib = cache_grib
+        self.cache_raw = cache_raw
 
         self.paths = None
 
@@ -164,12 +159,10 @@ class ERA5ModelLevel(ECMWFAPI):
             raise ValueError(msg)
         self.product_type = product_type
 
-        if product_type == "reanalysis" and ensemble_members:
+        if product_type != "ensemble-members" and ensemble_members:
             msg = "No ensemble members available for reanalysis product type."
             raise ValueError(msg)
-        if product_type == "ensemble_members" and not ensemble_members:
-            ensemble_members = ALL_ENSEMBLE_MEMBERS
-        self.ensemble_members = ensemble_members
+        self.ensemble_members = ensemble_members or ALL_ENSEMBLE_MEMBERS
 
         if grid is None:
             grid = 0.25 if product_type == "reanalysis" else 0.5
@@ -185,12 +178,12 @@ class ERA5ModelLevel(ECMWFAPI):
                 warnings.warn(msg)
         self.grid = grid
 
-        if levels is None:
-            levels = list(range(1, 138))
-        elif min(levels) < 1 or max(levels) > 137:
-            msg = "Retrieval levels must be between 1 and 137, inclusive."
+        if model_levels is None:
+            model_levels = list(range(1, 138))
+        elif min(model_levels) < 1 or max(model_levels) > 137:
+            msg = "Retrieval model_levels must be between 1 and 137, inclusive."
             raise ValueError(msg)
-        self.levels = levels
+        self.model_levels = model_levels
 
         datasource_timestep_freq = "1h" if product_type == "reanalysis" else "3h"
         if timestep_freq is None:
@@ -204,7 +197,7 @@ class ERA5ModelLevel(ECMWFAPI):
 
         self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
         if pressure_levels is None:
-            pressure_levels = pressure_levels_at_model_levels_constant_surface_pressure(
+            pressure_levels = mlmod.pressure_levels_at_model_levels_constant_surface_pressure(
                 20_000.0, 50_000.0
             )
         self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
@@ -295,7 +288,7 @@ class ERA5ModelLevel(ECMWFAPI):
             requests[request].append(t)
 
         # retrieve and process data for each request
-        LOG.debug(f"Retrieving ERA5 data for times {times} in {len(requests)} request(s)")
+        LOG.debug(f"Retrieving ERA5 ML data for times {times} in {len(requests)} request(s)")
         for times_in_request in requests.values():
             self._download_convert_cache_handler(times_in_request)
 
@@ -341,6 +334,32 @@ class ERA5ModelLevel(ECMWFAPI):
             product=product,
         )
 
+    def _mars_request_base(self, times: list[datetime]) -> dict[str, str]:
+        unique_dates = {t.strftime("%Y-%m-%d") for t in times}
+        unique_times = {t.strftime("%H:%M:%S") for t in times}
+
+        common = {
+            "class": "ea",
+            "date": "/".join(sorted(unique_dates)),
+            "expver": "1",
+            "levtype": "ml",
+            "time": "/".join(sorted(unique_times)),
+            "type": "an",
+            "grid": f"{self.grid}/{self.grid}",
+            "format": "netcdf",
+        }
+        if self.product_type == "reanalysis":
+            specific = {"stream": "oper"}
+        elif self.product_type == "ensemble_members":
+            specific = {"stream": "enda", "number": "/".join(str(n) for n in self.ensemble_members)}
+        return common | specific
+
+    def _mars_request_lnsp(self, times: list[datetime]) -> dict[str, str]:
+        out = self._mars_request_base(times)
+        out["param"] = "152"  # lnsp, needed for model level -> pressure level conversion
+        out["levelist"] = "1"
+        return out
+
     def mars_request(self, times: list[datetime]) -> dict[str, str]:
         """Generate MARS request for specific list of times.
 
@@ -354,28 +373,11 @@ class ERA5ModelLevel(ECMWFAPI):
         dict[str, str]:
             MARS request for submission to Copernicus CDS.
         """
-        unique_dates = set(t.strftime("%Y-%m-%d") for t in times)
-        unique_times = set(t.strftime("%H:%M:%S") for t in times)
-        # param 152 = log surface pressure, needed for metview level conversion
-        grib_params = set((*self.variable_ecmwfids, 152))
-        common = {
-            "class": "ea",
-            "date": "/".join(sorted(unique_dates)),
-            "expver": "1",
-            "levelist": "/".join(str(lev) for lev in sorted(self.levels)),
-            "levtype": "ml",
-            "param": "/".join(str(p) for p in sorted(grib_params)),
-            "time": "/".join(sorted(unique_times)),
-            "type": "an",
-            "grid": f"{self.grid}/{self.grid}",
-        }
-        if self.product_type == "reanalysis":
-            specific = {"stream": "oper"}
-        elif self.product_type == "ensemble_members":
-            specific = {"stream": "enda"}
-            if self.ensemble_members is not None:  # always defined; checked to satisfy mypy
-                specific |= {"number": "/".join(str(n) for n in self.ensemble_members)}
-        return common | specific
+
+        out = self._mars_request_base(times)
+        out["param"] = "/".join(str(p) for p in sorted(set(self.variable_ecmwfids)))
+        out["levelist"] = "/".join(str(lev) for lev in sorted(self.model_levels))
+        return out
 
     def _set_cds(self) -> None:
         """Set the cdsapi.Client instance."""
@@ -395,10 +397,7 @@ class ERA5ModelLevel(ECMWFAPI):
         except Exception as err:
             raise CDSCredentialsNotFound from err
 
-    def _download_convert_cache_handler(
-        self,
-        times: list[datetime],
-    ) -> None:
+    def _download_convert_cache_handler(self, times: list[datetime]) -> None:
         """Download, convert, and cache ERA5 model level data.
 
         This function builds a MARS request and retrieves a single GRIB file.
@@ -416,75 +415,51 @@ class ERA5ModelLevel(ECMWFAPI):
         ----------
         times : list[datetime]
             Times to download in a single MARS request.
-
-        Notes
-        -----
-        This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-        python bindings and binaries.
-
-        The lifetime of the metview import must last until processed datasets are cached
-        to avoid premature deletion of metview temporary files.
         """
-        try:
-            import metview as mv
-        except ModuleNotFoundError as exc:
-            dependencies.raise_module_not_found_error(
-                "model_level.grib_to_dataset function",
-                package_name="metview",
-                module_not_found_error=exc,
-                extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
-            )
-        except ImportError as exc:
-            msg = "Failed to import metview"
-            raise ImportError(msg) from exc
-
         if self.cachestore is None:
             msg = "Cachestore is required to download and cache data"
             raise ValueError(msg)
 
         stack = contextlib.ExitStack()
-        request = self.mars_request(times)
+        ml_request = self.mars_request(times)
+        lnsp_request = self._mars_request_lnsp(times)
 
-        if not self.cache_grib:
-            target = stack.enter_context(temp.temp_file())
+        if not self.cache_raw:
+            ml_target = stack.enter_context(temp.temp_file())
+            lnsp_target = stack.enter_context(temp.temp_file())
         else:
-            request_str = ";".join(f"{p}:{request[p]}" for p in sorted(request.keys()))
-            name = hashlib.md5(request_str.encode()).hexdigest()
-            target = self.cachestore.path(f"era5ml-{name}.grib")
+            ml_target = _target_path(ml_request, self.cachestore)
+            lnsp_target = _target_path(lnsp_request, self.cachestore)
 
         with stack:
-            if not self.cache_grib or not self.cachestore.exists(target):
-                if not hasattr(self, "cds"):
-                    self._set_cds()
-                self.cds.retrieve("reanalysis-era5-complete", request, target)
+            for request, target in ((ml_request, ml_target), (lnsp_request, lnsp_target)):
+                if not self.cache_raw or not self.cachestore.exists(target):
+                    if not hasattr(self, "cds"):
+                        self._set_cds()
+                    self.cds.retrieve("reanalysis-era5-complete", request, target)
 
-            # Read contents of GRIB file as metview Fieldset
-            LOG.debug("Opening GRIB file")
-            fs_ml = mv.read(target)
+            LOG.debug("Opening model level data file")
+            ds_ml = xr.open_dataset(ml_target)
+            lnsp = xr.open_dataarray(lnsp_target)
 
-            # reduce memory overhead by cacheing one timestep at a time
+            # New CDS-Beta gives "valid_time" instead of "time"
+            if "valid_time" in ds_ml:
+                ds_ml = ds_ml.rename(valid_time="time")
+            if "valid_time" in lnsp.dims:
+                lnsp = lnsp.rename(valid_time="time")
+
+            # Reduce memory overhead by caching one timestep at a time
             for time in times:
-                fs_pl = mv.Fieldset()
-                dimensions = self.ensemble_members if self.ensemble_members else [-1]
-                for ens in dimensions:
-                    date = time.strftime("%Y%m%d")
-                    t = time.strftime("%H%M")
-                    selection = dict(date=date, time=t)
-                    if ens >= 0:
-                        selection |= dict(number=str(ens))
-
-                    lnsp = fs_ml.select(shortName="lnsp", **selection)
-                    for var in self.variables:
-                        LOG.debug(
-                            f"Converting {var.short_name} at {t}"
-                            + (f" (ensemble member {ens})" if ens else "")
-                        )
-                        f_ml = fs_ml.select(shortName=var.short_name, **selection)
-                        f_pl = mv.mvl_ml2hPa(lnsp, f_ml, self.pressure_levels)
-                        fs_pl = mv.merge(fs_pl, f_pl)
-
-                # Create, validate, and cache dataset
-                ds = fs_pl.to_dataset()
-                ds = ds.rename(isobaricInhPa="level").expand_dims("time")
+                ds = mlmod.ml_to_pl(
+                    ds_ml.sel(time=[time]),
+                    lnsp.sel(time=[time]),
+                    target_pl=self.pressure_levels,
+                )
                 ds.attrs["pycontrails_version"] = pycontrails.__version__
                 self.cache_dataset(ds)
+
+
+def _target_path(request: dict[str, str], cachestore: cache.CacheStore) -> str:
+    request_str = ";".join(f"{p}:{request[p]}" for p in sorted(request))
+    name = hashlib.md5(request_str.encode()).hexdigest()
+    return cachestore.path(f"era5ml-{name}-raw.nc")
