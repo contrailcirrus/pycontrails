@@ -42,16 +42,6 @@ from pycontrails.datalib.ecmwf.model_levels import (
 )
 from pycontrails.utils import dependencies
 
-try:
-    import gcsfs
-except ModuleNotFoundError as e:
-    dependencies.raise_module_not_found_error(
-        "arco_era5 module",
-        package_name="gcsfs",
-        module_not_found_error=e,
-        pycontrails_optional_package="zarr",
-    )
-
 MOISTURE_STORE = "gs://gcp-public-data-arco-era5/co/model-level-moisture.zarr"
 WIND_STORE = "gs://gcp-public-data-arco-era5/co/model-level-wind.zarr"
 SURFACE_STORE = "gs://gcp-public-data-arco-era5/co/single-level-surface.zarr"
@@ -309,6 +299,15 @@ def open_arco_era5_single_level(
         indicate that the variable is not available in the ARCO ERA5 dataset,
         or that the time requested is outside the available range.
     """
+    try:
+        import gcsfs
+    except ModuleNotFoundError as e:
+        dependencies.raise_module_not_found_error(
+            "open_arco_era5_single_level function",
+            package_name="gcsfs",
+            module_not_found_error=e,
+            pycontrails_optional_package="zarr",
+        )
     gfs = gcsfs.GCSFileSystem()
 
     prefix = f"{SINGLE_LEVEL_PREFIX}/{t.year}/{t.month:02}/{t.day:02}"
