@@ -641,7 +641,7 @@ class MetDataSource(abc.ABC):
 
                 - chunks: {"time": 1}
                 - engine: "netcdf4"
-                - parallel: True
+                - parallel: False
 
         Returns
         -------
