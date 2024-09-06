@@ -347,7 +347,7 @@ def _build_template(ds: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.D
     return xr.Dataset(data_vars=vars, coords=coords, attrs=ds.attrs).chunk(chunks)
 
 
-def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.NDArray[np.floating]) -> xr.Dataset:
+def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.ArrayLike) -> xr.Dataset:
     r"""Interpolate L137 model-level meteorology data to pressure levels.
 
     The implementation is here is consistent with ECMWF's
@@ -363,7 +363,7 @@ def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.NDArray[np.float
         will be dropped.
     lnsp : xr.DataArray
         Natural logarithm of surface pressure, [:math:`\ln(\text{Pa})`].
-    target_pl : npt.NDArray[np.floating]
+    target_pl : npt.ArrayLike
         Target pressure levels, [:math:`hPa`].
 
     Returns
