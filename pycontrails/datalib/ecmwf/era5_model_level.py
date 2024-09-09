@@ -452,8 +452,8 @@ class ERA5ModelLevel(ECMWFAPI):
             for time in times:
                 ds = mlmod.ml_to_pl(
                     ds_ml.sel(time=[time]),
-                    lnsp.sel(time=[time]),
                     target_pl=self.pressure_levels,
+                    lnsp=lnsp.sel(time=[time]),
                 )
                 ds.attrs["pycontrails_version"] = pycontrails.__version__
                 self.cache_dataset(ds)
