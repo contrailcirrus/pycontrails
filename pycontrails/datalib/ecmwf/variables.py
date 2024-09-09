@@ -218,6 +218,17 @@ CloudAreaFraction = MetVariable(
     ),
 )
 
+OzoneMassMixingRatio = MetVariable(
+    short_name="o3",
+    standard_name="mass_fraction_of_ozone_in_air",
+    long_name="Ozone mass mixing ratio",
+    level_type="isobaricInhPa",
+    units="kg kg**-1",
+    ecmwf_id=203,
+    description="This parameter is the mass of ozone per kilogram of air.",
+)
+
+
 PRESSURE_LEVEL_VARIABLES = [
     met_var.AirTemperature,
     met_var.SpecificHumidity,
