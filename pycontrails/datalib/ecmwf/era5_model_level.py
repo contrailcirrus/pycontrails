@@ -159,7 +159,7 @@ class ERA5ModelLevel(ECMWFAPI):
             raise ValueError(msg)
         self.product_type = product_type
 
-        if product_type != "ensemble-members" and ensemble_members:
+        if product_type != "ensemble_members" and ensemble_members:
             msg = "No ensemble members available for reanalysis product type."
             raise ValueError(msg)
         self.ensemble_members = ensemble_members or ALL_ENSEMBLE_MEMBERS
