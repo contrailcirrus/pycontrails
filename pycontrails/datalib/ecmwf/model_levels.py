@@ -83,7 +83,7 @@ def _cache_model_level_dataframe() -> None:
     df.to_csv(new_file_path)
 
 
-def pressure_level_at_model_levels(lnsp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.DataArray:
+def pressure_level_at_model_levels(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.DataArray:
     r"""Return the pressure levels at each model level given the surface pressure.
 
     This function assumes
@@ -96,8 +96,8 @@ def pressure_level_at_model_levels(lnsp: xr.DataArray, model_levels: npt.ArrayLi
 
     Parameters
     ----------
-    lnsp : xr.DataArray
-        Natural logarithm of surface pressure, [:math:`\ln(\text{Pa})`].
+    sp : xr.DataArray
+        Surface pressure, [:math:`\text{Pa}`].
     model_levels : npt.ArrayLike
         Target model levels. Expected to be a one-dimensional array of integers between 1 and 137.
 
@@ -120,13 +120,13 @@ def pressure_level_at_model_levels(lnsp: xr.DataArray, model_levels: npt.ArrayLi
     >>> import numpy as np
     >>> import xarray as xr
 
-    >>> sp = np.linspace(101325.0, 90000.0, 16).reshape(4, 4)
+    >>> sp_arr = np.linspace(101325.0, 90000.0, 16).reshape(4, 4)
     >>> longitude = np.linspace(-180, 180, 4)
     >>> latitude = np.linspace(-90, 90, 4)
-    >>> lnsp = xr.DataArray(np.log(sp), coords={"longitude": longitude, "latitude": latitude})
+    >>> sp = xr.DataArray(sp_arr, coords={"longitude": longitude, "latitude": latitude})
 
     >>> model_levels = [80, 100]
-    >>> pressure_level_at_model_levels(lnsp, model_levels)
+    >>> pressure_level_at_model_levels(sp, model_levels)
     <xarray.DataArray (model_level: 2, longitude: 4, latitude: 4)> Size: 256B
     array([[[259.75493944, 259.27107504, 258.78721064, 258.30334624],
             [257.81948184, 257.33561744, 256.85175304, 256.36788864],
@@ -160,18 +160,17 @@ def pressure_level_at_model_levels(lnsp: xr.DataArray, model_levels: npt.ArrayLi
     a = df["a"].to_xarray()
     b = df["b"].to_xarray()
 
-    if "model_level" in lnsp.dims:
-        lnsp_model_levels = lnsp["model_level"]
-        if len(lnsp_model_levels) != 1:
-            msg = "Found multiple model levels in lnsp, expected at most one"
+    if "model_level" in sp.dims:
+        sp_model_levels = sp["model_level"]
+        if len(sp_model_levels) != 1:
+            msg = "Found multiple model levels in sp, expected at most one"
             raise ValueError(msg)
-        if lnsp_model_levels.item() != 1:
-            msg = f"lnsp must be at model level 1, found model level {lnsp_model_levels.item()}"
+        if sp_model_levels.item() != 1:
+            msg = f"sp must be at model level 1, found model level {sp_model_levels.item()}"
             raise ValueError(msg)
         # Remove the model level dimension to allow automatic broadcasting below
-        lnsp = lnsp.squeeze("model_level")
+        sp = sp.squeeze("model_level")
 
-    sp = dask.array.exp(lnsp)
     dtype = sp.dtype
     a = a.astype(dtype, copy=False)
     b = b.astype(dtype, copy=False)
@@ -347,7 +346,13 @@ def _build_template(ds: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.D
     return xr.Dataset(data_vars=vars, coords=coords, attrs=ds.attrs).chunk(chunks)
 
 
-def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.ArrayLike) -> xr.Dataset:
+def ml_to_pl(
+    ds: xr.Dataset,
+    target_pl: npt.ArrayLike,
+    *,
+    lnsp: xr.DataArray | None = None,
+    sp: xr.DataArray | None = None,
+) -> xr.Dataset:
     r"""Interpolate L137 model-level meteorology data to pressure levels.
 
     The implementation is here is consistent with ECMWF's
@@ -361,10 +366,14 @@ def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.ArrayLike) -> xr
         aligned with the "lnsp" parameter. Can include any number of variables.
         Any `non-dimensional coordinates <https://docs.xarray.dev/en/latest/user-guide/terminology.html#term-Non-dimension-coordinate>`_
         will be dropped.
-    lnsp : xr.DataArray
-        Natural logarithm of surface pressure, [:math:`\ln(\text{Pa})`].
     target_pl : npt.ArrayLike
         Target pressure levels, [:math:`hPa`].
+    lnsp : xr.DataArray
+        Natural logarithm of surface pressure, [:math:`\ln(\text{Pa})`]. If provided,
+        ``sp`` is ignored. At least one of ``lnsp`` or ``sp`` must be provided.
+    sp : xr.DataArray
+        Surface pressure, [:math:`\text{Pa}`].
+        At least one of ``lnsp`` or ``sp`` must be provided.
 
     Returns
     -------
@@ -375,15 +384,20 @@ def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.ArrayLike) -> xr
         the length of ``target_pl``. If ``ds`` is dask-backed, the output
         will be as well. Call ``.compute()`` to compute the result eagerly.
     """
-    target_pl = np.asarray(target_pl, dtype=lnsp.dtype)
+    if lnsp is not None:
+        sp = dask.array.exp(lnsp)
+    elif sp is None:
+        msg = "At least one of 'lnsp' or 'sp' must be provided"
+        raise ValueError(msg)
+
     model_levels = ds["model_level"]
+    pl = pressure_level_at_model_levels(sp, model_levels)
 
     if "pressure_level" in ds:
         msg = "The dataset must not contain a 'pressure_level' variable"
         raise ValueError(msg)
-
-    pl = pressure_level_at_model_levels(lnsp, model_levels)
     ds = ds.assign(pressure_level=pl)
+
     ds = ds.reset_coords(drop=True)  # drop "expver"
     # IMPORTANT: model_level must be the last dimension for _interp_on_chunk
     ds = ds.transpose(..., "model_level")
@@ -393,5 +407,6 @@ def ml_to_pl(ds: xr.Dataset, lnsp: xr.DataArray, target_pl: npt.ArrayLike) -> xr
         msg = "The 'model_level' dimension must not be split across chunks"
         raise ValueError(msg)
 
+    target_pl = np.asarray(target_pl, dtype=sp.dtype)
     template = _build_template(ds, target_pl)
     return xr.map_blocks(_interp_on_chunk, ds, (target_pl,), template=template)
