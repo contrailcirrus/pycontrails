@@ -128,8 +128,7 @@ class HRESModelLevel(ECMWFAPI):
         timestep_freq: str | None = None,
         grid: float | None = None,
         forecast_time: DatetimeLike | None = None,
-        levels: list[int] | None = None,
-        ensemble_members: list[int] | None = None,
+        model_levels: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
         cache_grib: bool = False,
         url: str | None = None,
@@ -161,12 +160,12 @@ class HRESModelLevel(ECMWFAPI):
                 warnings.warn(msg)
         self.grid = grid
 
-        if levels is None:
-            levels = list(range(1, 138))
-        if min(levels) < 1 or max(levels) > 137:
-            msg = "Retrieval levels must be between 1 and 137, inclusive."
+        if model_levels is None:
+            model_levels = list(range(1, 138))
+        elif min(model_levels) < 1 or max(model_levels) > 137:
+            msg = "Retrieval model_levels must be between 1 and 137, inclusive."
             raise ValueError(msg)
-        self.levels = levels
+        self.model_levels = model_levels
 
         forecast_hours = metsource.parse_timesteps(time, freq="1h")
         if forecast_time is None:
@@ -386,7 +385,7 @@ class HRESModelLevel(ECMWFAPI):
             f"class=od,\n"
             f"date={date},\n"
             f"expver=1,\n"
-            f"levelist={'/'.join(str(lev) for lev in sorted(self.levels))},\n"
+            f"levelist={'/'.join(str(lev) for lev in sorted(self.model_levels))},\n"
             f"levtype=ml,\n"
             f"param={'/'.join(str(p) for p in sorted(grib_params))},\n"
             f"step={'/'.join(str(s) for s in sorted(steps))},\n"
