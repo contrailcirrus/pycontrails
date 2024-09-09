@@ -109,11 +109,11 @@ def pressure_level_at_model_levels(sp: xr.DataArray, model_levels: npt.ArrayLike
         other words, the output will have dimensions of the input plus a new dimension
         for ``model_levels``.
 
-        If ``lnsp`` is not dask-backed, the output will be computed eagerly. In particular,
-        if ``lnsp`` has a large size and ``model_levels`` is a large range, this function
+        If ``sp`` is not dask-backed, the output will be computed eagerly. In particular,
+        if ``sp`` has a large size and ``model_levels`` is a large range, this function
         may consume a large amount of memory.
 
-        The ``dtype`` of the output is the same as the ``dtype`` of the ``lnsp`` parameter.
+        The ``dtype`` of the output is the same as the ``dtype`` of the ``sp`` parameter.
 
     Examples
     --------
