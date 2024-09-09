@@ -172,16 +172,16 @@ def test_inputs(datalib: AnyECMWFDatalibClass) -> None:
 @pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
 def test_model_level_retrieved_levels(datalib: AnyModelLevelDatalibClass) -> None:
     """Test model levels included in request."""
-    with pytest.raises(ValueError, match="Retrieval levels must be between"):
-        dl = datalib(time=datetime(2000, 1, 1), variables="vo", levels=[0, 1, 2])
-    with pytest.raises(ValueError, match="Retrieval levels must be between"):
-        dl = datalib(time=datetime(2000, 1, 1), variables="vo", levels=[136, 137, 138])
+    with pytest.raises(ValueError, match="Retrieval model_levels must be between"):
+        dl = datalib(time=datetime(2000, 1, 1), variables="vo", model_levels=[0, 1, 2])
+    with pytest.raises(ValueError, match="Retrieval model_levels must be between"):
+        dl = datalib(time=datetime(2000, 1, 1), variables="vo", model_levels=[136, 137, 138])
 
     dl = datalib(time=datetime(2000, 1, 1), variables="vo")
-    assert dl.levels == list(range(1, 138))
+    assert dl.model_levels == list(range(1, 138))
 
-    dl = datalib(time=datetime(2000, 1, 1), variables="vo", levels=[3, 4, 5])
-    assert dl.levels == [3, 4, 5]
+    dl = datalib(time=datetime(2000, 1, 1), variables="vo", model_levels=[3, 4, 5])
+    assert dl.model_levels == [3, 4, 5]
 
 
 @pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
@@ -776,7 +776,7 @@ def test_model_level_era5_nominal_mars_request() -> None:
     era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
         variables=["t", "q"],
-        levels=[1, 2, 3],
+        model_levels=[1, 2, 3],
         timestep_freq="6h",
     )
     request = era5.mars_request(era5.timesteps)
@@ -786,10 +786,11 @@ def test_model_level_era5_nominal_mars_request() -> None:
         "expver": "1",
         "levelist": "1/2/3",
         "levtype": "ml",
-        "param": "130/133/152",
+        "param": "130/133",
         "time": "00:00:00/06:00:00/12:00:00/18:00:00",
         "type": "an",
         "grid": "0.25/0.25",
+        "format": "netcdf",
         "stream": "oper",
     }
 
@@ -799,7 +800,7 @@ def test_model_level_era5_ensemble_mars_request() -> None:
     era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
         variables=["t", "q"],
-        levels=[1, 2, 3],
+        model_levels=[1, 2, 3],
         timestep_freq="6h",
         product_type="ensemble_members",
         ensemble_members=[1, 4, 5],
@@ -811,10 +812,11 @@ def test_model_level_era5_ensemble_mars_request() -> None:
         "expver": "1",
         "levelist": "1/2/3",
         "levtype": "ml",
-        "param": "130/133/152",
+        "param": "130/133",
         "time": "00:00:00/06:00:00/12:00:00/18:00:00",
         "type": "an",
         "grid": "0.5/0.5",
+        "format": "netcdf",
         "stream": "enda",
         "number": "1/4/5",
     }
@@ -1126,7 +1128,7 @@ def test_model_level_hres_mars_request() -> None:
         time=(datetime(2000, 1, 1, 3), datetime(2000, 1, 1, 6)),
         forecast_time="2000-01-01 00:00:00",
         variables=["t", "q"],
-        levels=[1, 2, 3],
+        model_levels=[1, 2, 3],
     )
     request = hres.mars_request(hres.timesteps)
     assert request == ",\n".join(
