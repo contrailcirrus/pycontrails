@@ -1165,9 +1165,9 @@ def test_pressure_levels_at_model_levels_agreement() -> None:
     assert isinstance(pl1, list)
     assert len(pl1) == 137
 
-    lnsp = xr.DataArray(np.log(1013.25 * 100.0))
+    sp = xr.DataArray(1013.25 * 100.0)
     model_levels = range(1, 138)
-    da = pressure_level_at_model_levels(lnsp, model_levels)
+    da = pressure_level_at_model_levels(sp, model_levels)
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("model_level",)
 
@@ -1177,9 +1177,9 @@ def test_pressure_levels_at_model_levels_agreement() -> None:
 
 def test_pressure_level_at_model_levels_agrees_with_ecmwf() -> None:
     """Test pressure level at model levels agrees with published ECMWF values."""
-    lnsp = xr.DataArray(np.log(1013.25 * 100.0))
+    sp = xr.DataArray(1013.25 * 100.0)
     model_levels = range(1, 138)
-    s1 = pressure_level_at_model_levels(lnsp, model_levels).to_series().round(4)
+    s1 = pressure_level_at_model_levels(sp, model_levels).to_series().round(4)
 
     s2 = pd.read_csv(MODEL_LEVELS_PATH, index_col=0)["pf [hPa]"].loc[1:137]
 
@@ -1189,7 +1189,7 @@ def test_pressure_level_at_model_levels_agrees_with_ecmwf() -> None:
 def test_ml_to_pl_conversion_output(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
     """Test ml_to_pl conversion output."""
     target_pl = [200, 210, 220, 230, 240, 250]
-    ds = ml_to_pl(era5_ml, lnsp, target_pl)
+    ds = ml_to_pl(era5_ml, target_pl, lnsp=lnsp)
     assert isinstance(ds, xr.Dataset)
     np.testing.assert_array_equal(ds["level"], target_pl)
 
@@ -1201,7 +1201,7 @@ def test_ml_to_pl_conversion_output(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> 
 def test_ml_to_pl_conversion_output_with_null(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
     """Test ml_to_pl conversion with null values in the output."""
     target_pl = [190, 200]
-    ds = ml_to_pl(era5_ml, lnsp, target_pl)
+    ds = ml_to_pl(era5_ml, target_pl, lnsp=lnsp)
     assert isinstance(ds, xr.Dataset)
     np.testing.assert_array_equal(ds["level"], target_pl)
 
@@ -1224,7 +1224,7 @@ def test_ml_to_pl_close_to_era5_pl(
     target_pl = ds_pl["level"].values
     np.testing.assert_array_equal(target_pl, [300, 250, 225])
 
-    ds_ml = ml_to_pl(era5_ml, lnsp, target_pl)
+    ds_ml = ml_to_pl(era5_ml, target_pl, lnsp=lnsp)
 
     # 19 nulls got introduced in the conversion, all on level 300
     for v in ds_ml.data_vars:
