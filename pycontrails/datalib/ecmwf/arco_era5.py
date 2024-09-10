@@ -88,6 +88,7 @@ def _open_arco_model_level_stores(
     """Open slices of the ARCO ERA5 model level Zarr stores."""
     kw = {"chunks": None, "consolidated": True}
 
+    # This is too slow to open with chunks={} or chunks="auto"
     ds = xr.open_zarr(MODEL_LEVEL_STORE, **kw)
     names = {
         name: var.short_name
@@ -99,10 +100,12 @@ def _open_arco_model_level_stores(
         raise ValueError(msg)
 
     ds = ds[list(names)].sel(time=times).rename(hybrid="model_level").rename_vars(names)
-    ds = ds.chunk(time=-1)
-
     sp = xr.open_zarr(COMBINED_STORE, **kw)["surface_pressure"].sel(time=times)
-    sp = sp.chunk(time=-1)
+
+    # Chunk here in a way that is harmonious with the zarr store itself
+    # https://github.com/google-research/arco-era5?tab=readme-ov-file#025-model-level-data
+    ds = ds.chunk(time=1)
+    sp = sp.chunk(time=1)
 
     return ds, sp
 
@@ -171,7 +174,7 @@ def open_arco_era5_single_level(
         indicate that the variable is not available in the ARCO ERA5 dataset,
         or that the time requested is outside the available range.
     """
-
+    # This is too slow to open with chunks={} or chunks="auto"
     ds = xr.open_zarr(COMBINED_STORE, consolidated=True, chunks=None)
     names = {
         name: var.short_name
@@ -183,9 +186,14 @@ def open_arco_era5_single_level(
         raise ValueError(msg)
 
     ds = ds[list(names)].sel(time=times).rename_vars(names)
-    ds = ds.chunk(time=-1)
 
-    ds = ds.expand_dims(level=[-1])  # this materializes the data when chunks=None
+    # But we need to chunk it here for lazy loading (the call expand_dims below
+    # would materialize the data if chunks=None). So we chunk in a way that is
+    # harmonious with the zarr store itself.
+    # https://github.com/google-research/arco-era5?tab=readme-ov-file#025-pressure-and-surface-level-data
+    ds = ds.chunk(time=1)
+
+    ds = ds.expand_dims(level=[-1])
     return MetDataset(ds).data
 
 
