@@ -384,11 +384,11 @@ def ml_to_pl(
         the length of ``target_pl``. If ``ds`` is dask-backed, the output
         will be as well. Call ``.compute()`` to compute the result eagerly.
     """
-    if lnsp is not None:
+    if sp is None:
+        if lnsp is None:
+            msg = "At least one of 'lnsp' or 'sp' must be provided"
+            raise ValueError(msg)
         sp = dask.array.exp(lnsp)
-    elif sp is None:
-        msg = "At least one of 'lnsp' or 'sp' must be provided"
-        raise ValueError(msg)
 
     model_levels = ds["model_level"]
     pl = pressure_level_at_model_levels(sp, model_levels)
