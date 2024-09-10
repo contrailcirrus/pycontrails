@@ -86,7 +86,7 @@ def _open_arco_model_level_stores(
     variables: list[met_var.MetVariable],
 ) -> tuple[xr.Dataset, xr.DataArray]:
     """Open slices of the ARCO ERA5 model level Zarr stores."""
-    kw = {"chunks": None, "consolidated": True}
+    kw: dict[str, Any] = {"chunks": None, "consolidated": True}  # keep type hint for mypy
 
     # This is too slow to open with chunks={} or chunks="auto"
     ds = xr.open_zarr(MODEL_LEVEL_STORE, **kw)
