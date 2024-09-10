@@ -448,6 +448,10 @@ class ERA5ModelLevel(ECMWFAPI):
             if "valid_time" in lnsp.dims:
                 lnsp = lnsp.rename(valid_time="time")
 
+            # The legacy CDS gives "level" instead of "model_level"
+            if "level" in ds_ml.dims:
+                ds_ml = ds_ml.rename(level="model_level")
+
             # Reduce memory overhead by caching one timestep at a time
             for time in times:
                 ds = mlmod.ml_to_pl(
