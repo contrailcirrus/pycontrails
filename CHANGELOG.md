@@ -1,6 +1,27 @@
 # Changelog
 
-## v0.53.2 (unreleased)
+## v0.54.0
+
+### Features
+
+- Perform model-level to pressure-level conversion in-house instead of relying on `metview`. This update has several advantages:
+  - The `ARCOERA5` and `ERA5ModelLevel` interfaces no longer require `metview` to be installed. Similarly, grib files and the associated tooling can also largely be avoided.
+  - The computation is performed using `xarray` and `dask` tooling, which means the result can be computed lazily if desired.
+  - The computation is defined using `numpy` operations (some of which release the GIL) and can be parallelized using threading through `dask` (this is the default behavior).
+  - The computation is generally a bit faster than the `metview` implementation (this depends on the exact chunking of the model level meteorology data). This chunking can be tuned by the user to optimize runtime performance or memory usage.
+
+  See the `ml_to_pl` function for low-level details.
+
+- Update the `ARCOERA5` and `ERA5ModelLevel` interfaces to use the new model-level to pressure-level conversion. The ERA5 model level data is now downloaded as the netcdf format instead of grib. This format change decreases the download size.
+
+### Breaking changes
+
+- Rename `levels` -> `model_levels` in the `ARCOERA5` and `ERA5ModelLevel` constructors. Rename `cache_grib` -> `cache_raw`.
+- Rename `pressure_levels_at_model_levels` -> `pressure_levels_at_model_levels_constant_surface_pressure`. Add a new `pressure_levels_at_model_levels` method that requires surface pressure data.
+
+### Fixes
+
+- Update `ERA5ModelLevel` for the new CDS-Beta server.
 
 ### Internals
 
