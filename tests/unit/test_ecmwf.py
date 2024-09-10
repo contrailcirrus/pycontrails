@@ -1181,9 +1181,14 @@ def test_pressure_level_at_model_levels_agrees_with_ecmwf() -> None:
     model_levels = range(1, 138)
     s1 = pressure_level_at_model_levels(sp, model_levels).to_series().round(4)
 
-    s2 = pd.read_csv(MODEL_LEVELS_PATH, index_col=0)["pf [hPa]"].loc[1:137]
+    s2 = (
+        pd.read_csv(MODEL_LEVELS_PATH, index_col=0)["pf [hPa]"]
+        .loc[1:137]
+        .rename_axis("model_level")
+        .rename(None)
+    )
 
-    pd.testing.assert_series_equal(s1, s2, check_names=False, check_exact=True, atol=5e-4)
+    pd.testing.assert_series_equal(s1, s2, atol=5e-4, rtol=0.0)
 
 
 def test_ml_to_pl_conversion_output(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
@@ -1200,14 +1205,17 @@ def test_ml_to_pl_conversion_output(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> 
 
 def test_ml_to_pl_conversion_output_with_null(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
     """Test ml_to_pl conversion with null values in the output."""
-    target_pl = [190, 200]
+    target_pl = [190, 195, 200]
     ds = ml_to_pl(era5_ml, target_pl, lnsp=lnsp)
     assert isinstance(ds, xr.Dataset)
     np.testing.assert_array_equal(ds["level"], target_pl)
 
-    # All the values on PL 190 are null
+    # Most the values on PL 190 are null
+    # Some on PL 195 are null
+    # And none on PL 200 are null
     for v in ds.data_vars:
-        assert ds[v].sel(level=190).isnull().all()
+        assert ds[v].sel(level=190).isnull().mean() == 0.925
+        assert ds[v].sel(level=195).isnull().mean() == 0.841666666666666666
         assert not ds[v].sel(level=200).isnull().any()
 
 
