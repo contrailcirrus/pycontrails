@@ -3,13 +3,9 @@
 This module supports
 
 - Retrieving model-level HRES data by submitting MARS requests through the ECMWF API.
-- Processing retrieved GRIB files to produce netCDF files on target pressure levels.
+- Processing retrieved model-level files to produce netCDF files on target pressure levels.
 - Local caching of processed netCDF files.
 - Opening processed and cached files as a :class:`pycontrails.MetDataset` object.
-
-This module requires the following additional dependency:
-
-- `metview (binaries and python bindings) <https://metview.readthedocs.io/en/latest/python.html>`_
 """
 
 from __future__ import annotations
@@ -31,10 +27,8 @@ import pycontrails
 from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib._met_utils import metsource
+from pycontrails.datalib.ecmwf import model_levels as mlmod
 from pycontrails.datalib.ecmwf.common import ECMWFAPI
-from pycontrails.datalib.ecmwf.model_levels import (
-    pressure_levels_at_model_levels_constant_surface_pressure,
-)
 from pycontrails.datalib.ecmwf.variables import MODEL_LEVEL_VARIABLES
 from pycontrails.utils import dependencies, temp
 from pycontrails.utils.types import DatetimeLike
@@ -78,7 +72,7 @@ class HRESModelLevel(ECMWFAPI):
         Input must be datetime-like or tuple of datetime-like
         (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
-        All times will be downloaded in a single GRIB file, which
+        All times will be downloaded in a single NetCDF file, which
         ensures that exactly one request is submitted per file on tape accessed.
         If ``forecast_time`` is unspecified, the forecast time will
         be assumed to be the nearest synoptic hour available in the operational archive (00 or 12).
@@ -107,8 +101,8 @@ class HRESModelLevel(ECMWFAPI):
         Cache data store for staging processed netCDF files.
         Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
-    cache_grib: bool, optional
-        If True, cache downloaded GRIB files rather than storing them in a temporary file.
+    cache_raw: bool, optional
+        If True, cache downloaded NetCDF files rather than storing them in a temporary file.
         By default, False.
     url : str
         Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ url
@@ -130,7 +124,7 @@ class HRESModelLevel(ECMWFAPI):
         forecast_time: DatetimeLike | None = None,
         model_levels: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
-        cache_grib: bool = False,
+        cache_raw: bool = False,
         url: str | None = None,
         key: str | None = None,
         email: str | None = None,
@@ -138,7 +132,7 @@ class HRESModelLevel(ECMWFAPI):
         # Parse and set each parameter to the instance
 
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
-        self.cache_grib = cache_grib
+        self.cache_raw = cache_raw
 
         self.paths = None
 
@@ -204,7 +198,7 @@ class HRESModelLevel(ECMWFAPI):
             raise ValueError(msg)
 
         if pressure_levels is None:
-            pressure_levels = pressure_levels_at_model_levels_constant_surface_pressure(
+            pressure_levels = mlmod.pressure_levels_at_model_levels_constant_surface_pressure(
                 20_000.0, 50_000.0
             )
         self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
@@ -378,8 +372,8 @@ class HRESModelLevel(ECMWFAPI):
         date = self.forecast_time.strftime("%Y-%m-%d")
         time = self.forecast_time.strftime("%H:%M:%S")
         steps = self.get_forecast_steps(times)
-        # param 152 = log surface pressure, needed for metview level conversion
-        grib_params = set((*self.variable_ecmwfids, 152))
+        # param 152 = log surface pressure, needed for model level conversion
+        grib_params = {*self.variable_ecmwfids, 152}
         return (
             f"retrieve,\n"
             f"class=od,\n"
@@ -392,7 +386,8 @@ class HRESModelLevel(ECMWFAPI):
             f"stream=oper,\n"
             f"time={time},\n"
             f"type=fc,\n"
-            f"grid={self.grid}/{self.grid}"
+            f"grid={self.grid}/{self.grid},\n"
+            "format=netcdf"
         )
 
     def _set_server(self) -> None:
@@ -415,7 +410,7 @@ class HRESModelLevel(ECMWFAPI):
     ) -> None:
         """Download, convert, and cache HRES model level data.
 
-        This function builds a MARS request and retrieves a single GRIB file.
+        This function builds a MARS request and retrieves a single NetCDF file.
         The calling function should ensure that all times will be contained
         in a single file on tape in the MARS archive.
 
@@ -423,7 +418,7 @@ class HRESModelLevel(ECMWFAPI):
         retrieved data will include the Cartesian product of all unique
         dates and times in the list of specified times.
 
-        After retrieval, this function processes the GRIB file
+        After retrieval, this function processes the NetCDF file
         to produce the dataset specified by class attributes.
 
         Parameters
@@ -431,67 +426,36 @@ class HRESModelLevel(ECMWFAPI):
         times : list[datetime]
             Times to download in a single MARS request.
 
-        Notes
-        -----
-        This function depends on `metview <https://metview.readthedocs.io/en/latest/python.html>`_
-        python bindings and binaries.
-
-        The lifetime of the metview import must last until processed datasets are cached
-        to avoid premature deletion of metview temporary files.
         """
-        try:
-            import metview as mv
-        except ModuleNotFoundError as exc:
-            dependencies.raise_module_not_found_error(
-                "model_level.grib_to_dataset function",
-                package_name="metview",
-                module_not_found_error=exc,
-                extra="See https://metview.readthedocs.io/en/latest/install.html for instructions.",
-            )
-        except ImportError as exc:
-            msg = "Failed to import metview"
-            raise ImportError(msg) from exc
-
         if self.cachestore is None:
             msg = "Cachestore is required to download and cache data"
             raise ValueError(msg)
 
-        stack = contextlib.ExitStack()
         request = self.mars_request(times)
 
-        if not self.cache_grib:
+        stack = contextlib.ExitStack()
+        if not self.cache_raw:
             target = stack.enter_context(temp.temp_file())
         else:
             name = hashlib.md5(request.encode()).hexdigest()
-            target = self.cachestore.path(f"hresml-{name}.grib")
+            target = self.cachestore.path(f"hresml-{name}.nc")
 
         with stack:
-            if not self.cache_grib or not self.cachestore.exists(target):
+            if not self.cache_raw or not self.cachestore.exists(target):
                 if not hasattr(self, "server"):
                     self._set_server()
                 self.server.execute(request, target)
 
-            # Read contents of GRIB file as metview Fieldset
-            LOG.debug("Opening GRIB file")
-            fs_ml = mv.read(target)
+            LOG.debug("Opening model level data file")
 
-            # reduce memory overhead by caching one timestep at a time
-            for time, step in zip(times, self.get_forecast_steps(times), strict=True):
-                fs_pl = mv.Fieldset()
-                selection = dict(step=step)
-                lnsp = fs_ml.select(shortName="lnsp", **selection)
-                for var in self.variables:
-                    LOG.debug(
-                        f"Converting {var.short_name} at {time.strftime('%Y-%m-%d %H:%M:%S')}"
-                        + f" (step {step})"
-                    )
-                    f_ml = fs_ml.select(shortName=var.short_name, **selection)
-                    f_pl = mv.mvl_ml2hPa(lnsp, f_ml, self.pressure_levels)
-                    fs_pl = mv.merge(fs_pl, f_pl)
+            # Use a chunking scheme harmonious with self.cache_dataset, which groups by time
+            # Because ds_ml is dask-backed, nothing gets computed until cache_dataset is called
+            ds_ml = xr.open_dataset(target, chunks={"time": 1})
 
-                # Create, validate, and cache dataset
-                ds = fs_pl.to_dataset()
-                ds = ds.rename(isobaricInhPa="level", time="initialization_time")
-                ds = ds.rename(step="time").assign_coords(time=time).expand_dims("time")
-                ds.attrs["pycontrails_version"] = pycontrails.__version__
-                self.cache_dataset(ds)
+            ds_ml = ds_ml.rename(level="model_level")
+            lnsp = ds_ml["lnsp"].sel(model_level=1)
+            ds_ml = ds_ml.drop_vars("lnsp")
+
+            ds = mlmod.ml_to_pl(ds_ml, target_pl=self.pressure_levels, lnsp=lnsp)
+            ds.attrs["pycontrails_version"] = pycontrails.__version__
+            self.cache_dataset(ds)

@@ -3,7 +3,7 @@
 This module supports
 
 - Retrieving model-level ERA5 data by submitting MARS requests through the Copernicus CDS.
-- Processing retrieved GRIB files to produce netCDF files on target pressure levels.
+- Processing retrieved model-level files to produce netCDF files on target pressure levels.
 - Local caching of processed netCDF files.
 - Opening processed and cached files as a :class:`pycontrails.MetDataset` object.
 
@@ -76,7 +76,7 @@ class ERA5ModelLevel(ECMWFAPI):
         Input must be datetime-like or tuple of datetime-like
         (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
-        GRIB files will be downloaded from CDS in chunks no larger than 1 month
+        NetCDF files will be downloaded from CDS in chunks no larger than 1 month
         for the nominal reanalysis and no larger than 1 day for ensemble members.
         This ensures that exactly one request is submitted per file on tape accessed.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
@@ -400,7 +400,7 @@ class ERA5ModelLevel(ECMWFAPI):
     def _download_convert_cache_handler(self, times: list[datetime]) -> None:
         """Download, convert, and cache ERA5 model level data.
 
-        This function builds a MARS request and retrieves a single GRIB file.
+        This function builds a MARS request and retrieves a single NetCDF file.
         The calling function should ensure that all times will be contained
         in a single file on tape in the MARS archive.
 
@@ -408,7 +408,7 @@ class ERA5ModelLevel(ECMWFAPI):
         retrieved data will include the Cartesian product of all unique
         dates and times in the list of specified times.
 
-        After retrieval, this function processes the GRIB file
+        After retrieval, this function processes the NetCDF file
         to produce the dataset specified by class attributes.
 
         Parameters
@@ -420,10 +420,10 @@ class ERA5ModelLevel(ECMWFAPI):
             msg = "Cachestore is required to download and cache data"
             raise ValueError(msg)
 
-        stack = contextlib.ExitStack()
         ml_request = self.mars_request(times)
         lnsp_request = self._mars_request_lnsp(times)
 
+        stack = contextlib.ExitStack()
         if not self.cache_raw:
             ml_target = stack.enter_context(temp.temp_file())
             lnsp_target = stack.enter_context(temp.temp_file())
@@ -439,8 +439,11 @@ class ERA5ModelLevel(ECMWFAPI):
                     self.cds.retrieve("reanalysis-era5-complete", request, target)
 
             LOG.debug("Opening model level data file")
-            ds_ml = xr.open_dataset(ml_target)
-            lnsp = xr.open_dataarray(lnsp_target)
+
+            # Use a chunking scheme harmonious with self.cache_dataset, which groups by time
+            # Because ds_ml is dask-backed, nothing gets computed until cache_dataset is called
+            ds_ml = xr.open_dataset(ml_target, chunks={"time": 1})
+            lnsp = xr.open_dataarray(lnsp_target, chunks={"time": 1})
 
             # New CDS-Beta gives "valid_time" instead of "time"
             if "valid_time" in ds_ml:
@@ -452,15 +455,9 @@ class ERA5ModelLevel(ECMWFAPI):
             if "level" in ds_ml.dims:
                 ds_ml = ds_ml.rename(level="model_level")
 
-            # Reduce memory overhead by caching one timestep at a time
-            for time in times:
-                ds = mlmod.ml_to_pl(
-                    ds_ml.sel(time=[time]),
-                    target_pl=self.pressure_levels,
-                    lnsp=lnsp.sel(time=[time]),
-                )
-                ds.attrs["pycontrails_version"] = pycontrails.__version__
-                self.cache_dataset(ds)
+            ds = mlmod.ml_to_pl(ds_ml, target_pl=self.pressure_levels, lnsp=lnsp)
+            ds.attrs["pycontrails_version"] = pycontrails.__version__
+            self.cache_dataset(ds)
 
 
 def _target_path(request: dict[str, str], cachestore: cache.CacheStore) -> str:
