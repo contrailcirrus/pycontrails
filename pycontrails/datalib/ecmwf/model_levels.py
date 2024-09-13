@@ -364,7 +364,7 @@ def ml_to_pl(
         Dataset with model-level meteorology data. Must include a "model_level" dimension
         which is not split across chunks. The non-"model_level" dimensions must be
         aligned with the "lnsp" parameter. Can include any number of variables.
-        Any `non-dimensional coordinates <https://docs.xarray.dev/en/latest/user-guide/terminology.html#term-Non-dimension-coordinate>`_
+        Any `non-dimension coordinates <https://docs.xarray.dev/en/latest/user-guide/terminology.html#term-Non-dimension-coordinate>`_
         will be dropped.
     target_pl : npt.ArrayLike
         Target pressure levels, [:math:`hPa`].
