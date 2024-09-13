@@ -453,10 +453,8 @@ class ERA5ModelLevel(ECMWFAPI):
 
             LOG.debug("Opening model level data file")
 
-            # Use a chunking scheme harmonious with self.cache_dataset, which groups by time
-            # Because ds_ml is dask-backed, nothing gets computed until cache_dataset is called
-            ds_ml = xr.open_dataset(ml_target, chunks={"time": 1})
-            lnsp = xr.open_dataarray(lnsp_target, chunks={"time": 1})
+            ds_ml = xr.open_dataset(ml_target)
+            lnsp = xr.open_dataarray(lnsp_target)
 
             # New CDS-Beta gives "valid_time" instead of "time"
             if "valid_time" in ds_ml:
@@ -467,6 +465,11 @@ class ERA5ModelLevel(ECMWFAPI):
             # The legacy CDS gives "level" instead of "model_level"
             if "level" in ds_ml.dims:
                 ds_ml = ds_ml.rename(level="model_level")
+
+            # Use a chunking scheme harmonious with self.cache_dataset, which groups by time
+            # Because ds_ml is dask-backed, nothing gets computed until cache_dataset is called
+            ds_ml = ds_ml.chunk(time=1)
+            lnsp = lnsp.chunk(time=1)
 
             ds = mlmod.ml_to_pl(ds_ml, target_pl=self.pressure_levels, lnsp=lnsp)
             ds.attrs["pycontrails_version"] = pycontrails.__version__
