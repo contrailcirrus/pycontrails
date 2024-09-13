@@ -108,7 +108,7 @@ class ERA5ModelLevel(ECMWFAPI):
         Cache data store for staging processed netCDF files.
         Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
-    cache_raw: bool, optional
+    cache_download: bool, optional
         If True, cache downloaded model-level files rather than storing them in a temporary file.
         By default, False.
     url : str | None
@@ -138,12 +138,12 @@ class ERA5ModelLevel(ECMWFAPI):
         model_levels: list[int] | None = None,
         ensemble_members: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
-        cache_raw: bool = False,
+        cache_download: bool = False,
         url: str | None = None,
         key: str | None = None,
     ) -> None:
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
-        self.cache_raw = cache_raw
+        self.cache_download = cache_download
 
         self.paths = None
 
@@ -424,7 +424,7 @@ class ERA5ModelLevel(ECMWFAPI):
         lnsp_request = self._mars_request_lnsp(times)
 
         stack = contextlib.ExitStack()
-        if not self.cache_raw:
+        if not self.cache_download:
             ml_target = stack.enter_context(temp.temp_file())
             lnsp_target = stack.enter_context(temp.temp_file())
         else:
@@ -433,7 +433,7 @@ class ERA5ModelLevel(ECMWFAPI):
 
         with stack:
             for request, target in ((ml_request, ml_target), (lnsp_request, lnsp_target)):
-                if not self.cache_raw or not self.cachestore.exists(target):
+                if not self.cache_download or not self.cachestore.exists(target):
                     if not hasattr(self, "cds"):
                         self._set_cds()
                     self.cds.retrieve("reanalysis-era5-complete", request, target)

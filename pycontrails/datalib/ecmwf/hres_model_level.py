@@ -101,7 +101,7 @@ class HRESModelLevel(ECMWFAPI):
         Cache data store for staging processed netCDF files.
         Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
-    cache_raw: bool, optional
+    cache_download: bool, optional
         If True, cache downloaded NetCDF files rather than storing them in a temporary file.
         By default, False.
     url : str
@@ -124,7 +124,7 @@ class HRESModelLevel(ECMWFAPI):
         forecast_time: DatetimeLike | None = None,
         model_levels: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
-        cache_raw: bool = False,
+        cache_download: bool = False,
         url: str | None = None,
         key: str | None = None,
         email: str | None = None,
@@ -132,7 +132,7 @@ class HRESModelLevel(ECMWFAPI):
         # Parse and set each parameter to the instance
 
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
-        self.cache_raw = cache_raw
+        self.cache_download = cache_download
 
         self.paths = None
 
@@ -434,14 +434,14 @@ class HRESModelLevel(ECMWFAPI):
         request = self.mars_request(times)
 
         stack = contextlib.ExitStack()
-        if not self.cache_raw:
+        if not self.cache_download:
             target = stack.enter_context(temp.temp_file())
         else:
             name = hashlib.md5(request.encode()).hexdigest()
             target = self.cachestore.path(f"hresml-{name}.nc")
 
         with stack:
-            if not self.cache_raw or not self.cachestore.exists(target):
+            if not self.cache_download or not self.cachestore.exists(target):
                 if not hasattr(self, "server"):
                     self._set_server()
                 self.server.execute(request, target)
