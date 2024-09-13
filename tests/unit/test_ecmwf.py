@@ -1145,6 +1145,7 @@ def test_model_level_hres_mars_request() -> None:
             "time=00:00:00",
             "type=fc",
             "grid=0.1/0.1",
+            "format=netcdf",
         ]
     )
 
