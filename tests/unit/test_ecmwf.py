@@ -16,8 +16,8 @@ from pycontrails.datalib.ecmwf.hres import get_forecast_filename
 from pycontrails.datalib.ecmwf.model_levels import (
     MODEL_LEVELS_PATH,
     ml_to_pl,
+    model_level_reference_pressure,
     pressure_level_at_model_levels,
-    pressure_levels_at_model_levels_constant_surface_pressure,
 )
 
 AnyERA5DatalibClass = TypeVar("AnyERA5DatalibClass", type[ERA5], type[ERA5ModelLevel])
@@ -188,9 +188,7 @@ def test_model_level_retrieved_levels(datalib: AnyModelLevelDatalibClass) -> Non
 def test_model_level_pressure_levels(datalib: AnyModelLevelDatalibClass) -> None:
     """Test pressure level inputs for model-level datalibs."""
     dl = datalib(time=datetime(2000, 1, 1), variables="vo")
-    assert dl.pressure_levels == pressure_levels_at_model_levels_constant_surface_pressure(
-        20_000, 50_000
-    )
+    assert dl.pressure_levels == model_level_reference_pressure(20_000, 50_000)
 
 
 @pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
@@ -1162,7 +1160,7 @@ def test_model_level_hres_set_metadata() -> None:
 
 
 def test_pressure_levels_at_model_levels_agreement() -> None:
-    pl1 = pressure_levels_at_model_levels_constant_surface_pressure()
+    pl1 = model_level_reference_pressure()
     assert isinstance(pl1, list)
     assert len(pl1) == 137
 

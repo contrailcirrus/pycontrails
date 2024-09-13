@@ -17,7 +17,7 @@
 ### Breaking changes
 
 - Rename `levels` -> `model_levels` in the `ARCOERA5` and `ERA5ModelLevel` constructors. Rename `cache_grib` -> `cache_download`.
-- Rename `pressure_levels_at_model_levels` -> `pressure_levels_at_model_levels_constant_surface_pressure`. Add a new `pressure_levels_at_model_levels` method that requires surface pressure data.
+- Rename `pressure_levels_at_model_levels` -> `model_level_reference_pressure`. Add a new `pressure_levels_at_model_levels` method that requires surface pressure data.
 
 ### Fixes
 
