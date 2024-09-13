@@ -450,7 +450,7 @@ class HRESModelLevel(ECMWFAPI):
 
             # Use a chunking scheme harmonious with self.cache_dataset, which groups by time
             # Because ds_ml is dask-backed, nothing gets computed until cache_dataset is called
-            ds_ml = xr.open_dataset(target, chunks={"time": 1})
+            ds_ml = xr.open_dataset(target).chunk(time=1)
 
             ds_ml = ds_ml.rename(level="model_level")
             lnsp = ds_ml["lnsp"].sel(model_level=1)
