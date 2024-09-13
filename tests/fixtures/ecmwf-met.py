@@ -73,7 +73,7 @@ era5ml = ERA5ModelLevel(
     model_levels=list(range(74, 85)),
     pressure_levels=pressure_levels,
     cachestore=disk_cache,
-    cache_raw=True,
+    cache_download=True,
 )
 era5ml.download()
 
