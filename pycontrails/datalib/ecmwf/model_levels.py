@@ -91,7 +91,7 @@ def model_level_pressure(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.Da
     Unlike :func:`model_level_reference_pressure`, this function
     does not assume constant pressure. Instead, it uses the
     `half-level pressure formula <https://confluence.ecmwf.int/x/JJh0CQ#heading-Pressureonmodellevels>`_
-    :math:`p = a + b \cdot \exp(\ln(\text{sp}))` where :math:`a` and :math:`b` are constants
+    :math:`p = a + b \cdot \text{sp}` where :math:`a` and :math:`b` are constants
     for each model level.
 
     Parameters
