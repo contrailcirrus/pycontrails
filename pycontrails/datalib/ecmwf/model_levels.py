@@ -43,7 +43,7 @@ def model_level_reference_pressure(
 
     See Also
     --------
-    pressure_level_at_model_levels
+    model_level_pressure
     """
     usecols = ["n", "Geometric Altitude [m]", "pf [hPa]"]
     df = pd.read_csv(MODEL_LEVELS_PATH, usecols=usecols, index_col="n")
@@ -83,7 +83,7 @@ def _cache_model_level_dataframe() -> None:
     df.to_csv(new_file_path)
 
 
-def pressure_level_at_model_levels(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.DataArray:
+def model_level_pressure(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.DataArray:
     r"""Return the pressure levels at each model level given the surface pressure.
 
     This function assumes
@@ -126,7 +126,7 @@ def pressure_level_at_model_levels(sp: xr.DataArray, model_levels: npt.ArrayLike
     >>> sp = xr.DataArray(sp_arr, coords={"longitude": longitude, "latitude": latitude})
 
     >>> model_levels = [80, 100]
-    >>> pressure_level_at_model_levels(sp, model_levels)
+    >>> model_level_pressure(sp, model_levels)
     <xarray.DataArray (model_level: 2, longitude: 4, latitude: 4)> Size: 256B
     array([[[259.75493944, 259.27107504, 258.78721064, 258.30334624],
             [257.81948184, 257.33561744, 256.85175304, 256.36788864],
@@ -391,7 +391,7 @@ def ml_to_pl(
         sp = dask.array.exp(lnsp)
 
     model_levels = ds["model_level"]
-    pl = pressure_level_at_model_levels(sp, model_levels)
+    pl = model_level_pressure(sp, model_levels)
 
     if "pressure_level" in ds:
         msg = "The dataset must not contain a 'pressure_level' variable"
