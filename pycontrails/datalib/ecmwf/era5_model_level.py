@@ -164,7 +164,9 @@ class ERA5ModelLevel(ECMWFAPI):
         if product_type != "ensemble_members" and ensemble_members:
             msg = "No ensemble members available for reanalysis product type."
             raise ValueError(msg)
-        self.ensemble_members = ensemble_members or ALL_ENSEMBLE_MEMBERS
+        if product_type == "ensemble_members" and not ensemble_members:
+            ensemble_members = ALL_ENSEMBLE_MEMBERS
+        self.ensemble_members = ensemble_members
 
         if grid is None:
             grid = 0.25 if product_type == "reanalysis" else 0.5
@@ -348,10 +350,15 @@ class ERA5ModelLevel(ECMWFAPI):
             "grid": f"{self.grid}/{self.grid}",
             "format": "netcdf",
         }
+
         if self.product_type == "reanalysis":
             specific = {"stream": "oper"}
         elif self.product_type == "ensemble_members":
+            if self.ensemble_members is None:
+                msg = "No ensemble members specified for ensemble product type."
+                raise ValueError(msg)
             specific = {"stream": "enda", "number": "/".join(str(n) for n in self.ensemble_members)}
+
         return common | specific
 
     def _mars_request_lnsp(self, times: list[datetime]) -> dict[str, str]:
