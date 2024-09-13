@@ -16,8 +16,8 @@ from pycontrails.datalib.ecmwf.hres import get_forecast_filename
 from pycontrails.datalib.ecmwf.model_levels import (
     MODEL_LEVELS_PATH,
     ml_to_pl,
+    model_level_pressure,
     model_level_reference_pressure,
-    pressure_level_at_model_levels,
 )
 
 AnyERA5DatalibClass = TypeVar("AnyERA5DatalibClass", type[ERA5], type[ERA5ModelLevel])
@@ -1159,14 +1159,14 @@ def test_model_level_hres_set_metadata() -> None:
     assert ds.attrs["radiation_accumulated"]
 
 
-def test_pressure_levels_at_model_levels_agreement() -> None:
+def test_model_level_pressure_agreement() -> None:
     pl1 = model_level_reference_pressure()
     assert isinstance(pl1, list)
     assert len(pl1) == 137
 
     sp = xr.DataArray(1013.25 * 100.0)
     model_levels = range(1, 138)
-    da = pressure_level_at_model_levels(sp, model_levels)
+    da = model_level_pressure(sp, model_levels)
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("model_level",)
 
@@ -1174,11 +1174,11 @@ def test_pressure_levels_at_model_levels_agreement() -> None:
     assert pl1 == pl2
 
 
-def test_pressure_level_at_model_levels_agrees_with_ecmwf() -> None:
+def test_model_level_pressure_agrees_with_ecmwf() -> None:
     """Test pressure level at model levels agrees with published ECMWF values."""
     sp = xr.DataArray(1013.25 * 100.0)
     model_levels = range(1, 138)
-    s1 = pressure_level_at_model_levels(sp, model_levels).to_series().round(4)
+    s1 = model_level_pressure(sp, model_levels).to_series().round(4)
 
     s2 = (
         pd.read_csv(MODEL_LEVELS_PATH, index_col=0)["pf [hPa]"]
