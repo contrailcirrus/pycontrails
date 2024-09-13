@@ -15,7 +15,7 @@ _path_to_static = pathlib.Path(__file__).parent / "static"
 MODEL_LEVELS_PATH = _path_to_static / "model_level_dataframe_v20240418.csv"
 
 
-def pressure_levels_at_model_levels_constant_surface_pressure(
+def model_level_reference_pressure(
     alt_ft_min: float | None = None,
     alt_ft_max: float | None = None,
 ) -> list[int]:
@@ -88,7 +88,7 @@ def pressure_level_at_model_levels(sp: xr.DataArray, model_levels: npt.ArrayLike
 
     This function assumes
     `137 model levels <https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions>`_.
-    Unlike :func:`pressure_levels_at_model_levels_constant_surface_pressure`, this function
+    Unlike :func:`model_level_reference_pressure`, this function
     does not assume constant pressure. Instead, it uses the
     `half-level pressure formula <https://confluence.ecmwf.int/x/JJh0CQ#heading-Pressureonmodellevels>`_
     :math:`p = a + b \cdot \exp(\ln(\text{sp}))` where :math:`a` and :math:`b` are constants
@@ -143,7 +143,7 @@ def pressure_level_at_model_levels(sp: xr.DataArray, model_levels: npt.ArrayLike
 
     See Also
     --------
-    pressure_levels_at_model_levels_constant_surface_pressure
+    model_level_reference_pressure
     """
     model_levels = np.asarray(model_levels, dtype=int)
     if not np.all((model_levels >= 1) & (model_levels <= 137)):

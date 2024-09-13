@@ -244,9 +244,7 @@ class ARCOERA5(ecmwf_common.ECMWFAPI):
         self.timesteps = metsource.parse_timesteps(time)
 
         if pressure_levels is None:
-            self.pressure_levels = mlmod.pressure_levels_at_model_levels_constant_surface_pressure(
-                20_000.0, 50_000.0
-            )
+            self.pressure_levels = mlmod.model_level_reference_pressure(20_000.0, 50_000.0)
         else:
             self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
 

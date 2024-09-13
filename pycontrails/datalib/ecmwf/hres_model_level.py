@@ -198,9 +198,7 @@ class HRESModelLevel(ECMWFAPI):
             raise ValueError(msg)
 
         if pressure_levels is None:
-            pressure_levels = mlmod.pressure_levels_at_model_levels_constant_surface_pressure(
-                20_000.0, 50_000.0
-            )
+            pressure_levels = mlmod.model_level_reference_pressure(20_000.0, 50_000.0)
         self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
         self.variables = metsource.parse_variables(variables, self.pressure_level_variables)
 
