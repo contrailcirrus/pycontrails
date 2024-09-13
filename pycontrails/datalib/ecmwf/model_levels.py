@@ -2,6 +2,7 @@
 
 import datetime
 import pathlib
+import warnings
 
 import dask.array
 import numpy as np
@@ -97,7 +98,8 @@ def model_level_pressure(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.Da
     Parameters
     ----------
     sp : xr.DataArray
-        Surface pressure, [:math:`\text{Pa}`].
+        Surface pressure, [:math:`\text{Pa}`]. A warning is issued if the minimum
+        value of ``sp`` is less than 30320.0 Pa. Such low values are unrealistic.
     model_levels : npt.ArrayLike
         Target model levels. Expected to be a one-dimensional array of integers between 1 and 137.
 
@@ -145,6 +147,17 @@ def model_level_pressure(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.Da
     --------
     model_level_reference_pressure
     """
+    # When sp is too low, the pressure up the vertical column will not monotonically decreasing.
+    # The first example of this occurs when sp is close to 30320.0 Pa between model
+    # levels 114 and 115. Issue a warning here to alert the user.
+    if (sp < 30320.0).any():
+        msg = (
+            "The 'sp' parameter appears to be low. The calculated pressure levels will "
+            "not be monotonically decreasing. The 'sp' parameter has units of Pa. "
+            "Most surface pressure data should be in the range of 50000.0 to 105000.0 Pa."
+        )
+        warnings.warn(msg)
+
     model_levels = np.asarray(model_levels, dtype=int)
     if not np.all((model_levels >= 1) & (model_levels <= 137)):
         msg = "model_levels must be integers between 1 and 137"
