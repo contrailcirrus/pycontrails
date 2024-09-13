@@ -205,7 +205,7 @@ def searchsorted2d(
     -------
     npt.NDArray[np.int64]
         2D array of indices where elements in ``v`` would be inserted in ``a`` along its
-        second axis. The shape of the output is ``(m, k)``.
+        second axis to keep the second axis of ``a`` sorted. The shape of the output is ``(m, k)``.
 
     Examples
     --------
