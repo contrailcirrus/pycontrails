@@ -20,10 +20,12 @@ or for more recent dates.
 from __future__ import annotations
 
 import collections
+import concurrent.futures
 import contextlib
 import hashlib
 import logging
 import os
+import threading
 import warnings
 from datetime import datetime
 from typing import Any
@@ -432,11 +434,22 @@ class ERA5ModelLevel(ECMWFAPI):
             lnsp_target = _target_path(lnsp_request, self.cachestore)
 
         with stack:
+            threads = []
             for request, target in ((ml_request, ml_target), (lnsp_request, lnsp_target)):
                 if not self.cache_download or not self.cachestore.exists(target):
                     if not hasattr(self, "cds"):
                         self._set_cds()
-                    self.cds.retrieve("reanalysis-era5-complete", request, target)
+                    threads.append(
+                        threading.Thread(
+                            target=self.cds.retrieve,
+                            args=("reanalysis-era5-complete", request, target),
+                        )
+                    )
+
+            # Download across two threads
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                for thread in threads:
+                    executor.submit(thread.run)
 
             LOG.debug("Opening model level data file")
 
