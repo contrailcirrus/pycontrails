@@ -419,7 +419,7 @@ def ml_to_pl(
         if "model_level" not in da.dims:
             msg = f"Variable '{name}' does not have a 'model_level' dimension"
             warnings.warn(msg)
-            ds = ds.drop_vars(name)
+            ds = ds.drop_vars([name])
 
     # IMPORTANT: model_level must be the last dimension for _interp_on_chunk
     ds = ds.transpose(..., "model_level")
