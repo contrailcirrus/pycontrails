@@ -412,6 +412,15 @@ def ml_to_pl(
     ds = ds.assign(pressure_level=pl)
 
     ds = ds.reset_coords(drop=True)  # drop "expver"
+
+    # If there are any variables which do not have the "model_level" dimension,
+    # issue a warning and drop them
+    for name, da in ds.items():
+        if "model_level" not in da.dims:
+            msg = f"Variable '{name}' does not have a 'model_level' dimension"
+            warnings.warn(msg)
+            ds = ds.drop_vars(name)
+
     # IMPORTANT: model_level must be the last dimension for _interp_on_chunk
     ds = ds.transpose(..., "model_level")
 
