@@ -1671,6 +1671,8 @@ def calc_evolve_one_step(
             segment_length_t1, segment_length_t2
         )
 
+    dt = next_contrail["time"] - curr_contrail["time"]
+
     sigma_yy_t2, sigma_zz_t2, sigma_yz_t2 = contrail_properties.plume_temporal_evolution(
         width_t1=width_t1,
         depth_t1=depth_t1,
@@ -1679,7 +1681,7 @@ def calc_evolve_one_step(
         diffuse_h_t1=diffuse_h_t1,
         diffuse_v_t1=diffuse_v_t1,
         seg_ratio=seg_ratio_t12,
-        dt=params["dt_integration"],
+        dt=dt,
         max_depth=params["max_depth"],
     )
 
@@ -1716,7 +1718,7 @@ def calc_evolve_one_step(
         dn_dt_agg=dn_dt_agg,
         dn_dt_turb=dn_dt_turb,
         seg_ratio=seg_ratio_t12,
-        dt=params["dt_integration"],
+        dt=dt,
     )
     next_contrail["n_ice_per_m"] = n_ice_per_m_t2
 
@@ -1737,7 +1739,7 @@ def calc_evolve_one_step(
         width_t1=width_t1,
         width_t2=width_t2,
         seg_length_t2=segment_length_t2,
-        dt=params["dt_integration"],
+        dt=dt,
     )
     # NOTE: This will get masked below if `persistent` is False
     # That is, we are taking a right Riemann sum of a decreasing function, so we are
