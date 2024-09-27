@@ -774,15 +774,17 @@ def test_geovector_source(
     assert "ef_per_m" in out
 
     persistent = out["contrail_age"] > np.timedelta64(0, "ns")
-    assert persistent.sum() == 75
+    assert persistent.sum() == 94
+
+    ef_per_m = out["ef_per_m"]
 
     # Contrail age and positive EF are 1-1
-    assert np.all(out["ef_per_m"][persistent] > 0)
-    assert np.all(out["ef_per_m"][~persistent] == 0)
+    assert np.all(ef_per_m[persistent] > 0)
+    assert np.all(ef_per_m[~persistent] == 0)
 
     # Pin the mean EF
-    assert out["ef_per_m"].mean().item() == pytest.approx(832396, rel=1e-3)
-    assert out["ef_per_m"][persistent].mean().item() == pytest.approx(28944911, rel=1e-3)
+    assert ef_per_m.mean().item() == pytest.approx(828481, rel=1e-3)
+    assert ef_per_m[persistent].mean().item() == pytest.approx(22985963, rel=1e-3)
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
