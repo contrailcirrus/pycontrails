@@ -192,7 +192,7 @@ def test_parity(
     # Secondary differences are due to different specific_humidity values between the two models
     ef1 = out1["ef"][filt]
     ef2 = ef_per_waypoint[filt]
-    np.testing.assert_allclose(ef1, ef2, rtol=0.15)
+    np.testing.assert_allclose(ef1, ef2, rtol=0.05)
 
     # ----------------------------------------------------
     # Confirm general agreement between model contrail age
