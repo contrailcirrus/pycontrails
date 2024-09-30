@@ -216,10 +216,9 @@ nb-test: ensure-era5-cached nb-clean-check nb-format-check nb-check-links
 # https://github.com/jupyterlab/pytest-check-links
 nb-check-links:
 	python -m pytest --check-links \
-		--check-links-ignore "https://doi.org/10.1021/acs.est.9b05608" \
-		--check-links-ignore "https://doi.org/10.1021/acs.est.2c05781" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
+		--check-links-ignore "https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast" \
 		docs/notebooks/*.ipynb
 
 # Execute all notebooks in docs
