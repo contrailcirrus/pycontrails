@@ -1,7 +1,7 @@
 """
 Build netcdf assets for cocip unit tests.
 
-- Requires account with [Copernicus Data Portal](https://cds.climate.copernicus.eu/cdsapp#!/home)
+- Requires account with [Copernicus Data Portal](https://cds.climate.copernicus.eu/how-to-api)
 and  local `~/.cdsapirc` file with credentials.
 """
 

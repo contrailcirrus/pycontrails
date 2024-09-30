@@ -56,7 +56,7 @@ class ERA5ModelLevel(ECMWFAPI):
     pressure-level with much lower vertical resolution.
 
     Requires account with
-    `Copernicus Data Portal <https://cds.climate.copernicus.eu/cdsapp#!/home>`_
+    `Copernicus Data Portal <https://cds.climate.copernicus.eu/how-to-api>`_
     and local credentials.
 
     API credentials can be stored in a ``~/.cdsapirc`` file
