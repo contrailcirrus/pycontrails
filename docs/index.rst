@@ -92,7 +92,7 @@ Learn more on `contrails.org <https://contrails.org>`_.
    :alt: Unit test
    :target: https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yaml
 
-.. |Docs| image:: https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml/badge.svg
+.. |Docs| image:: https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml/badge.svg?event=push
    :alt: Docs
    :target: https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml
 
