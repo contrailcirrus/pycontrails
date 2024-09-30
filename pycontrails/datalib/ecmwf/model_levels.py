@@ -384,9 +384,10 @@ def ml_to_pl(
     lnsp : xr.DataArray
         Natural logarithm of surface pressure, [:math:`\ln(\text{Pa})`]. If provided,
         ``sp`` is ignored. At least one of ``lnsp`` or ``sp`` must be provided.
+        The chunking over dimensions in common with ``ds`` must be the same as ``ds``.
     sp : xr.DataArray
-        Surface pressure, [:math:`\text{Pa}`].
-        At least one of ``lnsp`` or ``sp`` must be provided.
+        Surface pressure, [:math:`\text{Pa}`]. At least one of ``lnsp`` or ``sp`` must be provided.
+        The chunking over dimensions in common with ``ds`` must be the same as ``ds``.
 
     Returns
     -------
