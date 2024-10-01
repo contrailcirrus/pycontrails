@@ -228,6 +228,12 @@ class MetBase(ABC, Generic[XArrayType]):
         self._validate_longitude()
         self._validate_latitude()
         self._validate_transpose()
+        if self.data["level"].dtype != COORD_DTYPE:
+            raise ValueError(
+                "Level values must be of type float64. "
+                "Initiate with 'copy=True' to convert to float64. "
+                "Initiate with 'validate=False' to skip validation."
+            )
 
     def _preprocess_dims(self, wrap_longitude: bool) -> None:
         """Confirm DataArray or Dataset include required dimension in a consistent format.
