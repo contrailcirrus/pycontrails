@@ -1386,3 +1386,19 @@ def test_vertical_coord(met_ecmwf_pl_path: str, coord: str) -> None:
     mds = MetDataset(ds)
     assert np.all(mds.data.coords[coord] == fake_coord)
     assert mds.data.coords[coord].values.dtype == np.float64
+
+
+@pytest.mark.parametrize("copy", [True, False])
+def test_float32_level(met_ecmwf_pl_path: str, copy: bool) -> None:
+    """Confirm that the level coordinate is cast to float64 or an error is raised."""
+    ds = MetDataset(xr.open_dataset(met_ecmwf_pl_path)).data
+
+    ds["level"] = ds["level"].astype(np.float32)
+
+    if copy:
+        mds = MetDataset(ds, copy=copy)
+        assert mds.data["level"].dtype == np.float64
+        return
+
+    with pytest.raises(ValueError, match="Level values must be of type float64"):
+        MetDataset(ds, copy=copy)
