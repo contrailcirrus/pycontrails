@@ -12,6 +12,7 @@ Models
    notebooks/SAC
    notebooks/AircraftPerformance
    notebooks/CoCiP
+   notebooks/CoCiPGrid
    notebooks/advection
    integrations/ACCF.ipynb
    integrations/APCEMM.ipynb
