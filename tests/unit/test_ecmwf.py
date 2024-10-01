@@ -11,9 +11,18 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore, MetDataset, MetVariable
 from pycontrails.core.met_var import AirTemperature, SurfacePressure
-from pycontrails.datalib.ecmwf import ECMWF_VARIABLES, ERA5, HRES, ERA5ModelLevel, HRESModelLevel
+from pycontrails.datalib.ecmwf import (
+    ECMWF_VARIABLES,
+    ERA5,
+    HRES,
+    MODEL_LEVELS_PATH,
+    ERA5ModelLevel,
+    HRESModelLevel,
+    ml_to_pl,
+    model_level_pressure,
+    model_level_reference_pressure,
+)
 from pycontrails.datalib.ecmwf.hres import get_forecast_filename
-from pycontrails.datalib.ecmwf.model_levels import pressure_levels_at_model_levels
 
 AnyERA5DatalibClass = TypeVar("AnyERA5DatalibClass", type[ERA5], type[ERA5ModelLevel])
 AnyHRESDatalibClass = TypeVar("AnyHRESDatalibClass", type[HRES], type[HRESModelLevel])
@@ -167,23 +176,23 @@ def test_inputs(datalib: AnyECMWFDatalibClass) -> None:
 @pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
 def test_model_level_retrieved_levels(datalib: AnyModelLevelDatalibClass) -> None:
     """Test model levels included in request."""
-    with pytest.raises(ValueError, match="Retrieval levels must be between"):
-        dl = datalib(time=datetime(2000, 1, 1), variables="vo", levels=[0, 1, 2])
-    with pytest.raises(ValueError, match="Retrieval levels must be between"):
-        dl = datalib(time=datetime(2000, 1, 1), variables="vo", levels=[136, 137, 138])
+    with pytest.raises(ValueError, match="Retrieval model_levels must be between"):
+        dl = datalib(time=datetime(2000, 1, 1), variables="vo", model_levels=[0, 1, 2])
+    with pytest.raises(ValueError, match="Retrieval model_levels must be between"):
+        dl = datalib(time=datetime(2000, 1, 1), variables="vo", model_levels=[136, 137, 138])
 
     dl = datalib(time=datetime(2000, 1, 1), variables="vo")
-    assert dl.levels == list(range(1, 138))
+    assert dl.model_levels == list(range(1, 138))
 
-    dl = datalib(time=datetime(2000, 1, 1), variables="vo", levels=[3, 4, 5])
-    assert dl.levels == [3, 4, 5]
+    dl = datalib(time=datetime(2000, 1, 1), variables="vo", model_levels=[3, 4, 5])
+    assert dl.model_levels == [3, 4, 5]
 
 
 @pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
 def test_model_level_pressure_levels(datalib: AnyModelLevelDatalibClass) -> None:
     """Test pressure level inputs for model-level datalibs."""
     dl = datalib(time=datetime(2000, 1, 1), variables="vo")
-    assert dl.pressure_levels == pressure_levels_at_model_levels(20_000, 50_000)
+    assert dl.pressure_levels == model_level_reference_pressure(20_000, 50_000)
 
 
 @pytest.mark.parametrize("datalib", [ERA5ModelLevel, HRESModelLevel])
@@ -769,7 +778,7 @@ def test_model_level_era5_nominal_mars_request() -> None:
     era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
         variables=["t", "q"],
-        levels=[1, 2, 3],
+        model_levels=[1, 2, 3],
         timestep_freq="6h",
     )
     request = era5.mars_request(era5.timesteps)
@@ -779,10 +788,11 @@ def test_model_level_era5_nominal_mars_request() -> None:
         "expver": "1",
         "levelist": "1/2/3",
         "levtype": "ml",
-        "param": "130/133/152",
+        "param": "130/133",
         "time": "00:00:00/06:00:00/12:00:00/18:00:00",
         "type": "an",
         "grid": "0.25/0.25",
+        "format": "netcdf",
         "stream": "oper",
     }
 
@@ -792,7 +802,7 @@ def test_model_level_era5_ensemble_mars_request() -> None:
     era5 = ERA5ModelLevel(
         time=(datetime(2000, 1, 1), datetime(2000, 1, 2, 6)),
         variables=["t", "q"],
-        levels=[1, 2, 3],
+        model_levels=[1, 2, 3],
         timestep_freq="6h",
         product_type="ensemble_members",
         ensemble_members=[1, 4, 5],
@@ -804,10 +814,11 @@ def test_model_level_era5_ensemble_mars_request() -> None:
         "expver": "1",
         "levelist": "1/2/3",
         "levtype": "ml",
-        "param": "130/133/152",
+        "param": "130/133",
         "time": "00:00:00/06:00:00/12:00:00/18:00:00",
         "type": "an",
         "grid": "0.5/0.5",
+        "format": "netcdf",
         "stream": "enda",
         "number": "1/4/5",
     }
@@ -1119,7 +1130,7 @@ def test_model_level_hres_mars_request() -> None:
         time=(datetime(2000, 1, 1, 3), datetime(2000, 1, 1, 6)),
         forecast_time="2000-01-01 00:00:00",
         variables=["t", "q"],
-        levels=[1, 2, 3],
+        model_levels=[1, 2, 3],
     )
     request = hres.mars_request(hres.timesteps)
     assert request == ",\n".join(
@@ -1136,6 +1147,7 @@ def test_model_level_hres_mars_request() -> None:
             "time=00:00:00",
             "type=fc",
             "grid=0.1/0.1",
+            "format=netcdf",
         ]
     )
 
@@ -1149,3 +1161,92 @@ def test_model_level_hres_set_metadata() -> None:
     assert ds.attrs["dataset"] == "HRES"
     assert ds.attrs["product"] == "forecast"
     assert ds.attrs["radiation_accumulated"]
+
+
+def test_model_level_pressure_agreement() -> None:
+    pl1 = model_level_reference_pressure()
+    assert isinstance(pl1, list)
+    assert len(pl1) == 137
+
+    sp = xr.DataArray(1013.25 * 100.0)
+    model_levels = range(1, 138)
+    da = model_level_pressure(sp, model_levels)
+    assert isinstance(da, xr.DataArray)
+    assert da.dims == ("model_level",)
+
+    pl2 = da.values.round().astype(int).tolist()
+    assert pl1 == pl2
+
+
+def test_model_level_pressure_agrees_with_ecmwf() -> None:
+    """Test pressure level at model levels agrees with published ECMWF values."""
+    sp = xr.DataArray(1013.25 * 100.0)
+    model_levels = range(1, 138)
+    s1 = model_level_pressure(sp, model_levels).to_series().round(4)
+
+    s2 = (
+        pd.read_csv(MODEL_LEVELS_PATH, index_col=0)["pf [hPa]"]
+        .loc[1:137]
+        .rename_axis("model_level")
+        .rename(None)
+    )
+
+    pd.testing.assert_series_equal(s1, s2, atol=5e-4, rtol=0.0)
+
+
+def test_ml_to_pl_conversion_output(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
+    """Test ml_to_pl conversion output."""
+    target_pl = [200, 210, 220, 230, 240, 250]
+    ds = ml_to_pl(era5_ml, target_pl, lnsp=lnsp)
+    assert isinstance(ds, xr.Dataset)
+    np.testing.assert_array_equal(ds["level"], target_pl)
+
+    # No null values for these pressure levels
+    for v in ds.data_vars:
+        assert not ds[v].isnull().any()
+
+
+def test_ml_to_pl_conversion_output_with_null(era5_ml: xr.Dataset, lnsp: xr.DataArray) -> None:
+    """Test ml_to_pl conversion with null values in the output."""
+    target_pl = [190, 195, 200]
+    ds = ml_to_pl(era5_ml, target_pl, lnsp=lnsp)
+    assert isinstance(ds, xr.Dataset)
+    np.testing.assert_array_equal(ds["level"], target_pl)
+
+    # Most the values on PL 190 are null
+    # Some on PL 195 are null
+    # And none on PL 200 are null
+    for v in ds.data_vars:
+        assert ds[v].sel(level=190).isnull().mean() == 0.925
+        assert ds[v].sel(level=195).isnull().mean() == 0.841666666666666666
+        assert not ds[v].sel(level=200).isnull().any()
+
+
+def test_ml_to_pl_close_to_era5_pl(
+    era5_ml: xr.Dataset,
+    lnsp: xr.DataArray,
+    met_ecmwf_pl_path: str,
+) -> None:
+    """Comfirm that the ml_to_pl conversion is close to what the CDS API provides."""
+    era5_ml = era5_ml.rename(valid_time="time")
+    lnsp = lnsp.rename(valid_time="time")
+    ds_pl = xr.open_dataset(met_ecmwf_pl_path).sel(time=era5_ml["time"])
+
+    target_pl = ds_pl["level"].values
+    np.testing.assert_array_equal(target_pl, [300, 250, 225])
+
+    ds_ml = ml_to_pl(era5_ml, target_pl, lnsp=lnsp)
+
+    # 19 nulls got introduced in the conversion, all on level 300
+    for v in ds_ml.data_vars:
+        assert ds_ml[v].sel(level=[300]).isnull().sum() == 19
+        assert ds_ml[v].sel(level=[225, 250]).notnull().all()
+
+        # Fill the nulls in the converted dataset with the values ds_pl
+        # and compare the two
+        # We don't expect equality to be close to exact here -- the ERA5 PL data
+        # and the ERA5 ML data were generated separately and are not expected to
+        # be derived from a common source
+        # Still, the agreement isn't bad
+        da = ds_ml[v].fillna(ds_pl[v])
+        xr.testing.assert_allclose(da, ds_pl[v], rtol=0.001, atol=1e-5, check_dim_order=False)

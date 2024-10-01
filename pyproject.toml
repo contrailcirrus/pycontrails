@@ -100,7 +100,6 @@ ecmwf = [
     "netcdf4>=1.6.1",
     "platformdirs>=3.0",
     "requests>=2.25",
-    "lxml>=5.1.0",
 ]
 
 # Google Cloud Platform caching interface
