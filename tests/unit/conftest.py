@@ -455,3 +455,17 @@ def _dask_single_threaded():
     """
     with dask.config.set(scheduler="single-threaded"):
         yield
+
+
+@pytest.fixture()
+def lnsp() -> xr.DataArray:
+    """Load lnsp data for testing."""
+    path = get_static_path("met-ecmwf-lnsp.nc")
+    return xr.open_dataarray(path)
+
+
+@pytest.fixture()
+def era5_ml() -> xr.Dataset:
+    """Load ERA5 data at model levels."""
+    path = get_static_path("met-ecmwf-ml.nc")
+    return xr.open_dataset(path)
