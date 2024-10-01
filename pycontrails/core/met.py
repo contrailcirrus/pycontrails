@@ -97,17 +97,20 @@ class MetBase(ABC, Generic[XArrayType]):
         ValueError
             If data does not contain all four coordinates (longitude, latitude, level, time).
         """
-        for dim in self.dim_order:
-            if dim not in self.data.dims:
-                if dim == "level":
-                    msg = (
-                        f"Meteorology data must contain dimension '{dim}'. "
-                        "For single level data, set 'level' coordinate to constant -1 "
-                        "using `ds = ds.expand_dims({'level': [-1]})`"
-                    )
-                else:
-                    msg = f"Meteorology data must contain dimension '{dim}'."
-                raise ValueError(msg)
+        missing = set(self.dim_order).difference(self.data.dims)
+        if not missing:
+            return
+
+        dim = sorted(missing)[0]
+        if dim == "level":
+            msg = (
+                f"Meteorology data must contain dimension '{dim}'. "
+                "For single level data, set 'level' coordinate to constant -1 "
+                "using `ds = ds.expand_dims({'level': [-1]})`"
+            )
+        else:
+            msg = f"Meteorology data must contain dimension '{dim}'."
+        raise ValueError(msg)
 
     def _validate_longitude(self) -> None:
         """Check longitude bounds.
