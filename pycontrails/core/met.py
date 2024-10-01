@@ -70,7 +70,7 @@ class MetBase(ABC, Generic[XArrayType]):
     cachestore: CacheStore | None
 
     #: Default dimension order for DataArray or Dataset (x, y, z, t)
-    dim_order: tuple[Hashable, Hashable, Hashable, Hashable] = (
+    dim_order = (
         "longitude",
         "latitude",
         "level",
