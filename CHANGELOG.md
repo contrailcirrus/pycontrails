@@ -1,5 +1,11 @@
 # Changelog
 
+## (unreleased)
+
+### Features
+
+- Add CoCiP Grid notebook example to documentation
+
 ## v0.54.0
 
 ### Features
