@@ -128,7 +128,8 @@ def test_metdataarray_constructor(
     # Cannot instantiate MetDataArray without time or level coord
     # This hacked DataArray only contains latitude and longitude
     insufficient_da = da["latitude"] + da["longitude"]
-    with pytest.raises(ValueError, match="Meteorology data must contain dimension 'level'"):
+    match = r"Meteorology data must contain dimension\(s\): \['level', 'time'\]."
+    with pytest.raises(ValueError, match=match):
         MetDataArray(insufficient_da)
 
 
