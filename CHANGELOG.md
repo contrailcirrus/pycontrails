@@ -5,6 +5,7 @@
 ### Features
 
 - Add [CoCiP Grid notebook](https://py.contrails.org/notebooks/CoCiPGrid.html) example to documentation.
+- Implement `PSFlight.eval` on a `Fleet` source.
 
 ### Breaking changes
 
