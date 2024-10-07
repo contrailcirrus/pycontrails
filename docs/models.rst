@@ -14,5 +14,5 @@ Models
    notebooks/CoCiP
    notebooks/CoCiPGrid
    notebooks/advection
-   integrations/ACCF.ipynb
-   integrations/APCEMM.ipynb
+   integrations/ACCF
+   integrations/APCEMM
