@@ -12,6 +12,7 @@ import numpy.typing as npt
 from overrides import overrides
 
 from pycontrails.core import flight, fuel
+from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.models import Model, ModelParams, interpolate_met
@@ -75,6 +76,10 @@ class AircraftPerformance(Model):
     """
 
     source: Flight
+
+    @abc.abstractmethod
+    @overload
+    def eval(self, source: Fleet, **params: Any) -> Fleet: ...
 
     @abc.abstractmethod
     @overload

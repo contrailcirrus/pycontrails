@@ -20,6 +20,7 @@ from pycontrails.core.aircraft_performance import (
     AircraftPerformanceData,
     AircraftPerformanceParams,
 )
+from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
@@ -116,6 +117,9 @@ class PSFlight(AircraftPerformance):
         return False
 
     @overload
+    def eval(self, source: Fleet, **params: Any) -> Fleet: ...
+
+    @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
 
     @overload
@@ -130,12 +134,20 @@ class PSFlight(AircraftPerformance):
         self.set_source_met()
 
         # Calculate true airspeed if not included on source
-        true_airspeed = self.ensure_true_airspeed_on_source().copy()
-        true_airspeed[true_airspeed == 0.0] = np.nan
+        self.ensure_true_airspeed_on_source()
 
+        if isinstance(self.source, Fleet):
+            fls = [self._eval_flight(fl) for fl in self.source.to_flight_list()]
+            self.source = Fleet.from_seq(fls, attrs=self.source.attrs, broadcast_numeric=False)
+            return self.source
+
+        self.source = self._eval_flight(self.source)
+        return self.source
+
+    def _eval_flight(self, fl: Flight) -> Flight:
         # Ensure aircraft type is available
         try:
-            aircraft_type = self.source.attrs["aircraft_type"]
+            aircraft_type = fl.attrs["aircraft_type"]
         except KeyError as exc:
             msg = "`aircraft_type` required on flight attrs"
             raise KeyError(msg) from exc
@@ -148,29 +160,32 @@ class PSFlight(AircraftPerformance):
             raise KeyError(msg) from exc
 
         # Set flight attributes based on engine, if they aren't already defined
-        self.source.attrs.setdefault("aircraft_performance_model", self.name)
-        self.source.attrs.setdefault("aircraft_type_ps", atyp_ps)
-        self.source.attrs.setdefault("n_engine", aircraft_params.n_engine)
+        fl.attrs.setdefault("aircraft_performance_model", self.name)
+        fl.attrs.setdefault("aircraft_type_ps", atyp_ps)
+        fl.attrs.setdefault("n_engine", aircraft_params.n_engine)
 
-        self.source.attrs.setdefault("wingspan", aircraft_params.wing_span)
-        self.source.attrs.setdefault("max_mach", aircraft_params.max_mach_num)
-        self.source.attrs.setdefault("max_altitude", units.ft_to_m(aircraft_params.fl_max * 100.0))
-        self.source.attrs.setdefault("n_engine", aircraft_params.n_engine)
+        fl.attrs.setdefault("wingspan", aircraft_params.wing_span)
+        fl.attrs.setdefault("max_mach", aircraft_params.max_mach_num)
+        fl.attrs.setdefault("max_altitude", units.ft_to_m(aircraft_params.fl_max * 100.0))
+        fl.attrs.setdefault("n_engine", aircraft_params.n_engine)
 
-        amass_oew = self.source.attrs.get("amass_oew", aircraft_params.amass_oew)
-        amass_mtow = self.source.attrs.get("amass_mtow", aircraft_params.amass_mtow)
-        amass_mpl = self.source.attrs.get("amass_mpl", aircraft_params.amass_mpl)
-        load_factor = self.source.attrs.get("load_factor", DEFAULT_LOAD_FACTOR)
-        takeoff_mass = self.source.attrs.get("takeoff_mass")
-        q_fuel = self.source.fuel.q_fuel
+        amass_oew = fl.attrs.get("amass_oew", aircraft_params.amass_oew)
+        amass_mtow = fl.attrs.get("amass_mtow", aircraft_params.amass_mtow)
+        amass_mpl = fl.attrs.get("amass_mpl", aircraft_params.amass_mpl)
+        load_factor = fl.attrs.get("load_factor", DEFAULT_LOAD_FACTOR)
+        takeoff_mass = fl.attrs.get("takeoff_mass")
+        q_fuel = fl.fuel.q_fuel
+
+        true_airspeed = fl["true_airspeed"]  # attached in PSFlight.eval
+        true_airspeed = np.where(true_airspeed == 0.0, np.nan, true_airspeed)
 
         # Run the simulation
         aircraft_performance = self.simulate_fuel_and_performance(
             aircraft_type=atyp_ps,
-            altitude_ft=self.source.altitude_ft,
-            time=self.source["time"],
+            altitude_ft=fl.altitude_ft,
+            time=fl["time"],
             true_airspeed=true_airspeed,
-            air_temperature=self.source["air_temperature"],
+            air_temperature=fl["air_temperature"],
             aircraft_mass=self.get_source_param("aircraft_mass", None),
             thrust=self.get_source_param("thrust", None),
             engine_efficiency=self.get_source_param("engine_efficiency", None),
@@ -194,13 +209,13 @@ class PSFlight(AircraftPerformance):
             "thrust",
             "rocd",
         ):
-            self.source.setdefault(var, getattr(aircraft_performance, var))
+            fl.setdefault(var, getattr(aircraft_performance, var))
 
         self._cleanup_indices()
 
-        self.source.attrs["total_fuel_burn"] = np.nansum(aircraft_performance.fuel_burn).item()
+        fl.attrs["total_fuel_burn"] = np.nansum(aircraft_performance.fuel_burn).item()
 
-        return self.source
+        return fl
 
     @overrides
     def calculate_aircraft_performance(
