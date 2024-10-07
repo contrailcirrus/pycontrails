@@ -371,16 +371,6 @@ class MetBase(ABC, Generic[XArrayType]):
         }
 
     @property
-    def variables(self) -> dict[Hashable, pd.Index]:
-        """See :attr:`indexes`."""
-        warnings.warn(
-            "The 'variables' property is deprecated and will be removed in a future release. "
-            "Use 'indexes' instead.",
-            DeprecationWarning,
-        )
-        return self.indexes
-
-    @property
     def indexes(self) -> dict[Hashable, pd.Index]:
         """Low level access to underlying :attr:`data` indexes.
 
@@ -1381,19 +1371,8 @@ class MetDataArray(MetBase):
         copy: bool = True,
         validate: bool = True,
         name: Hashable | None = None,
-        **kwargs: Any,
     ) -> None:
-        # init cache
         self.cachestore = cachestore
-
-        # try to create DataArray out of input data and **kwargs
-        if not isinstance(data, xr.DataArray):
-            warnings.warn(
-                "Input 'data' must be an xarray DataArray. "
-                "Passing arbitrary kwargs will be removed in future versions.",
-                DeprecationWarning,
-            )
-            data = xr.DataArray(data, **kwargs)
 
         if copy:
             self.data = data.copy()
