@@ -194,7 +194,7 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         indexes = self.indexes
         if not np.all(np.diff(indexes["time"]) > np.timedelta64(0, "ns")):
-            raise ValueError("Coordinate `time` not sorted. Instantiate with `copy=True`.")
+            raise ValueError("Coordinate 'time' not sorted. Instantiate with 'copy=True'.")
         for coord in self.dim_order[:3]:  # exclude time, the 4th dimension
             if not np.all(np.diff(indexes[coord]) > 0.0):
                 raise ValueError(f"Coordinate '{coord}' not sorted. Instantiate with 'copy=True'.")
@@ -753,8 +753,8 @@ class MetDataset(MetBase):
         except KeyError as e:
             raise KeyError(
                 f"Variable {key} not found. Available variables: {', '.join(self.data.data_vars)}. "
-                "To get items (e.g. `time` or `level`) from underlying `xr.Dataset` object, "
-                "use the `data` attribute."
+                "To get items (e.g. 'time' or 'level') from underlying xr.Dataset object, "
+                "use the 'data' attribute."
             ) from e
         return MetDataArray(da, copy=False, validate=False)
 
