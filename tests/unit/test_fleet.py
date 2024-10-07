@@ -205,8 +205,8 @@ def test_fleet_true_airspeed(syn: SyntheticFlight) -> None:
     rng = np.random.default_rng(1234)
     u_wind = rng.uniform(-5, 5, fleet.size)
     v_wind = rng.uniform(-5, 5, fleet.size)
-    with pytest.raises(NotImplementedError):
-        fleet.segment_groundspeed(u_wind, v_wind)
+    gs = fleet.segment_groundspeed()
+    assert gs.size == fleet.size
 
     tas = fleet.segment_true_airspeed(u_wind, v_wind)
     assert tas.size == fleet.size

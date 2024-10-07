@@ -316,10 +316,9 @@ class Fleet(Flight):
 
     @overrides
     def segment_groundspeed(self, *args: Any, **kwargs: Any) -> npt.NDArray[np.float64]:
-        # Implement if we have a usecase for this.
-        # Because the super() method uses a smoothing pattern, it will not reliably
-        # work on Fleet.
-        raise NotImplementedError
+        fls = self.to_flight_list(copy=False)
+        gs = [fl.segment_groundspeed(*args, **kwargs) for fl in fls]
+        return np.concatenate(gs)
 
     @overrides
     def resample_and_fill(self, *args: Any, **kwargs: Any) -> Fleet:
