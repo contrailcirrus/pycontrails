@@ -101,15 +101,14 @@ class MetBase(ABC, Generic[XArrayType]):
         if not missing:
             return
 
-        dim = sorted(missing)[0]
-        if dim == "level":
-            msg = (
-                f"Meteorology data must contain dimension '{dim}'. "
-                "For single level data, set 'level' coordinate to constant -1 "
+        dim = sorted(missing)
+        dim_str = ", ".join(f"'{dim}'")
+        msg = f"Meteorology data must contain dimension(s) {dim_str}."
+        if "level" in dim:
+           msg += (
+               "For single level data, set 'level' coordinate to constant -1 "
                 "using `ds = ds.expand_dims({'level': [-1]})`"
-            )
-        else:
-            msg = f"Meteorology data must contain dimension '{dim}'."
+           )
         raise ValueError(msg)
 
     def _validate_longitude(self) -> None:
