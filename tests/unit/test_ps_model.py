@@ -10,7 +10,7 @@ import xarray as xr
 import pycontrails.models.ps_model.ps_aircraft_params as ps_params
 import pycontrails.models.ps_model.ps_model as ps
 import pycontrails.models.ps_model.ps_operational_limits as ps_lims
-from pycontrails import Flight, FlightPhase, GeoVectorDataset, MetDataset
+from pycontrails import Fleet, Flight, FlightPhase, GeoVectorDataset, MetDataset
 from pycontrails.models.ps_model import PSFlight, PSGrid, ps_nominal_grid
 from pycontrails.physics import units
 
@@ -278,7 +278,7 @@ def test_aircraft_mass_limits_ps_grid(aircraft_type: str) -> None:
         time=np.r_[[np.datetime64("2020-01-01T00:00:00")] * n],
         aircraft_type=aircraft_type,
     )
-    vector["air_temperature"] = units.m_to_T_isa(vector.altitude)
+    vector["air_temperature"] = vector.T_isa()
 
     out = ps_model.eval(vector)
     assert out.attrs["mach_number"] == atyp_param.m_des
@@ -372,7 +372,7 @@ def test_total_fuel_burn(load_factor: float) -> None:
     attrs = {"flight_id": "1", "aircraft_type": "A320", "load_factor": load_factor}
     flight = Flight(df_flight.iloc[:100], attrs=attrs)
 
-    flight["air_temperature"] = units.m_to_T_isa(flight["altitude"])
+    flight["air_temperature"] = flight.T_isa()
     flight["true_airspeed"] = units.knots_to_m_per_s(flight["speed"])
 
     # Aircraft performance model
@@ -400,7 +400,7 @@ def test_zero_tas_waypoints() -> None:
     attrs = {"flight_id": "1", "aircraft_type": "A320"}
     flight = Flight(df_flight.iloc[:100], attrs=attrs)
 
-    flight["air_temperature"] = units.m_to_T_isa(flight["altitude"])
+    flight["air_temperature"] = flight.T_isa()
     flight["true_airspeed"] = flight.segment_groundspeed()
     assert flight["true_airspeed"][47] == 0.0
 
@@ -549,3 +549,22 @@ def test_fill_low_altitude_with_zero_wind(
     # if air temperature is computed, the model can estimate fuel flow
     assert np.sum(np.isfinite(fl1["fuel_flow"])) == 499  # all but the last value
     assert np.sum(np.isfinite(fl2["fuel_flow"])) == 242  # missing everything below lowest met level
+
+
+def test_ps_flight_on_fleet() -> None:
+    """Confirm the PSFlight model can be evaluated on a Fleet object.
+
+    This is simply a smoke test -- no data is actually checked.
+    """
+    df_flight = pd.read_csv(get_static_path("flight.csv"))
+    assert len(df_flight) == 254
+
+    fl1 = Flight(df_flight.iloc[::2], aircraft_type="A320", flight_id=1)
+    fl2 = Flight(df_flight.iloc[1::2], aircraft_type="A333", flight_id=2)
+    fleet = Fleet.from_seq([fl1, fl2])
+
+    fleet["air_temperature"] = fleet.T_isa()
+
+    ps_model = ps.PSFlight(fill_low_altitude_with_zero_wind=True)
+    out = ps_model.eval(fleet)
+    assert isinstance(out, Fleet)
