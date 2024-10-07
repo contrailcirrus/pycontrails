@@ -197,7 +197,7 @@ def open_arco_era5_single_level(
     return MetDataset(ds).data
 
 
-class ARCOERA5(ecmwf_common.ECMWFAPI):
+class ERA5ARCO(ecmwf_common.ECMWFAPI):
     r"""ARCO ERA5 data accessed remotely through Google Cloud Storage.
 
     This is a high-level interface to access and cache
