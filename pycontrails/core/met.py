@@ -105,10 +105,10 @@ class MetBase(ABC, Generic[XArrayType]):
         dim_str = ", ".join(f"'{dim}'")
         msg = f"Meteorology data must contain dimension(s) {dim_str}."
         if "level" in dim:
-           msg += (
-               "For single level data, set 'level' coordinate to constant -1 "
+            msg += (
+                "For single level data, set 'level' coordinate to constant -1 "
                 "using `ds = ds.expand_dims({'level': [-1]})`"
-           )
+            )
         raise ValueError(msg)
 
     def _validate_longitude(self) -> None:
@@ -125,8 +125,8 @@ class MetBase(ABC, Generic[XArrayType]):
         if longitude.dtype != COORD_DTYPE:
             raise ValueError(
                 "Longitude values must be of type float64. "
-                "Initiate with 'copy=True' to convert to float64. "
-                "Initiate with 'validate=False' to skip validation."
+                "Instantiate with 'copy=True' to convert to float64. "
+                "Instantiate with 'validate=False' to skip validation."
             )
 
         if self.is_wrapped:
@@ -169,8 +169,8 @@ class MetBase(ABC, Generic[XArrayType]):
         if latitude.dtype != COORD_DTYPE:
             raise ValueError(
                 "Latitude values must be of type float64. "
-                "Initiate with 'copy=True' to convert to float64. "
-                "Initiate with 'validate=False' to skip validation."
+                "Instantiate with 'copy=True' to convert to float64. "
+                "Instantiate with 'validate=False' to skip validation."
             )
 
         if latitude[0] < -90.0:
@@ -194,10 +194,10 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         indexes = self.indexes
         if not np.all(np.diff(indexes["time"]) > np.timedelta64(0, "ns")):
-            raise ValueError("Coordinate `time` not sorted. Initiate with `copy=True`.")
+            raise ValueError("Coordinate `time` not sorted. Instantiate with `copy=True`.")
         for coord in self.dim_order[:3]:  # exclude time, the 4th dimension
             if not np.all(np.diff(indexes[coord]) > 0.0):
-                raise ValueError(f"Coordinate '{coord}' not sorted. Initiate with 'copy=True'.")
+                raise ValueError(f"Coordinate '{coord}' not sorted. Instantiate with 'copy=True'.")
 
     def _validate_transpose(self) -> None:
         """Check that data is transposed according to :attr:`dim_order`."""
@@ -206,11 +206,11 @@ class MetBase(ABC, Generic[XArrayType]):
             if da.dims != self.dim_order:
                 if key is not None:
                     msg = (
-                        f"Data dimension not transposed on variable '{key}'. Initiate with"
+                        f"Data dimension not transposed on variable '{key}'. Instantiate with"
                         " 'copy=True'."
                     )
                 else:
-                    msg = "Data dimension not transposed. Initiate with 'copy=True'."
+                    msg = "Data dimension not transposed. Instantiate with 'copy=True'."
                 raise ValueError(msg)
 
         data = self.data
@@ -233,8 +233,8 @@ class MetBase(ABC, Generic[XArrayType]):
         if self.data["level"].dtype != COORD_DTYPE:
             raise ValueError(
                 "Level values must be of type float64. "
-                "Initiate with 'copy=True' to convert to float64. "
-                "Initiate with 'validate=False' to skip validation."
+                "Instantiate with 'copy=True' to convert to float64. "
+                "Instantiate with 'validate=False' to skip validation."
             )
 
     def _preprocess_dims(self, wrap_longitude: bool) -> None:
