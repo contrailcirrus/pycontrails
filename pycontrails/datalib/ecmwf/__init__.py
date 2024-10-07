@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pycontrails.datalib.ecmwf.arco_era5 import (
-    ARCOERA5,
+    ERA5ARCO,
     open_arco_era5_model_level_data,
     open_arco_era5_single_level,
 )
@@ -40,7 +40,7 @@ from pycontrails.datalib.ecmwf.variables import (
 )
 
 __all__ = [
-    "ARCOERA5",
+    "ERA5ARCO",
     "CDSCredentialsNotFound",
     "ERA5",
     "ERA5ModelLevel",

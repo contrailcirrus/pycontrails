@@ -7,9 +7,9 @@ This module supports
 - Local caching of processed netCDF files.
 - Opening processed and cached files as a :class:`pycontrails.MetDataset` object.
 
-Consider using :class:`pycontrails.datalib.ecmwf.ARCOERA5`
+Consider using :class:`pycontrails.datalib.ecmwf.ERA5ARCO`
 to access model-level data from the nominal ERA5 reanalysis between 1959 and 2022.
-:class:`pycontrails.datalib.ecmwf.ARCOERA5` accesses data through Google's
+:class:`pycontrails.datalib.ecmwf.ERA5ARCO` accesses data through Google's
 `Analysis-Ready, Cloud Optimized ERA5 dataset <https://cloud.google.com/storage/docs/public-datasets/era5>`_
 and has lower latency than this module, which retrieves data from the
 `Copernicus Climate Data Store <https://cds.climate.copernicus.eu/#!/home>`_.
