@@ -1054,14 +1054,13 @@ class MetDataset(MetBase):
         >>> era5 = ERA5(time=times, variables=variables, pressure_levels=levels)
         >>> met = era5.open_metdataset()
         >>> met.to_vector(transfer_attrs=False)
-        GeoVectorDataset [6 keys x 4152960 length, 1 attributes]
+        GeoVectorDataset [6 keys x 4152960 length, 0 attributes]
             Keys: longitude, latitude, level, time, air_temperature, ..., specific_humidity
             Attributes:
             time                [2022-03-01 00:00:00, 2022-03-01 01:00:00]
             longitude           [-180.0, 179.75]
             latitude            [-90.0, 90.0]
             altitude            [10362.8, 11783.9]
-            crs                 EPSG:4326
 
         """
         coords_keys = self.data.dims

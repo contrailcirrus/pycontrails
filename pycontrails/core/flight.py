@@ -75,9 +75,6 @@ class Flight(GeoVectorDataset):
     Expect altitude in [:math:`m`].
     Expect pressure level (`level`) in [:math:`hPa`].
 
-    Use the attribute :attr:`attrs["crs"]` to specify coordinate reference system
-    using `PROJ <https://proj.org/>`_ or `EPSG <https://epsg.org/home.html>`_ syntax.
-
     Parameters
     ----------
     data : dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None
@@ -159,7 +156,7 @@ class Flight(GeoVectorDataset):
     ... })
     >>> fl = Flight(data=df, flight_id=123)  # specify a flight_id by keyword
     >>> fl
-    Flight [4 keys x 500 length, 2 attributes]
+    Flight [4 keys x 500 length, 1 attributes]
     Keys: longitude, latitude, altitude, time
     Attributes:
     time                [2021-01-01 10:00:00, 2021-01-01 15:00:00]
@@ -167,7 +164,6 @@ class Flight(GeoVectorDataset):
     latitude            [10.0, 40.0]
     altitude            [10500.0, 10500.0]
     flight_id           123
-    crs                 EPSG:4326
 
     >>> # Create `Flight` from keywords
     >>> fl = Flight(
@@ -177,14 +173,13 @@ class Flight(GeoVectorDataset):
     ...     time=pd.date_range('2021-01-01T12', '2021-01-01T14', periods=200),
     ... )
     >>> fl
-    Flight [4 keys x 200 length, 1 attributes]
+    Flight [4 keys x 200 length, 0 attributes]
         Keys: longitude, latitude, time, altitude
         Attributes:
         time                [2021-01-01 12:00:00, 2021-01-01 14:00:00]
         longitude           [20.0, 30.0]
         latitude            [30.0, 40.0]
         altitude            [11000.0, 11000.0]
-        crs                 EPSG:4326
 
     >>> # Access the underlying data as DataFrame
     >>> fl.dataframe.head()
@@ -369,11 +364,6 @@ class Flight(GeoVectorDataset):
         float
             Maximum distance between waypoints, [:math:`m`]
 
-        Raises
-        ------
-        NotImplementedError
-            Raises when attr:`attrs["crs"]` is not EPSG:4326
-
         Examples
         --------
         >>> import numpy as np
@@ -386,9 +376,6 @@ class Flight(GeoVectorDataset):
         >>> fl.max_distance_gap
         np.float64(7391.27...)
         """
-        if self.attrs["crs"] != "EPSG:4326":
-            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
-
         return self.segment_length()[:-1].max()
 
     @property
@@ -399,11 +386,6 @@ class Flight(GeoVectorDataset):
         -------
         float
             Total flight length, [:math:`m`]
-
-        Raises
-        ------
-        NotImplementedError
-            Raises when attr:`attrs["crs"]` is not EPSG:4326
 
         Examples
         --------
@@ -417,9 +399,6 @@ class Flight(GeoVectorDataset):
         >>> fl.length
         np.float64(1436924.67...)
         """
-        if self.attrs["crs"] != "EPSG:4326":
-            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
-
         # drop off the nan
         return np.nansum(self.segment_length()[:-1])
 
@@ -461,11 +440,6 @@ class Flight(GeoVectorDataset):
         npt.NDArray[np.float64]
             Array of great circle distances in [:math:`m`] between waypoints
 
-        Raises
-        ------
-        NotImplementedError
-            Raises when attr:`attrs["crs"]` is not EPSG:4326
-
         Examples
         --------
         >>> from pycontrails import Flight
@@ -484,9 +458,6 @@ class Flight(GeoVectorDataset):
         :func:`segment_haversine`
         :meth:`segment_length`
         """
-        if self.attrs["crs"] != "EPSG:4326":
-            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
-
         return geo.segment_haversine(self["longitude"], self["latitude"])
 
     def segment_length(self) -> npt.NDArray[np.float64]:
@@ -499,11 +470,6 @@ class Flight(GeoVectorDataset):
         -------
         npt.NDArray[np.float64]
             Array of distances in [:math:`m`] between waypoints
-
-        Raises
-        ------
-        NotImplementedError
-            Raises when attr:`attrs["crs"]` is not EPSG:4326
 
         Examples
         --------
@@ -522,9 +488,6 @@ class Flight(GeoVectorDataset):
         --------
         :func:`segment_length`
         """
-        if self.attrs["crs"] != "EPSG:4326":
-            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
-
         return geo.segment_length(self["longitude"], self["latitude"], self.altitude)
 
     def segment_angle(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
@@ -1304,15 +1267,7 @@ class Flight(GeoVectorDataset):
         pd.DataFrame | None
             Generated waypoints to be merged into underlying :attr:`data`.
             Return `None` if no new waypoints are created.
-
-        Raises
-        ------
-        NotImplementedError
-            Raises when attr:`attrs["crs"]` is not EPSG:4326
         """
-        if self.attrs["crs"] != "EPSG:4326":
-            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
-
         # Omit the final nan and ensure index + 1 (below) is well defined
         segs = self.segment_haversine()[:-1]
 
@@ -1431,7 +1386,7 @@ class Flight(GeoVectorDataset):
         if key is not None and key not in self.dataframe.columns:
             raise KeyError(f"Column {key} does not exist in data.")
 
-        jump_indices = _antimeridian_index(pd.Series(self["longitude"]), self.attrs["crs"])
+        jump_indices = _antimeridian_index(pd.Series(self["longitude"]))
 
         def _group_to_feature(group: pd.DataFrame) -> dict[str, str | dict[str, Any]]:
             # assigns a different value to each group of consecutive indices
@@ -1515,8 +1470,6 @@ class Flight(GeoVectorDataset):
         ------
         KeyError
             :attr:`data` does not contain column ``key``
-        NotImplementedError
-            Raised when ``attrs["crs"]`` is not EPSG:4326
 
         Examples
         --------
@@ -1557,8 +1510,6 @@ class Flight(GeoVectorDataset):
         """
         if key not in self.data:
             raise KeyError(f"Column {key} does not exist in data.")
-        if self.attrs["crs"] != "EPSG:4326":
-            raise NotImplementedError("Only implemented for EPSG:4326 CRS.")
 
         # The column of interest may contain floating point values less than 1.
         # In this case, if the default threshold is not changed, warn the user that the behavior
@@ -1668,40 +1619,23 @@ def _return_linestring(data: dict[str, npt.NDArray[np.float64]]) -> list[list[fl
     return [list(p) for p in points]
 
 
-def _antimeridian_index(longitude: pd.Series, crs: str = "EPSG:4326") -> list[int]:
+def _antimeridian_index(longitude: pd.Series) -> list[int]:
     """Return indices after flight crosses antimeridian, or an empty list if flight does not cross.
+
+    This function assumes EPSG:4326 coordinates.
 
     Parameters
     ----------
     longitude : pd.Series
         longitude values with an integer index
-    crs : str, optional
-        Coordinate Reference system for longitude specified in EPSG format.
-        Currently only supports "EPSG:4326" and "EPSG:3857".
 
     Returns
     -------
     list[int]
         Indices after jump, or empty list of flight does not cross antimeridian.
-
-    Raises
-    ------
-    ValueError
-        CRS is not supported.
     """
-    # WGS84
-    if crs in ["EPSG:4326"]:
-        l1 = (-180.0, -90.0)
-        l2 = (90.0, 180.0)
-
-    # pseudo mercator
-    elif crs in ["EPSG:3857"]:
-        # values calculated through pyproj.Transformer
-        l1 = (-20037508.342789244, -10018754.171394622)
-        l2 = (10018754.171394622, 20037508.342789244)
-
-    else:
-        raise ValueError("CRS must be one of EPSG:4326 or EPSG:3857")
+    l1 = (-180.0, -90.0)
+    l2 = (90.0, 180.0)
 
     # TODO: When nans exist, this method *may* not find the meridian
     if np.any(np.isnan(longitude)):
@@ -1711,9 +1645,7 @@ def _antimeridian_index(longitude: pd.Series, crs: str = "EPSG:4326") -> list[in
     s2 = longitude.between(*l2)
     jump12 = longitude[s1 & s2.shift()]
     jump21 = longitude[s1.shift() & s2]
-    jump_index = pd.concat([jump12, jump21]).index.to_list()
-
-    return jump_index
+    return pd.concat([jump12, jump21]).index.to_list()
 
 
 def _sg_filter(

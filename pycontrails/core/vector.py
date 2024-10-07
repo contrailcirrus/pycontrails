@@ -1044,7 +1044,6 @@ class VectorDataset:
         >>> pprint.pprint(fl.to_dict())
         {'aircraft_type': 'B737',
          'altitude_ft': [38661.0, 38661.0, 38661.0, 38661.0, 38661.0, 38661.0, 38661.0],
-         'crs': 'EPSG:4326',
          'latitude': [40.0, 41.724, 43.428, 45.111, 46.769, 48.399, 50.0],
          'longitude': [-100.0,
                        -101.441,
@@ -1215,9 +1214,6 @@ class GeoVectorDataset(VectorDataset):
     Each spatial variable is expected to have "float32" or "float64" ``dtype``.
     The time variable is expected to have "datetime64[ns]" ``dtype``.
 
-    Use the attribute :attr:`attr["crs"]` to specify coordinate reference system
-    using `PROJ <https://proj.org/>`_ or `EPSG <https://epsg.org/home.html>`_ syntax.
-
     Parameters
     ----------
     data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
@@ -1364,16 +1360,12 @@ class GeoVectorDataset(VectorDataset):
             if arr.dtype not in float_dtype:
                 self.update({coord: arr.astype(np.float64)})
 
-        # set CRS to "EPSG:4326" by default
-        crs = self.attrs.setdefault("crs", "EPSG:4326")
-
-        if crs == "EPSG:4326":
-            longitude = self["longitude"]
-            if np.any(longitude > 180.0) or np.any(longitude < -180.0):
-                raise ValueError("EPSG:4326 longitude coordinates should lie between [-180, 180).")
-            latitude = self["latitude"]
-            if np.any(latitude > 90.0) or np.any(latitude < -90.0):
-                raise ValueError("EPSG:4326 latitude coordinates should lie between [-90, 90].")
+        longitude = self["longitude"]
+        if np.any(longitude > 180.0) or np.any(longitude < -180.0):
+            raise ValueError("EPSG:4326 longitude coordinates should lie between [-180, 180).")
+        latitude = self["latitude"]
+        if np.any(latitude > 90.0) or np.any(latitude < -90.0):
+            raise ValueError("EPSG:4326 latitude coordinates should lie between [-90, 90].")
 
     @overrides
     def _display_attrs(self) -> dict[str, str]:
@@ -1530,24 +1522,21 @@ class GeoVectorDataset(VectorDataset):
     # Utilities
     # ------------
 
-    def transform_crs(
-        self: GeoVectorDatasetType, crs: str, copy: bool = True
-    ) -> GeoVectorDatasetType:
+    def transform_crs(self, crs: str) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         """Transform trajectory data from one coordinate reference system (CRS) to another.
 
         Parameters
         ----------
         crs : str
             Target CRS. Passed into to :class:`pyproj.Transformer`. The source CRS
-            is inferred from the :attr:`attrs["crs"]` attribute.
+            is assumed to be EPSG:4326.
         copy : bool, optional
             Copy data on transformation. Defaults to True.
 
         Returns
         -------
-        GeoVectorDatasetType
-            Converted dataset with new coordinate reference system.
-            :attr:`attrs["crs"]` reflects new crs.
+        tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+            New x and y coordinates in the target CRS.
         """
         try:
             import pyproj
@@ -1559,14 +1548,9 @@ class GeoVectorDataset(VectorDataset):
                 pycontrails_optional_package="pyproj",
             )
 
-        transformer = pyproj.Transformer.from_crs(self.attrs["crs"], crs, always_xy=True)
-        lon, lat = transformer.transform(self["longitude"], self["latitude"])
-
-        ret = self.copy() if copy else self
-
-        ret.update(longitude=lon, latitude=lat)
-        ret.attrs.update(crs=crs)
-        return ret
+        crs_from = "EPSG:4326"
+        transformer = pyproj.Transformer.from_crs(crs_from, crs, always_xy=True)
+        return transformer.transform(self["longitude"], self["latitude"])
 
     def T_isa(self) -> npt.NDArray[np.float64]:
         """Calculate the ICAO standard atmosphere temperature at each point.
@@ -1960,21 +1944,6 @@ class GeoVectorDataset(VectorDataset):
             Python representation of GeoJSON FeatureCollection
         """
         return json_utils.dataframe_to_geojson_points(self.dataframe)
-
-    def to_pseudo_mercator(self: GeoVectorDatasetType, copy: bool = True) -> GeoVectorDatasetType:
-        """Convert data from :attr:`attrs["crs"]` to Pseudo Mercator (EPSG:3857).
-
-        Parameters
-        ----------
-        copy : bool, optional
-            Copy data on transformation.
-            Defaults to True.
-
-        Returns
-        -------
-        GeoVectorDatasetType
-        """
-        return self.transform_crs("EPSG:3857", copy=copy)
 
     # ------------
     # Vector to grid
