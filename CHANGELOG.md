@@ -1,10 +1,14 @@
 # Changelog
 
-## (unreleased)
+## v0.54.1 (unreleased)
 
 ### Features
 
-- Add CoCiP Grid notebook example to documentation
+- Add [CoCiP Grid notebook](https://py.contrails.org/notebooks/CoCiPGrid.html) example to documentation.
+
+### Fixes
+
+- Fix the integration time step in `CocipGrid.calc_evolve_one_step`. The previous implementation assumed a time interval of `params["dt_integration"]`. This may not be the case for all `source` parameters (for example, this could occur if running `CocipGrid` over a collection of ADS-B waypoints).
 
 ## v0.54.0
 
