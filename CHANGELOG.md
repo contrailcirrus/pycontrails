@@ -10,6 +10,7 @@
 
 - Remove deprecated `MetDataset.variables` property in favor of `MetDataset.indexes`.
 - Remove `**kwargs` in `MetDataArray` constructor.
+- Rename `ARCOERA5` to `ERA5ARCO` for consistency with the `ERA5` and `ERA5ModelLevel` interfaces.
 
 ### Fixes
 
