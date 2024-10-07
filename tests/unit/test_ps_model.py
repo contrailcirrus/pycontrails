@@ -459,7 +459,6 @@ def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
     ]
 
     assert out.attrs == {
-        "crs": "EPSG:4326",
         "aircraft_type": "B737",
         "mach_number": 0.757525,
         "wingspan": 34.3,

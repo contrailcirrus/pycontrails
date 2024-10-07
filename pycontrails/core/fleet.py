@@ -196,17 +196,15 @@ class Fleet(Flight):
 
         fl_attrs: dict[str, Any] = {}
 
-        # Pluck from the first flight to get fuel, data_keys, and crs
+        # Pluck from the first flight to get fuel and data_keys
         fuel = seq[0].fuel
         data_keys = set(seq[0])  # convert to a new instance to because we mutate seq[0]
-        crs = seq[0].attrs["crs"]
 
         for fl in seq:
             _validate_fl(
                 fl,
                 fl_attrs=fl_attrs,
                 data_keys=data_keys,
-                crs=crs,
                 fuel=fuel,
                 broadcast_numeric=broadcast_numeric,
             )
@@ -336,10 +334,6 @@ class Fleet(Flight):
     @property
     @overrides
     def max_distance_gap(self) -> float:
-        if self.attrs["crs"] != "EPSG:4326":
-            msg = "Only implemented for EPSG:4326 CRS."
-            raise NotImplementedError(msg)
-
         return np.nanmax(self.segment_length()).item()
 
     @overrides
@@ -400,7 +394,6 @@ def _validate_fl(
     *,
     fl_attrs: dict[str, Any],
     data_keys: set[str],
-    crs: str,
     fuel: Fuel,
     broadcast_numeric: bool,
 ) -> None:
@@ -419,8 +412,6 @@ def _validate_fl(
         Set of data keys expected in each flight.
     fuel : Fuel
         Fuel used all flights
-    crs : str
-        CRS to use all flights
     broadcast_numeric : bool
         If True, broadcast numeric attributes to data variables.
 
@@ -429,7 +420,7 @@ def _validate_fl(
     KeyError
         ``fl`` does not have a ``flight_id`` key in :attr:`attrs`.
     ValueError
-        If ``flight_id`` is duplicated or incompatible CRS found.
+        If ``flight_id`` is duplicated or if ``fuel`` or ``data_keys`` are inconsistent.
     """
     flight_id = _extract_flight_id(fl)
 
@@ -444,13 +435,6 @@ def _validate_fl(
             f"Fuel type on Flight {flight_id} ({fl.fuel.fuel_name}) "
             f"is not inconsistent with previous flights ({fuel.fuel_name}). "
             "The 'fuel' attributes must be consistent between flights in a Fleet."
-        )
-        raise ValueError(msg)
-    if fl.attrs["crs"] != crs:
-        msg = (
-            f"CRS on Flight {flight_id} ({fl.attrs['crs']}) "
-            f"is not inconsistent with previous flights ({crs}). "
-            "The 'crs' attributes must be consistent between flights in a Fleet."
         )
         raise ValueError(msg)
     if fl.data.keys() != data_keys:

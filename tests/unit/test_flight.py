@@ -72,17 +72,6 @@ def test_flight_init(fl: Flight) -> None:
     assert isinstance(fl.air_pressure, np.ndarray)
 
 
-def test_flight_crs(flight_data: pd.DataFrame) -> None:
-    fl = Flight(flight_data)
-
-    # crs defaults to "EPSG:4326"
-    assert fl.attrs["crs"] == "EPSG:4326"
-
-    # crs maintained as attr
-    fl = Flight(flight_data, crs="EPSG:3857")
-    assert fl.attrs["crs"] == "EPSG:3857"
-
-
 def test_flight_creation() -> None:
     """Test Flight.__init__() with unsorted time data."""
     # sorted
@@ -176,7 +165,6 @@ def test_flight_empty() -> None:
     assert len(fl.air_pressure) == 0
     assert len(fl.level) == 0
 
-    assert fl.attrs["crs"] == "EPSG:4326"
     assert isinstance(fl.constants, dict)
     assert fl.constants == fl.attrs
 
@@ -579,30 +567,6 @@ def test_to_traffic(fl: Flight) -> None:
     assert fl.duration == tr.duration
 
 
-def test_crs(fl: Flight, met_issr: MetDataset, rng: np.random.Generator) -> None:
-    fl2 = fl.to_pseudo_mercator()
-    assert fl.attrs["crs"] == "EPSG:4326"
-    assert fl2.attrs["crs"] == "EPSG:3857"
-
-    assert np.all(fl.data["altitude"] == fl2.data["altitude"])
-    assert np.all(fl.data["time"] == fl2.data["time"])
-    assert np.all(fl.data["latitude"] != fl2.data["latitude"])
-    assert np.all(fl.data["longitude"] != fl2.data["longitude"])
-
-    with pytest.raises(NotImplementedError):
-        _ = fl2.length
-    fl2.update(issr=rng.integers(0, 2, len(fl2)))
-    with pytest.raises(NotImplementedError, match="Only implemented for EPSG:4326"):
-        fl2.length_met("issr")
-    with pytest.raises(NotImplementedError, match="Only implemented for EPSG:4326"):
-        fl2.proportion_met("issr")
-    with pytest.raises(AttributeError, match="has no attribute 'interpolate'"):
-        fl2.intersect_met(met_issr)
-
-    with pytest.raises(KeyError, match="Column key does not exist in data"):
-        fl.length_met("key")  # key not in fl.data
-
-
 def test_antimeridian_jump() -> None:
     df = pd.DataFrame(
         {
@@ -615,15 +579,6 @@ def test_antimeridian_jump() -> None:
     )
 
     fl = Flight(df)
-    d = fl.to_geojson_multilinestring("issr", split_antimeridian=True)
-    issr_feature = d["features"][1]
-    assert len(issr_feature["geometry"]["coordinates"]) == 2
-
-    d = fl.to_geojson_multilinestring("issr", split_antimeridian=False)
-    issr_feature = d["features"][1]
-    assert len(issr_feature["geometry"]["coordinates"]) == 1
-
-    fl = fl.to_pseudo_mercator()
     d = fl.to_geojson_multilinestring("issr", split_antimeridian=True)
     issr_feature = d["features"][1]
     assert len(issr_feature["geometry"]["coordinates"]) == 2
