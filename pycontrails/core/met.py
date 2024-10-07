@@ -102,11 +102,10 @@ class MetBase(ABC, Generic[XArrayType]):
             return
 
         dim = sorted(missing)
-        dim_str = ", ".join(f"'{dim}'")
-        msg = f"Meteorology data must contain dimension(s) {dim_str}."
+        msg = f"Meteorology data must contain dimension(s): {dim}."
         if "level" in dim:
             msg += (
-                "For single level data, set 'level' coordinate to constant -1 "
+                " For single level data, set 'level' coordinate to constant -1 "
                 "using `ds = ds.expand_dims({'level': [-1]})`"
             )
         raise ValueError(msg)
