@@ -10,6 +10,7 @@
 ### Breaking changes
 
 - Remove `attrs["crs"]` usage from `GeoVectorDataset` and child classes (`Flight`, `Fleet`). All spatial data is assumed to be EPSG:4326 (WGS84). This was previously assumed implicitly, but now the `crs` attribute is removed from the `attrs` dictionary.
+- Change the return type of `GeoVectorDataset.transform_crs` to a pair of numpy arrays representing `x` and `y` coordinates in the target CRS.
 - Remove deprecated `MetDataset.variables` property in favor of `MetDataset.indexes`.
 - Remove `**kwargs` in `MetDataArray` constructor.
 - Rename `ARCOERA5` to `ERA5ARCO` for consistency with the `ERA5` and `ERA5ModelLevel` interfaces.
