@@ -133,33 +133,6 @@ def met_pcc_sl(met_ecmwf_sl_path: str, override_cache: DiskCacheStore) -> MetDat
     return era5.open_metdataset()
 
 
-@pytest.fixture()
-def met_accf_pl() -> MetDataset:
-    """Met data (pressure levels) for ACCF algorithm testing.
-
-    Returns
-    -------
-    MetDataset
-    """
-    path = get_static_path("met-accf-pl.nc")
-    ds = xr.open_dataset(path)
-    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
-
-
-@pytest.fixture()
-def met_accf_sl() -> MetDataset:
-    """Met data (single level) for ACCF algorithm testing.
-
-    Returns
-    -------
-    MetDataset
-    """
-    path = get_static_path("met-accf-sl.nc")
-    ds = xr.open_dataset(path)
-    ds = ds.expand_dims("level").assign_coords(level=("level", [-1]))
-    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
-
-
 @pytest.fixture(scope="session")
 def met_ecmwf_pl_path() -> str:
     """Path to ERA5 data at pressure levels.
