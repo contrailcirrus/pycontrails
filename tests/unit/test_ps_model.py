@@ -563,8 +563,31 @@ def test_ps_flight_on_fleet() -> None:
     fl2 = Flight(df_flight.iloc[1::2], aircraft_type="A333", flight_id=2)
     fleet = Fleet.from_seq([fl1, fl2])
 
+    # Check the attrs before evaluation
+    assert fleet.attrs == {}
+    assert fleet.fl_attrs == {
+        1: {"aircraft_type": "A320", "flight_id": 1},
+        2: {"aircraft_type": "A333", "flight_id": 2},
+    }
+
     fleet["air_temperature"] = fleet.T_isa()
 
     ps_model = ps.PSFlight(fill_low_altitude_with_zero_wind=True)
     out = ps_model.eval(fleet)
     assert isinstance(out, Fleet)
+    assert "fuel_flow" in out
+
+    # And check them after evaluation
+    assert out.attrs == {}
+    assert out.fl_attrs[1]["aircraft_type"] == "A320"
+    assert out.fl_attrs[2]["aircraft_type"] == "A333"
+    assert out.fl_attrs[1]["flight_id"] == 1
+    assert out.fl_attrs[2]["flight_id"] == 2
+    assert out.fl_attrs[1]["aircraft_performance_model"] == "PSFlight"
+    assert out.fl_attrs[2]["aircraft_performance_model"] == "PSFlight"
+    assert out.fl_attrs[1]["n_engine"] == 2
+    assert out.fl_attrs[2]["n_engine"] == 2
+    assert out.fl_attrs[1]["wingspan"] == 34.1
+    assert out.fl_attrs[2]["wingspan"] == 60.3
+    assert out.fl_attrs[1]["max_mach"] == 0.82
+    assert out.fl_attrs[2]["max_mach"] == 0.86
