@@ -5,9 +5,40 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 
 from pycontrails import Flight, MetDataset
 from pycontrails.models.accf import ACCF
+from tests.unit import get_static_path
+
+pytest.importorskip("climaccf", reason="climaccf package not available")
+
+
+@pytest.fixture()
+def met_accf_pl() -> MetDataset:
+    """Met data (pressure levels) for ACCF algorithm testing.
+
+    Returns
+    -------
+    MetDataset
+    """
+    path = get_static_path("met-accf-pl.nc")
+    ds = xr.open_dataset(path)
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
+
+
+@pytest.fixture()
+def met_accf_sl() -> MetDataset:
+    """Met data (single level) for ACCF algorithm testing.
+
+    Returns
+    -------
+    MetDataset
+    """
+    path = get_static_path("met-accf-sl.nc")
+    ds = xr.open_dataset(path)
+    ds = ds.expand_dims("level").assign_coords(level=("level", [-1]))
+    return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
 
 
 @pytest.fixture()
@@ -39,8 +70,6 @@ def test_accf_default(
     use_watts: bool,
 ) -> None:
     """Test Default accf algorithm."""
-
-    pytest.importorskip("climaccf", reason="climaccf package not available")
 
     for name, da in met_accf_sl.data.items():
         assert da.attrs["units"] == "J m**-2"
