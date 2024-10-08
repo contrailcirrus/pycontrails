@@ -19,6 +19,7 @@
 
 - Fix the integration time step in `CocipGrid.calc_evolve_one_step`. The previous implementation assumed a time interval of `params["dt_integration"]`. This may not be the case for all `source` parameters (for example, this could occur if running `CocipGrid` over a collection of ADS-B waypoints).
 - Raise an exception in constructing `MetDataset(ds, copy=False)` when `ds["level"]` has float32 dtype. Per interpolation conventions, all coordinate variables must have float64 dtype. (This was previously enforced in longitude and latitude, but was overlooked in the level coordinate.)
+- Allow `AircraftPerformance.ensure_true_airspeed_on_source` to use `eastward_wind` and `northward_wind` fields on the `source` if available. This is useful when the `source` has already been interpolated to met data.
 
 ## v0.54.0
 

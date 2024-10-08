@@ -472,10 +472,11 @@ class AircraftPerformance(Model):
             tas[cond] = self.source.segment_groundspeed()[cond]
             return tas
 
-        met_incomplete = (
-            self.met is None or "eastward_wind" not in self.met or "northward_wind" not in self.met
+        wind_available = ("eastward_wind" in self.source and "northward_wind" in self.source) or (
+            self.met is not None and "eastward_wind" in self.met and "northward_wind" in self.met
         )
-        if met_incomplete:
+
+        if not wind_available:
             if fill_with_groundspeed:
                 tas = self.source.segment_groundspeed()
                 self.source["true_airspeed"] = tas
