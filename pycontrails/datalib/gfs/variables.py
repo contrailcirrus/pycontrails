@@ -43,7 +43,7 @@ CloudIceWaterMixingRatio = MetVariable(
 
 
 TOAUpwardShortwaveRadiation = MetVariable(
-    short_name="uswrf",
+    short_name="suswrf",
     standard_name="toa_upward_shortwave_flux",
     long_name="Top of atmosphere upward shortwave radiation",
     units="W m**-2",
@@ -56,7 +56,7 @@ TOAUpwardShortwaveRadiation = MetVariable(
 )
 
 TOAUpwardLongwaveRadiation = MetVariable(
-    short_name="ulwrf",
+    short_name="sulwrf",
     standard_name="toa_upward_longwave_flux",
     long_name="Top of atmosphere upward longwave radiation",
     units="W m**-2",
