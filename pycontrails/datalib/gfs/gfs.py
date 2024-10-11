@@ -9,6 +9,7 @@ References
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 import pathlib
@@ -82,6 +83,9 @@ class GFSForecast(metsource.MetDataSource):
     show_progress : bool, optional
         Show progress when downloading files from GFS AWS Bucket.
         Defaults to False
+    cache_download: bool, optional
+        If True, cache downloaded grib files rather than storing them in a temporary file.
+        By default, False.
 
     Examples
     --------
@@ -116,7 +120,7 @@ class GFSForecast(metsource.MetDataSource):
     - `GFS Documentation <https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs/documentation.php>`_
     """
 
-    __slots__ = ("client", "grid", "cachestore", "show_progress", "forecast_time")
+    __slots__ = ("client", "grid", "cachestore", "show_progress", "forecast_time", "cache_download")
 
     #: S3 client for accessing GFS bucket
     client: botocore.client.S3
@@ -142,7 +146,8 @@ class GFSForecast(metsource.MetDataSource):
         forecast_time: DatetimeLike | None = None,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         show_progress: bool = False,
-    ):
+        cache_download: bool = False,
+    ) -> None:
         try:
             import boto3
         except ModuleNotFoundError as e:
@@ -169,6 +174,7 @@ class GFSForecast(metsource.MetDataSource):
             cachestore = cache.DiskCacheStore()
         self.cachestore = cachestore
         self.show_progress = show_progress
+        self.cache_download = cache_download
 
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
@@ -462,23 +468,29 @@ class GFSForecast(metsource.MetDataSource):
         filename = self.filename(t)
         aws_key = f"{self.forecast_path}/{filename}"
 
-        # Hold downloaded file in named temp file
-        with temp.temp_file() as temp_grib_filename:
-            # retrieve data from AWS S3
-            logger.debug(f"Downloading GFS file {filename} from AWS bucket to {temp_grib_filename}")
-            if self.show_progress:
-                _download_with_progress(
-                    self.client, GFS_FORECAST_BUCKET, aws_key, temp_grib_filename, filename
-                )
-            else:
-                self.client.download_file(
-                    Bucket=GFS_FORECAST_BUCKET, Key=aws_key, Filename=temp_grib_filename
-                )
+        stack = contextlib.ExitStack()
+        if self.cache_download:
+            target = self.cachestore.path(aws_key.replace("/", "-"))
+        else:
+            target = stack.enter_context(temp.temp_file())
 
-            ds = self._open_gfs_dataset(temp_grib_filename, t)
+        # Hold downloaded file in named temp file
+        with stack:
+            # retrieve data from AWS S3
+            logger.debug(f"Downloading GFS file {filename} from AWS bucket to {target}")
+            if not self.cache_download or not self.cachestore.exists(target):
+                self._make_download(aws_key, target, filename)
+
+            ds = self._open_gfs_dataset(target, t)
 
             cache_path = self.create_cachepath(t)
             ds.to_netcdf(cache_path)
+
+    def _make_download(self, aws_key: str, target: str, filename: str) -> None:
+        if self.show_progress:
+            _download_with_progress(self.client, GFS_FORECAST_BUCKET, aws_key, target, filename)
+        else:
+            self.client.download_file(Bucket=GFS_FORECAST_BUCKET, Key=aws_key, Filename=target)
 
     def _open_gfs_dataset(self, filepath: str | pathlib.Path, t: datetime) -> xr.Dataset:
         """Open GFS grib file for one forecast timestep.
