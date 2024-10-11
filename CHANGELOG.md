@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.54.2 (unreleased)
+
+### Features
+
+- Add `cache_download` parameter to the `GFSForecast` interface. When set to `True`, downloaded grib data is cached locally. This is consistent with the behavior of the `ERA5ModelLevel` and `HRESModelLevel` interfaces.
+
+### Fixes
+
+- Update GFS variable names "uswrf" -> "suswrf" and "ulwrf" -> "sulwrf". This seems to provide a fix for a recent change in the GFS grib variable names.
+
 ## v0.54.1
 
 ### Features
