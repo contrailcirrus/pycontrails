@@ -502,7 +502,7 @@ class GFSForecast(metsource.MetDataSource):
         step = pd.Timedelta(t - self.forecast_time) // pd.Timedelta(1, "h")
 
         # open file for each variable short name individually
-        ds: xr.Dataset | None = None
+        da_dict = {}
         for variable in self.variables:
             # Radiation data is not available in the 0th step
             is_radiation_step_zero = step == 0 and variable in (
@@ -519,23 +519,24 @@ class GFSForecast(metsource.MetDataSource):
             else:
                 v = variable
 
-            tmpds = xr.open_dataset(
-                filepath,
-                filter_by_keys={"typeOfLevel": v.level_type, "shortName": v.short_name},
-                engine="cfgrib",
-            )
+            try:
+                da = xr.open_dataarray(
+                    filepath,
+                    filter_by_keys={"typeOfLevel": v.level_type, "shortName": v.short_name},
+                    engine="cfgrib",
+                )
+            except ValueError as exc:
+                # To debug this situation, you can use:
+                # import cfgrib
+                # cfgrib.open_datasets(filepath)
+                msg = f"Variable {v.short_name} not found in {filepath}"
+                raise ValueError(msg) from exc
 
-            if ds is None:
-                ds = tmpds
-            else:
-                ds[v.short_name] = tmpds[v.short_name]
-
-            # set all radiation data to np.nan in the 0th step
             if is_radiation_step_zero:
-                ds = ds.rename({Visibility.short_name: variable.short_name})
-                ds[variable.short_name] = np.nan
+                da = xr.full_like(da, np.nan)  # set all radiation data to np.nan in the 0th step
+            da_dict[variable.short_name] = da
 
-        assert ds is not None, "No variables were loaded from grib file"
+        ds = xr.Dataset(da_dict)
 
         # for pressure levels, need to rename "level" field and downselect
         if self.pressure_levels != [-1]:
