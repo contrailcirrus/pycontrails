@@ -30,6 +30,11 @@ from typing import (
     overload,
 )
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
 if sys.version_info >= (3, 12):
     from typing import override
 else:
@@ -983,7 +988,7 @@ class MetDataset(MetBase):
         hash: str,
         cachestore: CacheStore | None = None,
         chunks: dict[str, int] | None = None,
-    ) -> MetDataset:
+    ) -> Self:
         """Load saved intermediate from :attr:`cachestore`.
 
         Parameters
@@ -998,7 +1003,7 @@ class MetDataset(MetBase):
 
         Returns
         -------
-        MetDataset
+        Self
             New MetDataArray with loaded data.
         """
         cachestore = cachestore or DiskCacheStore()
@@ -1184,7 +1189,7 @@ class MetDataset(MetBase):
         latitude: npt.ArrayLike | float,
         level: npt.ArrayLike | float,
         time: npt.ArrayLike | np.datetime64,
-    ) -> MetDataset:
+    ) -> Self:
         r"""Create a :class:`MetDataset` containing a coordinate skeleton from coordinate arrays.
 
         Parameters
@@ -1198,7 +1203,7 @@ class MetDataset(MetBase):
 
         Returns
         -------
-        MetDataset
+        Self
             MetDataset with no variables.
 
         Examples
@@ -1284,7 +1289,7 @@ class MetDataset(MetBase):
         return cls(xr.Dataset({}, coords=coords))
 
     @classmethod
-    def from_zarr(cls, store: Any, **kwargs: Any) -> MetDataset:
+    def from_zarr(cls, store: Any, **kwargs: Any) -> Self:
         """Create a :class:`MetDataset` from a path to a Zarr store.
 
         Parameters
@@ -1296,7 +1301,7 @@ class MetDataset(MetBase):
 
         Returns
         -------
-        MetDataset
+        Self
             MetDataset with data from Zarr store.
         """
         kwargs.setdefault("storage_options", {"read_only": True})
@@ -1832,7 +1837,7 @@ class MetDataArray(MetBase):
         hash: str,
         cachestore: CacheStore | None = None,
         chunks: dict[str, int] | None = None,
-    ) -> MetDataArray:
+    ) -> Self:
         """Load saved intermediate from :attr:`cachestore`.
 
         Parameters
