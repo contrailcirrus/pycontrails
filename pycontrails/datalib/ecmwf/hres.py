@@ -331,9 +331,9 @@ class HRES(ECMWFAPI):
             f" {getattr(self, 'steps', '')}"
         )
 
-    @classmethod
+    @staticmethod
     def create_synoptic_time_ranges(
-        self, timesteps: list[pd.Timestamp]
+        timesteps: list[pd.Timestamp],
     ) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
         """Create synoptic time bounds encompassing date range.
 
