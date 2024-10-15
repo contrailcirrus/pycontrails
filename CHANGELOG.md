@@ -10,6 +10,11 @@
 
 - Update GFS variable names "uswrf" -> "suswrf" and "ulwrf" -> "sulwrf". This accommodates a breaking change introduced in [eccodes 2.38](https://confluence.ecmwf.int/display/MTG2US/Changes+in+ecCodes+version+2.38.0+compared+to+the+previous+version#ChangesinecCodesversion2.38.0comparedtothepreviousversion-Changedshortnames).
 
+### Internals
+
+- Remove `overrides` dependency. Require `typing-extensions` for python < 3.12.
+- Upgrade some type hints for more modern python language features.
+
 ## v0.54.1
 
 ### Features
