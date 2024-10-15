@@ -43,6 +43,8 @@ CloudIceWaterMixingRatio = MetVariable(
 
 
 TOAUpwardShortwaveRadiation = MetVariable(
+    # Note the variable in the GFS Grib file is "uswrf" for the "nominalTop" level
+    # eccodes > 2.38 rewrites to `suswrf` on loading
     short_name="suswrf",
     standard_name="toa_upward_shortwave_flux",
     long_name="Top of atmosphere upward shortwave radiation",
