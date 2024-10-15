@@ -8,7 +8,12 @@ import logging
 import sys
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
-from typing import Any, TypeVar, overload
+from typing import Any, overload
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -27,10 +32,6 @@ from pycontrails.utils import dependencies
 from pycontrails.utils import json as json_utils
 
 logger = logging.getLogger(__name__)
-
-#: Vector types
-VectorDatasetType = TypeVar("VectorDatasetType", bound="VectorDataset")
-GeoVectorDatasetType = TypeVar("GeoVectorDatasetType", bound="GeoVectorDataset")
 
 
 class AttrDict(dict[str, Any]):
@@ -579,7 +580,7 @@ class VectorDataset:
         """
         return self.size > 0
 
-    def __add__(self: VectorDatasetType, other: VectorDatasetType | None) -> VectorDatasetType:
+    def __add__(self, other: Self | None) -> Self:
         """Concatenate two compatible instances of VectorDataset.
 
         In this context, compatibility means that both have identical :attr:`data` keys.
@@ -591,12 +592,12 @@ class VectorDataset:
 
         Parameters
         ----------
-        other : VectorDatasetType
+        other : Self | None
             Other values to concatenate
 
         Returns
         -------
-        VectorDatasetType
+        Self
             Concatenated values.
 
         Raises
@@ -615,11 +616,11 @@ class VectorDataset:
 
     @classmethod
     def sum(
-        cls: type[VectorDatasetType],
+        cls,
         vectors: Sequence[VectorDataset],
         infer_attrs: bool = True,
         fill_value: float | None = None,
-    ) -> VectorDatasetType:
+    ) -> Self:
         """Sum a list of :class:`VectorDataset` instances.
 
         Parameters
@@ -697,7 +698,7 @@ class VectorDataset:
             return cls(data, attrs=vectors[0].attrs, copy=False)
         return cls(data, copy=False)
 
-    def __eq__(self: VectorDatasetType, other: object) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Determine if two instances are equal.
 
         NaN values are considered equal in this comparison.
@@ -705,7 +706,7 @@ class VectorDataset:
         Parameters
         ----------
         other : object
-            VectorDatasetType to compare with
+            VectorDataset to compare with
 
         Returns
         -------
@@ -789,8 +790,8 @@ class VectorDataset:
     # Utilities
     # ------------
 
-    def copy(self: VectorDatasetType, **kwargs: Any) -> VectorDatasetType:
-        """Return a copy of this VectorDatasetType class.
+    def copy(self, **kwargs: Any) -> Self:
+        """Return a copy of this instance.
 
         Parameters
         ----------
@@ -799,7 +800,7 @@ class VectorDataset:
 
         Returns
         -------
-        VectorDatasetType
+        Self
             Copy of class
         """
         return type(self)(data=self.data, attrs=self.attrs, copy=True, **kwargs)
@@ -825,9 +826,7 @@ class VectorDataset:
         data = {key: self[key] for key in keys}
         return VectorDataset(data=data, attrs=self.attrs, copy=copy)
 
-    def filter(
-        self: VectorDatasetType, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any
-    ) -> VectorDatasetType:
+    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
         """Filter :attr:`data` according to a boolean array ``mask``.
 
         Entries corresponding to ``mask == True`` are kept.
@@ -845,7 +844,7 @@ class VectorDataset:
 
         Returns
         -------
-        VectorDatasetType
+        Self
             Containing filtered data
 
         Raises
@@ -860,7 +859,7 @@ class VectorDataset:
         data = {key: value[mask] for key, value in self.data.items()}
         return type(self)(data=data, attrs=self.attrs, copy=copy, **kwargs)
 
-    def sort(self: VectorDatasetType, by: str | list[str]) -> VectorDatasetType:
+    def sort(self, by: str | list[str]) -> Self:
         """Sort data by key(s).
 
         This method always creates a copy of the data by calling
@@ -873,7 +872,7 @@ class VectorDataset:
 
         Returns
         -------
-        VectorDatasetType
+        Self
             Instance with sorted data.
         """
         return type(self)(data=self.dataframe.sort_values(by=by), attrs=self.attrs, copy=False)
@@ -1114,12 +1113,12 @@ class VectorDataset:
 
     @classmethod
     def create_empty(
-        cls: type[VectorDatasetType],
+        cls,
         keys: Iterable[str],
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
-    ) -> VectorDatasetType:
-        """Create instance with variables defined by `keys` and size 0.
+    ) -> Self:
+        """Create instance with variables defined by ``keys`` and size 0.
 
         If instance requires additional variables to be defined, these keys will automatically
         be attached to returned instance.
@@ -1135,15 +1134,13 @@ class VectorDataset:
 
         Returns
         -------
-        VectorDatasetType
+        Self
             Empty VectorDataset instance.
         """
         return cls(data=_empty_vector_dict(keys or set()), attrs=attrs, copy=False, **attrs_kwargs)
 
     @classmethod
-    def from_dict(
-        cls: type[VectorDatasetType], obj: dict[str, Any], copy: bool = True, **obj_kwargs: Any
-    ) -> VectorDatasetType:
+    def from_dict(cls, obj: dict[str, Any], copy: bool = True, **obj_kwargs: Any) -> Self:
         """Create instance from dict representation containing data and attrs.
 
         Parameters
@@ -1158,7 +1155,7 @@ class VectorDataset:
 
         Returns
         -------
-        VectorDatasetType
+        Self
             VectorDataset instance.
 
         See Also
@@ -1176,9 +1173,7 @@ class VectorDataset:
 
         return cls(data=data, attrs=attrs, copy=copy)
 
-    def generate_splits(
-        self: VectorDatasetType, n_splits: int, copy: bool = True
-    ) -> Generator[VectorDatasetType, None, None]:
+    def generate_splits(self, n_splits: int, copy: bool = True) -> Generator[Self, None, None]:
         """Split instance into ``n_split`` sub-vectors.
 
         Parameters
@@ -1191,7 +1186,7 @@ class VectorDataset:
 
         Returns
         -------
-        Generator[VectorDatasetType, None, None]
+        Generator[Self, None, None]
             Generator of split vectors.
 
         See Also
@@ -1929,11 +1924,11 @@ class GeoVectorDataset(VectorDataset):
     @classmethod
     @override
     def create_empty(
-        cls: type[GeoVectorDatasetType],
+        cls,
         keys: Iterable[str] | None = None,
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
-    ) -> GeoVectorDatasetType:
+    ) -> Self:
         keys = *cls.required_keys, "altitude", *(keys or ())
         return super().create_empty(keys, attrs, **attrs_kwargs)
 
