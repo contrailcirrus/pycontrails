@@ -58,6 +58,8 @@ TOAUpwardShortwaveRadiation = MetVariable(
 )
 
 TOAUpwardLongwaveRadiation = MetVariable(
+    # Note the variable in the GFS Grib file is "ulwrf" for the "nominalTop" level
+    # eccodes > 2.38 rewrites to `sulwrf` on loading
     short_name="sulwrf",
     standard_name="toa_upward_longwave_flux",
     long_name="Top of atmosphere upward longwave radiation",
