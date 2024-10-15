@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import logging
+import sys
 import warnings
 from collections.abc import Sequence
 from typing import Any, Literal, NoReturn, overload
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 from pycontrails.core import met_var
 from pycontrails.core.aircraft_performance import AircraftPerformance
@@ -1218,7 +1223,7 @@ class Cocip(Model):
 
         return self._downwash_contrail.filter(filt)
 
-    @overrides
+    @override
     def _cleanup_indices(self) -> None:
         """Cleanup interpolation artifacts."""
 

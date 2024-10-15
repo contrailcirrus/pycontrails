@@ -7,14 +7,19 @@ import contextlib
 import dataclasses
 import functools
 import pathlib
+import sys
 import warnings
 from typing import Any, NoReturn, overload
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 from pycontrails.core import models
 from pycontrails.core.met import MetDataArray, MetDataset
@@ -202,7 +207,7 @@ class ConstantHumidityScaling(HumidityScaling):
     default_params = ConstantHumidityScalingParams
     scaler_specific_keys = ("rhi_adj",)
 
-    @overrides
+    @override
     def scale(
         self,
         specific_humidity: ArrayLike,
@@ -254,7 +259,7 @@ class ExponentialBoostHumidityScaling(HumidityScaling):
     default_params = ExponentialBoostHumidityScalingParams
     scaler_specific_keys = "rhi_adj", "rhi_boost_exponent", "clip_upper"
 
-    @overrides
+    @override
     def scale(
         self,
         specific_humidity: ArrayLike,
@@ -408,7 +413,7 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
         q_method = self.params["interpolation_q_method"]
         return {**super()._scale_kwargs(), "q_method": q_method}
 
-    @overrides
+    @override
     def scale(
         self,
         specific_humidity: ArrayLike,
@@ -557,7 +562,7 @@ class HumidityScalingByLevel(HumidityScaling):
         "stratosphere_threshold",
     )
 
-    @overrides
+    @override
     def scale(
         self,
         specific_humidity: ArrayLike,
@@ -825,7 +830,7 @@ class HistogramMatching(HumidityScaling):
             warnings.warn(msg, DeprecationWarning)
         super().__init__(met, params, **params_kwargs)
 
-    @overrides
+    @override
     def scale(
         self,
         specific_humidity: ArrayLike,
@@ -976,7 +981,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
 
         return self.source
 
-    @overrides
+    @override
     def scale(  # type: ignore[override]
         self,
         specific_humidity: npt.NDArray[np.float64],

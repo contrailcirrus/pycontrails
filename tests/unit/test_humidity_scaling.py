@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
+import sys
 from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import numpy as np
 import pandas as pd
 import pytest
-from overrides import overrides
 
 from pycontrails import GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
 from pycontrails.core import models
@@ -68,7 +73,7 @@ class DefaultHumidityScaling(hs.HumidityScaling):
     long_name = "No humidity scaling"
     formula = "rhi -> rhi"
 
-    @overrides
+    @override
     def scale(
         self,
         specific_humidity: ArrayLike,

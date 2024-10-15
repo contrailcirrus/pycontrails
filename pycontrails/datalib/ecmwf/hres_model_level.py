@@ -13,15 +13,20 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import logging
+import sys
 import warnings
 from datetime import datetime, timedelta
 from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 LOG = logging.getLogger(__name__)
 
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 import pycontrails
 from pycontrails.core import cache
@@ -283,7 +288,7 @@ class HRESModelLevel(ECMWFAPI):
         """
         return []
 
-    @overrides
+    @override
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:
         """Return cachepath to local HRES data file based on datetime.
 
@@ -316,13 +321,13 @@ class HRESModelLevel(ECMWFAPI):
 
         return self.cachestore.path(cache_path)
 
-    @overrides
+    @override
     def download_dataset(self, times: list[datetime]) -> None:
         # will always submit a single MARS request since each forecast is a separate file on tape
         LOG.debug(f"Retrieving ERA5 data for times {times} from forecast {self.forecast_time}")
         self._download_convert_cache_handler(times)
 
-    @overrides
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
@@ -348,7 +353,7 @@ class HRESModelLevel(ECMWFAPI):
         self.set_metadata(mds)
         return mds
 
-    @overrides
+    @override
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         ds.attrs.update(
             provider="ECMWF", dataset="HRES", product="forecast", radiation_accumulated=True

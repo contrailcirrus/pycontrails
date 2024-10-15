@@ -7,16 +7,21 @@ import hashlib
 import logging
 import os
 import pathlib
+import sys
 import warnings
 from contextlib import ExitStack
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 LOG = logging.getLogger(__name__)
 
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 import pycontrails
 from pycontrails.core import cache
@@ -347,7 +352,7 @@ class ERA5(ECMWFAPI):
         # return cache path
         return self.cachestore.path(f"{datestr}-{suffix}.nc")
 
-    @overrides
+    @override
     def download_dataset(self, times: list[datetime]) -> None:
         download_times: dict[datetime, list[datetime]] = collections.defaultdict(list)
         for t in times:
@@ -359,7 +364,7 @@ class ERA5(ECMWFAPI):
         for times_for_day in download_times.values():
             self._download_file(times_for_day)
 
-    @overrides
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
@@ -399,7 +404,7 @@ class ERA5(ECMWFAPI):
         self.set_metadata(mds)
         return mds
 
-    @overrides
+    @override
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         if self.product_type == "reanalysis":
             product = "reanalysis"

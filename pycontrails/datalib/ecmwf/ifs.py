@@ -4,16 +4,21 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import sys
 import warnings
 from datetime import datetime
 from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 LOG = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 from pycontrails.core import met
 from pycontrails.datalib._met_utils import metsource
@@ -119,7 +124,7 @@ class IFS(metsource.MetDataSource):
         """
         return None
 
-    @overrides
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
@@ -190,7 +195,7 @@ class IFS(metsource.MetDataSource):
         self.set_metadata(ds)
         return met.MetDataset(ds, **kwargs)
 
-    @overrides
+    @override
     def set_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
         ds.attrs.update(
             provider="ECMWF",
@@ -198,15 +203,15 @@ class IFS(metsource.MetDataSource):
             product="forecast",
         )
 
-    @overrides
+    @override
     def download_dataset(self, times: list[datetime]) -> None:
         raise NotImplementedError("IFS download is not supported")
 
-    @overrides
+    @override
     def cache_dataset(self, dataset: xr.Dataset) -> None:
         raise NotImplementedError("IFS dataset caching not supported")
 
-    @overrides
+    @override
     def create_cachepath(self, t: datetime) -> str:
         raise NotImplementedError("IFS download is not supported")
 

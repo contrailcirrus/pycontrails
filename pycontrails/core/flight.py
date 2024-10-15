@@ -4,14 +4,20 @@ from __future__ import annotations
 
 import enum
 import logging
+import sys
 import warnings
 from typing import TYPE_CHECKING, Any, NoReturn, TypeVar
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.signal
-from overrides import overrides
 
 from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.vector import AttrDict, GeoVectorDataset, VectorDataDict, VectorDataset
@@ -276,19 +282,19 @@ class Flight(GeoVectorDataset):
                     "'drop_duplicated_times=True' or call the 'resample_and_fill' method."
                 )
 
-    @overrides
+    @override
     def copy(self: FlightType, **kwargs: Any) -> FlightType:
         kwargs.setdefault("fuel", self.fuel)
         return super().copy(**kwargs)
 
-    @overrides
+    @override
     def filter(
         self: FlightType, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any
     ) -> FlightType:
         kwargs.setdefault("fuel", self.fuel)
         return super().filter(mask, copy=copy, **kwargs)
 
-    @overrides
+    @override
     def sort(self, by: str | list[str]) -> NoReturn:
         msg = (
             "Flight.sort is not implemented. A Flight instance is automatically sorted "

@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import pathlib
+import sys
 import typing
 import warnings
 from abc import ABC, abstractmethod
@@ -29,11 +30,15 @@ from typing import (
     overload,
 )
 
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 from pycontrails.core import interpolation
 from pycontrails.core import vector as vector_module
@@ -863,13 +868,13 @@ class MetDataset(MetBase):
         return key in self.data
 
     @property
-    @overrides
+    @override
     def shape(self) -> tuple[int, int, int, int]:
         sizes = self.data.sizes
         return sizes["longitude"], sizes["latitude"], sizes["level"], sizes["time"]
 
     @property
-    @overrides
+    @override
     def size(self) -> int:
         return np.prod(self.shape).item()
 
@@ -1015,14 +1020,14 @@ class MetDataset(MetBase):
             cachestore=self.cachestore,
         )
 
-    @overrides
+    @override
     def broadcast_coords(self, name: str) -> xr.DataArray:
         da = xr.ones_like(self.data[next(iter(self.data.keys()))]) * self.data[name]
         da.name = name
 
         return da
 
-    @overrides
+    @override
     def downselect(self, bbox: tuple[float, ...]) -> MetDataset:
         data = downselect(self.data, bbox)
         return MetDataset(data, cachestore=self.cachestore, copy=False)
@@ -1432,12 +1437,12 @@ class MetDataArray(MetBase):
         return np.array_equal(self.data, self.data.astype(bool))
 
     @property
-    @overrides
+    @override
     def size(self) -> int:
         return self.data.size
 
     @property
-    @overrides
+    @override
     def shape(self) -> tuple[int, int, int, int]:
         # https://github.com/python/mypy/issues/1178
         return typing.cast(tuple[int, int, int, int], self.data.shape)
@@ -2380,14 +2385,14 @@ class MetDataArray(MetBase):
             )
         return mesh
 
-    @overrides
+    @override
     def broadcast_coords(self, name: str) -> xr.DataArray:
         da = xr.ones_like(self.data) * self.data[name]
         da.name = name
 
         return da
 
-    @overrides
+    @override
     def downselect(self, bbox: tuple[float, ...]) -> MetDataArray:
         data = downselect(self.data, bbox)
         return MetDataArray(data, cachestore=self.cachestore)

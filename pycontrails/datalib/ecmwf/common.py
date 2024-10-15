@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 LOG = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 from pycontrails.core import met
 from pycontrails.datalib._met_utils import metsource
@@ -88,7 +93,7 @@ class ECMWFAPI(metsource.MetDataSource):
         kwargs.setdefault("cachestore", self.cachestore)
         return met.MetDataset(ds, **kwargs)
 
-    @overrides
+    @override
     def cache_dataset(self, dataset: xr.Dataset) -> None:
         if self.cachestore is None:
             LOG.debug("Cache is turned off, skipping")
