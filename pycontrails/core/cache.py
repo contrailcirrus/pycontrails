@@ -7,14 +7,18 @@ import logging
 import os
 import pathlib
 import shutil
+import sys
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
-logger = logging.getLogger(__name__)
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
-from overrides import overrides
+logger = logging.getLogger(__name__)
 
 from pycontrails.utils import dependencies
 
@@ -203,20 +207,20 @@ class DiskCacheStore(CacheStore):
         return f"DiskCacheStore: {self.cache_dir}"
 
     @property
-    @overrides
+    @override
     def size(self) -> float:
         disk_path = pathlib.Path(self.cache_dir)
         size = sum(f.stat().st_size for f in disk_path.rglob("*") if f.is_file())
         logger.debug("Disk cache size %s bytes", size)
         return size / 1e6
 
-    @overrides
+    @override
     def listdir(self, path: str = "") -> list[str]:
         path = self.path(path)
         iter_ = pathlib.Path(path).iterdir()
         return sorted(str(f.relative_to(path)) for f in iter_)
 
-    @overrides
+    @override
     def path(self, cache_path: str) -> str:
         if cache_path.startswith(self.cache_dir):
             disk_path = pathlib.Path(cache_path)
@@ -228,7 +232,7 @@ class DiskCacheStore(CacheStore):
 
         return str(disk_path)
 
-    @overrides
+    @override
     def exists(self, cache_path: str) -> bool:
         disk_path = pathlib.Path(self.path(cache_path))
         return disk_path.exists()
@@ -551,7 +555,7 @@ class GCPCacheStore(CacheStore):
         return self._client
 
     @property
-    @overrides
+    @override
     def size(self) -> float:
         # get list of blobs below this path
         blobs = self._bucket.list_blobs(prefix=self.cache_dir)
@@ -559,7 +563,7 @@ class GCPCacheStore(CacheStore):
         logger.debug("GCP cache size %s bytes", size)
         return size / 1e6
 
-    @overrides
+    @override
     def listdir(self, path: str = "") -> list[str]:
         # I don't necessarily think we want to implement this .... it might be
         # very slow if the bucket is large. BUT, it won't be slower than the size
@@ -572,7 +576,7 @@ class GCPCacheStore(CacheStore):
             "list files in the local disk cache."
         )
 
-    @overrides
+    @override
     def path(self, cache_path: str) -> str:
         if cache_path.startswith(self.cache_dir):
             return cache_path
@@ -604,7 +608,7 @@ class GCPCacheStore(CacheStore):
         bucket_path = self.path(cache_path)
         return f"gs://{self.bucket}/{bucket_path}"
 
-    @overrides
+    @override
     def exists(self, cache_path: str) -> bool:
         # see if file is in the mirror disk cache
         if self._disk_cache.exists(cache_path):

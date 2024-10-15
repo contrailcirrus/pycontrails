@@ -5,15 +5,20 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import sys
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
 from typing import Any, TypeVar, overload
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 from pycontrails.core import coordinates, interpolation
 from pycontrails.core import met as met_module
@@ -1367,7 +1372,7 @@ class GeoVectorDataset(VectorDataset):
         if np.any(latitude > 90.0) or np.any(latitude < -90.0):
             raise ValueError("EPSG:4326 latitude coordinates should lie between [-90, 90].")
 
-    @overrides
+    @override
     def _display_attrs(self) -> dict[str, str]:
         try:
             time0 = pd.Timestamp(np.nanmin(self["time"]))
@@ -1922,7 +1927,7 @@ class GeoVectorDataset(VectorDataset):
     # ------------
 
     @classmethod
-    @overrides
+    @override
     def create_empty(
         cls: type[GeoVectorDatasetType],
         keys: Iterable[str] | None = None,

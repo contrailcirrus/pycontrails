@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import sys
 import warnings
 from typing import Any, Generic, NoReturn, overload
 
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 import numpy as np
 import numpy.typing as npt
-from overrides import overrides
 
 from pycontrails.core import flight, fuel
 from pycontrails.core.fleet import Fleet
@@ -123,7 +128,7 @@ class AircraftPerformance(Model):
             Flight trajectory with aircraft performance data.
         """
 
-    @overrides
+    @override
     def set_source_met(self, *args: Any, **kwargs: Any) -> None:
         fill_with_isa = self.params["fill_low_altitude_with_isa_temperature"]
         if fill_with_isa and (self.met is None or "air_temperature" not in self.met):

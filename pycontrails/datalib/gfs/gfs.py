@@ -13,15 +13,20 @@ import contextlib
 import hashlib
 import logging
 import pathlib
+import sys
 import warnings
 from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 import numpy as np
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 import pycontrails
 from pycontrails.core import cache, met
@@ -355,7 +360,7 @@ class GFSForecast(metsource.MetDataSource):
         forecast_hour = str(self.forecast_time.hour).zfill(2)
         return f"gfs.t{forecast_hour}z.pgrb2.{self._grid_string}.f{step_hour}"
 
-    @overrides
+    @override
     def create_cachepath(self, t: datetime) -> str:
         if self.cachestore is None:
             raise ValueError("self.cachestore attribute must be defined to create cache path")
@@ -372,7 +377,7 @@ class GFSForecast(metsource.MetDataSource):
         # return cache path
         return self.cachestore.path(f"{datestr}-{step}-{suffix}.nc")
 
-    @overrides
+    @override
     def download_dataset(self, times: list[datetime]) -> None:
         # get step relative to forecast forecast_time
         logger.debug(
@@ -383,7 +388,7 @@ class GFSForecast(metsource.MetDataSource):
         for t in times:
             self._download_file(t)
 
-    @overrides
+    @override
     def cache_dataset(self, dataset: xr.Dataset) -> None:
         # if self.cachestore is None:
         #     LOG.debug("Cache is turned off, skipping")
@@ -391,7 +396,7 @@ class GFSForecast(metsource.MetDataSource):
 
         raise NotImplementedError("GFS caching only implemented with download")
 
-    @overrides
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
@@ -435,7 +440,7 @@ class GFSForecast(metsource.MetDataSource):
         # run the same GFS-specific processing on the dataset
         return self._process_dataset(ds, **kwargs)
 
-    @overrides
+    @override
     def set_metadata(self, ds: xr.Dataset | met.MetDataset) -> None:
         ds.attrs.update(
             provider="NCEP",

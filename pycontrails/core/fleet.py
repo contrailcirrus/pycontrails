@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import sys
 import warnings
 from collections.abc import Iterable
 from typing import Any, NoReturn
 
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from overrides import overrides
 
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, JetA
@@ -121,13 +126,13 @@ class Fleet(Flight):
 
         return final_waypoints, fl_attrs
 
-    @overrides
+    @override
     def copy(self, **kwargs: Any) -> Fleet:
         kwargs.setdefault("fuel", self.fuel)
         kwargs.setdefault("fl_attrs", self.fl_attrs)
         return super().copy(**kwargs)
 
-    @overrides
+    @override
     def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Fleet:
         kwargs.setdefault("fuel", self.fuel)
 
@@ -137,7 +142,7 @@ class Fleet(Flight):
 
         return super().filter(mask, copy=copy, **kwargs)
 
-    @overrides
+    @override
     def sort(self, by: str | list[str]) -> NoReturn:
         msg = (
             "Fleet.sort is not implemented. A Fleet instance must be sorted "
@@ -314,39 +319,39 @@ class Fleet(Flight):
         # use case isn't seen.
         return np.concatenate(tas)
 
-    @overrides
+    @override
     def segment_groundspeed(self, *args: Any, **kwargs: Any) -> npt.NDArray[np.float64]:
         fls = self.to_flight_list(copy=False)
         gs = [fl.segment_groundspeed(*args, **kwargs) for fl in fls]
         return np.concatenate(gs)
 
-    @overrides
+    @override
     def resample_and_fill(self, *args: Any, **kwargs: Any) -> Fleet:
         flights = self.to_flight_list(copy=False)
         flights = [fl.resample_and_fill(*args, **kwargs) for fl in flights]
         return type(self).from_seq(flights, copy=False, broadcast_numeric=False, attrs=self.attrs)
 
-    @overrides
+    @override
     def segment_length(self) -> npt.NDArray[np.float64]:
         return np.where(self.final_waypoints, np.nan, super().segment_length())
 
     @property
-    @overrides
+    @override
     def max_distance_gap(self) -> float:
         return np.nanmax(self.segment_length()).item()
 
-    @overrides
+    @override
     def segment_azimuth(self) -> npt.NDArray[np.float64]:
         return np.where(self.final_waypoints, np.nan, super().segment_azimuth())
 
-    @overrides
+    @override
     def segment_angle(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         sin_a, cos_a = super().segment_angle()
         sin_a[self.final_waypoints] = np.nan
         cos_a[self.final_waypoints] = np.nan
         return sin_a, cos_a
 
-    @overrides
+    @override
     def clean_and_resample(
         self,
         freq: str = "1min",

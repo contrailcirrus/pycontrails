@@ -5,13 +5,18 @@ from __future__ import annotations
 import dataclasses
 import functools
 import pathlib
+import sys
 from collections.abc import Mapping
 from typing import Any, NoReturn, overload
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from overrides import overrides
 
 from pycontrails.core import flight
 from pycontrails.core.aircraft_performance import (
@@ -125,7 +130,7 @@ class PSFlight(AircraftPerformance):
     @overload
     def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
-    @overrides
+    @override
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         self.update_params(params)
         self.set_source(source)
@@ -217,7 +222,7 @@ class PSFlight(AircraftPerformance):
 
         return fl
 
-    @overrides
+    @override
     def calculate_aircraft_performance(
         self,
         *,

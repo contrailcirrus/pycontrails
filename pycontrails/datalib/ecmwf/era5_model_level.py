@@ -25,12 +25,16 @@ import contextlib
 import hashlib
 import logging
 import os
+import sys
 import threading
 import warnings
 from datetime import datetime
 from typing import Any
 
-from overrides import overrides
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 LOG = logging.getLogger(__name__)
 
@@ -245,7 +249,7 @@ class ERA5ModelLevel(ECMWFAPI):
         """
         return "reanalysis-era5-complete"
 
-    @overrides
+    @override
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:
         """Return cachepath to local ERA5 data file based on datetime.
 
@@ -277,7 +281,7 @@ class ERA5ModelLevel(ECMWFAPI):
 
         return self.cachestore.path(cache_path)
 
-    @overrides
+    @override
     def download_dataset(self, times: list[datetime]) -> None:
         # group data to request by month (nominal) or by day (ensemble)
         requests: dict[datetime, list[datetime]] = collections.defaultdict(list)
@@ -294,7 +298,7 @@ class ERA5ModelLevel(ECMWFAPI):
         for times_in_request in requests.values():
             self._download_convert_cache_handler(times_in_request)
 
-    @overrides
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
@@ -320,7 +324,7 @@ class ERA5ModelLevel(ECMWFAPI):
         self.set_metadata(mds)
         return mds
 
-    @overrides
+    @override
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         if self.product_type == "reanalysis":
             product = "reanalysis"

@@ -5,16 +5,21 @@ from __future__ import annotations
 import hashlib
 import logging
 import pathlib
+import sys
 from contextlib import ExitStack
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 LOG = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from overrides import overrides
 
 import pycontrails
 from pycontrails.core import cache
@@ -556,7 +561,7 @@ class HRES(ECMWFAPI):
             f"\n\tgrid={request['grid']},\n\tlevtype={request['levtype']}{levelist}"
         )
 
-    @overrides
+    @override
     def create_cachepath(self, t: datetime) -> str:
         if self.cachestore is None:
             raise ValueError("self.cachestore attribute must be defined to create cache path")
@@ -574,7 +579,7 @@ class HRES(ECMWFAPI):
         # return cache path
         return self.cachestore.path(f"{datestr}-{step}-{suffix}.nc")
 
-    @overrides
+    @override
     def download_dataset(self, times: list[datetime]) -> None:
         """Download data from data source for input times.
 
@@ -595,7 +600,7 @@ class HRES(ECMWFAPI):
         elif len(steps) > 0:
             self._download_file(steps)
 
-    @overrides
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
@@ -635,7 +640,7 @@ class HRES(ECMWFAPI):
         self.set_metadata(mds)
         return mds
 
-    @overrides
+    @override
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         if self.stream == "oper":
             product = "forecast"

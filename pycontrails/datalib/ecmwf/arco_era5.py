@@ -19,11 +19,16 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import sys
 from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import numpy.typing as npt
 import xarray as xr
-from overrides import overrides
 
 from pycontrails.core import cache, met_var
 from pycontrails.core.met import MetDataset
@@ -274,7 +279,7 @@ class ERA5ARCO(ecmwf_common.ECMWFAPI):
         """
         return ecmwf_variables.SURFACE_VARIABLES
 
-    @overrides
+    @override
     def download_dataset(self, times: list[datetime.datetime]) -> None:
         if not times:
             return
@@ -286,7 +291,7 @@ class ERA5ARCO(ecmwf_common.ECMWFAPI):
 
         self.cache_dataset(ds)
 
-    @overrides
+    @override
     def create_cachepath(self, t: datetime.datetime) -> str:
         if self.cachestore is None:
             msg = "Attribute self.cachestore must be defined to create cache path"
@@ -302,7 +307,7 @@ class ERA5ARCO(ecmwf_common.ECMWFAPI):
 
         return self.cachestore.path(cache_path)
 
-    @overrides
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
@@ -331,7 +336,7 @@ class ERA5ARCO(ecmwf_common.ECMWFAPI):
         self.set_metadata(mds)
         return mds
 
-    @overrides
+    @override
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         ds.attrs.update(
             provider="ECMWF",
