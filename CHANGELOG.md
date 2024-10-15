@@ -8,7 +8,7 @@
 
 ### Fixes
 
-- Update GFS variable names "uswrf" -> "suswrf" and "ulwrf" -> "sulwrf". This seems to provide a fix for a recent change in the GFS grib variable names.
+- Update GFS variable names "uswrf" -> "suswrf" and "ulwrf" -> "sulwrf". This accommodates a breaking change introduced in [eccodes 2.38](https://confluence.ecmwf.int/display/MTG2US/Changes+in+ecCodes+version+2.38.0+compared+to+the+previous+version#ChangesinecCodesversion2.38.0comparedtothepreviousversion-Changedshortnames).
 
 ## v0.54.1
 
