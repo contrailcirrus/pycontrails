@@ -7,6 +7,11 @@ import warnings
 from collections.abc import Iterable
 from typing import Any, NoReturn
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
 if sys.version_info >= (3, 12):
     from typing import override
 else:
@@ -159,7 +164,7 @@ class Fleet(Flight):
         broadcast_numeric: bool = True,
         copy: bool = True,
         attrs: dict[str, Any] | None = None,
-    ) -> Fleet:
+    ) -> Self:
         """Instantiate a :class:`Fleet` instance from an iterable of :class:`Flight`.
 
         .. versionchanged:: 0.49.3
