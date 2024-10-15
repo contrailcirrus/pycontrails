@@ -267,7 +267,7 @@ class ACCF(Model):
         aCCFs, _ = clim_imp.get_xarray()
 
         # assign ACCF outputs to source
-        maCCFs = MetDataset(aCCFs)
+        maCCFs = MetDataset(aCCFs, sort=False)
         for key, arr in maCCFs.data.items():
             # skip met variables
             if key in self.short_vars:
@@ -340,7 +340,7 @@ def _get_accf_config(params: dict[str, Any]) -> dict[str, Any]:
         "horizontal_resolution": params["horizontal_resolution"],
         "forecast_step": params["forecast_step"],
         "NOx_aCCF": True,
-        "NOx&inverse_EIs": params["nox_ei"],
+        "NOx_EI&F_km": params["nox_ei"],
         "output_format": "netCDF",
         "mean": False,
         "std": False,
@@ -361,6 +361,7 @@ def _get_accf_config(params: dict[str, Any]) -> dict[str, Any]:
             "H2O": params["h2o_scaling"],
             "O3": params["o3_scaling"],
         },
+        "unit_K/kg(fuel)": True,
         "PCFA": params["pfca"],
         "PCFA-ISSR": {
             "rhi_threshold": params["issr_rhi_threshold"],
