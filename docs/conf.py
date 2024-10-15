@@ -170,7 +170,7 @@ autodoc_typehints = "none"
 
 # autodoc options
 autoclass_content = "class"  # only include docstring from Class (not __init__ method)
-autodoc_inherit_docstrings = False
+autodoc_inherit_docstrings = True
 autodoc_default_options = {
     "members": None,  # means yes/true/on
     "undoc-members": None,
