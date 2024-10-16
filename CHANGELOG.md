@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.54.2 (unreleased)
+## v0.54.2
 
 ### Features
 
