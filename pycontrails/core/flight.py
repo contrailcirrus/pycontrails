@@ -1097,7 +1097,7 @@ class Flight(GeoVectorDataset):
 
         Notes
         -----
-        Algorithm is derived from :meth:`traffic.core.flight.Flight.filter`.
+        Algorithm is derived from :meth:`traffic.core.Flight.filter`.
 
         The `traffic
         <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`_
@@ -1425,19 +1425,21 @@ class Flight(GeoVectorDataset):
         return {"type": "FeatureCollection", "features": features}
 
     def to_traffic(self) -> traffic.core.Flight:
-        """Convert Flight instance to :class:`traffic.core.Flight` instance.
-
-        See https://traffic-viz.github.io/traffic.core.flight.html#traffic.core.Flight
+        """Convert to :class:`traffic.core.Flight`instance.
 
         Returns
         -------
-        :class:`traffic.core.Flight`
-            `traffic.core.Flight` instance
+        traffic.core.Flight
+            traffic flight instance
 
         Raises
         ------
         ModuleNotFoundError
             `traffic` package not installed
+
+        See Also
+        --------
+        :class:`traffic.core.Flight`
         """
         try:
             import traffic.core
@@ -1983,18 +1985,18 @@ def filter_altitude(
 
     Notes
     -----
-    Algorithm is derived from :meth:`traffic.core.flight.Flight.filter`.
+    Algorithm is derived from :meth:`traffic.core.Flight.filter`.
 
-    The `traffic
+    The `traffic filter algorithm
     <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`_
-    algorithm also computes thresholds on sliding windows
+    also computes thresholds on sliding windows
     and replaces unacceptable values with NaNs.
 
     Errors may raised if the ``kernel_size`` is too large.
 
     See Also
     --------
-    :meth:`traffic.core.flight.Flight.filter`
+    :meth:`traffic.core.Flight.filter`
     :func:`scipy.signal.medfilt`
     """
     if not len(altitude_ft):
