@@ -78,6 +78,7 @@ suppress_warnings = ["myst.header"]
 # Set up mapping for other projects' docs
 intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "open3d": ("https://www.open3d.org/docs/release/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/dev/", None),
     "pyproj": ("https://pyproj4.github.io/pyproj/stable/", None),
     "python": ("https://docs.python.org/3/", None),

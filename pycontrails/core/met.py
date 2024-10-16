@@ -1410,8 +1410,9 @@ class MetDataArray(MetBase):
 
         See Also
         --------
-        - :meth:`xr.Dataset.load`
-        - :meth:`xr.DataArray.load`
+        :meth:`xarray.Dataset.load`
+        :meth:`xarray.DataArray.load`
+
         """
         if not self.in_memory:
             self._check_memory("Extracting numpy array from")
@@ -2026,7 +2027,7 @@ class MetDataArray(MetBase):
         See Also
         --------
         :meth:`to_polyhedra`
-        :func:`pycontrails.core.polygons.find_multipolygons`
+        :func:`polygons.find_multipolygons`
 
         Examples
         --------
@@ -2230,7 +2231,7 @@ class MetDataArray(MetBase):
 
         Returns
         -------
-        dict | :class:`o3d.geometry.TriangleMesh`
+        dict | open3d.geometry.TriangleMesh
             Python representation of geojson object or `Open3D Triangle Mesh
             <http://www.open3d.org/docs/release/tutorial/geometry/mesh.html>`_ depending on the
             `return_type` parameter.
@@ -2244,8 +2245,9 @@ class MetDataArray(MetBase):
 
         See Also
         --------
-        :meth:`to_polygons`
-        `skimage.measure.marching_cubes <https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.marching_cubes>`_
+        :meth:`to_polygon_feature`
+        :func:`skimage.measure.marching_cubes`
+        :class:`open3d.geometry.TriangleMesh`
 
         Notes
         -----
