@@ -78,14 +78,16 @@ class ECMWFAPI(metsource.MetDataSource):
         # expand the dims with this level
         if "level" not in ds.dims and len(self.pressure_levels) == 1:
             ds = ds.expand_dims(level=self.pressure_levels)
-
-        try:
-            ds = ds.sel(level=self.pressure_levels)
-        except KeyError as exc:
-            # this snippet shows the missing levels for convenience
-            missing_levels = sorted(set(self.pressure_levels) - set(ds["level"].values))
-            msg = f"Input dataset is missing level coordinates {missing_levels}"
-            raise KeyError(msg) from exc
+        ds = ds.sel(level=self.pressure_levels, method="nearest")
+        # Check for missing levels outside tolerance.
+        # This snippet shows missing levels for convenience.
+        missing_levels = [p for p in self.pressure_levels if np.abs(ds["level"] - p).min() > 0.01]
+        if len(missing_levels) > 0:
+            msg = (
+                f"Input dataset is missing level coordinates {missing_levels} "
+                "(tolerance 0.01 hPa)"
+            )
+            raise KeyError(msg)
 
         # harmonize variable names
         ds = met.standardize_variables(ds, self.variables)

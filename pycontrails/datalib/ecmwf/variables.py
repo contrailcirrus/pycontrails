@@ -228,6 +228,49 @@ OzoneMassMixingRatio = MetVariable(
     description="This parameter is the mass of ozone per kilogram of air.",
 )
 
+SurfaceSkinTemperature = MetVariable(
+    short_name="skt",
+    standard_name="skin_temperature",
+    long_name="Skin temperature",
+    units="K",
+    level_type="surface",
+    ecmwf_id=235,
+    description="This parameter is the temperature of the surface of Earth.",
+)
+
+SurfaceGeopotential = MetVariable(
+    short_name="z",
+    standard_name="geopotential_at_surface",
+    long_name="Surface geopotential",
+    units="m**2 s**-2",
+    level_type="surface",
+    ecmwf_id=129,
+    description=(
+        "This parameter is the specific gravitational potential energy at Earth's surface "
+        "relative to mean sea level."
+    ),
+)
+
+SeaIceConcentration = MetVariable(
+    short_name="siconc",
+    standard_name="sea_ice_cover",
+    long_name="Sea ice concentration",
+    units="0-1",
+    level_type="surface",
+    ecmwf_id=262001,
+    description="This parameter is the sea ice area fraction at each gridpoint.",
+)
+
+SnowDepth = MetVariable(
+    short_name="sd",
+    standard_name="snow_depth",
+    long_name="Snow depth",
+    units="m",
+    level_type="surface",
+    ecmwf_id=262001,
+    description="This parameter is the depth of snow cover in m of water equivalent.",
+)
+
 
 PRESSURE_LEVEL_VARIABLES = [
     met_var.AirTemperature,
@@ -250,6 +293,10 @@ SURFACE_VARIABLES = [
     TopNetThermalRadiation,
     CloudAreaFraction,
     SurfaceSolarDownwardRadiation,
+    SurfaceSkinTemperature,
+    SurfaceGeopotential,
+    SeaIceConcentration,
+    SnowDepth,
 ]
 MODEL_LEVEL_VARIABLES = [
     met_var.AirTemperature,
