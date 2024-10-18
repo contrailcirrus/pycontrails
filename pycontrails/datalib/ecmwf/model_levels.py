@@ -19,14 +19,12 @@ MODEL_LEVELS_PATH = _path_to_static / "model_level_dataframe_v20240418.csv"
 def model_level_reference_pressure(
     alt_ft_min: float | None = None,
     alt_ft_max: float | None = None,
-) -> list[int]:
+) -> list[float]:
     """Return the pressure levels at each model level assuming a constant surface pressure.
 
     This function assumes
     `137 model levels <https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions>`_
     and the constant ICAO ISA surface pressure of 1013.25 hPa.
-
-    The returned pressure levels are rounded to the nearest hPa.
 
     Parameters
     ----------
@@ -39,7 +37,7 @@ def model_level_reference_pressure(
 
     Returns
     -------
-    list[int]
+    list[float]
         List of pressure levels, [:math:`hPa`] between the minimum and maximum altitudes.
 
     See Also
@@ -57,7 +55,7 @@ def model_level_reference_pressure(
         alt_m_max = units.ft_to_m(alt_ft_max)
         filt &= df["Geometric Altitude [m]"] <= alt_m_max
 
-    return df.loc[filt, "pf [hPa]"].round().astype(int).tolist()
+    return df.loc[filt, "pf [hPa]"].astype(float).tolist()
 
 
 def _cache_model_level_dataframe() -> None:

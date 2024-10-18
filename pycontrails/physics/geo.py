@@ -227,11 +227,11 @@ def segment_azimuth(
 
 
 def longitudinal_angle(
-    lons0: npt.NDArray[np.float64],
-    lats0: npt.NDArray[np.float64],
-    lons1: npt.NDArray[np.float64],
-    lats1: npt.NDArray[np.float64],
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    lons0: ArrayLike,
+    lats0: ArrayLike,
+    lons1: ArrayLike,
+    lats1: ArrayLike,
+) -> tuple[ArrayLike, ArrayLike]:
     r"""Calculate angle with longitudinal axis for sequence of segments.
 
     Parameters

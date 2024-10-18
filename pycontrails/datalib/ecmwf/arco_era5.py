@@ -83,6 +83,10 @@ _met_vars_to_arco_surface_level_mapping = {
     ecmwf_variables.TopNetThermalRadiation: "top_net_thermal_radiation",
     ecmwf_variables.CloudAreaFraction: "total_cloud_cover",
     ecmwf_variables.SurfaceSolarDownwardRadiation: "surface_solar_radiation_downwards",
+    ecmwf_variables.SurfaceSkinTemperature: "skin_temperature",
+    ecmwf_variables.SurfaceGeopotential: "geopotential_at_surface",
+    ecmwf_variables.SeaIceConcentration: "sea_ice_cover",
+    ecmwf_variables.SnowDepth: "snow_depth",
 }
 
 

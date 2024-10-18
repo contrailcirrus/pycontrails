@@ -28,6 +28,9 @@ h_tropopause: float = 11000.0
 #: Seconds in a Julian year :math:`[s]`
 seconds_per_year: float = 3.15576e7
 
+#: Molar concentration of molecular oxygen in Earth's atmosphere
+eta_o2 = 0.2095
+
 # -------------
 # Thermodynamic
 # -------------
@@ -47,6 +50,15 @@ M_d: float = 28.9647e-3
 
 #: Molar mass of water :math:`[kg \ mol^{-1}]`
 M_v: float = 18.0153e-3
+
+#: Molar mass of ozone :math:`[kg \ mol^{-1}]`
+M_o3 = 48.00e-3
+
+#: Molar mass of carbon dioxide :math:`[kg \ mol^{-1}]`
+M_co2 = 44.01e-3
+
+#: Molar mass of nitrogen dioxide :math:`[kg \ mol^{-1}]`
+M_no2 = 46.01e-3
 
 #: Ratio of heat capacities, TODO: which heat capacities?
 gamma: float = 1.4
@@ -87,6 +99,9 @@ T_lapse_rate: float = -0.0065
 #: From :cite:`uosolarradiationmonitoringlaboratoryUOSRMLSolar2022` citing
 #: :cite:`paltridgeRadiativeProcessesMeteorology1976`
 solar_constant: float = 1361.0
+
+#: Boltzmann constant, :math:`[J K^{-1}]`
+k_boltzmann = 1.381e-23
 
 # ----
 # Fuel

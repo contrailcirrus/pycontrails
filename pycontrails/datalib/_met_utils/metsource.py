@@ -129,7 +129,7 @@ def validate_timestep_freq(freq: str, datasource_freq: str) -> bool:
 
 def parse_pressure_levels(
     pressure_levels: PressureLevelInput, supported: list[int] | None = None
-) -> list[int]:
+) -> list[float]:
     """Check input pressure levels are consistent type and ensure levels exist in ECMWF data source.
 
     .. versionchanged:: 0.50.0
@@ -147,8 +147,8 @@ def parse_pressure_levels(
 
     Returns
     -------
-    list[int]
-        List of integer pressure levels supported by ECMWF data source
+    list[float]
+        List of pressure levels supported by ECMWF data source.
 
     Raises
     ------
@@ -159,8 +159,8 @@ def parse_pressure_levels(
     if isinstance(pressure_levels, int | float):
         pressure_levels = [pressure_levels]
 
-    # Cast array-like to int dtype and sort
-    arr = np.asarray(pressure_levels, dtype=int)
+    # Sort pressure levels
+    arr = np.asarray(pressure_levels, dtype=float)
     arr.sort()
 
     # If any values are non-positive, the entire array should be [-1]
@@ -173,15 +173,15 @@ def parse_pressure_levels(
         msg = f"Pressure levels must be unique, got {arr}"
         raise ValueError(msg)
 
-    out = arr.tolist()
     if supported is None:
-        return out
+        return arr.tolist()
 
+    out = arr.astype(int)
     if missing := set(out).difference(supported):
         msg = f"Pressure levels {sorted(missing)} are not supported. Supported levels: {supported}"
         raise ValueError(msg)
 
-    return out
+    return out.astype(float).tolist()
 
 
 def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> list[MetVariable]:
@@ -359,7 +359,7 @@ class MetDataSource(abc.ABC):
 
     #: List of pressure levels. Set to [-1] for data without level coordinate.
     #: Use :func:`parse_pressure_levels` to handle :class:`PressureLevelInput`.
-    pressure_levels: list[int]
+    pressure_levels: list[float]
 
     #: Lat / Lon grid spacing
     grid: float | None
@@ -703,10 +703,12 @@ class MetDataSource(abc.ABC):
                 return False
 
         pl = np.asarray(self.pressure_levels)
-        cond = np.isin(pl, ds["level"].values)
+        levels = ds["level"].values
+        cond = np.asarray([np.abs(p - levels).min() < 0.01 for p in pl])
         if not np.all(cond):
             logger.warning(
-                "Pressure Levels %s not in downloaded dataset. Found pressure levels: %s",
+                "Pressure levels %s not in downloaded dataset (tolerance 0.01 hPa). "
+                "Found pressure levels: %s",
                 pl[~cond].tolist(),
                 ds["level"].values.tolist(),
             )
