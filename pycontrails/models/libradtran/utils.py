@@ -7,6 +7,18 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
+DEFAULT_OPTIONS = {
+    "rte_solver": "disort",
+    "source": "thermal",
+    "mol_abs_param": "reptran fine",
+    "number_of_streams": "16",
+    "zout": "TOA",
+    "umu": "1",
+    "phi": "0",
+    "output_user": "lambda uu",
+    "output_quantity": "brightness",
+}
+
 
 def get_lrt_folder() -> str:
     """Get libRadtran root directory."""
@@ -25,28 +37,17 @@ def run(
     surface_options: dict[str, Any],
     cloud_profiles: list[dict[str, Any]],
     output_dir: str,
+    static_options: dict[str, Any],
 ) -> Any:
     """Run libRadtran."""
 
     os.makedirs(output_dir, exist_ok=True)
-    folder = get_lrt_folder()
-    options = {}
 
-    # Store input/output in subdirectory
     def _path(name: str) -> str:
         return os.path.join(output_dir, name)
 
-    # Default options
-    options["rte_solver"] = "disort"
-    options["source"] = "thermal"
-    options["wavelength"] = "3000 12500"
-    options["mol_abs_param"] = "reptran coarse"
-    options["number_of_streams"] = "16"
-    options["zout"] = "TOA"
-    options["umu"] = "1"
-    options["phi"] = "0"
-    options["output_user"] = "lambda uu"
-    options["output_quantity"] = "brightness"
+    folder = get_lrt_folder()
+    options = DEFAULT_OPTIONS | static_options
 
     # Location
     for key, value in location.items():

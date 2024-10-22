@@ -470,3 +470,28 @@ def dt_to_seconds(
     out = np.empty(dt.shape, dtype=dtype)
     np.divide(dt, np.timedelta64(1, "s"), out=out)
     return out
+
+
+def radiance_to_brightness_temperature(
+    radiance: ArrayScalarLike, wavelength: ArrayScalarLike
+) -> ArrayScalarLike:
+    """Convert radiance to brightness temperature.
+
+    Parameters
+    ----------
+    radiance : ArrayScalarLike
+        radiance using wavelength in microns as the spectral unit
+        [:math:`W m^{-2} sr^{-1} um^{-1}`].
+
+    wavelength : ArrayScalarLike
+        wavelength, micrometers [:math:`um`]
+
+    Returns
+    -------
+    ArrayScalarLike
+        brightness temperature [:math:`K`]
+    """
+    w = 1e-6 * wavelength  # convert to m
+    u = 1e6 * radiance  # convert to per m
+    arg = 1.0 + 2 * constants.h_planck * constants.c_light**2 / (w**5 * u)
+    return constants.h_planck * constants.c_light / (w * constants.k_boltzmann * np.log(arg))
