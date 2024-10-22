@@ -402,20 +402,19 @@ def minimum_mach_num(
         x0=np.full_like(air_pressure, 0.4),
         x1=np.full_like(air_pressure, 0.5),
         tol=1e-4,
-        # maxiter=10,
     )
 
     return m
 
 
 def maximum_mach_num(
-    altitude_ft: float,
-    air_pressure: float,
-    aircraft_mass: float,
-    air_temperature: float,
-    theta: float,
+    altitude_ft: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
+    aircraft_mass: ArrayOrFloat,
+    air_temperature: ArrayOrFloat,
+    theta: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
-) -> float:
+) -> ArrayOrFloat:
     r"""
     Return the maximum mach number at the current operating conditions.
 
@@ -424,23 +423,23 @@ def maximum_mach_num(
 
     Parameters
     ----------
-    altitude_ft  : float
+    altitude_ft  : ArrayOrFloat
         Altitude, [:math:`ft`]
-    air_pressure : float
+    air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    aircraft_mass : float
+    aircraft_mass : ArrayOrFloat
         Aircraft mass at each waypoint, [:math:`kg`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : ArrayOrFloat
         Array of ambient temperature, [:math: `K`]
-    theta : float | npt.NDArray[np.float64]
+    theta : ArrayOrFloat
         Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
     atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
     -------
-    float
-        Maximum usable lift coefficient.
+    ArrayOrFloat
+        Maximum mach number given thrust limiations.
     """
     # Max speed ignoring thrust limits
     mach_num_op_lim = max_mach_number_by_altitude(
@@ -451,32 +450,15 @@ def maximum_mach_num(
         atyp_param.p_inf_co,
     )
 
-    # If the max mach number ignoring thrust limits is possible, return that value
-    if (
-        get_excess_thrust_available(
-            mach_num_op_lim,
-            air_temperature,
-            air_pressure,
-            aircraft_mass,
-            theta,
-            atyp_param,
-        )
-        > 0
-    ):
-        return mach_num_op_lim
+    max_mach = scipy.optimize.newton(
+        func=get_excess_thrust_available,
+        args=(air_temperature, air_pressure, aircraft_mass, theta, atyp_param),
+        x0=mach_num_op_lim,
+        x1=mach_num_op_lim - 0.01,
+        tol=1e-4,
+    ).clip(max=mach_num_op_lim)
 
-    # Numerically solve for the speed where drag == max thrust
-    try:
-        m_max = scipy.optimize.root_scalar(
-            get_excess_thrust_available,
-            args=(air_temperature, air_pressure, aircraft_mass, theta, atyp_param),
-            x0=mach_num_op_lim,
-            x1=mach_num_op_lim - 0.05,
-        ).root
-    except ValueError:
-        return np.nan
-
-    return m_max
+    return max_mach
 
 
 # ----------------
