@@ -75,6 +75,9 @@ R_v: float = 461.51
 #: Ratio of gas constant for dry air / gas constant for water vapor
 epsilon: float = R_d / R_v
 
+#: Density of liquid water  :math:`[kg \ m^{-3}]`
+rho_liq: float = 997.0
+
 #: Density of ice  :math:`[kg \ m^{-3}]`
 rho_ice: float = 917.0
 
@@ -102,6 +105,12 @@ solar_constant: float = 1361.0
 
 #: Boltzmann constant, :math:`[J K^{-1}]`
 k_boltzmann = 1.381e-23
+
+#: Planck constant, :math:`[J s]`
+h_planck = 6.626e-34
+
+#: Speed of light, :math:`[m s^{-1}]`
+c_light = 2.998e8
 
 # ----
 # Fuel

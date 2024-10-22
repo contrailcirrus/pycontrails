@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import logging
 import multiprocessing
 import warnings
@@ -14,7 +15,7 @@ from pycontrails.core import GeoVectorDataset, MetDataset, cache, met_var, model
 from pycontrails.core.models import interpolate_met
 from pycontrails.datalib.ecmwf import variables as ecmwf
 from pycontrails.models.libradtran import utils
-from pycontrails.models.libradtran.contrail_input import ContrailInput
+from pycontrails.models.libradtran.clouds import LRTClouds
 from pycontrails.physics import constants
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,9 @@ class LibRadtranParams(models.ModelParams):
 
     #: CO2 volume mixing ratio :math:`[ppmv]`
     co2_ppmv: float = 400.0
+
+    #: Range of output wavelengths :math:`[um]`
+    wavelength: tuple[float, float] = (3.0, 13.0)
 
     #: Threshold snow depth, in m water equivalent, to treat
     #: pixel as snow-covered.
@@ -76,7 +80,7 @@ class LibRadtran(models.Model):
 
     __slots__ = (
         "cachestore",
-        "contrails",
+        "clouds",
         "sfc",
     )
 
@@ -85,10 +89,8 @@ class LibRadtran(models.Model):
     default_params = LibRadtranParams
     met_variables = (
         met_var.AirTemperature,
+        met_var.Geopotential,
         met_var.SpecificHumidity,
-        ecmwf.SpecificCloudLiquidWaterContent,
-        ecmwf.SpecificCloudIceWaterContent,
-        ecmwf.CloudAreaFractionInLayer,
     )
 
     sfc_variables = (ecmwf.SurfaceSkinTemperature, ecmwf.SurfaceGeopotential)
@@ -100,8 +102,8 @@ class LibRadtran(models.Model):
     #: Surface data
     sfc: MetDataset
 
-    #: List of contrails included in radiative transfer calculation
-    contrails: ContrailInput | None
+    #: List of cloud inputs for radiative transfer calculation
+    clouds: list[LRTClouds]
 
     #: Cachestore where input and output files are stored
     cachestore: cache.CacheStore
@@ -113,7 +115,7 @@ class LibRadtran(models.Model):
         self,
         met: MetDataset,
         sfc: MetDataset,
-        contrails: ContrailInput | None = None,
+        clouds: list[LRTClouds] | None = None,
         cachestore: cache.CacheStore | None = None,
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
@@ -124,7 +126,7 @@ class LibRadtran(models.Model):
         sfc.ensure_vars(self.sfc_variables)
         self.sfc = sfc
 
-        self.contrails = contrails
+        self.clouds = clouds or []
 
         if cachestore is None:
             cache_root = cache._get_user_cache_dir()
@@ -158,28 +160,33 @@ class LibRadtran(models.Model):
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
 
+        static_options = self.get_static_options()
         scene_locations = self.get_locations(self.source)
         scene_met = self.get_met_profiles(self.source)
         scene_sfc = self.get_surface_options(self.source)
-        if self.contrails is not None:
-            scene_clouds = self.contrails.get_profiles(self.source)
-        else:
-            scene_clouds = [[]] * len(scene_met)
+        scene_clouds = self.get_cloud_profiles(self.source)
 
         output_dirs = [self.cachestore.path(str(i)) for i in range(len(scene_locations))]
         jobs = zip(scene_locations, scene_met, scene_sfc, scene_clouds, output_dirs, strict=True)
 
+        run = functools.partial(utils.run, static_options=static_options)
+
         if self.params["num_workers"] == 1:
             output_paths = []
             for job in jobs:
-                output_paths.append(utils.run(*job))
+                output_paths.append(run(*job))
 
         else:
             with multiprocessing.Pool(self.params["num_workers"]) as pool:
-                output_paths = pool.starmap(utils.run, jobs)
+                output_paths = pool.starmap(run, jobs)
 
         self.source["output_location"] = output_paths
         return self.source
+
+    def get_static_options(self) -> dict[str, Any]:
+        """Get options shared across all scenes."""
+        wvl = self.params["wavelength"]
+        return {"wavelength": f"{int(1000*wvl[0])} {int(1000*wvl[1])}"}
 
     def get_locations(self, source: GeoVectorDataset) -> list[dict[str, Any]]:
         """Get scene locations.
@@ -192,7 +199,7 @@ class LibRadtran(models.Model):
         Returns
         -------
         list[dict[str, Any]]
-            Input options specifying the locatio of each scene.
+            Input options specifying the location of each scene.
         """
 
         def _format_lat(lat: float) -> str:
@@ -251,8 +258,8 @@ class LibRadtran(models.Model):
             sea_ice = point["sea_ice_cover"] > self.params["threshold_sea_ice_concentration"]
 
             opt = {
-                "altitude": f"{z:.2f}",
-                "sur_temperature": f"{ts:.2f}",
+                "altitude": f"{z:.8f}",
+                "sur_temperature": f"{ts:.8f}",
                 "albedo_library": "IGBP",
             }
             if not (snow or sea_ice):
@@ -293,18 +300,16 @@ class LibRadtran(models.Model):
         profiles = []
         interp_kwargs = self.interp_kwargs
         for _, point in source.dataframe.iterrows():
-            # Get vertical grid
-            # TODO: find surface temperature dataset
-            z = met.data["altitude"].to_numpy()
-            p = met.data["air_pressure"].to_numpy()
-
             # Interpolate met data
+            level = met["level"].data.to_numpy()
             target = GeoVectorDataset(
-                time=np.full(z.shape, point["time"]),
-                altitude=z,
-                latitude=np.full(z.shape, point["latitude"]),
-                longitude=np.full(z.shape, point["longitude"]),
+                time=np.full(level.shape, point["time"]),
+                level=level,
+                latitude=np.full(level.shape, point["latitude"]),
+                longitude=np.full(level.shape, point["longitude"]),
             )
+            z = interpolate_met(met, target, "geopotential", **interp_kwargs) / constants.g
+            p = met["air_pressure"].data.to_numpy()
             t = interpolate_met(met, target, "air_temperature", **interp_kwargs)
             n = p / (constants.k_boltzmann * t)
             q_o3 = interpolate_met(met, target, "mass_fraction_of_ozone_in_air", **interp_kwargs)
@@ -359,3 +364,22 @@ class LibRadtran(models.Model):
             )
 
         return profiles
+
+    def get_cloud_profiles(self, source: GeoVectorDataset) -> list[list[dict[str, Any]]]:
+        """Get cloud profiles.
+
+        Parameters
+        ----------
+        source : GeoVectorDataset
+            Locations where cloud profiles are required
+
+        Returns
+        -------
+        list[list[dict[str, Any]]]
+            Required cloud profiles.
+        """
+        if len(self.clouds) == 0:
+            return [[]] * len(source.dataframe)
+
+        profiles = [cloud.get_profiles(source) for cloud in self.clouds]
+        return [sum(p, start=[]) for p in zip(*profiles, strict=True)]
