@@ -9,7 +9,6 @@ import numpy as np
 import numpy.typing as npt
 
 from pycontrails.core import models
-from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind, VerticalVelocity
 from pycontrails.core.vector import GeoVectorDataset
@@ -93,9 +92,6 @@ class DryAdvection(models.Model):
     source: GeoVectorDataset
 
     @overload
-    def eval(self, source: Flight, **params: Any) -> Flight: ...
-
-    @overload
     def eval(self, source: GeoVectorDataset, **params: Any) -> GeoVectorDataset: ...
 
     @overload
@@ -109,7 +105,12 @@ class DryAdvection(models.Model):
         Parameters
         ----------
         source : GeoVectorDataset
-            Arbitrary points to advect.
+            Arbitrary points to advect. A :class:`Flight` instance is not treated any
+            differently than a :class:`GeoVectorDataset`. In particular, the user must
+            explicitly set ``flight["azimuth"] = flight.segment_azimuth()`` if they
+            want to use wind shear effects for a flight.
+            In the current implementation, any existing meteorological variables in the ``source``
+            are ignored. The ``source`` will be interpolated against the :attr:`met` dataset.
         params : Any
             Overwrite model parameters defined in ``__init__``.
 
@@ -122,7 +123,7 @@ class DryAdvection(models.Model):
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
 
-        self._prepare_source()
+        self.source = self._prepare_source()
 
         interp_kwargs = self.interp_kwargs
 
@@ -142,7 +143,7 @@ class DryAdvection(models.Model):
         evolved = []
         for t in timesteps:
             filt = (source_time < t) & (source_time >= t - dt_integration)
-            vector = self.source.filter(filt) + vector
+            vector = self.source.filter(filt, copy=False) + vector
             vector = _evolve_one_step(
                 self.met,
                 vector,
@@ -162,49 +163,44 @@ class DryAdvection(models.Model):
 
         return GeoVectorDataset.sum(evolved, fill_value=np.nan)
 
-    def _prepare_source(self) -> None:
+    def _prepare_source(self) -> GeoVectorDataset:
         r"""Prepare :attr:`source` vector for advection by wind-shear-derived variables.
 
-        This method adds the following variables to :attr:`source` if the `"azimuth"`
-        parameter is not None:
+        The following variables are always guaranteed to be present in :attr:`source`:
 
         - ``age``: Age of plume.
+        - ``waypoint``: Identifier for each waypoint.
+
+        If `"azimuth"` is present in :attr:`source`, `source.attrs`, or :attr:`params`,
+        the following variables will also be added:
+
         - ``azimuth``: Initial plume direction, measured in clockwise direction from
-          true north, [:math:`\deg`].
+            true north, [:math:`\deg`].
         - ``width``: Initial plume width, [:math:`m`].
         - ``depth``: Initial plume depth, [:math:`m`].
         - ``sigma_yz``: All zeros for cross-term term in covariance matrix of plume.
+
+        Returns
+        -------
+        GeoVectorDataset
+            A filtered version of the source with only the required columns.
         """
-
         self.source.setdefault("level", self.source.level)
-
-        columns: tuple[str, ...] = ("longitude", "latitude", "level", "time")
-        if "azimuth" in self.source:
-            columns += ("azimuth",)
-        self.source = GeoVectorDataset(self.source.select(columns, copy=False))
-
-        # Get waypoint index if not already set
+        self.source["age"] = np.full(self.source.size, np.timedelta64(0, "ns"))
         self.source.setdefault("waypoint", np.arange(self.source.size))
 
-        self.source["age"] = np.full(self.source.size, np.timedelta64(0, "ns"))
+        columns = ["longitude", "latitude", "level", "time", "age", "waypoint"]
+        azimuth = self.get_source_param("azimuth", set_attr=False)
+        if azimuth is None:
+            # Early exit for pointwise only simulation
+            if self.params["width"] is not None or self.params["depth"] is not None:
+                raise ValueError(
+                    "If 'azimuth' is None, then 'width' and 'depth' must also be None."
+                )
+            return GeoVectorDataset(self.source.select(columns, copy=False), copy=False)
 
         if "azimuth" not in self.source:
-            if isinstance(self.source, Flight):
-                pointwise_only = False
-                self.source["azimuth"] = self.source.segment_azimuth()
-            else:
-                try:
-                    self.source.broadcast_attrs("azimuth")
-                except KeyError:
-                    if (azimuth := self.params["azimuth"]) is not None:
-                        pointwise_only = False
-                        self.source["azimuth"] = np.full_like(self.source["longitude"], azimuth)
-                    else:
-                        pointwise_only = True
-                else:
-                    pointwise_only = False
-        else:
-            pointwise_only = False
+            self.source["azimuth"] = np.full_like(self.source["longitude"], azimuth)
 
         for key in ("width", "depth"):
             if key in self.source:
@@ -214,24 +210,20 @@ class DryAdvection(models.Model):
                 continue
 
             val = self.params[key]
-            if val is None and not pointwise_only:
+            if val is None:
                 raise ValueError(f"If '{key}' is None, then 'azimuth' must also be None.")
 
-            if val is not None and pointwise_only:
-                raise ValueError(f"Cannot specify '{key}' without specifying 'azimuth'.")
+            self.source[key] = np.full_like(self.source["longitude"], val)
 
-            if not pointwise_only:
-                self.source[key] = np.full_like(self.source["longitude"], val)
-
-        if pointwise_only:
-            return
-
+        columns.extend(["azimuth", "width", "depth", "sigma_yz", "area_eff"])
         self.source["sigma_yz"] = np.zeros_like(self.source["longitude"])
         width = self.source["width"]
         depth = self.source["depth"]
         self.source["area_eff"] = contrail_properties.plume_effective_cross_sectional_area(
             width, depth, sigma_yz=0.0
         )
+
+        return GeoVectorDataset(self.source.select(columns, copy=False), copy=False)
 
 
 def _perform_interp_for_step(

@@ -28,6 +28,7 @@ from pycontrails.core.met_var import (
     SpecificHumidity,
     VerticalVelocity,
 )
+from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.apcemm import utils
 from pycontrails.models.apcemm.inputs import APCEMMInput
 from pycontrails.models.dry_advection import DryAdvection
@@ -314,7 +315,7 @@ class APCEMM(models.Model):
     source: Flight
 
     #: Output from trajectory calculation
-    trajectories: Flight | None
+    trajectories: GeoVectorDataset | None
 
     #: Time series output from the APCEMM early plume model
     vortex: pd.DataFrame | None
