@@ -350,49 +350,47 @@ def max_usable_lift_coefficient(
 
 
 def minimum_mach_num(
-    air_pressure: float,
-    aircraft_mass: float,
+    air_pressure: ArrayOrFloat,
+    aircraft_mass: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
-) -> float:
+) -> ArrayOrFloat:
     """
     Calculate minimum mach number to avoid stall.
 
     Parameters
     ----------
-    air_pressure : float
+    air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    aircraft_mass : float
+    aircraft_mass : ArrayOrFloat
         Aircraft mass at each waypoint, [:math:`kg`]
     atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
     -------
-    float
-        Maximum usable lift coefficient.
+    ArrayOrFloat
+        Minimum mach number to avoid stall.
     """
 
     def excess_mass(
-        mach_number: float,
-        air_pressure: float,
-        aircraft_mass: float,
+        mach_number: ArrayOrFloat,
+        air_pressure: ArrayOrFloat,
+        aircraft_mass: ArrayOrFloat,
         mach_num_des: float,
         c_l_do: float,
         wing_surface_area: float,
-    ) -> float:
+    ) -> ArrayOrFloat:
         amass_max = max_allowable_aircraft_mass(
             air_pressure,
             mach_number,
             mach_num_des,
             c_l_do,
             wing_surface_area,
-            1e10,
+            1e10,  # clipped to this value which we want to ignore
         )
-        if amass_max < 0:
-            return np.nan
         return amass_max - aircraft_mass
 
-    m = scipy.optimize.root_scalar(
+    m = scipy.optimize.newton(
         excess_mass,
         args=(
             air_pressure,
@@ -401,9 +399,11 @@ def minimum_mach_num(
             atyp_param.c_l_do,
             atyp_param.wing_surface_area,
         ),
-        x0=0.5,
-        x1=0.6,
-    ).root
+        x0=np.full_like(air_pressure, 0.4),
+        x1=np.full_like(air_pressure, 0.5),
+        tol=1e-4,
+        # maxiter=10,
+    )
 
     return m
 
@@ -454,7 +454,12 @@ def maximum_mach_num(
     # If the max mach number ignoring thrust limits is possible, return that value
     if (
         get_excess_thrust_available(
-            mach_num_op_lim, air_temperature, air_pressure, aircraft_mass, theta, atyp_param
+            mach_num_op_lim,
+            air_temperature,
+            air_pressure,
+            aircraft_mass,
+            theta,
+            atyp_param,
         )
         > 0
     ):
