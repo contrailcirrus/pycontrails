@@ -489,7 +489,7 @@ def test_ps_optimal_mach():
     )
 
     np.testing.assert_array_almost_equal(
-        mach_opt, [0.645, 0.703, 0.77 , 0.804, 0.81 , 0.807, 0.795], decimal=3
+        mach_opt, [0.645, 0.703, 0.77, 0.804, 0.81, 0.807, 0.795], decimal=3
     )
 
 
