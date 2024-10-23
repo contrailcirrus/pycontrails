@@ -11,6 +11,8 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import xarray as xr
+from scipy.spatial import KDTree
 from scipy.special import erf, gamma
 
 from pycontrails.core import GeoVectorDataset, MetDataset, met_var
@@ -50,6 +52,135 @@ class LRTClouds(ABC):
             provides profiles required for the radiative transfer calculation at each
             point.
         """
+
+
+class CloudLayers(LRTClouds):
+    """Cloud inputs provided as layer properties.
+
+    Useful for simulations using retrieved cloud properties.
+    """
+
+    __slots__ = ("zl", "lwp", "rel", "zi", "iwp", "rei", "tree")
+
+    #: liquid cloud top heights :math:`[m]`
+    zl: npt.NDArray[np.float64]
+
+    #: liquid cloud water paths :math:`[kg m^{-2}]`
+    lwp: npt.NDArray[np.float64]
+
+    #: liquid cloud effective radii :math:`[m]`
+    rel: npt.NDArray[np.float64]
+
+    #: ice cloud top heights :math:`[m]`
+    zi: npt.NDArray[np.float64]
+
+    #: ice cloud water paths :math:`[kg m^{-2}]`
+    iwp: npt.NDArray[np.float64]
+
+    #: ice cloud effective radii :math:`[m]`
+    rei: npt.NDArray[np.float64]
+
+    #: K-D tree for nearest-neighbor lookups
+    tree: KDTree
+
+    def __init__(
+        self,
+        zl: np.ndarray,
+        lwp: np.ndarray,
+        rel: np.ndarray,
+        zi: np.ndarray,
+        iwp: np.ndarray,
+        rei: np.ndarray,
+        lon: np.ndarray,
+        lat: np.ndarray,
+    ):
+        self.zl = zl.flatten()
+        self.lwp = lwp.flatten()
+        self.rel = rel.flatten()
+        self.zi = zi.flatten()
+        self.iwp = iwp.flatten()
+        self.rei = rei.flatten()
+
+        lon = np.where(lon < 0, lon + 360, lon)
+        colat = lat + 90
+        data = np.stack((lon.flatten(), colat.flatten()), axis=1)
+        self.tree = KDTree(data, boxsize=360)
+
+    @classmethod
+    def from_emas(cls, ds: xr.Dataset) -> CloudLayers:
+        """Create cloud input from eMAS retrievals."""
+        liq = ((ds["cloud_phase"] == 2) | (ds["cloud_phase"] == 4)).to_numpy()
+        ice = (ds["cloud_phase"] == 3).to_numpy()
+
+        tmp = ds["cloud_top_height"].to_numpy()
+        zl = np.where(liq, tmp, np.nan)
+        zi = np.where(ice, tmp, np.nan)
+
+        tmp = 1e-3 * ds["cloud_water_path"].to_numpy()
+        lwp = np.where(liq, tmp, np.nan)
+        iwp = np.where(ice, tmp, np.nan)
+
+        tmp = 1e-6 * ds["cloud_effective_radius"].to_numpy()
+        rel = np.where(liq, tmp, np.nan)
+        rei = np.where(ice, tmp, np.nan)
+
+        lon = ds["longitude"].to_numpy()
+        lat = ds["latitude"].to_numpy()
+
+        return cls(zl, lwp, rel, zi, iwp, rei, lon, lat)
+
+    def get_profiles(self, source: GeoVectorDataset) -> list[list[dict[str, Any]]]:
+        """Compute libRadtran input profiles.
+
+        Parameters
+        ----------
+        source : GeoVectorDataset
+            Dataset defining coordinates where profiles should be computed
+
+        Returns
+        -------
+        list[list[libRadtranProfile]]
+            Nested list of input profiles. The first dimension corresponds to points
+            defined by each element of ``source``, and the second dimension provides
+            profiles required for the radiative transfer calculation at each point.
+        """
+        lon = source["longitude"]
+        colat = source["latitude"] + 90
+        _, inearest = self.tree.query(np.stack((lon, colat), axis=1), k=1)
+
+        profiles = []
+        for i in inearest:
+            local_profiles = []
+
+            zl = self.zl[i]
+            lwp = self.lwp[i]
+            rel = self.rel[i]
+            if np.isfinite(zl) and np.isfinite(lwp) and np.isfinite(rel):
+                local_profiles.append(
+                    {
+                        "options": ["profile_properties mie interpolate"],
+                        "z": np.array([zl, zl - 100.0]) / 1e3,
+                        "cwc": np.array([0.0, lwp / 100.0]) * 1e3,
+                        "re": np.array([0.0, rel]) * 1e6,
+                    }
+                )
+
+            zi = self.zi[i]
+            iwp = self.iwp[i]
+            rei = self.rei[i]
+            if np.isfinite(zi) and np.isfinite(iwp) and np.isfinite(rei):
+                local_profiles.append(
+                    {
+                        "options": ["profile_properties baum_v36 interpolate", "profile_habit ghm"],
+                        "z": np.array([zi, zi - 100.0]) / 1e3,
+                        "cwc": np.array([0.0, iwp / 100.0]) * 1e3,
+                        "re": np.array([0.0, np.clip(rei, 5e-6, 60e-6)]) * 1e6,
+                    }
+                )
+
+            profiles.append(local_profiles)
+
+        return profiles
 
 
 class MetDatasetClouds(LRTClouds):
@@ -481,7 +612,7 @@ def _generate_profile(habit: str, z0: float, z1: float, iwc: float, re: float) -
             "options": ["profile_properties baum_v36 interpolate", "profile_habit aggregate"],
             "z": np.array([z1, z0]) / 1e3,
             "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 90.0),
+            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 60.0),
         }
     if habit.lower() == "rosette-6":
         return {
