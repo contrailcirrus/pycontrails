@@ -542,7 +542,7 @@ def ps_nominal_optimize_mach(
     sin_a: ArrayOrFloat | None = None,
     cos_a: ArrayOrFloat | None = None,
     q_fuel: float = JetA.q_fuel,
-) -> ArrayOrFloat:
+) -> xr.Dataset:
     """Calculate the nominal optimal mach number for a given aircraft type.
 
     This function is similar to the :class:`ps_nominal_grid` method, but rather than
@@ -559,12 +559,13 @@ def ps_nominal_optimize_mach(
         The cost index, [:math:`kg/min`], or non-fuel cost of one minute of flight time
     level : ArrayOrFloat
         The pressure level, [:math:`hPa`]. If a :class:`numpy.ndarray` is passed, it is
-        assumed to be  the same shape as the ``aircraft_mass`` argument.
+        assumed to be one dimensional and the same length as the``aircraft_mass`` argument.
     air_temperature : ArrayOrFloat | None, optional
         The ambient air temperature, [:math:`K`]. If None (default), the ISA
-        temperature is computed from the ``level`` argument. If a
-        :class:`numpy.ndarray` is passed, it is assumed to be  the same shape
-        as the ``aircraft_mass`` argument.
+        temperature is computed from the ``level`` argument. If a :class:`numpy.ndarray`
+        is passed, it is assumed to be one dimensional and the same length as the
+        ``aircraft_mass`` argument.
+    air_temperature : ArrayOrFloat | None, optional
     northward_wind: ArrayOrFloat | None = None, optional
         The northward component of winds, [:math:`m/s`]. If None (default) assumed to be
         zero.
@@ -582,8 +583,15 @@ def ps_nominal_optimize_mach(
 
     Returns
     -------
-    ArrayOrFloat
-        The mach number at which the segment cost is minimized.
+    xr.Dataset
+        The nominal performance grid. The grid is indexed by altitude.
+        Contains the following variables:
+
+        - ``"mach_number"``: The mach number that minimizes segment cost
+        - ``"fuel_flow"`` : Fuel flow rate, [:math:`kg/s`]
+        - ``"engine_efficiency"`` : Engine efficiency
+        - ``"aircraft_mass"`` : Aircraft mass,
+          [:math:`kg`]
 
     Raises
     ------
@@ -592,6 +600,8 @@ def ps_nominal_optimize_mach(
     ValueError
         If wind data is provided without segment angles.
     """
+    dims = ("level",)
+    coords = {"level": level}
     aircraft_engine_params = ps_model.load_aircraft_engine_params()
     try:
         atyp_param = aircraft_engine_params[aircraft_type]
@@ -655,4 +665,26 @@ def ps_nominal_optimize_mach(
         disp=False,
     ).clip(min=min_mach, max=max_mach)
 
-    return opt_mach
+    perf.mach_number = opt_mach
+    output = _nominal_perf(aircraft_mass, perf)
+
+    engine_efficiency = output.engine_efficiency
+    fuel_flow = output.fuel_flow
+
+    attrs = {
+        "aircraft_type": aircraft_type,
+        "q_fuel": q_fuel,
+        "wingspan": atyp_param.wing_span,
+        "n_engine": atyp_param.n_engine,
+    }
+
+    return xr.Dataset(
+        {
+            "mach_number": (dims, opt_mach),
+            "aircraft_mass": (dims, aircraft_mass),
+            "engine_efficiency": (dims, engine_efficiency),
+            "fuel_flow": (dims, fuel_flow),
+        },
+        coords=coords,
+        attrs=attrs,
+    )
