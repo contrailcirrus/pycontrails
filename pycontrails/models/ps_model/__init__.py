@@ -14,5 +14,5 @@ __all__ = [
     "PSGrid",
     "load_aircraft_engine_params",
     "ps_nominal_grid",
-    "ps_nominal_optimize_mach"
+    "ps_nominal_optimize_mach",
 ]
