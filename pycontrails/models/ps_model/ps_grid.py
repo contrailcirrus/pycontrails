@@ -621,14 +621,7 @@ def ps_nominal_optimize_mach(
         if sin_a is None or cos_a is None:
             msg = "Segment angles must be provide if wind data is specified"
             raise ValueError(msg)
-        headwind = np.sqrt((northward_wind * cos_a) ** 2 + (eastward_wind * sin_a) ** 2)
-        # There's probably a better way to do this?
-        # Compute angle between wind and segment angle and set to (-pi, pi]
-        dth = np.arctan2(cos_a, sin_a) - np.arctan2(eastward_wind, northward_wind)
-        dth = ((dth + np.pi) % (2 * np.pi)) - np.pi
-        # Flip sign of wind if more than pi/2 part
-        sign = 2 * (np.abs(dth) > np.pi / 2) - 1
-        headwind *= sign
+        headwind = -(northward_wind * cos_a + eastward_wind * sin_a)
     else:
         headwind = 0.0  # type: ignore
 
