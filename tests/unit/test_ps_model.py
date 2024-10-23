@@ -11,7 +11,7 @@ import pycontrails.models.ps_model.ps_aircraft_params as ps_params
 import pycontrails.models.ps_model.ps_model as ps
 import pycontrails.models.ps_model.ps_operational_limits as ps_lims
 from pycontrails import Fleet, Flight, FlightPhase, GeoVectorDataset, MetDataset
-from pycontrails.models.ps_model import PSFlight, PSGrid, ps_nominal_grid
+from pycontrails.models.ps_model import PSFlight, PSGrid, ps_nominal_grid, ps_nominal_optimize_mach
 from pycontrails.physics import units
 
 from .conftest import get_static_path
@@ -174,7 +174,7 @@ def test_ps_model() -> None:
     np.testing.assert_array_almost_equal(fuel_flow, [0.593, 0.578], decimal=3)
 
 
-def test_mach_number_limits():
+def test_mach_number_limits_scalar():
     # Extract aircraft properties for aircraft type (A320)
     aircraft_type_icao = "A320"
     ps_model = ps.PSFlight()
@@ -204,6 +204,46 @@ def test_mach_number_limits():
     for alt, pres, temp in zip(altitude_ft, air_pressure, air_temperature, strict=True):
         mmin.append(ps_lims.minimum_mach_num(pres, aircraft_mass, atyp_param))
         mmax.append(ps_lims.maximum_mach_num(alt, pres, aircraft_mass, temp, 0.0, atyp_param))
+
+    np.testing.assert_array_almost_equal(
+        mmin, [0.316, 0.353, 0.397, 0.454, 0.530, 0.611, 0.695], decimal=3
+    )
+
+    np.testing.assert_array_almost_equal(
+        mmax, [0.645, 0.703, 0.770, 0.84, 0.84, 0.84, 0.84], decimal=3
+    )
+
+
+def test_mach_number_limits_vector():
+    # Extract aircraft properties for aircraft type (A320)
+    aircraft_type_icao = "A320"
+    ps_model = ps.PSFlight()
+    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+
+    # Test Mach number limits
+    altitude_ft = np.arange(10000.0, 41000.0, 5000.0)
+    air_pressure = units.ft_to_pl(altitude_ft) * 100.0
+
+    mach_num_lim = ps_lims.max_mach_number_by_altitude(
+        altitude_ft,
+        air_pressure,
+        atyp_param.max_mach_num,
+        atyp_param.p_i_max,
+        atyp_param.p_inf_co,
+        atm_speed_limit=False,
+        buffer=0.0,
+    )
+    np.testing.assert_array_almost_equal(
+        mach_num_lim, [0.625, 0.683, 0.750, 0.82, 0.82, 0.82, 0.82], decimal=2
+    )
+
+    aircraft_mass = 60000.0
+    air_temperature = units.m_to_T_isa(units.ft_to_m(altitude_ft))
+
+    mmin = ps_lims.minimum_mach_num(air_pressure, aircraft_mass, atyp_param)
+    mmax = ps_lims.maximum_mach_num(
+        altitude_ft, air_pressure, aircraft_mass, air_temperature, 0.0, atyp_param
+    )
 
     np.testing.assert_array_almost_equal(
         mmin, [0.316, 0.353, 0.397, 0.454, 0.530, 0.611, 0.695], decimal=3
@@ -430,6 +470,27 @@ def test_ps_nominal_grid(aircraft_type: str) -> None:
     assert list(ds) == ["aircraft_mass", "engine_efficiency", "fuel_flow"]
     assert ds.attrs["aircraft_type"] == aircraft_type
     assert 0.7 < ds.attrs["mach_number"] < 0.8
+
+
+def test_ps_optimal_mach():
+    # Extract aircraft properties for aircraft type (A320)
+    aircraft_type_icao = "A320"
+
+    # Test Mach number limits
+    altitude_ft = np.arange(10000.0, 41000.0, 5000.0)
+    aircraft_mass = np.full_like(altitude_ft, 60000.0)
+    cost_index = np.full_like(altitude_ft, 60.0)
+
+    mach_opt = ps_nominal_optimize_mach(
+        aircraft_type=aircraft_type_icao,
+        aircraft_mass=aircraft_mass,
+        cost_index=cost_index,
+        level=units.ft_to_pl(altitude_ft),
+    )
+
+    np.testing.assert_array_almost_equal(
+        mach_opt, [0.645, 0.703, 0.77 , 0.804, 0.81 , 0.807, 0.795], decimal=3
+    )
 
 
 def test_ps_grid_vector_source(met_era5_fake: MetDataset) -> None:
