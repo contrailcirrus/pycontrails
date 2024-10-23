@@ -503,3 +503,156 @@ def ps_nominal_grid(
         coords=coords,
         attrs=attrs,
     )
+
+
+def _newton_mach(
+    mach_number: ArrayOrFloat,
+    perf: _PerfVariables,
+    aircraft_mass: ArrayOrFloat,
+    headwind: ArrayOrFloat,
+    cost_index: ArrayOrFloat,
+) -> ArrayOrFloat:
+    """Approximate the derivative of the cost of a segment based on mach number.
+
+    This is used to find the mach number at which cost in minimized.
+    """
+    perf.mach_number = mach_number + 1e-4
+    tas = units.mach_number_to_tas(perf.mach_number, perf.air_temperature)
+    groundspeed = tas - headwind
+    ff1 = _nominal_perf(aircraft_mass, perf).fuel_flow
+    eccf1 = (cost_index + ff1 * 60) / groundspeed
+
+    perf.mach_number = mach_number - 1e-4
+    tas = units.mach_number_to_tas(perf.mach_number, perf.air_temperature)
+    groundspeed = tas - headwind
+    ff2 = _nominal_perf(aircraft_mass, perf).fuel_flow
+    eccf2 = (cost_index + ff2 * 60) / groundspeed
+    return eccf1 - eccf2
+
+
+def ps_nominal_optimize_mach(
+    aircraft_type: str,
+    aircraft_mass: ArrayOrFloat,
+    cost_index: ArrayOrFloat,
+    level: ArrayOrFloat,
+    *,
+    air_temperature: ArrayOrFloat | None = None,
+    northward_wind: ArrayOrFloat | None = None,
+    eastward_wind: ArrayOrFloat | None = None,
+    sin_a: ArrayOrFloat | None = None,
+    cos_a: ArrayOrFloat | None = None,
+    q_fuel: float = JetA.q_fuel,
+) -> ArrayOrFloat:
+    """Calculate the nominal optimal mach number for a given aircraft type.
+
+    This function is similar to the :class:`ps_nominal_grid` method, but rather than
+    maximizing engine efficiecy by adjusting aircraft, we are minimizing cost by adjusting
+    mach number.
+
+    Parameters
+    ----------
+    aircraft_type : str
+        The aircraft type.
+    aircraft_mass: ArrayOrFloat
+        The aircraft mass, [:math:`kg`].
+    cost_index: ArrayOrFloat
+        The cost index, [:math:`kg/min`], or non-fuel cost of one minute of flight time
+    level : ArrayOrFloat
+        The pressure level, [:math:`hPa`]. If a :class:`numpy.ndarray` is passed, it is
+        assumed to be  the same shape as the ``aircraft_mass`` argument.
+    air_temperature : ArrayOrFloat | None, optional
+        The ambient air temperature, [:math:`K`]. If None (default), the ISA
+        temperature is computed from the ``level`` argument. If a
+        :class:`numpy.ndarray` is passed, it is assumed to be  the same shape
+        as the ``aircraft_mass`` argument.
+    northward_wind: ArrayOrFloat | None = None, optional
+        The northward component of winds, [:math:`m/s`]. If None (default) assumed to be
+        zero.
+    eastward_wind: ArrayOrFloat | None = None, optional
+        The eastward component of winds, [:math:`m/s`]. If None (default) assumed to be
+        zero.
+    sin_a: ArrayOrFloat | None = None, optional
+        The sine between the true bearing of flight and the longitudinal axis. Must be
+        specified if wind data is provided. Will be ignored if wind data is not provided.
+    cos_a: ArrayOrFloat | None = None, optional
+        The cosine between the true bearing of flight and the longitudinal axis. Must be
+        specified if wind data is provided. Will be ignored if wind data is not provided.
+    q_fuel : float, optional
+        The fuel heating value, by default :attr:`JetA.q_fuel`.
+
+    Returns
+    -------
+    ArrayOrFloat
+        The mach number at which the segment cost is minimized.
+
+    Raises
+    ------
+    KeyError
+        If "aircraft_type" is not supported by the PS model.
+    ValueError
+        If wind data is provided without segment angles.
+    """
+    aircraft_engine_params = ps_model.load_aircraft_engine_params()
+    try:
+        atyp_param = aircraft_engine_params[aircraft_type]
+    except KeyError as exc:
+        msg = (
+            f"The aircraft type {aircraft_type} is not currently supported by the PS model. "
+            f"Available aircraft types are: {list(aircraft_engine_params)}"
+        )
+        raise KeyError(msg) from exc
+
+    if air_temperature is None:
+        altitude_m = units.pl_to_m(level)
+        air_temperature = units.m_to_T_isa(altitude_m)
+
+    headwind: ArrayOrFloat
+    if northward_wind is not None and eastward_wind is not None:
+        if sin_a is None or cos_a is None:
+            msg = "Segment angles must be provide if wind data is specified"
+            raise ValueError(msg)
+        headwind = np.sqrt((northward_wind * cos_a) ** 2 + (eastward_wind * sin_a) ** 2)
+        # There's probably a better way to do this?
+        # Compute angle between wind and segment angle and set to (-pi, pi]
+        dth = np.arctan2(cos_a, sin_a) - np.arctan2(eastward_wind, northward_wind)
+        dth = ((dth + np.pi) % (2 * np.pi)) - np.pi
+        # Flip sign of wind if more than pi/2 part
+        sign = 2 * (np.abs(dth) > np.pi / 2) - 1
+        headwind *= sign
+    else:
+        headwind = 0.0  # type: ignore
+
+    min_mach = ps_operational_limits.minimum_mach_num(
+        air_pressure=level * 100.0,
+        aircraft_mass=aircraft_mass,
+        atyp_param=atyp_param,
+    )
+
+    max_mach = ps_operational_limits.maximum_mach_num(
+        altitude_ft=units.pl_to_ft(level),
+        air_pressure=level * 100.0,
+        aircraft_mass=aircraft_mass,
+        air_temperature=air_temperature,
+        theta=np.full_like(aircraft_mass, 0.0),
+        atyp_param=atyp_param,
+    )
+
+    x0 = (min_mach + max_mach) / 2.0  # type: ignore
+
+    perf = _PerfVariables(
+        atyp_param=atyp_param,
+        air_pressure=level * 100.0,
+        air_temperature=air_temperature,
+        mach_number=x0,
+        q_fuel=q_fuel,
+    )
+
+    opt_mach = scipy.optimize.newton(
+        func=_newton_mach,
+        args=(perf, aircraft_mass, headwind, cost_index),
+        x0=x0,
+        tol=1e-4,
+        disp=False,
+    ).clip(min=min_mach, max=max_mach)
+
+    return opt_mach
