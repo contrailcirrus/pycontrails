@@ -1,11 +1,16 @@
 """LibRadtran utilities."""
 
+import itertools
 import os
 import subprocess
+import tempfile
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
+
+from pycontrails.physics import constants
 
 DEFAULT_OPTIONS = {
     "rte_solver": "disort",
@@ -16,7 +21,6 @@ DEFAULT_OPTIONS = {
     "umu": "1",
     "phi": "0",
     "output_user": "lambda uu",
-    "output_quantity": "brightness",
 }
 
 
@@ -29,6 +33,85 @@ def get_lrt_folder() -> str:
     except FileNotFoundError as exc:
         msg = "No default location for LibRadTran found. Place the path in ~/.pylrtrc."
         raise FileNotFoundError(msg) from exc
+
+
+def cldprp(ds: xr.Dataset, param: str = "y") -> xr.Dataset:
+    """Fill dataset with cloud optical properties."""
+    iwc = 1.0
+    re = ds["re"].to_numpy()
+    mu = ds["mu"].to_numpy()
+    if param == "y":
+        habit = ds["habit"].to_numpy()
+        input_str = "\n".join(
+            [f"{m*1e3:.8f} {iwc:.8f} {r:.8f} {h:d}" for h, m, r in itertools.product(habit, mu, re)]
+        )
+    else:
+        input_str = "\n".join(
+            [f"{m*1e3:.8f} {iwc:.8f} {r:.8f}" for m, r in itertools.product(mu, re)]
+        )
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=True, delete_on_close=False) as input:
+        input.write(input_str)
+        input.close()
+        rundir = os.path.join(get_lrt_folder(), "bin")
+        result = subprocess.run(
+            ["./cldprp", f"-{param}", input.name], cwd=rundir, capture_output=True, check=False
+        )
+
+    if result.returncode != 0:
+        msg = (
+            f"cldprp exited with return code {result.returncode}. "
+            f"Contents of stderr: {result.stderr.decode()}"
+        )
+        raise ChildProcessError(msg)
+
+    shape = (-1, 9) if param in ["k", "y"] else (-1, 7) if param in ["f"] else (-1, 6)
+    out = np.fromstring(result.stdout.decode(), sep=" ").reshape(shape)
+    iwc_out = out[:, 1]
+    re_out = out[:, 2]
+    beta = out[:, 3]
+    g = out[:, 4]
+    omega = out[:, 5]
+    q = 1e-6 * 4.0 * constants.rho_ice * re_out * beta / (3.0 * iwc_out)
+
+    if param == "y":
+        shape_y_out = (ds.sizes["habit"], ds.sizes["mu"], ds.sizes["re"])
+        ds_out = xr.Dataset(
+            data_vars={
+                "q_ext": (("habit", "mu", "re"), q.reshape(shape_y_out)),
+                "omega": (("habit", "mu", "re"), omega.reshape(shape_y_out)),
+                "g": (("habit", "mu", "re"), g.reshape(shape_y_out)),
+            },
+            coords={"habit": habit, "mu": mu, "re": re},
+        )
+        ds_out["habit"].attrs = ds["habit"].attrs
+    else:
+        shape_out = (ds.sizes["mu"], ds.sizes["re"])
+        ds_out = xr.Dataset(
+            data_vars={
+                "q_ext": (("mu", "re"), q.reshape(shape_out)),
+                "omega": (("mu", "re"), omega.reshape(shape_out)),
+                "g": (("mu", "re"), g.reshape(shape_out)),
+            },
+            coords={"mu": mu, "re": re},
+        )
+
+    ds_out["q_ext"].attrs = {
+        "long_name": "extinction efficiency",
+        "units": "nondim",
+    }
+    ds_out["omega"].attrs = {
+        "long_name": "single scattering albedo",
+        "units": "nondim",
+    }
+    ds_out["g"].attrs = {
+        "long_name": "asymmetry factor",
+        "units": "nondim",
+    }
+    ds_out["mu"].attrs = ds["mu"].attrs
+    ds_out["re"].attrs = ds["re"].attrs
+
+    return ds_out
 
 
 def run(
