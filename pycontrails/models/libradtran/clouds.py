@@ -201,15 +201,15 @@ class MetDatasetClouds(LRTClouds):
     interp_kwargs: dict[str, Any]
 
     #: Required meteorology variables
-    met_variables = [
+    met_variables = (
         ecmwf.SpecificCloudLiquidWaterContent,
         ecmwf.SpecificCloudIceWaterContent,
         met_var.AirTemperature,
         met_var.Geopotential,
-    ]
+    )
 
     #: Required surface variables
-    sfc_variables = [ecmwf.SurfaceGeopotential]
+    sfc_variables = (ecmwf.SurfaceGeopotential,)
 
     #: Cloud droplet size distribution intercept parameter [:math:`m^{-3 - \mu}`]
     n0 = 1.2e66
@@ -301,7 +301,8 @@ class MetDatasetClouds(LRTClouds):
             # Exclude top layers with no cloud
             mask = (iwc > 0.0) | (lwc > 0.0)
             if mask.sum() == 0:
-                return [[]]
+                profiles.append([])
+                continue
             start = max(0, np.flatnonzero(mask).min() - 1)
 
             # Compute altitude at layer base

@@ -14,7 +14,7 @@ import numpy as np
 from pycontrails.core import GeoVectorDataset, MetDataset, cache, met_var, models
 from pycontrails.core.models import interpolate_met
 from pycontrails.datalib.ecmwf import variables as ecmwf
-from pycontrails.models.libradtran import utils
+from pycontrails.models.libradtran import options, utils
 from pycontrails.models.libradtran.clouds import LRTClouds
 from pycontrails.physics import constants
 
@@ -27,9 +27,6 @@ class LibRadtranParams(models.ModelParams):
 
     #: CO2 volume mixing ratio :math:`[ppmv]`
     co2_ppmv: float = 400.0
-
-    #: Range of output wavelengths :math:`[um]`
-    wavelength: tuple[float, float] = (3.0, 13.0)
 
     #: Threshold snow depth, in m water equivalent, to treat
     #: pixel as snow-covered.
@@ -81,6 +78,7 @@ class LibRadtran(models.Model):
     __slots__ = (
         "cachestore",
         "clouds",
+        "lrt_options",
         "sfc",
     )
 
@@ -91,9 +89,15 @@ class LibRadtran(models.Model):
         met_var.AirTemperature,
         met_var.Geopotential,
         met_var.SpecificHumidity,
+        ecmwf.OzoneMassMixingRatio,
     )
 
-    sfc_variables = (ecmwf.SurfaceSkinTemperature, ecmwf.SurfaceGeopotential)
+    sfc_variables = (
+        ecmwf.SurfaceSkinTemperature,
+        ecmwf.SurfaceGeopotential,
+        ecmwf.SnowDepth,
+        ecmwf.SeaIceConcentration,
+    )
 
     #: Met data is not optional
     met: MetDataset
@@ -104,6 +108,10 @@ class LibRadtran(models.Model):
 
     #: List of cloud inputs for radiative transfer calculation
     clouds: list[LRTClouds]
+
+    #: Options provided directly to libRadtran.
+    #: See libRadtran documentation for details.
+    lrt_options: dict[str, str]
 
     #: Cachestore where input and output files are stored
     cachestore: cache.CacheStore
@@ -116,6 +124,7 @@ class LibRadtran(models.Model):
         met: MetDataset,
         sfc: MetDataset,
         clouds: list[LRTClouds] | None = None,
+        lrt_options: dict[str, str] | None = None,
         cachestore: cache.CacheStore | None = None,
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
@@ -127,6 +136,8 @@ class LibRadtran(models.Model):
         self.sfc = sfc
 
         self.clouds = clouds or []
+
+        self.lrt_options = lrt_options or options.get_default_options("thermal radiance")
 
         if cachestore is None:
             cache_root = cache._get_user_cache_dir()
@@ -160,7 +171,6 @@ class LibRadtran(models.Model):
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
 
-        static_options = self.get_static_options()
         scene_locations = self.get_locations(self.source)
         scene_met = self.get_met_profiles(self.source)
         scene_sfc = self.get_surface_options(self.source)
@@ -169,7 +179,7 @@ class LibRadtran(models.Model):
         output_dirs = [self.cachestore.path(str(i)) for i in range(len(scene_locations))]
         jobs = zip(scene_locations, scene_met, scene_sfc, scene_clouds, output_dirs, strict=True)
 
-        run = functools.partial(utils.run, static_options=static_options)
+        run = functools.partial(utils.run, options=self.lrt_options)
 
         if self.params["num_workers"] == 1:
             output_paths = []
@@ -182,11 +192,6 @@ class LibRadtran(models.Model):
 
         self.source["output_location"] = output_paths
         return self.source
-
-    def get_static_options(self) -> dict[str, Any]:
-        """Get options shared across all scenes."""
-        wvl = self.params["wavelength"]
-        return {"wavelength": f"{int(1000*wvl[0])} {int(1000*wvl[1])}"}
 
     def get_locations(self, source: GeoVectorDataset) -> list[dict[str, Any]]:
         """Get scene locations.

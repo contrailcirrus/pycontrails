@@ -4,6 +4,7 @@ import itertools
 import os
 import subprocess
 import tempfile
+from copy import copy
 from typing import Any
 
 import numpy as np
@@ -11,17 +12,6 @@ import numpy.typing as npt
 import xarray as xr
 
 from pycontrails.physics import constants
-
-DEFAULT_OPTIONS = {
-    "rte_solver": "disort",
-    "source": "thermal",
-    "mol_abs_param": "reptran fine",
-    "number_of_streams": "16",
-    "zout": "TOA",
-    "umu": "1",
-    "phi": "0",
-    "output_user": "lambda uu",
-}
 
 
 def get_lrt_folder() -> str:
@@ -120,7 +110,7 @@ def run(
     surface_options: dict[str, Any],
     cloud_profiles: list[dict[str, Any]],
     output_dir: str,
-    static_options: dict[str, Any],
+    options: dict[str, str],
 ) -> Any:
     """Run libRadtran."""
 
@@ -130,7 +120,7 @@ def run(
         return os.path.join(output_dir, name)
 
     folder = get_lrt_folder()
-    options = DEFAULT_OPTIONS | static_options
+    options = copy(options)  # avoid modifying input
 
     # Location
     for key, value in location.items():
