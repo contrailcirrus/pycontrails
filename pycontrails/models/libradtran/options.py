@@ -18,12 +18,10 @@ def get_default_options(calculation: str) -> dict[str, str]:
 
     if calculation == "thermal irradiance":
         return {
-            "rte_solver": "disort",
+            "rte_solver": "twostr",
             "source": "thermal",
             "mol_abs_param": "fu",
-            "number_of_streams": "6",
             "zout": "TOA",
-            "output_process": "sum",
             "output_user": "edir eglo edn eup enet esum",
         }
     msg = f"No default options available for {calculation} calculation."

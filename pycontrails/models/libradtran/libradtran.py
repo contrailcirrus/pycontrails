@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import dataclasses
-import functools
 import logging
 import multiprocessing
+import time
 import warnings
 from typing import Any, NoReturn, overload
 
 import numpy as np
+import pandas as pd
 
 from pycontrails.core import GeoVectorDataset, MetDataset, cache, met_var, models
 from pycontrails.core.models import interpolate_met
@@ -171,30 +172,44 @@ class LibRadtran(models.Model):
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
 
-        scene_locations = self.get_locations(self.source)
-        scene_met = self.get_met_profiles(self.source)
-        scene_sfc = self.get_surface_options(self.source)
-        scene_clouds = self.get_cloud_profiles(self.source)
+        locations = self.get_locations(self.source)
+        atmospheres = self.get_met_profiles(self.source)
+        surfaces = self.get_surface_options(self.source)
+        clouds = self.get_cloud_profiles(self.source)
 
-        output_dirs = [self.cachestore.path(str(i)) for i in range(len(scene_locations))]
-        jobs = zip(scene_locations, scene_met, scene_sfc, scene_clouds, output_dirs, strict=True)
+        rundirs = utils.prepare_input(
+            locations, atmospheres, surfaces, clouds, self.lrt_options, self.cachestore
+        )
 
-        run = functools.partial(utils.run, options=self.lrt_options)
+        all_start = time.perf_counter()
 
         if self.params["num_workers"] == 1:
-            output_paths = []
-            for job in jobs:
-                output_paths.append(run(*job))
+            job_times = []
+            for job in rundirs:
+                job_times.append(utils.run(job))
 
         else:
             with multiprocessing.Pool(self.params["num_workers"]) as pool:
-                output_paths = pool.starmap(run, jobs)
+                job_times = pool.map(utils.run, rundirs)
 
-        self.source["output_location"] = output_paths
+        elapsed = time.perf_counter() - all_start
+        times = np.array(job_times)
+
+        print("=============================")
+        print("libRadtran runtime statistics")
+        print(f"Jobs ------ {len(rundirs)}")
+        print(f"Elapsed --- {elapsed:.0f} s")
+        print(f"Per job --- {np.mean(times):.0f} +/- {np.std(times):.1f} s")
+        print(f"Speedup --- {np.sum(times)/elapsed:.1f}x")
+        print("=============================")
+
+        self.source["rundir"] = rundirs
         return self.source
 
-    def get_locations(self, source: GeoVectorDataset) -> list[dict[str, Any]]:
+    def get_locations(self, source: GeoVectorDataset) -> pd.DataFrame:
         """Get scene locations.
+
+        Output shape: (num_scenes,)
 
         Parameters
         ----------
@@ -203,8 +218,10 @@ class LibRadtran(models.Model):
 
         Returns
         -------
-        list[dict[str, Any]]
+        np.ndarray
             Input options specifying the location of each scene.
+            Type: dict[str, str]
+            Shape: (num_scenes,)
         """
 
         def _format_lat(lat: float) -> str:
@@ -217,16 +234,18 @@ class LibRadtran(models.Model):
                 return f"E {lon:.6f}"
             return f"W {-lon:.6f}"
 
-        return [
-            {
-                "time": point["time"].strftime("%Y %m %d %H %M %S"),
-                "latitude": f"{_format_lat(point['latitude'])}",
-                "longitude": f"{_format_lon(point['longitude'])}",
-            }
-            for _, point in source.dataframe.iterrows()
-        ]
+        def _process(point: pd.Series) -> pd.Series:
+            return pd.Series(
+                {
+                    "time": point["time"].strftime("%Y %m %d %H %M %S"),
+                    "latitude": f"{_format_lat(point['latitude'])}",
+                    "longitude": f"{_format_lon(point['longitude'])}",
+                }
+            )
 
-    def get_surface_options(self, source: GeoVectorDataset) -> list[dict[str, Any]]:
+        return source.dataframe.apply(_process, axis="columns")
+
+    def get_surface_options(self, source: GeoVectorDataset) -> pd.DataFrame:
         """Get input options related to surface properties.
 
         Parameters
@@ -255,8 +274,7 @@ class LibRadtran(models.Model):
         interpolate_met(sfc, source, "sea_ice_cover", **interp_kwargs)
         interpolate_met(sfc, source, "snow_depth", **interp_kwargs)
 
-        options = []
-        for _, point in source.dataframe.iterrows():
+        def _process(point: pd.Series) -> dict[str, str]:
             z = point["geopotential_at_surface"] / constants.g / 1e3
             ts = point["skin_temperature"]
             snow = point["snow_depth"] > self.params["threshold_snow_depth"]
@@ -274,12 +292,14 @@ class LibRadtran(models.Model):
             else:
                 opt["brdf_rpv_type"] = "20"
 
-            options.append(opt)
+            return pd.Series(opt)
 
-        return options
+        return source.dataframe.apply(_process, axis="columns")
 
-    def get_met_profiles(self, source: GeoVectorDataset) -> list[dict[str, Any]]:
+    def get_met_profiles(self, source: GeoVectorDataset) -> np.ndarray:
         """Get atmospheric profiles from met data.
+
+        Output shape: (num_scenes,)
 
         Parameters
         ----------
@@ -288,7 +308,7 @@ class LibRadtran(models.Model):
 
         Returns
         -------
-        list[dict[str, Any]]
+        np.ndarray
             Required atmospheric profiles.
         """
 
@@ -301,10 +321,9 @@ class LibRadtran(models.Model):
         logger.debug(f"Loading {met.data.nbytes/1e6:.2f} MB of met data")
         met.data.load()
 
-        # Interpolate to target profiles
-        profiles = []
         interp_kwargs = self.interp_kwargs
-        for _, point in source.dataframe.iterrows():
+
+        def _process(point: pd.Series) -> dict[str, Any]:
             # Interpolate met data
             level = met["level"].data.to_numpy()
             target = GeoVectorDataset(
@@ -318,9 +337,11 @@ class LibRadtran(models.Model):
             t = interpolate_met(met, target, "air_temperature", **interp_kwargs)
             n = p / (constants.k_boltzmann * t)
             q_o3 = interpolate_met(met, target, "mass_fraction_of_ozone_in_air", **interp_kwargs)
+            q_o3 = np.maximum(0, q_o3)
             n_o3 = n * q_o3 * constants.M_d / constants.M_o3
             n_o2 = n * constants.eta_o2
             q_v = interpolate_met(met, target, "specific_humidity", **interp_kwargs)
+            q_v = np.maximum(0, q_v)
             n_v = n * q_v * constants.M_d / constants.M_v
             n_co2 = n * self.params["co2_ppmv"] / 1e6
 
@@ -355,7 +376,7 @@ class LibRadtran(models.Model):
                 else:
                     warnings.warn(msg)
 
-            profiles.append(
+            return pd.Series(
                 {
                     "z": z[~missing] / 1e3,
                     "p": p[~missing] / 1e2,
@@ -368,9 +389,9 @@ class LibRadtran(models.Model):
                 }
             )
 
-        return profiles
+        return source.dataframe.apply(_process, axis="columns")
 
-    def get_cloud_profiles(self, source: GeoVectorDataset) -> list[list[dict[str, Any]]]:
+    def get_cloud_profiles(self, source: GeoVectorDataset) -> pd.DataFrame:
         """Get cloud profiles.
 
         Parameters
@@ -383,8 +404,7 @@ class LibRadtran(models.Model):
         list[list[dict[str, Any]]]
             Required cloud profiles.
         """
-        if len(self.clouds) == 0:
-            return [[]] * len(source.dataframe)
-
-        profiles = [cloud.get_profiles(source) for cloud in self.clouds]
-        return [sum(p, start=[]) for p in zip(*profiles, strict=True)]
+        df = pd.concat([cloud.get_profiles(source) for cloud in self.clouds])
+        scenes = [idx[0] for idx in df.index]
+        labels = [f"cld{j}-" + "-".join(str(i) for i in idx[1:]) for j, idx in enumerate(df.index)]
+        return df.set_index(pd.MultiIndex.from_tuples(zip(scenes, labels, strict=True)))

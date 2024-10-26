@@ -9,10 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
-import xarray as xr
-from scipy.spatial import KDTree
 from scipy.special import erf, gamma
 
 from pycontrails.core import GeoVectorDataset, MetDataset, met_var
@@ -20,6 +17,7 @@ from pycontrails.core.models import interpolate_met
 from pycontrails.datalib.ecmwf import variables as ecmwf
 from pycontrails.models.cocip import CocipParams
 from pycontrails.models.cocip import radiative_forcing as rf
+from pycontrails.models.libradtran import utils
 from pycontrails.physics import constants, geo, units
 from pycontrails.utils.types import ArrayScalarLike
 
@@ -36,7 +34,7 @@ class LRTClouds(ABC):
     def get_profiles(
         self,
         source: GeoVectorDataset,
-    ) -> list[list[dict[str, Any]]]:
+    ) -> pd.DataFrame:
         """Abstract method to handle calculation of profiles for libRadtran input.
 
         Parameters
@@ -46,141 +44,9 @@ class LRTClouds(ABC):
 
         Returns
         -------
-        list[list[dict[str, Any]]]
-            Nested list of dict with cloud properties. The first dimension corresponds
-            to points defined by each element of ``source``, and the second dimension
-            provides profiles required for the radiative transfer calculation at each
-            point.
+        pd.DataFrame
+            TODO
         """
-
-
-class CloudLayers(LRTClouds):
-    """Cloud inputs provided as layer properties.
-
-    Useful for simulations using retrieved cloud properties.
-    """
-
-    __slots__ = ("zl", "lwp", "rel", "zi", "iwp", "rei", "tree")
-
-    #: liquid cloud top heights :math:`[m]`
-    zl: npt.NDArray[np.float64]
-
-    #: liquid cloud water paths :math:`[kg m^{-2}]`
-    lwp: npt.NDArray[np.float64]
-
-    #: liquid cloud effective radii :math:`[m]`
-    rel: npt.NDArray[np.float64]
-
-    #: ice cloud top heights :math:`[m]`
-    zi: npt.NDArray[np.float64]
-
-    #: ice cloud water paths :math:`[kg m^{-2}]`
-    iwp: npt.NDArray[np.float64]
-
-    #: ice cloud effective radii :math:`[m]`
-    rei: npt.NDArray[np.float64]
-
-    #: K-D tree for nearest-neighbor lookups
-    tree: KDTree
-
-    def __init__(
-        self,
-        zl: np.ndarray,
-        lwp: np.ndarray,
-        rel: np.ndarray,
-        zi: np.ndarray,
-        iwp: np.ndarray,
-        rei: np.ndarray,
-        lon: np.ndarray,
-        lat: np.ndarray,
-    ):
-        self.zl = zl.flatten()
-        self.lwp = lwp.flatten()
-        self.rel = rel.flatten()
-        self.zi = zi.flatten()
-        self.iwp = iwp.flatten()
-        self.rei = rei.flatten()
-
-        lon = np.where(lon < 0, lon + 360, lon)
-        colat = lat + 90
-        data = np.stack((lon.flatten(), colat.flatten()), axis=1)
-        self.tree = KDTree(data, boxsize=360)
-
-    @classmethod
-    def from_emas(cls, ds: xr.Dataset) -> CloudLayers:
-        """Create cloud input from eMAS retrievals."""
-        liq = ((ds["cloud_phase"] == 2) | (ds["cloud_phase"] == 4)).to_numpy()
-        ice = (ds["cloud_phase"] == 3).to_numpy()
-
-        tmp = ds["cloud_top_height"].to_numpy()
-        zl = np.where(liq, tmp, np.nan)
-        zi = np.where(ice, tmp, np.nan)
-
-        tmp = 1e-3 * ds["cloud_water_path"].to_numpy()
-        lwp = np.where(liq, tmp, np.nan)
-        iwp = np.where(ice, tmp, np.nan)
-
-        tmp = 1e-6 * ds["cloud_effective_radius"].to_numpy()
-        rel = np.where(liq, tmp, np.nan)
-        rei = np.where(ice, tmp, np.nan)
-
-        lon = ds["longitude"].to_numpy()
-        lat = ds["latitude"].to_numpy()
-
-        return cls(zl, lwp, rel, zi, iwp, rei, lon, lat)
-
-    def get_profiles(self, source: GeoVectorDataset) -> list[list[dict[str, Any]]]:
-        """Compute libRadtran input profiles.
-
-        Parameters
-        ----------
-        source : GeoVectorDataset
-            Dataset defining coordinates where profiles should be computed
-
-        Returns
-        -------
-        list[list[libRadtranProfile]]
-            Nested list of input profiles. The first dimension corresponds to points
-            defined by each element of ``source``, and the second dimension provides
-            profiles required for the radiative transfer calculation at each point.
-        """
-        lon = source["longitude"]
-        colat = source["latitude"] + 90
-        _, inearest = self.tree.query(np.stack((lon, colat), axis=1), k=1)
-
-        profiles = []
-        for i in inearest:
-            local_profiles = []
-
-            zl = self.zl[i]
-            lwp = self.lwp[i]
-            rel = self.rel[i]
-            if np.isfinite(zl) and np.isfinite(lwp) and np.isfinite(rel):
-                local_profiles.append(
-                    {
-                        "options": ["profile_properties mie interpolate"],
-                        "z": np.array([zl, zl - 100.0]) / 1e3,
-                        "cwc": np.array([0.0, lwp / 100.0]) * 1e3,
-                        "re": np.array([0.0, rel]) * 1e6,
-                    }
-                )
-
-            zi = self.zi[i]
-            iwp = self.iwp[i]
-            rei = self.rei[i]
-            if np.isfinite(zi) and np.isfinite(iwp) and np.isfinite(rei):
-                local_profiles.append(
-                    {
-                        "options": ["profile_properties baum_v36 interpolate", "profile_habit ghm"],
-                        "z": np.array([zi, zi - 100.0]) / 1e3,
-                        "cwc": np.array([0.0, iwp / 100.0]) * 1e3,
-                        "re": np.array([0.0, np.clip(rei, 5e-6, 60e-6)]) * 1e6,
-                    }
-                )
-
-            profiles.append(local_profiles)
-
-        return profiles
 
 
 class MetDatasetClouds(LRTClouds):
@@ -202,6 +68,7 @@ class MetDatasetClouds(LRTClouds):
 
     #: Required meteorology variables
     met_variables = (
+        ecmwf.CloudAreaFractionInLayer,
         ecmwf.SpecificCloudLiquidWaterContent,
         ecmwf.SpecificCloudIceWaterContent,
         met_var.AirTemperature,
@@ -226,7 +93,7 @@ class MetDatasetClouds(LRTClouds):
         self.sfc = sfc
         self.interp_kwargs = interp_kwargs or {}
 
-    def get_profiles(self, source: GeoVectorDataset) -> list[list[dict[str, Any]]]:
+    def get_profiles(self, source: GeoVectorDataset) -> np.ndarray:
         """Compute libRadtran input profiles.
 
         Parameters
@@ -236,10 +103,8 @@ class MetDatasetClouds(LRTClouds):
 
         Returns
         -------
-        list[list[libRadtranProfile]]
-            Nested list of input profiles. The first dimension corresponds to points
-            defined by each element of ``source``, and the second dimension provides
-            profiles required for the radiative transfer calculation at each point.
+        np.ndarray
+            TODO
         """
 
         # Downselect meteorology
@@ -251,10 +116,12 @@ class MetDatasetClouds(LRTClouds):
         logger.debug(f"Loading {sfc.data.nbytes/1e6} MB of surface data")
         sfc.data.load()
 
-        # Interpolate to target profiles
-        profiles = []
         interp_kwargs = self.interp_kwargs
-        for _, point in source.dataframe.iterrows():
+
+        def _process(point: pd.Series) -> pd.Series:
+            # Initialze output dataframe
+            out = pd.DataFrame(columns=["options", "z", "cwc", "re"])
+
             # Get target points on profile
             level = met.data["level"].to_numpy()
             target = GeoVectorDataset(
@@ -301,12 +168,12 @@ class MetDatasetClouds(LRTClouds):
             # Exclude top layers with no cloud
             mask = (iwc > 0.0) | (lwc > 0.0)
             if mask.sum() == 0:
-                profiles.append([])
-                continue
+                return out
             start = max(0, np.flatnonzero(mask).min() - 1)
 
             # Compute altitude at layer base
-            ze = np.concat((0.5 * (z[1:] + z[:-1]), zs))
+            zb = 0.5 * (zs + z[-1])
+            ze = np.concatenate((0.5 * (z[1:] + z[:-1]), zb))
             ze = ze[start:]
             t = t[start:]
             lwc = lwc[start:]
@@ -319,21 +186,25 @@ class MetDatasetClouds(LRTClouds):
             rel = np.where(lwc > 0, _reff_liquid(lwc, self.n0, self.mu), 0.0)
             rei = np.where(iwc > 0, _reff_ice(iwc, t), 0.0)
 
-            liquid_profile = {
-                "options": ["profile_properties mie interpolate"],
-                "z": ze / 1e3,
-                "cwc": lwc * 1e3,
-                "re": rel * 1e6,
-            }
-            ice_profile = {
-                "options": ["profile_properties baum_v36 interpolate", "profile_habit ghm"],
-                "z": ze / 1e3,
-                "cwc": iwc * 1e3,
-                "re": rei * 1e6,
-            }
-            profiles.append([liquid_profile, ice_profile])
+            if np.any(lwc > 0):
+                out.loc["liquid"] = {
+                    "options": ["profile_properties mie interpolate"],
+                    "z": ze / 1e3,
+                    "cwc": np.maximum(0, lwc) * 1e3,
+                    "re": rel * 1e6,
+                }
+            if np.any(iwc > 0):
+                out.loc["ice"] = {
+                    "options": ["profile_properties baum_v36 interpolate", "profile_habit ghm"],
+                    "z": ze / 1e3,
+                    "cwc": np.maximum(0, iwc) * 1e3,
+                    "re": rei * 1e6,
+                }
 
-        return profiles
+            return out
+
+        # create multiindex
+        return utils.apply_expand_index(source.dataframe, _process)
 
 
 def _reff_liquid(lwc: ArrayScalarLike, n0: ArrayScalarLike, mu: ArrayScalarLike) -> ArrayScalarLike:
@@ -418,7 +289,7 @@ class CocipContrails(LRTClouds):
         )
         return cls(segments, **params)
 
-    def get_profiles(self, source: GeoVectorDataset) -> list[list[dict[str, Any]]]:
+    def get_profiles(self, source: GeoVectorDataset) -> pd.DataFrame:
         """Compute libRadtran input profiles.
 
         Parameters
@@ -431,14 +302,11 @@ class CocipContrails(LRTClouds):
 
         Returns
         -------
-        list[list[libRadtranProfile]]
-            Nested list of input profiles. The first dimension corresponds to points
-            defined by each element of ``source``, and the second dimension provides
-            profiles required for the radiative transfer calculation at each point.
+        pd.DataFrame
+            TODO
         """
-        profiles = []
 
-        for _, point in source.dataframe.iterrows():
+        def _process(point: pd.Series) -> pd.Series:
             t, lat, lon = point["time"], point["latitude"], point["longitude"]
 
             # Interpolate to target time
@@ -468,6 +336,8 @@ class CocipContrails(LRTClouds):
 
             # Filter based on weights
             segments = segments[weights.between(0, 1)]
+            if len(segments) == 0:
+                return pd.DataFrame(columns=["options", "z", "cwc", "re"])
             weights = weights[weights.between(0, 1)]
 
             # Profiles are required for all remaining segments
@@ -477,16 +347,14 @@ class CocipContrails(LRTClouds):
                 f"(threshold distance {self.radius/1e3} km)"
             )
             segments["wt"] = weights
-            local_profiles = sum(
-                [
-                    _generate_profiles(lon, lat, segment, self.footprint, self.cocip_params)
-                    for _, segment in segments.iterrows()
-                ],
-                start=[],
-            )
-            profiles.append(local_profiles)
 
-        return profiles
+            return utils.apply_expand_index(
+                segments,
+                lambda seg: _generate_profiles(seg, lon, lat, self.footprint, self.cocip_params),
+                by=["flight_id", "waypoint"],
+            )
+
+        return utils.apply_expand_index(source.dataframe, _process)
 
 
 def _as_segments(df: pd.DataFrame) -> pd.DataFrame:
@@ -560,109 +428,117 @@ def _sign_y(lon: float, lat: float, lon0: float, lat0: float, lon1: float, lat1:
     return np.sign(v[0] * v_traj[1] - v_traj[0] * v[1])
 
 
-def _cocip_habits(
-    r_vol: float, params: CocipParams
-) -> tuple[npt.NDArray[str], npt.NDArray[np.float64], np.NDArray[np.float64]]:
+def _cocip_habits(r_vol: float, params: CocipParams) -> pd.DataFrame:
     """Compute habit weights and effective radii."""
     r_vol_um = np.atleast_1d(r_vol) * 1e6
     G = rf.habit_weights(r_vol_um, params.habit_distributions, params.radius_threshold_um)
     idx0, idx1 = np.nonzero(G)
     r_eff_um = rf.effective_radius_by_habit(r_vol_um[idx0], idx1)
-    return params.habits[idx1], G[idx0, idx1], r_eff_um * 1e-6
+    return pd.DataFrame(
+        data={"weight": G[idx0, idx1], "re": r_eff_um * 1e-6},
+        index=[h.lower() for h in params.habits[idx1]],
+    )
 
 
-def _effective_radius(r_vol: float, params: CocipParams) -> float:
-    """Compute effective radius based on weighted combination of Cocip habits.
-
-    Note that the correct average is the harmonic mean of individual habits.
-    """
-    r_vol_um = np.atleast_1d(r_vol) * 1e6
-    G = rf.habit_weights(r_vol_um, params.habit_distributions, params.radius_threshold_um)
-    idx0, idx1 = np.nonzero(G)
-    r_eff_um = rf.effective_radius_by_habit(r_vol_um[idx0], idx1)
-    return 1e-6 / np.sum(G[idx0, idx1] / r_eff_um)
-
-
-def _generate_profile(habit: str, z0: float, z1: float, iwc: float, re: float) -> dict[str, Any]:
+def _generate_profile(habits: pd.DataFrame, z0: float, z1: float, iwc: float) -> dict[str, Any]:
     """Generate profile for specific habit."""
-    if habit.lower() == "sphere":
+
+    habit = habits.name
+    cwc = np.maximum(habits["weight"] * iwc * 1e3, 0)
+    re = habits["re"] * 1e6
+
+    if habit == "sphere":
         msg = "Mie scattering calculations required for spheric ice particles."
         raise ValueError(msg)
-    if habit.lower() == "solid column":
-        return {
-            "options": [
-                "profile_properties yang2013 interpolate",
-                "profile_habit_yang2013 solid_column severe",
-            ],
-            "z": np.array([z1, z0]) / 1e3,
-            "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 90.0),
-        }
-    if habit.lower() == "hollow column":
-        return {
-            "options": [
-                "profile_properties yang2013 interpolate",
-                "profile_habit_yang2013 hollow_column severe",
-            ],
-            "z": np.array([z1, z0]) / 1e3,
-            "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 90.0),
-        }
-    if habit.lower() == "rough aggregate":
-        return {
-            "options": ["profile_properties baum_v36 interpolate", "profile_habit aggregate"],
-            "z": np.array([z1, z0]) / 1e3,
-            "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 60.0),
-        }
-    if habit.lower() == "rosette-6":
-        return {
-            "options": [
-                "profile_properties yang2013 interpolate",
-                "profile_habit_yang2013 solid_bullet_rosette severe",
-            ],
-            "z": np.array([z1, z0]) / 1e3,
-            "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 90.0),
-        }
-    if habit.lower() == "plate":
-        return {
-            "options": [
-                "profile_properties yang2013 interpolate",
-                "profile_habit_yang2013 plate severe",
-            ],
-            "z": np.array([z1, z0]) / 1e3,
-            "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 90.0),
-        }
-    if habit.lower() == "droxtal":
-        return {
-            "options": [
-                "profile_properties yang2013 interpolate",
-                "profile_habit_yang2013 droxtal severe",
-            ],
-            "z": np.array([z1, z0]) / 1e3,
-            "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.clip(np.array([0, re]) * 1e6, 5.0, 90.0),
-        }
-    if habit.lower() == "myhre":
-        return {
-            "options": [
-                "profile_properties yang2013 interpolate",
-                "profile_habit_yang2013 solid_column severe",
-            ],
-            "z": np.array([z1, z0]) / 1e3,
-            "cwc": np.array([0, iwc]) * 1e3,
-            "re": np.array([0, 32.0]),
-        }
+    if habit == "solid column":
+        return pd.Series(
+            {
+                "options": [
+                    "profile_properties yang2013 interpolate",
+                    "profile_habit_yang2013 solid_column severe",
+                ],
+                "z": np.array([z1, z0]) / 1e3,
+                "cwc": np.array([0, cwc]),
+                "re": np.array([0, np.clip(re, 5.0, 90.0)]),
+            }
+        )
+    if habit == "hollow column":
+        return pd.Series(
+            {
+                "options": [
+                    "profile_properties yang2013 interpolate",
+                    "profile_habit_yang2013 hollow_column severe",
+                ],
+                "z": np.array([z1, z0]) / 1e3,
+                "cwc": np.array([0, cwc]),
+                "re": np.array([0, np.clip(re, 5.0, 90.0)]),
+            }
+        )
+    if habit == "rough aggregate":
+        return pd.Series(
+            {
+                "options": ["profile_properties baum_v36 interpolate", "profile_habit aggregate"],
+                "z": np.array([z1, z0]) / 1e3,
+                "cwc": np.array([0, cwc]),
+                "re": np.array([0, np.clip(re, 5.0, 60.0)]),
+            }
+        )
+    if habit == "rosette-6":
+        return pd.Series(
+            {
+                "options": [
+                    "profile_properties yang2013 interpolate",
+                    "profile_habit_yang2013 solid_bullet_rosette severe",
+                ],
+                "z": np.array([z1, z0]) / 1e3,
+                "cwc": np.array([0, cwc]),
+                "re": np.array([0, np.clip(re, 5.0, 90.0)]),
+            }
+        )
+    if habit == "plate":
+        return pd.Series(
+            {
+                "options": [
+                    "profile_properties yang2013 interpolate",
+                    "profile_habit_yang2013 plate severe",
+                ],
+                "z": np.array([z1, z0]) / 1e3,
+                "cwc": np.array([0, cwc]),
+                "re": np.array([0, np.clip(re, 5.0, 90.0)]),
+            }
+        )
+    if habit == "droxtal":
+        return pd.Series(
+            {
+                "options": [
+                    "profile_properties yang2013 interpolate",
+                    "profile_habit_yang2013 droxtal severe",
+                ],
+                "z": np.array([z1, z0]) / 1e3,
+                "cwc": np.array([0, cwc]),
+                "re": np.array([0, np.clip(re, 5.0, 90.0)]),
+            }
+        )
+    if habit == "myhre":
+        return pd.Series(
+            {
+                "options": [
+                    "profile_properties yang2013 interpolate",
+                    "profile_habit_yang2013 solid_column severe",
+                ],
+                "z": np.array([z1, z0]) / 1e3,
+                "cwc": np.array([0, cwc]),
+                "re": np.array([0, 32.0]),
+            }
+        )
 
-    msg = f"Unrecognized contrail habit {habit.lower()}"
+    msg = f"Unrecognized contrail habit {habit}"
     raise ValueError(msg)
 
 
 def _generate_profiles(
-    lon: float, lat: float, segment: pd.Series, footprint: float, params: CocipParams
-) -> list[dict[str, Any]]:
+    segment: pd.Series, lon: float, lat: float, footprint: float, params: CocipParams
+) -> pd.DataFrame:
     """Generate libRadtran cloud profile for segment."""
 
     # Compute Cocip y coordinate
@@ -698,14 +574,12 @@ def _generate_profiles(
 
     # If local plume depth is less than 1 mm, assume it can be ignored.
     if dz < 1e-3:
-        return []
+        return pd.DataFrame(columns=["options", "z", "cwc", "re"])
 
     # Compute altitude of local plume center as
     # concentration-weighted altitude at y.
     z0 = z + Syz * y / Szz
 
     # Generate profile for each habit
-    return [
-        _generate_profile(habit, z0 - dz, z0 + dz, weight * iwc, re)
-        for habit, weight, re in zip(*_cocip_habits(r, params), strict=True)
-    ]
+    habits = _cocip_habits(r, params)
+    return habits.apply(lambda row: _generate_profile(row, z0 - dz, z0 + dz, iwc), axis="columns")
