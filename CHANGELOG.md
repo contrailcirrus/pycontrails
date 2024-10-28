@@ -10,6 +10,7 @@
 
 - Improve computation of mach limits to accept vectorized input/output.
 - Test against python 3.13 in the GitHub Actions CI. Use python 3.13 in the docs and doctest workflows.
+- Publish to PyPI using [trusted publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/).
 
 ## v0.54.2
 
