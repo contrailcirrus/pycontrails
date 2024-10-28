@@ -24,8 +24,8 @@ pip-install:
 	python -m pip install -U pip wheel
 	python -m pip install -e ".[complete]"
 
-	# these still must be installed manually for Python < 3.10
-	# -pip install -e ".[open3d]"
+	# open3d wheels not available for latest python versions; install manually
+	# pip install -e ".[open3d]"
 
 # development installation
 dev-install: pip-install

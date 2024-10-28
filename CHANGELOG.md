@@ -1,14 +1,15 @@
 # Changelog
 
-## v0.54.3
+## v0.54.3 (unreleased)
 
 ### Features
 
-- Creates new method `ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
+- Create new function `ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
 
 ### Internals
 
-- Improves computation of mach limits to accept vectorized input/output.
+- Improve computation of mach limits to accept vectorized input/output.
+- Test against python 3.13 in the GitHub Actions CI. Use python 3.13 in the docs and doctest workflows.
 
 ## v0.54.2
 
