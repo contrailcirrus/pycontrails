@@ -82,11 +82,21 @@ jobs:
           name: sdist-artifact
           path: dist/*.tar.gz
 
+  # Publish using PyPI trusted publishing
+  # https://docs.pypi.org/trusted-publishers/using-a-publisher/
+  # https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
   publish-to-testpypi:
     needs:
       - build-wheels
       - build-sdist
     runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pycontrails
+    permissions:
+      id-token: write
+
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -103,11 +113,8 @@ jobs:
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
           verbose: true
-          verify-metadata: true
 
   publish-to-pypi:
     if: ${{ github.event_name == 'release'}}
