@@ -34,7 +34,7 @@ class LRTClouds(ABC):
     def get_profiles(
         self,
         source: GeoVectorDataset,
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | None:
         """Abstract method to handle calculation of profiles for libRadtran input.
 
         Parameters
@@ -44,7 +44,7 @@ class LRTClouds(ABC):
 
         Returns
         -------
-        pd.DataFrame
+        pd.DataFrame | None
             TODO
         """
 
@@ -93,7 +93,7 @@ class MetDatasetClouds(LRTClouds):
         self.sfc = sfc
         self.interp_kwargs = interp_kwargs or {}
 
-    def get_profiles(self, source: GeoVectorDataset) -> np.ndarray:
+    def get_profiles(self, source: GeoVectorDataset) -> pd.DataFrame | None:
         """Compute libRadtran input profiles.
 
         Parameters
@@ -118,20 +118,17 @@ class MetDatasetClouds(LRTClouds):
 
         interp_kwargs = self.interp_kwargs
 
-        def _process(point: pd.Series) -> pd.Series:
-            # Initialze output dataframe
-            out = pd.DataFrame(columns=["options", "z", "cwc", "re"])
-
+        def _process(point: pd.Series) -> pd.DataFrame | None:
             # Get target points on profile
             level = met.data["level"].to_numpy()
             target = GeoVectorDataset(
-                time=np.full(level.shape, point["time"]),
+                time=np.full(level.shape, point["time"].to_numpy()),
                 level=level,
                 latitude=np.full(level.shape, point["latitude"]),
                 longitude=np.full(level.shape, point["longitude"]),
             )
             sfc_target = GeoVectorDataset(
-                time=np.atleast_1d(point["time"]),
+                time=np.atleast_1d(point["time"].to_numpy()),
                 level=[-1],
                 latitude=np.atleast_1d(point["latitude"]),
                 longitude=np.atleast_1d(point["longitude"]),
@@ -168,7 +165,7 @@ class MetDatasetClouds(LRTClouds):
             # Exclude top layers with no cloud
             mask = (iwc > 0.0) | (lwc > 0.0)
             if mask.sum() == 0:
-                return out
+                return None
             start = max(0, np.flatnonzero(mask).min() - 1)
 
             # Compute altitude at layer base
@@ -178,22 +175,29 @@ class MetDatasetClouds(LRTClouds):
             t = t[start:]
             lwc = lwc[start:]
             iwc = iwc[start:]
-            if iwc[0] != 0 or lwc[0] != 0:
-                msg = "Cloud water content is not zero in highest layer. Consider extending domain."
-                warnings.warn(msg)
 
-            # Compute effective radius
-            rel = np.where(lwc > 0, _reff_liquid(lwc, self.n0, self.mu), 0.0)
-            rei = np.where(iwc > 0, _reff_ice(iwc, t), 0.0)
+            # At least one row will be added
+            out = pd.DataFrame(columns=["options", "z", "cwc", "re"])
 
             if np.any(lwc > 0):
+                if lwc[0] != 0:
+                    msg = "Nonzero liquid water content in top layer. Consider extending domain."
+                    warnings.warn(msg)
+                rel = np.zeros_like(lwc)
+                rel[lwc > 0] = _reff_liquid(lwc[lwc > 0], self.n0, self.mu)
                 out.loc["liquid"] = {
                     "options": ["profile_properties mie interpolate"],
                     "z": ze / 1e3,
                     "cwc": np.maximum(0, lwc) * 1e3,
                     "re": rel * 1e6,
                 }
+
             if np.any(iwc > 0):
+                if iwc[0] != 0:
+                    msg = "Nonzero ice water content in top layer. Consider extending domain."
+                    warnings.warn(msg)
+                rei = np.zeros_like(iwc)
+                rei[iwc > 0] = _reff_ice(iwc[iwc > 0], t[iwc > 0])
                 out.loc["ice"] = {
                     "options": ["profile_properties baum_v36 interpolate", "profile_habit ghm"],
                     "z": ze / 1e3,
@@ -289,7 +293,7 @@ class CocipContrails(LRTClouds):
         )
         return cls(segments, **params)
 
-    def get_profiles(self, source: GeoVectorDataset) -> pd.DataFrame:
+    def get_profiles(self, source: GeoVectorDataset) -> pd.DataFrame | None:
         """Compute libRadtran input profiles.
 
         Parameters
@@ -306,7 +310,7 @@ class CocipContrails(LRTClouds):
             TODO
         """
 
-        def _process(point: pd.Series) -> pd.Series:
+        def _process(point: pd.Series) -> pd.DataFrame | None:
             t, lat, lon = point["time"], point["latitude"], point["longitude"]
 
             # Interpolate to target time
@@ -337,7 +341,7 @@ class CocipContrails(LRTClouds):
             # Filter based on weights
             segments = segments[weights.between(0, 1)]
             if len(segments) == 0:
-                return pd.DataFrame(columns=["options", "z", "cwc", "re"])
+                return None
             weights = weights[weights.between(0, 1)]
 
             # Profiles are required for all remaining segments
@@ -351,7 +355,6 @@ class CocipContrails(LRTClouds):
             return utils.apply_expand_index(
                 segments,
                 lambda seg: _generate_profiles(seg, lon, lat, self.footprint, self.cocip_params),
-                by=["flight_id", "waypoint"],
             )
 
         return utils.apply_expand_index(source.dataframe, _process)
@@ -538,7 +541,7 @@ def _generate_profile(habits: pd.DataFrame, z0: float, z1: float, iwc: float) ->
 
 def _generate_profiles(
     segment: pd.Series, lon: float, lat: float, footprint: float, params: CocipParams
-) -> pd.DataFrame:
+) -> pd.DataFrame | None:
     """Generate libRadtran cloud profile for segment."""
 
     # Compute Cocip y coordinate
@@ -574,7 +577,7 @@ def _generate_profiles(
 
     # If local plume depth is less than 1 mm, assume it can be ignored.
     if dz < 1e-3:
-        return pd.DataFrame(columns=["options", "z", "cwc", "re"])
+        return None
 
     # Compute altitude of local plume center as
     # concentration-weighted altitude at y.

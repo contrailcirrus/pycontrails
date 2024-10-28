@@ -108,35 +108,29 @@ def cldprp(ds: xr.Dataset, param: str = "y") -> xr.Dataset:
 
 
 def prepare_input(
-    locations: pd.DataFrame,
-    atmospheres: pd.DataFrame,
-    surfaces: pd.DataFrame,
-    clouds: pd.DataFrame,
-    options: dict[str, str],
+    scene_options: pd.DataFrame,
+    profiles: pd.DataFrame,
+    clouds: pd.DataFrame | None,
+    static_options: dict[str, str],
     cachestore: CacheStore,
 ) -> list[str]:
     """Set up libRadtran input and return list of run directories."""
 
-    scene_loc = locations.groupby(level=0, sort=True)
-    scene_atm = atmospheres.groupby(level=0, sort=True)
-    scene_sfc = surfaces.groupby(level=0, sort=True)
-    scene_cld = clouds.groupby(level=0, sort=True)
-
-    if not (
-        scene_loc.groups.keys()
-        == scene_atm.groups.keys()
-        == scene_sfc.groups.keys()
-        == scene_cld.groups.keys()
-    ):
-        msg = "Inputs provide data for different scenes"
+    if not scene_options.index.equals(profiles.index):
+        msg = "Inputs `scene_options` and `profiles` must share a common index."
         raise ValueError(msg)
 
+    scene_clouds = clouds.groupby(level=0) if clouds is not None else None
+
     rundirs = []
-    for (scene, location), (_, atmosphere), (_, surface), (_, cloud) in zip(
-        scene_loc, scene_atm, scene_sfc, scene_cld, strict=True
-    ):
+    for scene, options in scene_options.iterrows():
         rundir = cachestore.path(str(scene))
-        write_input(location, atmosphere, surface, cloud, options, rundir)
+        cloud_profiles = (
+            scene_clouds.get_group(scene)
+            if scene_clouds is not None and scene in scene_clouds.groups
+            else None
+        )
+        write_input(options, profiles.loc[scene], cloud_profiles, static_options, rundir)
         rundirs.append(rundir)
 
     return rundirs
@@ -151,11 +145,10 @@ def _check_set_option(options: dict[str, str], key: str, value: str) -> None:
 
 
 def write_input(
-    location: pd.DataFrame,
-    atmosphere: pd.DataFrame,
-    surface: pd.DataFrame,
-    cloud: pd.DataFrame,
-    options: dict[str, str],
+    scene_options: pd.Series,
+    profiles: pd.Series,
+    clouds: pd.DataFrame | None,
+    static_options: dict[str, str],
     rundir: str,
 ) -> None:
     """Write libRadtran input to run directory."""
@@ -165,64 +158,49 @@ def write_input(
         return os.path.join(rundir, name)
 
     # avoid modifying input
-    options = copy(options)
+    options = copy(static_options)
 
-    # Location
-    if n := len(location) != 1:
-        msg = f"Expecting exactly one set of coordinates but found {n}"
-        raise ValueError(msg)
-    data = location.iloc[0]
-    for key, value in data.items():
+    # Scene options
+    for key, value in scene_options.items():
         _check_set_option(options, key, value)
 
     # Atmosphere
-    if n := len(atmosphere) != 1:
-        msg = f"Expecting exactly one set of atmosphere profiles but found {n}"
-        raise ValueError(msg)
-    data = atmosphere.iloc[0]
     path = _path("atmosphere")
     with open(path, "wb") as f:
         atmstr = "\n".join(
             [
                 " {:.8f} {:.8f} {:.8f} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e}".format(
-                    data["z"][alt],
-                    data["p"][alt],
-                    data["t"][alt],
-                    data["n"][alt],
-                    data["n_o3"][alt],
-                    data["n_o2"][alt],
-                    data["n_v"][alt],
-                    data["n_co2"][alt],
+                    profiles["z"][alt],
+                    profiles["p"][alt],
+                    profiles["t"][alt],
+                    profiles["n"][alt],
+                    profiles["n_o3"][alt],
+                    profiles["n_o2"][alt],
+                    profiles["n_v"][alt],
+                    profiles["n_co2"][alt],
                 )
-                for alt in range(len(data["z"]))
+                for alt in range(len(profiles["z"]))
             ]
         )
         f.write(atmstr.encode("ascii"))
     _check_set_option(options, "atmosphere_file", path)
 
-    # Surface
-    if n := len(surface) != 1:
-        msg = f"Expecting exactly one set of surface properties but found {n}"
-        raise ValueError(msg)
-    data = surface.iloc[0]
-    for key, value in data.items():
-        _check_set_option(options, key, value)
-
     # Cloud profiles
-    for (_, name), data in cloud.iterrows():
+    cloud_iter = clouds.iterrows() if clouds is not None else []
+    for (_, name), profile in cloud_iter:
         path = _path(name)
         with open(path, "wb") as f:
             cloudstr = "\n".join(
                 [
                     " {:.8f} {:.8f} {:.8f}".format(
-                        data["z"][alt], data["cwc"][alt], data["re"][alt]
+                        profile["z"][alt], profile["cwc"][alt], profile["re"][alt]
                     )
-                    for alt in range(len(data["cwc"]))
+                    for alt in range(len(profile["cwc"]))
                 ]
             )
             f.write(cloudstr.encode("ascii"))
         _check_set_option(options, f"profile_file {name}", " ".join(["1D", path]))
-        for opt in data["options"]:
+        for opt in profile["options"]:
             words = opt.split()
             key = " ".join([words[0], name])
             value = " ".join(words[1:])
@@ -272,13 +250,16 @@ def parse_stdout(path: str) -> npt.NDArray[np.float64]:
 
 
 def apply_expand_index(
-    df: pd.DataFrame, fun: Callable[[pd.Series], pd.DataFrame], by: str | list[str] | None = None
-) -> pd.DataFrame:
-    """Apply function that returns DataFrame to rows of a DataFrame."""
-    msg = "Fix this to use iterrows instead of groupby!"
-    raise ValueError(msg)
-    groups = df.groupby(by or df.index)
-    if groups.size().max() > 1:
-        msg = "DataFrame must have unique index or unique grouping key must be provided."
-        raise ValueError(msg)
-    return groups.apply(lambda df: fun(df.iloc[0]))
+    df: pd.DataFrame, fun: Callable[[pd.Series], pd.DataFrame | None]
+) -> pd.DataFrame | None:
+    """Apply function that returns a DataFrame to rows of a DataFrame."""
+    out = []
+    for idx, row in df.iterrows():
+        row_out = fun(row)
+        if row_out is None or len(row_out) == 0:
+            continue
+        row_out = pd.concat({idx: row_out})
+        out.append(row_out)
+    if len(out) > 0:
+        return pd.concat(out)
+    return None

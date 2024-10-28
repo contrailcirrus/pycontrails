@@ -15,6 +15,7 @@ import pandas as pd
 from pycontrails.core import GeoVectorDataset, MetDataset, cache, met_var, models
 from pycontrails.core.models import interpolate_met
 from pycontrails.datalib.ecmwf import variables as ecmwf
+from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.models.libradtran import options, utils
 from pycontrails.models.libradtran.clouds import LRTClouds
 from pycontrails.physics import constants
@@ -234,7 +235,7 @@ class LibRadtran(models.Model):
         interpolate_met(sfc, target, "skin_temperature", **interp_kwargs)
         interpolate_met(sfc, target, "sea_ice_cover", **interp_kwargs)
         interpolate_met(sfc, target, "snow_depth", **interp_kwargs)
-
+        
         def _format_lat(lat: float) -> str:
             if lat >= 0:
                 return f"N {lat:.6f}"
@@ -298,6 +299,7 @@ class LibRadtran(models.Model):
         interp_kwargs = self.interp_kwargs
 
         def _process(point: pd.Series) -> dict[str, Any]:
+            breakpoint()
             # Interpolate met data
             level = met["level"].data.to_numpy()
             target = GeoVectorDataset(
