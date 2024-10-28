@@ -123,6 +123,13 @@ jobs:
       - build-sdist
       - check-main-test-status
     runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pycontrails
+    permissions:
+      id-token: write
+
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -138,8 +145,3 @@ jobs:
 
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          verbose: true
-          verify-metadata: true
