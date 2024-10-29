@@ -6,6 +6,10 @@
 
 - Create new function `ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
 
+### Fixes
+
+- Ensure the fuel type is preserved when calling `Flight.resample_and_fill`.
+
 ### Internals
 
 - Improve computation of mach limits to accept vectorized input/output.
