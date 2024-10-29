@@ -120,8 +120,9 @@ def write_atmosphere_file(
         atmstr = "\n".join(
             [
                 (
-                    f" {z[alt]:.8f} {p[alt]:.8f} {t[alt]:.8f} {n[alt]:.6e}"
-                    f" {n_o3[alt]:.6e} {n_o2[alt]:.6e} {n_v[alt]:.6e} {n_co2[alt]:.6e}"
+                    f" {z[alt]/1e3:.8f} {p[alt]/1e2:.8f} {t[alt]:.8f}"
+                    f" {n[alt]/1e6:.6e} {n_o3[alt]/1e6:.6e} {n_o2[alt]/1e6:.6e}"
+                    f" {n_v[alt]/1e6:.6e} {n_co2[alt]/1e6:.6e}"
                 )
                 for alt in range(z.size)
             ]
@@ -138,7 +139,7 @@ def write_cloud_file(
     """Write libRadtran cloud file."""
     with open(path, "wb") as f:
         cloudstr = "\n".join(
-            [f" {z[alt]:.8f} {cwc[alt]:.8f} {re[alt]:.8f}" for alt in range(z.size)]
+            [f" {z[alt]/1e3:.8f} {cwc[alt]*1e3:.8f} {re[alt]*1e6:.8f}" for alt in range(z.size)]
         )
         f.write(cloudstr.encode("ascii"))
 

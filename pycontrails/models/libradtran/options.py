@@ -22,7 +22,7 @@ def get_default_options(calculation: str) -> dict[str, str]:
             "source": "thermal",
             "mol_abs_param": "fu",
             "zout": "TOA",
-            "output_user": "edir eglo edn eup enet esum",
+            "output_user": "edir eglo edn eup",
         }
     msg = f"No default options available for {calculation} calculation."
     raise ValueError(msg)

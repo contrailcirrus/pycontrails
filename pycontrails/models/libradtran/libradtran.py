@@ -129,7 +129,7 @@ class LibRadtran(models.Model):
     sfc: MetDataset
 
     #: Cocip contrail input
-    cocip: pd.DataFrame | None
+    cocip: CocipInput | None
 
     #: Output paths and metadata
     paths: pd.DataFrame | None
@@ -201,8 +201,6 @@ class LibRadtran(models.Model):
         self.paths = self.prepare_input()
         rundirs = self.paths["path"]
 
-        breakpoint()
-
         all_start = time.perf_counter()
 
         if self.params["num_workers"] == 1:
@@ -225,7 +223,11 @@ class LibRadtran(models.Model):
         print(f"Speedup --- {np.sum(times)/elapsed:.1f}x")
         print("=============================")
 
-        self.source["rundir"] = rundirs
+        result = self.postprocess()
+        if result is not None:
+            for column in result.columns:
+                self.source[column] = result[column]
+
         return self.source
 
     def prepare_input(self) -> pd.DataFrame:
@@ -322,7 +324,7 @@ class LibRadtran(models.Model):
                 utils.check_set(options, f"profile_file cocip-{name}", f"1D {path}")
                 for opt in data["options"]:
                     words = opt.split()
-                    key = " ".join([words[0], name])
+                    key = " ".join([words[0], f"cocip-{name}"])
                     value = " ".join(words[1:])
                     utils.check_set(options, key, value)
 
@@ -360,11 +362,7 @@ class LibRadtran(models.Model):
         # Write background cloud profiles
         for lwc, iwc, rundir in zip(lwc_cld, iwc_cld, rundirs, strict=True):
             local_options = copy.copy(options)
-            try:
-                os.makedirs(rundir, exist_ok=False)
-            except FileExistsError as exc:
-                msg = f"Run directory {rundir} already exists"
-                raise FileExistsError(msg) from exc
+            os.makedirs(rundir, exist_ok=True)
 
             if np.any(lwc > 0):
                 rel = np.zeros_like(lwc)
@@ -399,6 +397,61 @@ class LibRadtran(models.Model):
             utils.write_input(path, local_options)
 
         return paths
+
+    def postprocess(self) -> pd.DataFrame | None:
+        """Postprocess libRadtran output."""
+        mol_abs_param = self.lrt_options["mol_abs_param"]
+        if mol_abs_param == "fu":
+            return self._postprocess_correlated_k()
+        msg = (
+            "No automated postprocessing available for mol_abs_param {mol_abs_param}. "
+            "LibRadtran output must be postprocessed manually based on self.paths."
+        )
+        warnings.warn(msg)
+        return None
+
+    def _postprocess_correlated_k(self) -> pd.DataFrame | None:
+        """Postprocess correlated k output."""
+        supported_columns = set(["edir", "eglo", "edn", "eup"])
+        columns = self.lrt_options["output_user"].split()
+        unsupported_columns = set(columns).difference(supported_columns)
+        if len(unsupported_columns) > 0:
+            msg = (
+                f"No automated postprocessing available for output_user {unsupported_columns}. "
+                "LibRadtran output must be postprocessed manually based on self.paths."
+            )
+            warnings.warn(msg)
+            return None
+
+        if self.paths is None:
+            msg = (
+                "Cannot run postprocessing because self.paths is not set. "
+                "Run self.eval to set self.paths based on libRadtran output."
+            )
+            raise ValueError(msg)
+
+        out = []
+        for scene, df in self.paths.groupby(level=0):
+            # Load data
+            data = np.stack([utils.parse_stdout(path) for path in df["path"]], axis=0)
+
+            # Sum over bands
+            missing = np.any(np.isnan(data), axis=(0, 2)).sum()
+            if missing > 0:
+                msg = f"Scene {scene}: setting NaN values in {missing} bands to 0."
+                warnings.warn(msg)
+            data = np.nansum(data, axis=1)
+
+            # Weight subcolumns
+            weights = df["weight"].to_numpy() if "weight" in df.columns else np.atleast_1d(1.0)
+            weights = weights / np.sum(weights)
+            weights = weights.reshape(-1, 1)
+            data = np.sum(weights * data, axis=0)
+
+            # Save results
+            out.append(pd.Series(data, index=columns, name=scene))
+
+        return pd.concat(out, axis="columns").T
 
     def _interpolate_atmosphere(
         self,

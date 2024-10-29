@@ -19,8 +19,8 @@ def generate_subcolumns(
         return [np.zeros_like(lwc)], [np.zeros_like(iwc)], [1.0]
 
     # In-cloud water content
-    lwc_cld = _safe_divide(lwc, cf, fill=0)
-    iwc_cld = _safe_divide(iwc, cf, fill=0)
+    lwc_cld = _safe_divide(lwc, cf, fill=0.0)
+    iwc_cld = _safe_divide(iwc, cf, fill=0.0)
 
     rng = np.random.default_rng(random_seed)
 
@@ -48,7 +48,7 @@ def generate_subcolumns(
             continue
 
         r = rng.uniform(0, 1, size=lower.sum())
-        r0 = np.minimum(cf[i], cf[i - 1]) / cf[i]
+        r0 = _safe_divide(np.minimum(cf[i], cf[i - 1]), cf[i])
         r1 = _safe_divide(
             np.maximum(cf[i], cf[i - 1]) - cf[i - 1] - (C[i + 1] - C[i]), C[i] - cf[i - 1]
         )
@@ -70,9 +70,6 @@ def _safe_divide(
     arr1: npt.NDArray[np.float64], arr2: npt.NDArray[np.float64], fill: float = 1.0
 ) -> npt.NDArray[np.float64]:
     """Safely divide array."""
-    if np.any((arr1 > 0) & (arr2 == 0)):
-        msg = "Cannot safely divide finite number by zero."
-        raise ValueError(msg)
     out = np.full(arr1.shape, fill)
     mask = arr2 != 0
     out[mask] = arr1[mask] / arr2[mask]
