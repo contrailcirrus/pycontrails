@@ -961,7 +961,7 @@ class Flight(GeoVectorDataset):
                 msg = f"{msg} Pass 'keep_original_index=True' to keep the original index."
             warnings.warn(msg)
 
-        return Flight(data=df, attrs=self.attrs)
+        return Flight(data=df, attrs=self.attrs, fuel=self.fuel)
 
     def clean_and_resample(
         self,

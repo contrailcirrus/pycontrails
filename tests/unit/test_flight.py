@@ -1219,23 +1219,26 @@ def test_flight_slots(flight_fake: Flight) -> None:
         flight_fake.foo = "bar"
 
 
-@pytest.mark.parametrize("method", ["copy", "filter"])
+@pytest.mark.parametrize("method", ["copy", "filter", "resample"])
 def test_method_preserves_fuel(flight_fake: Flight, method: str) -> None:
-    """Ensure fuel is preserved for the copy and filter methods."""
+    """Ensure fuel is preserved for the copy, filter, and resample_and_fill methods."""
 
     flight_fake.fuel = SAFBlend(15.0)
 
     if method == "copy":
         out = flight_fake.copy()
-    else:
-        assert method == "filter"
+    elif method == "filter":
         mask = np.ones(len(flight_fake), dtype=bool)
         mask[::3] = False
         out = flight_fake.filter(mask)
+    else:
+        assert method == "resample"
+        out = flight_fake.resample_and_fill("50s")
 
     assert isinstance(out, Flight)
     assert hasattr(out, "fuel")
     assert out.fuel is flight_fake.fuel
+    assert out.fuel == SAFBlend(15.0)
 
 
 def test_resample_and_fill_short_flight() -> None:
