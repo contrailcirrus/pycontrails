@@ -2,22 +2,27 @@
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import logging
 import multiprocessing
+import os
 import time
 import warnings
 from typing import Any, NoReturn, overload
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
+from scipy.special import gamma
 
 from pycontrails.core import GeoVectorDataset, MetDataset, cache, met_var, models
 from pycontrails.core.models import interpolate_met
 from pycontrails.datalib.ecmwf import variables as ecmwf
-from pycontrails.models.libradtran import options, utils
-from pycontrails.models.libradtran.clouds import LRTClouds
+from pycontrails.models.libradtran import mcica, options, utils
+from pycontrails.models.libradtran.cocip_input import CocipInput
 from pycontrails.physics import constants
+from pycontrails.utils.types import ArrayScalarLike
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +31,20 @@ logger = logging.getLogger(__name__)
 class LibRadtranParams(models.ModelParams):
     """Default parameters for the pycontrails :class:`LibRadTran` interface."""
 
+    #: If True, ignore background cloud
+    clearsky: bool = False
+
+    #: Number of subcolumns for background cloud McICA
+    subcolumns: int = 0
+
     #: CO2 volume mixing ratio :math:`[ppmv]`
     co2_ppmv: float = 400.0
+
+    #: Cloud droplet size distribution intercept parameter [:math:`m^{-3 - \mu}`]
+    n0: float = 1.2e66
+
+    #: Cloud droplet size distribution shape parameter
+    mu: float = 11
 
     #: Threshold snow depth, in m water equivalent, to treat
     #: pixel as snow-covered.
@@ -78,8 +95,9 @@ class LibRadtran(models.Model):
 
     __slots__ = (
         "cachestore",
-        "clouds",
+        "cocip",
         "lrt_options",
+        "paths",
         "sfc",
     )
 
@@ -91,6 +109,9 @@ class LibRadtran(models.Model):
         met_var.Geopotential,
         met_var.SpecificHumidity,
         ecmwf.OzoneMassMixingRatio,
+        ecmwf.CloudAreaFractionInLayer,
+        ecmwf.SpecificCloudLiquidWaterContent,
+        ecmwf.SpecificCloudIceWaterContent,
     )
 
     sfc_variables = (
@@ -107,8 +128,11 @@ class LibRadtran(models.Model):
     #: Surface data
     sfc: MetDataset
 
-    #: List of cloud inputs for radiative transfer calculation
-    clouds: list[LRTClouds]
+    #: Cocip contrail input
+    cocip: pd.DataFrame | None
+
+    #: Output paths and metadata
+    paths: pd.DataFrame | None
 
     #: Options provided directly to libRadtran.
     #: See libRadtran documentation for details.
@@ -124,7 +148,7 @@ class LibRadtran(models.Model):
         self,
         met: MetDataset,
         sfc: MetDataset,
-        clouds: list[LRTClouds] | None = None,
+        cocip: CocipInput | None = None,
         lrt_options: dict[str, str] | None = None,
         cachestore: cache.CacheStore | None = None,
         params: dict[str, Any] | None = None,
@@ -136,7 +160,7 @@ class LibRadtran(models.Model):
         sfc.ensure_vars(self.sfc_variables)
         self.sfc = sfc
 
-        self.clouds = clouds or []
+        self.cocip = cocip
 
         self.lrt_options = lrt_options or options.get_default_options("thermal radiance")
 
@@ -145,6 +169,8 @@ class LibRadtran(models.Model):
             cache_dir = f"{cache_root}/libRadtran"
             cachestore = cache.DiskCacheStore(cache_dir=cache_dir)
         self.cachestore = cachestore
+
+        self.paths = None
 
     # ----------
     # Public API
@@ -172,13 +198,10 @@ class LibRadtran(models.Model):
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
 
-        scene_options = self.get_scene_options(self.source)
-        profiles = self.get_profiles(self.source)
-        clouds = self.get_cloud_profiles(self.source)
+        self.paths = self.prepare_input()
+        rundirs = self.paths["path"]
 
-        rundirs = utils.prepare_input(
-            scene_options, profiles, clouds, self.lrt_options, self.cachestore
-        )
+        breakpoint()
 
         all_start = time.perf_counter()
 
@@ -205,89 +228,11 @@ class LibRadtran(models.Model):
         self.source["rundir"] = rundirs
         return self.source
 
-    def get_scene_options(self, source: GeoVectorDataset) -> pd.DataFrame:
-        """Get scene-specific input options.
+    def prepare_input(self) -> pd.DataFrame:
+        """Prepare libRadtran input files."""
 
-        Parameters
-        ----------
-        source : GeoVectorDataset
-            Locations where surface properties are required.
-
-        Returns
-        -------
-        pd.DataFrame
-            TODO
-        """
-
-        # Downselect surface data
-        sfc = source.downselect_met(
-            self.sfc,
-            copy=False,
-        )
-        logger.debug(f"Loading {sfc.data.nbytes/1e6:.2f} MB of surface data")
-        sfc.data.load()
-
-        # Interpolate to target locations
-        target = source.copy()
-        interp_kwargs = self.interp_kwargs
-        interpolate_met(sfc, target, "geopotential_at_surface", **interp_kwargs)
-        interpolate_met(sfc, target, "skin_temperature", **interp_kwargs)
-        interpolate_met(sfc, target, "sea_ice_cover", **interp_kwargs)
-        interpolate_met(sfc, target, "snow_depth", **interp_kwargs)
-
-        def _format_lat(lat: float) -> str:
-            if lat >= 0:
-                return f"N {lat:.6f}"
-            return f"S {-lat:.6f}"
-
-        def _format_lon(lon: float) -> str:
-            if lon >= 0:
-                return f"E {lon:.6f}"
-            return f"W {-lon:.6f}"
-
-        def _process(point: pd.Series) -> dict[str, str]:
-            z = point["geopotential_at_surface"] / constants.g / 1e3
-            ts = point["skin_temperature"]
-            snow = point["snow_depth"] > self.params["threshold_snow_depth"]
-            sea_ice = point["sea_ice_cover"] > self.params["threshold_sea_ice_concentration"]
-
-            opt = {
-                "time": point["time"].strftime("%Y %m %d %H %M %S"),
-                "latitude": f"{_format_lat(point['latitude'])}",
-                "longitude": f"{_format_lon(point['longitude'])}",
-                "altitude": f"{z:.8f}",
-                "sur_temperature": f"{ts:.8f}",
-                "albedo_library": "IGBP",
-            }
-            if not (snow or sea_ice):
-                opt["surface_type_map"] = "IGBP"
-            elif snow:
-                opt["brdf_rpv_type"] = "19"
-            else:
-                opt["brdf_rpv_type"] = "20"
-
-            return pd.Series(opt)
-
-        return target.dataframe.apply(_process, axis="columns")
-
-    def get_profiles(self, source: GeoVectorDataset) -> pd.DataFrame:
-        """Get atmospheric profiles from met data.
-
-        Output shape: (num_scenes,)
-
-        Parameters
-        ----------
-        source : GeoVectorDataset
-            Locations where atmospheric profiles are required
-
-        Returns
-        -------
-        pd.DataFrame
-            TODO
-        """
-
-        # Downselect meteorology
-        met = source.downselect_met(
+        # Downselect and load met data
+        met = self.source.downselect_met(
             self.met,
             level_buffer=(np.inf, np.inf),
             copy=False,
@@ -295,90 +240,340 @@ class LibRadtran(models.Model):
         logger.debug(f"Loading {met.data.nbytes/1e6:.2f} MB of met data")
         met.data.load()
 
+        # Downselect and load surface data
+        sfc = self.source.downselect_met(
+            self.sfc,
+            copy=False,
+        )
+        logger.debug(f"Loading {sfc.data.nbytes/1e6:.2f} MB of surface data")
+        sfc.data.load()
+
+        paths = []
+        for scene, row in self.source.dataframe.iterrows():
+            print(f"\rWriting input: {int(100*scene/len(self.source)):>3d}% complete", end="")
+            lon = row["longitude"]
+            lat = row["latitude"]
+            time = row["time"].to_numpy()
+            paths.append(self.write_input(scene, met, sfc, lon, lat, time))
+        print("\rWriting input: 100% complete")
+
+        return pd.concat(paths)
+
+    def write_input(
+        self,
+        scene: int,
+        met: MetDataset,
+        sfc: MetDataset,
+        lon: float,
+        lat: float,
+        time: np.datetime64,
+    ) -> pd.DataFrame:
+        """Write input files for a single point."""
+
+        rootdir = self.cachestore.path(str(scene))
+        try:
+            os.makedirs(rootdir, exist_ok=False)
+        except FileExistsError as exc:
+            msg = f"Run directory {rootdir} already exists"
+            raise FileExistsError(msg) from exc
+
+        # Avoid overwriting instance copy of static options
+        options = copy.copy(self.lrt_options)
+
         interp_kwargs = self.interp_kwargs
 
-        def _process(point: pd.Series) -> dict[str, Any]:
-            # Interpolate met data
-            level = met["level"].data.to_numpy()
-            target = GeoVectorDataset(
-                time=np.full(level.shape, point["time"].to_numpy()),
-                level=level,
-                latitude=np.full(level.shape, point["latitude"]),
-                longitude=np.full(level.shape, point["longitude"]),
+        # Basic options
+        target = GeoVectorDataset(longitude=[lon], latitude=[lat], altitude=[-1], time=[time])
+        zs = (
+            interpolate_met(sfc, target, "geopotential_at_surface", **interp_kwargs).item()
+            / constants.g
+        )
+        ts = interpolate_met(sfc, target, "skin_temperature", **interp_kwargs).item()
+        snow = interpolate_met(sfc, target, "sea_ice_cover", **interp_kwargs).item()
+        sea_ice = interpolate_met(sfc, target, "snow_depth", **interp_kwargs).item()
+        new_options = {
+            "time": f"{_format_time(time)}",
+            "latitude": f"{_format_lat(lat)}",
+            "longitude": f"{_format_lon(lon)}",
+            "altitude": f"{zs/1e3:.8f}",
+            "sur_temperature": f"{ts:.8f}",
+            "albedo_library": "IGBP",
+        }
+        if not (snow or sea_ice):
+            new_options["surface_type_map"] = "IGBP"
+        elif snow:
+            new_options["brdf_rpv_type"] = "19"
+        else:
+            new_options["brdf_rpv_type"] = "20"
+        options = utils.check_merge(options, new_options)
+
+        # Atmosphere profiles
+        z, p, t, n, n_o3, n_o2, n_v, n_co2 = self._interpolate_atmosphere(met, lon, lat, time)
+        path = os.path.join(rootdir, "atmosphere")
+        utils.write_atmosphere_file(path, z, p, t, n, n_o3, n_o2, n_v, n_co2)
+        options = utils.check_set(options, "atmosphere_file", path)
+
+        # Contrail profiles
+        if self.cocip is not None:
+            profiles = self.cocip.get_profiles(lon, lat, time)
+            for name, data in profiles.items():
+                path = os.path.join(rootdir, f"cocip-{name}")
+                utils.write_cloud_file(path, data["z"], data["cwc"], data["re"])
+                utils.check_set(options, f"profile_file cocip-{name}", f"1D {path}")
+                for opt in data["options"]:
+                    words = opt.split()
+                    key = " ".join([words[0], name])
+                    value = " ".join(words[1:])
+                    utils.check_set(options, key, value)
+
+        # Done if ignoring background cloud
+        if self.params["clearsky"]:
+            path = os.path.join(rootdir, "stdin")
+            utils.write_input(path, options)
+            return pd.DataFrame(data={"scene": [scene], "path": rootdir}).set_index("scene")
+
+        # Interpolate background cloud
+        z, t, lwc, iwc, cf = self._interpolate_cloud(met, sfc, lon, lat, time)
+
+        # Set paths
+        if self.params["subcolumns"] < 1:
+            lwc_cld = [lwc]
+            iwc_cld = [iwc]
+            weights = [1.0]
+            rundirs = [rootdir]
+            paths = pd.DataFrame(data={"scene": [scene], "path": rundirs}).set_index("scene")
+        else:
+            lwc_cld, iwc_cld, weights = mcica.generate_subcolumns(
+                lwc, iwc, cf, self.params["subcolumns"]
             )
-            z = interpolate_met(met, target, "geopotential", **interp_kwargs) / constants.g
-            p = met["air_pressure"].data.to_numpy()
-            t = interpolate_met(met, target, "air_temperature", **interp_kwargs)
-            n = p / (constants.k_boltzmann * t)
-            q_o3 = interpolate_met(met, target, "mass_fraction_of_ozone_in_air", **interp_kwargs)
-            q_o3 = np.maximum(0, q_o3)
-            n_o3 = n * q_o3 * constants.M_d / constants.M_o3
-            n_o2 = n * constants.eta_o2
-            q_v = interpolate_met(met, target, "specific_humidity", **interp_kwargs)
-            q_v = np.maximum(0, q_v)
-            n_v = n * q_v * constants.M_d / constants.M_v
-            n_co2 = n * self.params["co2_ppmv"] / 1e6
-
-            # Mask missing values at lowest levels
-            mask = np.isnan(t)
-            for v in [n, n_o3, n_o2, n_v, n_co2]:
-                mask = mask | np.isnan(v)
-            end = np.flatnonzero(~mask).max() + 1
-            z = z[:end]
-            p = p[:end]
-            t = t[:end]
-            n = n[:end]
-            n_o3 = n_o3[:end]
-            n_o2 = n_o2[:end]
-            n_v = n_v[:end]
-            n_co2 = n_co2[:end]
-
-            # Check for missing values elsewhere
-            missing = np.isnan(t)
-            for v in [n, n_o3, n_o2, n_v, n_co2]:
-                missing = missing | np.isnan(v)
-            if np.any(missing):
-                missing_z = z[missing] / 1e3
-                missing_p = p[missing] / 1e2
-                msg = (
-                    f"Met data missing at {missing.sum()} levels "
-                    f"(z = {missing_z.tolist()} km, "
-                    f"p = {missing_p.tolist()} hPa)."
-                )
-                if self.params["missing_met_error"]:
-                    raise ValueError(msg)
-                else:
-                    warnings.warn(msg)
-
-            return pd.Series(
-                {
-                    "z": z[~missing] / 1e3,
-                    "p": p[~missing] / 1e2,
-                    "t": t[~missing],
-                    "n": n[~missing] / 1e6,
-                    "n_o3": n_o3[~missing] / 1e6,
-                    "n_o2": n_o2[~missing] / 1e6,
-                    "n_v": n_v[~missing] / 1e6,
-                    "n_co2": n_co2[~missing] / 1e6,
+            ncol = len(lwc_cld)
+            rundirs = [os.path.join(rootdir, "subcolumns", str(i)) for i in range(ncol)]
+            paths = pd.DataFrame(
+                data={
+                    "scene": [scene] * ncol,
+                    "subcolumn": list(range(ncol)),
+                    "path": rundirs,
+                    "weight": weights,
                 }
+            ).set_index(["scene", "subcolumn"])
+
+        # Write background cloud profiles
+        for lwc, iwc, rundir in zip(lwc_cld, iwc_cld, rundirs, strict=True):
+            local_options = copy.copy(options)
+            try:
+                os.makedirs(rundir, exist_ok=False)
+            except FileExistsError as exc:
+                msg = f"Run directory {rundir} already exists"
+                raise FileExistsError(msg) from exc
+
+            if np.any(lwc > 0):
+                rel = np.zeros_like(lwc)
+                rel[lwc > 0] = _reff_liquid(lwc[lwc > 0], self.params["n0"], self.params["mu"])
+                start = max(0, np.flatnonzero(lwc > 0).min() - 1)
+                if lwc[start] != 0:
+                    msg = "Nonzero liquid water content in top layer. Consider extending domain."
+                    warnings.warn(msg)
+                path = os.path.join(rundir, "background-liquid")
+                utils.write_cloud_file(path, z[start:], lwc[start:], rel[start:])
+                utils.check_set(local_options, "profile_file background-liquid", f"1D {path}")
+                utils.check_set(
+                    local_options, "profile_properties background-liquid", "mie interpolate"
+                )
+
+            if np.any(iwc > 0):
+                rei = np.zeros_like(iwc)
+                rei[iwc > 0] = _reff_ice(iwc[iwc > 0], t[iwc > 0])
+                start = max(0, np.flatnonzero(iwc > 0).min() - 1)
+                if iwc[start] != 0:
+                    msg = "Nonzero ice water content in top layer. Consider extending domain."
+                    warnings.warn(msg)
+                path = os.path.join(rundir, "background-ice")
+                utils.write_cloud_file(path, z[start:], iwc[start:], rei[start:])
+                utils.check_set(local_options, "profile_file background-ice", f"1D {path}")
+                utils.check_set(
+                    local_options, "profile_properties background-ice", "baum_v36 interpolate"
+                )
+                utils.check_set(local_options, "profile_habit background-ice", "ghm")
+
+            path = os.path.join(rundir, "stdin")
+            utils.write_input(path, local_options)
+
+        return paths
+
+    def _interpolate_atmosphere(
+        self,
+        met: MetDataset,
+        lon: float,
+        lat: float,
+        time: np.datetime64,
+    ) -> tuple[npt.NDArray[np.float64], ...]:
+        """Interpolate meteorology data to get input profiles."""
+
+        interp_kwargs = self.interp_kwargs
+
+        level = met["level"].data.to_numpy()[1:]  # interpolation produces nan at top level
+        target = GeoVectorDataset(
+            time=np.full(level.shape, time),
+            level=level,
+            latitude=np.full(level.shape, lat),
+            longitude=np.full(level.shape, lon),
+        )
+
+        z = interpolate_met(met, target, "geopotential", **interp_kwargs) / constants.g
+        p = met["air_pressure"].data.to_numpy()[1:]
+        t = interpolate_met(met, target, "air_temperature", **interp_kwargs)
+        n = p / (constants.k_boltzmann * t)
+        q_o3 = interpolate_met(met, target, "mass_fraction_of_ozone_in_air", **interp_kwargs)
+        q_o3 = np.maximum(0, q_o3)
+        n_o3 = n * q_o3 * constants.M_d / constants.M_o3
+        n_o2 = n * constants.eta_o2
+        q_v = interpolate_met(met, target, "specific_humidity", **interp_kwargs)
+        q_v = np.maximum(0, q_v)
+        n_v = n * q_v * constants.M_d / constants.M_v
+        n_co2 = n * self.params["co2_ppmv"] / 1e6
+
+        # Mask missing values at lowest levels
+        mask = np.isnan(t)
+        for v in [n, n_o3, n_o2, n_v, n_co2]:
+            mask = mask | np.isnan(v)
+        end = np.flatnonzero(~mask).max() + 1
+        z = z[:end]
+        p = p[:end]
+        t = t[:end]
+        n = n[:end]
+        n_o3 = n_o3[:end]
+        n_o2 = n_o2[:end]
+        n_v = n_v[:end]
+        n_co2 = n_co2[:end]
+
+        # Check for missing values elsewhere
+        missing = np.isnan(z)
+        for v in [p, t, n, n_o3, n_o2, n_v, n_co2]:
+            missing = missing | np.isnan(v)
+        if np.any(missing):
+            missing_z = z[missing] / 1e3
+            missing_p = p[missing] / 1e2
+            msg = (
+                f"Met data missing at {missing.sum()} levels "
+                f"(z = {missing_z.tolist()} km, "
+                f"p = {missing_p.tolist()} hPa)."
             )
+            if self.params["missing_met_error"]:
+                raise ValueError(msg)
+            else:
+                warnings.warn(msg)
+        if np.all(missing):
+            msg = "All levels missing in interpolated met data."
+            raise ValueError(msg)
 
-        return source.dataframe.apply(_process, axis="columns")
+        return (
+            z[~missing],
+            p[~missing],
+            t[~missing],
+            n[~missing],
+            n_o3[~missing],
+            n_o2[~missing],
+            n_v[~missing],
+            n_co2[~missing],
+        )
 
-    def get_cloud_profiles(self, source: GeoVectorDataset) -> pd.DataFrame:
-        """Get cloud profiles.
+    def _interpolate_cloud(
+        self,
+        met: MetDataset,
+        sfc: MetDataset,
+        lon: float,
+        lat: float,
+        time: np.datetime64,
+    ) -> tuple[npt.NDArray[np.float64], ...]:
+        """Interpolate meteorology data to get background cloud profiles."""
 
-        Parameters
-        ----------
-        source : GeoVectorDataset
-            Locations where cloud profiles are required
+        interp_kwargs = self.interp_kwargs
 
-        Returns
-        -------
-        list[list[dict[str, Any]]]
-            Required cloud profiles.
-        """
-        df = pd.concat([cloud.get_profiles(source) for cloud in self.clouds])
-        scenes = [idx[0] for idx in df.index]
-        labels = [f"cld{j}-" + "-".join(str(i) for i in idx[1:]) for j, idx in enumerate(df.index)]
-        return df.set_index(pd.MultiIndex.from_tuples(zip(scenes, labels, strict=True)))
+        # Get target points on profile
+        level = met.data["level"].to_numpy()[1:]
+        target = GeoVectorDataset(
+            time=np.full(level.shape, time),
+            level=level,
+            latitude=np.full(level.shape, lat),
+            longitude=np.full(level.shape, lon),
+        )
+        sfc_target = GeoVectorDataset(
+            time=[time],
+            level=[-1],
+            latitude=[lat],
+            longitude=[lon],
+        )
+
+        # Interpolate
+        z = interpolate_met(met, target, "geopotential", **interp_kwargs) / constants.g
+        zs = (
+            interpolate_met(sfc, sfc_target, "geopotential_at_surface", **interp_kwargs).item()
+            / constants.g
+        )
+        p = met.data["air_pressure"].to_numpy()[1:]
+        t = interpolate_met(met, target, "air_temperature", **interp_kwargs)
+        rho = p / (constants.R_d * t)
+        lwc = (
+            interpolate_met(met, target, "specific_cloud_liquid_water_content", **interp_kwargs)
+            / rho
+        )
+        iwc = (
+            interpolate_met(met, target, "specific_cloud_ice_water_content", **interp_kwargs) / rho
+        )
+        cf = interpolate_met(met, target, "fraction_of_cloud_cover", **interp_kwargs)
+        lwc = np.maximum(0.0, lwc)
+        iwc = np.maximum(0.0, iwc)
+        cf = np.clip(cf, 0.0, 1.0)
+
+        # Mask missing values at lowest levels
+        mask = np.isnan(z)
+        for v in [t, lwc, iwc, cf]:
+            mask = mask | np.isnan(v)
+        end = np.flatnonzero(~mask).max() + 1
+        z = z[:end]
+        t = t[:end]
+        lwc = lwc[:end]
+        iwc = iwc[:end]
+        cf = cf[:end]
+
+        # Compute altitudes of below-layer interfaces
+        zb = 0.5 * (zs + z[-1])
+        zi = np.append(0.5 * (z[1:] + z[:-1]), zb)
+        return zi, t, lwc, iwc, cf
+
+
+def _format_time(time: np.datetime64) -> str:
+    return pd.Timestamp(time).strftime("%Y %m %d %H %M %S")
+
+
+def _format_lat(lat: float) -> str:
+    if lat >= 0:
+        return f"N {lat:.6f}"
+    return f"S {-lat:.6f}"
+
+
+def _format_lon(lon: float) -> str:
+    if lon >= 0:
+        return f"E {lon:.6f}"
+    return f"W {-lon:.6f}"
+
+
+def _reff_liquid(lwc: ArrayScalarLike, n0: ArrayScalarLike, mu: ArrayScalarLike) -> ArrayScalarLike:
+    """Compute effective radius of liquid cloud.
+
+    TODO: complete docstring.
+    """
+    pow = 1.0 / (mu + 3.0)
+    lam = (np.pi * constants.rho_liq * n0 * gamma(mu + 3) / lwc) ** pow
+    return (mu + 2.0) / (2.0 * lam)
+
+
+def _reff_ice(iwc: ArrayScalarLike, t: ArrayScalarLike) -> ArrayScalarLike:
+    """Compute effective radius of ice cloud.
+
+    Reference: tau_cirrus.cirrus_effective_extinction_coefficient
+    """
+    riwc = iwc * 1e3
+    tiwc = t + constants.absolute_zero + 190.0
+    deff = 45.8966 * riwc**0.2214 + 0.7957 * tiwc * riwc**0.2535
+    return np.clip(0.5e-6 * deff, 5e-6, 60e-6)
