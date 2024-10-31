@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.54.3
+
+### Features
+
+- Creates new method `ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
+
+### Internals
+
+- Improves computation of mach limits to accept vectorized input/output.
+
 ## v0.54.2
 
 ### Features
