@@ -116,6 +116,8 @@ class ACCFParams(ModelParams):
 
     PMO: bool = False
 
+    unit_K_per_kg_fuel: bool = False
+
 
 class ACCF(Model):
     """Compute Algorithmic Climate Change Functions (ACCF).
@@ -361,7 +363,7 @@ def _get_accf_config(params: dict[str, Any]) -> dict[str, Any]:
             "H2O": params["h2o_scaling"],
             "O3": params["o3_scaling"],
         },
-        "unit_K/kg(fuel)": False,
+        "unit_K/kg(fuel)": params["unit_K_per_kg_fuel"],
         "PCFA": params["pfca"],
         "PCFA-ISSR": {
             "rhi_threshold": params["issr_rhi_threshold"],
