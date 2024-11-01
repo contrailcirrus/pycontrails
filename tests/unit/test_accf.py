@@ -79,7 +79,7 @@ def test_accf_default(
             met_accf_sl.data[name] = da
 
     accf = ACCF(met=met_accf_pl, surface=met_accf_sl)
-    out = accf.eval(fl)
+    out = accf.eval(fl, forecast_step=6.0)  # data was pinned with forecast_step=6.0
 
     # Pin some values
     rel = 0.01
