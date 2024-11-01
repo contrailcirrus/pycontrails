@@ -88,7 +88,7 @@ class ACCFParams(ModelParams):
     h2o_scaling: float = 1.0
     o3_scaling: float = 1.0
 
-    forecast_step: float = None
+    forecast_step: float | None = None
 
     sep_ri_rw: bool = False
 
