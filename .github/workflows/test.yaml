@@ -88,6 +88,16 @@ jobs:
         run: |
           make dev-install
 
+      # Workaround for https://github.com/actions/runner-images/issues/10858
+      # This step can be removed once the windows-latest image is updated
+      # See https://github.com/actions/runner-images/issues/10843#issuecomment-2437610740
+      - name: Bump git-for-windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.2/Git-2.47.0.2-64-bit.exe" -OutFile "${{runner.temp}}/git-for-windows.exe"
+          Start-Process -Filepath "${{runner.temp}}/git-for-windows.exe" -ArgumentList  @("/VERYSILENT","/NORESTART","/NOCANCEL","/SP-","/CLOSEAPPLICATIONS","/RESTARTAPPLICATIONS","/o:PathOption=CmdTools","/o:BashTerminalOption=ConHost","/o:EnableSymlinks=Enabled","/COMPONENTS=gitlfs") -NoNewWindow -Wait
+
       # In latest-windows, redirecting stdout to a file uses utf-16 encoding
       # This gives an error when ssh tries to read the key
       # Instead don't pre-create the known_hosts file
