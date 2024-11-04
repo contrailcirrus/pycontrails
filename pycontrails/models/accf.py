@@ -94,7 +94,10 @@ class ACCFParams(ModelParams):
 
     climate_indicator: str = "ATR"
 
-    horizontal_resolution: float = 0.5
+    #: The horizontal resolution of the meteorological data in degrees.
+    #: If None, it will be inferred from the ``met`` dataset for :class:`MetDataset`
+    #: source, otherwise it will be set to 0.5.
+    horizontal_resolution: float | None = None
 
     emission_scenario: str = "pulse"
 
@@ -233,18 +236,21 @@ class ACCF(Model):
             if hasattr(self, "surface"):
                 self.surface = self.source.downselect_met(self.surface)
 
-        if isinstance(self.source, MetDataset):
-            # Overwrite horizontal resolution to match met
-            longitude = self.source.data["longitude"].values
-            if longitude.size > 1:
-                hres = abs(longitude[1] - longitude[0])
-                self.params["horizontal_resolution"] = float(hres)
-
-            else:
+        if self.params["horizontal_resolution"] is None:
+            if isinstance(self.source, MetDataset):
+                # Overwrite horizontal resolution to match met
+                longitude = self.source.data["longitude"].values
                 latitude = self.source.data["latitude"].values
-                if latitude.size > 1:
+                if longitude.size > 1:
+                    hres = abs(longitude[1] - longitude[0])
+                    self.params["horizontal_resolution"] = float(hres)
+                elif latitude.size > 1:
                     hres = abs(latitude[1] - latitude[0])
                     self.params["horizontal_resolution"] = float(hres)
+                else:
+                    self.params["horizontal_resolution"] = 0.5
+            else:
+                self.params["horizontal_resolution"] = 0.5
 
         p_settings = _get_accf_config(self.params)
 

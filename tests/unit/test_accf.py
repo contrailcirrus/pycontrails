@@ -87,3 +87,17 @@ def test_accf_default(
     assert np.mean(out["aCCF_CO2"]) == pytest.approx(6.94e-16, rel=rel)
     assert np.mean(out["aCCF_NOx"]) == pytest.approx(1.19e-12, rel=rel)
     assert np.mean(out["aCCF_Cont"]) == pytest.approx(9.91e-15, rel=rel)
+
+
+@pytest.mark.parametrize("hres", [0.25, 0.5, 1.0, 2.0])
+def test_accf_grid_horizontal_resolution(
+    met_accf_pl: MetDataset,
+    met_accf_sl: MetDataset,
+    hres: float,
+) -> None:
+    """Confirm that a custom horizontal resolution is applied to the ACCF weather data."""
+    accf = ACCF(met_accf_pl, met_accf_sl, params={"horizontal_resolution": hres})
+    accf.eval()
+
+    assert np.all(np.diff(accf.ds["longitude"]) == hres)
+    assert np.all(np.diff(accf.ds["latitude"]) == hres)
