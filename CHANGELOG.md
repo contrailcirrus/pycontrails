@@ -12,6 +12,7 @@
 - Update the CLIMaCCF dependency to pull the head of the main branch in [CLIMaCCF](https://github.com/dlr-pa/climaccf). Update the installation instructions.
 - Update the `ACCFParams.forecast_step` to None, which allows CLIMaCCF to automatically determine the forecast step based on the `met` data.
 - Update the `ACCF` NOx parameter for the latest CLIMaCCF version.
+- Ensure a custom "horizontal_resolution" param passed into `ACCF` is not overwritten.
 
 ### Internals
 
