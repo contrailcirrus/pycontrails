@@ -152,7 +152,7 @@ class Landsat:
         are used. Bands must share a common resolution. The resolutions of each band are:
 
         - B1-B7, B9: 30 m
-        - B9: 15 m
+        - B8: 15 m
         - B10, B11: 30 m (upsampled from true resolution of 100 m)
 
     cachestore : cache.CacheStore, optional
@@ -291,9 +291,7 @@ def _check_band_resolution(bands: set[str]) -> None:
     there are two valid cases: only band 8, or any bands except band 8.
     """
     groups = [
-        {
-            "B8",
-        },  # 15 m
+        {"B8"},  # 15 m
         {f"B{i}" for i in range(1, 12) if i != 8},  # 30 m
     ]
     if not any(bands.issubset(group) for group in groups):
@@ -313,10 +311,9 @@ def _read(path: str, meta: str, band: str, processing: str) -> xr.DataArray:
             pycontrails_optional_package="sat",
         )
 
-    src = rasterio.open(path)
-    img = src.read(1)
-    crs = pyproj.CRS.from_epsg(src.crs.to_epsg())
-    src.close()
+    with rasterio.open(path) as src:
+        img = src.read(1)
+        crs = pyproj.CRS.from_epsg(src.crs.to_epsg())
 
     if processing == "reflectance":
         mult, add = _read_band_reflectance_rescaling(meta, band)

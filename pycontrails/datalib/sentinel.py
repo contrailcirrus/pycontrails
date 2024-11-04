@@ -313,9 +313,8 @@ def _check_band_resolution(bands: set[str]) -> None:
 def _read(path: str, granule_meta: str, safe_meta: str, band: str, processing: str) -> xr.DataArray:
     """Read imagery data from Sentinel-2 files."""
     Image.MAX_IMAGE_PIXELS = None  # avoid decompression bomb warning
-    src = Image.open(path)
-    img = np.asarray(src)
-    src.close()
+    with Image.open(path) as src:
+        img = np.asarray(src)
 
     if processing == "reflectance":
         gain, offset = _read_band_reflectance_rescaling(safe_meta, band)
@@ -357,10 +356,9 @@ def _band_id(band: str) -> int:
     """Get band ID used in some metadata files."""
     if band in (f"B{i:2d}" for i in range(1, 9)):
         return int(band[1:]) - 1
-    elif band == "B8A":
+    if band == "B8A":
         return 8
-    else:
-        return int(band[1:])
+    return int(band[1:])
 
 
 def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float]:
@@ -389,12 +387,10 @@ def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float
     for elem in elems:
         if int(elem.attrib["band_id"]) == band_id and elem.text is not None:
             offset = float(elem.text)
-            break
-    else:
-        msg = f"Could not find reflectance offset for band {band} (band ID {band_id})"
-        raise ValueError(msg)
+            return gain, offset
 
-    return gain, offset
+    msg = f"Could not find reflectance offset for band {band} (band ID {band_id})"
+    raise ValueError(msg)
 
 
 def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarray]:
