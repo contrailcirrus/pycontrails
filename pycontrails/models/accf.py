@@ -154,7 +154,6 @@ class ACCF(Model):
         RelativeHumidity,
         NorthwardWind,
         EastwardWind,
-        ecmwf.PotentialVorticity,
     )
     sur_variables = (ecmwf.SurfaceSolarDownwardRadiation, ecmwf.TopNetThermalRadiation)
     default_params = ACCFParams
