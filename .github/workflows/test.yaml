@@ -49,11 +49,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyversion }}
-          cache: 'pip'
+          cache: pip
           cache-dependency-path: pyproject.toml
 
       - name: Cache mypy and pytest
-        id: cache-test
         uses: actions/cache@v4
         with:
           # Note the caches are specific to branches, so we don't need to specify here
@@ -63,13 +62,13 @@ jobs:
             ${{ github.workspace }}/.mypy_cache
             ${{ github.workspace }}/.pytest_cache
 
-      - name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v2'
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
       # download BADA files for testing
       - name: BADA files
@@ -81,43 +80,16 @@ jobs:
 
       - name: Install make - windows
         if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          choco install make
+        run: choco install make
 
       - name: Install pycontrails (dev)
-        run: |
-          make dev-install
+        run: make dev-install
 
-      # Workaround for https://github.com/actions/runner-images/issues/10858
-      # This step can be removed once the windows-latest image is updated
-      # See https://github.com/actions/runner-images/issues/10843#issuecomment-2437610740
-      - name: Bump git-for-windows
-        if: ${{ matrix.os == 'windows-latest' }}
-        shell: pwsh
+      # https://cloud.google.com/artifact-registry/docs/python/authentication
+      - name: Install pycontrails-bada
         run: |
-          Invoke-WebRequest -Uri "https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.2/Git-2.47.0.2-64-bit.exe" -OutFile "${{runner.temp}}/git-for-windows.exe"
-          Start-Process -Filepath "${{runner.temp}}/git-for-windows.exe" -ArgumentList  @("/VERYSILENT","/NORESTART","/NOCANCEL","/SP-","/CLOSEAPPLICATIONS","/RESTARTAPPLICATIONS","/o:PathOption=CmdTools","/o:BashTerminalOption=ConHost","/o:EnableSymlinks=Enabled","/COMPONENTS=gitlfs") -NoNewWindow -Wait
-
-      # In latest-windows, redirecting stdout to a file uses utf-16 encoding
-      # This gives an error when ssh tries to read the key
-      # Instead don't pre-create the known_hosts file
-      - name: Install pycontrails-bada - windows
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          mkdir -p $HOME/.ssh/
-          gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" --out-file="$HOME/.ssh/id_rsa"
-          pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
-        env:
-          GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
-
-      - name: Install pycontrails-bada - linux
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
-          mkdir -p $HOME/.ssh/
-          ssh-keyscan github.com > $HOME/.ssh/known_hosts
-          gcloud secrets versions access latest --secret="contrails-301217-github-ssh-key" > $HOME/.ssh/id_rsa
-          chmod 600 $HOME/.ssh/id_rsa
-          pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
+          pip install keyring keyrings.google-artifactregistry-auth
+          pip install -U -i https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple pycontrails-bada
 
       - name: Show environment
         run: |
