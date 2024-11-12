@@ -20,8 +20,9 @@ try:
     from pycontrails.ext.bada import bada_model
 except ImportError as e:
     raise ImportError(
-        'SyntheticFlight requires BADA extension. Install with `pip install "pycontrails-bada @'
-        ' git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"`'
+        "Failed to import the 'pycontrails-bada' package. Install with 'pip install "
+        "--index-url https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple "
+        "pycontrails-bada'."
     ) from e
 
 logger = logging.getLogger(__name__)

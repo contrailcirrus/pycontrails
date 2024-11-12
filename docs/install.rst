@@ -93,7 +93,8 @@ interface with `BADA <https://www.eurocontrol.int/model/bada>`__ aircraft perfor
 
 .. code-block:: bash
 
-    pip install "pycontrails-bada @ git+ssh://git@github.com/contrailcirrus/pycontrails-bada.git"
+    pip install --index-url https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple \
+    pycontrails-bada
 
 Cirium
 ~~~~~~
