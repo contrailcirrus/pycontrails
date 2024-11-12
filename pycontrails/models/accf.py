@@ -151,14 +151,12 @@ class ACCF(Model):
         SpecificHumidity,
         ecmwf.PotentialVorticity,
         Geopotential,
-        RelativeHumidity,
+        (RelativeHumidity, ecmwf.RelativeHumidity),
         NorthwardWind,
         EastwardWind,
     )
     sur_variables = (ecmwf.SurfaceSolarDownwardRadiation, ecmwf.TopNetThermalRadiation)
     default_params = ACCFParams
-
-    short_vars = frozenset(v.short_name for v in (*met_variables, *sur_variables))
 
     # This variable won't get used since we are not writing the output
     # anywhere, but the library will complain if it's not defined
@@ -172,7 +170,13 @@ class ACCF(Model):
         **params_kwargs: Any,
     ) -> None:
         # Normalize ECMWF variables
-        met = standardize_variables(met, self.met_variables)
+        variables = (v[0] if isinstance(v, tuple) else v for v in self.met_variables)
+        met = standardize_variables(met, variables)
+
+        # If relative humidity is in percentage, convert to a proportion
+        if met["relative_humidity"].attrs.get("units") == "%":
+            met.data["relative_humidity"] /= 100.0
+            met.data["relative_humidity"].attrs["units"] = "1"
 
         # Ignore humidity scaling warning
         with warnings.catch_warnings():
@@ -274,10 +278,14 @@ class ACCF(Model):
         aCCFs, _ = clim_imp.get_xarray()
 
         # assign ACCF outputs to source
+        skip = {
+            v[0].short_name if isinstance(v, tuple) else v.short_name
+            for v in (*self.met_variables, *self.sur_variables)
+        }
         maCCFs = MetDataset(aCCFs)
         for key, arr in maCCFs.data.items():
             # skip met variables
-            if key in self.short_vars:
+            if key in skip:
                 continue
 
             assert isinstance(key, str)
@@ -299,7 +307,12 @@ class ACCF(Model):
         # It also needs variables to have the ECMWF short name
         if isinstance(self.met, MetDataset):
             ds_met = self.met.data.transpose("time", "level", "latitude", "longitude")
-            name_dict = {v.standard_name: v.short_name for v in self.met_variables}
+            name_dict = {
+                v[0].standard_name if isinstance(v, tuple) else v.standard_name: v[0].short_name
+                if isinstance(v, tuple)
+                else v.short_name
+                for v in self.met_variables
+            }
             ds_met = ds_met.rename(name_dict)
         else:
             ds_met = None

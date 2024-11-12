@@ -13,6 +13,9 @@
 - Update the `ACCFParams.forecast_step` to None, which allows CLIMaCCF to automatically determine the forecast step based on the `met` data.
 - Update the `ACCF` NOx parameter for the latest CLIMaCCF version.
 - Ensure a custom "horizontal_resolution" param passed into `ACCF` is not overwritten.
+- Remove duplicated variable in `ACCF.met_variables`.
+- Allow the `ACCF` model to accept relative humidity as a percentage or as a proportion.
+- Include `ecmwf.RelativeHumidity` in `ACCF.met_variables` so that `ERA5(..., variables=ACCF.met_variables)` no longer raises an error.
 
 ### Internals
 
