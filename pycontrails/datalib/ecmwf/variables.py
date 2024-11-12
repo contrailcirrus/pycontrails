@@ -107,6 +107,7 @@ RelativeHumidity = MetVariable(
     long_name=met_var.RelativeHumidity.long_name,
     units="%",
     level_type=met_var.RelativeHumidity.level_type,
+    grib1_id=met_var.RelativeHumidity.grib1_id,
     ecmwf_id=met_var.RelativeHumidity.ecmwf_id,
     grib2_id=met_var.RelativeHumidity.grib2_id,
     description=(
