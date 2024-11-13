@@ -91,10 +91,36 @@ BADA
 `pycontrails-bada <https://github.com/contrailcirrus/pycontrails-bada>`__ is an extension to
 interface with `BADA <https://www.eurocontrol.int/model/bada>`__ aircraft performance data.
 
+Reach out to `info@contrails.org <mailto:info@contrails.org>`__ to request access.
+
+Once provided access, install using:
+
+1. Follow the instructions for your platform to install the [gcloud CLI](https://cloud.google.com/sdk/docs/install)
+2. Login to `gcloud`. For alternate auth methods, see [Google Artifact Registry keyring docs](https://cloud.google.com/artifact-registry/docs/python/authentication#keyring)
+
+.. code-block:: bash
+
+    gcloud auth login
+
+3. Install [keyring](https://pypi.org/project/keyring/) for Google Artifact Registry
+
+.. code-block:: bash
+
+    pip install keyring keyrings.google-artifactregistry-auth
+
+4. Install `pycontrails-bada` package:
+
 .. code-block:: bash
 
     pip install --index-url https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple \
-    pycontrails-bada
+        pycontrails-bada
+
+.. code-block:: bash
+
+    # or at a tag
+    pip install --index-url https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple \
+        "pycontrails-bada==0.6.0"
+
 
 Cirium
 ~~~~~~
