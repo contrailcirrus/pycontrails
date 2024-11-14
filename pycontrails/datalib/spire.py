@@ -3,11 +3,28 @@
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 import pandas as pd
+import pandas.api.types as pdtypes
 
-from pycontrails.core import flight
+from pycontrails.core import airports, flight
+from pycontrails.datalib.exceptions import (
+    BadTrajectoryException,
+    DestinationAirportError,
+    FlightAltitudeProfileError,
+    FlightDuplicateTimestamps,
+    FlightInvariantFieldViolation,
+    FlightTooFastError,
+    FlightTooLongError,
+    FlightTooShortError,
+    FlightTooSlowError,
+    OrderingError,
+    OriginAirportError,
+    RocdError,
+    SchemaError,
+)
 from pycontrails.physics import geo, units
 
 logger = logging.getLogger(__name__)
@@ -737,3 +754,663 @@ def _downsample_flight(
 
     # reset original index and return
     return resampled.reset_index(drop=True)
+
+
+class ValidateTrajectoryHandler:
+    """
+    Evaluates a trajectory and identifies if it violates any verification rules.
+
+    <LINK HERE TO HOSTED REFERENCE EXAMPLE(S)>.
+    """
+
+    CRUISE_ROCD_THRESHOLD_FPS = 4.2  # 4.2 ft/sec ~= 250 ft/min
+    CRUISE_LOW_ALTITUDE_THRESHOLD_FT = 15000  # lowest expected cruise altitude
+    INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS = 350  # 350m/sec ~= 780mph ~= 1260kph
+    INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS = 45  # 45m/sec ~= 100mph ~= 160kph
+    AVG_LOW_GROUND_SPEED_THRESHOLD_MPS = 100  # 120m/sec ~= 223mph ~= 360 kph
+    AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN = 30  # rolling period for avg speed comparison
+    AIRPORT_DISTANCE_THRESHOLD_KM = 200
+    MIN_FLIGHT_LENGTH_HR = 0.4
+    MAX_FLIGHT_LENGTH_HR = 19
+
+    # expected schema of pandas dataframe passed on initialization
+    SCHEMA = {
+        "icao_address": pdtypes.is_string_dtype,
+        "flight_id": pdtypes.is_string_dtype,
+        "callsign": pdtypes.is_string_dtype,
+        "tail_number": pdtypes.is_string_dtype,
+        "flight_number": pdtypes.is_string_dtype,
+        "aircraft_type_icao": pdtypes.is_string_dtype,
+        "airline_iata": pdtypes.is_string_dtype,
+        "departure_airport_icao": pdtypes.is_string_dtype,
+        "departure_scheduled_time": pdtypes.is_datetime64_any_dtype,
+        "arrival_airport_icao": pdtypes.is_string_dtype,
+        "arrival_scheduled_time": pdtypes.is_datetime64_any_dtype,
+        "ingestion_time": pdtypes.is_datetime64_any_dtype,
+        "timestamp": pdtypes.is_datetime64_any_dtype,
+        "latitude": pdtypes.is_numeric_dtype,
+        "longitude": pdtypes.is_numeric_dtype,
+        "collection_type": pdtypes.is_string_dtype,
+        "altitude_baro": pdtypes.is_numeric_dtype,
+    }
+
+    airports_db = airports.global_airport_database()
+
+    def __init__(self):
+        self._df: pd.DataFrame | None = None
+
+    def set(self, trajectory: pd.DataFrame):
+        """
+        Set a single flight trajectory into handler state.
+
+        Parameters
+        ----------
+        trajectory
+            A dataframe representing a single flight trajectory.
+            Must include those columns itemized in ValidateTrajectoryHandler.SCHEMA.
+        """
+        if len(trajectory) == 0:
+            raise BadTrajectoryException("flight trajectory is empty.")
+        if len(trajectory["flight_id"].unique()) > 1:
+            raise Exception(
+                "dataset passed to handler must be for a single flight instance (" "flight_id)."
+            )
+
+        self._df = trajectory.copy(deep=True)
+
+    def unset(self):
+        """Pop _df from handler state."""
+        self._df = None
+
+    @classmethod
+    def _find_airport_coords(
+        cls, airport_icao: str | None
+    ) -> tuple[np.floating, np.floating, np.floating]:
+        """
+        Find the latitude and longitude for a given airport.
+
+        Parameters
+        ----------
+        airport_icao
+            string representation of the airport's icao code
+
+        Returns
+        -------
+        (latitude, longitude, alt_ft) of the airport.
+        Returns (np.nan, np.nan, np.nan) if it cannot be found.
+        """
+
+        if not isinstance(airport_icao, str):
+            return np.nan, np.nan, np.nan
+
+        matches = cls.airports_db[cls.airports_db["icao_code"] == airport_icao]
+        if len(matches) == 0:
+            return np.nan, np.nan, np.nan
+        if len(matches) > 1:
+            raise ValueError(
+                f"found multiple matches for aiport icao {airport_icao} " f"in airports database."
+            )
+
+        lat = matches.iloc[0]["latitude"]
+        lon = matches.iloc[0]["longitude"]
+        alt_ft = matches.iloc[0]["elevation_ft"]
+        if (
+            not isinstance(lat, np.floating)
+            or not isinstance(lon, np.floating)
+            or not isinstance(alt_ft, np.floating)
+        ):
+            raise ValueError(
+                f"expected (float, float, float) for lat, lon and alt_ft. "
+                f"got: ({lat}, {lon}, {alt_ft})"
+            )
+        return lat, lon, alt_ft
+
+    @staticmethod
+    def _calc_distance_m(lat_0, lon_0, alt_ft_0, lat_f, lon_f, alt_ft_f) -> float:
+        """Calculate great circle distance between two lat/lon/alt coordinates."""
+        dist_m = math.sqrt(
+            (0.3048 * (alt_ft_f - alt_ft_0)) ** 2
+            + geo.haversine(
+                lons1=np.array(lon_f),
+                lats1=np.array(lat_f),
+                lons0=np.array(lon_0),
+                lats0=np.array(lat_0),
+            )
+            ** 2
+        )
+        return dist_m
+
+    @staticmethod
+    def _rolling_time_delta_seconds(roll_window: pd.DataFrame):
+        """
+        Calculate the elapsed time in seconds between two consecutive, time-ordered rows.
+
+        Parameters
+        ----------
+        roll_window
+            A pd.Dataframe with ordered timestamps
+
+        Returns
+        -------
+        np.nan or integer value for seconds
+        """
+        if len(roll_window) == 1:
+            return np.nan
+        t_0 = roll_window.iloc[0]["timestamp"]
+        t_f = roll_window.iloc[1]["timestamp"]
+        dt_sec = (t_f - t_0).total_seconds()
+        if dt_sec < 0:
+            raise ValueError(
+                "found negative elapsed time. " "window must be ordered in ascending timestamp."
+            )
+
+        return int(dt_sec)
+
+    @classmethod
+    def _rolling_distance_meters(cls, roll_window: pd.DataFrame):
+        """
+        Impute the distance travelled (given two consecutive, time-ordered rows).
+
+        Parameters
+        ----------
+        roll_window
+            A pd.Dataframe with ordered timestamps
+
+        Returns
+        -------
+        np.nan or integer value for seconds
+        """
+        if len(roll_window) == 1:
+            return np.nan
+
+        lat_0 = roll_window.iloc[0]["latitude"]
+        lat_f = roll_window.iloc[1]["latitude"]
+
+        lon_0 = roll_window.iloc[0]["longitude"]
+        lon_f = roll_window.iloc[1]["longitude"]
+
+        alt_0 = roll_window.iloc[0]["altitude_baro"]
+        alt_f = roll_window.iloc[1]["altitude_baro"]
+
+        dist_m = cls._calc_distance_m(lat_0, lon_0, alt_0, lat_f, lon_f, alt_f)
+        return dist_m
+
+    @classmethod
+    def _rolling_rocd_fps(cls, roll_window: pd.DataFrame) -> float:
+        """
+        Impute the rate of climb/descent (given two consecutive, time-ordered rows).
+
+        Parameters
+        ----------
+        roll_window
+            A pd.Dataframe with ordered timestamps
+
+        Returns
+        -------
+        np.nan or float value for rocd in feet per second
+        """
+        if "elapsed_seconds" not in roll_window.columns:
+            raise ValueError("field elapsed_seconds must be present.")
+
+        if len(roll_window) == 1:
+            return np.nan
+
+        alt_ft_0 = roll_window.iloc[0]["altitude_baro"]
+        alt_ft_f = roll_window.iloc[1]["altitude_baro"]
+        alt_ft_dt = alt_ft_f - alt_ft_0
+        rocd = alt_ft_dt / roll_window.iloc[1]["elapsed_seconds"]
+        if np.isinf(rocd):
+            rocd = np.nan
+        return rocd
+
+    @classmethod
+    def _calc_dist_to_departure_airport(cls, row: pd.Series) -> float:
+        """
+        Calculate the distance from a given waypoint to the departure airport.
+
+        Returns
+        -------
+        distance in meters to departure airport.
+        np.nan if it cannot be calculated.
+        """
+        if "departure_airport_lat" not in row.index:
+            raise ValueError("field departure_airport_lat must be present.")
+        if "departure_airport_lon" not in row.index:
+            raise ValueError("field departure_airport_lon must be present.")
+        if "departure_airport_alt_ft" not in row.index:
+            raise ValueError("field departure_airport_alt_ft must be present.")
+
+        departure_lon = row["departure_airport_lon"]
+        departure_lat = row["departure_airport_lat"]
+        departure_alt_ft = row["departure_airport_alt_ft"]
+        if any(
+            [
+                np.isnan(departure_lon),
+                np.isnan(departure_lat),
+                np.isnan(departure_alt_ft),
+            ]
+        ):
+            return np.nan
+
+        return cls._calc_distance_m(
+            lon_0=row["longitude"],
+            lat_0=row["latitude"],
+            alt_ft_0=row["altitude_baro"],
+            lon_f=departure_lon,
+            lat_f=departure_lat,
+            alt_ft_f=departure_alt_ft,
+        )
+
+    @classmethod
+    def _calc_dist_to_arrival_airport(cls, row: pd.Series) -> float:
+        """
+        Calculate the distance from a given waypoint to the arrival airport.
+
+        Returns
+        -------
+        distance in meters to arrival airport.
+        np.nan if it cannot be calculated.
+        """
+
+        if "arrival_airport_lat" not in row.index:
+            raise ValueError("field arrival_airport_lat must be present.")
+        if "arrival_airport_lon" not in row.index:
+            raise ValueError("field arrival_airport_lon must be present.")
+        if "arrival_airport_alt_ft" not in row.index:
+            raise ValueError("field arrival_airport_alt_ft must be present.")
+
+        arrival_lon = row["arrival_airport_lon"]
+        arrival_lat = row["arrival_airport_lat"]
+        arrival_alt_ft = row["arrival_airport_alt_ft"]
+        if any([np.isnan(arrival_lon), np.isnan(arrival_lat), np.isnan(arrival_alt_ft)]):
+            return np.nan
+
+        return cls._calc_distance_m(
+            lon_0=row["longitude"],
+            lat_0=row["latitude"],
+            alt_ft_0=row["altitude_baro"],
+            lon_f=arrival_lon,
+            lat_f=arrival_lat,
+            alt_ft_f=arrival_alt_ft,
+        )
+
+    def _calculate_additional_fields(self):
+        """
+        Add additional columns to the provided dataframe.
+
+        These additional fields are needed to apply the validation ruleset.
+        """
+        self._df = self._df.assign(
+            elapsed_seconds=[
+                self._rolling_time_delta_seconds(window) for window in self._df.rolling(window=2)
+            ],
+        )
+        self._df = self._df.assign(
+            elapsed_distance_m=[
+                self._rolling_distance_meters(window) for window in self._df.rolling(window=2)
+            ],
+        )
+        self._df = self._df.assign(
+            ground_speed_m_s=self._df["elapsed_distance_m"]
+            .divide(self._df["elapsed_seconds"])
+            .replace(np.inf, np.nan)
+        )
+        self._df = self._df.assign(
+            rocd_fps=[self._rolling_rocd_fps(window) for window in self._df.rolling(window=2)]
+        )
+
+        if len(self._df["arrival_airport_icao"].value_counts()) > 1:
+            raise ValueError("expected only one airport icao for flight arrival airport.")
+
+        if len(self._df["departure_airport_icao"].value_counts()) > 1:
+            raise ValueError("expected only one airport icao for flight departure airport.")
+
+        departure_airport_lat_lon_alt = self._df["departure_airport_icao"].apply(
+            self._find_airport_coords
+        )
+        arrival_airport_lat_lon_alt = self._df["arrival_airport_icao"].apply(
+            self._find_airport_coords
+        )
+        self._df = self._df.assign(
+            departure_airport_lat=[coord[0] for coord in departure_airport_lat_lon_alt],
+            departure_airport_lon=[coord[1] for coord in departure_airport_lat_lon_alt],
+            departure_airport_alt_ft=[coord[2] for coord in departure_airport_lat_lon_alt],
+            arrival_airport_lat=[coord[0] for coord in arrival_airport_lat_lon_alt],
+            arrival_airport_lon=[coord[1] for coord in arrival_airport_lat_lon_alt],
+            arrival_airport_alt_ft=[coord[2] for coord in arrival_airport_lat_lon_alt],
+        )
+
+        self._df = self._df.assign(
+            departure_airport_dist_m=self._df.apply(self._calc_dist_to_departure_airport, axis=1),
+            arrival_airport_dist_m=self._df.apply(self._calc_dist_to_arrival_airport, axis=1),
+        )
+
+    @classmethod
+    def _is_valid_schema(cls, df: pd.DataFrame) -> None | SchemaError:
+        """Verify that a pandas dataframe has required cols, and that they are of required type."""
+        col_types = df.dtypes
+        cols = list(col_types.index)
+
+        missing_cols = [i for i in cls.SCHEMA if i not in cols]
+        if len(missing_cols) > 0:
+            return SchemaError(f"trajectory dataframe is missing expected fields: {missing_cols}")
+
+        col_w_bad_dtypes = []
+        for col, check_fn in cls.SCHEMA.items():
+            is_valid = check_fn(col_types[col])
+            if not is_valid:
+                col_w_bad_dtypes.append(f"{col} failed check {check_fn.__name__}")
+
+        if len(col_w_bad_dtypes) > 0:
+            return SchemaError(
+                f"trajectory dataframe has columns with invalid data types. "
+                f"\n {col_w_bad_dtypes}"
+            )
+
+    def _is_timestamp_sorted(self) -> None | OrderingError:
+        """Verify that the data is sorted by waypoint timestamp in ascending order."""
+        ts_index = pd.Index(self._df["timestamp"])
+        if not ts_index.is_monotonic_increasing:
+            return OrderingError(
+                "trajectory dataframe must be sorted by timestamp in ascending order."
+            )
+
+    def _is_valid_invariant_fields(self) -> None | FlightInvariantFieldViolation:
+        """
+        Verify that fields expected to be invariant are indeed invariant.
+
+        Presence of null values does not constitute an invariance violation.
+        """
+        invariant_fields = [
+            "icao_address",
+            "flight_id",
+            "callsign",
+            "tail_number",
+            "aircraft_type_icao",
+            "airline_iata",
+            "departure_airport_icao",
+            "departure_scheduled_time",
+            "arrival_airport_icao",
+            "arrival_scheduled_time",
+        ]
+
+        violations = []
+        for k in invariant_fields:
+            unique_vals = list(self._df[k].value_counts().index)
+            if len(unique_vals) > 1:
+                violations.append(k)
+
+        if len(violations) > 0:
+            return FlightInvariantFieldViolation(
+                f"the following fields have multiple values for this trajectory. " f"{violations}"
+            )
+
+    def _is_valid_duplicate_timestamps(self) -> None | FlightDuplicateTimestamps:
+        """Verify that we do not have duplicate timestamps in the trajectory."""
+        timestamp_dupe_cnt = self._df["timestamp"].duplicated().sum()
+        if timestamp_dupe_cnt > 0:
+            return FlightDuplicateTimestamps(
+                f"duplicate waypoint timestamps found in "
+                f"this trajectory. "
+                f"found {timestamp_dupe_cnt} duplicates."
+            )
+
+    def _is_valid_flight_length(
+        self,
+    ) -> None | FlightTooShortError | FlightTooLongError:
+        """Verify that the flight is of a reasonable length."""
+        flight_duration_sec = (self._df["timestamp"].max() - self._df["timestamp"].min()).seconds
+        flight_duration_hours = flight_duration_sec / 60.0 / 60.0
+
+        if flight_duration_hours > self.MAX_FLIGHT_LENGTH_HR:
+            return FlightTooLongError(
+                f"flight exceeds max duration of {self.MAX_FLIGHT_LENGTH_HR} hours."
+                f"this trajectory spans {flight_duration_hours:.2f} hours."
+            )
+
+        if flight_duration_hours < self.MIN_FLIGHT_LENGTH_HR:
+            return FlightTooShortError(
+                f"flight less than min duration of {self.MIN_FLIGHT_LENGTH_HR} hours. "
+                f"this trajectory spans {flight_duration_hours:.2f} hours."
+            )
+
+    def _is_from_origin_airport(self) -> None | OriginAirportError:
+        """Verify that the trajectory origin is a reasonable distance from the origin airport."""
+        first_waypoint = self._df.iloc[0]
+        first_waypoint_dist_km = first_waypoint["departure_airport_dist_m"] / 1000.0
+        if first_waypoint_dist_km > self.AIRPORT_DISTANCE_THRESHOLD_KM:
+            return OriginAirportError(
+                f"first waypoint in trajectory too far from departure airport icao: "
+                f"{first_waypoint['departure_airport_icao']}. "
+                f"distance {first_waypoint_dist_km}km is greater than "
+                f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
+            )
+
+    def _is_to_destination_airport(self) -> None | DestinationAirportError:
+        """
+        Verify that the trajectory destination is reasonable distance from the destination airport.
+
+        We do not assume that the destination airports are invariant in the dataframe,
+        thus we handle the case of multiple airports listed.
+        """
+        last_waypoint = self._df.iloc[-1]
+        last_waypoint_dist_km = last_waypoint["arrival_airport_dist_m"] / 1000.0
+        if last_waypoint_dist_km > self.AIRPORT_DISTANCE_THRESHOLD_KM:
+            return DestinationAirportError(
+                f"last waypoint in trajectory too far from arrival airport icao: "
+                f"{last_waypoint['arrival_airport_icao']}."
+                f"distance {last_waypoint_dist_km}km is greater than "
+                f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
+            )
+
+    def _is_too_slow(self) -> None | list[FlightTooSlowError]:
+        """
+        Evaluate the flight trajectory for unreasonably slow speed.
+
+        This is evaluated both for instantaneous discrete steps in the trajectory
+        (between consecutive waypoints),
+        and,
+        on a rolling average basis.
+
+        For instantaneous speed, we clip the trajectory by 10 rows on the head and tail.
+        (assuming the trajectory is resampled prior to applying the validation handler,
+        that is 10min on head or tail).
+        """
+
+        violations: list[FlightTooSlowError] = []
+
+        below_inst_thresh = self._df.iloc[10:, :].iloc[:-10, :][
+            self._df["ground_speed_m_s"] <= self.INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS
+        ]
+        if len(below_inst_thresh) > 0:
+            violations.append(
+                FlightTooSlowError(
+                    f"found {len(below_inst_thresh)} instances where speed between waypoints is "
+                    f"below threshold of {self.INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS} m/s. "
+                    f" max value: {max(below_inst_thresh['ground_speed_m_s'])}, "
+                    f"min value: {min(below_inst_thresh['ground_speed_m_s'])},"
+                )
+            )
+
+        roll_speed = self._df[["timestamp", "ground_speed_m_s"]]
+        roll_speed.set_index("timestamp", inplace=True)
+        roll_speed = roll_speed.rolling(
+            pd.Timedelta(minutes=self.AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN)
+        ).mean()
+        # only consider averages occurring at least rolling_avg_period_min minutes
+        # after the flight origination (rolling window if backward looking)
+        roll_speed = roll_speed[
+            roll_speed.index
+            > roll_speed.index[0]
+            + pd.Timedelta(minutes=self.AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN)
+        ]
+
+        below_avg_thresh = roll_speed[
+            roll_speed["ground_speed_m_s"] <= self.AVG_LOW_GROUND_SPEED_THRESHOLD_MPS
+        ]
+        if len(below_avg_thresh) > 0:
+            violations.append(
+                FlightTooSlowError(
+                    f"found {len(below_avg_thresh)} instances where rolling average speed is "
+                    f"below threshold of {self.AVG_LOW_GROUND_SPEED_THRESHOLD_MPS} m/s "
+                    f"(rolling window of "
+                    f"{self.AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN} minutes). "
+                    f" max value: {max(below_avg_thresh['ground_speed_m_s'])}, "
+                    f"min value: {min(below_avg_thresh['ground_speed_m_s'])},"
+                )
+            )
+
+        if len(violations) > 0:
+            return violations
+
+    def _is_too_fast(self) -> None | FlightTooFastError:
+        """
+        Evaluate the flight trajectory for reasonably high speed.
+
+        This is evaluated on instantaneous discrete steps between consecutive waypoints.
+        """
+        above_inst_thresh = self._df[
+            self._df["ground_speed_m_s"] >= self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS
+        ]
+        if len(above_inst_thresh) > 0:
+            return FlightTooFastError(
+                f"found {len(above_inst_thresh)} instances where speed between waypoints is "
+                f"above threshold of {self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS} m/s"
+                f" max value: {max(above_inst_thresh['ground_speed_m_s'])}, "
+                f"min value: {min(above_inst_thresh['ground_speed_m_s'])},"
+            )
+
+    def _is_expected_altitude_profile(
+        self,
+    ) -> None | list[FlightAltitudeProfileError | RocdError]:
+        """
+        Evaluate flight altitude profile.
+
+        Failure modes include:
+        RocdError
+        1) flight climbs above alt threshold,
+            then descends below that threshold one or more times,
+            before making final descent to land.
+
+        FlightAltitudeProfileError
+        2) rate of instantaneous (between consecutive waypoint) climb or descent is above threshold,
+           while aircraft is above the cruise altitude.
+        """
+
+        violations: list[FlightAltitudeProfileError | RocdError] = []
+
+        # only evaluate rocd errors when at cruising altitude
+        rocd_above_thres = self._df[
+            (self._df["rocd_fps"].abs() >= self.CRUISE_ROCD_THRESHOLD_FPS)
+            & (self._df["altitude_baro"] > self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT)
+        ]
+        if len(rocd_above_thres) > 0:
+            violations.append(
+                RocdError(
+                    f"flight trajectory has rate of climb/descent values "
+                    "between consecutive waypoints that exceed threshold "
+                    f"of {self.CRUISE_ROCD_THRESHOLD_FPS} ft/sec. "
+                    f"Max value found: {np.nanmax(self._df['rocd_fps'].abs())}"
+                )
+            )
+
+        alt_below_thresh = self._df["altitude_baro"] <= self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT
+        alt_thresh_transitions = alt_below_thresh.rolling(window=2).sum()
+        transition_pts = alt_thresh_transitions[alt_thresh_transitions == 1]
+        if len(transition_pts) > 2:
+            violations.append(
+                FlightAltitudeProfileError(
+                    f"flight trajectory dropped below altitude threshold"
+                    f"of {self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT}ft while in-flight."
+                )
+            )
+
+        if len(violations) > 0:
+            return violations
+
+    @property
+    def validation_df(self) -> pd.DataFrame:
+        """
+        Return an augmented trajectory dataframe.
+
+        Returns
+        -------
+        dataframe mirroring that provided to the handler,
+        but including the additional computed columns that are used in verification.
+        e.g. elapsed_sec, ground_speed_m_s, etc.
+        """
+        violations = self.evaluate()
+        fatal_violations = [
+            SchemaError,
+            FlightDuplicateTimestamps,
+            FlightInvariantFieldViolation,
+        ]
+        if any([v in violations for v in fatal_violations]):
+            raise Exception(
+                f"validation dataframe cannot be returned "
+                f"if flight has violations(s): {violations}"
+            )
+        # safeguard to ensure this call follows the addition of the columns
+        # assumes calculate_additional_fields is idempotent
+        self._calculate_additional_fields()
+        return self._df
+
+    def evaluate(self) -> None | list[Exception]:
+        """Evaluate the flight trajectory for one or more violations."""
+
+        all_violations: list[Exception] = []
+
+        # Checks; Round 1
+        schema_check: None | SchemaError
+        schema_check = self._is_valid_schema(self._df)
+        all_violations.append(schema_check) if schema_check else None
+        if len(all_violations) > 0:
+            return all_violations
+
+        # Checks; Round 2
+        timestamp_ordering_check: None | OrderingError
+        timestamp_ordering_check = self._is_timestamp_sorted()
+        (all_violations.append(timestamp_ordering_check) if timestamp_ordering_check else None)
+
+        invariant_fields_check: None | FlightInvariantFieldViolation
+        invariant_fields_check = self._is_valid_invariant_fields()
+        (all_violations.append(invariant_fields_check) if invariant_fields_check else None)
+
+        duplicate_timestamps_check: None | FlightDuplicateTimestamps
+        duplicate_timestamps_check = self._is_valid_duplicate_timestamps()
+        (all_violations.append(duplicate_timestamps_check) if duplicate_timestamps_check else None)
+        # we escape here if there are violations for the above checks.
+        # we do this because some of the following checks assume no invariant field violations,
+        #   or timestamp dupes
+        if len(all_violations) > 0:
+            return all_violations
+
+        # Checks; Round 3
+        self._calculate_additional_fields()
+
+        flight_length_check: None | FlightTooShortError | FlightTooLongError
+        flight_length_check = self._is_valid_flight_length()
+        all_violations.append(flight_length_check) if flight_length_check else None
+
+        origin_airport_check: None | OriginAirportError
+        origin_airport_check = self._is_from_origin_airport()
+        all_violations.append(origin_airport_check) if origin_airport_check else None
+
+        destination_airport_check: None | DestinationAirportError
+        destination_airport_check = self._is_to_destination_airport()
+        (all_violations.append(destination_airport_check) if destination_airport_check else None)
+
+        slow_speed_check: None | list[FlightTooSlowError]
+        slow_speed_check = self._is_too_slow()
+        all_violations.extend(slow_speed_check) if slow_speed_check else None
+
+        fast_speed_check: None | FlightTooFastError
+        fast_speed_check = self._is_too_fast()
+        all_violations.append(fast_speed_check) if fast_speed_check else None
+
+        altitude_profile_check: None | list[FlightAltitudeProfileError | RocdError]
+        altitude_profile_check = self._is_expected_altitude_profile()
+        (all_violations.extend(altitude_profile_check) if altitude_profile_check else None)
+
+        if len(all_violations) > 0:
+            return all_violations
