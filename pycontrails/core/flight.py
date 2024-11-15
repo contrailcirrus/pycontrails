@@ -945,7 +945,7 @@ class Flight(GeoVectorDataset):
         time = df.index.to_numpy()
         if np.any(np.isnan(altitude)):
             df_freq = pd.Timedelta(freq).to_numpy()
-            new_alt = _altitude_interpolation(altitude, time, nominal_rocd=nominal_rocd)
+            new_alt = _altitude_interpolation(altitude, time)
             _verify_altitude(new_alt, nominal_rocd, df_freq)
             df["altitude"] = new_alt
 
@@ -1702,7 +1702,6 @@ def _sg_filter(
 def _altitude_interpolation(
     altitude: npt.NDArray[np.floating],
     time: npt.NDArray[np.datetime64],
-    nominal_rocd: float = constants.nominal_rocd,
     minimum_cruise_altitude_ft: float = 20000.0,
     assumed_cruise_altitude_ft: float = 30000.0,
 ) -> npt.NDArray[np.floating]:
@@ -1749,7 +1748,7 @@ def _altitude_interpolation(
     """
     # Work in units of feet
     alt_ft = units.m_to_ft(altitude)
-    nominal_rocd_ft_min = units.m_to_ft(nominal_rocd) * 60
+    nominal_rocd_ft_min = units.m_to_ft(constants.nominal_rocd) * 60
 
     # Determine nan state of altitude
     isna = np.isnan(alt_ft)
