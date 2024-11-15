@@ -14,10 +14,6 @@ on:
   # Allows run manually from the Actions tab
   workflow_dispatch:
 
-# Global variables
-env:
-  PYCONTRAILS_CACHE_DIR: '${{ github.workspace }}/.cache/pycontrails'
-
 # disable all permissions at the top level
 # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
 permissions: {}
@@ -39,6 +35,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Remove any .dev suffix from the version
+      # This is useful when running between tags from a workflow-dispatch
+      - name: Get the pycontrails version
+        id: get_version
+        run: |
+          echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+          echo "VERSION=$VERSION"
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -52,6 +56,8 @@ jobs:
 
       - name: Install pycontrails (dev)
         run: make dev-install
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYCONTRAILS: ${{ steps.get_version.outputs.VERSION }}
 
       # https://cloud.google.com/artifact-registry/docs/python/authentication
       - name: Install latest pycontrails-bada
