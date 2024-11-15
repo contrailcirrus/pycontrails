@@ -39,7 +39,7 @@ jobs:
       # This is useful when running between tags from a workflow-dispatch
       - name: Get the pycontrails version
         id: get_version
-        run: echo "version=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: echo "version=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
 
       - uses: actions/setup-python@v5
         with:
