@@ -8,8 +8,10 @@ and propulsion efficiency.
 from __future__ import annotations
 
 import logging
+import pathlib
 
 import numpy as np
+import pandas as pd
 import numpy.typing as npt
 
 from pycontrails.core import flight
@@ -17,6 +19,8 @@ from pycontrails.physics import constants, units
 from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 
 logger = logging.getLogger(__name__)
+_path_to_static = pathlib.Path(__file__).parent / "static"
+LOAD_FACTORS_PATH = _path_to_static / "iata-regional-load-factors-20241115.csv"
 
 
 # -------------------
@@ -343,6 +347,39 @@ def reserve_fuel_requirements(
 # -------------
 # Aircraft mass
 # -------------
+
+def _load_historical_load_factors() -> pd.DataFrame:
+    """Load historical regional passenger load factor database.
+
+    Returns
+    -------
+    pd.DataFrame
+        Historical regional passenger load factor for each day.
+
+    Notes
+    -----
+    The monthly passenger load factor for each region is compiled from IATA's monthly publication
+    of the Air Passenger Market Analysis, where the static file will be continuously updated.
+
+    The report estimates the regional passenger load factor by dividing the revenue passenger-km
+    (RPK) by the available seat-km (ASK).
+
+    The daily passenger load factor is estimated from linearly interpolating the monthly statistics.
+    """
+    df = pd.read_csv(LOAD_FACTORS_PATH)
+    df["Date"] = pd.to_datetime(df["Date"], format="%d/%m/%Y")
+    df.set_index("Date", inplace=True, drop=True)
+
+    # Interpolate monthly statistics to estimate daily load factors
+    dates = pd.date_range(start=df.index[0], end=df.index[-1], freq='1D')
+    df = df.reindex(dates)
+
+    # Fill NaN values with linear interpolation
+    df = df.interpolate(method='linear')
+    return df
+
+
+
 
 
 def aircraft_weight(aircraft_mass: ArrayOrFloat) -> ArrayOrFloat:
