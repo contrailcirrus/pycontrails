@@ -426,25 +426,103 @@ def test_altitude_interpolation(fl: Flight) -> None:
     assert _check_rocd(fl1)
     assert _check_rocd(fl2)
 
-    # test more aggresive altitude interpolation
+    # Test different interpolation conditions
+
+    # SCENARIO 1: If cruise over 2 h with small altitude change, set change to mid-point
+    alt_ft = np.array([35000.0, 36000.0, 36000.0])
+    time = pd.to_datetime(["2000-01-01 00:00:00", "2000-01-01 04:00:00", "2000-01-01 04:05:00"])
     fl_alt = Flight(
-        longitude=np.linspace(0, 10, 10),
-        latitude=np.linspace(0, 10, 10),
-        time=pd.date_range("2000-01-01 00:00:00", "2000-01-01 05:00:00", periods=10),
-        altitude=np.array([0, 11000, 5000, 9000, 9000, 11000, 5000, 11000, 11000, 0]),
+        longitude=np.linspace(0, 10, 3),
+        latitude=np.linspace(0, 10, 3),
+        time=time,
+        altitude=units.ft_to_m(alt_ft),
     )
 
-    # resample to 1 min
     fl10 = fl_alt.resample_and_fill("1min")
-
-    # confirm that rocd is appropriate
+    index_sep = np.argwhere(fl10["time"] == pd.to_datetime("2000-01-01 02:00:00"))[0][0]
+    np.testing.assert_array_almost_equal(fl10.altitude_ft[:index_sep], 35000.0, decimal=0)
+    np.testing.assert_array_almost_equal(fl10.altitude_ft[index_sep + 1:], 36000.0, decimal=0)
     assert _check_rocd(fl10)
 
-    # resample to 5 minutes
-    # confirm that all values exist in previous resampling
-    fl11 = fl_alt.resample_and_fill("5min")
+    # SCENARIO 2: If large time gap and altitude difference, climb until desired altitude and cruise
+    alt_ft = np.array([5000.0, 30000.0, 30000.0])
+    time = pd.to_datetime(["2000-01-01 00:00:00", "2000-01-01 01:00:00", "2000-01-01 01:05:00"])
+    fl_alt = Flight(
+        longitude=np.linspace(0, 10, 3),
+        latitude=np.linspace(0, 10, 3),
+        time=time,
+        altitude=units.ft_to_m(alt_ft),
+    )
+
+    fl11 = fl_alt.resample_and_fill("1min")
+
+    # Takes around 10 minutes to climb to next recorded altitude (Nominal ROCD = 2500 ft/min)
+    index_sep = np.argwhere(fl11["time"] == pd.to_datetime("2000-01-01 00:10:00"))[0][0]
+    np.testing.assert_array_almost_equal(fl11.altitude_ft[index_sep + 1:], 30000.0, decimal=0)
     assert _check_rocd(fl11)
-    assert np.isin(fl11["altitude"], fl10["altitude"]).all()
+
+    # SCENARIO 3: If shallow climb (0 < rocd < 500 ft/min), assume climb in next time step
+    alt_ft = np.array([30000.0, 31000.0, 31000.0])
+    time = pd.to_datetime(["2000-01-01 00:00:00", "2000-01-01 00:05:00", "2000-01-01 00:10:00"])
+    fl_alt = Flight(
+        longitude=np.linspace(0, 10, 3),
+        latitude=np.linspace(0, 10, 3),
+        time=time,
+        altitude=units.ft_to_m(alt_ft),
+    )
+    fl12 = fl_alt.resample_and_fill("1min")
+    assert fl12.altitude_ft[0] == 30000.0
+    np.testing.assert_array_almost_equal(fl12.altitude_ft[1:], 31000.0, decimal=0)
+    assert _check_rocd(fl12)
+
+    # SCENARIO 4: If large time gap and altitude difference, assume descent towards the end
+    alt_ft = np.array([30000.0, 5000.0, 5000.0])
+    time = pd.to_datetime(["2000-01-01 00:00:00", "2000-01-01 01:00:00", "2000-01-01 01:05:00"])
+    fl_alt = Flight(
+        longitude=np.linspace(0, 10, 3),
+        latitude=np.linspace(0, 10, 3),
+        time=time,
+        altitude=units.ft_to_m(alt_ft),
+    )
+    fl13 = fl_alt.resample_and_fill("1min")
+
+    # Takes less than 10 minutes to descent to next recorded altitude (Nominal ROCD = 2500 ft/min)
+    index_sep = np.argwhere(fl13["time"] == pd.to_datetime("2000-01-01 00:50:00"))[0][0]
+    np.testing.assert_array_almost_equal(fl13.altitude_ft[:index_sep + 1], 30000.0, decimal=0)
+    assert _check_rocd(fl13)
+
+    # SCENARIO 5: If shallow descent (-250 < rocd < 0 ft/min), then assume descent in last step.
+    alt_ft = np.array([31000.0, 30000.0, 30000.0])
+    time = pd.to_datetime(["2000-01-01 00:00:00", "2000-01-01 00:05:00", "2000-01-01 00:10:00"])
+    fl_alt = Flight(
+        longitude=np.linspace(0, 10, 3),
+        latitude=np.linspace(0, 10, 3),
+        time=time,
+        altitude=units.ft_to_m(alt_ft),
+    )
+    fl14 = fl_alt.resample_and_fill("1min")
+    np.testing.assert_array_almost_equal(fl14.altitude_ft[:-6], 31000.0, decimal=0)
+    np.testing.assert_array_almost_equal(fl14.altitude_ft[-6:], 30000.0, decimal=0)
+    assert _check_rocd(fl14)
+
+    # SCENARIO 6: Test unrealistic scenario without cruise phase for long time periods
+    alt_ft = np.array([5000.0, 5000.0])
+    time = pd.to_datetime(["2000-01-01 00:00:00", "2000-01-01 01:30:00"])
+    fl_alt = Flight(
+        longitude=np.linspace(0, 10, 2),
+        latitude=np.linspace(0, 10, 2),
+        time=time,
+        altitude=units.ft_to_m(alt_ft),
+    )
+    fl15 = fl_alt.resample_and_fill("1min")
+
+    # Takes less than 10 minutes to climb and descent assumed cruising altitude
+    index_sep_1 = np.argwhere(fl15["time"] == pd.to_datetime("2000-01-01 00:10:00"))[0][0]
+    index_sep_2 = np.argwhere(fl15["time"] == pd.to_datetime("2000-01-01 00:50:00"))[0][0]
+    np.testing.assert_array_almost_equal(
+        fl15.altitude_ft[index_sep_1 + 1:index_sep_2], 30000.0, decimal=0
+    )
+    assert _check_rocd(fl15)
 
     # test altitude interpolation with level
     fl_lev = Flight(
@@ -455,68 +533,36 @@ def test_altitude_interpolation(fl: Flight) -> None:
     )
 
     # resample to 1 min
-    fl13 = fl_lev.resample_and_fill("1min")
-    assert "level" not in fl13
-    assert _check_rocd(fl13)
+    fl16 = fl_lev.resample_and_fill("1min")
+    assert "level" not in fl16
+    assert _check_rocd(fl16)
 
     # test nominal rocd
-    fl14 = fl_alt.resample_and_fill("1min", nominal_rocd=30)
-    assert _check_rocd(fl14, nominal_rocd=30)
+    fl_alt = Flight(
+        longitude=np.linspace(0, 10, 10),
+        latitude=np.linspace(0, 10, 10),
+        time=pd.date_range("2000-01-01 00:00:00", "2000-01-01 05:00:00", periods=10),
+        altitude=np.array([0, 11000, 5000, 9000, 9000, 11000, 5000, 11000, 11000, 0]),
+    )
+
+    fl17 = fl_alt.resample_and_fill("1min", nominal_rocd=30)
+    assert _check_rocd(fl17, nominal_rocd=30)
 
     # test warning with low nominal rocd
     with pytest.warns(UserWarning, match="Rate of climb/descent values greater than nominal"):
-        fl15 = fl_alt.resample_and_fill("1min", nominal_rocd=1)
-        assert not _check_rocd(fl15, nominal_rocd=1)
+        fl18 = fl_alt.resample_and_fill("1min", nominal_rocd=1)
+        assert not _check_rocd(fl18, nominal_rocd=1)
 
     # test `drop` kwarg
     fl_alt["extrakey"] = np.linspace(0, 10, 10)
     fl_alt["level"] = fl_alt.level
-    fl16 = fl_alt.resample_and_fill("1min", drop=False)
-    assert "extrakey" in fl16
-    assert np.any(np.isnan(fl16["extrakey"]))
-    assert "level" not in fl16
+    fl19 = fl_alt.resample_and_fill("1min", drop=False)
+    assert "extrakey" in fl19
+    assert np.any(np.isnan(fl19["extrakey"]))
+    assert "level" not in fl19
 
-    fl17 = fl_alt.resample_and_fill("1min")
-    assert "extrakey" not in fl17
-
-
-def test_step_climb_interpolation() -> None:
-    """Check the ROCD of the interpolated altitude."""
-
-    def _check_rocd(_fl: Flight, nominal_rocd: float = constants.nominal_rocd) -> np.bool_:
-        """Check rate of climb/descent."""
-        dt = np.diff(_fl["time"], append=np.datetime64("NaT")) / np.timedelta64(1, "s")
-        dalt = np.diff(_fl.altitude, append=np.nan)
-        rocd = np.abs(dalt / dt)
-        return np.all(rocd[:-1] < 2 * nominal_rocd)
-
-    # test more aggressive altitude interpolation
-    fl = Flight(
-        longitude=np.linspace(0, 10, 5),
-        latitude=np.linspace(0, 10, 5),
-        time=pd.DatetimeIndex(
-            [
-                "1/1/2020 10:00:00",
-                "1/1/2020 11:00:00",
-                "1/1/2020 15:00:00",
-                "1/1/2020 16:00:00",
-                "1/1/2020 20:00:00",
-            ]
-        ),
-        altitude=np.array([0, 5000, 10000, 9000, 5000]),
-    )
-
-    fl1 = fl.resample_and_fill()
-    assert _check_rocd(fl1)
-    # The first segment's climb should be at the start
-    assert fl1["altitude"][1] > 0
-    # The second segment's climb should be in the middle
-    assert fl1["altitude"][61] == pytest.approx(5000.0, abs=1e-9)
-    assert fl1["altitude"][180] == pytest.approx(5000.0, abs=1e-9)
-    assert fl1["altitude"][181] > 5000.0
-    # Both descent's should happen at end of segment
-    assert fl1["altitude"][301] == pytest.approx(10000.0, abs=1e-9)
-    assert fl1["altitude"][361] == pytest.approx(9000.0, abs=1e-9)
+    fl20 = fl_alt.resample_and_fill("1min")
+    assert "extrakey" not in fl20
 
 
 def test_geojson_methods(fl: Flight, rng: np.random.Generator) -> None:
