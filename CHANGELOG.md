@@ -20,6 +20,7 @@
 - Test against python 3.13 in the GitHub Actions CI. Use python 3.13 in the docs and doctest workflows.
 - Publish to PyPI using [trusted publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/).
 - Update `pycontrails-bada` installation instructions.
+- Floor the pycontrails version when running the docs workflow. This ensures that the [hosted documentation](https://py.contrails.org) references the last stable release.
 
 ## v0.54.2
 
