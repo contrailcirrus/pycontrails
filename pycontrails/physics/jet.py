@@ -431,6 +431,14 @@ def passenger_load_factor(
         Passenger load factor [0 - 1], unitless
     """
     region = "Global"
+
+    # If `first_waypoint_time` is None, global/regional averages for the trailing twelve months
+    # will be assumed.
+    if first_waypoint_time is None:
+        filt = HISTORICAL_PLF.index > (HISTORICAL_PLF.index[-1] - pd.DateOffset(months=12))
+        ttm = HISTORICAL_PLF[filt].copy()
+        return np.nanmean(ttm[region].to_numpy())
+
     date = first_waypoint_time.floor('D')
 
     # If origin airport is provided, use regional load factor
@@ -464,12 +472,6 @@ def passenger_load_factor(
 
         date_mm_dd = date.strftime('%m-%d')
         date = pd.to_datetime(ftm.loc[ftm['mm_dd'] == date_mm_dd].index[0])
-
-    # (3) If `date` is None, global/regional averages for the trailing twelve months will be assumed
-    if date is None:
-        filt = HISTORICAL_PLF.index > (HISTORICAL_PLF.index[-1] - pd.DateOffset(months=12))
-        ttm = HISTORICAL_PLF[filt].copy()
-        return np.nanmean(ttm[region].to_numpy())
 
     return HISTORICAL_PLF.loc[date, region]
 
