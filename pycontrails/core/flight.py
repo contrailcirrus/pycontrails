@@ -1037,7 +1037,6 @@ class Flight(GeoVectorDataset):
                 nominal_rocd,
                 drop,
                 keep_original_index,
-                climb_descend_at_end,
             )
 
         # If the flight has large gap(s), then call resample and fill, then filter altitude
@@ -1053,7 +1052,6 @@ class Flight(GeoVectorDataset):
                     nominal_rocd,
                     drop,
                     keep_original_index,
-                    climb_descend_at_end,
                 )
             clean_flight = clean_flight.filter_altitude(kernel_size, cruise_threshold)
         else:
@@ -1067,7 +1065,6 @@ class Flight(GeoVectorDataset):
             nominal_rocd,
             drop,
             keep_original_index,
-            climb_descend_at_end,
         )
 
     def filter_altitude(
