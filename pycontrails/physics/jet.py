@@ -352,67 +352,30 @@ def reserve_fuel_requirements(
 
 
 @functools.cache
-def _historical_passenger_load_factor() -> pd.DataFrame:
-    """Load historical regional passenger load factor database.
+def _historical_regional_load_factor(path: pathlib.Path) -> pd.DataFrame:
+    """Load the historical regional load factor database.
+
+    Daily load factors are estimated from linearly interpolating the monthly statistics.
 
     Returns
     -------
     pd.DataFrame
-        Historical regional passenger load factor for each day.
+        Historical regional load factor for each day.
 
     Notes
     -----
-    The monthly passenger load factor for each region is compiled from IATA's monthly publication
-    of the Air Passenger Market Analysis, where the static file will be continuously updated.
+    The monthly **passenger load factor** for each region is compiled from IATA's monthly
+    publication of the Air Passenger Market Analysis, where the static file will be continuously
+    updated. The report estimates the regional passenger load factor by dividing the revenue
+    passenger-km (RPK) by the available seat-km (ASK).
 
-    The report estimates the regional passenger load factor by dividing the revenue passenger-km
-    (RPK) by the available seat-km (ASK).
-
-    The daily passenger load factor is estimated from linearly interpolating the monthly statistics.
-    """
-    df = pd.read_csv(PLF_PATH)
-    df["Date"] = pd.to_datetime(df["Date"], format="%d/%m/%Y")
-    df.set_index("Date", inplace=True, drop=True)
-
-    # Interpolate monthly statistics to estimate daily load factors
-    dates = pd.date_range(start=df.index[0], end=df.index[-1], freq="1D")
-    df = df.reindex(dates)
-
-    # Fill NaN values with linear interpolation
-    df = df.interpolate(method="linear")
-    return df
-
-
-@functools.cache
-def _historical_cargo_load_factor() -> pd.DataFrame:
-    """Load historical regional cargo load factor database.
-
-    Returns
-    -------
-    pd.DataFrame
-        Historical regional cargo load factor for each day.
-
-    Notes
-    -----
-    The monthly cargo load factor for each region is compiled from IATA's monthly publication
+    The monthly **cargo load factor** for each region is compiled from IATA's monthly publication
     of the Air Cargo Market Analysis, where the static file will be continuously updated.
-
     The report estimates the regional cargo load factor by dividing the freight tonne-km (FTK)
     by the available freight tonne-km (AFTK).
-
-    The daily cargo load factor is estimated from linearly interpolating the monthly statistics.
     """
-    df = pd.read_csv(CLF_PATH)
-    df["Date"] = pd.to_datetime(df["Date"], format="%d/%m/%Y")
-    df.set_index("Date", inplace=True, drop=True)
-
-    # Interpolate monthly statistics to estimate daily load factors
-    dates = pd.date_range(start=df.index[0], end=df.index[-1], freq="1D")
-    df = df.reindex(dates)
-
-    # Fill NaN values with linear interpolation
-    df = df.interpolate(method="linear")
-    return df
+    df = pd.read_csv(path, index_col="Date", parse_dates=True, date_format="%d/%m/%Y")
+    return df.resample("D").interpolate()
 
 
 AIRPORT_TO_REGION = {
@@ -471,9 +434,9 @@ def aircraft_load_factor(
 
     # Use passenger or cargo database
     if freighter:
-        lf_database = _historical_cargo_load_factor()
+        lf_database = _historical_regional_load_factor(CLF_PATH)
     else:
-        lf_database = _historical_passenger_load_factor()
+        lf_database = _historical_regional_load_factor(PLF_PATH)
 
     # If `first_waypoint_time` is None, global/regional averages for the trailing twelve months
     # will be assumed.
