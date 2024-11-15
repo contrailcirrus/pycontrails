@@ -379,7 +379,99 @@ def _load_historical_load_factors() -> pd.DataFrame:
     return df
 
 
+HISTORICAL_PLF = _load_historical_load_factors()
 
+AIRPORT_TO_REGION = {
+    "A": "Asia Pacific",
+    "B": "Europe",
+    "C": "North America",
+    "D": "Africa",
+    "E": "Europe",
+    "F": "Africa",
+    "G": "Africa",
+    "H": "Africa",
+    "K": "North America",
+    "L": "Europe",
+    "M": "Latin America",
+    "N": "Asia Pacific",
+    "O": "Middle East",
+    "P": "Asia Pacific",
+    "R": "Asia Pacific",
+    "S": "Latin America",
+    "T": "Latin America",
+    "U": "Asia Pacific",
+    "V": "Asia Pacific",
+    "W": "Asia Pacific",
+    "Y": "Asia Pacific",
+    "Z": "Asia Pacific",
+}
+
+
+def passenger_load_factor(
+    origin_airport_icao: str | None = None,
+    first_waypoint_time: pd.Timestamp | None = None,
+) -> float:
+    """
+    Estimate passenger load factor based on historical data.
+
+    Accounts for regional and seasonal differences.
+
+    Parameters
+    ----------
+    origin_airport_icao : str | None
+        ICAO code of origin airport. If None is provided, then globally averaged values will be
+        assumed at `first_waypoint_time`.
+    first_waypoint_time : pd.Timestamp | None
+        First waypoint UTC time. If None is provided, then regionally or globally averaged values
+        from the trailing twelve months will be used.
+
+    Returns
+    -------
+    float
+        Passenger load factor [0 - 1], unitless
+    """
+    region = "Global"
+    date = first_waypoint_time.floor('D')
+
+    # If origin airport is provided, use regional load factor
+    if origin_airport_icao is not None:
+        first_letter = origin_airport_icao[0]
+        region = AIRPORT_TO_REGION.get(first_letter, "Global")
+
+    # If `date` is more recent than the historical data, then use most recent load factors
+    # from trailing twelve months as seasonal values are stable except in COVID years (2020-22).
+    if date > HISTORICAL_PLF.index[-1]:
+        # Check for leap year
+        if date.month == 2 and date.day == 29:
+            date = date.replace(day=28)
+
+        filt = HISTORICAL_PLF.index > (HISTORICAL_PLF.index[-1] - pd.DateOffset(months=12))
+        ttm = HISTORICAL_PLF[filt].copy()
+        ttm['mm_dd'] = ttm.index.strftime('%m-%d')
+
+        date_mm_dd = date.strftime('%m-%d')
+        date = pd.to_datetime(ttm.loc[ttm['mm_dd'] == date_mm_dd].index[0])
+
+    # (2) If `date` is before the historical data, then use 2019 load factors.
+    if date < HISTORICAL_PLF.index[0]:
+        # Check for leap year
+        if date.month == 2 and date.day == 29:
+            date = date.replace(day=28)
+
+        filt = HISTORICAL_PLF.index < (HISTORICAL_PLF.index[0] + pd.DateOffset(months=12))
+        ftm = HISTORICAL_PLF[filt].copy()
+        ftm['mm_dd'] = ftm.index.strftime('%m-%d')
+
+        date_mm_dd = date.strftime('%m-%d')
+        date = pd.to_datetime(ftm.loc[ftm['mm_dd'] == date_mm_dd].index[0])
+
+    # (3) If `date` is None, global/regional averages for the trailing twelve months will be assumed
+    if date is None:
+        filt = HISTORICAL_PLF.index > (HISTORICAL_PLF.index[-1] - pd.DateOffset(months=12))
+        ttm = HISTORICAL_PLF[filt].copy()
+        return np.nanmean(ttm[region].to_numpy())
+
+    return HISTORICAL_PLF.loc[date, region]
 
 
 def aircraft_weight(aircraft_mass: ArrayOrFloat) -> ArrayOrFloat:
