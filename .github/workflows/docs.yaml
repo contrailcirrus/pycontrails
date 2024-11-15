@@ -39,9 +39,7 @@ jobs:
       # This is useful when running between tags from a workflow-dispatch
       - name: Get the pycontrails version
         id: get_version
-        run: |
-          echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-          echo "VERSION=$VERSION"
+        run: echo "version=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
 
       - uses: actions/setup-python@v5
         with:
@@ -57,7 +55,7 @@ jobs:
       - name: Install pycontrails (dev)
         run: make dev-install
         env:
-          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYCONTRAILS: ${{ steps.get_version.outputs.VERSION }}
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYCONTRAILS: ${{ steps.get_version.outputs.version }}
 
       # https://cloud.google.com/artifact-registry/docs/python/authentication
       - name: Install latest pycontrails-bada
