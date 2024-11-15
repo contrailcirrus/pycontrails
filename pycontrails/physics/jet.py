@@ -20,7 +20,8 @@ from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 
 logger = logging.getLogger(__name__)
 _path_to_static = pathlib.Path(__file__).parent / "static"
-LOAD_FACTORS_PATH = _path_to_static / "iata-regional-load-factors-20241115.csv"
+PLF_PATH = _path_to_static / "iata-passenger-load-factors-20241115.csv"
+CLF_PATH = _path_to_static / "iata-cargo-load-factors-20241115.csv"
 
 
 # -------------------
@@ -348,7 +349,7 @@ def reserve_fuel_requirements(
 # Aircraft mass
 # -------------
 
-def _load_historical_load_factors() -> pd.DataFrame:
+def _historical_passenger_load_factor() -> pd.DataFrame:
     """Load historical regional passenger load factor database.
 
     Returns
@@ -366,7 +367,7 @@ def _load_historical_load_factors() -> pd.DataFrame:
 
     The daily passenger load factor is estimated from linearly interpolating the monthly statistics.
     """
-    df = pd.read_csv(LOAD_FACTORS_PATH)
+    df = pd.read_csv(PLF_PATH)
     df["Date"] = pd.to_datetime(df["Date"], format="%d/%m/%Y")
     df.set_index("Date", inplace=True, drop=True)
 
@@ -379,7 +380,39 @@ def _load_historical_load_factors() -> pd.DataFrame:
     return df
 
 
-HISTORICAL_PLF = _load_historical_load_factors()
+def _historical_cargo_load_factor() -> pd.DataFrame:
+    """Load historical regional cargo load factor database.
+
+    Returns
+    -------
+    pd.DataFrame
+        Historical regional cargo load factor for each day.
+
+    Notes
+    -----
+    The monthly cargo load factor for each region is compiled from IATA's monthly publication
+    of the Air Cargo Market Analysis, where the static file will be continuously updated.
+
+    The report estimates the regional cargo load factor by dividing the freight tonne-km (FTK)
+    by the available freight tonne-km (AFTK).
+
+    The daily cargo load factor is estimated from linearly interpolating the monthly statistics.
+    """
+    df = pd.read_csv(CLF_PATH)
+    df["Date"] = pd.to_datetime(df["Date"], format="%d/%m/%Y")
+    df.set_index("Date", inplace=True, drop=True)
+
+    # Interpolate monthly statistics to estimate daily load factors
+    dates = pd.date_range(start=df.index[0], end=df.index[-1], freq='1D')
+    df = df.reindex(dates)
+
+    # Fill NaN values with linear interpolation
+    df = df.interpolate(method='linear')
+    return df
+
+
+HISTORICAL_PLF = _historical_passenger_load_factor()
+HISTORICAL_CLF = _historical_cargo_load_factor()
 
 AIRPORT_TO_REGION = {
     "A": "Asia Pacific",
@@ -407,12 +440,13 @@ AIRPORT_TO_REGION = {
 }
 
 
-def passenger_load_factor(
+def aircraft_load_factor(
     origin_airport_icao: str | None = None,
     first_waypoint_time: pd.Timestamp | None = None,
+    freighter: bool = False,
 ) -> float:
     """
-    Estimate passenger load factor based on historical data.
+    Estimate passenger/cargo load factor based on historical data.
 
     Accounts for regional and seasonal differences.
 
@@ -424,19 +458,27 @@ def passenger_load_factor(
     first_waypoint_time : pd.Timestamp | None
         First waypoint UTC time. If None is provided, then regionally or globally averaged values
         from the trailing twelve months will be used.
+    freighter: bool
+        Historical cargo load factor will be used if true, otherwise use passenger load factor.
 
     Returns
     -------
     float
-        Passenger load factor [0 - 1], unitless
+        Passenger/cargo load factor [0 - 1], unitless
     """
     region = "Global"
+
+    # Use passenger or cargo database
+    if freighter:
+        lf_database = HISTORICAL_CLF
+    else:
+        lf_database = HISTORICAL_PLF
 
     # If `first_waypoint_time` is None, global/regional averages for the trailing twelve months
     # will be assumed.
     if first_waypoint_time is None:
-        filt = HISTORICAL_PLF.index > (HISTORICAL_PLF.index[-1] - pd.DateOffset(months=12))
-        ttm = HISTORICAL_PLF[filt].copy()
+        filt = lf_database.index > (lf_database.index[-1] - pd.DateOffset(months=12))
+        ttm = lf_database[filt].copy()
         return np.nanmean(ttm[region].to_numpy())
 
     date = first_waypoint_time.floor('D')
@@ -448,32 +490,32 @@ def passenger_load_factor(
 
     # If `date` is more recent than the historical data, then use most recent load factors
     # from trailing twelve months as seasonal values are stable except in COVID years (2020-22).
-    if date > HISTORICAL_PLF.index[-1]:
+    if date > lf_database.index[-1]:
         # Check for leap year
         if date.month == 2 and date.day == 29:
             date = date.replace(day=28)
 
-        filt = HISTORICAL_PLF.index > (HISTORICAL_PLF.index[-1] - pd.DateOffset(months=12))
-        ttm = HISTORICAL_PLF[filt].copy()
+        filt = lf_database.index > (lf_database.index[-1] - pd.DateOffset(months=12))
+        ttm = lf_database[filt].copy()
         ttm['mm_dd'] = ttm.index.strftime('%m-%d')
 
         date_mm_dd = date.strftime('%m-%d')
         date = pd.to_datetime(ttm.loc[ttm['mm_dd'] == date_mm_dd].index[0])
 
     # (2) If `date` is before the historical data, then use 2019 load factors.
-    if date < HISTORICAL_PLF.index[0]:
+    if date < lf_database.index[0]:
         # Check for leap year
         if date.month == 2 and date.day == 29:
             date = date.replace(day=28)
 
-        filt = HISTORICAL_PLF.index < (HISTORICAL_PLF.index[0] + pd.DateOffset(months=12))
-        ftm = HISTORICAL_PLF[filt].copy()
+        filt = lf_database.index < (lf_database.index[0] + pd.DateOffset(months=12))
+        ftm = lf_database[filt].copy()
         ftm['mm_dd'] = ftm.index.strftime('%m-%d')
 
         date_mm_dd = date.strftime('%m-%d')
         date = pd.to_datetime(ftm.loc[ftm['mm_dd'] == date_mm_dd].index[0])
 
-    return HISTORICAL_PLF.loc[date, region]
+    return lf_database.loc[date, region]
 
 
 def aircraft_weight(aircraft_mass: ArrayOrFloat) -> ArrayOrFloat:
