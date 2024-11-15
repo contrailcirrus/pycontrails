@@ -955,7 +955,7 @@ def test_xarray_contrail(cocip_persistent: Cocip) -> None:
 def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerformance) -> None:
     """Test `Cocip` use of `Emissions` model."""
     # demo synthetic flight for BADA
-    attrs = {"flight_id": "test BADA/EDB", "aircraft_type": "A320"}
+    attrs = {"flight_id": "test BADA/EDB", "aircraft_type": "A320", "load_factor": 0.7}
 
     # Example flight
     df = pd.DataFrame()
