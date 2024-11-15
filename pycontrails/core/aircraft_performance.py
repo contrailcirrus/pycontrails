@@ -26,7 +26,7 @@ from pycontrails.physics import jet
 from pycontrails.utils.types import ArrayOrFloat
 
 #: Default load factor for aircraft performance models.
-DEFAULT_LOAD_FACTOR = 0.7
+DEFAULT_LOAD_FACTOR = 0.83
 
 
 # --------------------------------------
