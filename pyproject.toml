@@ -1,11 +1,6 @@
 # https://setuptools.readthedocs.io/en/latest/
 [build-system]
-requires = [
-    "cython>=3",
-    "numpy>=2.0.0",
-    "setuptools>=64",
-    "setuptools-scm>=8",
-]
+requires = ["cython>=3", "numpy>=2.0.0", "setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
