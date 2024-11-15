@@ -407,6 +407,7 @@ AIRPORT_TO_REGION = {
 def aircraft_load_factor(
     origin_airport_icao: str | None = None,
     first_waypoint_time: pd.Timestamp | None = None,
+    *,
     freighter: bool = False,
 ) -> float:
     """
@@ -430,7 +431,12 @@ def aircraft_load_factor(
     float
         Passenger/cargo load factor [0 - 1], unitless
     """
-    region = "Global"
+    # If origin airport is provided, use regional load factor
+    if origin_airport_icao is not None:
+        first_letter = origin_airport_icao[0]
+        region = AIRPORT_TO_REGION.get(first_letter, "Global")
+    else:
+        region = "Global"
 
     # Use passenger or cargo database
     if freighter:
@@ -441,45 +447,30 @@ def aircraft_load_factor(
     # If `first_waypoint_time` is None, global/regional averages for the trailing twelve months
     # will be assumed.
     if first_waypoint_time is None:
-        filt = lf_database.index > (lf_database.index[-1] - pd.DateOffset(months=12))
-        ttm = lf_database[filt].copy()
-        return np.nanmean(ttm[region].to_numpy())
+        t1 = lf_database.index[-1]
+        t0 = t1 - pd.DateOffset(months=12) + pd.DateOffset(days=1)
+        return lf_database.loc[t0:t1, region].mean().item()
 
     date = first_waypoint_time.floor("D")
-
-    # If origin airport is provided, use regional load factor
-    if origin_airport_icao is not None:
-        first_letter = origin_airport_icao[0]
-        region = AIRPORT_TO_REGION.get(first_letter, "Global")
 
     # If `date` is more recent than the historical data, then use most recent load factors
     # from trailing twelve months as seasonal values are stable except in COVID years (2020-22).
     if date > lf_database.index[-1]:
-        # Check for leap year
-        if date.month == 2 and date.day == 29:
+        if date.month == 2 and date.day == 29:  # remove any leap day
             date = date.replace(day=28)
 
-        filt = lf_database.index > (lf_database.index[-1] - pd.DateOffset(months=12))
-        ttm = lf_database[filt].copy()
-        ttm["mm_dd"] = ttm.index.strftime("%m-%d")
-
-        date_mm_dd = date.strftime("%m-%d")
-        date = pd.to_datetime(ttm.loc[ttm["mm_dd"] == date_mm_dd].index[0])
+        filt = (lf_database.index.month == date.month) & (lf_database.index.day == date.day)
+        date = lf_database.index[filt][-1]
 
     # (2) If `date` is before the historical data, then use 2019 load factors.
-    if date < lf_database.index[0]:
-        # Check for leap year
-        if date.month == 2 and date.day == 29:
+    elif date < lf_database.index[0]:
+        if date.month == 2 and date.day == 29:  # remove any leap day
             date = date.replace(day=28)
 
-        filt = lf_database.index < (lf_database.index[0] + pd.DateOffset(months=12))
-        ftm = lf_database[filt].copy()
-        ftm["mm_dd"] = ftm.index.strftime("%m-%d")
+        filt = (lf_database.index.month == date.month) & (lf_database.index.day == date.day)
+        date = lf_database.index[filt][0]
 
-        date_mm_dd = date.strftime("%m-%d")
-        date = pd.to_datetime(ftm.loc[ftm["mm_dd"] == date_mm_dd].index[0])
-
-    return lf_database.loc[date, region]
+    return lf_database.at[date, region].item()
 
 
 def aircraft_weight(aircraft_mass: ArrayOrFloat) -> ArrayOrFloat:
