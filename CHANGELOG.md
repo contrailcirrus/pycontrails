@@ -2,9 +2,14 @@
 
 ## v0.54.3 (unreleased)
 
+### Breaking changes
+
+- Update the default load factor from 70% to 83% to be consistent with historical data. This is used whenever an aircraft performance model is run without a specified load factor.
+
 ### Features
 
 - Create new function `ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
+- Add a new `jet.aircraft_load_factor` function to estimate aircraft (passenger/cargo) load factor based on historical monthly and regional load factors provided by IATA. This improves upon the default load factor assumption. Historical load factor databases will be continuously updated as new data is released.
 
 ### Fixes
 
