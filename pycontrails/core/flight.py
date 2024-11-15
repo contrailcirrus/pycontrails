@@ -806,7 +806,6 @@ class Flight(GeoVectorDataset):
         nominal_rocd: float = constants.nominal_rocd,
         drop: bool = True,
         keep_original_index: bool = False,
-        climb_descend_at_end: bool = False,
     ) -> Flight:
         """Resample and fill flight trajectory with geodesics and linear interpolation.
 
@@ -845,9 +844,6 @@ class Flight(GeoVectorDataset):
             Keep the original index of the :class:`Flight` in addition to the new
             resampled index. Defaults to ``False``.
             .. versionadded:: 0.45.2
-        climb_or_descend_at_end : bool
-            If true, the climb or descent will be placed at the end of each segment
-            rather than the start. Default is false (climb or descent immediately).
 
         Returns
         -------
@@ -946,9 +942,10 @@ class Flight(GeoVectorDataset):
 
         # STEP 6: Interpolate nan values in altitude
         altitude = df["altitude"].to_numpy()
+        time = df.index.to_numpy()
         if np.any(np.isnan(altitude)):
             df_freq = pd.Timedelta(freq).to_numpy()
-            new_alt = _altitude_interpolation(altitude, nominal_rocd, df_freq, climb_descend_at_end)
+            new_alt = _altitude_interpolation(altitude, time, nominal_rocd=nominal_rocd)
             _verify_altitude(new_alt, nominal_rocd, df_freq)
             df["altitude"] = new_alt
 
@@ -1704,9 +1701,10 @@ def _sg_filter(
 
 def _altitude_interpolation(
     altitude: npt.NDArray[np.floating],
-    nominal_rocd: float,
-    freq: np.timedelta64,
-    climb_or_descend_at_end: bool = False,
+    time: npt.NDArray[np.datetime64],
+    nominal_rocd: float = constants.nominal_rocd,
+    minimum_cruise_altitude_ft: float = 20000.0,
+    assumed_cruise_altitude_ft: float = 30000.0,
 ) -> npt.NDArray[np.floating]:
     """Interpolate nan values in ``altitude`` array.
 
@@ -1722,28 +1720,45 @@ def _altitude_interpolation(
     altitude : npt.NDArray[np.floating]
         Array of altitude values containing nan values. This function will raise
         an error if ``altitude`` does not contain nan values. Moreover, this function
-        assumes the initial and final entries in ``altitude`` are not nan.
+        assumes the initial and final entries in ``altitude`` are not nan, [:math:`m`]
+    time : npt.NDArray[np.datetime64]
+        Timestamp at each waypoint
     nominal_rocd : float
-        Nominal rate of climb/descent, in m/s
-    freq : np.timedelta64
-        Frequency of time index associated to ``altitude``.
-    climb_or_descend_at_end : bool
-        If true, the climb or descent will be placed at the end of each segment
-        rather than the start. Default is false (climb or descent immediately).
+        Nominal rate of climb/descent, [:math:`m s^{-1}`]
+    minimum_cruise_altitude_ft : float
+        Minimium cruising altitude for a given aircraft type, [:math:`ft`]
+    assumed_cruise_altitude_ft : float
+        Assumed cruising altitude for a given aircraft type, [:math:`ft`]
 
     Returns
     -------
     npt.NDArray[np.floating]
-        Altitude after nan values have been filled
-    """
-    # Determine nan state of altitude
-    isna = np.isnan(altitude)
+        Altitude after nan values have been filled, [:math:`m`]
 
-    start_na = np.empty(altitude.size, dtype=bool)
+    Notes
+    -----
+    Default values for `minimum_cruise_altitude_ft` and `assumed_cruise_altitude_ft` should be
+    provided if aircraft-specific parameters are available to improve the output quality.
+
+    We can assume `minimum_cruise_altitude_ft` as 0.5 times the aircraft service ceiling, and
+    `assumed_cruise_altitude_ft` as 0.8 times the aircraft service ceiling.
+
+    Assume that aircraft will generally prefer to climb to a higher altitude as early as possible,
+    and descent to a lower altitude as late as possible, because a higher altitude can reduce
+    drag and fuel consumption.
+    """
+    # Work in units of feet
+    alt_ft = units.m_to_ft(altitude)
+    nominal_rocd_ft_min = units.m_to_ft(nominal_rocd) * 60
+
+    # Determine nan state of altitude
+    isna = np.isnan(alt_ft)
+
+    start_na = np.empty(alt_ft.size, dtype=bool)
     start_na[:-1] = ~isna[:-1] & isna[1:]
     start_na[-1] = False
 
-    end_na = np.empty(altitude.size, dtype=bool)
+    end_na = np.empty(alt_ft.size, dtype=bool)
     end_na[0] = False
     end_na[1:] = isna[:-1] & ~isna[1:]
 
@@ -1752,177 +1767,101 @@ def _altitude_interpolation(
     end_na_idxs = np.flatnonzero(end_na)
     na_group_size = end_na_idxs - start_na_idxs
 
-    if climb_or_descend_at_end:
-        return _altitude_interpolation_climb_descend_end(
-            altitude, na_group_size, nominal_rocd, freq, isna
+    # NOTE: Only fill altitude gaps that require special attention
+    # At the end of this for loop, those with NaN altitudes will be filled with pd.interpolate
+    for i in range(len(na_group_size)):
+        # Assume linear interpolation if NaN gap is very small.
+        if na_group_size[i] < 2:
+            continue
+
+        alt_ft_start = alt_ft[start_na_idxs[i]]
+        alt_ft_end = alt_ft[end_na_idxs[i]]
+        time_start = time[start_na_idxs[i]]
+        time_end = time[end_na_idxs[i]]
+
+        # Calculate parameters to determine how to interpolate altitude
+        # Time to next waypoint
+        dt_next = (time_end - time_start) / np.timedelta64(1, "m")
+
+        # Rate of climb and descent to next waypoint, in ft/min
+        rocd_next = (alt_ft_end - alt_ft_start) / dt_next
+
+        # (1): Unrealistic scenario
+        is_unrealistic = (
+            (alt_ft_start < minimum_cruise_altitude_ft) and
+            (alt_ft_end < minimum_cruise_altitude_ft) and
+            (dt_next > 60)
         )
 
-    return _altitude_interpolation_climb_descend_middle(
-        altitude, start_na_idxs, end_na_idxs, na_group_size, freq, nominal_rocd, isna
-    )
+        # If unrealistic, assume flight will climb to cruise altitudes (0.8 * max_altitude_ft),
+        # stay there, and then descent to the next known waypoint
+        if is_unrealistic:
+            # Add altitude at top of climb
+            alt_ft_cruise = assumed_cruise_altitude_ft
+            d_alt_start = alt_ft_cruise - alt_ft_start
+            dt_climb = int(np.ceil(d_alt_start / nominal_rocd_ft_min))
+            t_cruise_start = time_start + np.timedelta64(dt_climb, "m")
+            idx_cruise_start = np.argwhere(time > t_cruise_start)[0][0]
+            alt_ft[idx_cruise_start] = alt_ft_cruise
 
+            # Add altitude at top of descent
+            d_alt_end = alt_ft_cruise - alt_ft_end
+            dt_descent = int(np.ceil(d_alt_end / nominal_rocd_ft_min))
+            t_cruise_end = time_end - np.timedelta64(dt_descent, "m")
+            idx_cruise_end = np.argwhere(time < t_cruise_end)[-1][0]
+            alt_ft[idx_cruise_end] = alt_ft_cruise
+            continue
 
-def _altitude_interpolation_climb_descend_end(
-    altitude: npt.NDArray[np.floating],
-    na_group_size: npt.NDArray[np.intp],
-    nominal_rocd: float,
-    freq: np.timedelta64,
-    isna: npt.NDArray[np.bool_],
-) -> npt.NDArray[np.floating]:
-    """Interpolate altitude values by placing climbs/descents at end of nan sequences.
+        # (2): If both altitudes are the same, then skip entire operations below
+        if alt_ft_start == alt_ft_end:
+            continue
 
-    The segment will remain at constant elevation until the end of the segment where
-    it will climb or descend at a constant rocd based on `nominal_rocd`, reaching the
-    target altitude at the end of the segment.
+        # (3): If cruise over 2 h with small altitude change, set change to mid-point
+        is_long_segment_small_altitude_change = (
+            (rocd_next < 500) and (rocd_next > -500) and (dt_next > 120) and
+            (alt_ft_start > minimum_cruise_altitude_ft) and
+            (alt_ft_end > minimum_cruise_altitude_ft)
+        )
 
-    Parameters
-    ----------
-    altitude : npt.NDArray[np.floating]
-        Array of altitude values containing nan values. This function will raise
-        an error if ``altitude`` does not contain nan values. Moreover, this function
-        assumes the initial and final entries in ``altitude`` are not nan.
-    na_group_size : npt.NDArray[np.intp]
-        Array of the length of each consecutive sequence of nan values within the
-        array provided to input parameter `altitude`.
-    nominal_rocd : float
-        Nominal rate of climb/descent, in m/s
-    freq : np.timedelta64
-        Frequency of time index associated to ``altitude``.
-    isna : npt.NDArray[np.bool_]
-        Array of boolean values indicating whether or not each entry in `altitude`
-        is nan-valued.
-    -------
-    npt.NDArray[np.floating]
-        Altitude after nan values have been filled
-    """
-    cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
-    cumalt = np.concatenate(cumalt_list)
-    cumalt = cumalt * nominal_rocd * (freq / np.timedelta64(1, "s"))
+        if is_long_segment_small_altitude_change:
+            mid_na_idx = int(0.5 * (start_na_idxs[i] + end_na_idxs[i]))
+            alt_ft[mid_na_idx] = alt_ft_start
+            alt_ft[mid_na_idx + 1] = alt_ft_end
+            continue
 
-    # Expand cumalt to the full size of altitude
-    nominal_fill = np.zeros_like(altitude)
-    nominal_fill[isna] = cumalt
+        # (4): If large time gap and altitude difference, climb until desired altitude and cruise
+        if (dt_next > 20) and (rocd_next > 0):
+            dt_climb = int(np.ceil((alt_ft_end - alt_ft_start) / nominal_rocd_ft_min))
+            t_climb_complete = time_start + np.timedelta64(dt_climb, "m")
+            idx_climb_complete = np.argwhere(time > t_climb_complete)[0][0]
+            alt_ft[idx_climb_complete] = alt_ft_end
+            continue
 
-    # Use pandas to forward and backfill altitude values
-    s = pd.Series(altitude)
-    s_ff = s.ffill()
-    s_bf = s.bfill()
+        # (5): If shallow climb (0 < `rocd_next` < 500 ft/min), assume climb in `next step`
+        if (rocd_next < 500) and (rocd_next > 0):
+            alt_ft[start_na_idxs[i] + 1] = alt_ft_end
+            continue
 
-    # Construct altitude values if the flight were to climb / descent throughout
-    # group of consecutive nan values. The call to np.minimum / np.maximum cuts
-    # the climb / descent off at the terminal altitude of the nan group
-    fill_climb = np.maximum(s_ff, s_bf - nominal_fill)
-    fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
+        # (6): If large time gap and altitude difference, assume descent towards the end
+        if (dt_next > 20) and (rocd_next < 0):
+            dt_descent = int(np.ceil((alt_ft_start - alt_ft_end) / nominal_rocd_ft_min))
+            t_descent_start = time_end - np.timedelta64(dt_descent, "m")
+            idx_descent_start = np.argwhere(time > t_descent_start)[0][0]
+            alt_ft[idx_descent_start] = alt_ft_start
+            continue
 
-    # Explicitly determine if the flight is in a climb or descent state
-    sign = np.full_like(altitude, np.nan)
-    sign[~isna] = np.sign(np.diff(altitude[~isna], append=np.nan))
-    sign = pd.Series(sign).ffill()
+        # (7): If shallow descent (-250 < `rocd_next` < 0 ft/min), then assume descent in last step.
+        if (rocd_next < 0) and (rocd_next > -250):
+            alt_ft[end_na_idxs[i] - 1] = alt_ft_start
+            continue
 
-    # And return the mess
-    return np.where(sign == 1.0, fill_climb, fill_descent)
-
-
-def _altitude_interpolation_climb_descend_middle(
-    altitude: npt.NDArray[np.floating],
-    start_na_idxs: npt.NDArray[np.intp],
-    end_na_idxs: npt.NDArray[np.intp],
-    na_group_size: npt.NDArray[np.intp],
-    freq: np.timedelta64,
-    nominal_rocd: float,
-    isna: npt.NDArray[np.bool_],
-) -> npt.NDArray[np.floating]:
-    """Interpolate nan altitude values based on step-climb logic.
-
-    For short segments, the climb will be placed at the begining of the segment. For
-    long climbs (greater than two hours) the climb will be placed in the middle. For
-    all descents, the descent will be placed at the end of the segment.
-
-    Parameters
-    ----------
-    altitude : npt.NDArray[np.floating]
-        Array of altitude values containing nan values. This function will raise
-        an error if ``altitude`` does not contain nan values. Moreover, this function
-        assumes the initial and final entries in ``altitude`` are not nan.
-    start_na_idxs : npt.NDArray[np.intp]
-        Array of indices of the array `altitude` that correspond to the last non-nan-
-        valued index before a sequence of consequtive nan values.
-    end_na_idxs : npt.NDArray[np.intp]
-        Array of indices of the array `altitude` that correspond to the first non-nan-
-        valued index after a sequence of consequtive nan values.
-    na_group_size : npt.NDArray[np.intp]
-        Array of the length of each consecutive sequence of nan values within the
-        array provided to input parameter `altitude`.
-    nominal_rocd : float
-        Nominal rate of climb/descent, in m/s
-    freq : np.timedelta64
-        Frequency of time index associated to ``altitude``.
-    isna : npt.NDArray[np.bool_]
-        Array of boolean values indicating whether or not each entry in `altitude`
-        is nan-valued.
-    -------
-    npt.NDArray[np.floating]
-        Altitude after nan values have been filled
-    """
-    s = pd.Series(altitude)
-
-    # Check to see if we have gaps greater than two hours
-    step_threshold = np.timedelta64(2, "h") / freq
-    step_groups = na_group_size > step_threshold
-    if np.any(step_groups):
-        # If there are gaps greater than two hours, step through one by one
-        for i, step_group in enumerate(step_groups):
-            # Skip short segments and segments that do not climb
-            if not step_group:
-                continue
-            if s[start_na_idxs[i]] >= s[end_na_idxs[i]]:
-                continue
-
-            # We have a long climbing segment.  Keep first half of segment at the starting
-            # altitude, then climb at mid point. Adjust indicies computed before accordingly
-            na_group_size[i], is_odd = divmod(na_group_size[i], 2)
-            nan_fill_size = na_group_size[i] + is_odd
-
-            sl = slice(start_na_idxs[i], start_na_idxs[i] + nan_fill_size + 1)
-            isna[sl] = False
-            s[sl] = s[start_na_idxs[i]]
-            start_na_idxs[i] += nan_fill_size
-
-    # Use pandas to forward and backfill altitude values
-    s_ff = s.ffill()
-    s_bf = s.bfill()
-
-    # Form array of cumulative altitude values if the flight were to climb
-    # at nominal_rocd over each group of nan
-    cumalt_list = []
-    for start_na_idx, end_na_idx, size in zip(
-        start_na_idxs, end_na_idxs, na_group_size, strict=True
-    ):
-        if s[start_na_idx] <= s[end_na_idx]:
-            cumalt_list.append(np.arange(1, size, dtype=float))
-        else:
-            cumalt_list.append(np.flip(np.arange(1, size, dtype=float)))  # type: ignore[arg-type]
-
-    cumalt = np.concatenate(cumalt_list)
-    cumalt = cumalt * nominal_rocd * (freq / np.timedelta64(1, "s"))
-
-    # Expand cumalt to the full size of altitude
-    nominal_fill = np.zeros_like(altitude)
-    nominal_fill[isna] = cumalt
-
-    # Construct altitude values if the flight were to climb / descent throughout
-    # group of consecutive nan values. The call to np.minimum / np.maximum cuts
-    # the climb / descent off at the terminal altitude of the nan group
-    fill_climb = np.minimum(s_ff + nominal_fill, s_bf)
-    fill_descent = np.minimum(s_ff, s_bf + nominal_fill)
-
-    # Explicitly determine if the flight is in a climb or descent state
-    sign = np.full_like(altitude, np.nan)
-    sign[~isna] = np.sign(np.diff(s[~isna], append=np.nan))
-    sign = pd.Series(sign).ffill()
-
-    # And return the mess
-    return np.where(sign == 1.0, fill_climb, fill_descent)
+    # If all conditions above are not satisfied, then linearly interpolate between waypoints
+    res = pd.DataFrame()
+    res["altitude_ft"] = alt_ft
+    res.index = time
+    res.loc[:, "altitude_ft"] = res.loc[:, "altitude_ft"].interpolate(method="index")
+    new_alt = units.ft_to_m(res["altitude_ft"].to_numpy())
+    return new_alt
 
 
 def _verify_altitude(
