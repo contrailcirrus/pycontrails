@@ -1324,34 +1324,38 @@ def test_load_factor_estimates() -> None:
     # Test normal times
     origin_airport_icao = "WSSS"
     first_waypoint_time = pd.to_datetime("2024-06-01 09:21:48")
-    lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
+    lf = jet.aircraft_load_factor(origin_airport_icao, first_waypoint_time)
     np.testing.assert_array_almost_equal(lf, [0.824], decimal=3)
 
     # Test date out of bounds
     first_waypoint_time = pd.to_datetime("2035-06-01 09:21:48")
-    lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
+    lf = jet.aircraft_load_factor(origin_airport_icao, first_waypoint_time)
     np.testing.assert_array_almost_equal(lf, [0.824], decimal=3)
 
     first_waypoint_time = pd.to_datetime("2016-06-15 17:39:27")
-    lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
+    lf = jet.aircraft_load_factor(origin_airport_icao, first_waypoint_time)
     np.testing.assert_array_almost_equal(lf, [0.821], decimal=3)
 
     # No date provided: Regional trailing twelve-month averages assumed
-    lf = jet.passenger_load_factor(origin_airport_icao, None)
+    lf = jet.aircraft_load_factor(origin_airport_icao, None)
     np.testing.assert_array_almost_equal(lf, [0.830], decimal=3)
 
     # No airport information: Global values will be assumed
-    lf = jet.passenger_load_factor(None, first_waypoint_time)
+    lf = jet.aircraft_load_factor(None, first_waypoint_time)
     np.testing.assert_array_almost_equal(lf, [0.843], decimal=3)
 
     # Test erroneous airport information
     origin_airport_icao = "!REF"
-    lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
+    lf = jet.aircraft_load_factor(origin_airport_icao, first_waypoint_time)
     np.testing.assert_array_almost_equal(lf, [0.843], decimal=3)
 
     # Test COVID period
     origin_airport_icao = "KJFK"
     first_waypoint_time = pd.to_datetime("2020-03-24 00:30:24")
-    lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
+    lf = jet.aircraft_load_factor(origin_airport_icao, first_waypoint_time)
     np.testing.assert_array_almost_equal(lf, [0.439], decimal=3)
+
+    # Test freighter mode
+    lf = jet.aircraft_load_factor(origin_airport_icao, first_waypoint_time, freighter=True)
+    np.testing.assert_array_almost_equal(lf, [0.446], decimal=3)
 
