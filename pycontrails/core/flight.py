@@ -8,15 +8,15 @@ import sys
 import warnings
 from typing import TYPE_CHECKING, Any, NoReturn
 
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
-
 if sys.version_info >= (3, 12):
     from typing import override
 else:
     from typing_extensions import override
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 
 import numpy as np
@@ -766,7 +766,7 @@ class Flight(GeoVectorDataset):
     # Filter/Resample
     # ------------
 
-    def filter_by_first(self) -> Flight:
+    def filter_by_first(self) -> Self:
         """Keep first row of group of waypoints with identical coordinates.
 
         Chaining this method with `resample_and_fill` often gives a cleaner trajectory
@@ -796,7 +796,7 @@ class Flight(GeoVectorDataset):
         1       50.0       0.0       0.0 2020-01-01 02:00:00
         """
         df = self.dataframe.groupby(["longitude", "latitude"], sort=False).first().reset_index()
-        return Flight(data=df, attrs=self.attrs)
+        return type(self)(data=df, attrs=self.attrs, fuel=self.fuel)
 
     def resample_and_fill(
         self,
@@ -806,7 +806,7 @@ class Flight(GeoVectorDataset):
         nominal_rocd: float = constants.nominal_rocd,
         drop: bool = True,
         keep_original_index: bool = False,
-    ) -> Flight:
+    ) -> Self:
         """Resample and fill flight trajectory with geodesics and linear interpolation.
 
         Waypoints are resampled according to the frequency ``freq``. Values for :attr:`data`
@@ -961,7 +961,7 @@ class Flight(GeoVectorDataset):
                 msg = f"{msg} Pass 'keep_original_index=True' to keep the original index."
             warnings.warn(msg)
 
-        return Flight(data=df, attrs=self.attrs, fuel=self.fuel)
+        return type(self)(data=df, attrs=self.attrs, fuel=self.fuel)
 
     def clean_and_resample(
         self,
@@ -975,7 +975,7 @@ class Flight(GeoVectorDataset):
         drop: bool = True,
         keep_original_index: bool = False,
         climb_descend_at_end: bool = False,
-    ) -> Flight:
+    ) -> Self:
         """Resample and (possibly) filter a flight trajectory.
 
         Waypoints are resampled according to the frequency ``freq``. If the original
@@ -1071,7 +1071,7 @@ class Flight(GeoVectorDataset):
         self,
         kernel_size: int = 17,
         cruise_threshold: float = 120.0,
-    ) -> Flight:
+    ) -> Self:
         """
         Filter noisy altitude on a single flight.
 

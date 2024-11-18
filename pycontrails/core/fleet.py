@@ -132,13 +132,13 @@ class Fleet(Flight):
         return final_waypoints, fl_attrs
 
     @override
-    def copy(self, **kwargs: Any) -> Fleet:
+    def copy(self, **kwargs: Any) -> Self:
         kwargs.setdefault("fuel", self.fuel)
         kwargs.setdefault("fl_attrs", self.fl_attrs)
         return super().copy(**kwargs)
 
     @override
-    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Fleet:
+    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
         kwargs.setdefault("fuel", self.fuel)
 
         flight_ids = set(np.unique(self["flight_id"][mask]))
@@ -331,7 +331,7 @@ class Fleet(Flight):
         return np.concatenate(gs)
 
     @override
-    def resample_and_fill(self, *args: Any, **kwargs: Any) -> Fleet:
+    def resample_and_fill(self, *args: Any, **kwargs: Any) -> Self:
         flights = self.to_flight_list(copy=False)
 
         # We need to ensure that each flight has an flight_id attrs field
@@ -377,7 +377,7 @@ class Fleet(Flight):
         drop: bool = True,
         keep_original_index: bool = False,
         climb_descend_at_end: bool = False,
-    ) -> Flight:
+    ) -> NoReturn:
         msg = "Only implemented for Flight instances"
         raise NotImplementedError(msg)
 
