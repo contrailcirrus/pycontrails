@@ -1784,9 +1784,9 @@ def _altitude_interpolation(
 
         # (1): Unrealistic scenario
         is_unrealistic = (
-            (alt_ft_start < minimum_cruise_altitude_ft) and
-            (alt_ft_end < minimum_cruise_altitude_ft) and
-            (dt_next > 60)
+            (alt_ft_start < minimum_cruise_altitude_ft)
+            and (alt_ft_end < minimum_cruise_altitude_ft)
+            and (dt_next > 60)
         )
 
         # If unrealistic, assume flight will climb to cruise altitudes (0.8 * max_altitude_ft),
@@ -1814,9 +1814,11 @@ def _altitude_interpolation(
 
         # (3): If cruise over 2 h with small altitude change, set change to mid-point
         is_long_segment_small_altitude_change = (
-            (rocd_next < 500) and (rocd_next > -500) and (dt_next > 120) and
-            (alt_ft_start > minimum_cruise_altitude_ft) and
-            (alt_ft_end > minimum_cruise_altitude_ft)
+            (rocd_next < 500)
+            and (rocd_next > -500)
+            and (dt_next > 120)
+            and (alt_ft_start > minimum_cruise_altitude_ft)
+            and (alt_ft_end > minimum_cruise_altitude_ft)
         )
 
         if is_long_segment_small_altitude_change:

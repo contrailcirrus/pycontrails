@@ -441,7 +441,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
     fl10 = fl_alt.resample_and_fill("1min")
     index_sep = np.argwhere(fl10["time"] == pd.to_datetime("2000-01-01 02:00:00"))[0][0]
     np.testing.assert_array_almost_equal(fl10.altitude_ft[:index_sep], 35000.0, decimal=0)
-    np.testing.assert_array_almost_equal(fl10.altitude_ft[index_sep + 1:], 36000.0, decimal=0)
+    np.testing.assert_array_almost_equal(fl10.altitude_ft[index_sep + 1 :], 36000.0, decimal=0)
     assert _check_rocd(fl10)
 
     # SCENARIO 2: If large time gap and altitude difference, climb until desired altitude and cruise
@@ -458,7 +458,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
 
     # Takes around 10 minutes to climb to next recorded altitude (Nominal ROCD = 2500 ft/min)
     index_sep = np.argwhere(fl11["time"] == pd.to_datetime("2000-01-01 00:10:00"))[0][0]
-    np.testing.assert_array_almost_equal(fl11.altitude_ft[index_sep + 1:], 30000.0, decimal=0)
+    np.testing.assert_array_almost_equal(fl11.altitude_ft[index_sep + 1 :], 30000.0, decimal=0)
     assert _check_rocd(fl11)
 
     # SCENARIO 3: If shallow climb (0 < rocd < 500 ft/min), assume climb in next time step
@@ -488,7 +488,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
 
     # Takes less than 10 minutes to descent to next recorded altitude (Nominal ROCD = 2500 ft/min)
     index_sep = np.argwhere(fl13["time"] == pd.to_datetime("2000-01-01 00:50:00"))[0][0]
-    np.testing.assert_array_almost_equal(fl13.altitude_ft[:index_sep + 1], 30000.0, decimal=0)
+    np.testing.assert_array_almost_equal(fl13.altitude_ft[: index_sep + 1], 30000.0, decimal=0)
     assert _check_rocd(fl13)
 
     # SCENARIO 5: If shallow descent (-250 < rocd < 0 ft/min), then assume descent in last step.
@@ -520,7 +520,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
     index_sep_1 = np.argwhere(fl15["time"] == pd.to_datetime("2000-01-01 00:10:00"))[0][0]
     index_sep_2 = np.argwhere(fl15["time"] == pd.to_datetime("2000-01-01 00:50:00"))[0][0]
     np.testing.assert_array_almost_equal(
-        fl15.altitude_ft[index_sep_1 + 1:index_sep_2], 30000.0, decimal=0
+        fl15.altitude_ft[index_sep_1 + 1 : index_sep_2], 30000.0, decimal=0
     )
     assert _check_rocd(fl15)
 
