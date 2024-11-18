@@ -95,20 +95,20 @@ Reach out to `info@contrails.org <mailto:info@contrails.org>`__ to request acces
 
 Once provided access, install using:
 
-1. Follow the instructions for your platform to install the [gcloud CLI](https://cloud.google.com/sdk/docs/install)
-2. Login to `gcloud`. For alternate auth methods, see [Google Artifact Registry keyring docs](https://cloud.google.com/artifact-registry/docs/python/authentication#keyring)
+1. Follow the instructions for your platform to install the `gcloud CLI <https://cloud.google.com/sdk/docs/install>`__
+2. Login to `gcloud`. For alternate auth methods, see `Google Artifact Registry keyring docs <https://cloud.google.com/artifact-registry/docs/python/authentication#keyring>`__
 
 .. code-block:: bash
 
     gcloud auth login
 
-3. Install [keyring](https://pypi.org/project/keyring/) for Google Artifact Registry
+3. Install `keyring <https://pypi.org/project/keyring/>`__ for Google Artifact Registry
 
 .. code-block:: bash
 
     pip install keyring keyrings.google-artifactregistry-auth
 
-4. Install `pycontrails-bada` package:
+4. Install ``pycontrails-bada`` package:
 
 .. code-block:: bash
 
