@@ -2,6 +2,23 @@
 
 ## v0.54.4 (unreleased)
 
+### Features
+
+- Improve the `_altitude_interpolation` function used within `Flight.resample_and_fill` and ensure that it is consistent with the [existing GAIA publication](https://acp.copernicus.org/articles/24/725/2024/) The function `_altitude_interpolation` now accounts for various scenarios. For example:
+
+  1. Flight will automatically climb to an assumed cruise altitude if the first and next known waypoints are at very low altitudes with a large time gap.
+  1. If there are large time gaps between known waypoints with a small altitude difference, then the flight will climb at the mid-point of the segment.
+  1. If there are large time gaps and positive altitude difference, then the flight will climb at the start of its interpolation until the known cruising altitude and start its cruise phase.
+  1. If there are large time gaps and negative altitude difference, then the flight will continue cruising and only starts to descend towards the end of the interpolation.
+  1. If there is a shallow climb (ROCD < 500 ft/min), then always assume that the flight will climb at the next time step.
+  1. If there is a shallow descent (-250 < ROCD < 0 ft/min), then always assume that the flight will descend at the final time step.
+
+  Conditions (3) to (6) is based on the logic that the aircraft will generally prefer to climb to a higher altitude as early as possible, and descend to a lower altitude as late as possible, because a higher altitude can reduce drag and fuel consumption.
+
+### Breaking changes
+
+- Remove the optional input parameter `climb_descend_at_end` in `Flight.resample_and_fill`. See the description of the new `_altitude_interpolation` function for the rationale behind this change.
+
 ### Fixes
 
 - Fix the `ERA5` interface when making a pressure-level request with a single pressure level. This change accommodates CDS-Beta server behavior. Previously, a ValueError was raised in this case.
