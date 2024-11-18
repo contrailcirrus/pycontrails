@@ -10,8 +10,13 @@ Publications including ``pycontrails``:
 - :cite:`teohAviationContrailClimate2022`
 - :cite:`teohTargetedUseSustainable2022`
 - :cite:`chevallierLinearContrailsDetection2023`
-- :cite:`friasEnhancingEnvironmentalSustainability2023`
-- :cite:`geraedtsScalableSystemMeasure2023`
+- :cite:`friasFeasibilityContrailAvoidance2024`
+- :cite:`geraedtsScalableSystemMeasure2024`
+- :cite:`teohHighresolutionGlobalAviation2024`
+- :cite:`plattEffectUncertaintyHumidity2024`
+- :cite:`teohGlobalAviationContrail2024`
+- :cite:`engbergForecastingContrailClimate2024` (pre-print)
+- :cite:`lowGroundbasedContrailObservations2024` (pre-print)
 
 If you use ``pycontrails`` in your work, please cite using the Zenodo DOI:
 
