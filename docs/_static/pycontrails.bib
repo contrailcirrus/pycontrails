@@ -197,6 +197,18 @@
   langid = {english}
 }
 
+@misc{engbergForecastingContrailClimate2024,
+  title = {Forecasting Contrail Climate Forcing for Flight Planning and Air Traffic Management Applications: {{The CocipGrid}} Model in Pycontrails 0.51.0},
+  shorttitle = {Forecasting Contrail Climate Forcing for Flight Planning and Air Traffic Management Applications},
+  author = {Engberg, Zebediah and Teoh, Roger and Dean, Thomas and Stettler, Marc E. J. and Shapiro, Marc L.},
+  year = {2024},
+  month = jun,
+  doi = {10.5194/egusphere-2024-1361},
+  urldate = {2024-07-10},
+  abstract = {Abstract. The global annual mean contrail net radiative forcing may exceed that of aviation's cumulative CO2 emissions by at least two-fold. As only around 2--3 \% of all flights are likely responsible for 80 \% of the global annual contrail climate forcing, re-routing these flights could reduce the formation of strongly warming contrails. Here, we develop a contrail forecasting model that produces global predictions of persistent contrail formation and their associated climate forcing. This model builds on the methods of the existing contrail cirrus prediction model (CoCiP) to efficiently evaluate infinitesimal contrail segments initialized at each point in a regular 4D spatiotemporal grid until their end-of-life. Outputs are reported in a concise meteorology data format that integrates with existing flight planning and air traffic management workflows. This ``grid-based'' CoCiP is used to conduct a global contrail simulation for 2019 to compare with previous work and analyze spatial trends related to strongly warming/cooling contrails. We explore two approaches for integrating contrail forecasts into existing flight planning and air traffic management systems: (i) using contrail forcing as an additional cost parameter within a flight trajectory optimizer; or (ii) constructing polygons of airspace volumes with strongly-warming contrails to avoid. We demonstrate a probabilistic formulation of the grid-based model by running a Monte Carlo simulation with ensemble meteorology to mask grid cells with significant uncertainties in the simulated contrail climate forcing. This study establishes a working standard for incorporating contrail mitigation within existing flight planning and management workflows and demonstrates how forecasting uncertainty can be incorporated to minimize unintended consequences associated with increased CO2 emissions of avoidance.},
+  copyright = {https://creativecommons.org/licenses/by/4.0/}
+}
+
 @misc{eurocontrolUSERMANUALBASE2010,
   title = {{{USER MANUAL FOR THE BASE OF Aircraft DATA}} ({{BADA}}) {{REVISION}} 3.8},
   author = {Eurocontrol},
@@ -209,12 +221,21 @@
   langid = {english}
 }
 
-@inproceedings{friasEnhancingEnvironmentalSustainability2023,
-  title = {Enhancing Environmental Sustainability in Aviation: An Implementation of Contrail Mitigation Strategies in Commercial Flight Dispatching.},
-  booktitle = {{{ATM Seminar}}},
-  author = {Fr{\'i}as, Alejandra Mart{\'i}n and GmbH, {\relax FLIGHTKEYS} and Soler, Manuel},
-  year = {2023},
-  abstract = {Aviation condensation trails, also known as contrails, have a significant impact on anthropogenic climate change. One promising solution to mitigate this impact is eco-efficient flight planning that avoids contrail-prone regions with only minimal deviations in aircraft trajectories. There exist several contrail prediction models aimed at identifying these sensitive regions. Previous studies have evaluated these models in laboratory simulations, forecasting contrail probability areas and re-routing flights to circumvent them. This study advances the simulation one step further by using the real commercial flight dispatch optimization algorithm FLIGHTKEYS 5D, developed by the aviation software company Flightkeys GmbH, in combination with the contrail cirrus prediction model (CoCip), to evaluate the impact of contrails over two full operational days of a commercial airline. The results of this research provide strong evidence for the feasibility of integrating contrail mitigation techniques into commercial flight planning tools. The analysis of deviations in both the vertical and horizontal dimensions shows that a significant, even complete reduction in contrail energy forcing can be achieved with only a minimal increase in cost and fuel consumption. The study underscores the need for the aviation industry to incorporate contrail mitigation strategies into its standard operating procedures to prioritize environmental sustainability and gather valuable data and insights for ecofriendly flight planning.},
+@article{friasFeasibilityContrailAvoidance2024,
+  title = {Feasibility of Contrail Avoidance in a Commercial Flight Planning System: An Operational Analysis},
+  shorttitle = {Feasibility of Contrail Avoidance in a Commercial Flight Planning System},
+  author = {Frias, A. Martin and Shapiro, M. L. and Engberg, Z. and Zopp, R. and Soler, M. and Stettler, M. E. J.},
+  year = {2024},
+  month = mar,
+  journal = {Environmental Research: Infrastructure and Sustainability},
+  volume = {4},
+  number = {1},
+  pages = {015013},
+  publisher = {IOP Publishing},
+  issn = {2634-4505},
+  doi = {10.1088/2634-4505/ad310c},
+  urldate = {2024-05-19},
+  abstract = {Aircraft condensation trails, also known as contrails, contribute a substantial portion of aviation's overall climate footprint. Contrail impacts can be reduced through smart flight planning that avoids contrail-forming regions of the atmosphere. While previous studies have explored the operational impacts of contrail avoidance in simulated environments, this paper aims to characterize the feasibility and cost of contrail avoidance precisely within a commercial flight planning system. This study leverages the commercial Flightkeys 5D algorithm, developed by Flightkeys GmbH, with a prototypical contrail forecast model based on the Contrail Cirrus Prediction (CoCiP) model to simulate contrail avoidance on 49 411 flights during the first two weeks of June 2023, and 35 429 flights during the first two weeks of January 2024. The utilization of a commercial flight planning system enables high-accuracy estimates of additional cost and fuel investments by operators to achieve estimated reductions in contrail-energy forcing and overall flight global warming potential. The results show that navigational contrail avoidance will require minimal additional cost (0.08\%) and fuel (0.11\%) investments to achieve notable reductions in contrail climate forcing (-73.0\%). This simulation provides evidence that contrail mitigation entails very low operational risks, even regarding fuel. This study aims to serve as an incentive for operators and air traffic controllers to initiate contrail mitigation testing as soon as possible and begin reducing aviation's non- emissions.},
   langid = {english}
 }
 
@@ -235,19 +256,21 @@
   langid = {english}
 }
 
-@misc{geraedtsScalableSystemMeasure2023,
+@article{geraedtsScalableSystemMeasure2024,
   title = {A Scalable System to Measure Contrail Formation on a Per-Flight Basis},
   author = {Geraedts, Scott and Brand, Erica and Dean, Thomas R. and Eastham, Sebastian and Elkin, Carl and Engberg, Zebediah and Hager, Ulrike and Langmore, Ian and McCloskey, Kevin and Ng, Joe Yue-Hei and Platt, John C. and Sankar, Tharun and Sarna, Aaron and Shapiro, Marc and Goyal, Nita},
-  year = {2023},
-  month = aug,
-  number = {arXiv:2308.02707},
-  eprint = {2308.02707},
-  primaryclass = {physics},
-  publisher = {arXiv},
-  urldate = {2023-08-25},
-  abstract = {Persistent contrails make up a large fraction of aviation's contribution to global warming. We describe a scalable, automated detection and matching (ADM) system to determine from satellite data whether a flight has made a persistent contrail. The ADM system compares flight segments to contrails detected by a computer vision algorithm running on images from the GOES-16 Advanced Baseline Imager. We develop a 'flight matching' algorithm and use it to label each flight segment as a 'match' or 'non-match'. We perform this analysis on 1.6 million flight segments. The result is an analysis of which flights make persistent contrails several orders of magnitude larger than any previous work. We assess the agreement between our labels and available prediction models based on weather forecasts. Shifting air traffic to avoid regions of contrail formation has been proposed as a possible mitigation with the potential for very low cost/ton-CO2e. Our findings suggest that imperfections in these prediction models increase this cost/ton by about an order of magnitude. Contrail avoidance is a cost-effective climate change mitigation even with this factor taken into account, but our results quantify the need for more accurate contrail prediction methods and establish a benchmark for future development.},
-  archiveprefix = {arxiv},
-  keywords = {Physics - Atmospheric and Oceanic Physics}
+  year = {2024},
+  month = jan,
+  journal = {Environmental Research Communications},
+  volume = {6},
+  number = {1},
+  pages = {015008},
+  publisher = {IOP Publishing},
+  issn = {2515-7620},
+  doi = {10.1088/2515-7620/ad11ab},
+  urldate = {2024-04-12},
+  abstract = {Persistent contrails make up a large fraction of aviation's contribution to global warming. We describe a scalable, automated detection and matching (ADM) system to determine from satellite data whether a flight has made a persistent contrail. The ADM system compares flight segments to contrails detected by a computer vision algorithm running on images from the GOES-16 Advanced Baseline Imager. We develop a flight matching algorithm and use it to label each flight segment as a match or non-match. We perform this analysis on 1.6 million flight segments. The result is an analysis of which flights make persistent contrails several orders of magnitude larger than any previous work. We assess the agreement between our labels and available prediction models based on weather forecasts. Shifting air traffic to avoid regions of contrail formation has been proposed as a possible mitigation with the potential for very low cost/ton-CO2e. Our findings suggest that imperfections in these prediction models increase this cost/ton by about an order of magnitude. Contrail avoidance is a cost-effective climate change mitigation even with this factor taken into account, but our results quantify the need for more accurate contrail prediction methods and establish a benchmark for future development.},
+  langid = {english}
 }
 
 @article{holzapfelProbabilisticTwoPhaseWake2003,
@@ -338,6 +361,21 @@
   langid = {english}
 }
 
+@article{lowGroundbasedContrailObservations2024,
+  title = {Ground-Based Contrail Observations: Comparisons with Flight Telemetry and Contrail Model Estimates},
+  shorttitle = {Ground-Based Contrail Observations},
+  author = {Low, Jade and Teoh, Roger and Ponsonby, Joel and Gryspeerdt, Edward and Shapiro, Marc and Stettler, Marc},
+  year = {2024},
+  month = jun,
+  journal = {EGUsphere},
+  pages = {1--25},
+  publisher = {Copernicus GmbH},
+  doi = {10.5194/egusphere-2024-1458},
+  urldate = {2024-07-09},
+  abstract = {{$<$}p{$><$}strong class="journal-contentHeaderColor"{$>$}Abstract.{$<$}/strong{$>$} Observations of contrail are vital for improving understanding of contrail formation and lifecycle, informing models, and assessing contrail mitigation strategies. Ground-based cameras offer a cost-effective means to observe the formation and evolution of young contrails and can be used to assess the accuracy of existing models. Here, we develop a methodology to track and analyse contrails from ground-based cameras, comparing these observations against simulations from the contrail cirrus prediction model (CoCiP) with actual flight trajectories. The ground-based contrail observations consist of 14 h of video footage recorded on five different days over Central London, capturing a total of 1,619 flight waypoints from 283 unique flights. Our results suggest that the best agreement between the observed and simulated contrail formation occurs at around 35,000\&ndash;40,000 feet and at temperatures at least 10 K below the Schmidt-Appleman Criterion threshold temperature ({$<$}em{$>$}T{$<$}/em{$>$}\textsubscript{SAC}). Conversely, the largest discrepancies occurred when contrails are formed below 30,000 feet and at temperatures within 2.5 K of {$<$}em{$>$}T{$<$}/em{$>$}\textsubscript{SAC}. On average, the simulated contrail width is 17.5 \% smaller than the observed geometric width. This discrepancy could be caused by the underestimation of sub-grid scale wind shear and turbulent mixing in the simulation, and model representation of the contrail cross-sectional shape. Overall, these findings demonstrate the capability of ground-based cameras to inform weather and contrail model development when combined with flight telemetry.{$<$}/p{$>$}},
+  langid = {english}
+}
+
 @inproceedings{mccloskeyHumanlabeledLandsatContrails2021,
   title = {A Human-Labeled {{Landsat}} Contrails Dataset},
   booktitle = {{{ICML}} 2021 {{Workshop}}: {{Tackling Climate Change}} with {{Machine Learning}}},
@@ -387,6 +425,23 @@
   doi = {10.1023/B:NANO.0000034657.71309.e6},
   urldate = {2022-03-21},
   abstract = {We describe a new technique to measure the size dependent inherent material density of chain agglomerate particles. Measurements were carried out for diesel soot and aluminum/alumina agglomerate particles in the nanometer size range. Transmission electron microscopy was used to measure the volumes of agglomerate particles that were preselected by mass using an aerosol particle mass analyzer. We found that the density of diesel exhaust particles increased from 1.27 to 1.78g/cm3 as particle mobility size increased from 50 to 220nm. When particles are preheated to remove volatile components, the density was 1.77{\textpm}0.07g/cm3, independent of particle size. The densities measured after heating correspond to the inherent material density of diesel soot. Measurements with aluminum nanoparticles were made downstream of a furnace where aluminum (Al) was converted to alumina (Al2O3). From measurements of inherent material density we were able to infer the extent of reaction, which varied with furnace temperature.},
+  langid = {english}
+}
+
+@article{plattEffectUncertaintyHumidity2024,
+  title = {The Effect of Uncertainty in Humidity and Model Parameters on the Prediction of Contrail Energy Forcing},
+  author = {Platt, John C. and Shapiro, Marc L. and Engberg, Zebediah and McCloskey, Kevin and Geraedts, Scott and Sankar, Tharun and Stettler, Marc E. J. and Teoh, Roger and Schumann, Ulrich and Rohs, Susanne and Brand, Erica and Arsdale, Christopher Van},
+  year = {2024},
+  month = sep,
+  journal = {Environmental Research Communications},
+  volume = {6},
+  number = {9},
+  pages = {095015},
+  publisher = {IOP Publishing},
+  issn = {2515-7620},
+  doi = {10.1088/2515-7620/ad6ee5},
+  urldate = {2024-09-17},
+  abstract = {Previous work has shown that while the net effect of aircraft condensation trails (contrails) on the climate is warming, the exact magnitude of the energy forcing per meter of contrail remains uncertain. In this paper, we explore the skill of a Lagrangian contrail model (CoCiP) in identifying flight segments with high contrail energy forcing. We find that skill is greater than climatological predictions alone, even accounting for uncertainty in weather fields and model parameters. We estimate the uncertainty due to humidity by using the ensemble ERA5 weather reanalysis from the European Centre for Medium-Range Weather Forecasts (ECMWF) as Monte Carlo inputs to CoCiP. We unbias and correct under-dispersion on the ERA5 humidity data by forcing a match to the distribution of in situ humidity measurements taken at cruising altitude. We take CoCiP energy forcing estimates calculated using one of the ensemble members as a proxy for ground truth, and report the skill of CoCiP in identifying segments with large positive proxy energy forcing. We further estimate the uncertainty due to model parameters in CoCiP by performing Monte Carlo simulations with CoCiP model parameters drawn from uncertainty distributions consistent with the literature. When CoCiP outputs are averaged over seasons to form climatological predictions, the skill in predicting the proxy is 44\%, while the skill of per-flight CoCiP outputs is 84\%. If these results carry over to the true (unknown) contrail EF, they indicate that per-flight energy forcing predictions can reduce the number of potential contrail avoidance route adjustments by 2x, hence reducing both the cost and fuel impact of contrail avoidance.},
   langid = {english}
 }
 
@@ -838,6 +893,23 @@
   langid = {english}
 }
 
+@article{teohGlobalAviationContrail2024,
+  title = {Global Aviation Contrail Climate Effects from 2019 to 2021},
+  author = {Teoh, Roger and Engberg, Zebediah and Schumann, Ulrich and Voigt, Christiane and Shapiro, Marc and Rohs, Susanne and Stettler, Marc E. J.},
+  year = {2024},
+  month = may,
+  journal = {Atmospheric Chemistry and Physics},
+  volume = {24},
+  number = {10},
+  pages = {6071--6093},
+  publisher = {Copernicus GmbH},
+  issn = {1680-7316},
+  doi = {10.5194/acp-24-6071-2024},
+  urldate = {2024-05-28},
+  abstract = {The current best-estimate of the global annual mean radiative forcing (RF) attributable to contrail cirrus is thought to be 3 times larger than the RF from aviation's cumulative CO2 emissions. Here, we simulate the global contrail RF for 2019--2021 using reanalysis weather data and improved engine emission estimates along actual flight trajectories derived from Automatic Dependent Surveillance--Broadcast telemetry. Our 2019 global annual mean contrail net RF (62.1 mW m-2) is 44 \% lower than current best estimates for 2018 (111 [33, 189] mW m-2, 95 \% confidence interval). Regionally, the contrail net RF is largest over Europe (876 mW m-2) and the USA (414 mW m-2), while the RF values over East Asia (64 mW m-2) and China (62 mW m-2) are close to the global average, because fewer flights in these regions form persistent contrails resulting from lower cruise altitudes and limited ice supersaturated regions in the subtropics due to the Hadley Circulation. Globally, COVID-19 reduced the flight distance flown and contrail net RF in 2020 (-43 \% and -56 \%, respectively, relative to 2019) and 2021 (-31 \% and -49 \%, respectively) with significant regional variations. Around 14 \% of all flights in 2019 formed a contrail with a net warming effect, yet only 2 \% of all flights caused 80 \% of the annual contrail energy forcing. The spatiotemporal patterns of the most strongly warming and cooling contrail segments can be attributed to flight scheduling, engine particle number emissions, tropopause height, and background radiation fields. Our contrail RF estimates are most sensitive to corrections applied to the global humidity fields, followed by assumptions on the engine particle number emissions, and are least sensitive to radiative heating effects on the contrail plume and contrail--contrail overlapping. Using this sensitivity analysis, we estimate that the 2019 global contrail net RF could range between 34.8 and 74.8 mW m-2.},
+  langid = {english}
+}
+
 @article{teohHighresolutionGlobalAviation2023,
   title = {A High-Resolution {{Global Aviation}} Emissions {{Inventory}} Based on {{ADS-B}} ({{GAIA}}) for 2019-2021},
   author = {Teoh, Roger and Engberg, Zebediah and Shapiro, Marc and Dray, Lynnette and Stettler, Marc},
@@ -849,6 +921,23 @@
   doi = {10.5194/egusphere-2023-724},
   urldate = {2023-06-27},
   abstract = {{$<$}p{$><$}strong class="journal-contentHeaderColor"{$>$}Abstract.{$<$}/strong{$>$} Aviation emissions that are dispersed into the Earth's atmosphere affect the climate and air pollution, with significant spatiotemporal variation owing to heterogeneous aircraft activity. In this paper, we use historical flight trajectories derived from Automatic Dependent Surveillance\&ndash;Broadcast (ADS-B) telemetry and reanalysis weather data for 2019\&ndash;2021 to develop the Global Aviation emissions inventory based on ADS-B (GAIA). In 2019, 40.2 million flights collectively travelled 61 billion kilometres using 283 Tg of fuel, leading to CO\textsubscript{2}, NO\textsubscript{X}, non-volatile particulate matter (nvPM) mass and number emissions of 893 Tg, 4.49 Tg, 21.4 Gg, and 2.8\&times;10\textsuperscript{26}, respectively. Global responses to COVID-19 led to reductions in the annual flight distance flown, CO\textsubscript{2}, and NO\textsubscript{X} emissions in 2020 (-43 \%, -48 \% and -50 \%, respectively relative to 2019) and 2021 (-31 \%, -41 \% and -43 \%, respectively) with significant regional variability. Short-haul flights with duration \&lt; 3 h accounted for 83 \% of all flights, yet only for 35 \% of the 2019 CO\textsubscript{2} emissions, while long-haul flights with duration \&gt; 6 h (5 \% of all flights) were responsible for t43 \% of CO\textsubscript{2} and 49 \% of NO\textsubscript{X} emissions. Globally, actual flight trajectories flown are, on average, {\textasciitilde}5 \% greater than the great-circle path between the origin-destination airport but this varies by region and flight distance. An evaluation of 8,705 unique flights between London and Singapore showed large variabilities in the flight trajectory profile, fuel consumption and emission indices. GAIA captures the spatiotemporal distribution of aviation activity and emissions and is provided for use in future studies to evaluate the negative externalities arising from global aviation.{$<$}/p{$>$}},
+  langid = {english}
+}
+
+@article{teohHighresolutionGlobalAviation2024,
+  title = {The High-Resolution {{Global Aviation}} Emissions {{Inventory}} Based on {{ADS-B}} ({{GAIA}}) for 2019--2021},
+  author = {Teoh, Roger and Engberg, Zebediah and Shapiro, Marc and Dray, Lynnette and Stettler, Marc E. J.},
+  year = {2024},
+  month = jan,
+  journal = {Atmospheric Chemistry and Physics},
+  volume = {24},
+  number = {1},
+  pages = {725--744},
+  publisher = {Copernicus GmbH},
+  issn = {1680-7316},
+  doi = {10.5194/acp-24-725-2024},
+  urldate = {2024-01-24},
+  abstract = {Aviation emissions that are dispersed into the Earth's atmosphere affect the climate and air pollution, with significant spatiotemporal variation owing to heterogeneous aircraft activity. In this paper, we use historical flight trajectories derived from Automatic Dependent Surveillance--Broadcast (ADS-B) telemetry and reanalysis weather data for 2019--2021 to develop the Global Aviation emissions Inventory based on ADS-B (GAIA). In 2019, 40.2 million flights collectively travelled 61 billion kilometres using 283 Tg of fuel, leading to CO2, NOX and non-volatile particulate matter (nvPM) mass and number emissions of 893 Tg, 4.49 Tg, 21.4 Gg and 2.8 {\texttimes} 1026 respectively. Global responses to COVID-19 led to reductions in the annual flight distance flown and CO2 and NOX emissions in 2020 (-43 \%, -48 \% and -50 \% respectively relative to 2019) and 2021 (-31 \%, -41 \% and -43 \% respectively), with significant regional variability. Short-haul flights with durations \&lt; 3 h accounted for 83 \% of all flights but only for 35 \% of the 2019 CO2 emissions, while long-haul flights with durations \&gt; 6 h (5 \% of all flights) were responsible for 43 \% of CO2 and 49 \% of NOX emissions. Globally, the actual flight trajectories flown are, on average, {$\sim$} 5 \% greater than the great circle path between the origin and destination airports, but this varies by region and flight distance. An evaluation of 8705 unique flights between London and Singapore showed large variabilities in the flight trajectory profile, fuel consumption and emission indices. GAIA captures the spatiotemporal distribution of aviation activity and emissions and is provided for use in future studies to evaluate the negative externalities arising from global aviation.},
   langid = {english}
 }
 
