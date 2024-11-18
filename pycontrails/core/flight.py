@@ -1722,9 +1722,11 @@ def _altitude_interpolation(
     nominal_rocd : float
         Nominal rate of climb/descent, [:math:`m s^{-1}`]
     minimum_cruise_altitude_ft : float
-        Minimium cruising altitude for a given aircraft type, [:math:`ft`]
+        Minimium cruising altitude for a given aircraft type, [:math:`ft`].
+        By default, this is 20000.0 ft.
     assumed_cruise_altitude_ft : float
-        Assumed cruising altitude for a given aircraft type, [:math:`ft`]
+        Assumed cruising altitude for a given aircraft type, [:math:`ft`].
+        By default, this is 30000.0 ft.
 
     Returns
     -------
@@ -1733,11 +1735,11 @@ def _altitude_interpolation(
 
     Notes
     -----
-    Default values for `minimum_cruise_altitude_ft` and `assumed_cruise_altitude_ft` should be
+    Default values for ``minimum_cruise_altitude_ft`` and ``assumed_cruise_altitude_ft`` should be
     provided if aircraft-specific parameters are available to improve the output quality.
 
-    We can assume `minimum_cruise_altitude_ft` as 0.5 times the aircraft service ceiling, and
-    `assumed_cruise_altitude_ft` as 0.8 times the aircraft service ceiling.
+    We can assume ``minimum_cruise_altitude_ft`` as 0.5 times the aircraft service ceiling, and
+    ``assumed_cruise_altitude_ft`` as 0.8 times the aircraft service ceiling.
 
     Assume that aircraft will generally prefer to climb to a higher altitude as early as possible,
     and descent to a lower altitude as late as possible, because a higher altitude can reduce
