@@ -237,9 +237,11 @@ ignore-path = [
 # https://docs.astral.sh/ruff/settings/#select
 # https://www.pydocstyle.org/en/6.3.0/error_codes.html
 [tool.ruff]
-lint.select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "SIM", "UP"]
 line-length = 100
-lint.ignore = [
+
+[tool.ruff.lint]
+select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "SIM", "UP"]
+ignore = [
     "B028",
     "E402",
     "D105",
