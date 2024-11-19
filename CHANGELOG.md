@@ -24,6 +24,8 @@
 - Publish to PyPI using [trusted publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/).
 - Update `pycontrails-bada` installation instructions.
 - Floor the pycontrails version when running the docs workflow. This ensures that the [hosted documentation](https://py.contrails.org) references the last stable release.
+- Move the `engine_deterioration_factor` from `PSFlightParams` to `AircraftPerformanceParams` so it can be used by both the PS model and BADA.
+- Include `engine_deterioration_factor` in `AircraftPerformanceGridParams`.
 
 ## v0.54.2
 

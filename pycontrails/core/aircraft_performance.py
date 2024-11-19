@@ -35,12 +35,8 @@ DEFAULT_LOAD_FACTOR = 0.7
 
 
 @dataclasses.dataclass
-class AircraftPerformanceParams(ModelParams):
-    """Parameters for :class:`AircraftPerformance`."""
-
-    #: Whether to correct fuel flow to ensure it remains within
-    #: the operational limits of the aircraft type.
-    correct_fuel_flow: bool = True
+class CommonAircraftPerformanceParams:
+    """Params for :class:`AircraftPerformanceParams` and :class`AircraftPerformanceGridParams`."""
 
     #: Account for "in-service" engine deterioration between maintenance cycles.
     #: Default value is set to +2.5% increase in fuel consumption.
@@ -48,6 +44,15 @@ class AircraftPerformanceParams(ModelParams):
     # Gurrola Arrieta, M.D.J., Botez, R.M. and Lasne, A., 2024. An Engine Deterioration Model for
     # Predicting Fuel Consumption Impact in a Regional Aircraft. Aerospace, 11(6), p.426.
     engine_deterioration_factor: float = 0.025
+
+
+@dataclasses.dataclass
+class AircraftPerformanceParams(ModelParams, CommonAircraftPerformanceParams):
+    """Parameters for :class:`AircraftPerformance`."""
+
+    #: Whether to correct fuel flow to ensure it remains within
+    #: the operational limits of the aircraft type.
+    correct_fuel_flow: bool = True
 
     #: The number of iterations used to calculate aircraft mass and fuel flow.
     #: The default value of 3 is sufficient for most cases.
@@ -554,7 +559,7 @@ class AircraftPerformanceData:
 
 
 @dataclasses.dataclass
-class AircraftPerformanceGridParams(ModelParams):
+class AircraftPerformanceGridParams(ModelParams, CommonAircraftPerformanceParams):
     """Parameters for :class:`AircraftPerformanceGrid`."""
 
     #: Fuel type
