@@ -333,6 +333,7 @@ def ps_nominal_grid(
     q_fuel: float = JetA.q_fuel,
     mach_number: float | None = None,
     maxiter: int = PSGridParams.maxiter,
+    engine_deterioration_factor: float = PSGridParams.engine_deterioration_factor,
 ) -> xr.Dataset:
     """Calculate the nominal performance grid for a given aircraft type.
 
@@ -359,6 +360,9 @@ def ps_nominal_grid(
         The Mach number. If None (default), the PS design Mach number is used.
     maxiter : int, optional
         Passed into :func:`scipy.optimize.newton`.
+    engine_deterioration_factor : float, optional
+        The engine deterioration factor,
+        by default :attr:`PSGridParams.engine_deterioration_factor`.
 
     Returns
     -------
@@ -428,7 +432,7 @@ def ps_nominal_grid(
 
     air_pressure = level * 100.0
 
-    aircraft_engine_params = ps_model.load_aircraft_engine_params()
+    aircraft_engine_params = ps_model.load_aircraft_engine_params(engine_deterioration_factor)
 
     try:
         atyp_param = aircraft_engine_params[aircraft_type]
@@ -542,6 +546,7 @@ def ps_nominal_optimize_mach(
     sin_a: ArrayOrFloat | None = None,
     cos_a: ArrayOrFloat | None = None,
     q_fuel: float = JetA.q_fuel,
+    engine_deterioration_factor: float = PSGridParams.engine_deterioration_factor,
 ) -> xr.Dataset:
     """Calculate the nominal optimal mach number for a given aircraft type.
 
@@ -580,6 +585,9 @@ def ps_nominal_optimize_mach(
         specified if wind data is provided. Will be ignored if wind data is not provided.
     q_fuel : float, optional
         The fuel heating value, by default :attr:`JetA.q_fuel`.
+    engine_deterioration_factor : float, optional
+        The engine deterioration factor,
+        by default :attr:`PSGridParams.engine_deterioration_factor`.
 
     Returns
     -------
@@ -602,7 +610,7 @@ def ps_nominal_optimize_mach(
     """
     dims = ("level",)
     coords = {"level": level}
-    aircraft_engine_params = ps_model.load_aircraft_engine_params()
+    aircraft_engine_params = ps_model.load_aircraft_engine_params(engine_deterioration_factor)
     try:
         atyp_param = aircraft_engine_params[aircraft_type]
     except KeyError as exc:
