@@ -1718,7 +1718,7 @@ def _altitude_interpolation(
         an error if ``altitude`` does not contain nan values. Moreover, this function
         assumes the initial and final entries in ``altitude`` are not nan, [:math:`m`]
     time : npt.NDArray[np.datetime64]
-        Timestamp at each waypoint
+        Timestamp at each waypoint. Must be monotonically increasing.
     nominal_rocd : float
         Nominal rate of climb/descent, [:math:`m s^{-1}`]
     minimum_cruise_altitude_ft : float
@@ -1768,10 +1768,6 @@ def _altitude_interpolation(
     # NOTE: Only fill altitude gaps that require special attention
     # At the end of this for loop, those with NaN altitudes will be filled with pd.interpolate
     for i in range(len(na_group_size)):
-        # Assume linear interpolation if NaN gap is very small.
-        if na_group_size[i] < 2:
-            continue
-
         alt_ft_start = alt_ft[start_na_idxs[i]]
         alt_ft_end = alt_ft[end_na_idxs[i]]
         time_start = time[start_na_idxs[i]]
@@ -1800,14 +1796,14 @@ def _altitude_interpolation(
             d_alt_start = alt_ft_cruise - alt_ft_start
             dt_climb = int(np.ceil(d_alt_start / nominal_rocd_ft_min))
             t_cruise_start = time_start + np.timedelta64(dt_climb, "m")
-            idx_cruise_start = np.argwhere(time > t_cruise_start)[0][0]
+            idx_cruise_start = np.searchsorted(time, t_cruise_start) + 1
             alt_ft[idx_cruise_start] = alt_ft_cruise
 
             # Add altitude at top of descent
             d_alt_end = alt_ft_cruise - alt_ft_end
             dt_descent = int(np.ceil(d_alt_end / nominal_rocd_ft_min))
             t_cruise_end = time_end - np.timedelta64(dt_descent, "m")
-            idx_cruise_end = np.argwhere(time < t_cruise_end)[-1][0]
+            idx_cruise_end = np.searchsorted(time, t_cruise_end) - 1
             alt_ft[idx_cruise_end] = alt_ft_cruise
             continue
 
@@ -1834,7 +1830,7 @@ def _altitude_interpolation(
         if dt_next > 20.0 and rocd_next > 0.0:
             dt_climb = int(np.ceil((alt_ft_end - alt_ft_start) / nominal_rocd_ft_min))
             t_climb_complete = time_start + np.timedelta64(dt_climb, "m")
-            idx_climb_complete = np.argwhere(time > t_climb_complete)[0][0]
+            idx_climb_complete = np.searchsorted(time, t_climb_complete) + 1
             alt_ft[idx_climb_complete] = alt_ft_end
             continue
 
@@ -1847,7 +1843,7 @@ def _altitude_interpolation(
         if dt_next > 20.0 and rocd_next < 0.0:
             dt_descent = int(np.ceil((alt_ft_start - alt_ft_end) / nominal_rocd_ft_min))
             t_descent_start = time_end - np.timedelta64(dt_descent, "m")
-            idx_descent_start = np.argwhere(time > t_descent_start)[0][0]
+            idx_descent_start = np.searchsorted(time, t_descent_start) + 1
             alt_ft[idx_descent_start] = alt_ft_start
             continue
 
