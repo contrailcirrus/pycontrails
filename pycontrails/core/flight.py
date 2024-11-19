@@ -1747,7 +1747,7 @@ def _altitude_interpolation(
     """
     # Work in units of feet
     alt_ft = units.m_to_ft(altitude)
-    nominal_rocd_ft_min = units.m_to_ft(constants.nominal_rocd) * 60
+    nominal_rocd_ft_min = units.m_to_ft(constants.nominal_rocd) * 60.0
 
     # Determine nan state of altitude
     isna = np.isnan(alt_ft)
@@ -1784,11 +1784,12 @@ def _altitude_interpolation(
         # Rate of climb and descent to next waypoint, in ft/min
         rocd_next = (alt_ft_end - alt_ft_start) / dt_next
 
-        # (1): Unrealistic scenario
+        # (1): Unrealistic scenario: first and next known waypoints are at very
+        # low altitudes with a large time gap.
         is_unrealistic = (
-            (alt_ft_start < minimum_cruise_altitude_ft)
-            and (alt_ft_end < minimum_cruise_altitude_ft)
-            and (dt_next > 60)
+            dt_next > 60.0
+            and alt_ft_start < minimum_cruise_altitude_ft
+            and alt_ft_end < minimum_cruise_altitude_ft
         )
 
         # If unrealistic, assume flight will climb to cruise altitudes (0.8 * max_altitude_ft),
@@ -1816,11 +1817,11 @@ def _altitude_interpolation(
 
         # (3): If cruise over 2 h with small altitude change, set change to mid-point
         is_long_segment_small_altitude_change = (
-            (rocd_next < 500)
-            and (rocd_next > -500)
-            and (dt_next > 120)
-            and (alt_ft_start > minimum_cruise_altitude_ft)
-            and (alt_ft_end > minimum_cruise_altitude_ft)
+            dt_next > 120.0
+            and rocd_next < 500.0
+            and rocd_next > -500.0
+            and alt_ft_start > minimum_cruise_altitude_ft
+            and alt_ft_end > minimum_cruise_altitude_ft
         )
 
         if is_long_segment_small_altitude_change:
@@ -1830,7 +1831,7 @@ def _altitude_interpolation(
             continue
 
         # (4): If large time gap and altitude difference, climb until desired altitude and cruise
-        if (dt_next > 20) and (rocd_next > 0):
+        if dt_next > 20.0 and rocd_next > 0.0:
             dt_climb = int(np.ceil((alt_ft_end - alt_ft_start) / nominal_rocd_ft_min))
             t_climb_complete = time_start + np.timedelta64(dt_climb, "m")
             idx_climb_complete = np.argwhere(time > t_climb_complete)[0][0]
@@ -1838,12 +1839,12 @@ def _altitude_interpolation(
             continue
 
         # (5): If shallow climb (0 < `rocd_next` < 500 ft/min), assume climb in `next step`
-        if (rocd_next < 500) and (rocd_next > 0):
+        if 0.0 < rocd_next < 500.0:
             alt_ft[start_na_idxs[i] + 1] = alt_ft_end
             continue
 
         # (6): If large time gap and altitude difference, assume descent towards the end
-        if (dt_next > 20) and (rocd_next < 0):
+        if dt_next > 20.0 and rocd_next < 0.0:
             dt_descent = int(np.ceil((alt_ft_start - alt_ft_end) / nominal_rocd_ft_min))
             t_descent_start = time_end - np.timedelta64(dt_descent, "m")
             idx_descent_start = np.argwhere(time > t_descent_start)[0][0]
@@ -1851,17 +1852,13 @@ def _altitude_interpolation(
             continue
 
         # (7): If shallow descent (-250 < `rocd_next` < 0 ft/min), then assume descent in last step.
-        if (rocd_next < 0) and (rocd_next > -250):
+        if -250.0 < rocd_next < 0.0:
             alt_ft[end_na_idxs[i] - 1] = alt_ft_start
             continue
 
-    # If all conditions above are not satisfied, then linearly interpolate between waypoints
-    res = pd.DataFrame()
-    res["altitude_ft"] = alt_ft
-    res.index = time
-    res.loc[:, "altitude_ft"] = res.loc[:, "altitude_ft"].interpolate(method="index")
-    new_alt = units.ft_to_m(res["altitude_ft"].to_numpy())
-    return new_alt
+    # Linearly interpolate between remaining nan values
+    out_alt_ft = pd.Series(alt_ft, index=time).interpolate(method="index")
+    return units.ft_to_m(out_alt_ft.to_numpy())
 
 
 def _verify_altitude(
