@@ -51,13 +51,6 @@ class PSFlightParams(AircraftPerformanceParams):
     #: efficiency to always exceed this value.
     eta_over_eta_b_min: float | None = 0.5
 
-    #: Account for "in-service" engine deterioration between maintenance cycles.
-    #: Default value is set to +2.5% increase in fuel consumption.
-    # Reference:
-    # Gurrola Arrieta, M.D.J., Botez, R.M. and Lasne, A., 2024. An Engine Deterioration Model for
-    # Predicting Fuel Consumption Impact in a Regional Aircraft. Aerospace, 11(6), p.426.
-    engine_deterioration_factor: float = 0.025
-
 
 class PSFlight(AircraftPerformance):
     """Simulate aircraft performance using Poll-Schumann (PS) model.
