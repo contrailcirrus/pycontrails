@@ -855,6 +855,76 @@ def advect_level(
     return (level * 100.0 + (dt_s * dp_dt)) / 100.0
 
 
+def advect_longitude_and_latitude_at_poles(
+    longitude: ArrayLike,
+    latitude: ArrayLike,
+    u_wind: ArrayLike,
+    v_wind: ArrayLike,
+    dt: npt.NDArray[np.timedelta64] | np.timedelta64,
+) -> tuple[ArrayLike, ArrayLike]:
+    r"""Calculate the longitude and latitude of a particle after time `dt` caused by advection
+    due to wind near the poles (above 80 degrees North and South).
+
+    Automatically wrap over the antimeridian if necessary.
+
+    Parameters
+    ----------
+    longitude : ArrayLike
+        Original longitude, [:math:`\deg`]
+    latitude : ArrayLike
+        Original latitude, [:math:`\deg`]
+    u_wind : ArrayLike
+        Wind speed in the longitudinal direction, [:math:`m s^{-1}`]
+    v_wind : ArrayLike
+        Wind speed in the latitudinal direction, [:math:`m s^{-1}`]
+    dt : np.ndarray
+        Advection timestep
+
+    Returns
+    -------
+    tuple[ArrayLike, ArrayLike]
+        New longitude and latitude values, [:math:`\deg`]
+
+    Notes
+    -----
+    Near the poles, the longitude and latitude is converted to a 2-D Cartesian-like coordinate
+    system to avoid numerical instabilities and singularities caused by convergence of meridians.
+    """
+    # Determine hemisphere sign (1 for Northern Hemisphere, -1 for Southern Hemisphere)
+    hemisphere_sign = np.where(latitude > 0.0, 1.0, -1.0)
+
+    # Convert longitude and latitude to radians
+    sin_lon_rad = np.sin(units.degrees_to_radians(longitude))
+    cos_lon_rad = np.cos(units.degrees_to_radians(longitude))
+
+    # Convert longitude and latitude to 2-D Cartesian-like coordinate system, [:math:`\deg`]
+    polar_radius = 90.0 - np.abs(latitude)
+    x_cartesian = sin_lon_rad * polar_radius
+    y_cartesian = -cos_lon_rad * polar_radius * hemisphere_sign
+
+    # Convert winds from eastward and northward direction (u, v) to (X, Y), [:math:`\deg s^{-1}`]
+    x_wind = units.radians_to_degrees(
+        (u_wind * cos_lon_rad - v_wind * sin_lon_rad) / constants.radius_earth
+    )
+    y_wind = units.radians_to_degrees(
+        (u_wind * sin_lon_rad + v_wind * cos_lon_rad) / constants.radius_earth
+    )
+
+    # Advect contrails in 2-D Cartesian-like plane, [:math:`\deg`]
+    x_cartesian_new = x_cartesian + dt * x_wind
+    y_cartesian_new = y_cartesian + dt * y_wind
+
+    # Convert `y_cartesian_new` back to `latitude`, [:math:`\deg`]
+    dist_squared = x_cartesian_new ** 2 + y_cartesian_new ** 2
+    new_latitude = (90.0 - np.sqrt(dist_squared)) * hemisphere_sign
+
+    # Convert `x_cartesian_new` back to `longitude`, [:math:`\deg`]
+    new_lon_rad = np.arctan2(y_cartesian_new, x_cartesian_new)
+    new_longitude = 90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign
+    new_longitude = (new_longitude + 180.0) % 360.0 - 180.0  # wrap antimeridian
+    return new_longitude, new_latitude
+
+
 # ---------------
 # Grid properties
 # ---------------
