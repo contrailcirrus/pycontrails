@@ -855,7 +855,7 @@ def advect_level(
     return (level * 100.0 + (dt_s * dp_dt)) / 100.0
 
 
-def advect_longitude_and_latitude_at_poles(
+def advect_longitude_and_latitude_near_poles(
     longitude: ArrayLike,
     latitude: ArrayLike,
     u_wind: ArrayLike,
@@ -904,15 +904,17 @@ def advect_longitude_and_latitude_at_poles(
 
     # Convert winds from eastward and northward direction (u, v) to (X, Y), [:math:`\deg s^{-1}`]
     x_wind = units.radians_to_degrees(
-        (u_wind * cos_lon_rad - v_wind * sin_lon_rad) / constants.radius_earth
+        (u_wind * cos_lon_rad - v_wind * sin_lon_rad * hemisphere_sign) / constants.radius_earth
     )
     y_wind = units.radians_to_degrees(
-        (u_wind * sin_lon_rad + v_wind * cos_lon_rad) / constants.radius_earth
+        (u_wind * sin_lon_rad * hemisphere_sign + v_wind * cos_lon_rad) / constants.radius_earth
     )
 
     # Advect contrails in 2-D Cartesian-like plane, [:math:`\deg`]
-    x_cartesian_new = x_cartesian + dt * x_wind
-    y_cartesian_new = y_cartesian + dt * y_wind
+    dtype = np.result_type(latitude, v_wind)
+    dt_s = units.dt_to_seconds(dt, dtype)
+    x_cartesian_new = x_cartesian + dt_s * x_wind
+    y_cartesian_new = y_cartesian + dt_s * y_wind
 
     # Convert `y_cartesian_new` back to `latitude`, [:math:`\deg`]
     dist_squared = x_cartesian_new ** 2 + y_cartesian_new ** 2
@@ -920,7 +922,13 @@ def advect_longitude_and_latitude_at_poles(
 
     # Convert `x_cartesian_new` back to `longitude`, [:math:`\deg`]
     new_lon_rad = np.arctan2(y_cartesian_new, x_cartesian_new)
-    new_longitude = 90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign
+
+    new_longitude = np.where(
+        (x_wind == 0.0) & (y_wind == 0.0),
+        longitude,
+        90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign,
+    )
+    #new_longitude = 90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign
     new_longitude = (new_longitude + 180.0) % 360.0 - 180.0  # wrap antimeridian
     return new_longitude, new_latitude
 

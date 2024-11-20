@@ -2296,7 +2296,7 @@ def calc_timestep_contrail_evolution(
     dt = time_2_array - time_1
 
     # get new contrail location & segment properties after t_step
-    
+
     # Use simple spherical advection if position is far from the poles (<= 80.0 degrees)
     longitude_2 = geo.advect_longitude(longitude_1, latitude_1, u_wind_1, dt)
     latitude_2 = geo.advect_latitude(latitude_1, v_wind_1, dt)
@@ -2306,7 +2306,7 @@ def calc_timestep_contrail_evolution(
     # Use Cartesian advection if position is near the poles (> 80.0 degrees)
     near_the_poles = np.abs(latitude_1) > 80.0
     if np.any(near_the_poles):
-        lon_2_poles, lat_2_poles = geo.advect_longitude_and_latitude_at_poles(
+        lon_2_poles, lat_2_poles = geo.advect_longitude_and_latitude_near_poles(
             longitude_1[near_the_poles],
             latitude_1[near_the_poles],
             u_wind_1[near_the_poles],
