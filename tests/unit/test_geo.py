@@ -298,5 +298,3 @@ def test_advection_near_poles():
     lat_new_expected = np.array([90.0, 85.0, 82.05, 89.92, -88.94, 81.95])
     np.testing.assert_array_almost_equal(longitude_new, lon_new_expected, decimal=2)
     np.testing.assert_array_almost_equal(latitude_new, lat_new_expected, decimal=2)
-    return
-
