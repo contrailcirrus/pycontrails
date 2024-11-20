@@ -281,3 +281,22 @@ def test_azimuth(geod: pyproj.Geod, rand_geo_data: dict[str, np.ndarray]):
 
     np.testing.assert_array_almost_equal(sin_azimuth, cos_a, decimal=10)
     np.testing.assert_array_almost_equal(cos_azimuth, sin_a, decimal=10)
+
+
+def test_advection_near_poles():
+    longitude = np.array([0.0, -90.0, 45.0, 70.0, 70.0, 45.0])
+    latitude = np.array([90.0, 85.0, 82.0, 90.0, -89.0, 82.0])
+    u_wind = np.array([0.0, 0.0, 20.0, 20.0, 20.0, -20.0])
+    v_wind = np.array([0.0, 0.0, 20.0, 20.0, 20.0, -20.0])
+    dt = np.timedelta64(300, "s")
+
+    longitude_new, latitude_new = geo.advect_longitude_and_latitude_near_poles(
+        longitude, latitude, u_wind, v_wind, dt
+    )
+
+    lon_new_expected = np.array([0.0, -90.0, 45.39, -155.0, 72.93, 44.62])
+    lat_new_expected = np.array([90.0, 85.0, 82.05, 89.92, -88.94, 81.95])
+    np.testing.assert_array_almost_equal(longitude_new, lon_new_expected, decimal=2)
+    np.testing.assert_array_almost_equal(latitude_new, lat_new_expected, decimal=2)
+    return
+
