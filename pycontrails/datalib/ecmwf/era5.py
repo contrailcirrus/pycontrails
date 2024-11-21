@@ -539,9 +539,9 @@ class ERA5(ECMWFAPI):
             LOG.debug("Input dataset processed with pycontrails > 0.29")
             return ds
 
-        # For "reanalysis-era5-single-levels" or if self.pressure_levels length == 1,
+        # For "reanalysis-era5-single-levels"
         # then the netcdf file does not contain the dimension "level"
-        if len(self.pressure_levels) == 1:
+        if "single-levels" in self.dataset:
             ds = ds.expand_dims(level=self.pressure_levels)
 
         # New CDS-Beta gives "valid_time" instead of "time"
