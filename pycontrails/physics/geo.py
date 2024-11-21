@@ -856,12 +856,12 @@ def advect_level(
 
 
 def advect_longitude_and_latitude_near_poles(
-    longitude: ArrayLike,
-    latitude: ArrayLike,
-    u_wind: ArrayLike,
-    v_wind: ArrayLike,
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    u_wind: npt.NDArray[np.floating],
+    v_wind: npt.NDArray[np.floating],
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-) -> tuple[ArrayLike, ArrayLike]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Advect a particle near the poles.
 
     This function calculates the longitude and latitude of a particle after time ``dt``
@@ -871,26 +871,32 @@ def advect_longitude_and_latitude_near_poles(
 
     Parameters
     ----------
-    longitude : ArrayLike
+    longitude : npt.NDArray[np.floating]
         Original longitude, [:math:`\deg`]
-    latitude : ArrayLike
+    latitude : npt.NDArray[np.floating]
         Original latitude, [:math:`\deg`]
-    u_wind : ArrayLike
+    u_wind : npt.NDArray[np.floating]
         Wind speed in the longitudinal direction, [:math:`m s^{-1}`]
-    v_wind : ArrayLike
+    v_wind : npt.NDArray[np.floating]
         Wind speed in the latitudinal direction, [:math:`m s^{-1}`]
-    dt : np.ndarray
+    dt : npt.NDArray[np.timedelta64] | np.timedelta64
         Advection timestep
 
     Returns
     -------
-    tuple[ArrayLike, ArrayLike]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
         New longitude and latitude values, [:math:`\deg`]
 
     Notes
     -----
     Near the poles, the longitude and latitude is converted to a 2-D Cartesian-like coordinate
     system to avoid numerical instabilities and singularities caused by convergence of meridians.
+
+    See Also
+    --------
+    advect_longitude
+    advect_latitude
+    advect_horizontal
     """
     # Determine hemisphere sign (1 for Northern Hemisphere, -1 for Southern Hemisphere)
     hemisphere_sign = np.where(latitude > 0.0, 1.0, -1.0)
@@ -933,6 +939,69 @@ def advect_longitude_and_latitude_near_poles(
     # new_longitude = 90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign
     new_longitude = (new_longitude + 180.0) % 360.0 - 180.0  # wrap antimeridian
     return new_longitude, new_latitude
+
+
+def advect_horizontal(
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    u_wind: npt.NDArray[np.floating],
+    v_wind: npt.NDArray[np.floating],
+    dt: npt.NDArray[np.timedelta64] | np.timedelta64,
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    r"""Advect a particle in the horizontal plane.
+
+    This function calls :func:`advect_longitude` and :func:`advect_latitude` when
+    the position is far from the poles (<= 80.0 degrees). When the position is near
+    the poles (> 80.0 degrees), :func:`advect_longitude_and_latitude_near_poles`
+    is used instead.
+
+    Parameters
+    ----------
+    longitude : npt.NDArray[np.floating]
+        Original longitude, [:math:`\deg`]
+    latitude : npt.NDArray[np.floating]
+        Original latitude, [:math:`\deg`]
+    u_wind : npt.NDArray[np.floating]
+        Wind speed in the longitudinal direction, [:math:`m s^{-1}`]
+    v_wind : npt.NDArray[np.floating]
+        Wind speed in the latitudinal direction, [:math:`m s^{-1}`]
+    dt : npt.NDArray[np.timedelta64] | np.timedelta64
+        Advection timestep
+
+    Returns
+    -------
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
+        New longitude and latitude values, [:math:`\deg`]
+    """
+    near_poles = np.abs(latitude) > 80.0
+
+    longitude_out = np.empty_like(longitude)
+    latitude_out = np.empty_like(latitude)
+
+    # Use simple spherical advection if position is far from the poles (<= 80.0 degrees)
+    cond = ~near_poles
+    lon_cond = longitude[cond]
+    lat_cond = latitude[cond]
+    u_wind_cond = u_wind[cond]
+    v_wind_cond = v_wind[cond]
+    dt_cond = dt if isinstance(dt, np.timedelta64) else dt[cond]
+    longitude_out[cond] = advect_longitude(lon_cond, lat_cond, u_wind_cond, dt_cond)
+    latitude_out[cond] = advect_latitude(lat_cond, v_wind_cond, dt_cond)
+
+    # And use Cartesian-like advection if position is near the poles (> 80.0 degrees)
+    cond = near_poles
+    lon_cond = longitude[cond]
+    lat_cond = latitude[cond]
+    u_wind_cond = u_wind[cond]
+    v_wind_cond = v_wind[cond]
+    dt_cond = dt if isinstance(dt, np.timedelta64) else dt[cond]
+    lon_out_cond, lat_out_cond = advect_longitude_and_latitude_near_poles(
+        lon_cond, lat_cond, u_wind_cond, v_wind_cond, dt_cond
+    )
+    longitude_out[cond] = lon_out_cond
+    latitude_out[cond] = lat_out_cond
+
+    return longitude_out, latitude_out
 
 
 # ---------------
