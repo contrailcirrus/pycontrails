@@ -283,7 +283,8 @@ def test_azimuth(geod: pyproj.Geod, rand_geo_data: dict[str, np.ndarray]):
     np.testing.assert_array_almost_equal(cos_azimuth, sin_a, decimal=10)
 
 
-def test_advection_near_poles():
+def test_advection_near_poles() -> None:
+    """Test the advection of longitude and latitude near the poles."""
     longitude = np.array([0.0, -90.0, 45.0, 70.0, 70.0, 45.0])
     latitude = np.array([90.0, 85.0, 82.0, 90.0, -89.0, 82.0])
     u_wind = np.array([0.0, 0.0, 20.0, 20.0, 20.0, -20.0])
@@ -296,5 +297,30 @@ def test_advection_near_poles():
 
     lon_new_expected = np.array([0.0, -90.0, 45.39, -155.0, 72.93, 44.62])
     lat_new_expected = np.array([90.0, 85.0, 82.05, 89.92, -88.94, 81.95])
-    np.testing.assert_array_almost_equal(longitude_new, lon_new_expected, decimal=2)
-    np.testing.assert_array_almost_equal(latitude_new, lat_new_expected, decimal=2)
+    np.testing.assert_allclose(longitude_new, lon_new_expected, rtol=1e-4)
+    np.testing.assert_allclose(latitude_new, lat_new_expected, rtol=1e-4)
+
+
+def test_compare_advection_methods() -> None:
+    """Compare the advection of longitude and latitude near the poles."""
+    rng = np.random.default_rng(1234)
+    n = 1000
+    longitude = rng.uniform(-180, 180, n)
+    latitude = rng.uniform(80, 90, n)
+    u_wind = rng.uniform(-20, 20, n)
+    v_wind = rng.uniform(-20, 20, n)
+    dt = np.timedelta64(10, "m")
+
+    longitude_new, latitude_new = geo.advect_longitude_and_latitude_near_poles(
+        longitude, latitude, u_wind, v_wind, dt
+    )
+    longitude_old = geo.advect_longitude(longitude, latitude, u_wind, dt)
+    latitude_old = geo.advect_latitude(latitude, v_wind, dt)
+
+    # The latitude values are nearly the same
+    np.testing.assert_allclose(latitude_new, latitude_old, rtol=2e-3)
+
+    # And most longitude are close, but some are way off
+    abs_err = np.abs((longitude_new - longitude_old + 180.0) % 360.0 - 180.0)
+    assert abs_err.mean() < 0.5
+    assert abs_err.max() > 179.0
