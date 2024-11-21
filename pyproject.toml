@@ -126,8 +126,6 @@ sat = [
     "scikit-image>=0.18",
 ]
 
-accf = ["climaccf @ git+ssh://git@github.com/dlr-pa/climaccf"]
-
 # Polyhedra contruction methods
 open3d = ["open3d>=0.14"]
 

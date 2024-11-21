@@ -164,12 +164,8 @@ Dry Advection
 ACCF
 """"
 
-    This model is a this interface over the DLR / UMadrid `climaccf <https://github.com/dlr-pa/climaccf>`__ package.
-    This package can be installed with pip:
-
-    .. code-block:: bash
-
-        pip install pycontrails[accf]
+    This model is an interface over the DLR / UMadrid `climaccf <https://github.com/dlr-pa/climaccf>`__ package.
+    See :ref:`accf-install` for more information.
 
 .. autosummary::
     :toctree: api/

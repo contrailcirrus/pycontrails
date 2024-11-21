@@ -133,3 +133,14 @@ to the `Cirium <https://www.cirium.com/>`__ database of jet engines.
 .. code-block:: bash
 
     pip install "pycontrails-cirium @ git+ssh://git@github.com/contrailcirrus/pycontrails-cirium.git"
+
+.. _accf-install:
+
+ACCF
+~~~~
+
+Interface to DLR / UMadrid `ACCF model <https://gmd.copernicus.org/preprints/gmd-2022-203/>`__.
+
+.. code-block:: bash
+
+    pip install "climaccf @ git+ssh://git@github.com/dlr-pa/climaccf"
