@@ -167,6 +167,7 @@ exclude = ["docs*", "tests*"]
 "pycontrails.models.humidity_scaling" = ["quantiles/*.pq"]
 "pycontrails.models.apcemm" = ["static/*.yaml"]
 "pycontrails.models.ps_model" = ["static/*.csv"]
+"pycontrails.physics" = ["static/*.csv"]
 
 # https://github.com/pypa/setuptools_scm/
 [tool.setuptools_scm]
