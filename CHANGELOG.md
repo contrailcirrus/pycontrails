@@ -9,7 +9,7 @@
 
 ### Features
 
-- Create new function `ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
+- Create new function `ps_grid.ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
 - Add a new `jet.aircraft_load_factor` function to estimate aircraft (passenger/cargo) load factor based on historical monthly and regional load factors provided by IATA. This improves upon the default load factor assumption. Historical load factor databases will be continuously updated as new data is released.
 - Use a 2D Cartesian-like plane to advect particles near the poles (>80° in latitude) to avoid numerical instabilities and singularities caused by convergence of meridians. This new advection scheme is used for contrail advection in the `Cocip`, `CocipGrid`, and `DryAdvection` models. See the `geo.advect_horizontal` function for more details.
 
@@ -29,8 +29,9 @@
 - Improve computation of mach limits to accept vectorized input/output.
 - Test against python 3.13 in the GitHub Actions CI. Use python 3.13 in the docs and doctest workflows.
 - Publish to PyPI using [trusted publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/).
-- Update `pycontrails-bada` installation instructions.
+- Update `pycontrails-bada` installation instructions. Install `pycontrails-bada` from GCP artifact repository in the test workflow.
 - Floor the pycontrails version when running the docs workflow. This ensures that the [hosted documentation](https://py.contrails.org) references the last stable release.
+- Update literature and bibliography in the documentation.
 - Move the `engine_deterioration_factor` from `PSFlightParams` to `AircraftPerformanceParams` so it can be used by both the PS model and BADA.
 - Include `engine_deterioration_factor` in `AircraftPerformanceGridParams`.
 
