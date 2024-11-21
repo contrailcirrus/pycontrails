@@ -862,8 +862,10 @@ def advect_longitude_and_latitude_near_poles(
     v_wind: ArrayLike,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
 ) -> tuple[ArrayLike, ArrayLike]:
-    r"""Calculate the longitude and latitude of a particle after time `dt` caused by advection
-    due to wind near the poles (above 80 degrees North and South).
+    r"""Advect a particle near the poles.
+
+    This function calculates the longitude and latitude of a particle after time ``dt``
+    caused by advection due to wind near the poles (above 80 degrees North and South).
 
     Automatically wrap over the antimeridian if necessary.
 
@@ -917,7 +919,7 @@ def advect_longitude_and_latitude_near_poles(
     y_cartesian_new = y_cartesian + dt_s * y_wind
 
     # Convert `y_cartesian_new` back to `latitude`, [:math:`\deg`]
-    dist_squared = x_cartesian_new ** 2 + y_cartesian_new ** 2
+    dist_squared = x_cartesian_new**2 + y_cartesian_new**2
     new_latitude = (90.0 - np.sqrt(dist_squared)) * hemisphere_sign
 
     # Convert `x_cartesian_new` back to `longitude`, [:math:`\deg`]
@@ -928,7 +930,7 @@ def advect_longitude_and_latitude_near_poles(
         longitude,
         90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign,
     )
-    #new_longitude = 90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign
+    # new_longitude = 90.0 + units.radians_to_degrees(new_lon_rad) * hemisphere_sign
     new_longitude = (new_longitude + 180.0) % 360.0 - 180.0  # wrap antimeridian
     return new_longitude, new_latitude
 
