@@ -2054,10 +2054,13 @@ def advect(
     time_t2 = time + dt
     age_t2 = age + dt
 
-    longitude_t2 = geo.advect_longitude(
-        longitude=longitude, latitude=latitude, u_wind=u_wind, dt=dt
+    longitude_t2, latitude_t2 = geo.advect_horizontal(
+        longitude=longitude,
+        latitude=latitude,
+        u_wind=u_wind,
+        v_wind=v_wind,
+        dt=dt,
     )
-    latitude_t2 = geo.advect_latitude(latitude=latitude, v_wind=v_wind, dt=dt)
     level_t2 = geo.advect_level(level, vertical_velocity, rho_air, terminal_fall_speed, dt)
     altitude_t2 = units.pl_to_m(level_t2)
 
@@ -2089,15 +2092,20 @@ def advect(
     u_wind_tail = contrail["eastward_wind_tail"]
     v_wind_tail = contrail["northward_wind_tail"]
 
-    longitude_head_t2 = geo.advect_longitude(
-        longitude=longitude_head, latitude=latitude_head, u_wind=u_wind_head, dt=dt_head
+    longitude_head_t2, latitude_head_t2 = geo.advect_horizontal(
+        longitude=longitude_head,
+        latitude=latitude_head,
+        u_wind=u_wind_head,
+        v_wind=v_wind_head,
+        dt=dt_head,
     )
-    latitude_head_t2 = geo.advect_latitude(latitude=latitude_head, v_wind=v_wind_head, dt=dt_head)
-
-    longitude_tail_t2 = geo.advect_longitude(
-        longitude=longitude_tail, latitude=latitude_tail, u_wind=u_wind_tail, dt=dt_tail
+    longitude_tail_t2, latitude_tail_t2 = geo.advect_horizontal(
+        longitude=longitude_tail,
+        latitude=latitude_tail,
+        u_wind=u_wind_tail,
+        v_wind=v_wind_tail,
+        dt=dt_tail,
     )
-    latitude_tail_t2 = geo.advect_latitude(latitude=latitude_tail, v_wind=v_wind_tail, dt=dt_tail)
 
     segment_length_t2 = geo.haversine(
         lons0=longitude_head_t2,
