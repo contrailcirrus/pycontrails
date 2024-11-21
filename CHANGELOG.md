@@ -10,6 +10,11 @@
 
 - Create new function `ps_nominal_optimize_mach` which computes the optimal mach number given a set of operating conditions.
 - Add a new `jet.aircraft_load_factor` function to estimate aircraft (passenger/cargo) load factor based on historical monthly and regional load factors provided by IATA. This improves upon the default load factor assumption. Historical load factor databases will be continuously updated as new data is released.
+- Use a 2D Cartesian-like plane to advect particles near the poles (>80° in latitude) to avoid numerical instabilities and singularities caused by convergence of meridians. This new advection scheme is used for contrail advection in the `Cocip`, `CocipGrid`, and `DryAdvection` models. See the `geo.advect_horizontal` function for more details.
+
+### Breaking changes
+
+- By default, the `CocipGrid.create_source` static method will return latitude values from -90 to 90 degrees. This change is motivated by the new advection scheme used near the poles. Previously, this method returned latitude values from -80 to 80 degrees.
 
 ### Fixes
 
