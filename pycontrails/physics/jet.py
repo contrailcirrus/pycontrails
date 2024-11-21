@@ -1,8 +1,8 @@
 """Jet aircraft trajectory and performance parameters.
 
 This module includes common functions to calculate jet aircraft trajectory
-and performance parameters, including fuel quantities, mass, thrust setting
-and propulsion efficiency.
+and performance parameters, including fuel quantities, mass, thrust setting,
+propulsion efficiency and load factors.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ def acceleration(
 
     See Also
     --------
-    :func:`flight.segment_duration`
+    pycontrails.Flight.segment_duration
     """
     dv_dt = np.empty_like(true_airspeed)
     dv_dt[:-1] = np.diff(true_airspeed) / segment_duration[:-1]
@@ -77,8 +77,8 @@ def climb_descent_angle(
 
     See Also
     --------
-    :func:`flight.segment_rocd`
-    :func:`flight.segment_true_airspeed`
+    pycontrails.Flight.segment_rocd
+    pycontrails.Flight.segment_true_airspeed
     """
     rocd_ms = units.ft_to_m(rocd) / 60.0
     sin_theta = rocd_ms / true_airspeed
@@ -325,8 +325,8 @@ def reserve_fuel_requirements(
 
     See Also
     --------
-    :func:`flight.segment_phase`
-    :func:`fuel_burn`
+    pycontrails.Flight.segment_phase
+    fuel_burn
     """
     segment_phase = flight.segment_phase(rocd, altitude_ft)
 
@@ -541,7 +541,8 @@ def initial_aircraft_mass(
 
     See Also
     --------
-    :func:`reserve_fuel_requirements`
+    reserve_fuel_requirements
+    aircraft_load_factor
     """
     tom = operating_empty_weight + load_factor * max_payload + total_fuel_burn + total_reserve_fuel
     return min(tom, max_takeoff_weight)
@@ -591,9 +592,10 @@ def update_aircraft_mass(
 
     See Also
     --------
-    :func:`fuel_burn`
-    :func:`reserve_fuel_requirements`
-    :func:`initial_aircraft_mass`
+    fuel_burn
+    reserve_fuel_requirements
+    initial_aircraft_mass
+    aircraft_load_factor
     """
     if takeoff_mass is None:
         takeoff_mass = initial_aircraft_mass(
