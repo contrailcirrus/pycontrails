@@ -135,23 +135,12 @@ def test_met_too_short(
         gc._check_met_covers_source()
 
 
-def test_create_bad_latitude() -> None:
-    """Check that an error is raised when latitude values are too close to the poles."""
-    with pytest.raises(ValueError, match="latitude"):
-        CocipGrid.create_source(
-            level=[220, 230, 240, 250],
-            time=np.datetime64("2019-01-01"),
-            longitude=np.linspace(-35, -25, 40),
-            latitude=np.asarray([83, 85, 86]),
-        )
-
-
 def test_create_lon_lat_unspecified() -> None:
     """Ensure `CocipGrid` uses `lon_step` and `lat_step` of 1."""
     source = CocipGrid.create_source(level=[220, 250], time=np.datetime64("2019-01-01"))
     assert source.data["longitude"].size == 360
-    assert source.data["latitude"].size == 161  # -80 to 80
-    assert source.shape == (360, 161, 2, 1)
+    assert source.data["latitude"].size == 181  # -90 to 90
+    assert source.shape == (360, 181, 2, 1)
 
 
 def test_create_lon_lat_step_args() -> None:
@@ -163,8 +152,8 @@ def test_create_lon_lat_step_args() -> None:
         lat_step=5,
     )
     assert source.data["longitude"].size == 72
-    assert source.data["latitude"].size == 33
-    assert source.shape == (72, 33, 4, 1)
+    assert source.data["latitude"].size == 37
+    assert source.shape == (72, 37, 4, 1)
 
 
 def test_init_avoid_double_process(instance_params: dict[str, Any]) -> None:
