@@ -63,6 +63,10 @@ class PSFlight(AircraftPerformance):
     Poll & Schumann (2022). An estimation method for the fuel burn and other performance
     characteristics of civil transport aircraft. Part 3 Generalisation to cover climb,
     descent and holding. Aero. J., submitted.
+
+    See Also
+    --------
+    pycontrails.physics.jet.aircraft_load_factor
     """
 
     name = "PSFlight"
