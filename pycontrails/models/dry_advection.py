@@ -404,15 +404,20 @@ def _calc_geometry(
     u_wind_tail = vector.data.pop("eastward_wind_tail")
     v_wind_tail = vector.data.pop("northward_wind_tail")
 
-    longitude_head_t2 = geo.advect_longitude(
-        longitude=longitude_head, latitude=latitude_head, u_wind=u_wind_head, dt=dt
+    longitude_head_t2, latitude_head_t2 = geo.advect_horizontal(
+        longitude=longitude_head,
+        latitude=latitude_head,
+        u_wind=u_wind_head,
+        v_wind=v_wind_head,
+        dt=dt,
     )
-    latitude_head_t2 = geo.advect_latitude(latitude=latitude_head, v_wind=v_wind_head, dt=dt)
-
-    longitude_tail_t2 = geo.advect_longitude(
-        longitude=longitude_tail, latitude=latitude_tail, u_wind=u_wind_tail, dt=dt
+    longitude_tail_t2, latitude_tail_t2 = geo.advect_horizontal(
+        longitude=longitude_tail,
+        latitude=latitude_tail,
+        u_wind=u_wind_tail,
+        v_wind=v_wind_tail,
+        dt=dt,
     )
-    latitude_tail_t2 = geo.advect_latitude(latitude=latitude_tail, v_wind=v_wind_tail, dt=dt)
 
     azimuth_2 = geo.azimuth(
         lons0=longitude_tail_t2,
@@ -445,8 +450,7 @@ def _evolve_one_step(
     longitude = vector["longitude"]
 
     dt = t - vector["time"]
-    longitude_2 = geo.advect_longitude(longitude, latitude, u_wind, dt)  # type: ignore[arg-type]
-    latitude_2 = geo.advect_latitude(latitude, v_wind, dt)  # type: ignore[arg-type]
+    longitude_2, latitude_2 = geo.advect_horizontal(longitude, latitude, u_wind, v_wind, dt)  # type: ignore[arg-type]
     level_2 = geo.advect_level(
         vector.level,
         vertical_velocity,
