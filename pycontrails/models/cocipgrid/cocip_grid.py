@@ -816,6 +816,9 @@ class CocipGrid(models.Model):
         """
         Shortcut to create a :class:`MetDataset` source from coordinate arrays.
 
+        .. versionchanged:: 0.54.3
+            By default, the returned latitude values now extend to the poles.
+
         Parameters
         ----------
         level : level: npt.NDArray[np.float64] | list[float] | float
@@ -829,8 +832,6 @@ class CocipGrid(models.Model):
         longitude, latitude : npt.NDArray[np.float64] | list[float], optional
             Longitude and latitude arrays, by default None. If not specified, values of
             ``lon_step`` and ``lat_step`` are used to define ``longitude`` and ``latitude``.
-            To avoid model degradation at the poles, latitude values are expected to be
-            between -80 and 80 degrees.
         lon_step, lat_step : float, optional
             Longitude and latitude resolution, by default 1.0.
             Only used if parameter ``longitude`` (respective ``latitude``) not specified.
@@ -847,15 +848,11 @@ class CocipGrid(models.Model):
         if longitude is None:
             longitude = np.arange(-180, 180, lon_step, dtype=float)
         if latitude is None:
-            latitude = np.arange(-80, 80.000001, lat_step, dtype=float)
+            latitude = np.arange(-90, 90.000001, lat_step, dtype=float)
 
-        out = MetDataset.from_coords(longitude=longitude, latitude=latitude, level=level, time=time)
-
-        if np.any(out.data.latitude > 80.0001) or np.any(out.data.latitude < -80.0001):
-            msg = "Model only supports latitude between -80 and 80."
-            raise ValueError(msg)
-
-        return out
+        return MetDataset.from_coords(
+            longitude=longitude, latitude=latitude, level=level, time=time
+        )
 
 
 ################################
