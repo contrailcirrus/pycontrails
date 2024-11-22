@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.54.4 (unreleased)
+
+### Fixes
+
+- Fix the `ERA5` interface when making a pressure-level request with a single pressure level. This change accommodates CDS-Beta server behavior. Previously, a ValueError was raised in this case.
+
 ## v0.54.3
 
 ### Breaking changes
