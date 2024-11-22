@@ -319,9 +319,9 @@ class ERA5(ECMWFAPI):
         str
             ERA5 dataset name in CDS
         """
-        if self.pressure_levels != [-1]:
-            return "reanalysis-era5-pressure-levels"
-        return "reanalysis-era5-single-levels"
+        if self.is_single_level:
+            return "reanalysis-era5-single-levels"
+        return "reanalysis-era5-pressure-levels"
 
     def create_cachepath(self, t: datetime | pd.Timestamp) -> str:
         """Return cachepath to local ERA5 data file based on datetime.
