@@ -378,7 +378,7 @@ def bada_model() -> AircraftPerformance:
     if not BADA_AVAILABLE:
         pytest.skip("BADA data not available")
 
-    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH}
+    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH, "engine_deterioration_factor": 0}
     return BADAFlight(params=params)
 
 
@@ -391,7 +391,7 @@ def bada_grid_model() -> AircraftPerformanceGrid:
     if not BADA_AVAILABLE:
         pytest.skip("BADA data not available")
 
-    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH}
+    params = {"bada3_path": BADA3_PATH, "bada4_path": BADA4_PATH, "engine_deterioration_factor": 0}
     return BADAGrid(params=params)
 
 
