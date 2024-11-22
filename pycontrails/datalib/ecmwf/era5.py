@@ -541,7 +541,7 @@ class ERA5(ECMWFAPI):
 
         # For "reanalysis-era5-single-levels"
         # then the netcdf file does not contain the dimension "level"
-        if "single-levels" in self.dataset:
+        if self.is_single_level:
             ds = ds.expand_dims(level=self.pressure_levels)
 
         # New CDS-Beta gives "valid_time" instead of "time"
