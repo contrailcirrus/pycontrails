@@ -979,25 +979,30 @@ def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerform
     cocip = Cocip(met, rad=rad, params=params)
     cocip.eval(source=fl)
 
+    # NOTE: The final two values are both nan
+    # In the hydrostatic ROCD formula, air_temperature is used
+    # However, the flight is out-of-bounds at the final waypoint in the longitude
+    # dimension, so we accumulate an extra nan
+    sl = slice(None, -2)
     assert "engine_efficiency" in cocip.source
-    assert np.all(cocip.source["engine_efficiency"][:-1] < 0.28)
-    assert np.all(cocip.source["engine_efficiency"][:-1] > 0.21)
+    assert np.all(cocip.source["engine_efficiency"][sl] < 0.28)
+    assert np.all(cocip.source["engine_efficiency"][sl] > 0.21)
 
     assert "fuel_flow" in cocip.source
-    assert np.all(cocip.source["fuel_flow"][:-1] < 0.73)
-    assert np.all(cocip.source["fuel_flow"][:-1] > 0.60)
+    assert np.all(cocip.source["fuel_flow"][sl] < 0.73)
+    assert np.all(cocip.source["fuel_flow"][sl] > 0.60)
 
     assert "nvpm_ei_n" in cocip.source
-    assert np.all(cocip.source["nvpm_ei_n"][:-1] < 1.32e15)
-    assert np.all(cocip.source["nvpm_ei_n"][:-1] > 1.08e15)
+    assert np.all(cocip.source["nvpm_ei_n"][sl] < 1.32e15)
+    assert np.all(cocip.source["nvpm_ei_n"][sl] > 1.08e15)
 
     assert "thrust" in cocip.source
-    assert np.all(cocip.source["thrust"][:-1] < 51000)
-    assert np.all(cocip.source["thrust"][:-1] > 38000)
+    assert np.all(cocip.source["thrust"][sl] < 51000)
+    assert np.all(cocip.source["thrust"][sl] > 38000)
 
     assert "thrust_setting" in cocip.source
-    assert np.all(cocip.source["thrust_setting"][:-1] < 0.51)
-    assert np.all(cocip.source["thrust_setting"][:-1] > 0.40)
+    assert np.all(cocip.source["thrust_setting"][sl] < 0.51)
+    assert np.all(cocip.source["thrust_setting"][sl] > 0.40)
 
 
 def test_intermediate_columns_in_flight_output(cocip_persistent: Cocip) -> None:
