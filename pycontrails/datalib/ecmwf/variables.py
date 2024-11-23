@@ -187,6 +187,28 @@ TopNetThermalRadiation = MetVariable(
     ),
 )
 
+TopNetSolarRadiationClearSky = MetVariable(
+    short_name="tsrc",
+    standard_name="top_net_solar_radiation_clear_sky",
+    long_name="Top of atmosphere net solar (shortwave) radiation (clear-sky)",
+    units="J m**-2",
+    level_type="nominalTop",
+    ecmwf_id=208,
+    grib2_id=(0, 4, 11),
+    description=(""),
+)
+
+TopNetThermalRadiationClearSky = MetVariable(
+    short_name="ttrc",
+    standard_name="top_net_thermal_radiation_clear_sky",
+    long_name="Top of atmosphere net thermal (longwave) radiation (clear-sky)",
+    units="J m**-2",
+    level_type="nominalTop",
+    ecmwf_id=209,
+    grib2_id=(0, 5, 6),
+    description=(""),
+)
+
 SurfaceSolarDownwardRadiation = MetVariable(
     short_name="ssrd",
     standard_name="surface_solar_downward_radiation",
@@ -291,6 +313,8 @@ SURFACE_VARIABLES = [
     TOAIncidentSolarRadiation,
     TopNetSolarRadiation,
     TopNetThermalRadiation,
+    TopNetSolarRadiationClearSky,
+    TopNetThermalRadiationClearSky,
     CloudAreaFraction,
     SurfaceSolarDownwardRadiation,
     SurfaceSkinTemperature,

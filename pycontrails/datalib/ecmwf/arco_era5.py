@@ -81,6 +81,8 @@ _met_vars_to_arco_surface_level_mapping = {
     ecmwf_variables.TOAIncidentSolarRadiation: "toa_incident_solar_radiation",
     ecmwf_variables.TopNetSolarRadiation: "top_net_solar_radiation",
     ecmwf_variables.TopNetThermalRadiation: "top_net_thermal_radiation",
+    ecmwf_variables.TopNetSolarRadiationClearSky: "top_net_solar_radiation_clear_sky",
+    ecmwf_variables.TopNetThermalRadiationClearSky: "top_net_thermal_radiation_clear_sky",
     ecmwf_variables.CloudAreaFraction: "total_cloud_cover",
     ecmwf_variables.SurfaceSolarDownwardRadiation: "surface_solar_radiation_downwards",
     ecmwf_variables.SurfaceSkinTemperature: "skin_temperature",

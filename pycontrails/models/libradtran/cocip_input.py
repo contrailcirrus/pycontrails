@@ -83,6 +83,21 @@ class CocipInput:
             return {}
         weights = weights[weights.between(0, 1)]
 
+        # Extra filter needed when exactly at a segment endpoint
+        def discard(row: pd.Series, other: pd.Series) -> bool:
+            flight_id, waypoint = row.name
+            if (flight_id, waypoint + 1) not in other.index:
+                return False
+            return (row["wt"] == 1.0) and (other.loc[flight_id, waypoint + 1] == 0.0)
+
+        mask = pd.DataFrame({"wt": weights}).apply(
+            lambda row: discard(row, weights), axis="columns"
+        )
+        segments = segments[~mask]
+        if len(segments) == 0:
+            return {}
+        weights = weights[~mask]
+
         # Profiles are required for all remaining segments
         logger.debug(
             f"Profiles at {time}, {lat}N, {lon}E includes contributions "
@@ -145,7 +160,7 @@ class CocipInput:
         out = {}
         name = "-".join(str(n) for n in segment.name)
         for habit, weight, re in zip(*_cocip_habits(r, self.params), strict=True):
-            out[f"{name}-{habit.lower()}"] = _create_profile(
+            out[f"{name}-{habit.lower().replace(' ', '-')}"] = _create_profile(
                 habit, z0 - dz, z0 + dz, weight * iwc, re
             )
 
@@ -229,6 +244,8 @@ def _at_time(time: pd.Timestamp, df: pd.DataFrame) -> pd.Series:
 
 def _sign_y(lon: float, lat: float, lon0: float, lat0: float, lon1: float, lat1: float) -> float:
     """Get sign of Cocip y coordinate."""
+    if lon == lon0 and lat == lat0:
+        return 0.0
     v_traj = geo.longitudinal_angle(lon0, lat0, lon1, lat1)
     v = geo.longitudinal_angle(lon0, lat0, lon, lat)
     return np.sign(v[0] * v_traj[1] - v_traj[0] * v[1])
