@@ -9,6 +9,7 @@ import multiprocessing
 import os
 import time
 import warnings
+from collections.abc import Callable
 from typing import Any, NoReturn, overload
 
 import numpy as np
@@ -19,7 +20,7 @@ from scipy.special import gamma
 from pycontrails.core import GeoVectorDataset, MetDataset, cache, met_var, models
 from pycontrails.core.models import interpolate_met
 from pycontrails.datalib.ecmwf import variables as ecmwf
-from pycontrails.models.libradtran import mcica, options, utils
+from pycontrails.models.libradtran import options, subcolumns, utils
 from pycontrails.models.libradtran.cocip_input import CocipInput
 from pycontrails.physics import constants
 from pycontrails.utils.types import ArrayScalarLike
@@ -36,6 +37,9 @@ class LibRadtranParams(models.ModelParams):
 
     #: Number of subcolumns for background cloud McICA
     subcolumns: int = 0
+
+    #: Postprocessing function
+    postprocess: Callable[[LibRadtran], GeoVectorDataset] | None = None
 
     #: CO2 volume mixing ratio :math:`[ppmv]`
     co2_ppmv: float = 400.0
@@ -155,7 +159,9 @@ class LibRadtran(models.Model):
         **params_kwargs: Any,
     ) -> None:
         # call Model init
-        super().__init__(met, params=params, **params_kwargs)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="\nMet data appears")
+            super().__init__(met, params=params, **params_kwargs)
 
         sfc.ensure_vars(self.sfc_variables)
         self.sfc = sfc
@@ -223,11 +229,9 @@ class LibRadtran(models.Model):
         print(f"Speedup --- {np.sum(times)/elapsed:.1f}x")
         print("=============================")
 
-        result = self.postprocess()
-        if result is not None:
-            for column in result.columns:
-                self.source[column] = result[column]
-
+        postprocess = self.params["postprocess"]
+        if postprocess is not None:
+            return postprocess(self)
         return self.source
 
     def prepare_input(self) -> pd.DataFrame:
@@ -339,16 +343,17 @@ class LibRadtran(models.Model):
 
         # Set paths
         if self.params["subcolumns"] < 1:
-            lwc_cld = [lwc]
-            iwc_cld = [iwc]
+            lwc_subcol = [lwc]
+            iwc_subcol = [iwc]
             weights = [1.0]
             rundirs = [rootdir]
             paths = pd.DataFrame(data={"scene": [scene], "path": rundirs}).set_index("scene")
         else:
-            lwc_cld, iwc_cld, weights = mcica.generate_subcolumns(
-                lwc, iwc, cf, self.params["subcolumns"]
-            )
-            ncol = len(lwc_cld)
+            col_start = 0.5 / self.params["subcolumns"]
+            col_end = 1.0 - col_start
+            columns = np.linspace(col_start, col_end, self.params["subcolumns"])
+            lwc_subcol, iwc_subcol, weights = subcolumns.generate_subcolumns(lwc, iwc, cf, columns)
+            ncol = len(lwc_subcol)
             rundirs = [os.path.join(rootdir, "subcolumns", str(i)) for i in range(ncol)]
             paths = pd.DataFrame(
                 data={
@@ -360,7 +365,7 @@ class LibRadtran(models.Model):
             ).set_index(["scene", "subcolumn"])
 
         # Write background cloud profiles
-        for lwc, iwc, rundir in zip(lwc_cld, iwc_cld, rundirs, strict=True):
+        for lwc, iwc, rundir in zip(lwc_subcol, iwc_subcol, rundirs, strict=True):
             local_options = copy.copy(options)
             os.makedirs(rundir, exist_ok=True)
 
@@ -397,61 +402,6 @@ class LibRadtran(models.Model):
             utils.write_input(path, local_options)
 
         return paths
-
-    def postprocess(self) -> pd.DataFrame | None:
-        """Postprocess libRadtran output."""
-        mol_abs_param = self.lrt_options["mol_abs_param"]
-        if mol_abs_param == "fu":
-            return self._postprocess_correlated_k()
-        msg = (
-            "No automated postprocessing available for mol_abs_param {mol_abs_param}. "
-            "LibRadtran output must be postprocessed manually based on self.paths."
-        )
-        warnings.warn(msg)
-        return None
-
-    def _postprocess_correlated_k(self) -> pd.DataFrame | None:
-        """Postprocess correlated k output."""
-        supported_columns = set(["edir", "eglo", "edn", "eup"])
-        columns = self.lrt_options["output_user"].split()
-        unsupported_columns = set(columns).difference(supported_columns)
-        if len(unsupported_columns) > 0:
-            msg = (
-                f"No automated postprocessing available for output_user {unsupported_columns}. "
-                "LibRadtran output must be postprocessed manually based on self.paths."
-            )
-            warnings.warn(msg)
-            return None
-
-        if self.paths is None:
-            msg = (
-                "Cannot run postprocessing because self.paths is not set. "
-                "Run self.eval to set self.paths based on libRadtran output."
-            )
-            raise ValueError(msg)
-
-        out = []
-        for scene, df in self.paths.groupby(level=0):
-            # Load data
-            data = np.stack([utils.parse_stdout(path) for path in df["path"]], axis=0)
-
-            # Sum over bands
-            missing = np.any(np.isnan(data), axis=(0, 2)).sum()
-            if missing > 0:
-                msg = f"Scene {scene}: setting NaN values in {missing} bands to 0."
-                warnings.warn(msg)
-            data = np.nansum(data, axis=1)
-
-            # Weight subcolumns
-            weights = df["weight"].to_numpy() if "weight" in df.columns else np.atleast_1d(1.0)
-            weights = weights / np.sum(weights)
-            weights = weights.reshape(-1, 1)
-            data = np.sum(weights * data, axis=0)
-
-            # Save results
-            out.append(pd.Series(data, index=columns, name=scene))
-
-        return pd.concat(out, axis="columns").T
 
     def _interpolate_atmosphere(
         self,
@@ -566,12 +516,11 @@ class LibRadtran(models.Model):
         p = met.data["air_pressure"].to_numpy()[1:]
         t = interpolate_met(met, target, "air_temperature", **interp_kwargs)
         rho = p / (constants.R_d * t)
-        lwc = (
-            interpolate_met(met, target, "specific_cloud_liquid_water_content", **interp_kwargs)
-            / rho
+        lwc = rho * interpolate_met(
+            met, target, "specific_cloud_liquid_water_content", **interp_kwargs
         )
-        iwc = (
-            interpolate_met(met, target, "specific_cloud_ice_water_content", **interp_kwargs) / rho
+        iwc = rho * interpolate_met(
+            met, target, "specific_cloud_ice_water_content", **interp_kwargs
         )
         cf = interpolate_met(met, target, "fraction_of_cloud_cover", **interp_kwargs)
         lwc = np.maximum(0.0, lwc)
