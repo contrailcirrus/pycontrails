@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import math
 
 import numpy as np
 import pandas as pd
@@ -22,7 +21,7 @@ from pycontrails.datalib.exceptions import (
     FlightTooSlowError,
     OrderingError,
     OriginAirportError,
-    RocdError,
+    ROCDError,
     SchemaError,
 )
 from pycontrails.physics import geo, units
@@ -764,14 +763,14 @@ class ValidateTrajectoryHandler:
     """
 
     CRUISE_ROCD_THRESHOLD_FPS = 4.2  # 4.2 ft/sec ~= 250 ft/min
-    CRUISE_LOW_ALTITUDE_THRESHOLD_FT = 15000  # lowest expected cruise altitude
-    INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS = 350  # 350m/sec ~= 780mph ~= 1260kph
-    INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS = 45  # 45m/sec ~= 100mph ~= 160kph
-    AVG_LOW_GROUND_SPEED_THRESHOLD_MPS = 100  # 120m/sec ~= 223mph ~= 360 kph
-    AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN = 30  # rolling period for avg speed comparison
-    AIRPORT_DISTANCE_THRESHOLD_KM = 200
+    CRUISE_LOW_ALTITUDE_THRESHOLD_FT = 15000.0  # lowest expected cruise altitude
+    INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS = 350.0  # 350m/sec ~= 780mph ~= 1260kph
+    INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS = 45.0  # 45m/sec ~= 100mph ~= 160kph
+    AVG_LOW_GROUND_SPEED_THRESHOLD_MPS = 100.0  # 120m/sec ~= 223mph ~= 360 kph
+    AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN = 30.0  # rolling period for avg speed comparison
+    AIRPORT_DISTANCE_THRESHOLD_KM = 200.0
     MIN_FLIGHT_LENGTH_HR = 0.4
-    MAX_FLIGHT_LENGTH_HR = 19
+    MAX_FLIGHT_LENGTH_HR = 19.0
 
     # expected schema of pandas dataframe passed on initialization
     SCHEMA = {
@@ -799,7 +798,7 @@ class ValidateTrajectoryHandler:
     def __init__(self):
         self._df: pd.DataFrame | None = None
 
-    def set(self, trajectory: pd.DataFrame):
+    def set(self, trajectory: pd.DataFrame) -> None:
         """
         Set a single flight trajectory into handler state.
 
@@ -811,14 +810,14 @@ class ValidateTrajectoryHandler:
         """
         if len(trajectory) == 0:
             raise BadTrajectoryException("flight trajectory is empty.")
-        if len(trajectory["flight_id"].unique()) > 1:
+        if trajectory["flight_id"].nunique() > 1:
             raise Exception(
                 "dataset passed to handler must be for a single flight instance (" "flight_id)."
             )
 
         self._df = trajectory.copy(deep=True)
 
-    def unset(self):
+    def unset(self) -> None:
         """Pop _df from handler state."""
         self._df = None
 
@@ -851,9 +850,10 @@ class ValidateTrajectoryHandler:
                 f"found multiple matches for aiport icao {airport_icao} " f"in airports database."
             )
 
-        lat = matches.iloc[0]["latitude"]
-        lon = matches.iloc[0]["longitude"]
-        alt_ft = matches.iloc[0]["elevation_ft"]
+        lat = matches["latitude"].iloc[0]
+        lon = matches["longitude"].iloc[0]
+        alt_ft = matches["elevation_ft"].iloc[0]
+
         if (
             not isinstance(lat, np.floating)
             or not isinstance(lon, np.floating)
@@ -868,8 +868,8 @@ class ValidateTrajectoryHandler:
     @staticmethod
     def _calc_distance_m(lat_0, lon_0, alt_ft_0, lat_f, lon_f, alt_ft_f) -> float:
         """Calculate great circle distance between two lat/lon/alt coordinates."""
-        dist_m = math.sqrt(
-            (0.3048 * (alt_ft_f - alt_ft_0)) ** 2
+        dist_m = (
+            (units.ft_to_m(alt_ft_f) - units.ft_to_m(alt_ft_0)) ** 2
             + geo.haversine(
                 lons1=np.array(lon_f),
                 lats1=np.array(lat_f),
@@ -877,11 +877,11 @@ class ValidateTrajectoryHandler:
                 lats0=np.array(lat_0),
             )
             ** 2
-        )
+        ) ** 0.5
         return dist_m
 
     @staticmethod
-    def _rolling_time_delta_seconds(roll_window: pd.DataFrame):
+    def _rolling_time_delta_seconds(roll_window: pd.DataFrame) -> int:
         """
         Calculate the elapsed time in seconds between two consecutive, time-ordered rows.
 
@@ -907,7 +907,7 @@ class ValidateTrajectoryHandler:
         return int(dt_sec)
 
     @classmethod
-    def _rolling_distance_meters(cls, roll_window: pd.DataFrame):
+    def _rolling_distance_meters(cls, roll_window: pd.DataFrame) -> float:
         """
         Impute the distance travelled (given two consecutive, time-ordered rows).
 
@@ -1034,7 +1034,7 @@ class ValidateTrajectoryHandler:
             alt_ft_f=arrival_alt_ft,
         )
 
-    def _calculate_additional_fields(self):
+    def _calculate_additional_fields(self) -> None:
         """
         Add additional columns to the provided dataframe.
 
@@ -1059,10 +1059,10 @@ class ValidateTrajectoryHandler:
             rocd_fps=[self._rolling_rocd_fps(window) for window in self._df.rolling(window=2)]
         )
 
-        if len(self._df["arrival_airport_icao"].value_counts()) > 1:
+        if self._df["arrival_airport_icao"].nunique() > 1:
             raise ValueError("expected only one airport icao for flight arrival airport.")
 
-        if len(self._df["departure_airport_icao"].value_counts()) > 1:
+        if self._df["departure_airport_icao"].nunique() > 1:
             raise ValueError("expected only one airport icao for flight departure airport.")
 
         departure_airport_lat_lon_alt = self._df["departure_airport_icao"].apply(
@@ -1086,13 +1086,13 @@ class ValidateTrajectoryHandler:
         )
 
     @classmethod
-    def _is_valid_schema(cls, df: pd.DataFrame) -> None | SchemaError:
+    def _is_valid_schema(cls, df: pd.DataFrame) -> SchemaError | None:
         """Verify that a pandas dataframe has required cols, and that they are of required type."""
         col_types = df.dtypes
-        cols = list(col_types.index)
+        cols = set(col_types.index)
 
         missing_cols = [i for i in cls.SCHEMA if i not in cols]
-        if len(missing_cols) > 0:
+        if missing_cols:
             return SchemaError(f"trajectory dataframe is missing expected fields: {missing_cols}")
 
         col_w_bad_dtypes = []
@@ -1101,13 +1101,13 @@ class ValidateTrajectoryHandler:
             if not is_valid:
                 col_w_bad_dtypes.append(f"{col} failed check {check_fn.__name__}")
 
-        if len(col_w_bad_dtypes) > 0:
+        if col_w_bad_dtypes:
             return SchemaError(
                 f"trajectory dataframe has columns with invalid data types. "
                 f"\n {col_w_bad_dtypes}"
             )
 
-    def _is_timestamp_sorted(self) -> None | OrderingError:
+    def _is_timestamp_sorted(self) -> OrderingError | None:
         """Verify that the data is sorted by waypoint timestamp in ascending order."""
         ts_index = pd.Index(self._df["timestamp"])
         if not ts_index.is_monotonic_increasing:
@@ -1115,7 +1115,7 @@ class ValidateTrajectoryHandler:
                 "trajectory dataframe must be sorted by timestamp in ascending order."
             )
 
-    def _is_valid_invariant_fields(self) -> None | FlightInvariantFieldViolation:
+    def _is_valid_invariant_fields(self) -> FlightInvariantFieldViolation | None:
         """
         Verify that fields expected to be invariant are indeed invariant.
 
@@ -1136,8 +1136,7 @@ class ValidateTrajectoryHandler:
 
         violations = []
         for k in invariant_fields:
-            unique_vals = list(self._df[k].value_counts().index)
-            if len(unique_vals) > 1:
+            if self._df[k].nunique() > 1:
                 violations.append(k)
 
         if len(violations) > 0:
@@ -1145,7 +1144,7 @@ class ValidateTrajectoryHandler:
                 f"the following fields have multiple values for this trajectory. " f"{violations}"
             )
 
-    def _is_valid_duplicate_timestamps(self) -> None | FlightDuplicateTimestamps:
+    def _is_valid_duplicate_timestamps(self) -> FlightDuplicateTimestamps | None:
         """Verify that we do not have duplicate timestamps in the trajectory."""
         timestamp_dupe_cnt = self._df["timestamp"].duplicated().sum()
         if timestamp_dupe_cnt > 0:
@@ -1157,7 +1156,7 @@ class ValidateTrajectoryHandler:
 
     def _is_valid_flight_length(
         self,
-    ) -> None | FlightTooShortError | FlightTooLongError:
+    ) -> FlightTooShortError | FlightTooLongError | None:
         """Verify that the flight is of a reasonable length."""
         flight_duration_sec = (self._df["timestamp"].max() - self._df["timestamp"].min()).seconds
         flight_duration_hours = flight_duration_sec / 60.0 / 60.0
@@ -1174,7 +1173,7 @@ class ValidateTrajectoryHandler:
                 f"this trajectory spans {flight_duration_hours:.2f} hours."
             )
 
-    def _is_from_origin_airport(self) -> None | OriginAirportError:
+    def _is_from_origin_airport(self) -> OriginAirportError | None:
         """Verify that the trajectory origin is a reasonable distance from the origin airport."""
         first_waypoint = self._df.iloc[0]
         first_waypoint_dist_km = first_waypoint["departure_airport_dist_m"] / 1000.0
@@ -1186,7 +1185,7 @@ class ValidateTrajectoryHandler:
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
 
-    def _is_to_destination_airport(self) -> None | DestinationAirportError:
+    def _is_to_destination_airport(self) -> DestinationAirportError | None:
         """
         Verify that the trajectory destination is reasonable distance from the destination airport.
 
@@ -1203,7 +1202,7 @@ class ValidateTrajectoryHandler:
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
 
-    def _is_too_slow(self) -> None | list[FlightTooSlowError]:
+    def _is_too_slow(self) -> list[FlightTooSlowError] | None:
         """
         Evaluate the flight trajectory for unreasonably slow speed.
 
@@ -1263,7 +1262,7 @@ class ValidateTrajectoryHandler:
         if len(violations) > 0:
             return violations
 
-    def _is_too_fast(self) -> None | FlightTooFastError:
+    def _is_too_fast(self) -> FlightTooFastError | None:
         """
         Evaluate the flight trajectory for reasonably high speed.
 
@@ -1282,7 +1281,7 @@ class ValidateTrajectoryHandler:
 
     def _is_expected_altitude_profile(
         self,
-    ) -> None | list[FlightAltitudeProfileError | RocdError]:
+    ) -> list[FlightAltitudeProfileError | ROCDError] | None:
         """
         Evaluate flight altitude profile.
 
@@ -1297,7 +1296,7 @@ class ValidateTrajectoryHandler:
            while aircraft is above the cruise altitude.
         """
 
-        violations: list[FlightAltitudeProfileError | RocdError] = []
+        violations: list[FlightAltitudeProfileError | ROCDError] = []
 
         # only evaluate rocd errors when at cruising altitude
         rocd_above_thres = self._df[
@@ -1306,7 +1305,7 @@ class ValidateTrajectoryHandler:
         ]
         if len(rocd_above_thres) > 0:
             violations.append(
-                RocdError(
+                ROCDError(
                     f"flight trajectory has rate of climb/descent values "
                     "between consecutive waypoints that exceed threshold "
                     f"of {self.CRUISE_ROCD_THRESHOLD_FPS} ft/sec. "
@@ -1364,7 +1363,7 @@ class ValidateTrajectoryHandler:
         schema_check: None | SchemaError
         schema_check = self._is_valid_schema(self._df)
         all_violations.append(schema_check) if schema_check else None
-        if len(all_violations) > 0:
+        if all_violations:
             return all_violations
 
         # Checks; Round 2
@@ -1382,7 +1381,7 @@ class ValidateTrajectoryHandler:
         # we escape here if there are violations for the above checks.
         # we do this because some of the following checks assume no invariant field violations,
         #   or timestamp dupes
-        if len(all_violations) > 0:
+        if all_violations:
             return all_violations
 
         # Checks; Round 3
@@ -1408,9 +1407,8 @@ class ValidateTrajectoryHandler:
         fast_speed_check = self._is_too_fast()
         all_violations.append(fast_speed_check) if fast_speed_check else None
 
-        altitude_profile_check: None | list[FlightAltitudeProfileError | RocdError]
+        altitude_profile_check: None | list[FlightAltitudeProfileError | ROCDError]
         altitude_profile_check = self._is_expected_altitude_profile()
         (all_violations.extend(altitude_profile_check) if altitude_profile_check else None)
 
-        if len(all_violations) > 0:
-            return all_violations
+        return all_violations

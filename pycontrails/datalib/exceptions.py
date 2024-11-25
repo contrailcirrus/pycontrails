@@ -42,7 +42,7 @@ class FlightTooFastError(Exception):
     """Trajectory has period(s) of unrealistically high speed."""
 
 
-class RocdError(Exception):
+class ROCDError(Exception):
     """Trajectory has an unrealistic rate of climb or descent."""
 
 
