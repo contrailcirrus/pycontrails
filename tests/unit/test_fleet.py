@@ -252,7 +252,7 @@ def test_fleet_slots(syn: SyntheticFlight) -> None:
     fleet = Fleet.from_seq(fls)
 
     assert "__dict__" not in dir(fleet)
-    assert fleet.__slots__ == ("fl_attrs", "final_waypoints")
+    assert fleet.__slots__ == ("final_waypoints", "fl_attrs")
     with pytest.raises(AttributeError, match="'Fleet' object has no attribute 'foo'"):
         fleet.foo = "bar"
 

@@ -871,6 +871,6 @@ def test_vector_slots(random_path: VectorDataset) -> None:
     """Ensure slots are respected."""
 
     assert "__dict__" not in dir(random_path)
-    assert random_path.__slots__ == ("data", "attrs")
+    assert random_path.__slots__ == ("attrs", "data")
     with pytest.raises(AttributeError, match="'VectorDataset' object has no attribute 'foo'"):
         random_path.foo = "bar"

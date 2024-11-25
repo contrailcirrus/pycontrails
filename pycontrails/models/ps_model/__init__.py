@@ -8,9 +8,9 @@ from pycontrails.models.ps_model.ps_grid import PSGrid, ps_nominal_grid, ps_nomi
 from pycontrails.models.ps_model.ps_model import PSFlight, PSFlightParams
 
 __all__ = [
+    "PSAircraftEngineParams",
     "PSFlight",
     "PSFlightParams",
-    "PSAircraftEngineParams",
     "PSGrid",
     "load_aircraft_engine_params",
     "ps_nominal_grid",

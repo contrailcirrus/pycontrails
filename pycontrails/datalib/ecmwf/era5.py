@@ -137,10 +137,10 @@ class ERA5(ECMWFAPI):
     """
 
     __slots__ = (
-        "product_type",
         "cds",
-        "url",
         "key",
+        "product_type",
+        "url",
     )
 
     #: Product type, one of "reanalysis", "ensemble_mean", "ensemble_members", "ensemble_spread"

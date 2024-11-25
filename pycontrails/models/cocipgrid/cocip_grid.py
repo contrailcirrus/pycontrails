@@ -74,11 +74,11 @@ class CocipGrid(models.Model):
     """
 
     __slots__ = (
-        "rad",
-        "timesteps",
+        "_target_dtype",
         "contrail",
         "contrail_list",
-        "_target_dtype",
+        "rad",
+        "timesteps",
     )
 
     name = "contrail_grid"

@@ -43,7 +43,7 @@ def _get_user_cache_dir() -> str:
 class CacheStore(ABC):
     """Abstract cache storage class for storing staged and intermediate data."""
 
-    __slots__ = ("cache_dir", "allow_clear")
+    __slots__ = ("allow_clear", "cache_dir")
     cache_dir: str
     allow_clear: bool
 
@@ -426,15 +426,15 @@ class GCPCacheStore(CacheStore):
     """
 
     __slots__ = (
-        "project",
-        "bucket",
-        "read_only",
-        "timeout",
-        "show_progress",
-        "chunk_size",
-        "_disk_cache",
-        "_client",
         "_bucket",
+        "_client",
+        "_disk_cache",
+        "bucket",
+        "chunk_size",
+        "project",
+        "read_only",
+        "show_progress",
+        "timeout",
     )
     project: str | None
     bucket: str

@@ -195,14 +195,14 @@ class Cocip(Model):
     """
 
     __slots__ = (
-        "rad",
+        "_downwash_contrail",
+        "_downwash_flight",
+        "_sac_flight",
         "contrail",
         "contrail_dataset",
         "contrail_list",
+        "rad",
         "timesteps",
-        "_sac_flight",
-        "_downwash_flight",
-        "_downwash_contrail",
     )
 
     name = "cocip"
