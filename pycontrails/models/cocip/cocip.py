@@ -2395,8 +2395,6 @@ def time_integration_runge_kutta(
     # Retrieve`contrail_12` properties related to rate of change calculations
     dsn_dz_12 = contrail_12["dsn_dz"]
     terminal_fall_speed_12 = contrail_12["terminal_fall_speed"]
-    heat_rate_12 = contrail_12["heat_rate"]
-    d_heat_rate_12 = contrail_12["d_heat_rate"]
     diffuse_h_12 = contrail_12["diffuse_h"]
     diffuse_v_12 = contrail_12["diffuse_v"]
     dn_dt_agg_12 = contrail_12["dn_dt_agg"]
@@ -2440,13 +2438,18 @@ def time_integration_runge_kutta(
     # Update cumulative radiative heating energy absorbed by the contrail
     # This will always be zero if radiative_heating_effects is not activated in cocip_params
     if params["radiative_heating_effects"]:
-        dt_sec = dt / np.timedelta64(1, "s")
+        # Retrieve properties
+        heat_rate_12 = contrail_12["heat_rate"]
         cumul_heat = contrail_1["cumul_heat"]
+        d_heat_rate_12 = contrail_12["d_heat_rate"]
+        cumul_differential_heat = contrail_1["cumul_differential_heat"]
+
+        # Calculate cumulative heat
+        dt_sec = dt / np.timedelta64(1, "s")
         cumul_heat += heat_rate_12 * dt_sec
         cumul_heat.clip(max=1.5, out=cumul_heat)  # Constrain additional heat to 1.5 K as precaution
         contrail_2["cumul_heat"] = cumul_heat
 
-        cumul_differential_heat = contrail_1["cumul_differential_heat"]
         cumul_differential_heat += -d_heat_rate_12 * dt_sec
         contrail_2["cumul_differential_heat"] = cumul_differential_heat
 
