@@ -1355,7 +1355,7 @@ class ValidateTrajectoryHandler:
         self._calculate_additional_fields()
         return self._df
 
-    def evaluate(self) -> None | list[Exception]:
+    def evaluate(self) -> list[Exception]:
         """Evaluate the flight trajectory for one or more violations."""
 
         all_violations: list[Exception] = []
