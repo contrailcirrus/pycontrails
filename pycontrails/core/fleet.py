@@ -32,7 +32,7 @@ class Fleet(Flight):
     Flight waypoints are merged into a single :class:`Flight`-like object.
     """
 
-    __slots__ = ("fl_attrs", "final_waypoints")
+    __slots__ = ("final_waypoints", "fl_attrs")
 
     def __init__(
         self,

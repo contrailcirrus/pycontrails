@@ -125,7 +125,7 @@ class GFSForecast(metsource.MetDataSource):
     - `GFS Documentation <https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs/documentation.php>`_
     """
 
-    __slots__ = ("client", "grid", "cachestore", "show_progress", "forecast_time", "cache_download")
+    __slots__ = ("cache_download", "cachestore", "client", "forecast_time", "grid", "show_progress")
 
     #: S3 client for accessing GFS bucket
     client: botocore.client.S3

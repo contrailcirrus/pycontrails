@@ -277,13 +277,13 @@ class APCEMM(models.Model):
     """
 
     __slots__ = (
-        "apcemm_path",
+        "_trajectory_downsampling",
         "apcemm_input_params",
+        "apcemm_path",
         "cachestore",
+        "contrail",
         "trajectories",
         "vortex",
-        "contrail",
-        "_trajectory_downsampling",
     )
 
     name = "apcemm"

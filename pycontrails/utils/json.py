@@ -172,8 +172,7 @@ def dataframe_to_geojson_points(
                 k: (
                     row[k]
                     if not isinstance(row[k], float)
-                    or isinstance(row[k], float)
-                    and not np.isnan(row[k])
+                    or (isinstance(row[k], float) and not np.isnan(row[k]))
                     else None
                 )
                 for k in unused_keys

@@ -228,7 +228,7 @@ class HRES(ECMWFAPI):
     ... )
     """
 
-    __slots__ = ("server", "stream", "field_type", "forecast_time", "url", "key", "email")
+    __slots__ = ("email", "field_type", "forecast_time", "key", "server", "stream", "url")
 
     #: stream type, "oper" = atmospheric model/HRES, "enfo" = ensemble forecast.
     stream: str

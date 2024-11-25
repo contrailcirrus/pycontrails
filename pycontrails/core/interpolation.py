@@ -254,7 +254,7 @@ def _pick_method(scipy_version: str, method: str) -> str:
         raise ValueError(msg) from exc
 
     reimplemented_methods = ["slinear", "cubic", "quintic"]
-    if major > 1 or (major == 1 and minor >= 13) and method in reimplemented_methods:
+    if major > 1 or ((major == 1 and minor >= 13) and method in reimplemented_methods):
         return method + "_legacy"
     return method
 

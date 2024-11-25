@@ -65,7 +65,7 @@ dev = [
     "pytest>=8.2",
     "pytest-cov>=2.11",
     "requests>=2.25",
-    "ruff==0.6.2",
+    "ruff==0.8.0",
     "setuptools",
 ]
 
@@ -239,7 +239,7 @@ ignore-path = [
 line-length = 100
 
 [tool.ruff.lint]
-select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "SIM", "UP"]
+select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "RUF", "SIM", "UP"]
 ignore = [
     "B028",
     "E402",

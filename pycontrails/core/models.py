@@ -160,7 +160,7 @@ class Model(ABC):
     Implementing classes must implement the :meth:`eval` method
     """
 
-    __slots__ = ("params", "met", "source")
+    __slots__ = ("met", "params", "source")
 
     #: Default model parameter dataclass
     default_params: type[ModelParams] = ModelParams

@@ -260,7 +260,7 @@ class VectorDataset:
         If "time" variable cannot be converted to numpy array.
     """
 
-    __slots__ = ("data", "attrs")
+    __slots__ = ("attrs", "data")
 
     #: Vector data with labels as keys and :class:`numpy.ndarray` as values
     data: VectorDataDict

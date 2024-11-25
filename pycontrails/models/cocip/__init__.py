@@ -15,9 +15,10 @@ from pycontrails.models.cocip.output_formats import (
 
 __all__ = [
     "Cocip",
+    "CocipFlightParams",
     "CocipParams",
     "CocipUncertaintyParams",
-    "CocipFlightParams",
+    "compare_cocip_with_goes",
     "contrail_flight_summary_statistics",
     "contrails_to_hi_res_grid",
     "flight_waypoint_summary_statistics",
@@ -25,5 +26,4 @@ __all__ = [
     "longitude_latitude_grid",
     "natural_cirrus_properties_to_hi_res_grid",
     "time_slice_statistics",
-    "compare_cocip_with_goes",
 ]
