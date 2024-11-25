@@ -2321,6 +2321,7 @@ def calc_contrail_properties(
 
 def time_integration_runge_kutta(
     met: MetDataset,
+    rad: MetDataset,
     contrail_1: GeoVectorDataset,
     contrail_12: GeoVectorDataset,
     time_2: np.datetime64,
@@ -2333,6 +2334,8 @@ def time_integration_runge_kutta(
     ----------
     met : MetDataset
        Meteorology data
+    rad : MetDataset
+        Radiation data
     contrail_1 : GeoVectorDataset
         Contrail waypoints at current timestep (1)
     contrail_12 : GeoVectorDataset
@@ -2537,6 +2540,18 @@ def time_integration_runge_kutta(
 
     # calculate next timestep meteorology, contrail, and radiative properties
     calc_timestep_meteorology(contrail_2, met, params, **interp_kwargs)
+
+    # Intersect with rad dataset
+    calc_shortwave_radiation(rad, contrail_2, **interp_kwargs)
+    calc_outgoing_longwave_radiation(rad, contrail_2, **interp_kwargs)
+    calc_contrail_properties(
+        contrail_2,
+        params["effective_vertical_resolution"],
+        params["wind_shear_enhancement_exponent"],
+        params["sedimentation_impact_factor"],
+        params["radiative_heating_effects"],
+    )
+    calc_radiative_properties(contrail_2, params)
     return contrail_2
 
 
@@ -2581,7 +2596,7 @@ def calc_timestep_contrail_evolution(
     # First-order Euler method
     contrail_12 = copy.deepcopy(contrail_1)     # Set intermediate values to the initial values
     contrail_2 = time_integration_runge_kutta(
-        met, contrail_1, contrail_12, time_2, params, **interp_kwargs
+        met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
     )
 
     # Second-order Runge-Kutta scheme
@@ -2589,20 +2604,8 @@ def calc_timestep_contrail_evolution(
         # `contrail_2` calculated in first-order Euler method is now used as intermediate values
         contrail_12 = copy.deepcopy(contrail_2)
         contrail_2 = time_integration_runge_kutta(
-            met, contrail_1, contrail_12, time_2, params, **interp_kwargs
+            met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
         )
-
-    # Intersect with rad dataset
-    calc_shortwave_radiation(rad, contrail_2, **interp_kwargs)
-    calc_outgoing_longwave_radiation(rad, contrail_2, **interp_kwargs)
-    calc_contrail_properties(
-        contrail_2,
-        params["effective_vertical_resolution"],
-        params["wind_shear_enhancement_exponent"],
-        params["sedimentation_impact_factor"],
-        params["radiative_heating_effects"],
-    )
-    calc_radiative_properties(contrail_2, params)
 
     # get properties to measure persistence
     latitude_2 = contrail_2["latitude"]
