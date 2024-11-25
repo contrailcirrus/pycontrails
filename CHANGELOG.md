@@ -10,6 +10,7 @@
 
 - Add new `AdvectionBuffers` dataclass to override the zero-like values used in `ModelParams` with the buffer previously used in `CocipParams`. This is now a base class for `CocipParams` and `DryAdvectionParams`. In particular, the `DryAdvection` now uses nonzero values for the met downselect buffers.
 - Change the order of advected points returned by `DryAdvection` to be consistent with the input order at each time step.
+- Add the `RUF` ruleset for linting and formatting the codebase.
 
 ## v0.54.3
 
