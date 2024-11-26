@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import sys
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any, TypeVar
@@ -33,6 +34,13 @@ ArrayScalarLike = TypeVar(
 
 #: Datetime like input (datetime, pd.Timestamp, np.datetime64)
 DatetimeLike = TypeVar("DatetimeLike", datetime, pd.Timestamp, np.datetime64, str)
+
+# Crude fix for autodoc issue calling TypeVar.__dict__ on Python 3.13
+if "sphinx" in sys.modules and sys.version_info >= (3, 13):
+    ArrayLike.__dict__ = {}
+    ArrayOrFloat.__dict__ = {}
+    ArrayScalarLike.__dict__ = {}
+    DatetimeLike.__dict__ = {}
 
 
 def support_arraylike(

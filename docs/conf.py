@@ -172,10 +172,12 @@ autodoc_typehints = "none"
 # autodoc options
 autoclass_content = "class"  # only include docstring from Class (not __init__ method)
 autodoc_inherit_docstrings = True
+# https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_default_options
 autodoc_default_options = {
     "members": None,  # means yes/true/on
     "undoc-members": None,
     "show-inheritance": None,
+    "inherited-members": None,
 }
 
 # Add references in bibtex format here
