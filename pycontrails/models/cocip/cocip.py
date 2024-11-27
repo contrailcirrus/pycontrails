@@ -2593,7 +2593,7 @@ def calc_timestep_contrail_evolution(
      details, see :func:`time_integration_runge_kutta`.
     """
     # First-order Euler method
-    contrail_12 = contrail_1.copy()     # Set intermediate values to the initial values
+    contrail_12 = contrail_1.copy()  # Set intermediate values to the initial values
     contrail_2 = time_integration_runge_kutta(
         met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
     )
