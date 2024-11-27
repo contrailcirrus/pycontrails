@@ -57,7 +57,7 @@ class CocipParams(AdvectionBuffers):
     # Implementation parameters
     # -------------------------
 
-    #: Determines whether :meth:`Cocip.process_emissions` runs on model :meth:`Cocip.eval`
+    #: Determines whether :meth:`Cocip._process_emissions` runs on model :meth:`Cocip.eval`
     #: Set to ``False`` when input Flight includes emissions data.
     process_emissions: bool = True
 
@@ -152,21 +152,25 @@ class CocipParams(AdvectionBuffers):
     #: These are not standard CoCiP outputs but based on the derivation used
     #: in the first supplement to :cite:`yinPredictingClimateImpact2023`. ATR20 is defined
     #: as the average temperature response over a 20 year horizon.
+    #:
+    #: .. versionadded:: 0.50.0
     compute_atr20: bool = False
 
     #: Constant factor used to convert global- and year-mean RF, [:math:`W m^{-2}`],
     #: to ATR20, [:math:`K`], given by :cite:`yinPredictingClimateImpact2023`.
+    #:
+    #: .. versionadded:: 0.50.0
     global_rf_to_atr20_factor: float = 0.0151
 
     # ----------------
     # Model parameters
     # ----------------
 
-    #: Perform CoCiP time integration using the second-order Runge-Kutta scheme
+    #: Perform CoCiP time integration using the second-order Runge-Kutta scheme.
     #: If False, a first-order Euler method is used instead. Note that the first-order Euler
     #: method was used exclusively in earlier versions of pycontrails (until v0.54.3).
     #:
-    #: #:  .. versionadded:: 0.54.4
+    #: .. versionadded:: 0.54.4
     second_order_runge: bool = False
 
     #: Initial wake vortex depth scaling factor.
