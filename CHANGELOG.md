@@ -78,6 +78,10 @@
 - Remove the optional input parameter `climb_descend_at_end` in `Flight.resample_and_fill`. See the description of the new `_altitude_interpolation` function for the rationale behind this change.
 - Remove the `copy` argument from `Fleet.from_seq`. This argument was redundant and not used effectively in the implementation. The `Fleet.from_seq` method always returns a copy of the input sequence.
 
+### Features
+
+- Update CoCiP time integration methodology from a first-order Euler approach to a second-order Runge-Kutta scheme. This ensures better numerical stability as the `dt_integration` parameter varies, and brings the pycontrails `Cocip` implementation into better parity with Ulrich Schumann's [initial CoCiP specification](https://py.contrails.org/literature.html#cite-schumannparametricradiativeforcing2012). This new feature can be enabled by passing `second_order_runge=True` to the `Cocip` constructor. The default behavior remains the first-order Euler scheme (this may change in future release).
+
 ### Fixes
 
 - Fix the `ERA5` interface when making a pressure-level request with a single pressure level. This change accommodates CDS-Beta server behavior. Previously, a ValueError was raised in this case.
@@ -452,7 +456,7 @@ The Unterstrasser (2016) parameterization can be used in CoCiP by setting a new 
 - Add new `MetDataSource.is_single_level` property.
 - Add `ecmwf.Divergence` (a subclass of `MetVariable`) for accessing ERA5 divergence data.
 - Update the [specific humidity interpolation notebook](https://py.contrails.org/notebooks/specific-humidity-interpolation.html) to use the new `ARCOERA5` interface.
-- Adds two parameters to `CoCipParams`, `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output.
+- Add two parameters to `CocipParams`: `compute_atr20` and `global_rf_to_atr20_factor`. Setting the former to `True` will add both `global_yearly_mean_rf` and `atr20` to the CoCiP output.
 - Bump minimum pytest version to 8.1 to avoid failures in release workflow.
 
 ## v0.49.5
