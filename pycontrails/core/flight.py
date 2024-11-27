@@ -1826,30 +1826,44 @@ def _altitude_interpolation(
             alt_ft[mid_na_idx + 1] = alt_ft_end
             continue
 
-        # (4): If large time gap and altitude difference, climb until desired altitude and cruise
-        if dt_next > 20.0 and rocd_next > 0.0:
-            dt_climb = int(np.ceil((alt_ft_end - alt_ft_start) / nominal_rocd_ft_min))
-            t_climb_complete = time_start + np.timedelta64(dt_climb, "m")
-            idx_climb_complete = np.searchsorted(time, t_climb_complete) + 1
-            alt_ft[idx_climb_complete] = alt_ft_end
+        # (4): Climb at the start until target altitude and level off if:
+        #:  (i) large time gap (`dt_next` > 20 minutes) and positive `rocd`, or
+        #:  (ii) shallow climb (0 < `rocd_next` < 500 ft/min) between current and next waypoint
+
+        #: For (i), we only perform this for large time gaps, because we do not want the aircraft to
+        #: constantly climb, level off, and repeat, while the ADS-B waypoints show that it is
+        #: continuously climbing
+        if (dt_next > 20.0 and rocd_next > 0.0) or (0.0 < rocd_next < 500.0):
+            dt_climb = int(np.ceil((alt_ft_end - alt_ft_start) / nominal_rocd_ft_min * 60))
+            t_climb_complete = time_start + np.timedelta64(dt_climb, "s")
+            idx_climb_complete = np.searchsorted(time, t_climb_complete)
+
+            #: [Safeguard for very small `dt_next`] Ensure climb can be performed within the
+            #: interpolated time step. If False, then aircraft will climb between waypoints instead
+            #: of levelling off.
+            if start_na_idxs[i] < idx_climb_complete < end_na_idxs[i]:
+                alt_ft[idx_climb_complete] = alt_ft_end
+
             continue
 
-        # (5): If shallow climb (0 < `rocd_next` < 500 ft/min), assume climb in `next step`
-        if 0.0 < rocd_next < 500.0:
-            alt_ft[start_na_idxs[i] + 1] = alt_ft_end
-            continue
+        # (5):  Descent towards the end until target altitude and level off if:
+        #:  (i) large time gap (`dt_next` > 20 minutes) and negative `rocd`, or
+        #:  (ii) shallow descent (-250 < `rocd_next` < 0 ft/min) between current and next waypoint
+        if (dt_next > 20.0 and rocd_next < 0.0) or (-250.0 < rocd_next < 0.0):
+            dt_descent = int(np.ceil((alt_ft_start - alt_ft_end) / nominal_rocd_ft_min * 60))
+            t_descent_start = time_end - np.timedelta64(dt_descent, "s")
+            idx_descent_start = np.where(
+                -250.0 < rocd_next < 0.0,
+                np.searchsorted(time, t_descent_start) - 1,
+                np.searchsorted(time, t_descent_start)
+            )
 
-        # (6): If large time gap and altitude difference, assume descent towards the end
-        if dt_next > 20.0 and rocd_next < 0.0:
-            dt_descent = int(np.ceil((alt_ft_start - alt_ft_end) / nominal_rocd_ft_min))
-            t_descent_start = time_end - np.timedelta64(dt_descent, "m")
-            idx_descent_start = np.searchsorted(time, t_descent_start) + 1
-            alt_ft[idx_descent_start] = alt_ft_start
-            continue
+            #: [Safeguard for very small `dt_next`] Ensure descent can be performed within the
+            #: interpolated time step. If False, then aircraft will descent between waypoints
+            #: instead of levelling off.
+            if start_na_idxs[i] < idx_descent_start < end_na_idxs[i]:
+                alt_ft[idx_descent_start] = alt_ft_start
 
-        # (7): If shallow descent (-250 < `rocd_next` < 0 ft/min), then assume descent in last step.
-        if -250.0 < rocd_next < 0.0:
-            alt_ft[end_na_idxs[i] - 1] = alt_ft_start
             continue
 
     # Linearly interpolate between remaining nan values
