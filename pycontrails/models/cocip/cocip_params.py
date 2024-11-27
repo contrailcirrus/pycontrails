@@ -162,9 +162,12 @@ class CocipParams(AdvectionBuffers):
     # Model parameters
     # ----------------
 
-    #: CoCiP time integration using the second-order Runge-Kutta scheme
-    #: Up until v0.54.3, the time integration step was implemented as a First-order Euler method,
-    second_order_runge: bool = True
+    #: Perform CoCiP time integration using the second-order Runge-Kutta scheme
+    #: If False, a first-order Euler method is used instead. Note that the first-order Euler
+    #: method was used exclusively in earlier versions of pycontrails (until v0.54.3).
+    #:
+    #: #:  .. versionadded:: 0.54.4
+    second_order_runge: bool = False
 
     #: Initial wake vortex depth scaling factor.
     #: This factor scales max contrail downward displacement after the wake vortex phase
@@ -216,7 +219,7 @@ class CocipParams(AdvectionBuffers):
     #: and the CoCiP implementation of this parameter may change.
     #:
     #:  .. versionadded:: 0.28.9
-    radiative_heating_effects: bool = True
+    radiative_heating_effects: bool = False
 
     #: Experimental. Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing

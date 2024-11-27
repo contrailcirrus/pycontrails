@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import logging
 import sys
 import warnings
@@ -2594,7 +2593,7 @@ def calc_timestep_contrail_evolution(
      details, see :func:`time_integration_runge_kutta`.
     """
     # First-order Euler method
-    contrail_12 = copy.deepcopy(contrail_1)     # Set intermediate values to the initial values
+    contrail_12 = contrail_1.copy()     # Set intermediate values to the initial values
     contrail_2 = time_integration_runge_kutta(
         met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
     )
@@ -2602,7 +2601,7 @@ def calc_timestep_contrail_evolution(
     # Second-order Runge-Kutta scheme
     if params["second_order_runge"]:
         # `contrail_2` calculated in first-order Euler method is now used as intermediate values
-        contrail_12 = copy.deepcopy(contrail_2)
+        contrail_12 = contrail_2.copy()
         contrail_2 = time_integration_runge_kutta(
             met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
         )
