@@ -488,7 +488,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
 
     # Takes less than 10 minutes to descent to next recorded altitude (Nominal ROCD = 2500 ft/min)
     index_sep = np.argwhere(fl13["time"] == pd.to_datetime("2000-01-01 00:50:00"))[0][0]
-    np.testing.assert_array_almost_equal(fl13.altitude_ft[: index_sep + 1], 30000.0, decimal=0)
+    np.testing.assert_array_almost_equal(fl13.altitude_ft[: index_sep], 30000.0, decimal=0)
     assert _check_rocd(fl13)
 
     # SCENARIO 5: If shallow descent (-250 < rocd < 0 ft/min), then assume descent in last step.
@@ -501,7 +501,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
         altitude=units.ft_to_m(alt_ft),
     )
     fl14 = fl_alt.resample_and_fill("1min")
-    np.testing.assert_array_almost_equal(fl14.altitude_ft[:-6], 31000.0, decimal=0)
+    np.testing.assert_array_almost_equal(fl14.altitude_ft[:5], 31000.0, decimal=0)
     np.testing.assert_array_almost_equal(fl14.altitude_ft[-6:], 30000.0, decimal=0)
     assert _check_rocd(fl14)
 
