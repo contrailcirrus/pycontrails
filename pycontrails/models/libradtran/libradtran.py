@@ -7,15 +7,13 @@ import dataclasses
 import logging
 import multiprocessing
 import os
-import time
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from scipy.special import gamma
 
 from pycontrails.core import GeoVectorDataset, MetDataset, cache, met_var, models
 from pycontrails.core.models import interpolate_met
@@ -35,8 +33,8 @@ class LibRadtranParams(models.ModelParams):
     #: If True, ignore background cloud
     clearsky: bool = False
 
-    #: Number of subcolumns for background cloud McICA
-    subcolumns: int = 0
+    #: Number of subcolumns for background cloud
+    subcolumns: int | Iterable[float] = 0
 
     #: Postprocessing function
     postprocess: Callable[[LibRadtran], GeoVectorDataset] | None = None
@@ -44,11 +42,11 @@ class LibRadtranParams(models.ModelParams):
     #: CO2 volume mixing ratio :math:`[ppmv]`
     co2_ppmv: float = 400.0
 
-    #: Cloud droplet size distribution intercept parameter [:math:`m^{-3 - \mu}`]
-    n0: float = 1.2e66
+    #: Liquid cloud droplet number concentration [:math:`m^{-3}`]
+    nd_liq: float = 50e6
 
-    #: Cloud droplet size distribution shape parameter
-    mu: float = 11
+    #: Liquid cloud droplet size spectrum parameter
+    k_liq: float = 0.77
 
     #: Threshold snow depth, in m water equivalent, to treat
     #: pixel as snow-covered.
@@ -207,27 +205,12 @@ class LibRadtran(models.Model):
         self.paths = self.prepare_input()
         rundirs = self.paths["path"]
 
-        all_start = time.perf_counter()
-
         if self.params["num_workers"] == 1:
-            job_times = []
             for job in rundirs:
-                job_times.append(utils.run(job))
-
+                utils.run(job)
         else:
             with multiprocessing.Pool(self.params["num_workers"]) as pool:
-                job_times = pool.map(utils.run, rundirs)
-
-        elapsed = time.perf_counter() - all_start
-        times = np.array(job_times)
-
-        print("=============================")
-        print("libRadtran runtime statistics")
-        print(f"Jobs ------ {len(rundirs)}")
-        print(f"Elapsed --- {elapsed:.0f} s")
-        print(f"Per job --- {np.mean(times):.0f} +/- {np.std(times):.1f} s")
-        print(f"Speedup --- {np.sum(times)/elapsed:.1f}x")
-        print("=============================")
+                pool.map(utils.run, rundirs)
 
         postprocess = self.params["postprocess"]
         if postprocess is not None:
@@ -256,12 +239,10 @@ class LibRadtran(models.Model):
 
         paths = []
         for scene, row in self.source.dataframe.iterrows():
-            print(f"\rWriting input: {int(100*scene/len(self.source)):>3d}% complete", end="")
             lon = row["longitude"]
             lat = row["latitude"]
             time = row["time"].to_numpy()
             paths.append(self.write_input(scene, met, sfc, lon, lat, time))
-        print("\rWriting input: 100% complete")
 
         return pd.concat(paths)
 
@@ -342,13 +323,21 @@ class LibRadtran(models.Model):
         z, t, lwc, iwc, cf = self._interpolate_cloud(met, sfc, lon, lat, time)
 
         # Set paths
-        if self.params["subcolumns"] < 1:
-            lwc_subcol = [lwc]
-            iwc_subcol = [iwc]
-            weights = [1.0]
-            rundirs = [rootdir]
-            paths = pd.DataFrame(data={"scene": [scene], "path": rundirs}).set_index("scene")
-        else:
+        cloud_subcolumns = self.params["subcolumns"]
+        if isinstance(cloud_subcolumns, Iterable):
+            columns = np.clip(np.asarray(cloud_subcolumns), 0.0, 1.0)
+            lwc_subcol, iwc_subcol, weights = subcolumns.generate_subcolumns(lwc, iwc, cf, columns)
+            ncol = len(lwc_subcol)
+            rundirs = [os.path.join(rootdir, "subcolumns", str(i)) for i in range(ncol)]
+            paths = pd.DataFrame(
+                data={
+                    "scene": [scene] * ncol,
+                    "subcolumn": list(range(ncol)),
+                    "path": rundirs,
+                    "weight": weights,
+                }
+            ).set_index(["scene", "subcolumn"])
+        elif cloud_subcolumns >= 1:
             col_start = 0.5 / self.params["subcolumns"]
             col_end = 1.0 - col_start
             columns = np.linspace(col_start, col_end, self.params["subcolumns"])
@@ -363,6 +352,12 @@ class LibRadtran(models.Model):
                     "weight": weights,
                 }
             ).set_index(["scene", "subcolumn"])
+        else:
+            lwc_subcol = [lwc]
+            iwc_subcol = [iwc]
+            weights = [1.0]
+            rundirs = [rootdir]
+            paths = pd.DataFrame(data={"scene": [scene], "path": rundirs}).set_index("scene")
 
         # Write background cloud profiles
         for lwc, iwc, rundir in zip(lwc_subcol, iwc_subcol, rundirs, strict=True):
@@ -371,7 +366,9 @@ class LibRadtran(models.Model):
 
             if np.any(lwc > 0):
                 rel = np.zeros_like(lwc)
-                rel[lwc > 0] = _reff_liquid(lwc[lwc > 0], self.params["n0"], self.params["mu"])
+                rel[lwc > 0] = _reff_liquid(
+                    lwc[lwc > 0], self.params["nd_liq"], self.params["k_liq"]
+                )
                 start = max(0, np.flatnonzero(lwc > 0).min() - 1)
                 if lwc[start] != 0:
                     msg = "Nonzero liquid water content in top layer. Consider extending domain."
@@ -380,12 +377,14 @@ class LibRadtran(models.Model):
                 utils.write_cloud_file(path, z[start:], lwc[start:], rel[start:])
                 utils.check_set(local_options, "profile_file background-liquid", f"1D {path}")
                 utils.check_set(
-                    local_options, "profile_properties background-liquid", "mie interpolate"
+                    local_options,
+                    "profile_properties background-liquid",
+                    "mie interpolate",
                 )
 
             if np.any(iwc > 0):
                 rei = np.zeros_like(iwc)
-                rei[iwc > 0] = _reff_ice(iwc[iwc > 0], t[iwc > 0])
+                rei[iwc > 0] = _reff_ice(iwc[iwc > 0], t[iwc > 0], lat)
                 start = max(0, np.flatnonzero(iwc > 0).min() - 1)
                 if iwc[start] != 0:
                     msg = "Nonzero ice water content in top layer. Consider extending domain."
@@ -394,7 +393,9 @@ class LibRadtran(models.Model):
                 utils.write_cloud_file(path, z[start:], iwc[start:], rei[start:])
                 utils.check_set(local_options, "profile_file background-ice", f"1D {path}")
                 utils.check_set(
-                    local_options, "profile_properties background-ice", "baum_v36 interpolate"
+                    local_options,
+                    "profile_properties background-ice",
+                    "baum_v36 interpolate",
                 )
                 utils.check_set(local_options, "profile_habit background-ice", "ghm")
 
@@ -560,22 +561,28 @@ def _format_lon(lon: float) -> str:
     return f"W {-lon:.6f}"
 
 
-def _reff_liquid(lwc: ArrayScalarLike, n0: ArrayScalarLike, mu: ArrayScalarLike) -> ArrayScalarLike:
+def _reff_liquid(
+    lwc: ArrayScalarLike, nd_liq: ArrayScalarLike, k_liq: ArrayScalarLike
+) -> ArrayScalarLike:
     """Compute effective radius of liquid cloud.
 
-    TODO: complete docstring.
+    Based on IFS formulation: https://www.ecmwf.int/sites/default/files/2023-06/Part-IV-Physical-Processes.pdf
     """
-    pow = 1.0 / (mu + 3.0)
-    lam = (np.pi * constants.rho_liq * n0 * gamma(mu + 3) / lwc) ** pow
-    return (mu + 2.0) / (2.0 * lam)
+    reff = (3.0 * lwc / (4.0 * np.pi * constants.rho_liq * k_liq * nd_liq)) ** (1.0 / 3.0)
+    return np.clip(reff, 1e-6, 25e-6)
 
 
-def _reff_ice(iwc: ArrayScalarLike, t: ArrayScalarLike) -> ArrayScalarLike:
+def _reff_ice(iwc: ArrayScalarLike, t: ArrayScalarLike, lat: ArrayScalarLike) -> ArrayScalarLike:
     """Compute effective radius of ice cloud.
 
-    Reference: tau_cirrus.cirrus_effective_extinction_coefficient
+    Based on IFS formulation: https://www.ecmwf.int/sites/default/files/2023-06/Part-IV-Physical-Processes.pdf
     """
-    riwc = iwc * 1e3
-    tiwc = t + constants.absolute_zero + 190.0
-    deff = 45.8966 * riwc**0.2214 + 0.7957 * tiwc * riwc**0.2535
-    return np.clip(0.5e-6 * deff, 5e-6, 60e-6)
+    iwc = iwc * 1e3
+    a = 45.8966 * iwc**0.2214
+    b = 0.7957 * iwc**0.2535
+    deff = (1.2351 + 0.0105 * (t - 273.15)) * (a + b * (t - 83.15))
+    dmin = 20.0 + 40.0 * np.cos(np.deg2rad(lat))
+    dmax = 155.0
+    deff = np.clip(deff, dmin, dmax)
+    reff = 0.64952 * deff
+    return np.clip(1e-6 * reff, 5e-6, 60e-6)

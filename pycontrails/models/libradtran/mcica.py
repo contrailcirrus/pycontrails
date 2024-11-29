@@ -23,6 +23,7 @@ def generate_subcolumns(
     iwc_cld = _safe_divide(iwc, cf, fill=0.0)
 
     rng = np.random.default_rng(random_seed)
+    randu = rng.uniform(0, 1, size=(cf.size + 1, ncol))
 
     # Compute cumulative cloud fraction from TOA
     pstar = _safe_divide(1.0 - np.maximum(cf[1:], cf[:-1]), 1.0 - cf[:-1])
@@ -31,7 +32,7 @@ def generate_subcolumns(
     C[2:] = 1 - (1 - C[1]) * np.cumprod(pstar, axis=0)
 
     # Determine level of highest cloud layer
-    rstar = rng.uniform(0, 1, size=(1, ncol))
+    rstar = randu[0, :]
     itop = np.nonzero(
         (rstar > C[:-1, np.newaxis] / C[-1:, np.newaxis])
         & (rstar <= C[1:, np.newaxis] / C[-1:, np.newaxis])
@@ -47,7 +48,7 @@ def generate_subcolumns(
         if lower.sum() == 0:
             continue
 
-        r = rng.uniform(0, 1, size=lower.sum())
+        r = randu[i + 1, lower]
         r0 = _safe_divide(np.minimum(cf[i], cf[i - 1]), cf[i])
         r1 = _safe_divide(
             np.maximum(cf[i], cf[i - 1]) - cf[i - 1] - (C[i + 1] - C[i]), C[i] - cf[i - 1]

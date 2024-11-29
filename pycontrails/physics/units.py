@@ -148,7 +148,11 @@ def m_to_pl(h: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     ft_to_pl
     """
     condlist = [h < constants.h_tropopause, h >= constants.h_tropopause]
-    funclist = [_low_altitude_m_to_pl, _high_altitude_m_to_pl, np.nan]  # nan passed through
+    funclist = [
+        _low_altitude_m_to_pl,
+        _high_altitude_m_to_pl,
+        np.nan,
+    ]  # nan passed through
     return np.piecewise(h, condlist, funclist)
 
 
@@ -204,7 +208,11 @@ def pl_to_m(pl: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """
     pl_tropopause = m_to_pl(constants.h_tropopause)
     condlist = [pl < pl_tropopause, pl >= pl_tropopause]
-    funclist = [_high_altitude_pl_to_m, _low_altitude_pl_to_m, np.nan]  # nan passed through
+    funclist = [
+        _high_altitude_pl_to_m,
+        _low_altitude_pl_to_m,
+        np.nan,
+    ]  # nan passed through
     return np.piecewise(pl, condlist, funclist)
 
 
@@ -470,6 +478,36 @@ def dt_to_seconds(
     out = np.empty(dt.shape, dtype=dtype)
     np.divide(dt, np.timedelta64(1, "s"), out=out)
     return out
+
+
+def brightness_temperature_to_radiance(
+    T: ArrayScalarLike, wavelength: ArrayScalarLike
+) -> ArrayScalarLike:
+    """Convert radiance to brightness temperature.
+
+    Parameters
+    ----------
+    T : ArrayScalarLike
+        brightness temperature [:math:`K`]
+
+    wavelength : ArrayScalarLike
+        wavelength, micrometers [:math:`um`]
+
+    Returns
+    -------
+    ArrayScalarLike
+        radiance using wavelength in microns as the spectral unit
+        [:math:`W m^{-2} sr^{-1} um^{-1}`].
+    """
+    w = 1e-6 * wavelength  # convert to m
+    radiance = (
+        2.0
+        * constants.h_planck
+        * constants.c_light**2
+        / (w**5)
+        / (np.exp(constants.h_planck * constants.c_light / (w * constants.k_boltzmann * T)) - 1.0)
+    )
+    return 1e-6 * radiance  # convert to per um
 
 
 def radiance_to_brightness_temperature(

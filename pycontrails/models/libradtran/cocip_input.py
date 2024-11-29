@@ -52,6 +52,10 @@ class CocipInput:
     def get_profiles(self, lon: float, lat: float, time: np.datetime64) -> dict[str, Any]:
         """Compute libRadtran input profiles."""
 
+        # Early exit if dataframe of segments is empty
+        if self.segments.empty:
+            return {}
+
         # Interpolate to target time
         candidates = self.segments.groupby(["flight_id", "waypoint"]).filter(
             lambda df: (df["time"].min() <= time) & (df["time"].max() >= time)
@@ -154,7 +158,7 @@ class CocipInput:
 
         # Compute altitude of local plume center as
         # concentration-weighted altitude at y.
-        z0 = z + Syz * y / Szz
+        z0 = z + Syz * y / Syy
 
         # Generate profile for each habit
         out = {}
@@ -169,10 +173,11 @@ class CocipInput:
 
 def contrail_to_segments(df: pd.DataFrame) -> pd.DataFrame:
     """Convert Cocip contrail output to per-segment data."""
-    return (
-        _as_segments(df)
-        .groupby(["flight_id", "waypoint"])
-        .apply(lambda df: df.reset_index(drop=True).sort_values("time"), include_groups=False)
+    segments = _as_segments(df)
+    if segments.empty:
+        return pd.DataFrame()
+    return segments.groupby(["flight_id", "waypoint"]).apply(
+        lambda df: df.reset_index(drop=True).sort_values("time"), include_groups=False
     )
 
 

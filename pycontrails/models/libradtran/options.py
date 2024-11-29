@@ -11,6 +11,8 @@ def get_default_options(calculation: str) -> dict[str, str]:
             "mol_abs_param": "reptran fine",
             "number_of_streams": "16",
             "zout": "TOA",
+            "z_interpolate h2o": "spline",
+            "z_interpolate o3": "spline",
             "umu": "1",
             "phi": "0",
             "output_user": "lambda uu",
@@ -22,6 +24,8 @@ def get_default_options(calculation: str) -> dict[str, str]:
             "source": "thermal",
             "mol_abs_param": "fu",
             "zout": "TOA",
+            "z_interpolate h2o": "spline",
+            "z_interpolate o3": "spline",
             "output_user": "edir eglo edn eup",
         }
     msg = f"No default options available for {calculation} calculation."

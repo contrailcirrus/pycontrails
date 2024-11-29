@@ -4,7 +4,6 @@ import itertools
 import os
 import subprocess
 import tempfile
-import time
 from typing import Any
 
 import numpy as np
@@ -151,10 +150,8 @@ def write_input(path: str, options: dict[str, str]) -> None:
         f.write(inputstr.encode("ascii"))
 
 
-def run(rundir: str) -> float:
+def run(rundir: str) -> None:
     """Run libRadtran."""
-
-    start = time.perf_counter()
 
     def _path(name: str) -> str:
         return os.path.join(rundir, name)
@@ -177,8 +174,6 @@ def run(rundir: str) -> float:
                 f"Check input at {stdin_log} and logs at {stdout_log} and {stderr_log}."
             )
             raise ChildProcessError(msg)
-
-    return time.perf_counter() - start
 
 
 def parse_stdout(path: str) -> npt.NDArray[np.float64]:

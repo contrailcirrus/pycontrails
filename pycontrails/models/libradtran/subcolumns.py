@@ -1,4 +1,4 @@
-"""Monte Carlo independent column approximation for partially-cloudy columns."""
+"""Subcolumn generation for partially-cloudy columns."""
 
 import numpy as np
 import numpy.typing as npt
@@ -12,16 +12,16 @@ def generate_subcolumns(
 ) -> tuple[list[npt.NDArray[np.float64]], list[npt.NDArray[np.float64]], list[float]]:
     """Generate cloud water content profiles for subcolumns."""
 
-    # In-cloud water content
-    lwc_cld = _safe_divide(lwc, cf, fill=0.0)
-    iwc_cld = _safe_divide(iwc, cf, fill=0.0)
+    # Maximum in-cloud water content
+    lwc0 = _safe_divide(lwc, cf, fill=0.0)
+    iwc0 = _safe_divide(iwc, cf, fill=0.0)
 
-    # Binary cloud fraction for each column
-    x = cf[:, np.newaxis] > columns[np.newaxis, :]
+    # Cloud mask
+    x = np.where(cf[:, np.newaxis] > columns[np.newaxis, :], 1.0, 0.0)
 
     # Generate subcolumn profiles
-    lwc_sub = [x[:, i] * lwc_cld for i in range(x.shape[1])]
-    iwc_sub = [x[:, i] * iwc_cld for i in range(x.shape[1])]
+    lwc_sub = [lwc0 * x[:, i] for i in range(x.shape[1])]
+    iwc_sub = [iwc0 * x[:, i] for i in range(x.shape[1])]
 
     # Compute weights
     if columns.size == 1:
