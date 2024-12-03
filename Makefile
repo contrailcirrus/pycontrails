@@ -218,6 +218,7 @@ nb-check-links:
 	python -m pytest --check-links \
 		--check-links-ignore "https://doi.org/10.1021/acs.est.9b05608" \
 		--check-links-ignore "https://doi.org/10.1021/acs.est.2c05781" \
+		--check-links-ignore "https://doi.org/10.1175/JAMC-D-11-0242.1" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
 		--check-links-ignore "https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast" \
