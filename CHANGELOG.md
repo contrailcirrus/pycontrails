@@ -6,6 +6,11 @@
 
 - Fix the `ERA5` interface when making a pressure-level request with a single pressure level. This change accommodates CDS-Beta server behavior. Previously, a ValueError was raised in this case.
 
+### Internals
+
+- Add new `AdvectionBuffers` dataclass to override the zero-like values used in `ModelParams` with the buffer previously used in `CocipParams`. This is now a base class for `CocipParams` and `DryAdvectionParams`. In particular, the `DryAdvection` now uses nonzero values for the met downselect buffers.
+- Change the order of advected points returned by `DryAdvection` to be consistent with the input order at each time step.
+
 ## v0.54.3
 
 ### Breaking changes
