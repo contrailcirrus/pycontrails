@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 
 from pycontrails.core.aircraft_performance import AircraftPerformance
-from pycontrails.core.models import ModelParams
+from pycontrails.core.models import AdvectionBuffers
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.humidity_scaling import HumidityScaling
 
@@ -50,7 +50,7 @@ def _habits() -> npt.NDArray[np.str_]:
 
 
 @dataclasses.dataclass
-class CocipParams(ModelParams):
+class CocipParams(AdvectionBuffers):
     """Model parameters required by the CoCiP models."""
 
     # -------------------------
@@ -115,15 +115,6 @@ class CocipParams(ModelParams):
     #: iff the met data is dask-backed. Otherwise, it will be computed during model
     #: evaluation after the met data is downselected.
     compute_tau_cirrus_in_model_init: bool | str = "auto"
-
-    #: Met longitude [WGS84] buffer for Cocip evolution.
-    met_longitude_buffer: tuple[float, float] = (10.0, 10.0)
-
-    #: Met latitude buffer [WGS84] for Cocip evolution.
-    met_latitude_buffer: tuple[float, float] = (10.0, 10.0)
-
-    #: Met level buffer [:math:`hPa`] for Cocip initialization and evolution.
-    met_level_buffer: tuple[float, float] = (40.0, 40.0)
 
     # ---------
     # Filtering

@@ -17,7 +17,7 @@ from pycontrails.physics import geo, thermo
 
 
 @dataclasses.dataclass
-class DryAdvectionParams(models.ModelParams):
+class DryAdvectionParams(models.AdvectionBuffers):
     """Parameters for the :class:`DryAdvection` model."""
 
     #: Apply Euler's method with a fixed step size of ``dt_integration``. Advected waypoints

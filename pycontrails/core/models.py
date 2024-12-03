@@ -135,6 +135,20 @@ class ModelParams:
         return {(name := field.name): getattr(self, name) for field in fields(self)}
 
 
+@dataclass
+class AdvectionBuffers(ModelParams):
+    """Override buffers in :class:`ModelParams` for advection models."""
+
+    #: Met longitude [WGS84] buffer for evolution by advection.
+    met_longitude_buffer: tuple[float, float] = (10.0, 10.0)
+
+    #: Met latitude buffer [WGS84] for evolution by advection.
+    met_latitude_buffer: tuple[float, float] = (10.0, 10.0)
+
+    #: Met level buffer [:math:`hPa`] for evolution by advection.
+    met_level_buffer: tuple[float, float] = (40.0, 40.0)
+
+
 # ------
 # Models
 # ------
