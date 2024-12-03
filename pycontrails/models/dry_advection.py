@@ -10,7 +10,12 @@ import numpy.typing as npt
 
 from pycontrails.core import models
 from pycontrails.core.met import MetDataset
-from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind, VerticalVelocity
+from pycontrails.core.met_var import (
+    AirTemperature,
+    EastwardWind,
+    NorthwardWind,
+    VerticalVelocity,
+)
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.cocip import contrail_properties, wind_shear
 from pycontrails.physics import geo, thermo
@@ -138,12 +143,12 @@ class DryAdvection(models.Model):
         t1 = source_time.max()
         timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
 
-        vector = None
+        vector = GeoVectorDataset()
 
         evolved = []
         for t in timesteps:
             filt = (source_time < t) & (source_time >= t - dt_integration)
-            vector = self.source.filter(filt, copy=False) + vector
+            vector = vector + self.source.filter(filt, copy=False)
             vector = _evolve_one_step(
                 self.met,
                 vector,
