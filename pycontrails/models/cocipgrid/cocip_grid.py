@@ -1578,20 +1578,21 @@ def find_initial_persistent_contrails(
 
 
 def calc_evolve_one_step(
-    curr_contrail: GeoVectorDataset,
-    next_contrail: GeoVectorDataset,
+    contrail_1: GeoVectorDataset,
+    contrail_2: GeoVectorDataset,
     params: dict[str, Any],
 ) -> tuple[GeoVectorDataset, npt.NDArray[np.bool_]]:
-    """Calculate contrail properties of ``next_contrail``.
+    """Calculate contrail properties of ``contrail_2``.
 
-    This function attaches additional variables to ``next_contrail``, then
-    filters by :func:`contrail_properties.contrail_persistent`.
+    This function attaches additional variables to ``contrail_2`` (it is
+    freely modified in place). The function also returns a boolean array of
+    filters produced by :func:`contrail_properties.contrail_persistent`.
 
     Parameters
     ----------
-    curr_contrail : GeoVectorDataset
+    contrail_1 : GeoVectorDataset
         Existing contrail
-    next_contrail : GeoVectorDataset
+    contrail_2 : GeoVectorDataset
         Result of advecting existing contrail already interpolated against CoCiP met data
     params : dict[str, Any]
         CoCiP model parameters. See :class:`CocipGrid`.
@@ -1599,124 +1600,122 @@ def calc_evolve_one_step(
     Returns
     -------
     tuple[GeoVectorDataset, npt.NDArray[np.bool_]]
-        A tuple with ``next_contrail`` and a boolean array indicating which
+        A tuple with ``contrail_2`` and a boolean array indicating which
         points persist after the evolution step.
     """
     calc_wind_shear(
-        next_contrail,
+        contrail_2,
         is_downwash=False,
         dz_m=params["dz_m"],
         dsn_dz_factor=params["dsn_dz_factor"],
     )
-    calc_thermal_properties(next_contrail)
+    calc_thermal_properties(contrail_2)
 
-    iwc_t1 = curr_contrail["iwc"]
-    specific_humidity_t1 = curr_contrail["specific_humidity"]
-    specific_humidity_t2 = next_contrail["specific_humidity"]
-    q_sat_t1 = curr_contrail["q_sat"]
-    q_sat_t2 = next_contrail["q_sat"]
-    plume_mass_per_m_t1 = curr_contrail["plume_mass_per_m"]
-    width_t1 = curr_contrail["width"]
-    depth_t1 = curr_contrail["depth"]
-    sigma_yz_t1 = curr_contrail["sigma_yz"]
-    dsn_dz_t1 = curr_contrail["dsn_dz"]
-    diffuse_h_t1 = curr_contrail["diffuse_h"]
-    diffuse_v_t1 = curr_contrail["diffuse_v"]
+    iwc_1 = contrail_1["iwc"]
+    specific_humidity_1 = contrail_1["specific_humidity"]
+    specific_humidity_2 = contrail_2["specific_humidity"]
+    q_sat_1 = contrail_1["q_sat"]
+    q_sat_2 = contrail_2["q_sat"]
+    plume_mass_per_m_1 = contrail_1["plume_mass_per_m"]
+    width_1 = contrail_1["width"]
+    depth_1 = contrail_1["depth"]
+    sigma_yz_1 = contrail_1["sigma_yz"]
+    dsn_dz_1 = contrail_1["dsn_dz"]
+    diffuse_h_1 = contrail_1["diffuse_h"]
+    diffuse_v_1 = contrail_1["diffuse_v"]
 
     # Segment-free mode logic
-    segment_length_t2: np.ndarray | float
-    seg_ratio_t12: np.ndarray | float
-    if _is_segment_free_mode(curr_contrail):
-        segment_length_t2 = 1.0
-        seg_ratio_t12 = 1.0
+    segment_length_2: np.ndarray | float
+    seg_ratio_12: np.ndarray | float
+    if _is_segment_free_mode(contrail_1):
+        segment_length_2 = 1.0
+        seg_ratio_12 = 1.0
     else:
-        segment_length_t1 = curr_contrail["segment_length"]
-        segment_length_t2 = next_contrail["segment_length"]
-        seg_ratio_t12 = contrail_properties.segment_length_ratio(
-            segment_length_t1, segment_length_t2
-        )
+        segment_length_1 = contrail_1["segment_length"]
+        segment_length_2 = contrail_2["segment_length"]
+        seg_ratio_12 = contrail_properties.segment_length_ratio(segment_length_1, segment_length_2)
 
-    dt = next_contrail["time"] - curr_contrail["time"]
+    dt = contrail_2["time"] - contrail_1["time"]
 
-    sigma_yy_t2, sigma_zz_t2, sigma_yz_t2 = contrail_properties.plume_temporal_evolution(
-        width_t1=width_t1,
-        depth_t1=depth_t1,
-        sigma_yz_t1=sigma_yz_t1,
-        dsn_dz_t1=dsn_dz_t1,
-        diffuse_h_t1=diffuse_h_t1,
-        diffuse_v_t1=diffuse_v_t1,
-        seg_ratio=seg_ratio_t12,
+    sigma_yy_2, sigma_zz_2, sigma_yz_2 = contrail_properties.plume_temporal_evolution(
+        width_t1=width_1,
+        depth_t1=depth_1,
+        sigma_yz_t1=sigma_yz_1,
+        dsn_dz_t1=dsn_dz_1,
+        diffuse_h_t1=diffuse_h_1,
+        diffuse_v_t1=diffuse_v_1,
+        seg_ratio=seg_ratio_12,
         dt=dt,
         max_depth=params["max_depth"],
     )
 
-    width_t2, depth_t2 = contrail_properties.new_contrail_dimensions(sigma_yy_t2, sigma_zz_t2)
-    next_contrail["sigma_yz"] = sigma_yz_t2
-    next_contrail["width"] = width_t2
-    next_contrail["depth"] = depth_t2
+    width_2, depth_2 = contrail_properties.new_contrail_dimensions(sigma_yy_2, sigma_zz_2)
+    contrail_2["sigma_yz"] = sigma_yz_2
+    contrail_2["width"] = width_2
+    contrail_2["depth"] = depth_2
 
-    area_eff_t2 = contrail_properties.new_effective_area_from_sigma(
-        sigma_yy=sigma_yy_t2,
-        sigma_zz=sigma_zz_t2,
-        sigma_yz=sigma_yz_t2,
+    area_eff_2 = contrail_properties.new_effective_area_from_sigma(
+        sigma_yy=sigma_yy_2,
+        sigma_zz=sigma_zz_2,
+        sigma_yz=sigma_yz_2,
     )
 
-    rho_air_t2 = next_contrail["rho_air"]
-    plume_mass_per_m_t2 = contrail_properties.plume_mass_per_distance(area_eff_t2, rho_air_t2)
-    iwc_t2 = contrail_properties.new_ice_water_content(
-        iwc_t1=iwc_t1,
-        q_t1=specific_humidity_t1,
-        q_t2=specific_humidity_t2,
-        q_sat_t1=q_sat_t1,
-        q_sat_t2=q_sat_t2,
-        mass_plume_t1=plume_mass_per_m_t1,
-        mass_plume_t2=plume_mass_per_m_t2,
+    rho_air_2 = contrail_2["rho_air"]
+    plume_mass_per_m_2 = contrail_properties.plume_mass_per_distance(area_eff_2, rho_air_2)
+    iwc_2 = contrail_properties.new_ice_water_content(
+        iwc_t1=iwc_1,
+        q_t1=specific_humidity_1,
+        q_t2=specific_humidity_2,
+        q_sat_t1=q_sat_1,
+        q_sat_t2=q_sat_2,
+        mass_plume_t1=plume_mass_per_m_1,
+        mass_plume_t2=plume_mass_per_m_2,
     )
-    next_contrail["iwc"] = iwc_t2
+    contrail_2["iwc"] = iwc_2
 
-    n_ice_per_m_t1 = curr_contrail["n_ice_per_m"]
-    dn_dt_agg = curr_contrail["dn_dt_agg"]
-    dn_dt_turb = curr_contrail["dn_dt_turb"]
+    n_ice_per_m_t1 = contrail_1["n_ice_per_m"]
+    dn_dt_agg = contrail_1["dn_dt_agg"]
+    dn_dt_turb = contrail_1["dn_dt_turb"]
 
     n_ice_per_m_t2 = contrail_properties.new_ice_particle_number(
         n_ice_per_m_t1=n_ice_per_m_t1,
         dn_dt_agg=dn_dt_agg,
         dn_dt_turb=dn_dt_turb,
-        seg_ratio=seg_ratio_t12,
+        seg_ratio=seg_ratio_12,
         dt=dt,
     )
-    next_contrail["n_ice_per_m"] = n_ice_per_m_t2
+    contrail_2["n_ice_per_m"] = n_ice_per_m_t2
 
     cocip.calc_contrail_properties(
-        next_contrail,
+        contrail_2,
         params["effective_vertical_resolution"],
         params["wind_shear_enhancement_exponent"],
         params["sedimentation_impact_factor"],
         radiative_heating_effects=False,  # Not yet supported in CocipGrid
     )
-    cocip.calc_radiative_properties(next_contrail, params)
+    cocip.calc_radiative_properties(contrail_2, params)
 
-    rf_net_t1 = curr_contrail["rf_net"]
-    rf_net_t2 = next_contrail["rf_net"]
+    rf_net_t1 = contrail_1["rf_net"]
+    rf_net_t2 = contrail_2["rf_net"]
     ef = contrail_properties.energy_forcing(
         rf_net_t1=rf_net_t1,
         rf_net_t2=rf_net_t2,
-        width_t1=width_t1,
-        width_t2=width_t2,
-        seg_length_t2=segment_length_t2,
+        width_t1=width_1,
+        width_t2=width_2,
+        seg_length_t2=segment_length_2,
         dt=dt,
     )
     # NOTE: This will get masked below if `persistent` is False
     # That is, we are taking a right Riemann sum of a decreasing function, so we are
     # underestimating the truth. With dt small enough, this is fine.
-    next_contrail["ef"] = ef
+    contrail_2["ef"] = ef
 
-    # NOTE: Only dealing with `next_contrail` here
-    latitude = next_contrail["latitude"]
-    altitude = next_contrail["altitude"]
-    tau_contrail = next_contrail["tau_contrail"]
-    n_ice_per_vol = next_contrail["n_ice_per_vol"]
-    age = next_contrail["age"]
+    # NOTE: Only dealing with `contrail_2` here
+    latitude = contrail_2["latitude"]
+    altitude = contrail_2["altitude"]
+    tau_contrail = contrail_2["tau_contrail"]
+    n_ice_per_vol = contrail_2["n_ice_per_vol"]
+    age = contrail_2["age"]
 
     # Both tau_contrail and n_ice_per_vol could have nan values
     # These are mostly due to out of bounds interpolation
@@ -1728,14 +1727,14 @@ def calc_evolve_one_step(
     persistent = contrail_properties.contrail_persistent(
         latitude=latitude,
         altitude=altitude,
-        segment_length=segment_length_t2,  # type: ignore[arg-type]
+        segment_length=segment_length_2,  # type: ignore[arg-type]
         age=age,
         tau_contrail=tau_contrail,
         n_ice_per_m3=n_ice_per_vol,
         params=params,
     )
 
-    return next_contrail, persistent
+    return contrail_2, persistent
 
 
 def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
