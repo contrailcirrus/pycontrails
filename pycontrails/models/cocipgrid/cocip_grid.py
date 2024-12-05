@@ -1110,7 +1110,7 @@ def _evolve_vector(
         **params["_interp_kwargs"],
     )
 
-    vector_2, persistent = calc_evolve_one_step(vector, vector_2, params)
+    vector_2, persistent = calc_evolve_one_step(vector, vector_12, vector_2, params)
 
     if params["second_order_runge"]:
         vector_12 = vector_2
@@ -1124,7 +1124,7 @@ def _evolve_vector(
             humidity_scaling=params["humidity_scaling"],
             **params["_interp_kwargs"],
         )
-        vector_2, persistent = calc_evolve_one_step(vector, vector_2, params)
+        vector_2, persistent = calc_evolve_one_step(vector, vector_12, vector_2, params)
 
     vector_2 = vector_2.filter(persistent)
     ef_summary = vector_2.select(("index", "age", "ef"), copy=False)
@@ -1579,6 +1579,7 @@ def find_initial_persistent_contrails(
 
 def calc_evolve_one_step(
     contrail_1: GeoVectorDataset,
+    contrail_12: GeoVectorDataset,
     contrail_2: GeoVectorDataset,
     params: dict[str, Any],
 ) -> tuple[GeoVectorDataset, npt.NDArray[np.bool_]]:
@@ -1588,10 +1589,16 @@ def calc_evolve_one_step(
     freely modified in place). The function also returns a boolean array of
     filters produced by :func:`contrail_properties.contrail_persistent`.
 
+    This implementation parallels
+    :func:pycontrails.models.cocip.cocip.time_integration_runge_kutta`. In particular,
+    the same conventions and variable names are used when possible.
+
     Parameters
     ----------
     contrail_1 : GeoVectorDataset
         Existing contrail
+    contrail_12 : GeoVectorDataset
+        Intermediate contrail used for the Runge-Kutta method
     contrail_2 : GeoVectorDataset
         Result of advecting existing contrail already interpolated against CoCiP met data
     params : dict[str, Any]
@@ -1620,9 +1627,10 @@ def calc_evolve_one_step(
     width_1 = contrail_1["width"]
     depth_1 = contrail_1["depth"]
     sigma_yz_1 = contrail_1["sigma_yz"]
-    dsn_dz_1 = contrail_1["dsn_dz"]
-    diffuse_h_1 = contrail_1["diffuse_h"]
-    diffuse_v_1 = contrail_1["diffuse_v"]
+
+    dsn_dz_12 = contrail_12["dsn_dz"]
+    diffuse_h_12 = contrail_12["diffuse_h"]
+    diffuse_v_12 = contrail_12["diffuse_v"]
 
     # Segment-free mode logic
     segment_length_2: np.ndarray | float
@@ -1641,9 +1649,9 @@ def calc_evolve_one_step(
         width_t1=width_1,
         depth_t1=depth_1,
         sigma_yz_t1=sigma_yz_1,
-        dsn_dz_t1=dsn_dz_1,
-        diffuse_h_t1=diffuse_h_1,
-        diffuse_v_t1=diffuse_v_1,
+        dsn_dz_t1=dsn_dz_12,
+        diffuse_h_t1=diffuse_h_12,
+        diffuse_v_t1=diffuse_v_12,
         seg_ratio=seg_ratio_12,
         dt=dt,
         max_depth=params["max_depth"],
@@ -1674,13 +1682,13 @@ def calc_evolve_one_step(
     contrail_2["iwc"] = iwc_2
 
     n_ice_per_m_t1 = contrail_1["n_ice_per_m"]
-    dn_dt_agg = contrail_1["dn_dt_agg"]
-    dn_dt_turb = contrail_1["dn_dt_turb"]
+    dn_dt_agg_12 = contrail_12["dn_dt_agg"]
+    dn_dt_turb_12 = contrail_12["dn_dt_turb"]
 
     n_ice_per_m_t2 = contrail_properties.new_ice_particle_number(
         n_ice_per_m_t1=n_ice_per_m_t1,
-        dn_dt_agg=dn_dt_agg,
-        dn_dt_turb=dn_dt_turb,
+        dn_dt_agg=dn_dt_agg_12,
+        dn_dt_turb=dn_dt_turb_12,
         seg_ratio=seg_ratio_12,
         dt=dt,
     )
