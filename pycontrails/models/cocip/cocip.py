@@ -1285,8 +1285,6 @@ class Cocip(Model):
             contrail["sac"] = self._downwash_flight["sac"]
         if not self.params["filter_initially_persistent"]:
             contrail["initially_persistent"] = self._downwash_flight["persistent_1"]
-        if self.params["persistent_buffer"] is not None:
-            contrail["end_of_life"] = np.full(contrail.size, np.datetime64("NaT", "ns"))
 
         return contrail
 
@@ -2460,8 +2458,6 @@ def time_integration_runge_kutta(
         contrail_2["sac"] = contrail_1["sac"]
     if not params["filter_initially_persistent"]:
         contrail_2["initially_persistent"] = contrail_1["initially_persistent"]
-    if params["persistent_buffer"] is not None:
-        contrail_2["end_of_life"] = contrail_1["end_of_life"]
 
     # calculate initial contrail properties for the next timestep
     calc_continuous(contrail_2)
@@ -2668,25 +2664,6 @@ def calc_timestep_contrail_evolution(
         persistent_2.sum(),
         persistent_2.size,
     )
-
-    if (buff := params["persistent_buffer"]) is not None:
-        # Here mask gets waypoints that are just now losing persistence
-        mask = (~persistent_2) & np.isnat(contrail_2["end_of_life"])
-        contrail_2["end_of_life"][mask] = time_2
-
-        # Keep waypoints that are still persistent, which is determined by filt2
-        # And waypoints within the persistent buffer, which is determined by filt1
-        # So we only drop waypoints that are outside of the persistent buffer
-        filt1 = contrail_2["time"] - contrail_2["end_of_life"] < buff
-        filt2 = np.isnat(contrail_2["end_of_life"])
-        filt = filt1 | filt2
-        logger.debug(
-            "Fraction of waypoints surviving with buffer %s: %s / %s",
-            buff,
-            filt.sum(),
-            filt.size,
-        )
-        return contrail_2.filter(filt)
 
     # filter persistent contrails
     final_contrail = contrail_2.filter(persistent_2)

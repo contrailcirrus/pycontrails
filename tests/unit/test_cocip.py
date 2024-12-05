@@ -1558,7 +1558,6 @@ def test_cocip_filtering(fl: Flight, met: MetDataset, rad: MetDataset):
     Check model parameters:
     - filter_sac
     - filter_initially_persistent
-    - persistent_buffer
     """
     # Boost air temperature for more interesting SAC dynamics
     met.data["air_temperature"] += 10
@@ -1584,26 +1583,6 @@ def test_cocip_filtering(fl: Flight, met: MetDataset, rad: MetDataset):
     assert cocip._sac_flight.size == 18
     assert cocip._downwash_flight.size == 18
     assert len(cocip.contrail) == 0
-
-    cocip = Cocip(
-        **params,
-        filter_initially_persistent=False,
-        persistent_buffer=np.timedelta64(1, "h"),
-    )
-    with pytest.warns(UserWarning, match="Manually overriding initially persistent filter"):
-        cocip.eval(fl)
-    assert len(cocip.contrail) == 18 * 2
-    assert "end_of_life" in cocip.contrail
-
-    cocip = Cocip(
-        **params,
-        filter_initially_persistent=False,
-        persistent_buffer=np.timedelta64(2, "h"),
-    )
-    with pytest.warns(UserWarning, match="Manually overriding initially persistent filter"):
-        cocip.eval(fl)
-    assert len(cocip.contrail) == 18 * 4
-    assert "end_of_life" in cocip.contrail
 
 
 def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: MetDataset):

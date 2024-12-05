@@ -132,12 +132,6 @@ class CocipParams(AdvectionBuffers):
     #: to allow for false negative calibration and model uncertainty studies.
     filter_initially_persistent: bool = True
 
-    #: Continue evolving contrail waypoints ``persistent_buffer`` beyond
-    #: end of contrail life.
-    #: Passing in a non-default value is unusual, but is included
-    #: to allow for false negative calibration and model uncertainty studies.
-    persistent_buffer: np.timedelta64 | None = None
-
     # -------
     # Outputs
     # -------

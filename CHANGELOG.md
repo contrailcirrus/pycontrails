@@ -78,6 +78,10 @@
 - Remove the optional input parameter `climb_descend_at_end` in `Flight.resample_and_fill`. See the description of the new `_altitude_interpolation` function for the rationale behind this change.
 - Remove the `copy` argument from `Fleet.from_seq`. This argument was redundant and not used effectively in the implementation. The `Fleet.from_seq` method always returns a copy of the input sequence.
 
+### Breaking changes
+
+- Remove the `persistent_buffer` parameter from `CocipParams`. Users should instead use the `DryAdvection` model (with the `sedimentation_rate` parameter) to simulate advection past the lifetime of the Cocip evolution routine.
+
 ### Features
 
 - Update CoCiP time integration methodology from a first-order Euler approach to a second-order Runge-Kutta scheme. This ensures better numerical stability as the `dt_integration` parameter varies, and brings the pycontrails `Cocip` implementation into better parity with Ulrich Schumann's [initial CoCiP specification](https://py.contrails.org/literature.html#cite-schumannparametricradiativeforcing2012). This new feature can be enabled by passing `second_order_runge=True` to the `Cocip` or `CocipGrid` constructor. The default behavior remains the first-order Euler scheme (this may change in future release).

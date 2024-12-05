@@ -132,10 +132,6 @@ class CocipGrid(models.Model):
             )
             raise NotImplementedError(msg)
 
-        if self.params["persistent_buffer"] is not None:
-            msg = "Parameter 'persistent_buffer' is not yet implemented in CocipGrid"
-            raise NotImplementedError(msg)
-
         self._target_dtype = np.result_type(*self.met.data.values())
 
     @overload
