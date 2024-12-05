@@ -80,7 +80,7 @@
 
 ### Features
 
-- Update CoCiP time integration methodology from a first-order Euler approach to a second-order Runge-Kutta scheme. This ensures better numerical stability as the `dt_integration` parameter varies, and brings the pycontrails `Cocip` implementation into better parity with Ulrich Schumann's [initial CoCiP specification](https://py.contrails.org/literature.html#cite-schumannparametricradiativeforcing2012). This new feature can be enabled by passing `second_order_runge=True` to the `Cocip` constructor. The default behavior remains the first-order Euler scheme (this may change in future release).
+- Update CoCiP time integration methodology from a first-order Euler approach to a second-order Runge-Kutta scheme. This ensures better numerical stability as the `dt_integration` parameter varies, and brings the pycontrails `Cocip` implementation into better parity with Ulrich Schumann's [initial CoCiP specification](https://py.contrails.org/literature.html#cite-schumannparametricradiativeforcing2012). This new feature can be enabled by passing `second_order_runge=True` to the `Cocip` or `CocipGrid` constructor. The default behavior remains the first-order Euler scheme (this may change in future release).
 
 ### Fixes
 
