@@ -132,6 +132,10 @@ class CocipGrid(models.Model):
             )
             raise NotImplementedError(msg)
 
+        if self.params["persistent_buffer"] is not None:
+            msg = "Parameter 'persistent_buffer' is not yet implemented in CocipGrid"
+            raise NotImplementedError(msg)
+
         self._target_dtype = np.result_type(*self.met.data.values())
 
     @overload
@@ -1093,21 +1097,38 @@ def _evolve_vector(
         dt_head = dt - half_head_tail_dt  # type: ignore[operator]
         dt_tail = dt + half_head_tail_dt  # type: ignore[operator]
 
-    # After advection, out has time t
-    out = advect(vector, dt, dt_head, dt_tail)  # type: ignore[arg-type]
+    vector_1 = vector
+    vector_12 = vector
+    vector_2 = advect(vector_1, vector_12, dt, dt_head, dt_tail)  # type: ignore[arg-type]
 
-    out = run_interpolators(
-        out,
+    vector_2 = run_interpolators(
+        vector_2,
         met,
         rad,
         dz_m=params["dz_m"],
         humidity_scaling=params["humidity_scaling"],
         **params["_interp_kwargs"],
     )
-    out = calc_evolve_one_step(vector, out, params)
-    ef_summary = out.select(("index", "age", "ef"), copy=False)
 
-    return out, ef_summary
+    vector_2, persistent = calc_evolve_one_step(vector, vector_2, params)
+
+    if params["second_order_runge"]:
+        vector_12 = vector_2
+        vector_2 = advect(vector_1, vector_12, dt, dt_head, dt_tail)  # type: ignore[arg-type]
+
+        vector_2 = run_interpolators(
+            vector_2,
+            met,
+            rad,
+            dz_m=params["dz_m"],
+            humidity_scaling=params["humidity_scaling"],
+            **params["_interp_kwargs"],
+        )
+        vector_2, persistent = calc_evolve_one_step(vector, vector_2, params)
+
+    vector_2 = vector_2.filter(persistent)
+    ef_summary = vector_2.select(("index", "age", "ef"), copy=False)
+    return vector_2, ef_summary
 
 
 def _run_downwash(
@@ -1560,7 +1581,7 @@ def calc_evolve_one_step(
     curr_contrail: GeoVectorDataset,
     next_contrail: GeoVectorDataset,
     params: dict[str, Any],
-) -> GeoVectorDataset:
+) -> tuple[GeoVectorDataset, npt.NDArray[np.bool_]]:
     """Calculate contrail properties of ``next_contrail``.
 
     This function attaches additional variables to ``next_contrail``, then
@@ -1577,8 +1598,9 @@ def calc_evolve_one_step(
 
     Returns
     -------
-    GeoVectorDataset
-        Parameter ``next_contrail`` filtered by persistence.
+    tuple[GeoVectorDataset, npt.NDArray[np.bool_]]
+        A tuple with ``next_contrail`` and a boolean array indicating which
+        points persist after the evolution step.
     """
     calc_wind_shear(
         next_contrail,
@@ -1713,16 +1735,7 @@ def calc_evolve_one_step(
         params=params,
     )
 
-    # Filter by persistent
-    logger.debug(
-        "Fraction of grid points surviving: %s / %s",
-        np.sum(persistent),
-        next_contrail.size,
-    )
-    if params["persistent_buffer"] is not None:
-        # See Cocip implementation if we want to support this
-        raise NotImplementedError
-    return next_contrail.filter(persistent)
+    return next_contrail, persistent
 
 
 def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
@@ -1934,25 +1947,32 @@ def calc_thermal_properties(contrail: GeoVectorDataset) -> None:
 
 
 def advect(
-    contrail: GeoVectorDataset,
+    contrail_1: GeoVectorDataset,
+    contrail_12: GeoVectorDataset,
     dt: np.timedelta64 | npt.NDArray[np.timedelta64],
     dt_head: np.timedelta64 | None,
     dt_tail: np.timedelta64 | None,
 ) -> GeoVectorDataset:
     """Form new contrail by advecting existing contrail.
 
-    Parameter ``contrail`` is not modified.
-
     .. versionchanged:: 0.25.0
 
-        The ``dt_head`` and ``dt_tail`` parameters are no longer optional.
+        The ``dt_head`` and ``dt_tail`` parameters are required.
         Set these to ``dt`` to evolve the contrail uniformly over a constant time.
         Set to None for segment-free mode.
 
+    .. versionchanged:: 0.54.4
+
+        Rename ``contrail`` parameter to ``contrail_1``.
+        Add ``contrail_12`` parameter.
+
     Parameters
     ----------
-    contrail : GeoVectorDataset
+    contrail_1 : GeoVectorDataset
         Grid points already interpolated against wind data
+    contrail_12 : GeoVectorDataset
+        Grid points with intermediate wind data.
+        See :func:`pycontrails.models.cocip.cocip.time_integration_runge_kutta`.
     dt : np.timedelta64 | npt.NDArray[np.timedelta64]
         Time step for advection
     dt_head : np.timedelta64 | None
@@ -1980,60 +2000,82 @@ def advect(
             - "segment_length"  (only if `is_segment_free=False`)
             - "head_tail_dt"  (only if `is_segment_free=False`)
     """
-    longitude = contrail["longitude"]
-    latitude = contrail["latitude"]
-    level = contrail["level"]
-    time = contrail["time"]
-    formation_time = contrail["formation_time"]
-    age = contrail["age"]
-    u_wind = contrail["eastward_wind"]
-    v_wind = contrail["northward_wind"]
-    vertical_velocity = contrail["lagrangian_tendency_of_air_pressure"]
-    rho_air = contrail["rho_air"]
-    terminal_fall_speed = contrail["terminal_fall_speed"]
+    longitude_1 = contrail_1["longitude"]
+    latitude_1 = contrail_1["latitude"]
+    level_1 = contrail_1["level"]
+    time_1 = contrail_1["time"]
+    age_1 = contrail_1["age"]
+    u_wind_1 = contrail_1["eastward_wind"]
+    v_wind_1 = contrail_1["northward_wind"]
+    vertical_velocity_1 = contrail_1["lagrangian_tendency_of_air_pressure"]
+    rho_air_1 = contrail_1["rho_air"]
 
-    # Using the _t2 convention for post-advection data
-    index_t2 = contrail["index"]
-    time_t2 = time + dt
-    age_t2 = age + dt
+    u_wind_12 = contrail_12["eastward_wind"]
+    v_wind_12 = contrail_12["northward_wind"]
+    vertical_velocity_12 = contrail_12["lagrangian_tendency_of_air_pressure"]
+    terminal_fall_speed_12 = contrail_12["terminal_fall_speed"]
 
-    longitude_t2, latitude_t2 = geo.advect_horizontal(
-        longitude=longitude,
-        latitude=latitude,
+    u_wind = 0.5 * (u_wind_1 + u_wind_12)
+    v_wind = 0.5 * (v_wind_1 + v_wind_12)
+    vertical_velocity = 0.5 * (vertical_velocity_1 + vertical_velocity_12)
+    longitude_2, latitude_2 = geo.advect_horizontal(
+        longitude=longitude_1,
+        latitude=latitude_1,
         u_wind=u_wind,
         v_wind=v_wind,
         dt=dt,
     )
-    level_t2 = geo.advect_level(level, vertical_velocity, rho_air, terminal_fall_speed, dt)
-    altitude_t2 = units.pl_to_m(level_t2)
+    level_2 = geo.advect_level(
+        level=level_1,
+        vertical_velocity=vertical_velocity,
+        rho_air=rho_air_1,
+        terminal_fall_speed=terminal_fall_speed_12,
+        dt=dt,
+    )
+    altitude_2 = units.pl_to_m(level_2)
+
+    # Using the _2 convention for post-advection data
+    index = contrail_1["index"]
+    formation_time = contrail_1["formation_time"]
+    time_2 = time_1 + dt
+    age_2 = age_1 + dt
 
     data = {
-        "index": index_t2,
-        "longitude": longitude_t2,
-        "latitude": latitude_t2,
-        "level": level_t2,
-        "air_pressure": 100.0 * level_t2,
-        "altitude": altitude_t2,
-        "time": time_t2,
+        "index": index,
+        "longitude": longitude_2,
+        "latitude": latitude_2,
+        "level": level_2,
+        "air_pressure": 100.0 * level_2,
+        "altitude": altitude_2,
+        "time": time_2,
         "formation_time": formation_time,
-        "age": age_t2,
-        **_get_uncertainty_params(contrail),
+        "age": age_2,
+        **_get_uncertainty_params(contrail_1),
     }
 
     if dt_tail is None or dt_head is None:
-        assert _is_segment_free_mode(contrail)
+        assert _is_segment_free_mode(contrail_1)
         assert dt_tail is None
         assert dt_head is None
-        return GeoVectorDataset._from_fastpath(data, attrs=contrail.attrs).copy()
+        return GeoVectorDataset._from_fastpath(data, attrs=contrail_1.attrs).copy()
 
-    longitude_head = contrail["longitude_head"]
-    latitude_head = contrail["latitude_head"]
-    longitude_tail = contrail["longitude_tail"]
-    latitude_tail = contrail["latitude_tail"]
-    u_wind_head = contrail["eastward_wind_head"]
-    v_wind_head = contrail["northward_wind_head"]
-    u_wind_tail = contrail["eastward_wind_tail"]
-    v_wind_tail = contrail["northward_wind_tail"]
+    longitude_head = contrail_1["longitude_head"]
+    latitude_head = contrail_1["latitude_head"]
+    longitude_tail = contrail_1["longitude_tail"]
+    latitude_tail = contrail_1["latitude_tail"]
+    u_wind_head_1 = contrail_1["eastward_wind_head"]
+    v_wind_head_1 = contrail_1["northward_wind_head"]
+    u_wind_tail_1 = contrail_1["eastward_wind_tail"]
+    v_wind_tail_1 = contrail_1["northward_wind_tail"]
+    u_wind_head_12 = contrail_12["eastward_wind_head"]
+    v_wind_head_12 = contrail_12["northward_wind_head"]
+    u_wind_tail_12 = contrail_12["eastward_wind_tail"]
+    v_wind_tail_12 = contrail_12["northward_wind_tail"]
+
+    u_wind_head = 0.5 * (u_wind_head_1 + u_wind_head_12)
+    v_wind_head = 0.5 * (v_wind_head_1 + v_wind_head_12)
+    u_wind_tail = 0.5 * (u_wind_tail_1 + u_wind_tail_12)
+    v_wind_tail = 0.5 * (v_wind_tail_1 + v_wind_tail_12)
 
     longitude_head_t2, latitude_head_t2 = geo.advect_horizontal(
         longitude=longitude_head,
@@ -2057,7 +2099,7 @@ def advect(
         lats1=latitude_tail_t2,
     )
 
-    head_tail_dt_t2 = np.full(contrail.size, np.timedelta64(0, "ns"))  # trivial
+    head_tail_dt_t2 = np.full(contrail_1.size, np.timedelta64(0, "ns"))  # trivial
 
     data["longitude_head"] = longitude_head_t2
     data["latitude_head"] = latitude_head_t2
@@ -2066,7 +2108,7 @@ def advect(
     data["segment_length"] = segment_length_t2
     data["head_tail_dt"] = head_tail_dt_t2
 
-    return GeoVectorDataset._from_fastpath(data, attrs=contrail.attrs).copy()
+    return GeoVectorDataset._from_fastpath(data, attrs=contrail_1.attrs).copy()
 
 
 def _aggregate_ef_summary(vector_list: list[VectorDataset]) -> VectorDataset | None:
