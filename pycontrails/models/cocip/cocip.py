@@ -2394,7 +2394,7 @@ def time_integration_runge_kutta(
     v_wind_12 = contrail_12["v_wind"]
     vertical_velocity_12 = contrail_12["vertical_velocity"]
 
-    # Retrieve`contrail_12` properties related to rate of change calculations
+    # Retrieve `contrail_12` properties related to rate of change calculations
     dsn_dz_12 = contrail_12["dsn_dz"]
     terminal_fall_speed_12 = contrail_12["terminal_fall_speed"]
     diffuse_h_12 = contrail_12["diffuse_h"]
@@ -2448,11 +2448,11 @@ def time_integration_runge_kutta(
 
         # Calculate cumulative heat
         dt_sec = dt / np.timedelta64(1, "s")
-        cumul_heat += heat_rate_12 * dt_sec
+        cumul_heat = cumul_heat + heat_rate_12 * dt_sec  # don't use += to avoid mutating contrail_1
         cumul_heat.clip(max=1.5, out=cumul_heat)  # Constrain additional heat to 1.5 K as precaution
         contrail_2["cumul_heat"] = cumul_heat
 
-        cumul_differential_heat += -d_heat_rate_12 * dt_sec
+        cumul_differential_heat = cumul_differential_heat - d_heat_rate_12 * dt_sec  # don't use -=
         contrail_2["cumul_differential_heat"] = cumul_differential_heat
 
     # Attach a few more artifacts for disabled filtering
@@ -2589,19 +2589,19 @@ def calc_timestep_contrail_evolution(
 
     Notes
     -----
-    Subscript `12` denotes the intermediate step in the second-order Runge-Kutta scheme. For further
-     details, see :func:`time_integration_runge_kutta`.
+    Subscript ``12`` denotes the intermediate step in the second-order Runge-Kutta scheme.
+    For further details, see :func:`time_integration_runge_kutta`.
     """
     # First-order Euler method
-    contrail_12 = contrail_1.copy()  # Set intermediate values to the initial values
+    contrail_12 = contrail_1  # Set intermediate values to the initial values
     contrail_2 = time_integration_runge_kutta(
         met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
     )
 
     # Second-order Runge-Kutta scheme
     if params["second_order_runge"]:
-        # `contrail_2` calculated in first-order Euler method is now used as intermediate values
-        contrail_12 = contrail_2.copy()
+        # contrail_2 calculated in first-order Euler method is now used as intermediate values
+        contrail_12 = contrail_2
         contrail_2 = time_integration_runge_kutta(
             met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
         )
