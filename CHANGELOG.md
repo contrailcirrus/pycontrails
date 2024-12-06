@@ -5,6 +5,7 @@
 ### Fixes
 
 - Fix the `ERA5` interface when making a pressure-level request with a single pressure level. This change accommodates CDS-Beta server behavior. Previously, a ValueError was raised in this case.
+- Bypass the ValueError raised by `dask.array.gradient` when the input array is not correctly chunk along the level dimension. Previously, `Cocip` would raise an error when computing tau cirrus in the case that the `met` data had single chunks along the level dimension.
 
 ## v0.54.3
 
