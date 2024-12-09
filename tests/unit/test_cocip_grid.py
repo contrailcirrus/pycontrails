@@ -324,7 +324,7 @@ def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetData
         ),
         (
             np.datetime64("2019-01-01T12:00"),
-            [np.datetime64("2019-01-01T11:00"), np.datetime64("2019-01-01T12:00")],
+            [np.datetime64("2019-01-01T12:00")],
             [np.datetime64("2019-01-01T11:30")],
         ),
         (
@@ -342,7 +342,7 @@ def test_initial_maybe_downselect_met_rad(
 ) -> None:
     """Test initial selection of bracketing met and rad time steps"""
     model = CocipGrid(**instance_params)
-    met, rad = model._maybe_downselect_met_rad(None, None, time)
+    met, rad = model._maybe_downselect_met_rad(None, None, time, time)
     np.testing.assert_array_equal(met["time"].values, expected_met)
     np.testing.assert_array_equal(rad["time"].values, expected_rad)
 
@@ -353,13 +353,13 @@ def test_maybe_downselect_met_rad(instance_params: dict[str, Any]):
 
     # initial selection
     time = np.datetime64("2018-12-31T23:00")
-    met, rad = model._maybe_downselect_met_rad(None, None, time)
+    met, rad = model._maybe_downselect_met_rad(None, None, time, time)
     np.testing.assert_array_equal(met["time"].values, [np.datetime64("2019-01-01T00:00")])
     np.testing.assert_array_equal(rad["time"].values, [np.datetime64("2018-12-31T23:30")])
 
     # advance to after first forecast step
     time = np.datetime64("2019-01-01T00:15")
-    met, rad = model._maybe_downselect_met_rad(met, rad, time)
+    met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
         met["time"].values,
         [
@@ -373,7 +373,7 @@ def test_maybe_downselect_met_rad(instance_params: dict[str, Any]):
 
     # no update required
     time = np.datetime64("2019-01-01T00:20")
-    met, rad = model._maybe_downselect_met_rad(met, rad, time)
+    met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
         met["time"].values,
         [
@@ -387,7 +387,7 @@ def test_maybe_downselect_met_rad(instance_params: dict[str, Any]):
 
     # advance one forecast step
     time = np.datetime64("2019-01-01T01:15")
-    met, rad = model._maybe_downselect_met_rad(met, rad, time)
+    met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
         met["time"].values, [np.datetime64("2019-01-01T01:00"), np.datetime64("2019-01-01T02:00")]
     )
@@ -397,7 +397,7 @@ def test_maybe_downselect_met_rad(instance_params: dict[str, Any]):
 
     # advance multiple forecast steps
     time = np.datetime64("2019-01-01T08:15")
-    met, rad = model._maybe_downselect_met_rad(met, rad, time)
+    met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
         met["time"].values, [np.datetime64("2019-01-01T08:00"), np.datetime64("2019-01-01T09:00")]
     )
@@ -407,7 +407,7 @@ def test_maybe_downselect_met_rad(instance_params: dict[str, Any]):
 
     # advance past end of forecast
     time = np.datetime64("2019-01-01T13:00")
-    met, rad = model._maybe_downselect_met_rad(met, rad, time)
+    met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(met["time"].values, [np.datetime64("2019-01-01T12:00")])
     np.testing.assert_array_equal(rad["time"].values, [np.datetime64("2019-01-01T11:30")])
 
