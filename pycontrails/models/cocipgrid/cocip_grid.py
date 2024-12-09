@@ -241,12 +241,13 @@ class CocipGrid(models.Model):
         existing_vectors: Iterator[GeoVectorDataset] = iter(())
 
         for time_idx, time_end in enumerate(self.timesteps):
-            met, rad = self._maybe_downselect_met_rad(met, rad, time_end)
-
             evolved_this_step = []
             ef_summary_this_step = []
             downwash_vectors_this_step = []
             for vector in self._generate_new_vectors(time_idx):
+                t0 = vector["time"].min()
+                t1 = vector["time"].max()
+                met, rad = self._maybe_downselect_met_rad(met, rad, t0, t1)
                 downwash, verbose_dict = _run_downwash(vector, met, rad, self.params)
 
                 if downwash:
@@ -264,6 +265,9 @@ class CocipGrid(models.Model):
                     pbar.update()
 
             for vector in itertools.chain(existing_vectors, downwash_vectors_this_step):
+                t0 = vector["time"].min()
+                t1 = time_end
+                met, rad = self._maybe_downselect_met_rad(met, rad, t0, t1)
                 contrail, ef = _evolve_vector(
                     vector,
                     met=met,
@@ -304,83 +308,25 @@ class CocipGrid(models.Model):
         self,
         met: MetDataset | None,
         rad: MetDataset | None,
-        time_end: np.datetime64,
+        t0: np.datetime64,
+        t1: np.datetime64,
     ) -> tuple[MetDataset, MetDataset]:
-        """Downselect ``self.met`` and ``self.rad`` if necessary to cover ``time_end``.
+        """Downselect ``self.met`` and ``self.rad`` if necessary to cover ``[t0, t1]``.
+
+        This implementation assumes ``t0 <= t1``, but does not enforce this.
 
         If the currently used ``met`` and ``rad`` slices do not include the time
-        ``time_end``, new slices are selected from the larger ``self.met`` and
-        ``self.rad`` data. The slicing only occurs in the time domain.
+        interval ``[t0, t1]``, new slices are selected from the larger ``self.met``
+        and ``self.rad`` data. The slicing only occurs in the time domain.
 
-        The end of currently-used ``met`` and ``rad`` will be used as the start
-        of newly-selected met slices when possible to avoid losing and re-loading
-        already-loaded met data.
+        Existing slices from ``met`` and ``rad`` will be used when possible to avoid
+        losing and re-loading already-loaded met data.
 
-        If ``self.params["downselect_met"]`` is True, :func:`_downselect_met` has
+        If ``self.params["downselect_met"]`` is True, the :func:`_downselect_met` has
         already performed a spatial downselection of the met data.
         """
-
-        if met is None:
-            # idx is the first index at which self.met.variables["time"].to_numpy() >= time_end
-            idx = np.searchsorted(self.met.indexes["time"].to_numpy(), time_end).item()
-            sl = slice(max(0, idx - 1), idx + 1)
-            logger.debug("Select met slice %s", sl)
-            met = MetDataset(self.met.data.isel(time=sl), copy=False)
-
-        elif time_end > met.indexes["time"].to_numpy()[-1]:
-            current_times = met.indexes["time"].to_numpy()
-            all_times = self.met.indexes["time"].to_numpy()
-            # idx is the first index at which all_times >= time_end
-            idx = np.searchsorted(all_times, time_end).item()
-            sl = slice(max(0, idx - 1), idx + 1)
-
-            # case 1: cannot re-use end of current met as start of new met
-            if current_times[-1] != all_times[sl.start]:
-                logger.debug("Select met slice %s", sl)
-                met = MetDataset(self.met.data.isel(time=sl), copy=False)
-            # case 2: can re-use end of current met plus one step of new met
-            elif sl.start < all_times.size - 1:
-                sl = slice(sl.start + 1, sl.stop)
-                logger.debug("Reuse end of met and select met slice %s", sl)
-                met = MetDataset(
-                    xr.concat((met.data.isel(time=[-1]), self.met.data.isel(time=sl)), dim="time"),
-                    copy=False,
-                )
-            # case 3: can re-use end of current met and nothing else
-            else:
-                logger.debug("Reuse end of met")
-                met = MetDataset(met.data.isel(time=[-1]), copy=False)
-
-        if rad is None:
-            # idx is the first index at which self.rad.variables["time"].to_numpy() >= time_end
-            idx = np.searchsorted(self.rad.indexes["time"].to_numpy(), time_end).item()
-            sl = slice(max(0, idx - 1), idx + 1)
-            logger.debug("Select rad slice %s", sl)
-            rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
-
-        elif time_end > rad.indexes["time"].to_numpy()[-1]:
-            current_times = rad.indexes["time"].to_numpy()
-            all_times = self.rad.indexes["time"].to_numpy()
-            # idx is the first index at which all_times >= time_end
-            idx = np.searchsorted(all_times, time_end).item()
-            sl = slice(max(0, idx - 1), idx + 1)
-
-            # case 1: cannot re-use end of current rad as start of new rad
-            if current_times[-1] != all_times[sl.start]:
-                logger.debug("Select rad slice %s", sl)
-                rad = MetDataset(self.rad.data.isel(time=sl), copy=False)
-            # case 2: can re-use end of current rad plus one step of new rad
-            elif sl.start < all_times.size - 1:
-                sl = slice(sl.start + 1, sl.stop)
-                logger.debug("Reuse end of rad and select rad slice %s", sl)
-                rad = MetDataset(
-                    xr.concat((rad.data.isel(time=[-1]), self.rad.data.isel(time=sl)), dim="time"),
-                    copy=False,
-                )
-            # case 3: can re-use end of current rad and nothing else
-            else:
-                logger.debug("Reuse end of rad")
-                rad = MetDataset(rad.data.isel(time=[-1]), copy=False)
+        met = _maybe_downselect_mds(self.met, met, t0, t1)
+        rad = _maybe_downselect_mds(self.rad, rad, t0, t1)
 
         return met, rad
 
@@ -2578,3 +2524,63 @@ def _check_end_time(
             f"Include additional time at the end of '{name}' or reduce 'max_age' parameter."
             f"{note}"
         )
+
+
+def _maybe_downselect_mds(
+    big_mds: MetDataset,
+    little_mds: MetDataset | None,
+    t0: np.datetime64,
+    t1: np.datetime64,
+) -> MetDataset:
+    """Possibly downselect ``big_mds`` to cover ``[t0, t1]``.
+
+    This implementation assumes ``t0 <= t1``, but this is not enforced.
+
+    If possible, ``little_mds`` is recycled to avoid re-loading data.
+
+    This function only downselects in the time domain.
+
+    If ``big_mds`` doesn't cover the time range, no error is raised.
+    """
+    if little_mds is not None:
+        little_time = little_mds.indexes["time"].to_numpy()
+        ignore_little = t0 > little_time[-1] or t1 < little_time[0]
+
+    big_time = big_mds.indexes["time"].to_numpy()
+    if little_mds is None or ignore_little:
+        i0 = np.searchsorted(big_time, t0, side="right").item()
+        i0 = max(0, i0 - 1)
+        i1 = np.searchsorted(big_time, t1, side="left").item()
+        i1 = min(i1 + 1, big_time.size)
+        return MetDataset(big_mds.data.isel(time=slice(i0, i1)), copy=False)
+
+    j0 = np.searchsorted(little_time, t0, side="right").item()
+    j0 = max(0, j0 - 1)
+    j1 = np.searchsorted(little_time, t1, side="left").item()
+    j1 = min(j1 + 1, little_time.size)
+
+    little_ds = little_mds.data.isel(time=slice(j0, j1))
+    little_time0 = little_time[j0]
+    little_time1 = little_time[j1 - 1]
+
+    if t0 >= little_time0 and t1 <= little_time1:
+        return MetDataset(little_ds, copy=False)
+
+    ds_concat = []
+    if t0 < little_time0:  # unlikely to encounter this case
+        i0 = np.searchsorted(big_time, t0, side="right").item()
+        i0 = max(0, i0 - 1)
+        i1 = np.searchsorted(big_time, little_time0, side="right").item()
+        i1 = max(i1, i0 + 1)
+        ds_concat.append(big_mds.data.isel(time=slice(i0, i1)))
+
+    ds_concat.append(little_ds)
+
+    if t1 > little_time1:
+        i0 = np.searchsorted(big_time, little_time1, side="left").item()
+        i0 = min(i0 + 1, big_time.size)
+        i1 = np.searchsorted(big_time, t1, side="left").item()
+        i1 = min(i1 + 1, big_time.size)
+        ds_concat.append(big_mds.data.isel(time=slice(i0, i1)))
+
+    return MetDataset(xr.concat(ds_concat, dim="time"), copy=False)
