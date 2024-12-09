@@ -118,7 +118,7 @@ class EmpiricalGrid(AircraftPerformanceGrid):
 
         return data[["altitude_ft", *columns]].drop(columns=["aircraft_type"])
 
-    def _sample(self, altitude_ft: npt.NDArray[np.float64]) -> None:
+    def _sample(self, altitude_ft: npt.NDArray[np.floating]) -> None:
         """Sample the data and update the source."""
 
         df = self._query_data()

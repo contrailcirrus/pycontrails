@@ -9,10 +9,10 @@ from pycontrails.utils.types import ArrayScalarLike
 
 
 def wind_shear_enhancement_factor(
-    contrail_depth: npt.NDArray[np.float64],
-    effective_vertical_resolution: float | npt.NDArray[np.float64],
-    wind_shear_enhancement_exponent: float | npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    contrail_depth: npt.NDArray[np.floating],
+    effective_vertical_resolution: float | npt.NDArray[np.floating],
+    wind_shear_enhancement_exponent: float | npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""Calculate the multiplication factor to enhance the wind shear based on contrail depth.
 
     This factor accounts for any subgrid-scale that is not captured by the resolution
@@ -20,18 +20,18 @@ def wind_shear_enhancement_factor(
 
     Parameters
     ----------
-    contrail_depth : npt.NDArray[np.float64]
+    contrail_depth : npt.NDArray[np.floating]
         Contrail depth , [:math:`m`]. Expected to be positive and bounded away from 0.
-    effective_vertical_resolution : float | npt.NDArray[np.float64]
+    effective_vertical_resolution : float | npt.NDArray[np.floating]
         Vertical resolution of met data , [:math:`m`]
-    wind_shear_enhancement_exponent : float | npt.NDArray[np.float64]
+    wind_shear_enhancement_exponent : float | npt.NDArray[np.floating]
         Exponent used in calculation. Expected to be nonnegative.
         Discussed in paragraphs following eq. (39) in Schumann 2012 and referenced as `n`.
         When this parameter is 0, no enhancement occurs.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Wind shear enhancement factor
 
     Notes

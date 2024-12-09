@@ -106,13 +106,13 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
     return constants.T_msl + h_min * constants.T_lapse_rate  # type: ignore[return-value]
 
 
-def _low_altitude_m_to_pl(h: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def _low_altitude_m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     T_isa: np.ndarray = m_to_T_isa(h)
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     return (constants.p_surface * (T_isa / constants.T_msl) ** power_term) / 100.0
 
 
-def _high_altitude_m_to_pl(h: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def _high_altitude_m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     T_tropopause_isa = m_to_T_isa(np.asarray(constants.h_tropopause))
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
@@ -121,17 +121,17 @@ def _high_altitude_m_to_pl(h: npt.NDArray[np.float64]) -> npt.NDArray[np.float64
 
 
 @support_arraylike
-def m_to_pl(h: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""Convert from altitude (m) to pressure level (hPa).
 
     Parameters
     ----------
-    h : npt.NDArray[np.float64]
+    h : npt.NDArray[np.floating]
         altitude, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     References
@@ -152,14 +152,14 @@ def m_to_pl(h: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     return np.piecewise(h, condlist, funclist)
 
 
-def _low_altitude_pl_to_m(pl: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def _low_altitude_pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     base = 100.0 * pl / constants.p_surface
     exponent = -constants.T_lapse_rate * constants.R_d / constants.g
     T_isa = constants.T_msl * base**exponent
     return (T_isa - constants.T_msl) / constants.T_lapse_rate
 
 
-def _high_altitude_pl_to_m(pl: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def _high_altitude_pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     T_tropopause_isa = m_to_T_isa(np.asarray(constants.h_tropopause))
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
@@ -168,7 +168,7 @@ def _high_altitude_pl_to_m(pl: npt.NDArray[np.float64]) -> npt.NDArray[np.float6
 
 
 @support_arraylike
-def pl_to_m(pl: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""Convert from pressure level (hPa) to altitude (m).
 
     Function is slightly different from the classical formula:
@@ -410,20 +410,20 @@ def tas_to_mach_number(true_airspeed: ArrayScalarLike, T: ArrayScalarLike) -> Ar
 
 
 def mach_number_to_tas(
-    mach_number: float | npt.NDArray[np.float64], T: float | npt.NDArray[np.float64]
-) -> float | npt.NDArray[np.float64]:
+    mach_number: float | npt.NDArray[np.floating], T: float | npt.NDArray[np.floating]
+) -> float | npt.NDArray[np.floating]:
     r"""Calculate true airspeed from the Mach number at a specified ambient temperature.
 
     Parameters
     ----------
-    mach_number : float | npt.NDArray[np.float64]
+    mach_number : float | npt.NDArray[np.floating]
         Mach number, [:math: `Ma`]
-    T : npt.NDArray[np.float64]
+    T : npt.NDArray[np.floating]
         Ambient temperature, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         True airspeed, [:math:`m \ s^{-1}`]
 
     References
@@ -452,7 +452,7 @@ def lbs_to_kg(lbs: ArrayScalarLike) -> ArrayScalarLike:
 def dt_to_seconds(
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
     dtype: npt.DTypeLike = np.float64,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Convert a time delta to seconds as a float with specified ``dtype`` precision.
 
     Parameters

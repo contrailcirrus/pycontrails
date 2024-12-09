@@ -62,20 +62,20 @@ def haversine(lons0: ArrayLike, lats0: ArrayLike, lons1: ArrayLike, lats1: Array
 
 
 def segment_haversine(
-    longitude: npt.NDArray[np.float64], latitude: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    longitude: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     r"""Calculate haversine distance between consecutive points along path.
 
     Parameters
     ----------
-    longitude : npt.NDArray[np.float64]
+    longitude : npt.NDArray[np.floating]
         1D Longitude values with index corresponding to latitude inputs, [:math:`\deg`]
-    latitude : npt.NDArray[np.float64]
+    latitude : npt.NDArray[np.floating]
         1D Latitude values with index corresponding to longitude inputs, [:math:`\deg`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Haversine distance between (lat_i, lon_i) and (lat_i+1, lon_i+1), [:math:`m`]
         The final entry of the output is set to nan.
 
@@ -97,8 +97,8 @@ def segment_haversine(
 
 
 def azimuth_to_direction(
-    azimuth_: npt.NDArray[np.float64], latitude: npt.NDArray[np.float64]
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    azimuth_: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating]
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate rectangular direction from spherical azimuth.
 
     This implementation uses the equation
@@ -109,14 +109,14 @@ def azimuth_to_direction(
 
     Parameters
     ----------
-    azimuth_ : npt.NDArray[np.float64]
+    azimuth_ : npt.NDArray[np.floating]
         Angle measured clockwise from true north, [:math:`\deg`]
-    latitude : npt.NDArray[np.float64]
+    latitude : npt.NDArray[np.floating]
         Latitude value of the point, [:math:`\deg`]
 
     Returns
     -------
-    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
         A tuple of sine and cosine values.
     """
     cos_lat = np.cos(units.degrees_to_radians(latitude))
@@ -138,22 +138,22 @@ def azimuth_to_direction(
 
 
 def azimuth(
-    lons0: npt.NDArray[np.float64],
-    lats0: npt.NDArray[np.float64],
-    lons1: npt.NDArray[np.float64],
-    lats1: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    lons0: npt.NDArray[np.floating],
+    lats0: npt.NDArray[np.floating],
+    lons1: npt.NDArray[np.floating],
+    lats1: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""Calculate angle relative to true north for set of coordinates.
 
     Parameters
     ----------
-    lons0 : npt.NDArray[np.float64]
+    lons0 : npt.NDArray[np.floating]
         Longitude values of initial endpoints, [:math:`\deg`].
-    lats0 : npt.NDArray[np.float64]
+    lats0 : npt.NDArray[np.floating]
         Latitude values of initial endpoints, [:math:`\deg`].
-    lons1 : npt.NDArray[np.float64]
+    lons1 : npt.NDArray[np.floating]
         Longitude values of terminal endpoints, [:math:`\deg`].
-    lats1 : npt.NDArray[np.float64]
+    lats1 : npt.NDArray[np.floating]
         Latitude values of terminal endpoints, [:math:`\deg`].
 
     References
@@ -162,7 +162,7 @@ def azimuth(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Azimuth relative to true north (:math:`0\deg`), [:math:`\deg`]
 
     See Also
@@ -186,22 +186,22 @@ def azimuth(
 
 
 def segment_azimuth(
-    longitude: npt.NDArray[np.float64], latitude: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    longitude: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     r"""Calculate the angle between coordinate segments and true north.
 
     `np.nan` is added to the final value so the length of the output is the same as the inputs.
 
     Parameters
     ----------
-    longitude : npt.NDArray[np.float64]
+    longitude : npt.NDArray[np.floating]
         Longitude values, [:math:`\deg`]
-    latitude : npt.NDArray[np.float64]
+    latitude : npt.NDArray[np.floating]
         Latitude values, [:math:`\deg`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Azimuth relative to true north (:math:`0\deg`), [:math:`\deg`]
         Final entry of each array is set to `np.nan`.
 
@@ -227,22 +227,22 @@ def segment_azimuth(
 
 
 def longitudinal_angle(
-    lons0: npt.NDArray[np.float64],
-    lats0: npt.NDArray[np.float64],
-    lons1: npt.NDArray[np.float64],
-    lats1: npt.NDArray[np.float64],
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    lons0: npt.NDArray[np.floating],
+    lats0: npt.NDArray[np.floating],
+    lons1: npt.NDArray[np.floating],
+    lats1: npt.NDArray[np.floating],
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate angle with longitudinal axis for sequence of segments.
 
     Parameters
     ----------
-    lons0 : npt.NDArray[np.float64]
+    lons0 : npt.NDArray[np.floating]
         Longitude values of initial endpoints, [:math:`\deg`].
-    lats0 : npt.NDArray[np.float64]
+    lats0 : npt.NDArray[np.floating]
         Latitude values of initial endpoints, [:math:`\deg`].
-    lons1 : npt.NDArray[np.float64]
+    lons1 : npt.NDArray[np.floating]
         Longitude values of terminal endpoints, [:math:`\deg`].
-    lats1 : npt.NDArray[np.float64]
+    lats1 : npt.NDArray[np.floating]
         Latitude values of terminal endpoints, [:math:`\deg`].
 
     References
@@ -251,9 +251,9 @@ def longitudinal_angle(
 
     Returns
     -------
-    sin_a : npt.NDArray[np.float64]
+    sin_a : npt.NDArray[np.floating]
         Sine values.
-    cos_a : npt.NDArray[np.float64]
+    cos_a : npt.NDArray[np.floating]
         Cosine values.
     """
     lons0 = units.degrees_to_radians(lons0)
@@ -275,22 +275,22 @@ def longitudinal_angle(
 
 
 def segment_angle(
-    longitude: npt.NDArray[np.float64], latitude: npt.NDArray[np.float64]
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    longitude: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating]
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate the angle between coordinate segments and the longitudinal axis.
 
     `np.nan` is added to the final value so the length of the output is the same as the inputs.
 
     Parameters
     ----------
-    longitude : npt.NDArray[np.float64]
+    longitude : npt.NDArray[np.floating]
         Longitude values, [:math:`\deg`]
-    latitude : npt.NDArray[np.float64]
+    latitude : npt.NDArray[np.floating]
         Latitude values, [:math:`\deg`]
 
     Returns
     -------
-    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
         sin(a), cos(a), where ``a`` is the angle between the segment and the longitudinal axis.
         Final entry of each array is set to `np.nan`.
 
@@ -332,10 +332,10 @@ def segment_angle(
 
 
 def segment_length(
-    longitude: npt.NDArray[np.float64],
-    latitude: npt.NDArray[np.float64],
-    altitude: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    altitude: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""Calculate the segment length between coordinates by assuming a great circle distance.
 
     Requires coordinates to be in EPSG:4326.
@@ -345,16 +345,16 @@ def segment_length(
 
     Parameters
     ----------
-    longitude : npt.NDArray[np.float64]
+    longitude : npt.NDArray[np.floating]
         Longitude values, [:math:`\deg`]
-    latitude : npt.NDArray[np.float64]
+    latitude : npt.NDArray[np.floating]
         Latitude values, [:math:`\deg`]
-    altitude : npt.NDArray[np.float64]
+    altitude : npt.NDArray[np.floating]
         Altitude values, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Array of distances in [:math:`m`] between coordinates.
         Final entry of each array is set to `np.nan`.
 
@@ -371,11 +371,11 @@ def segment_length(
 
 
 def forward_azimuth(
-    lons: npt.NDArray[np.float64],
-    lats: npt.NDArray[np.float64],
-    az: npt.NDArray[np.float64] | float,
-    dist: npt.NDArray[np.float64] | float,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    lons: npt.NDArray[np.floating],
+    lats: npt.NDArray[np.floating],
+    az: npt.NDArray[np.floating] | float,
+    dist: npt.NDArray[np.floating] | float,
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate coordinates along forward azimuth.
 
     This function is identical to the `pyproj.Geod.fwd` method when working on
@@ -384,19 +384,19 @@ def forward_azimuth(
 
     Parameters
     ----------
-    lons : npt.NDArray[np.float64]
+    lons : npt.NDArray[np.floating]
         Array of longitude values.
-    lats : npt.NDArray[np.float64]
+    lats : npt.NDArray[np.floating]
         Array of latitude values.
-    az : npt.NDArray[np.float64] | float
+    az : npt.NDArray[np.floating] | float
         Azimuth, measured in [:math:`\deg`].
-    dist : npt.NDArray[np.float64] | float
+    dist : npt.NDArray[np.floating] | float
         Distance [:math:`m`] between initial longitude latitude values and
         point to be computed.
 
     Returns
     -------
-    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
         Tuple of longitude latitude arrays.
 
     See Also
@@ -1010,7 +1010,7 @@ def advect_horizontal(
 
 
 def spatial_bounding_box(
-    longitude: npt.NDArray[np.float64], latitude: npt.NDArray[np.float64], buffer: float = 1.0
+    longitude: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating], buffer: float = 1.0
 ) -> tuple[float, float, float, float]:
     r"""
     Construct rectangular spatial bounding box from a set of waypoints.
@@ -1073,17 +1073,17 @@ def domain_surface_area(
 
 
 def grid_surface_area(
-    longitude: npt.NDArray[np.float64], latitude: npt.NDArray[np.float64]
+    longitude: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating]
 ) -> xr.DataArray:
     r"""
     Calculate surface area that is covered by each pixel in a longitude-latitude grid.
 
     Parameters
     ----------
-    longitude: npt.NDArray[np.float64]
+    longitude: npt.NDArray[np.floating]
         Longitude coordinates in a longitude-latitude grid, [:math:`\deg`].
         Must be in ascending order.
-    latitude: npt.NDArray[np.float64]
+    latitude: npt.NDArray[np.floating]
         Latitude coordinates in a longitude-latitude grid, [:math:`\deg`].
         Must be in ascending order.
 
@@ -1119,19 +1119,19 @@ def grid_surface_area(
 
 
 def _area_between_latitude_and_north_pole(
-    latitude: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    latitude: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate surface area from the provided latitude to the North Pole.
 
     Parameters
     ----------
-    latitude: npt.NDArray[np.float64]
+    latitude: npt.NDArray[np.floating]
         1D Latitude values with index corresponding to latitude inputs, [:math:`\deg`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Surface area from latitude to North Pole, [:math:`m^{2}`]
     """
     lat_radians = units.degrees_to_radians(latitude)

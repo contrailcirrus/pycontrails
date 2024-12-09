@@ -265,12 +265,12 @@ class Fleet(Flight):
 
     def segment_true_airspeed(
         self,
-        u_wind: npt.NDArray[np.float64] | float = 0.0,
-        v_wind: npt.NDArray[np.float64] | float = 0.0,
+        u_wind: npt.NDArray[np.floating] | float = 0.0,
+        v_wind: npt.NDArray[np.floating] | float = 0.0,
         smooth: bool = True,
         window_length: int = 7,
         polyorder: int = 1,
-    ) -> npt.NDArray[np.float64]:
+    ) -> npt.NDArray[np.floating]:
         """Calculate the true airspeed [:math:`m / s`] from the ground speed and horizontal winds.
 
         Because Flight.segment_true_airspeed uses a smoothing pattern, waypoints in :attr:`data`
@@ -302,7 +302,7 @@ class Fleet(Flight):
             self[key] = v_wind
 
         # Calculate TAS on each flight individually
-        def calc_tas(fl: Flight) -> npt.NDArray[np.float64]:
+        def calc_tas(fl: Flight) -> npt.NDArray[np.floating]:
             u = fl.get("__u_wind", u_wind)
             v = fl.get("__v_wind", v_wind)
 
@@ -325,7 +325,7 @@ class Fleet(Flight):
         return np.concatenate(tas)
 
     @override
-    def segment_groundspeed(self, *args: Any, **kwargs: Any) -> npt.NDArray[np.float64]:
+    def segment_groundspeed(self, *args: Any, **kwargs: Any) -> npt.NDArray[np.floating]:
         fls = self.to_flight_list(copy=False)
         gs = [fl.segment_groundspeed(*args, **kwargs) for fl in fls]
         return np.concatenate(gs)
@@ -337,7 +337,7 @@ class Fleet(Flight):
         return type(self).from_seq(flights, copy=False, broadcast_numeric=False, attrs=self.attrs)
 
     @override
-    def segment_length(self) -> npt.NDArray[np.float64]:
+    def segment_length(self) -> npt.NDArray[np.floating]:
         return np.where(self.final_waypoints, np.nan, super().segment_length())
 
     @property
@@ -346,11 +346,11 @@ class Fleet(Flight):
         return np.nanmax(self.segment_length()).item()
 
     @override
-    def segment_azimuth(self) -> npt.NDArray[np.float64]:
+    def segment_azimuth(self) -> npt.NDArray[np.floating]:
         return np.where(self.final_waypoints, np.nan, super().segment_azimuth())
 
     @override
-    def segment_angle(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    def segment_angle(self) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         sin_a, cos_a = super().segment_angle()
         sin_a[self.final_waypoints] = np.nan
         cos_a[self.final_waypoints] = np.nan

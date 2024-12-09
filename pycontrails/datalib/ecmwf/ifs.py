@@ -149,7 +149,7 @@ class IFS(metsource.MetDataSource):
         else:
             # set timesteps from dataset "time" coordinates
             # np.datetime64 doesn't covert to list[datetime] unless its unit is us
-            self.timesteps = ds["time"].values.astype("datetime64[us]").tolist()
+            self.timesteps = ds["time"].values.astype("datetime64[us]").tolist()  # type: ignore[assignment]
 
         # downselect hyam/hybm coefficients by the "lev" coordinate
         # (this is a 1-indexed verison of nhym)

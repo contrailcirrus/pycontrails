@@ -414,7 +414,7 @@ class Flight(GeoVectorDataset):
     # Segment Properties
     # ------------
 
-    def segment_duration(self, dtype: npt.DTypeLike = np.float32) -> npt.NDArray[np.float64]:
+    def segment_duration(self, dtype: npt.DTypeLike = np.float32) -> npt.NDArray[np.floating]:
         r"""Compute time elapsed between waypoints in seconds.
 
         ``np.nan`` appended so the length of the output is the same as number of waypoints.
@@ -427,14 +427,14 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Time difference between waypoints, [:math:`s`].
             Returns an array with dtype specified by``dtype``
         """
 
         return segment_duration(self.data["time"], dtype=dtype)
 
-    def segment_haversine(self) -> npt.NDArray[np.float64]:
+    def segment_haversine(self) -> npt.NDArray[np.floating]:
         """Compute Haversine (great circle) distance between flight waypoints.
 
         Helper function used in :meth:`resample_and_fill`.
@@ -445,7 +445,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Array of great circle distances in [:math:`m`] between waypoints
 
         Examples
@@ -468,7 +468,7 @@ class Flight(GeoVectorDataset):
         """
         return geo.segment_haversine(self["longitude"], self["latitude"])
 
-    def segment_length(self) -> npt.NDArray[np.float64]:
+    def segment_length(self) -> npt.NDArray[np.floating]:
         """Compute spherical distance between flight waypoints.
 
         Helper function used in :meth:`length` and :meth:`length_met`.
@@ -476,7 +476,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Array of distances in [:math:`m`] between waypoints
 
         Examples
@@ -498,7 +498,7 @@ class Flight(GeoVectorDataset):
         """
         return geo.segment_length(self["longitude"], self["latitude"], self.altitude)
 
-    def segment_angle(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    def segment_angle(self) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Calculate sine and cosine for the angle between each segment and the longitudinal axis.
 
         This is different from the usual navigational angle between two points known as *bearing*.
@@ -518,7 +518,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64], npt.NDArray[np.float64]
+        npt.NDArray[np.floating], npt.NDArray[np.floating]
             Returns ``sin(a), cos(a)``, where ``a`` is the angle between the segment and the
             longitudinal axis. The final values are of both arrays are ``np.nan``.
 
@@ -548,7 +548,7 @@ class Flight(GeoVectorDataset):
         """
         return geo.segment_angle(self["longitude"], self["latitude"])
 
-    def segment_azimuth(self) -> npt.NDArray[np.float64]:
+    def segment_azimuth(self) -> npt.NDArray[np.floating]:
         """Calculate (forward) azimuth at each waypoint.
 
         Method calls `pyproj.Geod.inv`, which is slow. See `geo.forward_azimuth`
@@ -560,7 +560,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Array of azimuths.
 
         See Also
@@ -599,7 +599,7 @@ class Flight(GeoVectorDataset):
 
     def segment_groundspeed(
         self, smooth: bool = False, window_length: int = 7, polyorder: int = 1
-    ) -> npt.NDArray[np.float64]:
+    ) -> npt.NDArray[np.floating]:
         """Return groundspeed across segments.
 
         Calculate by dividing the horizontal segment length by the difference in waypoint times.
@@ -616,7 +616,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Groundspeed of the segment, [:math:`m s^{-1}`]
         """
         # get horizontal distance (altitude is ignored)
@@ -638,22 +638,22 @@ class Flight(GeoVectorDataset):
 
     def segment_true_airspeed(
         self,
-        u_wind: npt.NDArray[np.float64] | float = 0.0,
-        v_wind: npt.NDArray[np.float64] | float = 0.0,
+        u_wind: npt.NDArray[np.floating] | float = 0.0,
+        v_wind: npt.NDArray[np.floating] | float = 0.0,
         smooth: bool = True,
         window_length: int = 7,
         polyorder: int = 1,
-    ) -> npt.NDArray[np.float64]:
+    ) -> npt.NDArray[np.floating]:
         r"""Calculate the true airspeed [:math:`m/s`] from the ground speed and horizontal winds.
 
         The calculated ground speed will first be smoothed with a Savitzky-Golay filter if enabled.
 
         Parameters
         ----------
-        u_wind : npt.NDArray[np.float64] | float
+        u_wind : npt.NDArray[np.floating] | float
             U wind speed, [:math:`m \ s^{-1}`].
             Defaults to 0 for all waypoints.
-        v_wind : npt.NDArray[np.float64] | float
+        v_wind : npt.NDArray[np.floating] | float
             V wind speed, [:math:`m \ s^{-1}`].
             Defaults to 0 for all waypoints.
         smooth : bool, optional
@@ -666,7 +666,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             True wind speed of each segment, [:math:`m \ s^{-1}`]
         """
         groundspeed = self.segment_groundspeed(smooth, window_length, polyorder)
@@ -680,39 +680,39 @@ class Flight(GeoVectorDataset):
         return np.sqrt(tas_x * tas_x + tas_y * tas_y)
 
     def segment_mach_number(
-        self, true_airspeed: npt.NDArray[np.float64], air_temperature: npt.NDArray[np.float64]
-    ) -> npt.NDArray[np.float64]:
+        self, true_airspeed: npt.NDArray[np.floating], air_temperature: npt.NDArray[np.floating]
+    ) -> npt.NDArray[np.floating]:
         r"""Calculate the mach number of each segment.
 
         Parameters
         ----------
-        true_airspeed : npt.NDArray[np.float64]
+        true_airspeed : npt.NDArray[np.floating]
             True airspeed of the segment, [:math:`m \ s^{-1}`].
             See :meth:`segment_true_airspeed`.
-        air_temperature : npt.NDArray[np.float64]
+        air_temperature : npt.NDArray[np.floating]
             Average air temperature of each segment, [:math:`K`]
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Mach number of each segment
         """
         return units.tas_to_mach_number(true_airspeed, air_temperature)
 
     def segment_rocd(
         self,
-        air_temperature: None | npt.NDArray[np.float64] = None,
-    ) -> npt.NDArray[np.float64]:
+        air_temperature: None | npt.NDArray[np.floating] = None,
+    ) -> npt.NDArray[np.floating]:
         """Calculate the rate of climb and descent (ROCD).
 
         Parameters
         ----------
-        air_temperature: None | npt.NDArray[np.float64]
+        air_temperature: None | npt.NDArray[np.floating]
             Air temperature of each flight waypoint, [:math:`K`]
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Rate of climb and descent over segment, [:math:`ft min^{-1}`]
 
         See Also
@@ -725,7 +725,7 @@ class Flight(GeoVectorDataset):
         self,
         threshold_rocd: float = 250.0,
         min_cruise_altitude_ft: float = 20000.0,
-        air_temperature: None | npt.NDArray[np.float64] = None,
+        air_temperature: None | npt.NDArray[np.floating] = None,
     ) -> npt.NDArray[np.uint8]:
         """Identify the phase of flight (climb, cruise, descent) for each segment.
 
@@ -739,7 +739,7 @@ class Flight(GeoVectorDataset):
             This is specific for each aircraft type,
             and can be approximated as 50% of the altitude ceiling.
             Defaults to 20000 ft.
-        air_temperature: None | npt.NDArray[np.float64]
+        air_temperature: None | npt.NDArray[np.floating]
             Air temperature of each flight waypoint, [:math:`K`]
 
         Returns
@@ -1606,12 +1606,12 @@ class Flight(GeoVectorDataset):
         return ax
 
 
-def _return_linestring(data: dict[str, npt.NDArray[np.float64]]) -> list[list[float]]:
+def _return_linestring(data: dict[str, npt.NDArray[np.floating]]) -> list[list[float]]:
     """Return list of coordinates for geojson constructions.
 
     Parameters
     ----------
-    data : dict[str, npt.NDArray[np.float64]]
+    data : dict[str, npt.NDArray[np.floating]]
         :attr:`data` containing `longitude`, `latitude`, and `altitude` keys
 
     Returns
@@ -1659,15 +1659,15 @@ def _antimeridian_index(longitude: pd.Series) -> list[int]:
 
 
 def _sg_filter(
-    vals: npt.NDArray[np.float64], window_length: int = 7, polyorder: int = 1
-) -> npt.NDArray[np.float64]:
+    vals: npt.NDArray[np.floating], window_length: int = 7, polyorder: int = 1
+) -> npt.NDArray[np.floating]:
     """Apply Savitzky-Golay filter to smooth out noise in the time-series data.
 
     Used to smooth true airspeed, fuel flow, and altitude.
 
     Parameters
     ----------
-    vals : npt.NDArray[np.float64]
+    vals : npt.NDArray[np.floating]
         Input array
     window_length : int, optional
         Parameter for :func:`scipy.signal.savgol_filter`
@@ -1676,7 +1676,7 @@ def _sg_filter(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Smoothed values
 
     Raises
@@ -1702,11 +1702,11 @@ def _sg_filter(
 
 
 def _altitude_interpolation(
-    altitude: npt.NDArray[np.float64],
+    altitude: npt.NDArray[np.floating],
     nominal_rocd: float,
     freq: np.timedelta64,
     climb_or_descend_at_end: bool = False,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Interpolate nan values in ``altitude`` array.
 
     Suppose each group of consecutive nan values is enclosed by ``a0`` and ``a1`` with
@@ -1718,7 +1718,7 @@ def _altitude_interpolation(
 
     Parameters
     ----------
-    altitude : npt.NDArray[np.float64]
+    altitude : npt.NDArray[np.floating]
         Array of altitude values containing nan values. This function will raise
         an error if ``altitude`` does not contain nan values. Moreover, this function
         assumes the initial and final entries in ``altitude`` are not nan.
@@ -1732,7 +1732,7 @@ def _altitude_interpolation(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Altitude after nan values have been filled
     """
     # Determine nan state of altitude
@@ -1762,12 +1762,12 @@ def _altitude_interpolation(
 
 
 def _altitude_interpolation_climb_descend_end(
-    altitude: npt.NDArray[np.float64],
+    altitude: npt.NDArray[np.floating],
     na_group_size: npt.NDArray[np.intp],
     nominal_rocd: float,
     freq: np.timedelta64,
     isna: npt.NDArray[np.bool_],
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Interpolate altitude values by placing climbs/descents at end of nan sequences.
 
     The segment will remain at constant elevation until the end of the segment where
@@ -1776,7 +1776,7 @@ def _altitude_interpolation_climb_descend_end(
 
     Parameters
     ----------
-    altitude : npt.NDArray[np.float64]
+    altitude : npt.NDArray[np.floating]
         Array of altitude values containing nan values. This function will raise
         an error if ``altitude`` does not contain nan values. Moreover, this function
         assumes the initial and final entries in ``altitude`` are not nan.
@@ -1791,7 +1791,7 @@ def _altitude_interpolation_climb_descend_end(
         Array of boolean values indicating whether or not each entry in `altitude`
         is nan-valued.
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Altitude after nan values have been filled
     """
     cumalt_list = [np.flip(np.arange(1, size, dtype=float)) for size in na_group_size]
@@ -1823,14 +1823,14 @@ def _altitude_interpolation_climb_descend_end(
 
 
 def _altitude_interpolation_climb_descend_middle(
-    altitude: npt.NDArray[np.float64],
+    altitude: npt.NDArray[np.floating],
     start_na_idxs: npt.NDArray[np.intp],
     end_na_idxs: npt.NDArray[np.intp],
     na_group_size: npt.NDArray[np.intp],
     freq: np.timedelta64,
     nominal_rocd: float,
     isna: npt.NDArray[np.bool_],
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Interpolate nan altitude values based on step-climb logic.
 
     For short segments, the climb will be placed at the begining of the segment. For
@@ -1839,7 +1839,7 @@ def _altitude_interpolation_climb_descend_middle(
 
     Parameters
     ----------
-    altitude : npt.NDArray[np.float64]
+    altitude : npt.NDArray[np.floating]
         Array of altitude values containing nan values. This function will raise
         an error if ``altitude`` does not contain nan values. Moreover, this function
         assumes the initial and final entries in ``altitude`` are not nan.
@@ -1860,7 +1860,7 @@ def _altitude_interpolation_climb_descend_middle(
         Array of boolean values indicating whether or not each entry in `altitude`
         is nan-valued.
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Altitude after nan values have been filled
     """
     s = pd.Series(altitude)
@@ -1900,7 +1900,7 @@ def _altitude_interpolation_climb_descend_middle(
         if s[start_na_idx] <= s[end_na_idx]:
             cumalt_list.append(np.arange(1, size, dtype=float))
         else:
-            cumalt_list.append(np.flip(np.arange(1, size, dtype=float)))
+            cumalt_list.append(np.flip(np.arange(1, size, dtype=float)))  # type: ignore[arg-type]
 
     cumalt = np.concatenate(cumalt_list)
     cumalt = cumalt * nominal_rocd * (freq / np.timedelta64(1, "s"))
@@ -1925,13 +1925,13 @@ def _altitude_interpolation_climb_descend_middle(
 
 
 def _verify_altitude(
-    altitude: npt.NDArray[np.float64], nominal_rocd: float, freq: np.timedelta64
+    altitude: npt.NDArray[np.floating], nominal_rocd: float, freq: np.timedelta64
 ) -> None:
     """Confirm that the time derivative of `altitude` does not exceed twice `nominal_rocd`.
 
     Parameters
     ----------
-    altitude : npt.NDArray[np.float64]
+    altitude : npt.NDArray[np.floating]
         Array of filled altitude values containing nan values.
     nominal_rocd : float
         Nominal rate of climb/descent, in m/s
@@ -1954,11 +1954,11 @@ def _verify_altitude(
 
 def filter_altitude(
     time: npt.NDArray[np.datetime64],
-    altitude_ft: npt.NDArray[np.float64],
+    altitude_ft: npt.NDArray[np.floating],
     kernel_size: int = 17,
     cruise_threshold: float = 120,
-    air_temperature: None | npt.NDArray[np.float64] = None,
-) -> npt.NDArray[np.float64]:
+    air_temperature: None | npt.NDArray[np.floating] = None,
+) -> npt.NDArray[np.floating]:
     """
     Filter noisy altitude on a single flight.
 
@@ -1970,19 +1970,19 @@ def filter_altitude(
     ----------
     time : npt.NDArray[np.datetime64]
         Waypoint time in ``np.datetime64`` format.
-    altitude_ft : npt.NDArray[np.float64]
+    altitude_ft : npt.NDArray[np.floating]
         Altitude signal in feet
     kernel_size : int, optional
         Passed directly to :func:`scipy.signal.medfilt`, by default 11.
         Passed also to :func:`scipy.signal.medfilt`
     cruise_theshold : int, optional
         Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
-    air_temperature: None | npt.NDArray[np.float64]
+    air_temperature: None | npt.NDArray[np.floating]
         Air temperature of each flight waypoint, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Filtered altitude
 
     Notes
@@ -2072,7 +2072,7 @@ def filter_altitude(
 
 def segment_duration(
     time: npt.NDArray[np.datetime64], dtype: npt.DTypeLike = np.float32
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate the time difference between waypoints.
 
     ``np.nan`` appended so the length of the output is the same as number of waypoints.
@@ -2087,7 +2087,7 @@ def segment_duration(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Time difference between waypoints, [:math:`s`].
         This returns an array with dtype specified by``dtype``.
     """
@@ -2098,8 +2098,8 @@ def segment_duration(
 
 
 def segment_phase(
-    rocd: npt.NDArray[np.float64],
-    altitude_ft: npt.NDArray[np.float64],
+    rocd: npt.NDArray[np.floating],
+    altitude_ft: npt.NDArray[np.floating],
     *,
     threshold_rocd: float = 250.0,
     min_cruise_altitude_ft: float = MIN_CRUISE_ALTITUDE,
@@ -2111,7 +2111,7 @@ def segment_phase(
     rocd: pt.NDArray[np.float64]
         Rate of climb and descent across segment, [:math:`ft min^{-1}`].
         See output from :func:`segment_rocd`.
-    altitude_ft: npt.NDArray[np.float64]
+    altitude_ft: npt.NDArray[np.floating]
         Altitude, [:math:`ft`]
     threshold_rocd: float, optional
         ROCD threshold to identify climb and descent, [:math:`ft min^{-1}`].
@@ -2161,26 +2161,26 @@ def segment_phase(
 
 
 def segment_rocd(
-    segment_duration: npt.NDArray[np.float64],
-    altitude_ft: npt.NDArray[np.float64],
-    air_temperature: None | npt.NDArray[np.float64] = None,
-) -> npt.NDArray[np.float64]:
+    segment_duration: npt.NDArray[np.floating],
+    altitude_ft: npt.NDArray[np.floating],
+    air_temperature: None | npt.NDArray[np.floating] = None,
+) -> npt.NDArray[np.floating]:
     """Calculate the rate of climb and descent (ROCD).
 
     Parameters
     ----------
-    segment_duration: npt.NDArray[np.float64]
+    segment_duration: npt.NDArray[np.floating]
         Time difference between waypoints, [:math:`s`].
         Expected to have numeric `dtype`, not `"timedelta64"`.
         See output from :func:`segment_duration`.
-    altitude_ft: npt.NDArray[np.float64]
+    altitude_ft: npt.NDArray[np.floating]
         Altitude of each waypoint, [:math:`ft`]
-    air_temperature: None | npt.NDArray[np.float64]
+    air_temperature: None | npt.NDArray[np.floating]
         Air temperature of each flight waypoint, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Rate of climb and descent over segment, [:math:`ft min^{-1}`]
 
     Notes
@@ -2211,7 +2211,7 @@ def segment_rocd(
     T_correction[:-1] = (air_temperature[:-1] + air_temperature[1:]) / (T_isa[:-1] + T_isa[1:])
     T_correction[-1] = np.nan
 
-    return T_correction * out
+    return T_correction * out  # type: ignore[return-value]
 
 
 def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.DatetimeIndex]:

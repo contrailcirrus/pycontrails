@@ -43,9 +43,9 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     Parameters
     ----------
-    points : tuple[npt.NDArray[np.float64], ...]
+    points : tuple[npt.NDArray[np.floating], ...]
         Coordinates of the grid points.
-    values : npt.NDArray[np.float64]
+    values : npt.NDArray[np.floating]
         Grid values. The shape of this array must be compatible with the
         coordinates. An error is raised if the dtype is not ``np.float32``
         or ``np.float64``.
@@ -59,8 +59,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     def __init__(
         self,
-        points: tuple[npt.NDArray[np.float64], ...],
-        values: npt.NDArray[np.float64],
+        points: tuple[npt.NDArray[np.floating], ...],
+        values: npt.NDArray[np.floating],
         method: str,
         bounds_error: bool,
         fill_value: float | np.float64 | None,
@@ -78,12 +78,12 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         self.fill_value = fill_value
         self._spline = None
 
-    def _prepare_xi_simple(self, xi: npt.NDArray[np.float64]) -> npt.NDArray[np.bool_]:
+    def _prepare_xi_simple(self, xi: npt.NDArray[np.floating]) -> npt.NDArray[np.bool_]:
         """Run looser version of :meth:`_prepare_xi`.
 
         Parameters
         ----------
-        xi : npt.NDArray[np.float64]
+        xi : npt.NDArray[np.floating]
             Points at which to interpolate.
 
         Returns
@@ -106,13 +106,13 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         return self._find_out_of_bounds(xi.T)
 
     def __call__(
-        self, xi: npt.NDArray[np.float64], method: str | None = None
-    ) -> npt.NDArray[np.float64]:
+        self, xi: npt.NDArray[np.floating], method: str | None = None
+    ) -> npt.NDArray[np.floating]:
         """Evaluate the interpolator at the given points.
 
         Parameters
         ----------
-        xi : npt.NDArray[np.float64]
+        xi : npt.NDArray[np.floating]
             Points at which to interpolate. Must have shape ``(n, ndim)``, where
             ``ndim`` is the number of dimensions of the interpolator.
         method : str | None
@@ -120,7 +120,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Interpolated values. Has shape ``(n,)``. When computing linear interpolation,
             the dtype is the same as the :attr:`values` array.
         """
@@ -137,21 +137,21 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     def _set_out_of_bounds(
         self,
-        out: npt.NDArray[np.float64],
+        out: npt.NDArray[np.floating],
         out_of_bounds: npt.NDArray[np.bool_],
-    ) -> npt.NDArray[np.float64]:
+    ) -> npt.NDArray[np.floating]:
         """Set out-of-bounds values to the fill value.
 
         Parameters
         ----------
-        out : npt.NDArray[np.float64]
+        out : npt.NDArray[np.floating]
             Values from interpolation. This is modified in-place.
         out_of_bounds : npt.NDArray[np.bool_]
             A 1-dimensional Boolean array indicating which points are out of bounds.
 
         Returns
         -------
-        out : npt.NDArray[np.float64]
+        out : npt.NDArray[np.floating]
             A reference to the ``out`` array.
         """
         if self.fill_value is not None and np.any(out_of_bounds):
@@ -162,8 +162,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
     def _evaluate_linear(
         self,
         indices: npt.NDArray[np.int64],
-        norm_distances: npt.NDArray[np.float64],
-    ) -> npt.NDArray[np.float64]:
+        norm_distances: npt.NDArray[np.floating],
+    ) -> npt.NDArray[np.floating]:
         """Evaluate the interpolator using linear interpolation.
 
         This is a faster alternative to
@@ -181,13 +181,13 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         indices : npt.NDArray[np.int64]
             Indices of the grid points to the left of the interpolation points.
             Has shape ``(ndim, n_points)``.
-        norm_distances : npt.NDArray[np.float64]
+        norm_distances : npt.NDArray[np.floating]
             Normalized distances between the interpolation points and the grid
             points to the left. Has shape ``(ndim, n_points)``.
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Interpolated values with shape ``(n_points,)`` and the same dtype as
             the :attr:`values` array.
         """
@@ -261,7 +261,7 @@ def _pick_method(scipy_version: str, method: str) -> str:
 
 def _floatize_time(
     time: npt.NDArray[np.datetime64], offset: np.datetime64
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Convert an array of ``np.datetime64`` to an array of ``np.float64``.
 
     In calls to :class:`scipy.interpolate.RegularGridInterpolator`, it's critical
@@ -296,7 +296,7 @@ def _floatize_time(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         The number of milliseconds since ``offset``.
     """
     delta = time - offset
@@ -354,9 +354,9 @@ def _localize(da: xr.DataArray, coords: dict[str, np.ndarray]) -> xr.DataArray:
 
 @overload
 def interp(
-    longitude: npt.NDArray[np.float64],
-    latitude: npt.NDArray[np.float64],
-    level: npt.NDArray[np.float64],
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    level: npt.NDArray[np.floating],
     time: npt.NDArray[np.datetime64],
     da: xr.DataArray,
     method: str,
@@ -366,14 +366,14 @@ def interp(
     *,
     indices: RGIArtifacts | None = ...,
     return_indices: Literal[False] = ...,
-) -> npt.NDArray[np.float64]: ...
+) -> npt.NDArray[np.floating]: ...
 
 
 @overload
 def interp(
-    longitude: npt.NDArray[np.float64],
-    latitude: npt.NDArray[np.float64],
-    level: npt.NDArray[np.float64],
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    level: npt.NDArray[np.floating],
     time: npt.NDArray[np.datetime64],
     da: xr.DataArray,
     method: str,
@@ -383,14 +383,14 @@ def interp(
     *,
     indices: RGIArtifacts | None = ...,
     return_indices: Literal[True],
-) -> tuple[npt.NDArray[np.float64], RGIArtifacts]: ...
+) -> tuple[npt.NDArray[np.floating], RGIArtifacts]: ...
 
 
 @overload
 def interp(
-    longitude: npt.NDArray[np.float64],
-    latitude: npt.NDArray[np.float64],
-    level: npt.NDArray[np.float64],
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    level: npt.NDArray[np.floating],
     time: npt.NDArray[np.datetime64],
     da: xr.DataArray,
     method: str,
@@ -400,13 +400,13 @@ def interp(
     *,
     indices: RGIArtifacts | None = ...,
     return_indices: bool = ...,
-) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], RGIArtifacts]: ...
+) -> npt.NDArray[np.floating] | tuple[npt.NDArray[np.floating], RGIArtifacts]: ...
 
 
 def interp(
-    longitude: npt.NDArray[np.float64],
-    latitude: npt.NDArray[np.float64],
-    level: npt.NDArray[np.float64],
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    level: npt.NDArray[np.floating],
     time: npt.NDArray[np.datetime64],
     da: xr.DataArray,
     method: str,
@@ -416,7 +416,7 @@ def interp(
     *,
     indices: RGIArtifacts | None = None,
     return_indices: bool = False,
-) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], RGIArtifacts]:
+) -> npt.NDArray[np.floating] | tuple[npt.NDArray[np.floating], RGIArtifacts]:
     """Interpolate over a grid with ``localize`` option.
 
     .. versionchanged:: 0.25.6
@@ -471,7 +471,7 @@ def interp(
 
     Returns
     -------
-    npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], RGIArtifacts]
+    npt.NDArray[np.floating] | tuple[npt.NDArray[np.floating], RGIArtifacts]
         Interpolated values with same size as ``longitude``. If ``return_indices``
         is True, return intermediate indices artifacts as well.
 
@@ -499,7 +499,7 @@ def interp(
     t = _floatize_time(t, offset)
 
     single_level = z.size == 1 and z.item() == -1.0
-    points: tuple[npt.NDArray[np.float64], ...]
+    points: tuple[npt.NDArray[np.floating], ...]
     if single_level:
         values = da.values.squeeze(axis=2)
         points = x, y, t
@@ -529,13 +529,13 @@ def interp(
 
 
 def _buildxi(
-    longitude: npt.NDArray[np.float64],
-    latitude: npt.NDArray[np.float64],
-    level: npt.NDArray[np.float64],
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    level: npt.NDArray[np.floating],
     time: npt.NDArray[np.datetime64],
     offset: np.datetime64,
     single_level: bool,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Build the input array for interpolation.
 
     The implementation below achieves the same result as the following::
@@ -562,10 +562,10 @@ def _buildxi(
 
 def _linear_interp_with_indices(
     interp: PycontrailsRegularGridInterpolator,
-    xi: npt.NDArray[np.float64] | None,
+    xi: npt.NDArray[np.floating] | None,
     localize: bool,
     indices: RGIArtifacts | None,
-) -> tuple[npt.NDArray[np.float64], RGIArtifacts]:
+) -> tuple[npt.NDArray[np.floating], RGIArtifacts]:
     if interp.method != "linear":
         msg = "Parameter 'indices' is only supported for 'method=linear'"
         raise ValueError(msg)
@@ -589,7 +589,7 @@ class RGIArtifacts:
     """An interface to intermediate RGI interpolation artifacts."""
 
     xi_indices: npt.NDArray[np.int64]
-    norm_distances: npt.NDArray[np.float64]
+    norm_distances: npt.NDArray[np.floating]
     out_of_bounds: npt.NDArray[np.bool_]
 
 
@@ -608,10 +608,10 @@ class EmissionsProfileInterpolator:
 
     Parameters
     ----------
-    xp : npt.NDarray[np.float64]
+    xp : npt.NDArray[np.floating]
         Array of x-values. These must be strictly increasing and free from
         any nan values. Passed to :func:`numpy.interp`.
-    fp : npt.NDarray[np.float64]
+    fp : npt.NDArray[np.floating]
         Array of y-values. Passed to :func:`numpy.interp`.
     drop_duplicates : bool, optional
         Whether to drop duplicate values in ``xp``. Defaults to ``True``.
@@ -648,8 +648,8 @@ class EmissionsProfileInterpolator:
 
     def __init__(
         self,
-        xp: npt.NDArray[np.float64],
-        fp: npt.NDArray[np.float64],
+        xp: npt.NDArray[np.floating],
+        fp: npt.NDArray[np.floating],
         drop_duplicates: bool = True,
     ) -> None:
         if drop_duplicates:
@@ -680,17 +680,17 @@ class EmissionsProfileInterpolator:
             msg = "xp must not contain nan values"
             raise ValueError(msg)
 
-    def interp(self, x: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    def interp(self, x: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Interpolate x against xp and fp.
 
         Parameters
         ----------
-        x : npt.NDArray[np.float64]
+        x : npt.NDArray[np.floating]
             Array of x-values to interpolate.
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Array of interpolated y-values arising from the x-values. The ``dtype`` of
             the output array is the same as the ``dtype`` of ``x``.
         """
@@ -700,7 +700,7 @@ class EmissionsProfileInterpolator:
         dtype = np.result_type(x, np.float32)
         return np.interp(x, self.xp, self.fp).astype(dtype)
 
-    def log_interp(self, x: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    def log_interp(self, x: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Interpolate x against xp and fp on a logarithmic scale.
 
         This method composes the following three functions.
@@ -710,12 +710,12 @@ class EmissionsProfileInterpolator:
 
         Parameters
         ----------
-        x : npt.NDArray[np.float64]
+        x : npt.NDArray[np.floating]
             Array of x-values to interpolate.
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Array of interpolated y-values arising from the x-values.
         """
         return np.exp(self.interp(np.log(x)))

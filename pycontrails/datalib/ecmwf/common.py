@@ -61,7 +61,7 @@ class ECMWFAPI(metsource.MetDataSource):
 
         # downselect times
         if not self.timesteps:
-            self.timesteps = ds["time"].values.astype("datetime64[ns]").tolist()
+            self.timesteps = ds["time"].values.astype("datetime64[ns]").tolist()  # type: ignore[assignment]
         else:
             try:
                 ds = ds.sel(time=self.timesteps)

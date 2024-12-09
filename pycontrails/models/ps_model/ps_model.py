@@ -224,14 +224,14 @@ class PSFlight(AircraftPerformance):
         self,
         *,
         aircraft_type: str,
-        altitude_ft: npt.NDArray[np.float64],
-        air_temperature: npt.NDArray[np.float64],
+        altitude_ft: npt.NDArray[np.floating],
+        air_temperature: npt.NDArray[np.floating],
         time: npt.NDArray[np.datetime64] | None,
-        true_airspeed: npt.NDArray[np.float64] | float | None,
-        aircraft_mass: npt.NDArray[np.float64] | float,
-        engine_efficiency: npt.NDArray[np.float64] | float | None,
-        fuel_flow: npt.NDArray[np.float64] | float | None,
-        thrust: npt.NDArray[np.float64] | float | None,
+        true_airspeed: npt.NDArray[np.floating] | float | None,
+        aircraft_mass: npt.NDArray[np.floating] | float,
+        engine_efficiency: npt.NDArray[np.floating] | float | None,
+        fuel_flow: npt.NDArray[np.floating] | float | None,
+        thrust: npt.NDArray[np.floating] | float | None,
         q_fuel: float,
         **kwargs: Any,
     ) -> AircraftPerformanceData:
@@ -266,8 +266,8 @@ class PSFlight(AircraftPerformance):
         rn = reynolds_number(atyp_param.wing_surface_area, mach_num, air_temperature, air_pressure)
 
         # Allow array or None time
-        dv_dt: npt.NDArray[np.float64] | float
-        theta: npt.NDArray[np.float64] | float
+        dv_dt: npt.NDArray[np.floating] | float
+        theta: npt.NDArray[np.floating] | float
         if time is None:
             # Assume a nominal cruising state
             dt_sec = None
@@ -780,7 +780,7 @@ def overall_propulsion_efficiency(
     c_t_eta_b: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
     eta_over_eta_b_min: float | None = None,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate overall propulsion efficiency.
 
     Parameters
@@ -800,7 +800,7 @@ def overall_propulsion_efficiency(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Overall propulsion efficiency
     """
     eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(mach_num, c_t, c_t_eta_b)
@@ -816,7 +816,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     mach_num: ArrayOrFloat,
     c_t: ArrayOrFloat,
     c_t_eta_b: ArrayOrFloat,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate ratio of OPE to maximum OPE that can be attained for a given Mach number.
 
     Parameters
@@ -830,7 +830,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Ratio of OPE to maximum OPE, ``eta / eta_b``
 
     Notes

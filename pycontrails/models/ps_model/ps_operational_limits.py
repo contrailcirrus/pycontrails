@@ -155,34 +155,34 @@ def max_available_thrust_coefficient(
 
 
 def get_excess_thrust_available(
-    mach_number: float | npt.NDArray[np.float64],
-    air_temperature: float | npt.NDArray[np.float64],
-    air_pressure: float | npt.NDArray[np.float64],
-    aircraft_mass: float | npt.NDArray[np.float64],
-    theta: float | npt.NDArray[np.float64],
+    mach_number: ArrayOrFloat,
+    air_temperature: ArrayOrFloat,
+    air_pressure: ArrayOrFloat,
+    aircraft_mass: ArrayOrFloat,
+    theta: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
-) -> float | npt.NDArray[np.float64]:
+) -> ArrayOrFloat:
     r"""
     Calculate the excess thrust coefficient available at specified operation condition.
 
     Parameters
     ----------
-    mach_number : float | npt.NDArray[np.float64]
+    mach_number : ArrayOrFloat
         Mach number at each waypoint
-    air_temperature : float | npt.NDArray[np.float64]
+    air_temperature : ArrayOrFloat
         Ambient temperature at each waypoint, [:math:`K`]
-    air_pressure : float | npt.NDArray[np.float64]
+    air_pressure : ArrayOrFloat
         Ambient pressure, [:math:`Pa`]
-    aircraft_mass : float | npt.NDArray[np.float64]
+    aircraft_mass : ArrayOrFloat
         Aircraft mass at each waypoint, [:math:`kg`]
-    theta : float | npt.NDArray[np.float64]
+    theta : ArrayOrFloat
         Climb (positive value) or descent (negative value) angle, [:math:`\deg`]
     atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
 
     Returns
     -------
-    float | npt.NDArray[np.float64]
+    ArrayOrFloat
         The difference between the maximum rated thrust coefficient and the thrust coefficient
         required to maintain the current mach_number.
     """
@@ -217,7 +217,7 @@ def get_excess_thrust_available(
     )
 
     tas = units.mach_number_to_tas(mach_number, air_temperature)
-    req_thrust_coeff = required_thrust_coefficient(c_lift, c_drag, tas)
+    req_thrust_coeff = required_thrust_coefficient(c_lift, c_drag, tas)  # type: ignore[type-var]
 
     c_t_eta_b = thrust_coefficient_at_max_efficiency(
         mach_number, atyp_param.m_des, atyp_param.c_t_des
@@ -226,7 +226,7 @@ def get_excess_thrust_available(
         air_temperature, mach_number, c_t_eta_b, atyp_param
     )
 
-    return max_thrust_coeff - req_thrust_coeff
+    return max_thrust_coeff - req_thrust_coeff  # type: ignore[return-value]
 
 
 def _normalised_max_throttle_parameter(
@@ -466,7 +466,9 @@ def maximum_mach_num(
 # ----------------
 
 
-def fuel_flow_idle(fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat) -> npt.NDArray[np.float64]:
+def fuel_flow_idle(
+    fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat
+) -> npt.NDArray[np.floating]:
     r"""Calculate minimum fuel mass flow rate at flight idle conditions.
 
     Parameters
@@ -478,7 +480,7 @@ def fuel_flow_idle(fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat) -> npt.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Fuel mass flow rate at flight idle conditions, [:math:`kg \ s^{-1}`]
     """
     x = altitude_ft / 10000.0
@@ -491,7 +493,7 @@ def max_fuel_flow(
     mach_number: ArrayOrFloat,
     fuel_flow_max_sls: float,
     flight_phase: npt.NDArray[np.uint8] | flight.FlightPhase,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     r"""Correct maximum fuel mass flow rate that can be supplied by the engine.
 
     Parameters
@@ -509,7 +511,7 @@ def max_fuel_flow(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Maximum allowable fuel mass flow rate, [:math:`kg \ s^{-1}`]
     """
     ff_max = jet.equivalent_fuel_flow_rate_at_cruise(

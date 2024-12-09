@@ -172,27 +172,27 @@ def co_hc_emissions_index_profile(
 
 def estimate_nox(
     log_ei_nox_profile: EmissionsProfileInterpolator,
-    fuel_flow_per_engine: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    specific_humidity: None | npt.NDArray[np.float64] = None,
-) -> npt.NDArray[np.float64]:
+    fuel_flow_per_engine: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    specific_humidity: None | npt.NDArray[np.floating] = None,
+) -> npt.NDArray[np.floating]:
     """Estimate the nitrogen oxide (NOx) emissions index (EI) at cruise conditions.
 
     Parameters
     ----------
     log_ei_nox_profile: EmissionsProfileInterpolator
         emissions profile containing the log of EI NOx versus log of fuel flow.
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    specific_humidity: npt.NDArray[np.float64] | None
+    specific_humidity: npt.NDArray[np.floating] | None
         specific humidity for each waypoint, [:math:`kg_{H_{2}O}/kg_{air}`]
     """
 
@@ -215,24 +215,24 @@ def estimate_nox(
 
 def estimate_ei(
     log_ei_profile: EmissionsProfileInterpolator,
-    fuel_flow_per_engine: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    fuel_flow_per_engine: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Estimate carbon monoxide (CO) or hydrocarbon (HC) emissions index (EI).
 
     Parameters
     ----------
     log_ei_profile: EmissionsProfileInterpolator
         emissions profile containing the log of EI CO or EI HC versus log of fuel flow.
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
     """
     mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)
@@ -252,29 +252,29 @@ def estimate_ei(
 
 
 def ei_at_cruise(
-    ei_sl: npt.NDArray[np.float64],
-    theta_amb: npt.NDArray[np.float64],
-    delta_amb: npt.NDArray[np.float64],
+    ei_sl: npt.NDArray[np.floating],
+    theta_amb: npt.NDArray[np.floating],
+    delta_amb: npt.NDArray[np.floating],
     ei_type: str,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Convert the estimated EI at sea level to cruise conditions.
 
     Refer to Eqs. (15) and (16) in DuBois & Paynter (2006).
 
     Parameters
     ----------
-    ei_sl : npt.NDArray[np.float64]
+    ei_sl : npt.NDArray[np.floating]
         Sea level EI values.
-    theta_amb : npt.NDArray[np.float64]
+    theta_amb : npt.NDArray[np.floating]
         Ratio of the ambient temperature to the temperature at mean sea-level.
-    delta_amb : npt.NDArray[np.float64]
+    delta_amb : npt.NDArray[np.floating]
         Ratio of the pressure altitude to the surface pressure.
     ei_type : str
         One of {"HC", "CO", "NOX"}
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Estimated cruise EI values.
 
     References
@@ -292,30 +292,30 @@ def ei_at_cruise(
 
 
 def _get_humidity_correction_factor(
-    specific_humidity: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    specific_humidity: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     return np.exp(-19 * (specific_humidity - 0.00634))
 
 
 def _estimate_specific_humidity(
-    air_temperature: npt.NDArray[np.float64], air_pressure: npt.NDArray[np.float64], rh: float
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating], air_pressure: npt.NDArray[np.floating], rh: float
+) -> npt.NDArray[np.floating]:
     """Estimate the specific humidity by assuming a fixed relative humidity.
 
     Refer to Eqs. (43), (44) and (45) in DuBois & Paynter (2006).
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Air temperature, [:math:`K`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         Air pressure, [:math:`Pa`]
     rh : float
         Relative humidity, [:math:`0 - 1`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Estimated specific humidity, [:math:`kg kg^{-1}`]
 
     References
