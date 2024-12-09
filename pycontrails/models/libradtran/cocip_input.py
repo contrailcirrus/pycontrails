@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import pathlib
 from typing import Any
 
 import numpy as np
@@ -18,11 +19,14 @@ from pycontrails.physics import geo, units
 
 logger = logging.getLogger(__name__)
 
+_path_to_static = pathlib.Path(__file__).parent / "static"
+MIE_FILE = _path_to_static / "ic.gamma_001.0.mie.cdf"
+
 
 class CocipInput:
     """Cocip input to libRadtran."""
 
-    __slots__ = ("segments", "radius", "footprint", "params")
+    __slots__ = ("segments", "radius", "footprint", "small_re_mie", "params")
 
     #: Cocip contrails segments
     segments: pd.DataFrame
@@ -33,6 +37,10 @@ class CocipInput:
     #: Pixel footprint
     footprint: float
 
+    #: If True, use mie scattering calculations for contrails with
+    #: effective radii below 5 microns.
+    small_re_mie: bool
+
     #: Cocip parameters
     params: CocipParams
 
@@ -42,11 +50,13 @@ class CocipInput:
         *,
         radius: float = 100e3,
         footprint: float = 0,
+        small_re_mie: bool = False,
         params: CocipParams | None = None,
     ):
         self.segments = contrail_to_segments(contrail)
         self.radius = radius
         self.footprint = footprint
+        self.small_re_mie = small_re_mie
         self.params = params or CocipParams()
 
     def get_profiles(self, lon: float, lat: float, time: np.datetime64) -> dict[str, Any]:
@@ -164,9 +174,14 @@ class CocipInput:
         out = {}
         name = "-".join(str(n) for n in segment.name)
         for habit, weight, re in zip(*_cocip_habits(r, self.params), strict=True):
-            out[f"{name}-{habit.lower().replace(' ', '-')}"] = _create_profile(
-                habit, z0 - dz, z0 + dz, weight * iwc, re
-            )
+            if self.small_re_mie and re < 5e-6:
+                out[f"{name}-{habit.lower().replace(' ', '-')}-as-sphere"] = _create_profile(
+                    "sphere", z0 - dz, z0 + dz, weight * iwc, re
+                )
+            else:
+                out[f"{name}-{habit.lower().replace(' ', '-')}"] = _create_profile(
+                    habit, z0 - dz, z0 + dz, weight * iwc, re
+                )
 
         return out
 
@@ -273,8 +288,14 @@ def _create_profile(habit: str, z0: float, z1: float, iwc: float, re: float) -> 
     habit = habit.lower()
 
     if habit == "sphere":
-        msg = "Mie scattering calculations required for spheric ice particles."
-        raise ValueError(msg)
+        return {
+            "options": [
+                f"profile_properties {MIE_FILE} interpolate",
+            ],
+            "z": np.array([z1, z0]),
+            "cwc": np.array([0, iwc]),
+            "re": np.array([0, np.clip(re, 0.1e-6, 5e-6)]),
+        }
 
     if habit == "solid column":
         return {
@@ -284,7 +305,7 @@ def _create_profile(habit: str, z0: float, z1: float, iwc: float, re: float) -> 
             ],
             "z": np.array([z1, z0]),
             "cwc": np.array([0, iwc]),
-            "re": np.array([0, np.clip(re, 5e-6, 90 - 6)]),
+            "re": np.array([0, np.clip(re, 5e-6, 90e-6)]),
         }
 
     if habit == "hollow column":

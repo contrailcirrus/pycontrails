@@ -58,6 +58,7 @@ docs/examples/airports
 *.nc
 *.grib
 bada/
+pycontrails/models/libradtran/static
 
 # docker
 id_rsa
