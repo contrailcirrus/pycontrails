@@ -178,9 +178,9 @@ class PSGrid(AircraftPerformanceGrid):
 @dataclasses.dataclass
 class _PerfVariables:
     atyp_param: PSAircraftEngineParams
-    air_pressure: npt.NDArray[np.float64] | float
-    air_temperature: npt.NDArray[np.float64] | float
-    mach_number: npt.NDArray[np.float64] | float
+    air_pressure: npt.NDArray[np.floating] | float
+    air_temperature: npt.NDArray[np.floating] | float
+    mach_number: npt.NDArray[np.floating] | float
     q_fuel: float
 
 
@@ -271,7 +271,7 @@ def _estimate_mass_extremes(
     atyp_param: PSAircraftEngineParams,
     perf: _PerfVariables,
     n_iter: int = 3,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Calculate the minimum and maximum mass for a given aircraft type."""
 
     oem = atyp_param.amass_oew  # operating empty mass
@@ -296,9 +296,9 @@ def _estimate_mass_extremes(
 
 
 def _parse_variables(
-    level: npt.NDArray[np.float64] | None,
-    air_temperature: xr.DataArray | npt.NDArray[np.float64] | None,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    level: npt.NDArray[np.floating] | None,
+    air_temperature: xr.DataArray | npt.NDArray[np.floating] | None,
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Parse the level and air temperature arguments."""
 
     if isinstance(air_temperature, xr.DataArray):
@@ -328,8 +328,8 @@ def _parse_variables(
 def ps_nominal_grid(
     aircraft_type: str,
     *,
-    level: npt.NDArray[np.float64] | None = None,
-    air_temperature: xr.DataArray | npt.NDArray[np.float64] | None = None,
+    level: npt.NDArray[np.floating] | None = None,
+    air_temperature: xr.DataArray | npt.NDArray[np.floating] | None = None,
     q_fuel: float = JetA.q_fuel,
     mach_number: float | None = None,
     maxiter: int = PSGridParams.maxiter,
@@ -345,10 +345,10 @@ def ps_nominal_grid(
     ----------
     aircraft_type : str
         The aircraft type.
-    level : npt.NDArray[np.float64] | None, optional
+    level : npt.NDArray[np.floating] | None, optional
         The pressure level, [:math:`hPa`]. If None, the ``air_temperature``
         argument must be a :class:`xarray.DataArray` with a ``level`` coordinate.
-    air_temperature : xr.DataArray | npt.NDArray[np.float64] | None, optional
+    air_temperature : xr.DataArray | npt.NDArray[np.floating] | None, optional
         The ambient air temperature, [:math:`K`]. If None (default), the ISA
         temperature is computed from the ``level`` argument. If a :class:`xarray.DataArray`,
         the ``level`` coordinate must be present and the ``level`` argument must be None
@@ -624,12 +624,11 @@ def ps_nominal_optimize_mach(
         altitude_m = units.pl_to_m(level)
         air_temperature = units.m_to_T_isa(altitude_m)
 
-    headwind: ArrayOrFloat
     if northward_wind is not None and eastward_wind is not None:
         if sin_a is None or cos_a is None:
             msg = "Segment angles must be provide if wind data is specified"
             raise ValueError(msg)
-        headwind = -(northward_wind * cos_a + eastward_wind * sin_a)
+        headwind = -(northward_wind * cos_a + eastward_wind * sin_a)  # type: ignore[misc]
     else:
         headwind = 0.0  # type: ignore
 

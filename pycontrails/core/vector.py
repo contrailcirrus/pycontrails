@@ -1392,7 +1392,7 @@ class GeoVectorDataset(VectorDataset):
         return attrs
 
     @property
-    def level(self) -> npt.NDArray[np.float64]:
+    def level(self) -> npt.NDArray[np.floating]:
         """Get pressure ``level`` values for points.
 
         Automatically calculates pressure level using :func:`units.m_to_pl` using ``altitude`` key.
@@ -1403,7 +1403,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Point pressure level values, [:math:`hPa`]
         """
         try:
@@ -1412,7 +1412,7 @@ class GeoVectorDataset(VectorDataset):
             return units.m_to_pl(self.altitude)
 
     @property
-    def altitude(self) -> npt.NDArray[np.float64]:
+    def altitude(self) -> npt.NDArray[np.floating]:
         """Get altitude.
 
         Automatically calculates altitude using :func:`units.pl_to_m` using ``level`` key.
@@ -1423,7 +1423,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Altitude, [:math:`m`]
         """
         try:
@@ -1437,12 +1437,12 @@ class GeoVectorDataset(VectorDataset):
             return units.ft_to_m(self["altitude_ft"])
 
     @property
-    def air_pressure(self) -> npt.NDArray[np.float64]:
+    def air_pressure(self) -> npt.NDArray[np.floating]:
         """Get ``air_pressure`` values for points.
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Point air pressure values, [:math:`Pa`]
         """
         try:
@@ -1451,12 +1451,12 @@ class GeoVectorDataset(VectorDataset):
             return 100.0 * self.level
 
     @property
-    def altitude_ft(self) -> npt.NDArray[np.float64]:
+    def altitude_ft(self) -> npt.NDArray[np.floating]:
         """Get altitude in feet.
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Altitude, [:math:`ft`]
         """
         try:
@@ -1522,7 +1522,7 @@ class GeoVectorDataset(VectorDataset):
     # Utilities
     # ------------
 
-    def transform_crs(self, crs: str) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    def transform_crs(self, crs: str) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Transform trajectory data from one coordinate reference system (CRS) to another.
 
         Parameters
@@ -1535,7 +1535,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+        tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
             New x and y coordinates in the target CRS.
         """
         try:
@@ -1552,12 +1552,12 @@ class GeoVectorDataset(VectorDataset):
         transformer = pyproj.Transformer.from_crs(crs_from, crs, always_xy=True)
         return transformer.transform(self["longitude"], self["latitude"])
 
-    def T_isa(self) -> npt.NDArray[np.float64]:
+    def T_isa(self) -> npt.NDArray[np.floating]:
         """Calculate the ICAO standard atmosphere temperature at each point.
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             ISA temperature, [:math:`K`]
 
         See Also
@@ -1610,24 +1610,24 @@ class GeoVectorDataset(VectorDataset):
         self,
         mda: met_module.MetDataArray,
         *,
-        longitude: npt.NDArray[np.float64] | None = None,
-        latitude: npt.NDArray[np.float64] | None = None,
-        level: npt.NDArray[np.float64] | None = None,
+        longitude: npt.NDArray[np.floating] | None = None,
+        latitude: npt.NDArray[np.floating] | None = None,
+        level: npt.NDArray[np.floating] | None = None,
         time: npt.NDArray[np.datetime64] | None = None,
         use_indices: bool = False,
         **interp_kwargs: Any,
-    ) -> npt.NDArray[np.float64]:
+    ) -> npt.NDArray[np.floating]:
         """Intersect waypoints with MetDataArray.
 
         Parameters
         ----------
         mda : MetDataArray
             MetDataArray containing a meteorological variable at spatio-temporal coordinates.
-        longitude : npt.NDArray[np.float64], optional
+        longitude : npt.NDArray[np.floating], optional
             Override existing coordinates for met interpolation
-        latitude : npt.NDArray[np.float64], optional
+        latitude : npt.NDArray[np.floating], optional
             Override existing coordinates for met interpolation
-        level : npt.NDArray[np.float64], optional
+        level : npt.NDArray[np.floating], optional
             Override existing coordinates for met interpolation
         time : npt.NDArray[np.datetime64], optional
             Override existing coordinates for met interpolation
@@ -1646,7 +1646,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray[np.floating]
             Interpolated values
 
         Examples

@@ -17,16 +17,13 @@ import xarray as xr
 ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray, xr.DataArray | np.ndarray)
 
 #: Array or Float (np.ndarray, float)
-ArrayOrFloat = TypeVar(
-    "ArrayOrFloat", npt.NDArray[np.float64], float, float | npt.NDArray[np.float64]
-)
+ArrayOrFloat = TypeVar("ArrayOrFloat", npt.NDArray[np.floating], float)
 
-#: Array like input (np.ndarray, xr.DataArray, np.float64, float)
+#: Array like input (np.ndarray, xr.DataArray, float)
 ArrayScalarLike = TypeVar(
     "ArrayScalarLike",
     np.ndarray,
     xr.DataArray,
-    np.float64,
     float,
     np.ndarray | float,
     xr.DataArray | np.ndarray,
@@ -44,7 +41,7 @@ if "sphinx" in sys.modules and sys.version_info >= (3, 13):
 
 
 def support_arraylike(
-    func: Callable[[np.ndarray], np.ndarray],
+    func: Callable[[npt.NDArray[np.floating]], npt.NDArray[np.floating]],
 ) -> Callable[[ArrayScalarLike], ArrayScalarLike]:
     """Extend a numpy universal function operating on arrays of floats.
 
@@ -80,7 +77,7 @@ def support_arraylike(
             return ret
 
         # Keep python native numeric types native
-        if isinstance(arr, float | int | np.float64):
+        if isinstance(arr, float | int):
             return ret.item()
 
         # Recreate pd.Series

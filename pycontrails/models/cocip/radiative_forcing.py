@@ -157,10 +157,10 @@ RF_CONST = RFConstants()
 
 
 def habit_weights(
-    r_vol_um: npt.NDArray[np.float64],
-    habit_distributions: npt.NDArray[np.float64],
-    radius_threshold_um: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    r_vol_um: npt.NDArray[np.floating],
+    habit_distributions: npt.NDArray[np.floating],
+    radius_threshold_um: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""Assign weights to different ice particle habits for each waypoint.
 
     For each waypoint, the distinct mix of ice particle habits are approximated
@@ -175,18 +175,18 @@ def habit_weights(
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
-    habit_distributions : npt.NDArray[np.float64]
+    habit_distributions : npt.NDArray[np.floating]
         Habit weight distributions.
         See :attr:`CocipParams().habit_distributions`
-    radius_threshold_um : npt.NDArray[np.float64]
+    radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
         See :attr:`CocipParams.radius_threshold_um`
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Array with shape ``n_waypoints x 8 columns``, where each column is the weights to the ice
         particle habits, [:math:`[0 - 1]`], and the sum of each column should be equal to 1.
 
@@ -212,16 +212,16 @@ def habit_weights(
 
 
 def habit_weight_regime_idx(
-    r_vol_um: npt.NDArray[np.float64], radius_threshold_um: npt.NDArray[np.float64]
+    r_vol_um: npt.NDArray[np.floating], radius_threshold_um: npt.NDArray[np.floating]
 ) -> npt.NDArray[np.intp]:
     r"""
     Determine regime of ice particle habits based on contrail ice particle volume mean radius.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
-    radius_threshold_um : npt.NDArray[np.float64]
+    radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
         See :attr:`CocipParams.radius_threshold_um`
 
@@ -240,7 +240,7 @@ def habit_weight_regime_idx(
 
 
 def effective_radius_by_habit(
-    r_vol_um: npt.NDArray[np.float64], habit_idx: npt.NDArray[np.intp]
+    r_vol_um: npt.NDArray[np.floating], habit_idx: npt.NDArray[np.intp]
 ) -> np.ndarray:
     r"""Calculate the effective radius ``r_eff_um`` via the mean ice particle radius and habit type.
 
@@ -250,7 +250,7 @@ def effective_radius_by_habit(
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
     habit_idx : npt.NDArray[np.intp]
         Habit type index for the contrail ice particle, corresponding to the
@@ -258,7 +258,7 @@ def effective_radius_by_habit(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius of ice particles for each combination of ``r_vol_um``
         and ``habit_idx``, [:math:`\mu m`]
 
@@ -290,35 +290,35 @@ def effective_radius_by_habit(
     return np.piecewise(r_vol_um, cond_list, func_list)
 
 
-def effective_radius_sphere(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_sphere(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""
     Calculate the effective radius of contrail ice particles assuming a sphere particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     return np.minimum(r_vol_um, 25.0)
 
 
-def effective_radius_solid_column(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_solid_column(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""
     Calculate the effective radius of contrail ice particles assuming a solid column particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     r_eff_um = (
@@ -329,17 +329,17 @@ def effective_radius_solid_column(r_vol_um: npt.NDArray[np.float64]) -> npt.NDAr
     return np.minimum(r_eff_um, 45.0)
 
 
-def effective_radius_hollow_column(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_hollow_column(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""Calculate the effective radius of ice particles assuming a hollow column particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     r_eff_um = (
@@ -350,35 +350,37 @@ def effective_radius_hollow_column(r_vol_um: npt.NDArray[np.float64]) -> npt.NDA
     return np.minimum(r_eff_um, 45.0)
 
 
-def effective_radius_rough_aggregate(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_rough_aggregate(
+    r_vol_um: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""Calculate the effective radius of ice particles assuming a rough aggregate particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     r_eff_um = 0.574 * r_vol_um
     return np.minimum(r_eff_um, 45.0)
 
 
-def effective_radius_rosette(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_rosette(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""
     Calculate the effective radius of contrail ice particles assuming a rosette particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     r_eff_um = r_vol_um * (
@@ -387,18 +389,18 @@ def effective_radius_rosette(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[n
     return np.minimum(r_eff_um, 45.0)
 
 
-def effective_radius_plate(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_plate(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""
     Calculate the effective radius of contrail ice particles assuming a plate particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     r_eff_um = r_vol_um * (
@@ -407,36 +409,36 @@ def effective_radius_plate(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.
     return np.minimum(r_eff_um, 45.0)
 
 
-def effective_radius_droxtal(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_droxtal(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""
     Calculate the effective radius of contrail ice particles assuming a droxtal particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     r_eff_um = 0.94 * r_vol_um
     return np.minimum(r_eff_um, 45.0)
 
 
-def effective_radius_myhre(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def effective_radius_myhre(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""
     Calculate the effective radius of contrail ice particles assuming a sphere particle habit.
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective radius, [:math:`\mu m`]
     """
     return np.minimum(r_vol_um, 45.0)
@@ -448,14 +450,14 @@ def effective_radius_myhre(r_vol_um: npt.NDArray[np.float64]) -> npt.NDArray[np.
 
 
 def longwave_radiative_forcing(
-    r_vol_um: npt.NDArray[np.float64],
-    olr: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    habit_weights_: npt.NDArray[np.float64],
-    r_eff_um: npt.NDArray[np.float64] | None = None,
-) -> npt.NDArray[np.float64]:
+    r_vol_um: npt.NDArray[np.floating],
+    olr: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    habit_weights_: npt.NDArray[np.floating],
+    r_eff_um: npt.NDArray[np.floating] | None = None,
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate the local contrail longwave radiative forcing (:math:`RF_{LW}`).
 
@@ -463,28 +465,28 @@ def longwave_radiative_forcing(
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
-    olr : npt.NDArray[np.float64]
+    olr : npt.NDArray[np.floating]
         Outgoing longwave radiation at each waypoint, [:math:`W m^{-2}`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature at each waypoint, [:math:`K`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth at each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the
         contrail at each waypoint
-    habit_weights_ : npt.NDArray[np.float64]
+    habit_weights_ : npt.NDArray[np.floating]
         Weights to different ice particle habits for each waypoint,
         ``n_waypoints x 8`` (habit) columns, [:math:`[0 - 1]`]
-    r_eff_um : npt.NDArray[np.float64], optional
+    r_eff_um : npt.NDArray[np.floating], optional
         Provide effective radius corresponding to elements in ``r_vol_um``, [:math:`\mu m`].
         Defaults to None, which means the effective radius will be calculated using ``r_vol_um``
         and habit types in :func:`effective_radius_by_habit`.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Local contrail longwave radiative forcing (positive), [:math:`W m^{-2}`]
 
     Raises
@@ -549,15 +551,15 @@ def longwave_radiative_forcing(
 
 
 def shortwave_radiative_forcing(
-    r_vol_um: npt.NDArray[np.float64],
-    sdr: npt.NDArray[np.float64],
-    rsr: npt.NDArray[np.float64],
-    sd0: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    habit_weights_: npt.NDArray[np.float64],
-    r_eff_um: npt.NDArray[np.float64] | None = None,
-) -> npt.NDArray[np.float64]:
+    r_vol_um: npt.NDArray[np.floating],
+    sdr: npt.NDArray[np.floating],
+    rsr: npt.NDArray[np.floating],
+    sd0: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    habit_weights_: npt.NDArray[np.floating],
+    r_eff_um: npt.NDArray[np.floating] | None = None,
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate the local contrail shortwave radiative forcing (:math:`RF_{SW}`).
 
@@ -565,30 +567,30 @@ def shortwave_radiative_forcing(
 
     Parameters
     ----------
-    r_vol_um : npt.NDArray[np.float64]
+    r_vol_um : npt.NDArray[np.floating]
         Contrail ice particle volume mean radius, [:math:`\mu m`]
-    sdr : npt.NDArray[np.float64]
+    sdr : npt.NDArray[np.floating]
         Solar direct radiation, [:math:`W m^{-2}`]
-    rsr : npt.NDArray[np.float64]
+    rsr : npt.NDArray[np.floating]
         Reflected solar radiation, [:math:`W m^{-2}`]
-    sd0 : npt.NDArray[np.float64]
+    sd0 : npt.NDArray[np.floating]
         Solar constant, [:math:`W m^{-2}`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the
         contrail for each waypoint.
-    habit_weights_ : npt.NDArray[np.float64]
+    habit_weights_ : npt.NDArray[np.floating]
         Weights to different ice particle habits for each waypoint,
         ``n_waypoints x 8`` (habit) columns, [:math:`[0 - 1]`]
-    r_eff_um : npt.NDArray[np.float64], optional
+    r_eff_um : npt.NDArray[np.floating], optional
         Provide effective radius corresponding to elements in ``r_vol_um``, [:math:`\mu m`].
         Defaults to None, which means the effective radius will be calculated using ``r_vol_um``
         and habit types in :func:`effective_radius_by_habit`.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Local contrail shortwave radiative forcing (negative), [:math:`W m^{-2}`]
 
     Raises
@@ -677,8 +679,8 @@ def shortwave_radiative_forcing(
 
 
 def net_radiative_forcing(
-    rf_lw: npt.NDArray[np.float64], rf_sw: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    rf_lw: npt.NDArray[np.floating], rf_sw: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the local contrail net radiative forcing (rf_net).
 
@@ -686,22 +688,22 @@ def net_radiative_forcing(
 
     Parameters
     ----------
-    rf_lw : npt.NDArray[np.float64]
+    rf_lw : npt.NDArray[np.floating]
         local contrail longwave radiative forcing, [:math:`W m^{-2}`]
-    rf_sw : npt.NDArray[np.float64]
+    rf_sw : npt.NDArray[np.floating]
         local contrail shortwave radiative forcing, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         local contrail net radiative forcing, [:math:`W m^{-2}`]
     """
     return rf_lw + rf_sw
 
 
 def olr_reduction_natural_cirrus(
-    tau_cirrus: npt.NDArray[np.float64], delta_lc: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    tau_cirrus: npt.NDArray[np.floating], delta_lc: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate reduction in outgoing longwave radiation (OLR) due to the presence of natural cirrus.
 
@@ -710,16 +712,16 @@ def olr_reduction_natural_cirrus(
 
     Parameters
     ----------
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the
         contrail for each waypoint.
-    delta_lc : npt.NDArray[np.float64]
+    delta_lc : npt.NDArray[np.floating]
         Habit specific parameter to approximate the reduction of the outgoing
         longwave radiation at the contrail level due to natural cirrus above the contrail.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Reduction of outgoing longwave radiation
     """
     # e_lw calculations
@@ -727,30 +729,32 @@ def olr_reduction_natural_cirrus(
 
 
 def contrail_effective_emissivity(
-    r_eff_um: npt.NDArray[np.float64], delta_lr: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    r_eff_um: npt.NDArray[np.floating], delta_lr: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     r"""Calculate the effective emissivity of the contrail, ``f_lw``.
 
     Refer to Eq. (3) of Schumann et al. (2012).
 
     Parameters
     ----------
-    r_eff_um : npt.NDArray[np.float64]
+    r_eff_um : npt.NDArray[np.floating]
         Effective radius for each waypoint, n_waypoints x 8 (habit) columns, [:math:`\mu m`]
         See :func:`effective_radius_habit`.
-    delta_lr : npt.NDArray[np.float64]
+    delta_lr : npt.NDArray[np.floating]
         Habit specific parameter to approximate the effective emissivity of the contrail.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective emissivity of the contrail
     """
     # f_lw calculations
     return 1.0 - np.exp(-delta_lr * r_eff_um)
 
 
-def albedo(sdr: npt.NDArray[np.float64], rsr: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def albedo(
+    sdr: npt.NDArray[np.floating], rsr: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate albedo along contrail waypoint.
 
@@ -762,14 +766,14 @@ def albedo(sdr: npt.NDArray[np.float64], rsr: npt.NDArray[np.float64]) -> npt.ND
 
     Parameters
     ----------
-    sdr : npt.NDArray[np.float64]
+    sdr : npt.NDArray[np.floating]
         Solar direct radiation, [:math:`W m^{-2}`]
-    rsr : npt.NDArray[np.float64]
+    rsr : npt.NDArray[np.floating]
         Reflected solar radiation, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Albedo value, [:math:`[0 - 1]`]
     """
     day = sdr > 0.0
@@ -780,17 +784,17 @@ def albedo(sdr: npt.NDArray[np.float64], rsr: npt.NDArray[np.float64]) -> npt.ND
 
 
 def contrail_albedo(
-    tau_contrail: npt.NDArray[np.float64],
-    mue: npt.NDArray[np.float64],
-    r_eff_um: npt.NDArray[np.float64],
-    A_mu: npt.NDArray[np.float64],
-    B_mu: npt.NDArray[np.float64],
-    C_mu: npt.NDArray[np.float64],
-    delta_sr: npt.NDArray[np.float64],
-    F_r: npt.NDArray[np.float64],
-    gamma_lower: npt.NDArray[np.float64],
-    gamma_upper: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    tau_contrail: npt.NDArray[np.floating],
+    mue: npt.NDArray[np.floating],
+    r_eff_um: npt.NDArray[np.floating],
+    A_mu: npt.NDArray[np.floating],
+    B_mu: npt.NDArray[np.floating],
+    C_mu: npt.NDArray[np.floating],
+    delta_sr: npt.NDArray[np.floating],
+    F_r: npt.NDArray[np.floating],
+    gamma_lower: npt.NDArray[np.floating],
+    gamma_upper: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate the contrail albedo, ``alpha_c``.
 
@@ -798,31 +802,31 @@ def contrail_albedo(
 
     Parameters
     ----------
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    mue : npt.NDArray[np.float64]
+    mue : npt.NDArray[np.floating]
         Cosine of the solar zenith angle (theta), mue = cos(theta) = sdr/sd0
-    r_eff_um : npt.NDArray[np.float64]
+    r_eff_um : npt.NDArray[np.floating]
         Effective radius for each waypoint, n_waypoints x 8 (habit) columns, [:math:`\mu m`]
         See :func:`effective_radius_habit`.
-    A_mu : npt.NDArray[np.float64]
+    A_mu : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the albedo of the contrail
-    B_mu : npt.NDArray[np.float64]
+    B_mu : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the SZA-dependent contrail sideward scattering
-    C_mu : npt.NDArray[np.float64]
+    C_mu : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the albedo of the contrail
-    delta_sr : npt.NDArray[np.float64]
+    delta_sr : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the effective contrail optical depth
-    F_r : npt.NDArray[np.float64]
+    F_r : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the effective contrail optical depth
-    gamma_lower : npt.NDArray[np.float64]
+    gamma_lower : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the contrail reflectances
-    gamma_upper : npt.NDArray[np.float64]
+    gamma_upper : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the contrail reflectances
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Contrail albedo for each waypoint and ice particle habit
     """
     tau_aps = tau_contrail * (1.0 - F_r * (1 - np.exp(-delta_sr * r_eff_um)))
@@ -835,11 +839,11 @@ def contrail_albedo(
 
 
 def effective_tau_cirrus(
-    tau_cirrus: npt.NDArray[np.float64],
-    mue: npt.NDArray[np.float64],
-    delta_sc: npt.NDArray[np.float64],
-    delta_sc_aps: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    tau_cirrus: npt.NDArray[np.floating],
+    mue: npt.NDArray[np.floating],
+    delta_sc: npt.NDArray[np.floating],
+    delta_sc_aps: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate the effective optical depth of natural cirrus above the contrail, ``e_sw``.
 
@@ -848,21 +852,21 @@ def effective_tau_cirrus(
 
     Parameters
     ----------
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the
         contrail for each waypoint.
-    mue : npt.NDArray[np.float64]
+    mue : npt.NDArray[np.floating]
         Cosine of the solar zenith angle (theta), mue = cos(theta) = sdr/sd0
-    delta_sc : npt.NDArray[np.float64]
+    delta_sc : npt.NDArray[np.floating]
         Habit-specific parameter to account for the optical depth of natural
         cirrus above the contrail
-    delta_sc_aps : npt.NDArray[np.float64]
+    delta_sc_aps : npt.NDArray[np.floating]
         Habit-specific parameter to account for the optical depth of natural
         cirrus above the contrail
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective optical depth of natural cirrus above the contrail,
         ``n_waypoints x 8`` (habit) columns.
 
@@ -883,8 +887,8 @@ def effective_tau_cirrus(
 
 def contrail_contrail_overlap_radiative_effects(
     contrails: GeoVectorDataset,
-    habit_distributions: npt.NDArray[np.float64],
-    radius_threshold_um: npt.NDArray[np.float64],
+    habit_distributions: npt.NDArray[np.floating],
+    radius_threshold_um: npt.NDArray[np.floating],
     *,
     min_altitude_m: float = 6000.0,
     max_altitude_m: float = 13000.0,
@@ -910,10 +914,10 @@ def contrail_contrail_overlap_radiative_effects(
         - rsr
         - olr
 
-    habit_distributions : npt.NDArray[np.float64]
+    habit_distributions : npt.NDArray[np.floating]
         Habit weight distributions.
         See :attr:`CocipParams.habit_distributions`
-    radius_threshold_um : npt.NDArray[np.float64]
+    radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
         See :attr:`CocipParams.radius_threshold_um`
     min_altitude_m : float
@@ -1154,8 +1158,8 @@ def _rsr_and_olr_with_contrail_overlap(
 
 def _local_sw_and_lw_rf_with_contrail_overlap(
     contrails_level: GeoVectorDataset,
-    habit_distributions: npt.NDArray[np.float64],
-    radius_threshold_um: npt.NDArray[np.float64],
+    habit_distributions: npt.NDArray[np.floating],
+    radius_threshold_um: npt.NDArray[np.floating],
 ) -> GeoVectorDataset:
     """
     Calculate local contrail SW and LW RF after accounting for contrail overlapping.
@@ -1164,10 +1168,10 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
     ----------
     contrails_level : GeoVectorDataset
         Contrail waypoints at the current altitude layer.
-    habit_distributions : npt.NDArray[np.float64]
+    habit_distributions : npt.NDArray[np.floating]
         Habit weight distributions.
         See :attr:`CocipParams().habit_distributions`
-    radius_threshold_um : npt.NDArray[np.float64]
+    radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
         See :attr:`CocipParams.radius_threshold_um`
 

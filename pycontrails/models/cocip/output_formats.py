@@ -1259,9 +1259,9 @@ def radiation_time_slice_statistics(
 
 
 def area_mean_ice_water_path(
-    iwc: npt.NDArray[np.float64],
-    plume_mass_per_m: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    iwc: npt.NDArray[np.floating],
+    plume_mass_per_m: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
     domain_area: float,
 ) -> float:
     """
@@ -1271,12 +1271,12 @@ def area_mean_ice_water_path(
 
     Parameters
     ----------
-    iwc : npt.NDArray[np.float64]
+    iwc : npt.NDArray[np.floating]
         Contrail ice water content, i.e., contrail ice mass per kg of
         air, [:math:`kg_{H_{2}O}/kg_{air}`]
-    plume_mass_per_m : npt.NDArray[np.float64]
+    plume_mass_per_m : npt.NDArray[np.floating]
         Contrail plume mass per unit length, [:math:`kg m^{-1}`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
     domain_area : float
         Domain surface area, [:math:`m^{2}`]
@@ -1290,20 +1290,20 @@ def area_mean_ice_water_path(
 
 
 def area_mean_ice_particle_radius(
-    r_ice_vol: npt.NDArray[np.float64],
-    n_ice_per_m: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    r_ice_vol: npt.NDArray[np.floating],
+    n_ice_per_m: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
 ) -> float:
     r"""
     Calculate the area-mean contrail ice particle radius.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius for each waypoint, [:math:`m`]
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         Number of ice particles per distance for each waypoint, [:math:`m^{-1}`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
 
     Returns
@@ -1324,20 +1324,20 @@ def area_mean_ice_particle_radius(
 
 
 def volume_mean_ice_particle_radius(
-    r_ice_vol: npt.NDArray[np.float64],
-    n_ice_per_m: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    r_ice_vol: npt.NDArray[np.floating],
+    n_ice_per_m: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
 ) -> float:
     r"""
     Calculate the volume-mean contrail ice particle radius.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius for each waypoint, [:math:`m`]
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         Number of ice particles per distance for each waypoint, [:math:`m^{-1}`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
 
     Returns
@@ -1356,20 +1356,20 @@ def volume_mean_ice_particle_radius(
 
 
 def mean_ice_particle_effective_radius(
-    r_ice_vol: npt.NDArray[np.float64],
-    n_ice_per_m: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    r_ice_vol: npt.NDArray[np.floating],
+    n_ice_per_m: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
 ) -> float:
     r"""
     Calculate the mean contrail ice particle effective radius.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius for each waypoint, [:math:`m`]
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         Number of ice particles per distance for each waypoint, [:math:`m^{-1}`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
 
     Returns
@@ -1391,20 +1391,20 @@ def mean_ice_particle_effective_radius(
 
 
 def _total_ice_particle_cross_sectional_area(
-    r_ice_vol: npt.NDArray[np.float64],
-    n_ice_per_m: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    r_ice_vol: npt.NDArray[np.floating],
+    n_ice_per_m: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
 ) -> float:
     """
     Calculate total contrail ice particle cross-sectional area.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius for each waypoint, [:math:`m`]
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         Number of ice particles per distance for each waypoint, [:math:`m^{-1}`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
 
     Returns
@@ -1417,20 +1417,20 @@ def _total_ice_particle_cross_sectional_area(
 
 
 def _total_ice_particle_volume(
-    r_ice_vol: npt.NDArray[np.float64],
-    n_ice_per_m: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    r_ice_vol: npt.NDArray[np.floating],
+    n_ice_per_m: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
 ) -> float:
     """
     Calculate total contrail ice particle volume.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius for each waypoint, [:math:`m`]
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         Number of ice particles per distance for each waypoint, [:math:`m^{-1}`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
 
     Returns
@@ -1443,16 +1443,16 @@ def _total_ice_particle_volume(
 
 
 def _total_ice_particle_number(
-    n_ice_per_m: npt.NDArray[np.float64], segment_length: npt.NDArray[np.float64]
+    n_ice_per_m: npt.NDArray[np.floating], segment_length: npt.NDArray[np.floating]
 ) -> float:
     """
     Calculate total number of contrail ice particles.
 
     Parameters
     ----------
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         Number of ice particles per distance for each waypoint, [:math:`m^{-1}`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
 
     Returns
@@ -1464,9 +1464,9 @@ def _total_ice_particle_number(
 
 
 def area_mean_contrail_property(
-    contrail_property: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
-    width: npt.NDArray[np.float64],
+    contrail_property: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
+    width: npt.NDArray[np.floating],
     domain_area: float,
 ) -> float:
     """
@@ -1477,11 +1477,11 @@ def area_mean_contrail_property(
 
     Parameters
     ----------
-    contrail_property : npt.NDArray[np.float64]
+    contrail_property : npt.NDArray[np.floating]
         Selected contrail property for each waypoint
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length for each waypoint, [:math:`m`]
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         Contrail width for each waypoint, [:math:`m`]
     domain_area : float
         Domain surface area, [:math:`m^{2}`]
@@ -2009,26 +2009,26 @@ def natural_cirrus_properties_to_hi_res_grid(
 
 
 def _hi_res_grid_coordinates(
-    lon_coords: npt.NDArray[np.float64],
-    lat_coords: npt.NDArray[np.float64],
+    lon_coords: npt.NDArray[np.floating],
+    lat_coords: npt.NDArray[np.floating],
     *,
     spatial_grid_res: float = 0.05,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""
     Calculate longitude and latitude coordinates for the high resolution grid.
 
     Parameters
     ----------
-    lon_coords : npt.NDArray[np.float64]
+    lon_coords : npt.NDArray[np.floating]
         Longitude coordinates provided by the original `MetDataset`.
-    lat_coords : npt.NDArray[np.float64]
+    lat_coords : npt.NDArray[np.floating]
         Latitude coordinates provided by the original `MetDataset`.
     spatial_grid_res : float
         Spatial grid resolution for the output, [:math:`\deg`]
 
     Returns
     -------
-    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]
         Longitude and latitude coordinates for the high resolution grid.
     """
     d_lon = np.abs(np.diff(lon_coords)[0])
@@ -2058,8 +2058,8 @@ def _hi_res_grid_coordinates(
 
 
 def _repeat_rows_and_columns(
-    array_2d: npt.NDArray[np.float64], *, n_reps: int
-) -> npt.NDArray[np.float64]:
+    array_2d: npt.NDArray[np.floating], *, n_reps: int
+) -> npt.NDArray[np.floating]:
     """
     Repeat the elements in `array_2d` along each row and column.
 

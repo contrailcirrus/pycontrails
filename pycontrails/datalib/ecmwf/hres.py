@@ -691,7 +691,7 @@ class HRES(ECMWFAPI):
 
         # set forecast time if its not already defined
         if not getattr(self, "forecast_time", None):
-            self.forecast_time = ds["time"].values.astype("datetime64[s]").tolist()
+            self.forecast_time = ds["time"].values.astype("datetime64[s]").tolist()  # type: ignore[assignment]
 
         # check that forecast_time is correct if defined
         # note the "time" coordinate here is the HRES forecast_time
@@ -706,7 +706,7 @@ class HRES(ECMWFAPI):
         # set timesteps if not defined
         # note that "time" is now the actual timestep coordinates
         if not self.timesteps:
-            self.timesteps = ds["time"].values.astype("datetime64[s]").tolist()
+            self.timesteps = ds["time"].values.astype("datetime64[s]").tolist()  # type: ignore[assignment]
 
         self.cache_dataset(ds)
 

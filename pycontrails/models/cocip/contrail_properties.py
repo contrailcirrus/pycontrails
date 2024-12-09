@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, TypeVar
+from typing import Any, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -19,14 +19,14 @@ logger = logging.getLogger(__name__)
 
 
 def initial_iwc(
-    air_temperature: npt.NDArray[np.float64],
-    specific_humidity: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    fuel_dist: npt.NDArray[np.float64],
-    width: npt.NDArray[np.float64],
-    depth: npt.NDArray[np.float64],
+    air_temperature: npt.NDArray[np.floating],
+    specific_humidity: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    fuel_dist: npt.NDArray[np.floating],
+    width: npt.NDArray[np.floating],
+    depth: npt.NDArray[np.floating],
     ei_h2o: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     r"""
     Estimate the initial contrail ice water content (iwc) before the wake vortex phase.
 
@@ -35,24 +35,24 @@ def initial_iwc(
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    specific_humidity : npt.NDArray[np.float64]
+    specific_humidity : npt.NDArray[np.floating]
         ambient specific humidity for each waypoint, [:math:`kg_{H_{2}O}/kg_{air}`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         initial pressure altitude at each waypoint, before the wake vortex phase, [:math:`Pa`]
-    fuel_dist : npt.NDArray[np.float64]
+    fuel_dist : npt.NDArray[np.floating]
         fuel consumption of the flight segment per distance traveled, [:math:`kg m^{-1}`]
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         initial contrail width, [:math:`m`]
-    depth : npt.NDArray[np.float64]
+    depth : npt.NDArray[np.floating]
         initial contrail depth, [:math:`m`]
     ei_h2o : float
         water vapor emissions index of fuel, [:math:`kg_{H_{2}O} \ kg_{fuel}^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Initial contrail ice water content (iwc) at the original waypoint
         before the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`].
         Returns zero if iwc is is negative (dry air).
@@ -63,34 +63,34 @@ def initial_iwc(
 
 
 def q_exhaust(
-    air_temperature: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    fuel_dist: npt.NDArray[np.float64],
-    width: npt.NDArray[np.float64],
-    depth: npt.NDArray[np.float64],
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    fuel_dist: npt.NDArray[np.floating],
+    width: npt.NDArray[np.floating],
+    depth: npt.NDArray[np.floating],
     ei_h2o: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate the specific humidity released by water vapor from aircraft emissions.
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         initial pressure altitude at each waypoint, before the wake vortex phase, [:math:`Pa`]
-    fuel_dist : npt.NDArray[np.float64]
+    fuel_dist : npt.NDArray[np.floating]
         fuel consumption of the flight segment per distance travelled, [:math:`kg m^{-1}`]
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         initial contrail width, [:math:`m`]
-    depth : npt.NDArray[np.float64]
+    depth : npt.NDArray[np.floating]
         initial contrail depth, [:math:`m`]
     ei_h2o : float
         water vapor emissions index of fuel, [:math:`kg_{H_{2}O} \ kg_{fuel}^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Humidity released by water vapour from aircraft emissions, [:math:`kg_{H_{2}O}/kg_{air}`]
     """
     rho_air = thermo.rho_d(air_temperature, air_pressure)
@@ -98,25 +98,25 @@ def q_exhaust(
 
 
 def iwc_adiabatic_heating(
-    air_temperature: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_pressure_1: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_pressure_1: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the change in ice water content due to adiabatic heating from the wake vortex phase.
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         initial pressure altitude at each waypoint, before the wake vortex phase, [:math:`Pa`]
-    air_pressure_1 : npt.NDArray[np.float64]
+    air_pressure_1 : npt.NDArray[np.floating]
         pressure altitude at each waypoint, after the wake vortex phase, [:math:`Pa`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Change in ice water content due to adiabatic heating from the wake
         vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
     """
@@ -130,26 +130,26 @@ def iwc_adiabatic_heating(
 
 
 def temperature_adiabatic_heating(
-    air_temperature: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_pressure_1: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_pressure_1: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate the ambient air temperature for each waypoint after the wake vortex phase.
 
     This calculation accounts for adiabatic heating.
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         initial pressure altitude at each waypoint, before the wake vortex phase, [:math:`Pa`]
-    air_pressure_1 : npt.NDArray[np.float64]
+    air_pressure_1 : npt.NDArray[np.floating]
         pressure altitude at each waypoint, after the wake vortex phase, [:math:`Pa`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         ambient air temperature after the wake vortex phase, [:math:`K`]
 
     Notes
@@ -165,8 +165,8 @@ def temperature_adiabatic_heating(
 
 
 def iwc_post_wake_vortex(
-    iwc: npt.NDArray[np.float64], iwc_ad: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    iwc: npt.NDArray[np.floating], iwc_ad: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the ice water content after the wake vortex phase (``iwc_1``).
 
@@ -178,16 +178,16 @@ def iwc_post_wake_vortex(
 
     Parameters
     ----------
-    iwc : npt.NDArray[np.float64]
+    iwc : npt.NDArray[np.floating]
         initial ice water content at each waypoint before the wake vortex
         phase, [:math:`kg_{H_{2}O}/kg_{air}`]
-    iwc_ad : npt.NDArray[np.float64]
+    iwc_ad : npt.NDArray[np.floating]
         change in iwc from adiabatic heating during the wake vortex
         phase, [:math:`kg_{H_{2}O}/kg_{air}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         ice water content after the wake vortex phase, ``iwc_1``, [:math:`kg_{H_{2}O}/kg_{air}`]
 
     Notes
@@ -202,13 +202,13 @@ def iwc_post_wake_vortex(
 
 
 def ice_particle_number(
-    nvpm_ei_n: npt.NDArray[np.float64],
-    fuel_dist: npt.NDArray[np.float64],
-    f_surv: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    T_crit_sac: npt.NDArray[np.float64],
+    nvpm_ei_n: npt.NDArray[np.floating],
+    fuel_dist: npt.NDArray[np.floating],
+    f_surv: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    T_crit_sac: npt.NDArray[np.floating],
     min_ice_particle_number_nvpm_ei_n: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate the initial number of ice particles per distance after the wake vortex phase.
 
     The initial number of ice particle per distance is calculated from the black
@@ -218,15 +218,15 @@ def ice_particle_number(
 
     Parameters
     ----------
-    nvpm_ei_n : npt.NDArray[np.float64]
+    nvpm_ei_n : npt.NDArray[np.floating]
         black carbon number emissions index, [:math:`kg^{-1}`]
-    fuel_dist : npt.NDArray[np.float64]
+    fuel_dist : npt.NDArray[np.floating]
         fuel consumption of the flight segment per distance traveled, [:math:`kg m^{-1}`]
-    f_surv : npt.NDArray[np.float64]
+    f_surv : npt.NDArray[np.floating]
         Fraction of contrail ice particle number that survive the wake vortex phase.
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    T_crit_sac : npt.NDArray[np.float64]
+    T_crit_sac : npt.NDArray[np.floating]
         estimated Schmidt-Appleman temperature threshold for contrail formation, [:math:`K`]
     min_ice_particle_number_nvpm_ei_n : float
         lower bound for nvpm_ei_n to account for ambient aerosol particles for
@@ -234,7 +234,7 @@ def ice_particle_number(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         initial number of ice particles per distance after the wake vortex phase, [:math:`# m^{-1}`]
     """
     f_activation = ice_particle_activation_rate(air_temperature, T_crit_sac)
@@ -243,8 +243,8 @@ def ice_particle_number(
 
 
 def ice_particle_activation_rate(
-    air_temperature: npt.NDArray[np.float64], T_crit_sac: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating], T_crit_sac: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the activation rate of black carbon particles to contrail ice crystals.
 
@@ -253,14 +253,14 @@ def ice_particle_activation_rate(
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature at each waypoint before wake_wortex, [:math:`K`]
-    T_crit_sac : npt.NDArray[np.float64]
+    T_crit_sac : npt.NDArray[np.floating]
         estimated Schmidt-Appleman temperature threshold for contrail formation, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Proportion of black carbon particles that activates to contrail ice parties.
 
     Notes
@@ -285,8 +285,8 @@ def ice_particle_activation_rate(
 
 
 def ice_particle_survival_fraction(
-    iwc: npt.NDArray[np.float64], iwc_1: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    iwc: npt.NDArray[np.floating], iwc_1: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Estimate the fraction of contrail ice particle number that survive the wake vortex phase.
 
@@ -295,15 +295,15 @@ def ice_particle_survival_fraction(
 
     Parameters
     ----------
-    iwc : npt.NDArray[np.float64]
+    iwc : npt.NDArray[np.floating]
         initial ice water content at each waypoint before the wake vortex
         phase, [:math:`kg_{H_{2}O}/kg_{air}`]
-    iwc_1 : npt.NDArray[np.float64]
+    iwc_1 : npt.NDArray[np.floating]
         ice water content after the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Fraction of contrail ice particle number that survive the wake vortex phase.
     """
     f_surv = np.empty_like(iwc)
@@ -319,8 +319,8 @@ def ice_particle_survival_fraction(
 
 
 def initial_persistent(
-    iwc_1: npt.NDArray[np.float64], rhi_1: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    iwc_1: npt.NDArray[np.floating], rhi_1: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Determine if waypoints have persistent contrails.
 
@@ -335,14 +335,14 @@ def initial_persistent(
 
     Parameters
     ----------
-    iwc_1 : npt.NDArray[np.float64]
+    iwc_1 : npt.NDArray[np.floating]
         ice water content after the wake vortex phase, [:math:`kg_{H_{2}O}/kg_{air}`]
-    rhi_1 : npt.NDArray[np.float64]
+    rhi_1 : npt.NDArray[np.floating]
         relative humidity with respect to ice after the wake vortex phase
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Mask of waypoints with persistent contrails. Waypoints with persistent contrails
         will have value 1.
 
@@ -358,12 +358,12 @@ def initial_persistent(
 
 
 def contrail_persistent(
-    latitude: npt.NDArray[np.float64],
-    altitude: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    latitude: npt.NDArray[np.floating],
+    altitude: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
     age: npt.NDArray[np.timedelta64],
-    tau_contrail: npt.NDArray[np.float64],
-    n_ice_per_m3: npt.NDArray[np.float64],
+    tau_contrail: npt.NDArray[np.floating],
+    n_ice_per_m3: npt.NDArray[np.floating],
     params: dict[str, Any],
 ) -> npt.NDArray[np.bool_]:
     r"""
@@ -391,17 +391,17 @@ def contrail_persistent(
 
     Parameters
     ----------
-    latitude : npt.NDArray[np.float64]
+    latitude : npt.NDArray[np.floating]
         Contrail latitude, [:math:`\deg`]
-    altitude : npt.NDArray[np.float64]
+    altitude : npt.NDArray[np.floating]
         Contrail altitude, [:math:`m`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         Contrail segment length, [:math:`m`]
     age : npt.NDArray[np.timedelta64]
         Contrail age
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth
-    n_ice_per_m3 : npt.NDArray[np.float64]
+    n_ice_per_m3 : npt.NDArray[np.floating]
         Contrail ice particle number per volume of air, [:math:`# m^{-3}`]
     params : dict[str, Any]
         Dictionary of :class:`CocipParams` parameters determining the
@@ -420,7 +420,7 @@ def contrail_persistent(
     )
     status_4 = _within_range(altitude, max=params["max_altitude_m"], min=params["min_altitude_m"])
     status_5 = _within_range(segment_length, max=params["max_seg_length_m"])
-    status_6 = _within_range(latitude, max=89.0, min=-89.0)  # type: ignore[type-var]
+    status_6 = _within_range(latitude, max=89.0, min=-89.0)
 
     logger.debug(
         "Survival stats. age: %s, tau: %s, ice: %s, altitude: %s, segment: %s, latitude: %s",
@@ -434,13 +434,26 @@ def contrail_persistent(
     return status_1 & status_2 & status_3 & status_4 & status_5 & status_6
 
 
-T = TypeVar("T", np.float64, np.timedelta64)
+@overload
+def _within_range(
+    val: npt.NDArray[np.floating],
+    max: float | None = None,
+    min: float | None = None,
+) -> npt.NDArray[np.bool_]: ...
+
+
+@overload
+def _within_range(
+    val: npt.NDArray[np.timedelta64],
+    max: np.timedelta64 | None = None,
+    min: np.timedelta64 | None = None,
+) -> npt.NDArray[np.bool_]: ...
 
 
 def _within_range(
-    val: npt.NDArray[T],
-    max: npt.NDArray[T] | T | None = None,
-    min: npt.NDArray[T] | T | None = None,
+    val: np.ndarray,
+    max: float | np.timedelta64 | None = None,
+    min: float | np.timedelta64 | None = None,
 ) -> npt.NDArray[np.bool_]:
     """
     Check if the input values (val) are each within the specified range.
@@ -475,16 +488,16 @@ def _within_range(
 
 
 def contrail_edges(
-    lon: npt.NDArray[np.float64],
-    lat: npt.NDArray[np.float64],
-    sin_a: npt.NDArray[np.float64],
-    cos_a: npt.NDArray[np.float64],
-    width: npt.NDArray[np.float64],
+    lon: npt.NDArray[np.floating],
+    lat: npt.NDArray[np.floating],
+    sin_a: npt.NDArray[np.floating],
+    cos_a: npt.NDArray[np.floating],
+    width: npt.NDArray[np.floating],
 ) -> tuple[
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
 ]:
     """
     Calculate the longitude and latitude of the contrail edges to account for contrail spreading.
@@ -498,20 +511,20 @@ def contrail_edges(
 
     Parameters
     ----------
-    lon : npt.NDArray[np.float64]
+    lon : npt.NDArray[np.floating]
         longitude of contrail waypoint, degrees
-    lat : npt.NDArray[np.float64]
+    lat : npt.NDArray[np.floating]
         latitude of contrail waypoint, degrees
-    sin_a : npt.NDArray[np.float64]
+    sin_a : npt.NDArray[np.floating]
         sin(a), where a is the angle between the plume and the longitudinal axis
-    cos_a : npt.NDArray[np.float64]
+    cos_a : npt.NDArray[np.floating]
         cos(a), where a is the angle between the plume and the longitudinal axis
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         contrail width at each waypoint, [:math:`m`]
 
     Returns
     -------
-    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating]]
         (lon_edge_l, lat_edge_l, lon_edge_r, lat_edge_r), longitudes and latitudes
         at the left and right edges of the contrail, degrees
     """  # noqa: E501
@@ -527,21 +540,21 @@ def contrail_edges(
 
 
 def contrail_vertices(
-    lon: npt.NDArray[np.float64],
-    lat: npt.NDArray[np.float64],
-    sin_a: npt.NDArray[np.float64],
-    cos_a: npt.NDArray[np.float64],
-    width: npt.NDArray[np.float64],
-    segment_length: npt.NDArray[np.float64],
+    lon: npt.NDArray[np.floating],
+    lat: npt.NDArray[np.floating],
+    sin_a: npt.NDArray[np.floating],
+    cos_a: npt.NDArray[np.floating],
+    width: npt.NDArray[np.floating],
+    segment_length: npt.NDArray[np.floating],
 ) -> tuple[
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
-    npt.NDArray[np.float64],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
 ]:
     """
     Calculate the longitude and latitude of the contrail vertices.
@@ -559,22 +572,22 @@ def contrail_vertices(
 
     Parameters
     ----------
-    lon : npt.NDArray[np.float64]
+    lon : npt.NDArray[np.floating]
         longitude of contrail waypoint, degrees
-    lat : npt.NDArray[np.float64]
+    lat : npt.NDArray[np.floating]
         latitude of contrail waypoint, degrees
-    sin_a : npt.NDArray[np.float64]
+    sin_a : npt.NDArray[np.floating]
         sin(a), where a is the angle between the plume and the longitudinal axis
-    cos_a : npt.NDArray[np.float64]
+    cos_a : npt.NDArray[np.floating]
         cos(a), where a is the angle between the plume and the longitudinal axis
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         contrail width at each waypoint, [:math:`m`]
-    segment_length : npt.NDArray[np.float64]
+    segment_length : npt.NDArray[np.floating]
         contrail length at each waypoint, [:math:`m`]
 
     Returns
     -------
-    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating]]
         (lon_1, lat_1, lon_2, lat_2, lon_3, lat_3, lon_4, lat_4) degrees
     """  # noqa: E501
     dlon_width = units.m_to_longitude_distance(width * sin_a * 0.5, lat)
@@ -598,10 +611,10 @@ def contrail_vertices(
 
 
 def plume_effective_cross_sectional_area(
-    width: npt.NDArray[np.float64],
-    depth: npt.NDArray[np.float64],
-    sigma_yz: npt.NDArray[np.float64] | float,
-) -> npt.NDArray[np.float64]:
+    width: npt.NDArray[np.floating],
+    depth: npt.NDArray[np.floating],
+    sigma_yz: npt.NDArray[np.floating] | float,
+) -> npt.NDArray[np.floating]:
     """
     Calculate the effective cross-sectional area of the contrail plume (``area_eff``).
 
@@ -610,16 +623,16 @@ def plume_effective_cross_sectional_area(
 
     Parameters
     ----------
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         contrail width at each waypoint, [:math:`m`]
-    depth : npt.NDArray[np.float64]
+    depth : npt.NDArray[np.floating]
         contrail depth at each waypoint, [:math:`m`]
-    sigma_yz : npt.NDArray[np.float64] | float
+    sigma_yz : npt.NDArray[np.floating] | float
         temporal evolution of the contrail plume parameters
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         effective cross-sectional area of the contrail plume, [:math:`m^{2}`]
     """
     sigma_yy = 0.125 * (width**2)
@@ -628,8 +641,8 @@ def plume_effective_cross_sectional_area(
 
 
 def plume_effective_depth(
-    width: npt.NDArray[np.float64], area_eff: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    width: npt.NDArray[np.floating], area_eff: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the effective depth of the contrail plume (``depth_eff``).
 
@@ -638,100 +651,100 @@ def plume_effective_depth(
 
     Parameters
     ----------
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         contrail width at each waypoint, [:math:`m`]
-    area_eff : npt.NDArray[np.float64]
+    area_eff : npt.NDArray[np.floating]
         effective cross-sectional area of the contrail plume, [:math:`m^{2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         effective depth of the contrail plume, [:math:`m`]
     """
     return area_eff / width
 
 
 def plume_mass_per_distance(
-    area_eff: npt.NDArray[np.float64], rho_air: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    area_eff: npt.NDArray[np.floating], rho_air: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the contrail plume mass per unit length.
 
     Parameters
     ----------
-    area_eff : npt.NDArray[np.float64]
+    area_eff : npt.NDArray[np.floating]
         effective cross-sectional area of the contrail plume, [:math:`m^{2}`]
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         density of air for each waypoint, [:math:`kg m^{-3}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         contrail plume mass per unit length, [:math:`kg m^{-1}`]
     """
     return area_eff * rho_air
 
 
 def ice_particle_number_per_volume_of_plume(
-    n_ice_per_m: npt.NDArray[np.float64], area_eff: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    n_ice_per_m: npt.NDArray[np.floating], area_eff: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the number of contrail ice particles per volume of plume (``n_ice_per_vol``).
 
     Parameters
     ----------
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         number of ice particles per distance at time t, [:math:`m^{-1}`]
-    area_eff : npt.NDArray[np.float64]
+    area_eff : npt.NDArray[np.floating]
         effective cross-sectional area of the contrail plume, [:math:`m^{2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         number of ice particles per volume of contrail plume at time t, [:math:`# m^{-3}`]
     """
     return n_ice_per_m / area_eff
 
 
 def ice_particle_number_per_mass_of_air(
-    n_ice_per_vol: npt.NDArray[np.float64], rho_air: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    n_ice_per_vol: npt.NDArray[np.floating], rho_air: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the number of contrail ice particles per mass of air.
 
     Parameters
     ----------
-    n_ice_per_vol : npt.NDArray[np.float64]
+    n_ice_per_vol : npt.NDArray[np.floating]
         number of ice particles per volume of contrail plume at time t, [:math:`# m^{-3}`]
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         density of air for each waypoint, [:math:`kg m^{-3}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         number of ice particles per mass of air at time t, [:math:`# kg^{-1}`]
     """
     return n_ice_per_vol / rho_air
 
 
 def ice_particle_volume_mean_radius(
-    iwc: npt.NDArray[np.float64], n_ice_per_kg_air: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    iwc: npt.NDArray[np.floating], n_ice_per_kg_air: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate the ice particle volume mean radius.
 
     Parameters
     ----------
-    iwc : npt.NDArray[np.float64]
+    iwc : npt.NDArray[np.floating]
         contrail ice water content, i.e., contrail ice mass per
         kg of air, [:math:`kg_{H_{2}O}/kg_{air}`]
 
-    n_ice_per_kg_air : npt.NDArray[np.float64]
+    n_ice_per_kg_air : npt.NDArray[np.floating]
         number of ice particles per mass of air, [:math:`# kg^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         ice particle volume mean radius, [:math:`m`]
 
     Notes
@@ -752,10 +765,10 @@ def ice_particle_volume_mean_radius(
 
 
 def ice_particle_terminal_fall_speed(
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    r_ice_vol: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    r_ice_vol: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the terminal fall speed of contrail ice particles.
 
@@ -766,16 +779,16 @@ def ice_particle_terminal_fall_speed(
 
     Parameters
     ----------
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`]
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Terminal fall speed of contrail ice particles, [:math:`m s^{-1}`]
 
     References
@@ -805,7 +818,7 @@ def ice_particle_terminal_fall_speed(
     return alpha * (30000.0 / air_pressure) ** 0.178 * (233.0 / air_temperature) ** 0.394
 
 
-def ice_particle_mass(r_ice_vol: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def ice_particle_mass(r_ice_vol: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     """
     Calculate the contrail ice particle mass.
 
@@ -813,34 +826,34 @@ def ice_particle_mass(r_ice_vol: npt.NDArray[np.float64]) -> npt.NDArray[np.floa
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Mean contrail ice particle mass, [:math:`kg`]
     """
     return ((4 / 3) * np.pi * r_ice_vol**3) * constants.rho_ice
 
 
 def horizontal_diffusivity(
-    ds_dz: npt.NDArray[np.float64], depth: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    ds_dz: npt.NDArray[np.floating], depth: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate contrail horizontal diffusivity.
 
     Parameters
     ----------
-    ds_dz : npt.NDArray[np.float64]
+    ds_dz : npt.NDArray[np.floating]
         Total wind shear (eastward and northward winds) with respect
         to altitude (``dz``), [:math:`m s^{-1} / Pa`]
-    depth : npt.NDArray[np.float64]
+    depth : npt.NDArray[np.floating]
         Contrail depth at each waypoint, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         horizontal diffusivity, [:math:`m^{2} s^{-1}`]
 
     References
@@ -856,39 +869,39 @@ def horizontal_diffusivity(
 
 
 def vertical_diffusivity(
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    dT_dz: npt.NDArray[np.float64],
-    depth_eff: npt.NDArray[np.float64],
-    terminal_fall_speed: npt.NDArray[np.float64] | float,
-    sedimentation_impact_factor: npt.NDArray[np.float64] | float,
-    eff_heat_rate: npt.NDArray[np.float64] | None,
-) -> npt.NDArray[np.float64]:
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    dT_dz: npt.NDArray[np.floating],
+    depth_eff: npt.NDArray[np.floating],
+    terminal_fall_speed: npt.NDArray[np.floating] | float,
+    sedimentation_impact_factor: npt.NDArray[np.floating] | float,
+    eff_heat_rate: npt.NDArray[np.floating] | None,
+) -> npt.NDArray[np.floating]:
     """
     Calculate contrail vertical diffusivity.
 
     Parameters
     ----------
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`]
-    dT_dz : npt.NDArray[np.float64]
+    dT_dz : npt.NDArray[np.floating]
         Temperature gradient with respect to altitude (dz), [:math:`K m^{-1}`]
-    depth_eff : npt.NDArray[np.float64]
+    depth_eff : npt.NDArray[np.floating]
         Effective depth of the contrail plume, [:math:`m`]
-    terminal_fall_speed : npt.NDArray[np.float64]
+    terminal_fall_speed : npt.NDArray[np.floating]
         Terminal fall speed of contrail ice particles, [:math:`m s^{-1}`]
     sedimentation_impact_factor : float
         Enhancement parameter denoted by `f_T` in eq. (35) Schumann (2012).
-    eff_heat_rate: npt.NDArray[np.float64] | None
+    eff_heat_rate: npt.NDArray[np.floating] | None
         Effective heating rate, i.e., rate of which the contrail plume
         is heated, [:math:`K s^{-1}`]. If None is passed, the radiative
         heating effects on contrail cirrus properties are not included.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         vertical diffusivity, [:math:`m^{2} s^{-1}`]
 
     References
@@ -913,7 +926,7 @@ def vertical_diffusivity(
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
     n_bv.clip(min=0.001, out=n_bv)
 
-    cvs: npt.NDArray[np.float64] | float
+    cvs: npt.NDArray[np.floating] | float
     if eff_heat_rate is not None:
         cvs = radiative_heating.convective_velocity_scale(depth_eff, eff_heat_rate, air_temperature)
         cvs.clip(min=0.01, out=cvs)
@@ -929,28 +942,28 @@ def vertical_diffusivity(
 
 
 def particle_losses_aggregation(
-    r_ice_vol: npt.NDArray[np.float64],
-    terminal_fall_speed: npt.NDArray[np.float64],
-    area_eff: npt.NDArray[np.float64],
+    r_ice_vol: npt.NDArray[np.floating],
+    terminal_fall_speed: npt.NDArray[np.floating],
+    area_eff: npt.NDArray[np.floating],
     agg_efficiency: float = 1.0,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """
     Calculate the rate of contrail ice particle losses due to sedimentation-induced aggregation.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`m`]
-    terminal_fall_speed : npt.NDArray[np.float64]
+    terminal_fall_speed : npt.NDArray[np.floating]
         Terminal fall speed of contrail ice particles, [:math:`m s^{-1}`]
-    area_eff : npt.NDArray[np.float64]
+    area_eff : npt.NDArray[np.floating]
         Effective cross-sectional area of the contrail plume, [:math:`m^{2}`]
     agg_efficiency : float, optional
         Aggregation efficiency
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Rate of contrail ice particle losses due to sedimentation-induced
         aggregation, [:math:`# s^{-1}`]
 
@@ -968,34 +981,34 @@ def particle_losses_aggregation(
 
 
 def particle_losses_turbulence(
-    width: npt.NDArray[np.float64],
-    depth: npt.NDArray[np.float64],
-    depth_eff: npt.NDArray[np.float64],
-    diffuse_h: npt.NDArray[np.float64],
-    diffuse_v: npt.NDArray[np.float64],
+    width: npt.NDArray[np.floating],
+    depth: npt.NDArray[np.floating],
+    depth_eff: npt.NDArray[np.floating],
+    diffuse_h: npt.NDArray[np.floating],
+    diffuse_v: npt.NDArray[np.floating],
     turb_efficiency: float = 0.1,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """
     Calculate the rate of contrail ice particle losses due to plume-internal turbulence.
 
     Parameters
     ----------
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         Contrail width at each waypoint, [:math:`m`]
-    depth : npt.NDArray[np.float64]
+    depth : npt.NDArray[np.floating]
         Contrail depth at each waypoint, [:math:`m`]
-    depth_eff : npt.NDArray[np.float64]
+    depth_eff : npt.NDArray[np.floating]
         Effective depth of the contrail plume, [:math:`m`]
-    diffuse_h : npt.NDArray[np.float64]
+    diffuse_h : npt.NDArray[np.floating]
         Horizontal diffusivity, [:math:`m^{2} s^{-1}`]
-    diffuse_v : npt.NDArray[np.float64]
+    diffuse_v : npt.NDArray[np.floating]
         Vertical diffusivity, [:math:`m^{2} s^{-1}`]
     turb_efficiency : float, optional
         Turbulence sublimation efficiency
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Rate of contrail ice particle losses due to plume-internal turbulence, [:math:`# s^{-1}`]
 
     Notes
@@ -1018,25 +1031,25 @@ def particle_losses_turbulence(
 
 
 def contrail_optical_depth(
-    r_ice_vol: npt.NDArray[np.float64],
-    n_ice_per_m: npt.NDArray[np.float64],
-    width: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    r_ice_vol: npt.NDArray[np.floating],
+    n_ice_per_m: npt.NDArray[np.floating],
+    width: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the contrail optical depth for each waypoint.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         ice particle volume mean radius, [:math:`m`]
-    n_ice_per_m : npt.NDArray[np.float64]
+    n_ice_per_m : npt.NDArray[np.floating]
         Number of contrail ice particles per distance, [:math:`m^{-1}`]
-    width : npt.NDArray[np.float64]
+    width : npt.NDArray[np.floating]
         Contrail width, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Contrail optical depth
     """
     q_ext = scattering_extinction_efficiency(r_ice_vol)
@@ -1048,18 +1061,20 @@ def contrail_optical_depth(
     return tau_contrail
 
 
-def scattering_extinction_efficiency(r_ice_vol: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def scattering_extinction_efficiency(
+    r_ice_vol: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the scattering extinction efficiency (``q_ext``) based on Mie-theory.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         ice particle volume mean radius, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         scattering extinction efficiency
 
     References
@@ -1072,18 +1087,18 @@ def scattering_extinction_efficiency(r_ice_vol: npt.NDArray[np.float64]) -> npt.
     )
 
 
-def light_wave_phase_delay(r_ice_vol: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def light_wave_phase_delay(r_ice_vol: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     """
     Calculate the phase delay of the light wave passing through the contrail ice particle.
 
     Parameters
     ----------
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         ice particle volume mean radius, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         phase delay of the light wave passing through the contrail ice particle
 
     References
@@ -1103,21 +1118,21 @@ def light_wave_phase_delay(r_ice_vol: npt.NDArray[np.float64]) -> npt.NDArray[np
 
 
 def segment_length_ratio(
-    seg_length_t1: npt.NDArray[np.float64],
-    seg_length_t2: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    seg_length_t1: npt.NDArray[np.floating],
+    seg_length_t2: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate the ratio of contrail segment length pre-advection to post-advection.
 
     Parameters
     ----------
-    seg_length_t1 : npt.NDArray[np.float64]
+    seg_length_t1 : npt.NDArray[np.floating]
         Segment length of contrail waypoint at the start of the time step, [:math:`m`]
-    seg_length_t2 : npt.NDArray[np.float64]
+    seg_length_t2 : npt.NDArray[np.floating]
         Segment length of contrail waypoint after time step and advection, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Ratio of segment length before advection to segment length after advection.
 
     Notes
@@ -1146,16 +1161,16 @@ def segment_length_ratio(
 
 
 def plume_temporal_evolution(
-    width_t1: npt.NDArray[np.float64],
-    depth_t1: npt.NDArray[np.float64],
-    sigma_yz_t1: npt.NDArray[np.float64],
-    dsn_dz_t1: npt.NDArray[np.float64],
-    diffuse_h_t1: npt.NDArray[np.float64],
-    diffuse_v_t1: npt.NDArray[np.float64],
-    seg_ratio: npt.NDArray[np.float64] | float,
+    width_t1: npt.NDArray[np.floating],
+    depth_t1: npt.NDArray[np.floating],
+    sigma_yz_t1: npt.NDArray[np.floating],
+    dsn_dz_t1: npt.NDArray[np.floating],
+    diffuse_h_t1: npt.NDArray[np.floating],
+    diffuse_v_t1: npt.NDArray[np.floating],
+    seg_ratio: npt.NDArray[np.floating] | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
     max_depth: float | None,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """
     Calculate the temporal evolution of the contrail plume parameters.
 
@@ -1163,13 +1178,13 @@ def plume_temporal_evolution(
 
     Parameters
     ----------
-    width_t1 : npt.NDArray[np.float64]
+    width_t1 : npt.NDArray[np.floating]
         contrail width at the start of the time step, [:math:`m`]
-    depth_t1 : npt.NDArray[np.float64]
+    depth_t1 : npt.NDArray[np.floating]
         contrail depth at the start of the time step, [:math:`m`]
-    sigma_yz_t1 : npt.NDArray[np.float64]
+    sigma_yz_t1 : npt.NDArray[np.floating]
         sigma_yz governs the contrail plume's temporal evolution at the start of the time step
-    dsn_dz_t1 : npt.NDArray[np.float64]
+    dsn_dz_t1 : npt.NDArray[np.floating]
         vertical gradient of the horizontal velocity (wind shear) normal to the contrail axis
         at the start of the time step, [:math:`m s^{-1} / Pa`]::
 
@@ -1178,11 +1193,11 @@ def plume_temporal_evolution(
                                         | (dsn_dz)                  |  <-- (dsn_dz)
                                         |                           |
                                                                     X
-    diffuse_h_t1 : npt.NDArray[np.float64]
+    diffuse_h_t1 : npt.NDArray[np.floating]
         horizontal diffusivity at the start of the time step, [:math:`m^{2} s^{-1}`]
-    diffuse_v_t1 : npt.NDArray[np.float64]
+    diffuse_v_t1 : npt.NDArray[np.floating]
         vertical diffusivity at the start of the time step, [:math:`m^{2} s^{-1}`]
-    seg_ratio : npt.NDArray[np.float64] | float
+    seg_ratio : npt.NDArray[np.floating] | float
         Segment length ratio before and after it is advected to the new location.
         See :func:`segment_length_ratio`.
     dt : npt.NDArray[np.timedelta64] | np.timedelta64
@@ -1193,11 +1208,11 @@ def plume_temporal_evolution(
 
     Returns
     -------
-    sigma_yy_t2 : npt.NDArray[np.float64]
+    sigma_yy_t2 : npt.NDArray[np.floating]
         The ``yy`` component of convariance matrix, [:math:`m^{2}`]
-    sigma_zz_t2 : npt.NDArray[np.float64]
+    sigma_zz_t2 : npt.NDArray[np.floating]
         The ``zz`` component of convariance matrix, [:math:`m^{2}`]
-    sigma_yz_t2 : npt.NDArray[np.float64]
+    sigma_yz_t2 : npt.NDArray[np.floating]
         The ``yz`` component of convariance matrix, [:math:`m^{2}`]
     """
     # Convert dt to seconds value and use dtype of other variables
@@ -1242,26 +1257,26 @@ def plume_temporal_evolution(
 
 
 def new_contrail_dimensions(
-    sigma_yy_t2: npt.NDArray[np.float64],
-    sigma_zz_t2: npt.NDArray[np.float64],
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    sigma_yy_t2: npt.NDArray[np.floating],
+    sigma_zz_t2: npt.NDArray[np.floating],
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """
     Calculate the new contrail width and depth.
 
     Parameters
     ----------
-    sigma_yy_t2 : npt.NDArray[np.float64]
+    sigma_yy_t2 : npt.NDArray[np.floating]
         element yy, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
-    sigma_zz_t2 : npt.NDArray[np.float64]
+    sigma_zz_t2 : npt.NDArray[np.floating]
         element zz, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
 
     Returns
     -------
-    width_t2 : npt.NDArray[np.float64]
+    width_t2 : npt.NDArray[np.floating]
         Contrail width at the end of the time step, [:math:`m`]
-    depth_t2 : npt.NDArray[np.float64]
+    depth_t2 : npt.NDArray[np.floating]
         Contrail depth at the end of the time step, [:math:`m`]
     """
     width_t2 = (8 * sigma_yy_t2) ** 0.5
@@ -1270,10 +1285,10 @@ def new_contrail_dimensions(
 
 
 def new_effective_area_from_sigma(
-    sigma_yy: npt.NDArray[np.float64],
-    sigma_zz: npt.NDArray[np.float64],
-    sigma_yz: npt.NDArray[np.float64] | float,
-) -> npt.NDArray[np.float64]:
+    sigma_yy: npt.NDArray[np.floating],
+    sigma_zz: npt.NDArray[np.floating],
+    sigma_yz: npt.NDArray[np.floating] | float,
+) -> npt.NDArray[np.floating]:
     """
     Calculate effective cross-sectional area of contrail plume (``area_eff``) from sigma parameters.
 
@@ -1282,19 +1297,19 @@ def new_effective_area_from_sigma(
 
     Parameters
     ----------
-    sigma_yy : npt.NDArray[np.float64]
+    sigma_yy : npt.NDArray[np.floating]
         element yy, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
-    sigma_zz : npt.NDArray[np.float64]
+    sigma_zz : npt.NDArray[np.floating]
         element zz, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
-    sigma_yz : npt.NDArray[np.float64] | float
+    sigma_yz : npt.NDArray[np.floating] | float
         element yz, covariance matrix of the Gaussian concentration
         field, Eq. (6) of Schumann (2012)
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective cross-sectional area of the contrail plume (area_eff)
     """
     det_sigma = sigma_yy * sigma_zz - sigma_yz**2
@@ -1302,44 +1317,44 @@ def new_effective_area_from_sigma(
 
 
 def new_ice_water_content(
-    iwc_t1: npt.NDArray[np.float64],
-    q_t1: npt.NDArray[np.float64],
-    q_t2: npt.NDArray[np.float64],
-    q_sat_t1: npt.NDArray[np.float64],
-    q_sat_t2: npt.NDArray[np.float64],
-    mass_plume_t1: npt.NDArray[np.float64],
-    mass_plume_t2: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    iwc_t1: npt.NDArray[np.floating],
+    q_t1: npt.NDArray[np.floating],
+    q_t2: npt.NDArray[np.floating],
+    q_sat_t1: npt.NDArray[np.floating],
+    q_sat_t2: npt.NDArray[np.floating],
+    mass_plume_t1: npt.NDArray[np.floating],
+    mass_plume_t2: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the new contrail ice water content after the time integration step (``iwc_t2``).
 
     Parameters
     ----------
-    iwc_t1 : npt.NDArray[np.float64]
+    iwc_t1 : npt.NDArray[np.floating]
         contrail ice water content, i.e., contrail ice mass per kg of air,
         at the start of the time step, [:math:`kg_{H_{2}O}/kg_{air}`]
-    q_t1 : npt.NDArray[np.float64]
+    q_t1 : npt.NDArray[np.floating]
         specific humidity for each waypoint at the start of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
-    q_t2 : npt.NDArray[np.float64]
+    q_t2 : npt.NDArray[np.floating]
         specific humidity for each waypoint at the end of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
-    q_sat_t1 : npt.NDArray[np.float64]
+    q_sat_t1 : npt.NDArray[np.floating]
         saturation humidity for each waypoint at the start of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
-    q_sat_t2 : npt.NDArray[np.float64]
+    q_sat_t2 : npt.NDArray[np.floating]
         saturation humidity for each waypoint at the end of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
-    mass_plume_t1 : npt.NDArray[np.float64]
+    mass_plume_t1 : npt.NDArray[np.floating]
         contrail plume mass per unit length at the start of the
         time step, [:math:`kg_{air} m^{-1}`]
-    mass_plume_t2 : npt.NDArray[np.float64]
+    mass_plume_t2 : npt.NDArray[np.floating]
         contrail plume mass per unit length at the end of the
         time step, [:math:`kg_{air} m^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Contrail ice water content at the end of the time step, [:math:`kg_{ice} kg_{air}^{-1}`]
 
     Notes
@@ -1363,31 +1378,31 @@ def new_ice_water_content(
 
 
 def new_ice_particle_number(
-    n_ice_per_m_t1: npt.NDArray[np.float64],
-    dn_dt_agg: npt.NDArray[np.float64],
-    dn_dt_turb: npt.NDArray[np.float64],
-    seg_ratio: npt.NDArray[np.float64] | float,
+    n_ice_per_m_t1: npt.NDArray[np.floating],
+    dn_dt_agg: npt.NDArray[np.floating],
+    dn_dt_turb: npt.NDArray[np.floating],
+    seg_ratio: npt.NDArray[np.floating] | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate the number of ice particles per distance at the end of the time step.
 
     Parameters
     ----------
-    n_ice_per_m_t1 : npt.NDArray[np.float64]
+    n_ice_per_m_t1 : npt.NDArray[np.floating]
         number of contrail ice particles per distance at the start of
         the time step, [:math:`m^{-1}`]
-    dn_dt_agg : npt.NDArray[np.float64]
+    dn_dt_agg : npt.NDArray[np.floating]
         rate of ice particle losses due to sedimentation-induced aggregation, [:math:`# s^{-1}`]
-    dn_dt_turb : npt.NDArray[np.float64]
+    dn_dt_turb : npt.NDArray[np.floating]
         rate of contrail ice particle losses due to plume-internal turbulence, [:math:`# s^{-1}`]
-    seg_ratio : npt.NDArray[np.float64] | float
+    seg_ratio : npt.NDArray[np.floating] | float
         Segment length ratio before and after it is advected to the new location.
     dt : npt.NDArray[np.timedelta64] | np.timedelta64
         integrate contrails with time steps of dt, [:math:`s`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         number of ice particles per distance at the end of the time step, [:math:`m^{-1}`]
     """
     # Convert dt to seconds value and use dtype of other variables
@@ -1416,13 +1431,13 @@ def new_ice_particle_number(
 
 
 def energy_forcing(
-    rf_net_t1: npt.NDArray[np.float64],
-    rf_net_t2: npt.NDArray[np.float64],
-    width_t1: npt.NDArray[np.float64],
-    width_t2: npt.NDArray[np.float64],
-    seg_length_t2: npt.NDArray[np.float64] | float,
+    rf_net_t1: npt.NDArray[np.floating],
+    rf_net_t2: npt.NDArray[np.floating],
+    width_t1: npt.NDArray[np.floating],
+    width_t2: npt.NDArray[np.floating],
+    seg_length_t2: npt.NDArray[np.floating] | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate the contrail energy forcing over time step.
 
     The contrail energy forcing is calculated as the local contrail net
@@ -1431,22 +1446,22 @@ def energy_forcing(
 
     Parameters
     ----------
-    rf_net_t1 : npt.NDArray[np.float64]
+    rf_net_t1 : npt.NDArray[np.floating]
         local contrail net radiative forcing at the start of the time step, [:math:`W m^{-2}`]
-    rf_net_t2 : npt.NDArray[np.float64]
+    rf_net_t2 : npt.NDArray[np.floating]
         local contrail net radiative forcing at the end of the time step, [:math:`W m^{-2}`]
-    width_t1 : npt.NDArray[np.float64]
+    width_t1 : npt.NDArray[np.floating]
         contrail width at the start of the time step, [:math:`m`]
-    width_t2 : npt.NDArray[np.float64]
+    width_t2 : npt.NDArray[np.floating]
         contrail width at the end of the time step, [:math:`m`]
-    seg_length_t2 : npt.NDArray[np.float64] | float
+    seg_length_t2 : npt.NDArray[np.floating] | float
         Segment length of contrail waypoint at the end of the time step, [:math:`m`]
     dt : npt.NDArray[np.timedelta64] | np.timedelta64
         integrate contrails with time steps of dt, [:math:`s`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Contrail energy forcing over time step dt, [:math:`J`].
     """
     rad_flux_per_m = mean_radiative_flux_per_m(rf_net_t1, rf_net_t2, width_t1, width_t2)
@@ -1455,27 +1470,27 @@ def energy_forcing(
 
 
 def mean_radiative_flux_per_m(
-    rf_net_t1: npt.NDArray[np.float64],
-    rf_net_t2: npt.NDArray[np.float64],
-    width_t1: npt.NDArray[np.float64],
-    width_t2: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    rf_net_t1: npt.NDArray[np.floating],
+    rf_net_t2: npt.NDArray[np.floating],
+    width_t1: npt.NDArray[np.floating],
+    width_t2: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate the mean radiative flux per length of contrail between two time steps.
 
     Parameters
     ----------
-    rf_net_t1 : npt.NDArray[np.float64]
+    rf_net_t1 : npt.NDArray[np.floating]
         local contrail net radiative forcing at the start of the time step, [:math:`W m^{-2}`]
-    rf_net_t2 : npt.NDArray[np.float64]
+    rf_net_t2 : npt.NDArray[np.floating]
         local contrail net radiative forcing at the end of the time step, [:math:`W m^{-2}`]
-    width_t1 : npt.NDArray[np.float64]
+    width_t1 : npt.NDArray[np.floating]
         contrail width at the start of the time step, [:math:`m`]
-    width_t2 : npt.NDArray[np.float64]
+    width_t2 : npt.NDArray[np.floating]
         contrail width at the end of the time step, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Mean radiative flux between time steps, [:math:`W m^{-1}`]
     """
     rad_flux_per_m_t1 = width_t1 * rf_net_t1
@@ -1484,13 +1499,13 @@ def mean_radiative_flux_per_m(
 
 
 def mean_energy_flux_per_m(
-    rad_flux_per_m: npt.NDArray[np.float64], dt: npt.NDArray[np.timedelta64] | np.timedelta64
-) -> npt.NDArray[np.float64]:
+    rad_flux_per_m: npt.NDArray[np.floating], dt: npt.NDArray[np.timedelta64] | np.timedelta64
+) -> npt.NDArray[np.floating]:
     """Calculate the mean energy flux per length of contrail on segment following waypoint.
 
     Parameters
     ----------
-    rad_flux_per_m : npt.NDArray[np.float64]
+    rad_flux_per_m : npt.NDArray[np.floating]
         Mean radiative flux between time steps for waypoint, [:math:`W m^{-1}`].
         See :func:`mean_radiative_flux_per_m`.
     dt : npt.NDArray[np.timedelta64]
@@ -1498,7 +1513,7 @@ def mean_energy_flux_per_m(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Mean energy flux per length of contrail after waypoint, [:math:`J m^{-1}`]
 
     Notes

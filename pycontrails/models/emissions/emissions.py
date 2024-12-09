@@ -369,7 +369,7 @@ class Emissions(Model):
 
     def _nvpm_emission_indices_edb(
         self, edb_nvpm: EDBnvpm, fuel: Fuel
-    ) -> tuple[str, npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Calculate emission indices for nvPM mass and number.
 
         This method uses data from the ICAO EDB along with the T4/T2 methodology.
@@ -385,9 +385,9 @@ class Emissions(Model):
         -------
         nvpm_data_source : str
             Source of nvpm data.
-        nvpm_ei_m : npt.NDArray[np.float64]
+        nvpm_ei_m : npt.NDArray[np.floating]
             Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
-        nvpm_ei_n : npt.NDArray[np.float64]
+        nvpm_ei_n : npt.NDArray[np.floating]
             Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
 
         References
@@ -408,7 +408,7 @@ class Emissions(Model):
 
     def _nvpm_emission_indices_sac(
         self, edb_gaseous: EDBGaseous, fuel: Fuel
-    ) -> tuple[str, npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Calculate EIs for nvPM mass and number assuming the profile of single annular combustors.
 
         nvPM EI_m is calculated using the FOX and ImFOX methods, while the nvPM EI_n
@@ -425,9 +425,9 @@ class Emissions(Model):
         -------
         nvpm_data_source : str
             Source of nvpm data.
-        nvpm_ei_m : npt.NDArray[np.float64]
+        nvpm_ei_m : npt.NDArray[np.floating]
             Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
-        nvpm_ei_n : npt.NDArray[np.float64]
+        nvpm_ei_n : npt.NDArray[np.floating]
             Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
 
         References
@@ -467,7 +467,7 @@ class Emissions(Model):
 
     def _nvpm_emission_indices_constant(
         self,
-    ) -> tuple[str, npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """
         Assume constant emission indices for nvPM mass and number.
 
@@ -481,9 +481,9 @@ class Emissions(Model):
         -------
         nvpm_data_source : str
             Source of nvpm data.
-        nvpm_ei_m : npt.NDArray[np.float64]
+        nvpm_ei_m : npt.NDArray[np.floating]
             Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
-        nvpm_ei_n : npt.NDArray[np.float64]
+        nvpm_ei_n : npt.NDArray[np.floating]
             Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
 
         References
@@ -605,12 +605,12 @@ class Emissions(Model):
 
 def nitrogen_oxide_emissions_index_ffm2(
     edb_gaseous: EDBGaseous,
-    fuel_flow_per_engine: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    specific_humidity: None | npt.NDArray[np.float64] = None,
-) -> npt.NDArray[np.float64]:
+    fuel_flow_per_engine: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    specific_humidity: None | npt.NDArray[np.floating] = None,
+) -> npt.NDArray[np.floating]:
     """
     Estimate the nitrogen oxide (NOx) emissions index (EI) using the Fuel Flow Method 2 (FFM2).
 
@@ -618,20 +618,20 @@ def nitrogen_oxide_emissions_index_ffm2(
     ----------
     edb_gaseous : EDBGaseous
         EDB gaseous data
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    specific_humidity: npt.NDArray[np.float64]
+    specific_humidity: npt.NDArray[np.floating]
         specific humidity for each waypoint, [:math:`kg_{H_{2}O}/kg_{air}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Nitrogen oxide emissions index for each waypoint, [:math:`kg_{NO_{X}}/kg_{fuel}`]
     """
     res_nox = ffm2.estimate_nox(
@@ -647,11 +647,11 @@ def nitrogen_oxide_emissions_index_ffm2(
 
 def carbon_monoxide_emissions_index_ffm2(
     edb_gaseous: EDBGaseous,
-    fuel_flow_per_engine: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    fuel_flow_per_engine: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Estimate the carbon monoxide (CO) emissions index (EI) using the Fuel Flow Method 2 (FFM2).
 
@@ -659,18 +659,18 @@ def carbon_monoxide_emissions_index_ffm2(
     ----------
     edb_gaseous : EDBGaseous
         EDB gaseous data
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Carbon monoxide emissions index for each waypoint, [:math:`kg_{CO}/kg_{fuel}`]
     """
     res_co = ffm2.estimate_ei(
@@ -685,11 +685,11 @@ def carbon_monoxide_emissions_index_ffm2(
 
 def hydrocarbon_emissions_index_ffm2(
     edb_gaseous: EDBGaseous,
-    fuel_flow_per_engine: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    fuel_flow_per_engine: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Estimate the hydrocarbon (HC) emissions index (EI) using the Fuel Flow Method 2 (FFM2).
 
@@ -697,18 +697,18 @@ def hydrocarbon_emissions_index_ffm2(
     ----------
     edb_gaseous : EDBGaseous
         EDB gaseous data
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Hydrocarbon emissions index for each waypoint, [:math:`kg_{HC}/kg_{fuel}`]
     """
     res_hc = ffm2.estimate_ei(
@@ -723,12 +723,12 @@ def hydrocarbon_emissions_index_ffm2(
 
 def get_nvpm_emissions_index_edb(
     edb_nvpm: EDBnvpm,
-    true_airspeed: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    thrust_setting: npt.NDArray[np.float64],
+    true_airspeed: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
     q_fuel: float,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate nvPM mass emissions index (nvpm_ei_m) and number emissions index (nvpm_ei_n).
 
     Interpolate the non-volatile particulate matter (nvPM) mass and number emissions index from
@@ -741,24 +741,24 @@ def get_nvpm_emissions_index_edb(
     ----------
     edb_nvpm : EDBnvpm
         EDB nvPM data
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    air_temperature: npt.NDArray[np.float64]
+    air_temperature: npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    air_pressure: npt.NDArray[np.float64]
+    air_pressure: npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    thrust_setting : npt.NDArray[np.float64]
+    thrust_setting : npt.NDArray[np.floating]
         thrust setting
     q_fuel : float
         Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
 
     Returns
     -------
-    nvpm_ei_m : npt.NDArray[np.float64]
+    nvpm_ei_m : npt.NDArray[np.floating]
         Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
-    nvpm_ei_n : npt.NDArray[np.float64]
+    nvpm_ei_n : npt.NDArray[np.floating]
         Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
     """
     # Non-dimensionalized thrust setting
@@ -781,13 +781,13 @@ def get_nvpm_emissions_index_edb(
 
 def nvpm_mass_emissions_index_sac(
     edb_gaseous: EDBGaseous,
-    air_pressure: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    thrust_setting: npt.NDArray[np.float64],
-    fuel_flow_per_engine: npt.NDArray[np.float64],
+    air_pressure: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+    fuel_flow_per_engine: npt.NDArray[np.floating],
     hydrogen_content: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Estimate nvPM mass emission index for singular annular combustor (SAC) engines.
 
     Here, SAC should not be confused with the Schmidt-Appleman Criterion.
@@ -799,22 +799,22 @@ def nvpm_mass_emissions_index_sac(
     ----------
     edb_gaseous : EDBGaseous
         EDB gaseous data
-    air_pressure: npt.NDArray[np.float64]
+    air_pressure: npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_temperature: npt.NDArray[np.float64]
+    air_temperature: npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    thrust_setting : npt.NDArray[np.float64]
+    thrust_setting : npt.NDArray[np.floating]
         thrust setting
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
     hydrogen_content : float
         Engine unique identification number from the ICAO EDB
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
     """
     nvpm_ei_m_fox = black_carbon.mass_emissions_index_fox(
@@ -834,12 +834,12 @@ def nvpm_mass_emissions_index_sac(
 
 def nvpm_geometric_mean_diameter_sac(
     edb_gaseous: EDBGaseous,
-    air_pressure: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    thrust_setting: npt.NDArray[np.float64],
+    air_pressure: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
     q_fuel: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     r"""
     Estimate nvPM geometric mean diameter for singular annular combustor (SAC) engines.
 
@@ -847,20 +847,20 @@ def nvpm_geometric_mean_diameter_sac(
     ----------
     edb_gaseous : EDBGaseous
         EDB gaseous data
-    air_pressure: npt.NDArray[np.float64]
+    air_pressure: npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_temperature: npt.NDArray[np.float64]
+    air_temperature: npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
-    thrust_setting : npt.NDArray[np.float64]
+    thrust_setting : npt.NDArray[np.floating]
         thrust setting
     q_fuel : float
         Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         nvPM geometric mean diameter, [:math:`m`]
     """
     nvpm_gmd = black_carbon.geometric_mean_diameter_sac(
@@ -877,11 +877,11 @@ def nvpm_geometric_mean_diameter_sac(
 
 def get_thrust_setting(
     edb_gaseous: EDBGaseous,
-    fuel_flow_per_engine: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-    true_airspeed: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    fuel_flow_per_engine: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Approximate the engine thrust setting at cruise conditions.
 
@@ -893,18 +893,18 @@ def get_thrust_setting(
     ----------
     edb_gaseous : EDBGaseous
         EDB gaseous data
-    fuel_flow_per_engine: npt.NDArray[np.float64]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
         Fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    air_pressure: npt.NDArray[np.float64]
+    air_pressure: npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature: npt.NDArray[np.float64]
+    air_temperature: npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`]
-    true_airspeed: npt.NDArray[np.float64]
+    true_airspeed: npt.NDArray[np.floating]
         True airspeed for each waypoint, [:math:`m s^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Engine thrust setting. Returns ``np.nan`` if engine data is
         not available in the ICAO EDB dataset.
     """

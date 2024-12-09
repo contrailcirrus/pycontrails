@@ -625,7 +625,7 @@ def histogram_matching(
     level_type: str,
     member: int | None,
     q_method: str | None,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Map ERA5-derived RHi to its corresponding IAGOS quantile via histogram matching.
 
     This matching is performed on a **single** ERA5 ensemble member.
@@ -649,7 +649,7 @@ def histogram_matching(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         The IAGOS quantiles corresponding to the ERA5-derived RHi values. Returned
         as a numpy array with the same shape and dtype as ``era5_rhi``.
     """
@@ -691,8 +691,8 @@ def histogram_matching(
 
 
 def histogram_matching_all_members(
-    era5_rhi_all_members: npt.NDArray[np.float64], member: int, q_method: str
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    era5_rhi_all_members: npt.NDArray[np.floating], member: int, q_method: str
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Recalibrate ERA5-derived RHi values to IAGOS quantiles by histogram matching.
 
     This recalibration requires values for **all** ERA5 ensemble members. Currently, the
@@ -700,7 +700,7 @@ def histogram_matching_all_members(
 
     Parameters
     ----------
-    era5_rhi_all_members : npt.NDArray[np.float64]
+    era5_rhi_all_members : npt.NDArray[np.floating]
         ERA5-derived RHi values for all ensemble members. This array should have shape ``(n, 10)``.
     member : int
         The ERA5 ensemble member to use. Must be in the range ``[0, 10)``.
@@ -709,10 +709,10 @@ def histogram_matching_all_members(
 
     Returns
     -------
-    ensemble_mean_rhi : npt.NDArray[np.float64]
+    ensemble_mean_rhi : npt.NDArray[np.floating]
         The mean RHi values after histogram matching over all ensemble members.
         This is an array of shape ``(n,)``.
-    ensemble_member_rhi : npt.NDArray[np.float64]
+    ensemble_member_rhi : npt.NDArray[np.floating]
         The RHi values after histogram matching for the given ensemble member.
         This is an array of shape ``(n,)``.
     """
@@ -727,7 +727,7 @@ def histogram_matching_all_members(
 
     # Perform histogram matching on all other ensemble members
     # Add up the results into a single 'ensemble_mean_rhi' array
-    ensemble_mean_rhi: npt.NDArray[np.float64] = 0.0  # type: ignore[assignment]
+    ensemble_mean_rhi: npt.NDArray[np.floating] = 0.0  # type: ignore[assignment]
     for r in range(n_members):
         if r == member:
             ensemble_mean_rhi += ensemble_member_rhi
@@ -743,25 +743,25 @@ def histogram_matching_all_members(
 
 
 def eckel_scaling(
-    ensemble_mean_rhi: npt.NDArray[np.float64],
-    ensemble_member_rhi: npt.NDArray[np.float64],
+    ensemble_mean_rhi: npt.NDArray[np.floating],
+    ensemble_member_rhi: npt.NDArray[np.floating],
     q_method: str,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Apply Eckel scaling to the given RHi values.
 
     Parameters
     ----------
-    ensemble_mean_rhi : npt.NDArray[np.float64]
+    ensemble_mean_rhi : npt.NDArray[np.floating]
         The ensemble mean RHi values. This should be a 1D array with the same shape as
         ``ensemble_member_rhi``.
-    ensemble_member_rhi : npt.NDArray[np.float64]
+    ensemble_member_rhi : npt.NDArray[np.floating]
         The RHi values for a single ensemble member.
     q_method : {None, "cubic-spline", "log-q-log-p"}
         The interpolation method.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         The scaled RHi values. Values are manually clipped at 0 to ensure
         only non-negative values are returned.
 
@@ -984,11 +984,11 @@ class HistogramMatchingWithEckel(HumidityScaling):
     @override
     def scale(  # type: ignore[override]
         self,
-        specific_humidity: npt.NDArray[np.float64],
-        air_temperature: npt.NDArray[np.float64],
-        air_pressure: npt.NDArray[np.float64],
+        specific_humidity: npt.NDArray[np.floating],
+        air_temperature: npt.NDArray[np.floating],
+        air_pressure: npt.NDArray[np.floating],
         **kwargs: Any,
-    ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Scale specific humidity values via histogram matching and Eckel scaling.
 
         Unlike the method on the base class, the method assumes each of the input
@@ -996,22 +996,22 @@ class HistogramMatchingWithEckel(HumidityScaling):
 
         Parameters
         ----------
-        specific_humidity : npt.NDArray[np.float64]
+        specific_humidity : npt.NDArray[np.floating]
             A 2D array of specific humidity values for all ERA5 ensemble members.
             The shape of this array must be ``(n, 10)``, where ``n`` is the number
             of observations and ``10`` is the number of ERA5 ensemble members.
-        air_temperature : npt.NDArray[np.float64]
+        air_temperature : npt.NDArray[np.floating]
             A 1D array of air temperature values with shape ``(n,)``.
-        air_pressure : npt.NDArray[np.float64]
+        air_pressure : npt.NDArray[np.floating]
             A 1D array of air pressure values with shape ``(n,)``.
         kwargs: Any
             Unused, kept for compatibility with the base class.
 
         Returns
         -------
-        specific_humidity : npt.NDArray[np.float64]
+        specific_humidity : npt.NDArray[np.floating]
             The recalibrated specific humidity values. A 1D array with shape ``(n,)``.
-        rhi : npt.NDArray[np.float64]
+        rhi : npt.NDArray[np.floating]
             The recalibrated RHi values. A 1D array with shape ``(n,)``.
         """
 

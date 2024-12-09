@@ -1495,9 +1495,9 @@ class MetDataArray(MetBase):
     @overload
     def interpolate(
         self,
-        longitude: float | npt.NDArray[np.float64],
-        latitude: float | npt.NDArray[np.float64],
-        level: float | npt.NDArray[np.float64],
+        longitude: float | npt.NDArray[np.floating],
+        latitude: float | npt.NDArray[np.floating],
+        level: float | npt.NDArray[np.floating],
         time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = ...,
@@ -1507,14 +1507,14 @@ class MetDataArray(MetBase):
         lowmem: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[False] = ...,
-    ) -> npt.NDArray[np.float64]: ...
+    ) -> npt.NDArray[np.floating]: ...
 
     @overload
     def interpolate(
         self,
-        longitude: float | npt.NDArray[np.float64],
-        latitude: float | npt.NDArray[np.float64],
-        level: float | npt.NDArray[np.float64],
+        longitude: float | npt.NDArray[np.floating],
+        latitude: float | npt.NDArray[np.floating],
+        level: float | npt.NDArray[np.floating],
         time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = ...,
@@ -1524,13 +1524,13 @@ class MetDataArray(MetBase):
         lowmem: bool = ...,
         indices: interpolation.RGIArtifacts | None = ...,
         return_indices: Literal[True],
-    ) -> tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]: ...
+    ) -> tuple[npt.NDArray[np.floating], interpolation.RGIArtifacts]: ...
 
     def interpolate(
         self,
-        longitude: float | npt.NDArray[np.float64],
-        latitude: float | npt.NDArray[np.float64],
-        level: float | npt.NDArray[np.float64],
+        longitude: float | npt.NDArray[np.floating],
+        latitude: float | npt.NDArray[np.floating],
+        level: float | npt.NDArray[np.floating],
         time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = "linear",
@@ -1540,7 +1540,7 @@ class MetDataArray(MetBase):
         lowmem: bool = False,
         indices: interpolation.RGIArtifacts | None = None,
         return_indices: bool = False,
-    ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
+    ) -> npt.NDArray[np.floating] | tuple[npt.NDArray[np.floating], interpolation.RGIArtifacts]:
         """Interpolate values over underlying DataArray.
 
         Zero dimensional coordinates are reshaped to 1D arrays.
@@ -1569,11 +1569,11 @@ class MetDataArray(MetBase):
 
         Parameters
         ----------
-        longitude : float | npt.NDArray[np.float64]
+        longitude : float | npt.NDArray[np.floating]
             Longitude values to interpolate. Assumed to be 0 or 1 dimensional.
-        latitude : float | npt.NDArray[np.float64]
+        latitude : float | npt.NDArray[np.floating]
             Latitude values to interpolate. Assumed to be 0 or 1 dimensional.
-        level : float | npt.NDArray[np.float64]
+        level : float | npt.NDArray[np.floating]
             Level values to interpolate. Assumed to be 0 or 1 dimensional.
         time : np.datetime64 | npt.NDArray[np.datetime64]
             Time values to interpolate. Assumed to be 0 or 1 dimensional.
@@ -1696,18 +1696,17 @@ class MetDataArray(MetBase):
 
     def _interp_lowmem(
         self,
-        longitude: float | npt.NDArray[np.float64],
-        latitude: float | npt.NDArray[np.float64],
-        level: float | npt.NDArray[np.float64],
+        longitude: float | npt.NDArray[np.floating],
+        latitude: float | npt.NDArray[np.floating],
+        level: float | npt.NDArray[np.floating],
         time: np.datetime64 | npt.NDArray[np.datetime64],
         *,
         method: str = "linear",
         bounds_error: bool = False,
         fill_value: float | np.float64 | None = np.nan,
-        minimize_memory: bool = False,
         indices: interpolation.RGIArtifacts | None = None,
         return_indices: bool = False,
-    ) -> npt.NDArray[np.float64] | tuple[npt.NDArray[np.float64], interpolation.RGIArtifacts]:
+    ) -> npt.NDArray[np.floating] | tuple[npt.NDArray[np.floating], interpolation.RGIArtifacts]:
         """Interpolate values against underlying DataArray.
 
         This method is used by :meth:`interpolate` when ``lowmem=True``.
@@ -1762,27 +1761,37 @@ class MetDataArray(MetBase):
                 )
                 da.load()
 
-            tmp = interpolation.interp(
-                longitude=lon_sl,
-                latitude=lat_sl,
-                level=lev_sl,
-                time=t_sl,
-                da=da,
-                method=method,
-                bounds_error=bounds_error,
-                fill_value=fill_value,
-                localize=False,  # would be no-op; da is localized already
-                indices=indices_sl,
-                return_indices=return_indices,
-            )
-
             if return_indices:
-                out[mask], rgi_sl = tmp
+                out[mask], rgi_sl = interpolation.interp(
+                    longitude=lon_sl,
+                    latitude=lat_sl,
+                    level=lev_sl,
+                    time=t_sl,
+                    da=da,
+                    method=method,
+                    bounds_error=bounds_error,
+                    fill_value=fill_value,
+                    localize=False,  # would be no-op; da is localized already
+                    indices=indices_sl,
+                    return_indices=return_indices,
+                )
                 rgi_artifacts.xi_indices[:, mask] = rgi_sl.xi_indices
                 rgi_artifacts.norm_distances[:, mask] = rgi_sl.norm_distances
                 rgi_artifacts.out_of_bounds[mask] = rgi_sl.out_of_bounds
             else:
-                out[mask] = tmp
+                out[mask] = interpolation.interp(
+                    longitude=lon_sl,
+                    latitude=lat_sl,
+                    level=lev_sl,
+                    time=t_sl,
+                    da=da,
+                    method=method,
+                    bounds_error=bounds_error,
+                    fill_value=fill_value,
+                    localize=False,  # would be no-op; da is localized already
+                    indices=indices_sl,
+                    return_indices=return_indices,
+                )
 
         if return_indices:
             return out, rgi_artifacts
@@ -1878,7 +1887,7 @@ class MetDataArray(MetBase):
         if not self.binary:
             raise NotImplementedError("proportion method is only implemented for binary fields")
 
-        return self.data.sum().values.item() / self.data.count().values.item()
+        return self.data.sum().values.item() / self.data.count().values.item()  # type: ignore[operator]
 
     def find_edges(self) -> MetDataArray:
         """Find edges of regions.
@@ -2592,9 +2601,9 @@ def _extract_2d_arr_and_altitude(
     except KeyError:
         altitude = None
     else:
-        altitude = round(altitude)
+        altitude = round(altitude)  # type: ignore[call-overload]
 
-    return arr, altitude
+    return arr, altitude  # type: ignore[return-value]
 
 
 def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:

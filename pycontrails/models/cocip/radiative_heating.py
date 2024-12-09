@@ -98,25 +98,25 @@ RAD_HEAT = RadiativeHeatingConstants()
 
 
 def convective_velocity_scale(
-    depth_eff: npt.NDArray[np.float64],
-    eff_heat_rate: npt.NDArray[np.float64],
-    air_temperature: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    depth_eff: npt.NDArray[np.floating],
+    eff_heat_rate: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the convective velocity scale, i.e., vertical mixing rate.
 
     Parameters
     ----------
-    depth_eff : npt.NDArray[np.float64]
+    depth_eff : npt.NDArray[np.floating]
         Effective depth of the contrail plume, [:math:`m`]
-    eff_heat_rate: npt.NDArray[np.float64]
+    eff_heat_rate: npt.NDArray[np.floating]
         Effective heating rate, i.e., rate of which the contrail plume is heated, [:math:`K s^{-1}`]
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Convective velocity scale, [:math:`m s^{-1}`]
     """
     return ((constants.g * depth_eff**2 * np.maximum(-eff_heat_rate, 0)) / air_temperature) ** (
@@ -125,11 +125,11 @@ def convective_velocity_scale(
 
 
 def effective_heating_rate(
-    d_heat_rate: npt.NDArray[np.float64],
-    cumul_rad_heat: npt.NDArray[np.float64],
-    dT_dz: npt.NDArray[np.float64],
-    depth: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    d_heat_rate: npt.NDArray[np.floating],
+    cumul_rad_heat: npt.NDArray[np.floating],
+    dT_dz: npt.NDArray[np.floating],
+    depth: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate effective heating rate.
 
     The effective heating rate accounts for the heat required to overcome the stable stratification.
@@ -137,20 +137,20 @@ def effective_heating_rate(
 
     Parameters
     ----------
-    d_heat_rate: npt.NDArray[np.float64]
+    d_heat_rate: npt.NDArray[np.floating]
         Differential heating rate, i.e., rate of which the contrail
         plume is heated, [:math:`K s^{-1}`]
-    cumul_rad_heat: npt.NDArray[np.float64]
+    cumul_rad_heat: npt.NDArray[np.floating]
         Cumulative solar and terrestrial radiative heating energy
         absorbed by the contrail, [:math:`K`]
-    dT_dz: npt.NDArray[np.float64]
+    dT_dz: npt.NDArray[np.floating]
         Temperature gradient with respect to altitude (dz), [:math:`K m^{-1}`]
-    depth : npt.NDArray[np.float64]
+    depth : npt.NDArray[np.floating]
         Contrail depth at each waypoint, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Effective heating rate, [:math:`K s^{-1}`]
     """
     filt = cumul_rad_heat > 0.0
@@ -164,18 +164,18 @@ def effective_heating_rate(
 
 
 def differential_heating_rate(
-    air_temperature: npt.NDArray[np.float64],
-    rhi: npt.NDArray[np.float64],
-    rho_air: npt.NDArray[np.float64],
-    r_ice_vol: npt.NDArray[np.float64],
-    depth_eff: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    sd0: npt.NDArray[np.float64],
-    sdr: npt.NDArray[np.float64],
-    rsr: npt.NDArray[np.float64],
-    olr: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating],
+    rhi: npt.NDArray[np.floating],
+    rho_air: npt.NDArray[np.floating],
+    r_ice_vol: npt.NDArray[np.floating],
+    depth_eff: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    sd0: npt.NDArray[np.floating],
+    sdr: npt.NDArray[np.floating],
+    rsr: npt.NDArray[np.floating],
+    olr: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the differential heating rate affecting the contrail plume.
 
@@ -186,32 +186,32 @@ def differential_heating_rate(
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature at each waypoint, [:math:`K`]
-    rhi : npt.NDArray[np.float64]
+    rhi : npt.NDArray[np.floating]
         Relative humidity with respect to ice at each waypoint
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         Density of air for each waypoint, [:math:`kg m^{-3}`]
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`m`]
-    depth_eff : npt.NDArray[np.float64]
+    depth_eff : npt.NDArray[np.floating]
         Effective depth of the contrail plume, [:math:`m`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the contrail
-    sd0 : npt.NDArray[np.float64]
+    sd0 : npt.NDArray[np.floating]
         Solar constant, [:math:`W m^{-2}`]
-    sdr : npt.NDArray[np.float64]
+    sdr : npt.NDArray[np.floating]
         Solar direct radiation, [:math:`W m^{-2}`]
-    rsr : npt.NDArray[np.float64]
+    rsr : npt.NDArray[np.floating]
         Reflected solar radiation, [:math:`W m^{-2}`]
-    olr : npt.NDArray[np.float64]
+    olr : npt.NDArray[np.floating]
         Outgoing longwave radiation at each waypoint, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Differential heating rate, [:math:`K s^{-1}`]
     """
     r_ice_vol_um = r_ice_vol * 1e6
@@ -226,14 +226,14 @@ def differential_heating_rate(
 
 
 def differential_heating_rate_shortwave(
-    cp_contrail: npt.NDArray[np.float64],
-    r_ice_vol_um: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    sd0: npt.NDArray[np.float64],
-    sdr: npt.NDArray[np.float64],
-    rsr: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    cp_contrail: npt.NDArray[np.floating],
+    r_ice_vol_um: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    sd0: npt.NDArray[np.floating],
+    sdr: npt.NDArray[np.floating],
+    rsr: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate shortwave differential heating rate.
 
@@ -244,24 +244,24 @@ def differential_heating_rate_shortwave(
 
     Parameters
     ----------
-    cp_contrail : npt.NDArray[np.float64]
+    cp_contrail : npt.NDArray[np.floating]
         Contrail heat capacity per unit length and width, [:math:`J K^{-1} m^{-2}`]
-    r_ice_vol_um : npt.NDArray[np.float64]
+    r_ice_vol_um : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`\mu m`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the contrail
-    sd0 : npt.NDArray[np.float64]
+    sd0 : npt.NDArray[np.floating]
         Solar constant, [:math:`W m^{-2}`]
-    sdr : npt.NDArray[np.float64]
+    sdr : npt.NDArray[np.floating]
         Solar direct radiation, [:math:`W m^{-2}`]
-    rsr : npt.NDArray[np.float64]
+    rsr : npt.NDArray[np.floating]
         Reflected solar radiation, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Shortwave component of the differential heating rate, [:math:`K s^{-1}`]
     """
     # short circuit if no waypoints have sdr > 0
@@ -286,14 +286,14 @@ def differential_heating_rate_shortwave(
 
 
 def differential_heating_rate_longwave(
-    air_temperature: npt.NDArray[np.float64],
-    rhi: npt.NDArray[np.float64],
-    cp_contrail: npt.NDArray[np.float64],
-    r_ice_vol_um: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    olr: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating],
+    rhi: npt.NDArray[np.floating],
+    cp_contrail: npt.NDArray[np.floating],
+    r_ice_vol_um: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    olr: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""
     Calculate longwave differential heating rate.
 
@@ -305,24 +305,24 @@ def differential_heating_rate_longwave(
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature at each waypoint, [:math:`K`]
-    rhi : npt.NDArray[np.float64]
+    rhi : npt.NDArray[np.floating]
         Relative humidity with respect to ice at each waypoint
-    cp_contrail : npt.NDArray[np.float64]
+    cp_contrail : npt.NDArray[np.floating]
         Contrail heat capacity per unit length and width, [:math:`J K^{-1} m^{-2}`]
-    r_ice_vol_um : npt.NDArray[np.float64]
+    r_ice_vol_um : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`\mu m`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the contrail
-    olr : npt.NDArray[np.float64]
+    olr : npt.NDArray[np.floating]
         Outgoing longwave radiation at each waypoint, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Longwave component of the differential heating rate, [:math:`K s^{-1}`]
     """
     cool = RAD_HEAT.dsigma * air_temperature**RAD_HEAT.dak
@@ -341,18 +341,18 @@ def differential_heating_rate_longwave(
 
 
 def heating_rate(
-    air_temperature: npt.NDArray[np.float64],
-    rhi: npt.NDArray[np.float64],
-    rho_air: npt.NDArray[np.float64],
-    r_ice_vol: npt.NDArray[np.float64],
-    depth_eff: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    sd0: npt.NDArray[np.float64],
-    sdr: npt.NDArray[np.float64],
-    rsr: npt.NDArray[np.float64],
-    olr: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating],
+    rhi: npt.NDArray[np.floating],
+    rho_air: npt.NDArray[np.floating],
+    r_ice_vol: npt.NDArray[np.floating],
+    depth_eff: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    sd0: npt.NDArray[np.floating],
+    sdr: npt.NDArray[np.floating],
+    rsr: npt.NDArray[np.floating],
+    olr: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate the heating rate affecting the contrail plume.
 
@@ -360,32 +360,32 @@ def heating_rate(
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature at each waypoint, [:math:`K`]
-    rhi : npt.NDArray[np.float64]
+    rhi : npt.NDArray[np.floating]
         Relative humidity with respect to ice at each waypoint
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         Density of air for each waypoint, [:math:`kg m^{-3}`]
-    r_ice_vol : npt.NDArray[np.float64]
+    r_ice_vol : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`m`]
-    depth_eff : npt.NDArray[np.float64]
+    depth_eff : npt.NDArray[np.floating]
         Effective depth of the contrail plume, [:math:`m`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the contrail
-    sd0 : npt.NDArray[np.float64]
+    sd0 : npt.NDArray[np.floating]
         Solar constant, [:math:`W m^{-2}`]
-    sdr : npt.NDArray[np.float64]
+    sdr : npt.NDArray[np.floating]
         Solar direct radiation, [:math:`W m^{-2}`]
-    rsr : npt.NDArray[np.float64]
+    rsr : npt.NDArray[np.floating]
         Reflected solar radiation, [:math:`W m^{-2}`]
-    olr : npt.NDArray[np.float64]
+    olr : npt.NDArray[np.floating]
         Outgoing longwave radiation at each waypoint, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Heating rate, [:math:`K s^{-1}`]
     """
     r_ice_vol_um = r_ice_vol * 1e6
@@ -400,36 +400,36 @@ def heating_rate(
 
 
 def heating_rate_shortwave(
-    cp_contrail: npt.NDArray[np.float64],
-    r_ice_vol_um: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    sd0: npt.NDArray[np.float64],
-    sdr: npt.NDArray[np.float64],
-    rsr: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    cp_contrail: npt.NDArray[np.floating],
+    r_ice_vol_um: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    sd0: npt.NDArray[np.floating],
+    sdr: npt.NDArray[np.floating],
+    rsr: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""Calculate shortwave heating rate.
 
     Parameters
     ----------
-    cp_contrail : npt.NDArray[np.float64]
+    cp_contrail : npt.NDArray[np.floating]
         Contrail heat capacity per unit length and width, [:math:`J K^{-1} m^{-2}`]
-    r_ice_vol_um : npt.NDArray[np.float64]
+    r_ice_vol_um : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`\mu m`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the contrail
-    sd0 : npt.NDArray[np.float64]
+    sd0 : npt.NDArray[np.floating]
         Solar constant, [:math:`W m^{-2}`]
-    sdr : npt.NDArray[np.float64]
+    sdr : npt.NDArray[np.floating]
         Solar direct radiation, [:math:`W m^{-2}`]
-    rsr : npt.NDArray[np.float64]
+    rsr : npt.NDArray[np.floating]
         Reflected solar radiation, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Shortwave component of heating rate, [:math:`K s^{-1}`]
     """
     # short circuit if no waypoints have sdr > 0
@@ -452,36 +452,36 @@ def heating_rate_shortwave(
 
 
 def heating_rate_longwave(
-    air_temperature: npt.NDArray[np.float64],
-    rhi: npt.NDArray[np.float64],
-    cp_contrail: npt.NDArray[np.float64],
-    r_ice_vol_um: npt.NDArray[np.float64],
-    tau_contrail: npt.NDArray[np.float64],
-    tau_cirrus: npt.NDArray[np.float64],
-    olr: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    air_temperature: npt.NDArray[np.floating],
+    rhi: npt.NDArray[np.floating],
+    cp_contrail: npt.NDArray[np.floating],
+    r_ice_vol_um: npt.NDArray[np.floating],
+    tau_contrail: npt.NDArray[np.floating],
+    tau_cirrus: npt.NDArray[np.floating],
+    olr: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     r"""Calculate longwave heating rate.
 
     Parameters
     ----------
-    air_temperature : npt.NDArray[np.float64]
+    air_temperature : npt.NDArray[np.floating]
         Ambient temperature at each waypoint, [:math:`K`]
-    rhi : npt.NDArray[np.float64]
+    rhi : npt.NDArray[np.floating]
         Relative humidity with respect to ice at each waypoint
-    cp_contrail : npt.NDArray[np.float64]
+    cp_contrail : npt.NDArray[np.floating]
         Contrail heat capacity per unit length and width, [:math:`J K^{-1} m^{-2}`]
-    r_ice_vol_um : npt.NDArray[np.float64]
+    r_ice_vol_um : npt.NDArray[np.floating]
         Ice particle volume mean radius, [:math:`\mu m`]
-    tau_contrail : npt.NDArray[np.float64]
+    tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth for each waypoint
-    tau_cirrus : npt.NDArray[np.float64]
+    tau_cirrus : npt.NDArray[np.floating]
         Optical depth of numerical weather prediction (NWP) cirrus above the contrail
-    olr : npt.NDArray[np.float64]
+    olr : npt.NDArray[np.floating]
         Outgoing longwave radiation at each waypoint, [:math:`W m^{-2}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Longwave component of heating rate, [:math:`K s^{-1}`]
     """
     fzlw = np.exp(-(rhi - 0.9) * RAD_HEAT.czlw)
@@ -500,21 +500,21 @@ def heating_rate_longwave(
 
 
 def contrail_heat_capacity(
-    rho_air: npt.NDArray[np.float64], depth_eff: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
+    rho_air: npt.NDArray[np.floating], depth_eff: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
     """
     Calculate contrail heat capacity per unit length and width.
 
     Parameters
     ----------
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         density of air for each waypoint, [:math:`kg m^{-3}`]
-    depth_eff: npt.NDArray[np.float64]
+    depth_eff: npt.NDArray[np.floating]
         Effective depth of the contrail plume, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Contrail heat capacity per unit length and width, [:math:`J K^{-1} m^{-2}`]
     """
     return depth_eff * rho_air * constants.c_pd

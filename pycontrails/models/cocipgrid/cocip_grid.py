@@ -806,10 +806,10 @@ class CocipGrid(models.Model):
 
     @staticmethod
     def create_source(
-        level: npt.NDArray[np.float64] | list[float] | float,
+        level: npt.NDArray[np.floating] | list[float] | float,
         time: npt.NDArray[np.datetime64] | list[np.datetime64] | np.datetime64,
-        longitude: npt.NDArray[np.float64] | list[float] | None = None,
-        latitude: npt.NDArray[np.float64] | list[float] | None = None,
+        longitude: npt.NDArray[np.floating] | list[float] | None = None,
+        latitude: npt.NDArray[np.floating] | list[float] | None = None,
         lon_step: float = 1.0,
         lat_step: float = 1.0,
     ) -> MetDataset:
@@ -821,7 +821,7 @@ class CocipGrid(models.Model):
 
         Parameters
         ----------
-        level : level: npt.NDArray[np.float64] | list[float] | float
+        level : level: npt.NDArray[np.floating] | list[float] | float
             Pressure levels for gridded cocip.
             To avoid interpolating outside of the passed ``met`` and ``rad`` data, this
             parameter should avoid the extreme values of the ``met`` and `rad` levels.
@@ -829,7 +829,7 @@ class CocipGrid(models.Model):
             ``met.data['level'].values[1: -1]``.
         time: npt.NDArray[np.datetime64 | list[np.datetime64] | np.datetime64,
             One or more time values for gridded cocip.
-        longitude, latitude : npt.NDArray[np.float64] | list[float], optional
+        longitude, latitude : npt.NDArray[np.floating] | list[float], optional
             Longitude and latitude arrays, by default None. If not specified, values of
             ``lon_step`` and ``lat_step`` are used to define ``longitude`` and ``latitude``.
         lon_step, lat_step : float, optional
@@ -2173,7 +2173,7 @@ def _aggregate_ef_summary(vector_list: list[VectorDataset]) -> VectorDataset | N
 
 def result_to_metdataset(
     result: VectorDataset | None,
-    verbose_dict: dict[str, npt.NDArray[np.float64]],
+    verbose_dict: dict[str, npt.NDArray[np.floating]],
     source: MetDataset,
     nominal_segment_length: float,
     attrs: dict[str, str],
@@ -2185,7 +2185,7 @@ def result_to_metdataset(
     result : VectorDataset | None
         Aggregated data arising from contrail evolution. Expected to contain keys:
         ``index``, ``age``, ``ef``.
-    verbose_dict : dict[str, npt.NDArray[np.float64]]:
+    verbose_dict : dict[str, npt.NDArray[np.floating]]:
         Verbose outputs to attach to results.
     source : MetDataset
         :attr:`CocipGrid.`source` data on which to attach results.
@@ -2244,9 +2244,9 @@ def result_to_metdataset(
 
 def result_merge_source(
     result: VectorDataset | None,
-    verbose_dict: dict[str, npt.NDArray[np.float64]],
+    verbose_dict: dict[str, npt.NDArray[np.floating]],
     source: GeoVectorDataset,
-    nominal_segment_length: float | npt.NDArray[np.float64],
+    nominal_segment_length: float | npt.NDArray[np.floating],
     attrs: dict[str, str],
 ) -> GeoVectorDataset:
     """Merge ``results`` and ``verbose_dict`` onto ``source``."""
@@ -2282,7 +2282,7 @@ def _concat_verbose_dicts(
     verbose_dicts: list[dict[str, pd.Series]],
     source_size: int,
     verbose_outputs_formation: set[str],
-) -> dict[str, npt.NDArray[np.float64]]:
+) -> dict[str, npt.NDArray[np.floating]]:
     # Concatenate the values and return
     ret: dict[str, np.ndarray] = {}
     for key in verbose_outputs_formation:
@@ -2375,7 +2375,7 @@ def _warn_not_wrap(met: MetDataset) -> None:
         )
 
 
-def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np.float64]]:
+def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np.floating]]:
     """Return uncertainty parameters in ``contrail``.
 
     This function assumes the underlying humidity scaling model is
@@ -2398,7 +2398,7 @@ def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np
 
     Returns
     -------
-    dict[str, npt.NDArray[np.float64]]
+    dict[str, npt.NDArray[np.floating]]
         Dictionary of uncertainty parameters.
     """
     keys = (

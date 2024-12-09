@@ -2055,9 +2055,9 @@ def calc_radiative_properties(contrail: GeoVectorDataset, params: dict[str, Any]
 
 def calc_contrail_properties(
     contrail: GeoVectorDataset,
-    effective_vertical_resolution: float | npt.NDArray[np.float64],
-    wind_shear_enhancement_exponent: float | npt.NDArray[np.float64],
-    sedimentation_impact_factor: float | npt.NDArray[np.float64],
+    effective_vertical_resolution: float | npt.NDArray[np.floating],
+    wind_shear_enhancement_exponent: float | npt.NDArray[np.floating],
+    sedimentation_impact_factor: float | npt.NDArray[np.floating],
     radiative_heating_effects: bool,
 ) -> None:
     """Calculate geometric and ice-related properties of contrail.
@@ -2084,11 +2084,11 @@ def calc_contrail_properties(
     ----------
     contrail : GeoVectorDataset
         Grid points with many precomputed keys.
-    effective_vertical_resolution : float | npt.NDArray[np.float64]
+    effective_vertical_resolution : float | npt.NDArray[np.floating]
         Passed into :func:`wind_shear.wind_shear_enhancement_factor`.
-    wind_shear_enhancement_exponent : float | npt.NDArray[np.float64]
+    wind_shear_enhancement_exponent : float | npt.NDArray[np.floating]
         Passed into :func:`wind_shear.wind_shear_enhancement_factor`.
-    sedimentation_impact_factor: float | npt.NDArray[np.float64]
+    sedimentation_impact_factor: float | npt.NDArray[np.floating]
         Passed into `contrail_properties.vertical_diffusivity`.
     radiative_heating_effects: bool
         Include radiative heating effects on contrail cirrus properties.
@@ -2525,8 +2525,8 @@ def calc_timestep_contrail_evolution(
 def _rad_accumulation_to_average_instantaneous(
     rad: MetDataset,
     name: str,
-    arr: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    arr: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Convert from radiation accumulation to average instantaneous values.
 
     .. versionadded:: 0.48.0
@@ -2537,12 +2537,12 @@ def _rad_accumulation_to_average_instantaneous(
         Radiation data
     name : str
         Variable name
-    arr : npt.NDArray[np.float64]
+    arr : npt.NDArray[np.floating]
         Array of values already interpolated from ``rad``
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Array of values converted from accumulation to average instantaneous values
 
     Raises
