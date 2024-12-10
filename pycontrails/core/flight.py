@@ -6,7 +6,12 @@ import enum
 import logging
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, NoReturn, TypeVar
+from typing import TYPE_CHECKING, Any, NoReturn
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -26,8 +31,6 @@ from pycontrails.utils import dependencies
 from pycontrails.utils.types import ArrayOrFloat
 
 logger = logging.getLogger(__name__)
-
-FlightType = TypeVar("FlightType", bound="Flight")
 
 # optional imports
 if TYPE_CHECKING:
@@ -285,14 +288,12 @@ class Flight(GeoVectorDataset):
                 )
 
     @override
-    def copy(self: FlightType, **kwargs: Any) -> FlightType:
+    def copy(self, **kwargs: Any) -> Self:
         kwargs.setdefault("fuel", self.fuel)
         return super().copy(**kwargs)
 
     @override
-    def filter(
-        self: FlightType, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any
-    ) -> FlightType:
+    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
         kwargs.setdefault("fuel", self.fuel)
         return super().filter(mask, copy=copy, **kwargs)
 
@@ -2083,13 +2084,13 @@ def segment_duration(
         Waypoint time in ``np.datetime64`` format.
     dtype : np.dtype
         Numpy dtype for time difference.
-        Defaults to ``np.float64``
+        Defaults to ``np.float32``
 
     Returns
     -------
     npt.NDArray[np.floating]
         Time difference between waypoints, [:math:`s`].
-        This returns an array with dtype specified by``dtype``.
+        This returns an array with dtype specified by ``dtype``.
     """
     out = np.empty_like(time, dtype=dtype)
     out[-1] = np.nan
