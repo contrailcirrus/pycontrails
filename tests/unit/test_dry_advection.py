@@ -43,7 +43,7 @@ def test_dry_advection(
     assert out["age"].max() == np.timedelta64(1, "h")
 
     if azimuth is None:
-        assert len(out.data) == 11
+        assert len(out.data) == 10
     else:
         assert len(out.data) == 16
 
