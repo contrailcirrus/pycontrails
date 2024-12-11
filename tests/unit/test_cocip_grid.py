@@ -922,3 +922,26 @@ def test_verbose_outputs_formation(
     assert ds["fuel_flow"].mean() == pytest.approx(0.6037, rel=rel)
     assert ds["rhi"].mean() == pytest.approx(0.6273, rel=rel)
     assert ds["iwc"].mean() == pytest.approx(4.4621e-06, rel=rel)
+
+
+def test_cocip_grid_one_hour_dt_integration(
+    source: MetDataset, instance_params: dict[str, Any]
+) -> None:
+    """Test CocipGrid with a dt_integration of one hour."""
+    instance_params["dt_integration"] = "1 hour"
+    instance_params["interpolation_bounds_error"] = False
+    instance_params["max_age"] = "2 hours"
+    gc = CocipGrid(**instance_params, aircraft_performance=PSGrid())
+
+    source = CocipGrid.create_source(
+        level=[230, 240, 250, 260],
+        time=np.datetime64("2019-01-01"),
+        longitude=np.linspace(-35, -25, 40),
+        latitude=np.linspace(51, 57, 20),
+    )
+
+    out = gc.eval(source)
+
+    # Sum the number of grid cells producing persistent contrails
+    # Prior to v0.54.4, this was 0
+    assert out.data["ef_per_m"].fillna(0.0).astype(bool).sum() == 526
