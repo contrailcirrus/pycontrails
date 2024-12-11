@@ -242,7 +242,6 @@ def _perform_interp_for_step(
     vector.setdefault("level", vector.level)
     air_pressure = vector.setdefault("air_pressure", vector.air_pressure)
 
-    air_temperature = models.interpolate_met(met, vector, "air_temperature", **interp_kwargs)
     models.interpolate_met(met, vector, "northward_wind", "v_wind", **interp_kwargs)
     models.interpolate_met(met, vector, "eastward_wind", "u_wind", **interp_kwargs)
     models.interpolate_met(
@@ -258,6 +257,7 @@ def _perform_interp_for_step(
         # Early exit for pointwise only simulation
         return
 
+    air_temperature = models.interpolate_met(met, vector, "air_temperature", **interp_kwargs)
     air_pressure_lower = thermo.pressure_dz(air_temperature, air_pressure, dz_m)
     vector["air_pressure_lower"] = air_pressure_lower
     level_lower = air_pressure_lower / 100.0
