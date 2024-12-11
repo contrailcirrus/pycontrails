@@ -78,8 +78,8 @@ jobs:
       - name: Test notebooks
         run: make nb-test
 
-      # The doctests require numpy 2.0 or higher
+      # The doctests require numpy 2.2 or higher
       - name: Test docstrings
         run: |
-          pip install "numpy>=2.0"
+          pip install "numpy>=2.2"
           make doctest
