@@ -1855,7 +1855,7 @@ def _altitude_interpolation(
             idx_descent_start = np.where(
                 -250.0 < rocd_next < 0.0,
                 np.searchsorted(time, t_descent_start) - 1,
-                np.searchsorted(time, t_descent_start)
+                np.searchsorted(time, t_descent_start),
             )
 
             #: [Safeguard for very small `dt_next`] Ensure descent can be performed within the
