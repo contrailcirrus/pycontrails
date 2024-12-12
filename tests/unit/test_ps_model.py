@@ -11,7 +11,13 @@ import pycontrails.models.ps_model.ps_aircraft_params as ps_params
 import pycontrails.models.ps_model.ps_model as ps
 import pycontrails.models.ps_model.ps_operational_limits as ps_lims
 from pycontrails import Fleet, Flight, FlightPhase, GeoVectorDataset, MetDataset
-from pycontrails.models.ps_model import PSFlight, PSGrid, ps_nominal_grid, ps_nominal_optimize_mach
+from pycontrails.models.ps_model import (
+    PSFlight,
+    PSGrid,
+    load_aircraft_engine_params,
+    ps_nominal_grid,
+    ps_nominal_optimize_mach,
+)
 from pycontrails.physics import units
 
 from .conftest import get_static_path
@@ -35,6 +41,15 @@ def test_aircraft_type_coverage() -> None:
     for atyp in aircraft_types:
         with pytest.raises(KeyError, match=f"Aircraft type {atyp} not covered by the PS model."):
             ps_model.check_aircraft_type_availability(atyp)
+
+
+def test_aircraft_engine_params_types() -> None:
+    """Check that the aircraft engine parameters are parsed into native python (not numpy) types."""
+    aircraft_engine_params = load_aircraft_engine_params()
+    for params in aircraft_engine_params.values():
+        for key, val in params.__dict__.items():
+            assert isinstance(val, str | bool | int | float), f"Key: {key}, Value: {val}"
+            assert not isinstance(val, np.generic), f"Key: {key}, Value: {val}"
 
 
 def test_synonym_list() -> None:

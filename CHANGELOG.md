@@ -8,6 +8,7 @@
 - Bypass the ValueError raised by `dask.array.gradient` when the input array is not correctly chunk along the level dimension. Previously, `Cocip` would raise an error when computing tau cirrus in the case that the `met` data had single chunks along the level dimension.
 - Fix the `CocipGrid` met downselection process to accommodate cases where `dt_integration` is as large as the time step of the met data. Previously, due to out-of-bounds interpolation, the output of `CocipGrid(met=met, rad=rad, dt_integration="1 hour")` was zero everywhere when the `met` and `rad` data had a time step of 1 hour.
 - By default, don't interpolate air temperature when running the `DryAdvection` model in a point-wise manner (no wind-shear simulation).
+- Use native python types (as opposed to `numpy` scalars) in the `PSAircraftEngineParams` dataclass.
 
 ### Internals
 
