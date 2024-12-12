@@ -284,7 +284,10 @@ def turbine_entry_temperature_at_max_take_off(first_flight: float) -> float:
     ----------
     - :cite:`cumpstyJetPropulsion2015`
     """
-    return 2000.0 * (1 - np.exp(62.8 - 0.0325 * first_flight))
+    out = 2000.0 * (1.0 - np.exp(62.8 - 0.0325 * first_flight))
+    if isinstance(out, np.ndarray):
+        return out
+    return out.item()
 
 
 def turbine_entry_temperature_at_max_continuous_climb(tet_mto: float) -> float:
