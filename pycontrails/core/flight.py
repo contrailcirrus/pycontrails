@@ -2109,7 +2109,7 @@ def segment_phase(
 def segment_rocd(
     segment_duration: npt.NDArray[np.floating],
     altitude_ft: npt.NDArray[np.floating],
-    air_temperature: None | npt.NDArray[np.floating] = None,
+    air_temperature: npt.NDArray[np.floating] | None = None,
 ) -> npt.NDArray[np.floating]:
     """Calculate the rate of climb and descent (ROCD).
 
@@ -2117,11 +2117,11 @@ def segment_rocd(
     ----------
     segment_duration: npt.NDArray[np.floating]
         Time difference between waypoints, [:math:`s`].
-        Expected to have numeric `dtype`, not `"timedelta64"`.
+        Expected to have numeric ``dtype``, not ``np.timedelta64``.
         See output from :func:`segment_duration`.
     altitude_ft: npt.NDArray[np.floating]
         Altitude of each waypoint, [:math:`ft`]
-    air_temperature: None | npt.NDArray[np.floating]
+    air_temperature: npt.NDArray[np.floating] | None
         Air temperature of each flight waypoint, [:math:`K`]
 
     Returns
@@ -2131,7 +2131,7 @@ def segment_rocd(
 
     Notes
     -----
-    The hydrostatic equation will be used to estimate the ROCD if `air_temperature` is provided.
+    The hydrostatic equation will be used to estimate the ROCD if ``air_temperature`` is provided.
     This will improve the accuracy of the estimated ROCD with a temperature correction. The
     estimated ROCD with the temperature correction are expected to differ by up to +-5% compared to
     those without the correction. These differences are important when the ROCD estimates are used
@@ -2139,7 +2139,7 @@ def segment_rocd(
 
     See Also
     --------
-    :func:`segment_duration`
+    segment_duration
     """
     dt_min = segment_duration / 60.0
 
