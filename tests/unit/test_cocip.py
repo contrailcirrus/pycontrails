@@ -1334,6 +1334,8 @@ def test_cocip_fleet(fl: Flight, met: MetDataset, rad: MetDataset):
     initial_keys = set(fl)
     fls = [fl.copy() for _ in range(10)]
     del fl  # we don't want to accidentally use this below
+    for i, fl in enumerate(fls):
+        fl.attrs.update(flight_id=f"test_{i}")
 
     cocip = Cocip(
         met=met,
@@ -1341,8 +1343,7 @@ def test_cocip_fleet(fl: Flight, met: MetDataset, rad: MetDataset):
         process_emissions=False,
         humidity_scaling=ExponentialBoostHumidityScaling(),
     )
-    with pytest.raises(ValueError, match="Duplicate 'flight_id'"):
-        cocip.eval(fls)
+    cocip.eval(fls)
 
     # confirm nothing has been mutated (using default copy=True)
     for fl in fls:
