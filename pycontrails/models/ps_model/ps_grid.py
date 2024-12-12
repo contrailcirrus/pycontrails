@@ -10,7 +10,6 @@ import numpy as np
 import numpy.typing as npt
 import scipy.optimize
 import xarray as xr
-import xarray.core.coordinates as xrcc
 
 from pycontrails.core.aircraft_performance import (
     AircraftPerformanceGrid,
@@ -298,31 +297,44 @@ def _estimate_mass_extremes(
 def _parse_variables(
     level: npt.NDArray[np.floating] | None,
     air_temperature: xr.DataArray | npt.NDArray[np.floating] | None,
-) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-    """Parse the level and air temperature arguments."""
+) -> tuple[
+    tuple[str],
+    dict[str, npt.NDArray[np.floating]],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+]:
+    """Parse the level and air temperature arguments.
+
+    Returns a tuple of ``(dims, coords, air_pressure, air_temperature)``.
+    """
 
     if isinstance(air_temperature, xr.DataArray):
         if level is not None:
             msg = "If 'air_temperature' is a DataArray, 'level' must be None"
             raise ValueError(msg)
 
-        level_da = air_temperature["level"]
-        air_temperature, level_da = xr.broadcast(air_temperature, level_da)
-        return np.asarray(level_da), np.asarray(air_temperature)
+        try:
+            pressure_da = air_temperature["air_pressure"]
+        except KeyError as exc:
+            msg = "An 'air_pressure' coordinate must be present in 'air_temperature'"
+            raise KeyError(msg) from exc
 
-    if air_temperature is None:
-        if level is None:
-            msg = "The 'level' argument must be specified"
-            raise ValueError(msg)
-        altitude_m = units.pl_to_m(level)
-        air_temperature = units.m_to_T_isa(altitude_m)
-        return level, air_temperature
+        air_temperature, pressure_da = xr.broadcast(air_temperature, pressure_da)
+        dims = air_temperature.dims
+        coords = air_temperature.coords
+        return dims, coords, np.asarray(pressure_da), np.asarray(air_temperature)
 
     if level is None:
-        msg = "The 'level' argument must be specified"
+        msg = "The 'level' argument must be provided"
         raise ValueError(msg)
 
-    return level, air_temperature
+    dims = ("level",)
+    coords = {"level": level}
+    air_pressure = level * 100.0
+    if air_temperature is None:
+        altitude_m = units.pl_to_m(level)
+        air_temperature = units.m_to_T_isa(altitude_m)
+    return dims, coords, air_pressure, air_temperature
 
 
 def ps_nominal_grid(
@@ -347,11 +359,11 @@ def ps_nominal_grid(
         The aircraft type.
     level : npt.NDArray[np.floating] | None, optional
         The pressure level, [:math:`hPa`]. If None, the ``air_temperature``
-        argument must be a :class:`xarray.DataArray` with a ``level`` coordinate.
+        argument must be a :class:`xarray.DataArray` with an ``air_pressure`` coordinate.
     air_temperature : xr.DataArray | npt.NDArray[np.floating] | None, optional
         The ambient air temperature, [:math:`K`]. If None (default), the ISA
         temperature is computed from the ``level`` argument. If a :class:`xarray.DataArray`,
-        the ``level`` coordinate must be present and the ``level`` argument must be None
+        an ``air_pressure`` coordinate must be present and the ``level`` argument must be None
         to avoid ambiguity. If a :class:`numpy.ndarray` is passed, it is assumed to be 1
         dimensional with the same shape as the ``level`` argument.
     q_fuel : float, optional
@@ -420,17 +432,7 @@ def ps_nominal_grid(
     280.0   71653.431321           0.304997   0.755990
     290.0   71630.901315           0.304201   0.765883
     """
-    coords: dict[str, Any] | xrcc.DataArrayCoordinates
-    if isinstance(air_temperature, xr.DataArray):
-        dims = air_temperature.dims
-        coords = air_temperature.coords
-    else:
-        dims = ("level",)
-        coords = {"level": level}
-
-    level, air_temperature = _parse_variables(level, air_temperature)
-
-    air_pressure = level * 100.0
+    dims, coords, air_pressure, air_temperature = _parse_variables(level, air_temperature)
 
     aircraft_engine_params = ps_model.load_aircraft_engine_params(engine_deterioration_factor)
 
