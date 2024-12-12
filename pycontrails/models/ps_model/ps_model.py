@@ -840,7 +840,7 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     """
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
 
-    sigma = np.where(mach_num < 0.4, 1.3 * (0.4 - mach_num), 0.0)
+    sigma = np.where(mach_num < 0.4, 1.3 * (0.4 - mach_num), np.float32(0.0))  # avoid promotion
 
     eta_over_eta_b_low = (
         10.0 * (1.0 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b

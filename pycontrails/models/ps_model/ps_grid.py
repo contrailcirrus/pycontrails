@@ -192,8 +192,10 @@ def _nominal_perf(aircraft_mass: ArrayOrFloat, perf: _PerfVariables) -> Aircraft
     mach_number = perf.mach_number
     q_fuel = perf.q_fuel
 
-    theta = 0.0
-    dv_dt = 0.0
+    # Using np.float32 here avoids scalar promotion to float64 via numpy 2.0 and NEP50
+    # In other words, the dtype of the perf variables is maintained
+    theta = np.float32(0.0)
+    dv_dt = np.float32(0.0)
 
     rn = ps_model.reynolds_number(
         atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure
