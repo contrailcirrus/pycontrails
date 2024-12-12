@@ -246,8 +246,7 @@ class CocipGrid(models.Model):
             downwash_vectors_this_step = []
             for vector in self._generate_new_vectors(time_idx):
                 t0 = vector["time"].min()
-                t1 = vector["time"].max()
-                met, rad = self._maybe_downselect_met_rad(met, rad, t0, t1)
+                met, rad = self._maybe_downselect_met_rad(met, rad, t0, time_end)
                 downwash, verbose_dict = _run_downwash(vector, met, rad, self.params)
 
                 if downwash:
@@ -266,8 +265,7 @@ class CocipGrid(models.Model):
 
             for vector in itertools.chain(existing_vectors, downwash_vectors_this_step):
                 t0 = vector["time"].min()
-                t1 = time_end
-                met, rad = self._maybe_downselect_met_rad(met, rad, t0, t1)
+                met, rad = self._maybe_downselect_met_rad(met, rad, t0, time_end)
                 contrail, ef = _evolve_vector(
                     vector,
                     met=met,
@@ -2583,4 +2581,6 @@ def _maybe_downselect_mds(
         i1 = min(i1 + 1, big_time.size)
         ds_concat.append(big_mds.data.isel(time=slice(i0, i1)))
 
+    # If little_mds is loaded into memory but big_mds is not,
+    # the concat operation below will load the slice of big_mds into memory.
     return MetDataset(xr.concat(ds_concat, dim="time"), copy=False)
