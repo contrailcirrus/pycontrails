@@ -309,7 +309,6 @@ def _parse_variables(
 
     Returns a tuple of ``(dims, coords, air_pressure, air_temperature)``.
     """
-
     if isinstance(air_temperature, xr.DataArray):
         if level is not None:
             msg = "If 'air_temperature' is a DataArray, 'level' must be None"
@@ -322,21 +321,22 @@ def _parse_variables(
             raise KeyError(msg) from exc
 
         air_temperature, pressure_da = xr.broadcast(air_temperature, pressure_da)
-        dims = air_temperature.dims
-        coords = air_temperature.coords
-        return dims, coords, np.asarray(pressure_da), np.asarray(air_temperature)
+        return (  # type: ignore[return-value]
+            air_temperature.dims,
+            air_temperature.coords,
+            np.asarray(pressure_da),
+            np.asarray(air_temperature),
+        )
 
     if level is None:
         msg = "The 'level' argument must be provided"
         raise ValueError(msg)
 
-    dims = ("level",)
-    coords = {"level": level}
     air_pressure = level * 100.0
     if air_temperature is None:
         altitude_m = units.pl_to_m(level)
         air_temperature = units.m_to_T_isa(altitude_m)
-    return dims, coords, air_pressure, air_temperature
+    return ("level",), {"level": level}, air_pressure, air_temperature
 
 
 def ps_nominal_grid(
