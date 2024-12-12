@@ -479,7 +479,7 @@ def ps_nominal_grid(
         func=_newton_func,
         args=(perf,),
         x0=x0,
-        tol=1.0,
+        tol=80.0,  # use roughly the weight of a passenger as a tolerance
         disp=False,
         maxiter=maxiter,
     )

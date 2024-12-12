@@ -17,6 +17,7 @@
 - Change the order of advected points returned by `DryAdvection` to be consistent with the input order at each time step.
 - Add the `RUF` ruleset for linting and formatting the codebase.
 - Update type hints for `numpy` 2.2 compatibility. Additional changes may be required after the next iteration of the `numpy` 2.2 series.
+- Relax the tolerance passed into `scipy.optimize.newton` in `ps_nominal_grid` to avoid more convergence warnings. These warnings were more distracting than informative.
 
 ## v0.54.3
 
