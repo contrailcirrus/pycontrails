@@ -162,7 +162,6 @@ class Fleet(Flight):
         cls,
         seq: Iterable[Flight],
         broadcast_numeric: bool = True,
-        copy: bool = True,
         attrs: dict[str, Any] | None = None,
     ) -> Self:
         """Instantiate a :class:`Fleet` instance from an iterable of :class:`Flight`.
@@ -177,8 +176,6 @@ class Fleet(Flight):
             An iterable of :class:`Flight` instances.
         broadcast_numeric : bool, optional
             If True, broadcast numeric attributes to data variables.
-        copy : bool, optional
-            If True, make copy of each flight instance in ``seq``.
         attrs : dict[str, Any] | None, optional
             Global attribute to attach to instance.
 
@@ -190,15 +187,15 @@ class Fleet(Flight):
             in ``seq``.
         """
 
-        def _maybe_copy(fl: Flight) -> Flight:
-            return fl.copy() if copy else fl
+        def _shallow_copy(fl: Flight) -> Flight:
+            return Flight(VectorDataDict(fl.data), attrs=fl.attrs, copy=False, fuel=fl.fuel)
 
         def _maybe_warn(fl: Flight) -> Flight:
             if not fl:
                 warnings.warn("Empty flight found in sequence. It will be filtered out.")
             return fl
 
-        seq = tuple(_maybe_copy(fl) for fl in seq if _maybe_warn(fl))
+        seq = tuple(_shallow_copy(fl) for fl in seq if _maybe_warn(fl))
 
         if not seq:
             msg = "Cannot create Fleet from empty sequence."
@@ -342,7 +339,7 @@ class Fleet(Flight):
                 fl.attrs["flight_id"] = _extract_flight_id(fl)
 
         flights = [fl.resample_and_fill(*args, **kwargs) for fl in flights]
-        return type(self).from_seq(flights, copy=False, broadcast_numeric=False, attrs=self.attrs)
+        return type(self).from_seq(flights, broadcast_numeric=False, attrs=self.attrs)
 
     @override
     def segment_length(self) -> npt.NDArray[np.floating]:

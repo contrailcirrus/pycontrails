@@ -1071,7 +1071,7 @@ def fleet(met: MetDataset) -> Fleet:
         )
         fls.append(fl)
 
-    return Fleet.from_seq(fls, copy=False, broadcast_numeric=False)
+    return Fleet.from_seq(fls, broadcast_numeric=False)
 
 
 @pytest.mark.filterwarnings("ignore:.*the contrail has no intersection with the met")
