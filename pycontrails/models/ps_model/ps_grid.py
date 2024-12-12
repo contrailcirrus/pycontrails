@@ -394,6 +394,10 @@ def ps_nominal_grid(
     KeyError
         If "aircraft_type" is not supported by the PS model.
 
+    See Also
+    --------
+    ps_nominal_optimize_mach
+
     Examples
     --------
     >>> level = np.arange(200, 300, 10, dtype=float)
@@ -407,16 +411,16 @@ def ps_nominal_grid(
     >>> perf.to_dataframe()
            aircraft_mass  engine_efficiency  fuel_flow
     level
-    200.0   58416.230843           0.300958   0.575635
+    200.0   58416.230844           0.300958   0.575635
     210.0   61617.676624           0.300958   0.604417
-    220.0   64829.702583           0.300958   0.633199
-    230.0   68026.415695           0.300958   0.662998
+    220.0   64829.702584           0.300958   0.633199
+    230.0   68026.415694           0.300958   0.662998
     240.0   71187.897060           0.300958   0.694631
-    250.0   71775.399825           0.300824   0.703349
-    260.0   71765.716737           0.300363   0.708259
-    270.0   71752.405400           0.299671   0.714514
-    280.0   71736.129079           0.298823   0.721878
-    290.0   71717.392170           0.297875   0.730169
+    250.0   71775.399880           0.300824   0.703349
+    260.0   71765.716789           0.300363   0.708259
+    270.0   71752.405449           0.299671   0.714514
+    280.0   71736.129125           0.298823   0.721878
+    290.0   71717.392213           0.297875   0.730169
 
     >>> # Now compute it for a higher Mach number
     >>> perf = ps_nominal_grid("A320", level=level, mach_number=0.78)
@@ -425,14 +429,14 @@ def ps_nominal_grid(
     level
     200.0   57941.825236           0.306598   0.596100
     210.0   60626.062062           0.306605   0.621331
-    220.0   63818.498306           0.306605   0.650918
-    230.0   66993.691517           0.306605   0.681551
-    240.0   70129.930503           0.306605   0.714069
-    250.0   71703.009059           0.306560   0.732944
-    260.0   71690.188652           0.306239   0.739276
-    270.0   71673.392089           0.305694   0.747052
-    280.0   71653.431321           0.304997   0.755990
-    290.0   71630.901315           0.304201   0.765883
+    220.0   63818.498305           0.306605   0.650918
+    230.0   66993.691515           0.306605   0.681551
+    240.0   70129.930502           0.306605   0.714069
+    250.0   71703.009114           0.306560   0.732944
+    260.0   71690.188703           0.306239   0.739276
+    270.0   71673.392137           0.305694   0.747052
+    280.0   71653.431366           0.304997   0.755990
+    290.0   71630.901358           0.304201   0.765883
     """
     dims, coords, air_pressure, air_temperature = _parse_variables(level, air_temperature)
 
@@ -555,7 +559,7 @@ def ps_nominal_optimize_mach(
     """Calculate the nominal optimal mach number for a given aircraft type.
 
     This function is similar to the :class:`ps_nominal_grid` method, but rather than
-    maximizing engine efficiecy by adjusting aircraft, we are minimizing cost by adjusting
+    maximizing engine efficiency by adjusting aircraft, we are minimizing cost by adjusting
     mach number.
 
     Parameters
@@ -602,8 +606,7 @@ def ps_nominal_optimize_mach(
         - ``"mach_number"``: The mach number that minimizes segment cost
         - ``"fuel_flow"`` : Fuel flow rate, [:math:`kg/s`]
         - ``"engine_efficiency"`` : Engine efficiency
-        - ``"aircraft_mass"`` : Aircraft mass,
-          [:math:`kg`]
+        - ``"aircraft_mass"`` : Aircraft mass, [:math:`kg`]
 
     Raises
     ------
@@ -611,6 +614,10 @@ def ps_nominal_optimize_mach(
         If "aircraft_type" is not supported by the PS model.
     ValueError
         If wind data is provided without segment angles.
+
+    See Also
+    --------
+    ps_nominal_grid
     """
     dims = ("level",)
     coords = {"level": level}
