@@ -937,8 +937,7 @@ class Flight(GeoVectorDataset):
 
         if shift is not None:
             # We need to translate back to the original chart here
-            df["longitude"] += shift
-            df["longitude"] = ((df["longitude"] + 180.0) % 360.0) - 180.0
+            df["longitude"] = ((df["longitude"] + shift + 180.0) % 360.0) - 180.0
 
         # STEP 6: Interpolate nan values in altitude
         altitude = df["altitude"].to_numpy()

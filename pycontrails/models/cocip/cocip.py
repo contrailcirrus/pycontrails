@@ -660,7 +660,7 @@ class Cocip(Model):
             attrs = self.source.attrs
             attrs.pop("fl_attrs", None)
             attrs.pop("data_keys", None)
-            self.source = Fleet.from_seq(fls, broadcast_numeric=False, copy=False, attrs=attrs)
+            self.source = Fleet.from_seq(fls, broadcast_numeric=False, attrs=attrs)
 
         # Single flight
         else:
