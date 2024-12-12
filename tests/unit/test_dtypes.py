@@ -13,6 +13,7 @@ from pycontrails.models.cocip import Cocip
 from pycontrails.models.cocipgrid import CocipGrid
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 from pycontrails.models.issr import ISSR
+from pycontrails.models.ps_model import PSGrid
 from pycontrails.models.sac import SAC
 from pycontrails.physics import units
 
@@ -234,3 +235,10 @@ def test_cocip_grid(
     # And importantly, they are the same with BADA3 or BADA4
     nonzero = np.flatnonzero(out["ef_per_m"].data.values.ravel())
     np.testing.assert_array_equal(nonzero, [38, 46, 52, 53, 54, 61, 62, 70])
+
+
+def test_ps_grid(met_cocip1: MetDataset) -> None:
+    """Confirm the ``PSGrid`` model maintains float32 precision."""
+    psgrid = PSGrid(met=met_cocip1)
+    out = psgrid.eval()
+    assert all(d == "float32" for d in out.data.dtypes.values())
