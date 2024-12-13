@@ -18,7 +18,7 @@
 ### Breaking changes
 
 - Remove the optional input parameter `climb_descend_at_end` in `Flight.resample_and_fill`. See the description of the new `_altitude_interpolation` function for the rationale behind this change.
-- Remove the `copy` argument from `Fleet.from_seq`. This was argument is redundant and not used effectively in the implementation. The `Fleet.from_seq` method always returns a copy of the input sequence.
+- Remove the `copy` argument from `Fleet.from_seq`. This argument was redundant and not used effectively in the implementation. The `Fleet.from_seq` method always returns a copy of the input sequence.
 
 ### Fixes
 
