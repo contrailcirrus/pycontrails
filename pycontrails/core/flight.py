@@ -1866,34 +1866,6 @@ def _altitude_interpolation(
     return units.ft_to_m(out_alt_ft.to_numpy())
 
 
-def _verify_altitude(
-    altitude: npt.NDArray[np.floating], nominal_rocd: float, freq: np.timedelta64
-) -> None:
-    """Confirm that the time derivative of ``altitude`` does not exceed twice ``nominal_rocd``.
-
-    Parameters
-    ----------
-    altitude : npt.NDArray[np.floating]
-        Array of filled altitude values containing nan values.
-    nominal_rocd : float
-        Nominal rate of climb/descent, in m/s
-    freq : np.timedelta64
-        Frequency of time index associated to `altitude`.
-    """
-    dalt = np.diff(altitude)
-    dt = freq / np.timedelta64(1, "s")
-    rocd = np.abs(dalt / dt)
-    if np.any(rocd > 2.5 * nominal_rocd):
-        warnings.warn(
-            "Rate of climb/descent values greater than nominal "
-            f"({nominal_rocd} m/s) after altitude interpolation"
-        )
-    if np.any(np.isnan(altitude)):
-        warnings.warn(
-            f"Found nan values altitude after ({nominal_rocd} m/s) after altitude interpolation"
-        )
-
-
 def filter_altitude(
     time: npt.NDArray[np.datetime64],
     altitude_ft: npt.NDArray[np.floating],
