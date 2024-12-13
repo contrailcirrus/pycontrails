@@ -1694,6 +1694,7 @@ def _sg_filter(
 def _altitude_interpolation(
     altitude: npt.NDArray[np.floating],
     time: npt.NDArray[np.datetime64],
+    nominal_rocd: float,
     minimum_cruise_altitude_ft: float = 20000.0,
     assumed_cruise_altitude_ft: float = 30000.0,
 ) -> npt.NDArray[np.floating]:
@@ -1742,7 +1743,7 @@ def _altitude_interpolation(
     """
     # Work in units of feet
     alt_ft = units.m_to_ft(altitude)
-    nominal_rocd_ft_min = units.m_to_ft(constants.nominal_rocd) * 60.0
+    nominal_rocd_ft_min = units.m_to_ft(nominal_rocd) * 60.0
 
     # Determine nan state of altitude
     isna = np.isnan(alt_ft)
