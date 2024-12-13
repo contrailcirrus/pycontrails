@@ -373,7 +373,6 @@ class Fleet(Flight):
         force_filter: bool = False,
         drop: bool = True,
         keep_original_index: bool = False,
-        climb_descend_at_end: bool = False,
     ) -> NoReturn:
         msg = "Only implemented for Flight instances"
         raise NotImplementedError(msg)
