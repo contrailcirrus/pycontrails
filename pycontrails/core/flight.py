@@ -973,7 +973,6 @@ class Flight(GeoVectorDataset):
         force_filter: bool = False,
         drop: bool = True,
         keep_original_index: bool = False,
-        climb_descend_at_end: bool = False,
     ) -> Self:
         """Resample and (possibly) filter a flight trajectory.
 
@@ -1015,9 +1014,6 @@ class Flight(GeoVectorDataset):
             Keep the original index of the :class:`Flight` in addition to the new
             resampled index. Defaults to ``False``.
             .. versionadded:: 0.45.2
-        climb_or_descend_at_end : bool
-            If true, the climb or descent will be placed at the end of each segment
-            rather than the start. Default is false (climb or descent immediately).
 
         Returns
         -------
