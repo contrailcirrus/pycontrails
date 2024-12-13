@@ -943,10 +943,7 @@ class Flight(GeoVectorDataset):
         altitude = df["altitude"].to_numpy()
         time = df.index.to_numpy()
         if np.any(np.isnan(altitude)):
-            df_freq = pd.Timedelta(freq).to_numpy()
-            new_alt = _altitude_interpolation(altitude, time)
-            _verify_altitude(new_alt, nominal_rocd, df_freq)
-            df["altitude"] = new_alt
+            df["altitude"] = _altitude_interpolation(altitude, time, nominal_rocd)
 
         # Remove original index if requested
         if not keep_original_index:
