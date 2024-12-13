@@ -1887,7 +1887,7 @@ def _verify_altitude(
     dalt = np.diff(altitude)
     dt = freq / np.timedelta64(1, "s")
     rocd = np.abs(dalt / dt)
-    if np.any(rocd > 3.0 * nominal_rocd):
+    if np.any(rocd > 2.5 * nominal_rocd):
         warnings.warn(
             "Rate of climb/descent values greater than nominal "
             f"({nominal_rocd} m/s) after altitude interpolation"
