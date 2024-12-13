@@ -29,6 +29,7 @@
 - Use native python types (as opposed to `numpy` scalars) in the `PSAircraftEngineParams` dataclass.
 - Ensure the `PSGrid` model maintains the precision of the `source`. Previously, float32 precision was lost per [NEP 50](https://numpy.org/neps/nep-0050-scalar-promotion.html).
 - Fix `Fleet.resample_and_fill` when the the "flight_id" field is included on `Fleet.data` (as opposed to `Fleet.fl_attrs`). Previously, this would raise a ValueError.
+- Use the supplied `nominal_rocd` parameter in `Flight.resample_and_fill` rather than `constants.nominal_rocd` (the default value of this parameter).
 
 ### Internals
 
@@ -37,6 +38,7 @@
 - Add the `RUF` ruleset for linting and formatting the codebase.
 - Update type hints for `numpy` 2.2 compatibility. Additional changes may be required after the next iteration of the `numpy` 2.2 series.
 - Relax the tolerance passed into `scipy.optimize.newton` in `ps_nominal_grid` to avoid some convergence warnings. (These warnings were more distracting than informative.)
+- Remove the `_verify_altitude` check in `Flight.resample_and_fill`. This was often triggered by a flight with corrupt waypoints (ie, independent from the logic in `Flight.resample_and_fill`).
 
 ## v0.54.3
 
