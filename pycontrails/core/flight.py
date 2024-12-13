@@ -1776,9 +1776,6 @@ def _altitude_interpolation(
         # Time to next waypoint
         dt_next = (time_end - time_start) / np.timedelta64(1, "m")
 
-        # Rate of climb and descent to next waypoint, in ft/min
-        rocd_next = (alt_ft_end - alt_ft_start) / dt_next
-
         # (1): Unrealistic scenario: first and next known waypoints are at very
         # low altitudes with a large time gap.
         is_unrealistic = (
@@ -1809,6 +1806,9 @@ def _altitude_interpolation(
         # (2): If both altitudes are the same, then skip entire operations below
         if alt_ft_start == alt_ft_end:
             continue
+
+        # Rate of climb and descent to next waypoint, in ft/min
+        rocd_next = (alt_ft_end - alt_ft_start) / dt_next
 
         # (3): If cruise over 2 h with small altitude change, set change to mid-point
         is_long_segment_small_altitude_change = (
