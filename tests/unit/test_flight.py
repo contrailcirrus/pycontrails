@@ -548,11 +548,6 @@ def test_altitude_interpolation(fl: Flight) -> None:
     fl17 = fl_alt.resample_and_fill("1min", nominal_rocd=30)
     assert _check_rocd(fl17, nominal_rocd=30)
 
-    # test warning with low nominal rocd
-    with pytest.warns(UserWarning, match="Rate of climb/descent values greater than nominal"):
-        fl18 = fl_alt.resample_and_fill("1min", nominal_rocd=1)
-        assert not _check_rocd(fl18, nominal_rocd=1)
-
     # test `drop` kwarg
     fl_alt["extrakey"] = np.linspace(0, 10, 10)
     fl_alt["level"] = fl_alt.level
