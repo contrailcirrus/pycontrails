@@ -133,17 +133,18 @@ class Fleet(Flight):
 
     @override
     def copy(self, **kwargs: Any) -> Self:
-        kwargs.setdefault("fuel", self.fuel)
         kwargs.setdefault("fl_attrs", self.fl_attrs)
+        kwargs.setdefault("final_waypoints", self.final_waypoints)
         return super().copy(**kwargs)
 
     @override
     def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
-        kwargs.setdefault("fuel", self.fuel)
-
         flight_ids = set(np.unique(self["flight_id"][mask]))
         fl_attrs = {k: v for k, v in self.fl_attrs.items() if k in flight_ids}
         kwargs.setdefault("fl_attrs", fl_attrs)
+
+        final_waypoints = np.array(self.final_waypoints[mask], copy=copy)
+        kwargs.setdefault("final_waypoints", final_waypoints)
 
         return super().filter(mask, copy=copy, **kwargs)
 
@@ -187,8 +188,9 @@ class Fleet(Flight):
             in ``seq``.
         """
 
+        # Create a shallow copy because we add additional keys in _validate_fl
         def _shallow_copy(fl: Flight) -> Flight:
-            return Flight(VectorDataDict(fl.data), attrs=fl.attrs, copy=False, fuel=fl.fuel)
+            return Flight._from_fastpath(fl.data, fl.attrs, fuel=fl.fuel)
 
         def _maybe_warn(fl: Flight) -> Flight:
             if not fl:
@@ -217,7 +219,18 @@ class Fleet(Flight):
             )
 
         data = {var: np.concatenate([fl[var] for fl in seq]) for var in seq[0]}
-        return cls(data=data, attrs=attrs, copy=False, fuel=fuel, fl_attrs=fl_attrs)
+
+        final_waypoints = np.zeros(data["time"].size, dtype=bool)
+        final_waypoint_indices = np.cumsum([fl.size for fl in seq]) - 1
+        final_waypoints[final_waypoint_indices] = True
+
+        return cls._from_fastpath(
+            data,
+            attrs or {},
+            fuel=fuel,
+            fl_attrs=fl_attrs,
+            final_waypoints=final_waypoints,
+        )
 
     @property
     def n_flights(self) -> int:
