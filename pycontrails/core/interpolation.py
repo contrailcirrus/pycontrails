@@ -245,6 +245,9 @@ def _pick_method(scipy_version: str, method: str) -> str:
     str
         Interpolation method adjusted for compatibility with this class.
     """
+    if method == "linear":
+        return method
+
     try:
         version = scipy_version.split(".")
         major = int(version[0])
@@ -486,15 +489,15 @@ def interp(
         da = _localize(da, coords)
 
     indexes = da._indexes
-    x = indexes["longitude"].index.to_numpy()  # type: ignore[attr-defined]
-    y = indexes["latitude"].index.to_numpy()  # type: ignore[attr-defined]
-    z = indexes["level"].index.to_numpy()  # type: ignore[attr-defined]
+    x = indexes["longitude"].index.values  # type: ignore[attr-defined]
+    y = indexes["latitude"].index.values  # type: ignore[attr-defined]
+    z = indexes["level"].index.values  # type: ignore[attr-defined]
     if any(v.dtype != np.float64 for v in (x, y, z)):
         msg = "da must have float64 dtype for longitude, latitude, and level coordinates"
         raise ValueError(msg)
 
     # Convert t and time to float64
-    t = indexes["time"].index.to_numpy()  # type: ignore[attr-defined]
+    t = indexes["time"].index.values  # type: ignore[attr-defined]
     offset = t[0]
     t = _floatize_time(t, offset)
 
