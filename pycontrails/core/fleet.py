@@ -259,11 +259,19 @@ class Fleet(Flight):
             List of Flights in the same order as was passed into the ``Fleet`` instance.
         """
         indices = self.dataframe.groupby("flight_id", sort=False).indices
+        if copy:
+            return [
+                Flight._from_fastpath(
+                    {k: v[idx] for k, v in self.data.items()},
+                    self.fl_attrs[flight_id],
+                    fuel=self.fuel,
+                ).copy()
+                for flight_id, idx in indices.items()
+            ]
         return [
-            Flight(
-                data=VectorDataDict({k: v[idx] for k, v in self.data.items()}),
-                attrs=self.fl_attrs[flight_id],
-                copy=copy,
+            Flight._from_fastpath(
+                {k: v[idx] for k, v in self.data.items()},
+                self.fl_attrs[flight_id],
                 fuel=self.fuel,
             )
             for flight_id, idx in indices.items()
