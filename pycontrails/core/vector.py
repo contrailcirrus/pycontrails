@@ -678,6 +678,13 @@ class VectorDataset:
         8  15  18
 
         """
+        if cls not in (VectorDataset, GeoVectorDataset):
+            msg = (
+                "Method 'sum' is only available on 'VectorDataset' and 'GeoVectorDataset'. "
+                "To sum 'Flight' instances, use 'Fleet.from_seq'."
+            )
+            raise TypeError(msg)
+
         vectors = [v for v in vectors if v is not None]  # remove None values
 
         if not vectors:
@@ -708,10 +715,9 @@ class VectorDataset:
             return np.concatenate(values)
 
         data = {key: concat(key) for key in keys}
+        attrs = vectors[0].attrs if infer_attrs else {}
 
-        if infer_attrs:
-            return cls(data, attrs=vectors[0].attrs, copy=False)
-        return cls(data, copy=False)
+        return cls._from_fastpath(data, attrs)
 
     def __eq__(self, other: object) -> bool:
         """Determine if two instances are equal.
@@ -818,7 +824,8 @@ class VectorDataset:
         Self
             Copy of class
         """
-        return type(self)(data=self.data, attrs=self.attrs, copy=True, **kwargs)
+        data = {key: value.copy() for key, value in self.data.items()}
+        return type(self)._from_fastpath(data, self.attrs, **kwargs)
 
     def select(self: VectorDataset, keys: Iterable[str], copy: bool = True) -> VectorDataset:
         """Return new class instance only containing specified keys.
@@ -838,8 +845,8 @@ class VectorDataset:
             Note that this method always returns a :class:`VectorDataset`, even if
             the calling class is a proper subclass of :class:`VectorDataset`.
         """
-        data = {key: self[key] for key in keys}
-        return VectorDataset(data=data, attrs=self.attrs, copy=copy)
+        data = {key: np.array(self[key], copy=copy) for key in keys}
+        return VectorDataset._from_fastpath(data, self.attrs)
 
     def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
         """Filter :attr:`data` according to a boolean array ``mask``.
@@ -871,8 +878,8 @@ class VectorDataset:
         if mask.dtype != bool:
             raise TypeError("Parameter `mask` must be a boolean array.")
 
-        data = {key: value[mask] for key, value in self.data.items()}
-        return type(self)(data=data, attrs=self.attrs, copy=copy, **kwargs)
+        data = {key: np.array(value[mask], copy=copy) for key, value in self.data.items()}
+        return type(self)._from_fastpath(data, self.attrs, **kwargs)
 
     def sort(self, by: str | list[str]) -> Self:
         """Sort data by key(s).
@@ -1131,7 +1138,7 @@ class VectorDataset:
         cls,
         keys: Iterable[str],
         attrs: dict[str, Any] | None = None,
-        **attrs_kwargs: Any,
+        **kwargs: Any,
     ) -> Self:
         """Create instance with variables defined by ``keys`` and size 0.
 
@@ -1144,15 +1151,16 @@ class VectorDataset:
             Keys to include in empty VectorDataset instance.
         attrs : dict[str, Any] | None, optional
             Attributes to attach instance.
-        **attrs_kwargs : Any
-            Define attributes as keyword arguments.
+        **kwargs : Any
+            Additional keyword arguments passed into the constructor of the returned class.
 
         Returns
         -------
         Self
             Empty VectorDataset instance.
         """
-        return cls(data=_empty_vector_dict(keys or set()), attrs=attrs, copy=False, **attrs_kwargs)
+        data = _empty_vector_dict(keys)
+        return cls._from_fastpath(data, attrs or {}, **kwargs)
 
     @classmethod
     def from_dict(cls, obj: dict[str, Any], copy: bool = True, **obj_kwargs: Any) -> Self:
