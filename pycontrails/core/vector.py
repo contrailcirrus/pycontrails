@@ -318,6 +318,36 @@ class VectorDataset:
         self.attrs = AttrDict(attrs or {})  # type: ignore[arg-type]
         self.attrs.update(attrs_kwargs)
 
+    @classmethod
+    def _from_fastpath(
+        cls,
+        data: dict[str, np.ndarray],
+        attrs: dict[str, Any],
+        **kwargs: Any,
+    ) -> Self:
+        """Create new instance from consistent data.
+
+        This is a low-level method that bypasses the standard constructor in certain
+        special cases. It is intended for internal use only.
+
+        In essence, this method skips any validation from __init__ and directly sets
+        ``data`` and ``attrs``. This is useful when creating a new instance from an existing
+        instance the data has already been validated.
+        """
+        obj = cls.__new__(cls)
+
+        obj.data = VectorDataDict(data)
+        obj.attrs = AttrDict(attrs)
+
+        for key, value in kwargs.items():
+            try:
+                setattr(obj, key, value)
+            # If key not present in __slots__ of class (or parents), it's intended for attrs
+            except AttributeError:
+                obj.attrs[key] = value
+
+        return obj
+
     # ------------
     # dict-like methods
     # ------------
