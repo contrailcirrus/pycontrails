@@ -822,9 +822,7 @@ class ValidateTrajectoryHandler:
         self._df = None
 
     @classmethod
-    def _find_airport_coords(
-        cls, airport_icao: str | None
-    ) -> tuple[np.floating, np.floating, np.floating]:
+    def _find_airport_coords(cls, airport_icao: str | None) -> tuple[float, float, float]:
         """
         Find the latitude and longitude for a given airport.
 
@@ -850,22 +848,13 @@ class ValidateTrajectoryHandler:
             return np.nan, np.nan, np.nan
         if len(matches) > 1:
             raise ValueError(
-                f"found multiple matches for aiport icao {airport_icao} " f"in airports database."
+                f"found multiple matches for aiport icao {airport_icao} in airports database."
             )
 
-        lat = matches["latitude"].iloc[0]
-        lon = matches["longitude"].iloc[0]
-        alt_ft = matches["elevation_ft"].iloc[0]
+        lat = matches["latitude"].iloc[0].item()
+        lon = matches["longitude"].iloc[0].item()
+        alt_ft = matches["elevation_ft"].iloc[0].item()
 
-        if (
-            not isinstance(lat, np.floating)
-            or not isinstance(lon, np.floating)
-            or not isinstance(alt_ft, np.floating)
-        ):
-            raise ValueError(
-                f"expected (float, float, float) for lat, lon and alt_ft. "
-                f"got: ({lat}, {lon}, {alt_ft})"
-            )
         return lat, lon, alt_ft
 
     @staticmethod
