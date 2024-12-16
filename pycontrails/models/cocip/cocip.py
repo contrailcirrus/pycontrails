@@ -391,7 +391,7 @@ class Cocip(Model):
         # which is the positive direction for level
         logger.debug("Downselect met for Cocip initialization")
         level_buffer = 0, self.params["met_level_buffer"][1]
-        met = self.source.downselect_met(self.met, level_buffer=level_buffer, copy=False)
+        met = self.source.downselect_met(self.met, level_buffer=level_buffer)
         met = add_tau_cirrus(met)
 
         # Prepare flight for model
@@ -976,9 +976,9 @@ class Cocip(Model):
             for coord in ("longitude", "latitude", "level")
         }
         logger.debug("Downselect met for start of Cocip evolution")
-        met = self._downwash_contrail.downselect_met(self.met, **buffers, copy=False)
+        met = self._downwash_contrail.downselect_met(self.met, **buffers)
         met = add_tau_cirrus(met)
-        rad = self._downwash_contrail.downselect_met(self.rad, **buffers, copy=False)
+        rad = self._downwash_contrail.downselect_met(self.rad, **buffers)
 
         calc_continuous(self._downwash_contrail)
         calc_timestep_geometry(self._downwash_contrail)
@@ -1152,7 +1152,7 @@ class Cocip(Model):
             max(np.timedelta64(0, "ns"), time_end - vector["time"].max()),
         )
 
-        return vector.downselect_met(met, **buffers, copy=False)
+        return vector.downselect_met(met, **buffers)
 
     def _create_downwash_contrail(self) -> GeoVectorDataset:
         """Get Contrail representation of downwash flight."""

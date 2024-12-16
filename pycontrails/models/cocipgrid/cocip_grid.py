@@ -2438,7 +2438,6 @@ def _downselect_met(
         longitude_buffer=longitude_buffer,
         level_buffer=level_buffer,
         time_buffer=(t0, t1),
-        copy=False,
     )
 
     rad = source.downselect_met(
@@ -2446,7 +2445,6 @@ def _downselect_met(
         latitude_buffer=latitude_buffer,
         longitude_buffer=longitude_buffer,
         time_buffer=(t0, t1),
-        copy=False,
     )
 
     return met, rad
