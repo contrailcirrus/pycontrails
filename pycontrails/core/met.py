@@ -73,6 +73,8 @@ class MetBase(ABC, Generic[XArrayType]):
     and xr.Dataset.
     """
 
+    __slots__ = ("cachestore", "data")
+
     #: DataArray or Dataset
     data: XArrayType
 
