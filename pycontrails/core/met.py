@@ -583,7 +583,6 @@ class MetBase(ABC, Generic[XArrayType]):
             np.timedelta64(0, "h"),
             np.timedelta64(0, "h"),
         ),
-        copy: bool = True,
     ) -> MetDataType:
         """Downselect ``met`` to encompass a spatiotemporal region of the data.
 
@@ -593,6 +592,10 @@ class MetBase(ABC, Generic[XArrayType]):
             It does not change the instance data, but instead operates on the
             ``met`` input. This method is different from :meth:`downselect` which
             operates on the instance data.
+
+        .. versionchanged:: 0.54.5
+
+            Data is no longer copied when downselecting.
 
         Parameters
         ----------
@@ -618,8 +621,6 @@ class MetBase(ABC, Generic[XArrayType]):
             and ``time_buffer[1]`` on the high side.
             Units must be the same as class coordinates.
             Defaults to ``(np.timedelta64(0, "h"), np.timedelta64(0, "h"))``.
-        copy : bool
-            If returned object is a copy or view of the original. True by default.
 
         Returns
         -------
@@ -645,7 +646,6 @@ class MetBase(ABC, Generic[XArrayType]):
             latitude_buffer=latitude_buffer,
             level_buffer=level_buffer,
             time_buffer=time_buffer,
-            copy=copy,
         )
 
     def wrap_longitude(self) -> Self:

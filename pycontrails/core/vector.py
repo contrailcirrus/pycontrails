@@ -1843,7 +1843,6 @@ class GeoVectorDataset(VectorDataset):
         latitude_buffer: tuple[float, float] = ...,
         level_buffer: tuple[float, float] = ...,
         time_buffer: tuple[np.timedelta64, np.timedelta64] = ...,
-        copy: bool = ...,
     ) -> met_module.MetDataset: ...
 
     @overload
@@ -1855,7 +1854,6 @@ class GeoVectorDataset(VectorDataset):
         latitude_buffer: tuple[float, float] = ...,
         level_buffer: tuple[float, float] = ...,
         time_buffer: tuple[np.timedelta64, np.timedelta64] = ...,
-        copy: bool = ...,
     ) -> met_module.MetDataArray: ...
 
     def downselect_met(
@@ -1869,9 +1867,12 @@ class GeoVectorDataset(VectorDataset):
             np.timedelta64(0, "h"),
             np.timedelta64(0, "h"),
         ),
-        copy: bool = True,
     ) -> met_module.MetDataType:
         """Downselect ``met`` to encompass a spatiotemporal region of the data.
+
+        .. versionchanged:: 0.54.5
+
+            Returned object is no longer copied.
 
         Parameters
         ----------
@@ -1897,8 +1898,6 @@ class GeoVectorDataset(VectorDataset):
             and ``time_buffer[1]`` on the high side.
             Units must be the same as class coordinates.
             Defaults to ``(np.timedelta64(0, "h"), np.timedelta64(0, "h"))``.
-        copy : bool
-            If returned object is a copy or view of the original. True by default.
 
         Returns
         -------
@@ -1939,7 +1938,7 @@ class GeoVectorDataset(VectorDataset):
             level=level_slice,
             time=time_slice,
         )
-        return type(met)(data, copy=copy)
+        return type(met)._from_fastpath(data)
 
     # ------------
     # I / O
