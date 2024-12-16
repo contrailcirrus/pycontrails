@@ -535,8 +535,7 @@ class MetBase(ABC, Generic[XArrayType]):
         """Pass through to :attr:`self.data.attrs`."""
         return self.data.attrs
 
-    @abstractmethod
-    def downselect(self, bbox: tuple[float, ...]) -> MetBase:
+    def downselect(self, bbox: tuple[float, ...]) -> Self:
         """Downselect met data within spatial bounding box.
 
         Parameters
@@ -547,12 +546,13 @@ class MetBase(ABC, Generic[XArrayType]):
             For 3D queries, list is [west, south, min-level, east, north, max-level]
             with level defined in [:math:`hPa`].
 
-
         Returns
         -------
-        MetBase
+        Self
             Return downselected data
         """
+        data = downselect(self.data, bbox)
+        return type(self)._from_fastpath(data, cachestore=self.cachestore)
 
     @property
     def is_zarr(self) -> bool:
@@ -1046,11 +1046,6 @@ class MetDataset(MetBase):
         da.name = name
 
         return da
-
-    @override
-    def downselect(self, bbox: tuple[float, ...]) -> MetDataset:
-        data = downselect(self.data, bbox)
-        return MetDataset(data, cachestore=self.cachestore, copy=False)
 
     def to_vector(self, transfer_attrs: bool = True) -> vector_module.GeoVectorDataset:
         """Convert a :class:`MetDataset` to a :class:`GeoVectorDataset` by raveling data.
@@ -2403,11 +2398,6 @@ class MetDataArray(MetBase):
         da.name = name
 
         return da
-
-    @override
-    def downselect(self, bbox: tuple[float, ...]) -> MetDataArray:
-        data = downselect(self.data, bbox)
-        return MetDataArray(data, cachestore=self.cachestore)
 
 
 def _is_wrapped(longitude: np.ndarray) -> bool:
