@@ -715,6 +715,8 @@ class MetDataset(MetBase):
     223.5083
     """
 
+    __slots__ = ()
+
     data: xr.Dataset
 
     def __init__(
@@ -1387,6 +1389,8 @@ class MetDataArray(MetBase):
     >>> da.sel(longitude=-11, latitude=6, level=240, time=np.datetime64("2021-08-01T12")).item()
     0.41884649899766946
     """
+
+    __slots__ = ()
 
     data: xr.DataArray
 
