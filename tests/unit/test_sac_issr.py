@@ -121,8 +121,7 @@ def test_SAC_met_source(met_issr: MetDataset) -> None:
 
 def test_SAC_with_nan(met_issr: MetDataset) -> None:
     """Check that NaN values persist after SAC calculation."""
-    met = met_issr.copy()
-    met.data.load()
+    met = MetDataset(met_issr.data.copy(deep=True))
     met.data["specific_humidity"][4, 3, 2, 1] = np.nan
 
     model = SAC(met, humidity_scaling=ExponentialBoostHumidityScaling())
