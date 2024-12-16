@@ -131,9 +131,9 @@ def fl(flight_cocip1: Flight) -> Flight:
 @pytest.fixture()
 def cocip_no_ef(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     """Return `Cocip` instance evaluated on modified `fl`."""
-    fl.update(longitude=np.linspace(-29, -32, 20))
-    fl.update(latitude=np.linspace(54, 55, 20))
-    fl.update(altitude=np.full(20, 10000))
+    fl.update(longitude=np.linspace(-29, -32, 20, dtype=float))
+    fl.update(latitude=np.linspace(54, 55, 20, dtype=float))
+    fl.update(altitude=np.full(20, 10000.0, dtype=float))
 
     # set all radiative forcing to 0
     rad2 = rad.copy()
@@ -155,9 +155,10 @@ def cocip_no_ef(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
 @pytest.fixture()
 def cocip_no_ef_lowmem(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     """Return `Cocip` instance evaluated on modified `fl` using low-memory interpolation."""
-    fl.update(longitude=np.linspace(-29, -32, 20))
-    fl.update(latitude=np.linspace(54, 55, 20))
-    fl.update(altitude=np.full(20, 10000))
+    fl.update(longitude=np.linspace(-29, -32, 20, dtype=float))
+    fl.update(latitude=np.linspace(54, 55, 20, dtype=float))
+    fl.update(altitude=np.full(20, 10000.0, dtype=float))
+
     rad2 = rad.copy()
     rad2.data["top_net_solar_radiation"] = xr.zeros_like(rad2.data["top_net_solar_radiation"])
     rad2.data["top_net_thermal_radiation"] = xr.zeros_like(rad2.data["top_net_thermal_radiation"])
@@ -175,9 +176,9 @@ def cocip_no_ef_lowmem(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
 @pytest.fixture()
 def cocip_no_ef_lowmem_indices(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
     """Return `Cocip` instance evaluated on modified `fl` using low-memory interp + indices."""
-    fl.update(longitude=np.linspace(-29, -32, 20))
-    fl.update(latitude=np.linspace(54, 55, 20))
-    fl.update(altitude=np.full(20, 10000))
+    fl.update(longitude=np.linspace(-29, -32, 20, dtype=float))
+    fl.update(latitude=np.linspace(54, 55, 20, dtype=float))
+    fl.update(altitude=np.full(20, 10000.0, dtype=float))
     rad2 = rad.copy()
     rad2.data["top_net_solar_radiation"] = xr.zeros_like(rad2.data["top_net_solar_radiation"])
     rad2.data["top_net_thermal_radiation"] = xr.zeros_like(rad2.data["top_net_thermal_radiation"])
@@ -594,15 +595,15 @@ def test_eval_setup(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
 
 def test_flight_overrides(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
     """Ensure flight keys not overwritten by `Cocip`."""
-    fl.update(longitude=np.linspace(-29, -32, 20))
-    fl.update(latitude=np.linspace(51, 58, 20))
-    fl.update(altitude=np.full(20, 10000))
+    fl.update(longitude=np.linspace(-29, -32, 20, dtype=float))
+    fl.update(latitude=np.linspace(51, 58, 20, dtype=float))
+    fl.update(altitude=np.full(20, 10000.0, dtype=float))
 
     # Add flight / met properties that override default inputs
     fl2 = fl.copy()
-    fl2["true_airspeed"] = np.full(fl2.size, 40)
-    fl2["segment_length"] = np.full(fl2.size, 10000)
-    fl2["air_temperature"] = np.full(fl2.size, 220)
+    fl2["true_airspeed"] = np.full(fl2.size, 40.0)
+    fl2["segment_length"] = np.full(fl2.size, 10000.0)
+    fl2["air_temperature"] = np.full(fl2.size, 220.0)
 
     # Here, fl1 has gaps > 40000 (default) between segments
     cocip = Cocip(
@@ -959,9 +960,9 @@ def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerform
 
     # Example flight
     df = pd.DataFrame()
-    df["longitude"] = np.linspace(-21, -40, 50)
-    df["latitude"] = np.linspace(51, 59, 50)
-    df["altitude"] = np.linspace(10900, 11000, 50)
+    df["longitude"] = np.linspace(-21, -40, 50, dtype=float)
+    df["latitude"] = np.linspace(51, 59, 50, dtype=float)
+    df["altitude"] = np.linspace(10900, 11000, 50, dtype=float)
     df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:30:00", periods=50)
 
     fl = Flight(data=df, attrs=attrs)
