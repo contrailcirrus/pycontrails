@@ -1350,27 +1350,30 @@ class ValidateTrajectoryHandler:
     def evaluate(self) -> list[Exception]:
         """Evaluate the flight trajectory for one or more violations."""
 
+        if self._df is None:
+            msg = "No trajectory dataframe has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
         all_violations: list[Exception] = []
 
         # Checks; Round 1
-        schema_check: None | SchemaError
         schema_check = self._is_valid_schema(self._df)
-        all_violations.append(schema_check) if schema_check else None
-        if all_violations:
-            return all_violations
+        if schema_check:
+            all_violations.append(schema_check)
 
         # Checks; Round 2
-        timestamp_ordering_check: None | OrderingError
         timestamp_ordering_check = self._is_timestamp_sorted()
-        (all_violations.append(timestamp_ordering_check) if timestamp_ordering_check else None)
+        if timestamp_ordering_check:
+            all_violations.append(timestamp_ordering_check)
 
-        invariant_fields_check: None | FlightInvariantFieldViolation
         invariant_fields_check = self._is_valid_invariant_fields()
-        (all_violations.append(invariant_fields_check) if invariant_fields_check else None)
+        if invariant_fields_check:
+            all_violations.append(invariant_fields_check)
 
-        duplicate_timestamps_check: None | FlightDuplicateTimestamps
         duplicate_timestamps_check = self._is_valid_duplicate_timestamps()
-        (all_violations.append(duplicate_timestamps_check) if duplicate_timestamps_check else None)
+        if duplicate_timestamps_check:
+            all_violations.append(duplicate_timestamps_check)
+
         # we escape here if there are violations for the above checks.
         # we do this because some of the following checks assume no invariant field violations,
         #   or timestamp dupes
