@@ -89,6 +89,22 @@ class MetBase(ABC, Generic[XArrayType]):
         "time",
     )
 
+    @classmethod
+    def _from_fastpath(cls, data: XArrayType, cachestore: CacheStore | None = None) -> Self:
+        """Create new instance from consistent data.
+
+        This is a low-level method that bypasses the standard constructor in certain
+        special cases. It is intended for internal use only.
+
+        In essence, this method skips any validation from __init__ and directly sets
+        ``data`` and ``attrs``. This is useful when creating a new instance from an existing
+        instance the data has already been validated.
+        """
+        obj = cls.__new__(cls)
+        obj.data = data
+        obj.cachestore = cachestore
+        return obj
+
     def __repr__(self) -> str:
         data = getattr(self, "data", None)
         return (
