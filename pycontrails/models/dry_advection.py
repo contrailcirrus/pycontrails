@@ -229,7 +229,7 @@ class DryAdvection(models.Model):
             width, depth, sigma_yz=0.0
         )
 
-        return GeoVectorDataset(self.source.select(columns, copy=False), copy=False)
+        return GeoVectorDataset._from_fastpath(self.source.select(columns, copy=False).data, {})
 
 
 def _perform_interp_for_step(
