@@ -37,6 +37,8 @@ logger = logging.getLogger(__name__)
 class AttrDict(dict[str, Any]):
     """Thin wrapper around dict to warn when setting a key that already exists."""
 
+    __slots__ = ()
+
     def __setitem__(self, k: str, v: Any) -> None:
         """Warn when setting values that already contain values.
 
