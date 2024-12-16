@@ -214,7 +214,7 @@ def generate_apcemm_input_met(
     )
 
     # Downselect met before interpolation
-    met = vector.downselect_met(met, copy=False)
+    met = vector.downselect_met(met)
 
     # Interpolate meteorology data onto vector
     scale_humidity = humidity_scaling is not None and "specific_humidity" not in vector
