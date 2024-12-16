@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import functools
+
 import numpy as np
 import pandas as pd
 
@@ -35,6 +37,7 @@ def _download_ourairports_csv() -> pd.DataFrame:
     )
 
 
+@functools.cache
 def global_airport_database(
     cachestore: cache.CacheStore | None = None, update_cache: bool = False
 ) -> pd.DataFrame:
