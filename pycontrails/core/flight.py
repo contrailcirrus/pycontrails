@@ -1419,7 +1419,7 @@ class Flight(GeoVectorDataset):
         return {"type": "FeatureCollection", "features": features}
 
     def to_traffic(self) -> traffic.core.Flight:
-        """Convert to :class:`traffic.core.Flight`instance.
+        """Convert to :class:`traffic.core.Flight` instance.
 
         Returns
         -------
