@@ -455,7 +455,7 @@ class Model(ABC):
             self.met = self.require_met()
 
             # Return dataset with the same coords as self.met, but empty data_vars
-            return MetDataset(xr.Dataset(coords=self.met.data.coords))
+            return MetDataset._from_fastpath(xr.Dataset(coords=self.met.data.coords))
 
         copy_source = self.params["copy_source"]
 
