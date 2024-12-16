@@ -1,19 +1,23 @@
-"""Custom exceptions."""
+"""Custom exceptions used for spire data validation."""
 
 
-class BadTrajectoryException(Exception):
+class BaseSpireError(Exception):
+    """Base class for all spire exceptions."""
+
+
+class BadTrajectoryException(BaseSpireError):
     """Exception indicating a trajectory (flight instance) is invalid."""
 
 
-class SchemaError(Exception):
+class SchemaError(BaseSpireError):
     """Data object is inconsistent with required schema."""
 
 
-class OrderingError(Exception):
+class OrderingError(BaseSpireError):
     """Data object has incorrect ordering."""
 
 
-class OriginAirportError(Exception):
+class OriginAirportError(BaseSpireError):
     """
     Trajectory is not originating at expected location.
 
@@ -22,37 +26,37 @@ class OriginAirportError(Exception):
     """
 
 
-class DestinationAirportError(Exception):
+class DestinationAirportError(BaseSpireError):
     """Trajectory is not terminating at expected location."""
 
 
-class FlightTooShortError(Exception):
+class FlightTooShortError(BaseSpireError):
     """Trajectory is unreasonably short in flight time."""
 
 
-class FlightTooLongError(Exception):
+class FlightTooLongError(BaseSpireError):
     """Trajectory is unreasonably long in flight time."""
 
 
-class FlightTooSlowError(Exception):
+class FlightTooSlowError(BaseSpireError):
     """Trajectory has period(s) of unrealistically slow speed."""
 
 
-class FlightTooFastError(Exception):
+class FlightTooFastError(BaseSpireError):
     """Trajectory has period(s) of unrealistically high speed."""
 
 
-class ROCDError(Exception):
+class ROCDError(BaseSpireError):
     """Trajectory has an unrealistic rate of climb or descent."""
 
 
-class FlightAltitudeProfileError(Exception):
+class FlightAltitudeProfileError(BaseSpireError):
     """Trajectory has an unrealistic rate of climb or descent."""
 
 
-class FlightDuplicateTimestamps(Exception):
+class FlightDuplicateTimestamps(BaseSpireError):
     """Trajectory contains waypoints with the same timestamp."""
 
 
-class FlightInvariantFieldViolation(Exception):
+class FlightInvariantFieldViolation(BaseSpireError):
     """Trajectory has multiple values for field(s) that should be invariant."""
