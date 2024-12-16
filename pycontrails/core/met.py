@@ -798,7 +798,7 @@ class MetDataset(MetBase):
                 "To get items (e.g. 'time' or 'level') from underlying xr.Dataset object, "
                 "use the 'data' attribute."
             ) from e
-        return MetDataArray(da, copy=False, validate=False)
+        return MetDataArray._from_fastpath(da)
 
     def get(self, key: str, default_value: Any = None) -> Any:
         """Shortcut to :meth:`data.get(k, v)` method.
