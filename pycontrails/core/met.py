@@ -648,6 +648,29 @@ class MetBase(ABC, Generic[XArrayType]):
             copy=copy,
         )
 
+    def wrap_longitude(self) -> Self:
+        """Wrap longitude coordinates.
+
+        Returns
+        -------
+        Self
+            Copy of instance with wrapped longitude values.
+            Returns copy of data when longitude values are already wrapped
+        """
+        return type(self)._from_fastpath(_wrap_longitude(self.data), cachestore=self.cachestore)
+
+    def copy(self) -> Self:
+        """Create a shallow copy of the current class.
+
+        See :meth:`xarray.Dataset.copy` for reference.
+
+        Returns
+        -------
+        Self
+            Copy of the current class
+        """
+        return type(self)._from_fastpath(self.data.copy(), cachestore=self.cachestore)
+
 
 class MetDataset(MetBase):
     """Meteorological dataset with multiple variables.
@@ -903,20 +926,6 @@ class MetDataset(MetBase):
     def size(self) -> int:
         return np.prod(self.shape).item()
 
-    def copy(self) -> MetDataset:
-        """Create a copy of the current class.
-
-        Returns
-        -------
-        MetDataset
-            MetDataset copy
-        """
-        return MetDataset(
-            self.data,
-            cachestore=self.cachestore,
-            copy=True,  # True by default, but being extra explicit
-        )
-
     def ensure_vars(
         self,
         vars: MetVariable | str | Sequence[MetVariable | str | Sequence[MetVariable]],
@@ -1030,20 +1039,6 @@ class MetDataset(MetBase):
         chunks = chunks or {}
         data = _load(hash, cachestore, chunks)
         return cls(data)
-
-    def wrap_longitude(self) -> MetDataset:
-        """Wrap longitude coordinates.
-
-        Returns
-        -------
-        MetDataset
-            Copy of MetDataset with wrapped longitude values.
-            Returns copy of current MetDataset when longitude values are already wrapped
-        """
-        return MetDataset(
-            _wrap_longitude(self.data),
-            cachestore=self.cachestore,
-        )
 
     @override
     def broadcast_coords(self, name: str) -> xr.DataArray:
@@ -1474,27 +1469,6 @@ class MetDataArray(MetBase):
     def shape(self) -> tuple[int, int, int, int]:
         # https://github.com/python/mypy/issues/1178
         return typing.cast(tuple[int, int, int, int], self.data.shape)
-
-    def copy(self) -> MetDataArray:
-        """Create a copy of the current class.
-
-        Returns
-        -------
-        MetDataArray
-            MetDataArray copy
-        """
-        return MetDataArray(self.data, cachestore=self.cachestore, copy=True)
-
-    def wrap_longitude(self) -> MetDataArray:
-        """Wrap longitude coordinates.
-
-        Returns
-        -------
-        MetDataArray
-            Copy of MetDataArray with wrapped longitude values.
-            Returns copy of current MetDataArray when longitude values are already wrapped
-        """
-        return MetDataArray(_wrap_longitude(self.data), cachestore=self.cachestore)
 
     @property
     def in_memory(self) -> bool:
