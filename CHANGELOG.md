@@ -4,11 +4,13 @@
 
 ### Features
 
-- This release brings a number of very minor performance improvements to the low-level pycontrails data structures (`VectorDataset` and `MetDataset`). Cumulatively, these changes should bring in a small but nontrivial speedup (~5%) when running a model such as `Cocip` or `DryAdvection` on a single `Flight` source. Core `Flight` methods such as `copy` and `filter` are now several times faster for typical use cases.
+- This release brings a number of very minor performance improvements to the low-level pycontrails data structures (`VectorDataset` and `MetDataset`). Cumulatively, these changes should bring in a small but nontrivial speedup (~5%) when running a model such as `Cocip` or `DryAdvection` on a single `Flight` source.
+  - Core `Flight` methods such as `copy`, `filter`, and `downselect_met` are now ~10x faster for typical use cases.
+  - Converting between `Fleet` and `Flight` instances via `Fleet.from_seq` and `Fleet.to_flight_list` are also ~5x faster.
 
 ### Breaking Changes
 
-- Remove the `copy` parameter in `GeovectorDataset.downselect_met`. This method always returns a view of the original dataset.
+- Remove the `copy` parameter from `GeovectorDataset.downselect_met`. This method always returns a view of the original dataset.
 - Remove the `validate` parameter in  the `MetDataArray` constructor. Input data is now always validated.
 
 ### Fixes
@@ -35,7 +37,7 @@
   1. If there is a shallow climb (ROCD < 500 ft/min), then always assume that the flight will climb at the next time step.
   1. If there is a shallow descent (-250 < ROCD < 0 ft/min), then always assume that the flight will descend at the final time step.
 
-  Conditions (3) to (6) is based on the logic that the aircraft will generally prefer to climb to a higher altitude as early as possible, and descend to a lower altitude as late as possible, because a higher altitude can reduce drag and fuel consumption.
+  Conditions (3) to (6) are based on the logic that the aircraft will generally prefer to climb to a higher altitude as early as possible, and descend to a lower altitude as late as possible, because a higher altitude can reduce drag and fuel consumption.
 
 ### Breaking changes
 
