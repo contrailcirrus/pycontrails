@@ -87,7 +87,7 @@ class VectorDataDict(dict[str, np.ndarray]):
     Parameters
     ----------
     data : dict[str, np.ndarray], optional
-        Dictionary input
+        Dictionary input. A shallow copy is always made.
     """
 
     __slots__ = ("_size",)
@@ -193,9 +193,9 @@ class VectorDataDict(dict[str, np.ndarray]):
         super().update(kwargs_arr)
 
     def _validate_array(self, arr: np.ndarray) -> None:
-        """Ensure that `arr` is compatible with instance.
+        """Ensure that ``arr`` is compatible (1 dimensional of equal size) with instance.
 
-        Set attribute `_size` if it has not yet been defined.
+        Set attribute ``_size`` if it has not yet been defined.
 
         Parameters
         ----------
@@ -205,7 +205,7 @@ class VectorDataDict(dict[str, np.ndarray]):
         Raises
         ------
         ValueError
-            If `arr` is not compatible with instance.
+            If ``arr`` is not compatible with instance.
         """
         if arr.ndim != 1:
             raise ValueError("All np.arrays must have dimension 1.")
@@ -218,21 +218,20 @@ class VectorDataDict(dict[str, np.ndarray]):
             self._size = arr.size
 
 
-def _empty_vector_dict(keys: Iterable[str]) -> VectorDataDict:
-    """Create instance of VectorDataDict with variables defined by `keys` and size 0.
+def _empty_vector_dict(keys: Iterable[str]) -> dict[str, np.ndarray]:
+    """Create a dictionary with keys defined by ``keys`` and empty arrays.
 
     Parameters
     ----------
     keys : Iterable[str]
-        Keys to include in empty VectorDataset instance.
+        Keys to include in dictionary.
 
     Returns
     -------
-    VectorDataDict
-        Empty :class:`VectorDataDict` instance.
+    dict[str, np.ndarray]
+        Dictionary with empty arrays.
     """
-    keys = keys or ()
-    data = VectorDataDict({key: np.array([]) for key in keys})
+    data = {key: np.array([]) for key in keys}
 
     # The default dtype is float64
     # Time is special and should have a non-default dtype of datetime64[ns]
@@ -247,14 +246,15 @@ class VectorDataset:
 
     Parameters
     ----------
-    data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
-        Initial data, by default None
-    attrs : dict[str, Any] | AttrDict, optional
-        Dictionary of attributes, by default None
+    data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataset | None, optional
+        Initial data, by default None. A shallow copy is always made. Use the ``copy``
+        parameter to copy the underlying array data.
+    attrs : dict[str, Any] | None, optional
+        Dictionary of attributes, by default None. A shallow copy is always made.
     copy : bool, optional
-        Copy data on class creation, by default True
+        Copy individual arrays on instantiation, by default True.
     **attrs_kwargs : Any
-        Additional attributes passed as keyword arguments
+        Additional attributes passed as keyword arguments.
 
     Raises
     ------
@@ -264,19 +264,17 @@ class VectorDataset:
 
     __slots__ = ("attrs", "data")
 
-    #: Vector data with labels as keys and :class:`numpy.ndarray` as values
-    data: VectorDataDict
-
     #: Generic dataset attributes
     attrs: AttrDict
 
+    #: Vector data with labels as keys and :class:`numpy.ndarray` as values
+    data: VectorDataDict
+
     def __init__(
         self,
-        data: (
-            dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None
-        ) = None,
+        data: dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataset | None = None,
         *,
-        attrs: dict[str, Any] | AttrDict | None = None,
+        attrs: dict[str, Any] | None = None,
         copy: bool = True,
         **attrs_kwargs: Any,
     ) -> None:
@@ -1218,7 +1216,7 @@ class GeoVectorDataset(VectorDataset):
 
     Parameters
     ----------
-    data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None, optional
+    data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataset | None, optional
         Data dictionary or :class:`pandas.DataFrame` .
         Must include keys/columns ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``.
         Keyword arguments for ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``
@@ -1271,9 +1269,7 @@ class GeoVectorDataset(VectorDataset):
 
     def __init__(
         self,
-        data: (
-            dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None
-        ) = None,
+        data: dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataset | None = None,
         *,
         longitude: npt.ArrayLike | None = None,
         latitude: npt.ArrayLike | None = None,
@@ -1281,7 +1277,7 @@ class GeoVectorDataset(VectorDataset):
         altitude_ft: npt.ArrayLike | None = None,
         level: npt.ArrayLike | None = None,
         time: npt.ArrayLike | None = None,
-        attrs: dict[str, Any] | AttrDict | None = None,
+        attrs: dict[str, Any] | None = None,
         copy: bool = True,
         **attrs_kwargs: Any,
     ) -> None:
