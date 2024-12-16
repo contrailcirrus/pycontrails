@@ -1314,7 +1314,10 @@ class GeoVectorDataset(VectorDataset):
             and time is None
         ):
             keys = *self.required_keys, "altitude"
-            data = _empty_vector_dict(keys)
+            self.data = VectorDataDict(_empty_vector_dict(keys))
+            self.attrs = AttrDict(attrs or {})  # type: ignore[arg-type]
+            self.attrs.update(attrs_kwargs)
+            return
 
         super().__init__(data=data, attrs=attrs, copy=copy, **attrs_kwargs)
 
