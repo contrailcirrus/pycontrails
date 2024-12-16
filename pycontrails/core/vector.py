@@ -279,8 +279,8 @@ class VectorDataset:
         copy: bool = True,
         **attrs_kwargs: Any,
     ) -> None:
-        # Set data
-        # --------
+        # Set data: always shallow copy
+        # -----------------------------
 
         # Casting from one VectorDataset type to another
         # e.g., flight = Flight(...); vector = VectorDataset(flight)
@@ -289,7 +289,7 @@ class VectorDataset:
             if copy:
                 self.data = VectorDataDict({k: v.copy() for k, v in data.data.items()})
             else:
-                self.data = data.data
+                self.data = VectorDataDict(data.data)
 
         elif data is None:
             self.data = VectorDataDict()
@@ -308,30 +308,14 @@ class VectorDataset:
                 data["time"] = time.to_numpy(copy=copy)
                 self.data = VectorDataDict(data)
 
-        elif isinstance(data, VectorDataDict):
-            if copy:
-                self.data = VectorDataDict({k: v.copy() for k, v in data.items()})
-            else:
-                self.data = data
-
         # For anything else, we assume it is a dictionary of array-like and attach it
         else:
             self.data = VectorDataDict({k: np.array(v, copy=copy) for k, v in data.items()})
 
-        # Set attributes
-        # --------------
+        # Set attributes: always shallow copy
+        # -----------------------------------
 
-        if attrs is None:
-            self.attrs = AttrDict()
-
-        elif isinstance(attrs, AttrDict) and not copy:
-            self.attrs = attrs
-
-        #  shallow copy if dict
-        else:
-            self.attrs = AttrDict(attrs.copy())
-
-        # update with kwargs
+        self.attrs = AttrDict(attrs or {})  # type: ignore[arg-type]
         self.attrs.update(attrs_kwargs)
 
     # ------------
