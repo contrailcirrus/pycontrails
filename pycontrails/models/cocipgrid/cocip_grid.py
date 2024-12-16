@@ -615,7 +615,7 @@ class CocipGrid(models.Model):
             for idx, time in enumerate(times_in_filt):
                 # For now, sticking with the convention that every vector should
                 # have a constant time value.
-                source_slice = MetDataset(self.source.data.sel(time=[time]))
+                source_slice = MetDataset._from_fastpath(self.source.data.sel(time=[time]))
 
                 # Convert the 4D grid to a vector
                 vector = source_slice.to_vector()
@@ -2548,7 +2548,7 @@ def _maybe_downselect_mds(
         i0 = max(0, i0 - 1)
         i1 = np.searchsorted(big_time, t1, side="left").item()
         i1 = min(i1 + 1, big_time.size)
-        return MetDataset(big_mds.data.isel(time=slice(i0, i1)), copy=False)
+        return MetDataset._from_fastpath(big_mds.data.isel(time=slice(i0, i1)))
 
     j0 = np.searchsorted(little_time, t0, side="right").item()
     j0 = max(0, j0 - 1)
@@ -2560,7 +2560,7 @@ def _maybe_downselect_mds(
     little_time1 = little_time[j1 - 1]
 
     if t0 >= little_time0 and t1 <= little_time1:
-        return MetDataset(little_ds, copy=False)
+        return MetDataset._from_fastpath(little_ds)
 
     ds_concat = []
     if t0 < little_time0:  # unlikely to encounter this case
@@ -2581,4 +2581,4 @@ def _maybe_downselect_mds(
 
     # If little_mds is loaded into memory but big_mds is not,
     # the concat operation below will load the slice of big_mds into memory.
-    return MetDataset(xr.concat(ds_concat, dim="time"), copy=False)
+    return MetDataset._from_fastpath(xr.concat(ds_concat, dim="time"))
