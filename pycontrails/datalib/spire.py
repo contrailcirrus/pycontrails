@@ -793,7 +793,7 @@ class ValidateTrajectoryHandler:
         "altitude_baro": pdtypes.is_numeric_dtype,
     }
 
-    airports_db = airports.global_airport_database()
+    airports_db: pd.DataFrame | None = None
 
     def __init__(self):
         self._df: pd.DataFrame | None = None
@@ -841,6 +841,9 @@ class ValidateTrajectoryHandler:
 
         if not isinstance(airport_icao, str):
             return np.nan, np.nan, np.nan
+
+        if cls.airports_db is None:
+            cls.airports_db = airports.global_airport_database()
 
         matches = cls.airports_db[cls.airports_db["icao_code"] == airport_icao]
         if len(matches) == 0:
