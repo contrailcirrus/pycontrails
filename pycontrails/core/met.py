@@ -1880,12 +1880,12 @@ class MetDataArray(MetBase):
 
         return self.data.sum().values.item() / self.data.count().values.item()  # type: ignore[operator]
 
-    def find_edges(self) -> MetDataArray:
+    def find_edges(self) -> Self:
         """Find edges of regions.
 
         Returns
         -------
-        MetDataArray
+        Self
             MetDataArray with a binary field, 1 on the edge of the regions,
             0 outside and inside the regions.
 
@@ -1916,7 +1916,7 @@ class MetDataArray(MetBase):
         self.data.load()
 
         data = self.data.groupby("level", squeeze=False).map(_edges)
-        return MetDataArray(data, cachestore=self.cachestore)
+        return type(self)(data, cachestore=self.cachestore)
 
     def to_polygon_feature(
         self,
