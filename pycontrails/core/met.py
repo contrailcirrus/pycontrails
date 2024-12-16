@@ -1322,8 +1322,12 @@ class MetDataset(MetBase):
 class MetDataArray(MetBase):
     """Meteorological DataArray of single variable.
 
-    Wrapper around xr.DataArray to enforce certain
+    Wrapper around :class:`xarray.DataArray` to enforce certain
     variables and dimensions for internal usage.
+
+    .. versionchanged:: 0.54.4
+
+        Remove ``validate`` parameter. Validation is now always performed.
 
     Parameters
     ----------
@@ -1342,15 +1346,8 @@ class MetDataArray(MetBase):
         Copy `data` parameter on construction, by default `True`. If `data` is lazy-loaded
         via `dask`, this parameter has no effect. If `data` is already loaded into memory,
         a copy of the data (rather than a view) may be created if `True`.
-    validate : bool, optional
-        Confirm that the parameter `data` has correct specification. This automatically handled
-        in the case that `copy=True`. Validation only introduces a very small overhead.
-        This parameter should only be set to `False` if working with data derived from an
-        existing MetDataset or :class`MetDataArray`. By default `True`.
     name : Hashable, optional
         Name of the data variable. If not specified, the name will be set to "met".
-    **kwargs
-        To be removed in future versions. Passed directly to xr.DataArray constructor.
 
     Examples
     --------
@@ -1390,7 +1387,6 @@ class MetDataArray(MetBase):
         cachestore: CacheStore | None = None,
         wrap_longitude: bool = False,
         copy: bool = True,
-        validate: bool = True,
         name: Hashable | None = None,
     ) -> None:
         self.cachestore = cachestore
@@ -1398,16 +1394,14 @@ class MetDataArray(MetBase):
         if copy:
             self.data = data.copy()
             self._preprocess_dims(wrap_longitude)
+        elif wrap_longitude:
+            raise ValueError("Set 'copy=True' when using 'wrap_longitude=True'.")
         else:
-            if wrap_longitude:
-                raise ValueError("Set 'copy=True' when using 'wrap_longitude=True'.")
             self.data = data
-            if validate:
-                self._validate_dims()
+            self._validate_dims()
 
         # Priority: name > data.name > "met"
-        name = name or self.data.name or "met"
-        self.data.name = name
+        self.data.name = name or self.data.name or "met"
 
     @property
     def values(self) -> np.ndarray:
