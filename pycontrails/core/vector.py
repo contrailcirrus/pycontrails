@@ -8,7 +8,7 @@ import logging
 import sys
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
-from typing import Any, overload
+from typing import Any, final, overload
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -629,6 +629,7 @@ class VectorDataset:
 
         return type(self).sum((self, other))
 
+    @final
     @classmethod
     def sum(
         cls,
