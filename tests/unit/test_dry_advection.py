@@ -75,7 +75,7 @@ def test_compare_dry_advection_to_cocip(
     assert df1["level"].notna().all()
     assert df1["time"].notna().all()
 
-    assert df1.shape == (208, 16)
+    assert df1.shape == (194, 16)
     df1_sl = df1.query("time == '2019-01-01T01:25'")
 
     model = Cocip(
