@@ -112,5 +112,6 @@ c_r: float = 0.9
 # Flight
 # ------
 
-#: Nominal rate of climb/descent of aircraft [:math:`m \ s^{-1}``]
+#: Nominal rate of climb/descent of aircraft [:math:`m \ s^{-1}`].
+#: Note [:math:`12.7 m \ s^{-1} = 2500 ft \ min^{-1}`].
 nominal_rocd: float = 12.7
