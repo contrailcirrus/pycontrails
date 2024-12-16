@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.54.5
+
+### Features
+
+- This release brings a number of very minor performance improvements to the low-level pycontrails data structures (`VectorDataset` and `MetDataset`). Cumulatively, these changes should bring in a small but nontrivial speedup (~5%) when running a model such as `Cocip` or `DryAdvection` on a single `Flight` source. Core `Flight` methods such as `copy` and `filter` are now several times faster for typical use cases.
+
+### Breaking Changes
+
+- Remove the `copy` parameter in `GeovectorDataset.downselect_met`. This method always returns a view of the original dataset.
+- Remove the `validate` parameter in  the `MetDataArray` constructor. Input data is now always validated.
+
+### Fixes
+
+- Make slightly more explicit when data is copied in the `VectorDataset` constructor: data is now always shallow-copied, and the `copy` parameter governs whether to copy the underlying arrays.
+- Call `downselect_met` in `DryAdvection.eval`. (This was previously forgotten.)
+
+### Internals
+
+- Add internal `VectorDataset._from_fastpath` and `MetDataset._from_fastpath` class methods to skip data validation.
+- Define `__slots__` on `MetBase`, `MetDataset`, `MetDataArray`, and `AttrDict`.
+- When `MetDataset` and `MetDataArray` shared a common implementation, move the implementation to `MetBase`. This was the case for the `copy`, `downselect`, and `wrap_longitude` methods.
+
 ## v0.54.4
 
 ### Features
