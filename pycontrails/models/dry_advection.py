@@ -127,6 +127,7 @@ class DryAdvection(models.Model):
         self.update_params(params)
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
+        self.downselect_met()
 
         self.source = self._prepare_source()
 
