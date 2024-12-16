@@ -1402,7 +1402,7 @@ def simulate_wake_vortex_downwash(
 
     # Experimental segment-free model
     if _is_segment_free_mode(vector):
-        return GeoVectorDataset(data, attrs=vector.attrs, copy=True)
+        return GeoVectorDataset._from_fastpath(data, attrs=vector.attrs).copy()
 
     # Stored in `_generate_new_grid_vectors`
     data["longitude_head"] = vector["longitude_head"]
@@ -1421,7 +1421,7 @@ def simulate_wake_vortex_downwash(
         # segment_length variable.
         data["segment_length"] = np.full_like(data["longitude"], segment_length)
 
-    return GeoVectorDataset(data, attrs=vector.attrs, copy=True)
+    return GeoVectorDataset._from_fastpath(data, attrs=vector.attrs).copy()
 
 
 def find_initial_persistent_contrails(
@@ -2022,7 +2022,7 @@ def advect(
         assert _is_segment_free_mode(contrail)
         assert dt_tail is None
         assert dt_head is None
-        return GeoVectorDataset(data, attrs=contrail.attrs, copy=True)
+        return GeoVectorDataset._from_fastpath(data, attrs=contrail.attrs).copy()
 
     longitude_head = contrail["longitude_head"]
     latitude_head = contrail["latitude_head"]
@@ -2064,7 +2064,7 @@ def advect(
     data["segment_length"] = segment_length_t2
     data["head_tail_dt"] = head_tail_dt_t2
 
-    return GeoVectorDataset(data, attrs=contrail.attrs, copy=True)
+    return GeoVectorDataset._from_fastpath(data, attrs=contrail.attrs).copy()
 
 
 def _aggregate_ef_summary(vector_list: list[VectorDataset]) -> VectorDataset | None:
