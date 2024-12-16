@@ -132,8 +132,8 @@ class VectorDataDict(dict[str, np.ndarray]):
     def __delitem__(self, k: str) -> None:
         super().__delitem__(k)
 
-        # if not data keys left, set size to 0
-        if not len(self):
+        # if no keys remain, delete _size attribute
+        if not self:
             del self._size
 
     def setdefault(self, k: str, default: npt.ArrayLike | None = None) -> np.ndarray:
@@ -211,11 +211,12 @@ class VectorDataDict(dict[str, np.ndarray]):
             raise ValueError("All np.arrays must have dimension 1.")
 
         size = getattr(self, "_size", 0)
-        if size != 0:
-            if arr.size != size:
-                raise ValueError(f"Incompatible array sizes: {arr.size} and {size}.")
-        else:
+        if not size:
             self._size = arr.size
+            return
+
+        if arr.size != size:
+            raise ValueError(f"Incompatible array sizes: {arr.size} and {size}.")
 
 
 def _empty_vector_dict(keys: Iterable[str]) -> dict[str, np.ndarray]:
