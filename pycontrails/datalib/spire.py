@@ -795,7 +795,7 @@ class ValidateTrajectoryHandler:
 
     airports_db: pd.DataFrame | None = None
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._df: pd.DataFrame | None = None
 
     def set(self, trajectory: pd.DataFrame) -> None:
@@ -828,13 +828,14 @@ class ValidateTrajectoryHandler:
 
         Parameters
         ----------
-        airport_icao
+        airport_icao : str | None
             string representation of the airport's icao code
 
         Returns
         -------
-        (latitude, longitude, alt_ft) of the airport.
-        Returns (np.nan, np.nan, np.nan) if it cannot be found.
+        tuple[float, float, float]
+            (latitude, longitude, alt_ft) of the airport.
+            Returns (np.nan, np.nan, np.nan) if it cannot be found.
         """
 
         if not isinstance(airport_icao, str):
@@ -1032,6 +1033,10 @@ class ValidateTrajectoryHandler:
 
         These additional fields are needed to apply the validation ruleset.
         """
+        if self._df is None:
+            msg = "No trajectory dataframe has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
         self._df = self._df.assign(
             elapsed_seconds=[
                 self._rolling_time_delta_seconds(window) for window in self._df.rolling(window=2)
@@ -1194,7 +1199,7 @@ class ValidateTrajectoryHandler:
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
 
-    def _is_too_slow(self) -> list[FlightTooSlowError] | None:
+    def _is_too_slow(self) -> list[FlightTooSlowError]:
         """
         Evaluate the flight trajectory for unreasonably slow speed.
 
@@ -1251,8 +1256,7 @@ class ValidateTrajectoryHandler:
                 )
             )
 
-        if len(violations) > 0:
-            return violations
+        return violations
 
     def _is_too_fast(self) -> FlightTooFastError | None:
         """
@@ -1271,9 +1275,7 @@ class ValidateTrajectoryHandler:
                 f"min value: {min(above_inst_thresh['ground_speed_m_s'])},"
             )
 
-    def _is_expected_altitude_profile(
-        self,
-    ) -> list[FlightAltitudeProfileError | ROCDError] | None:
+    def _is_expected_altitude_profile(self) -> list[FlightAltitudeProfileError | ROCDError]:
         """
         Evaluate flight altitude profile.
 
@@ -1316,8 +1318,7 @@ class ValidateTrajectoryHandler:
                 )
             )
 
-        if len(violations) > 0:
-            return violations
+        return violations
 
     @property
     def validation_df(self) -> pd.DataFrame:
@@ -1379,28 +1380,26 @@ class ValidateTrajectoryHandler:
         # Checks; Round 3
         self._calculate_additional_fields()
 
-        flight_length_check: None | FlightTooShortError | FlightTooLongError
         flight_length_check = self._is_valid_flight_length()
-        all_violations.append(flight_length_check) if flight_length_check else None
+        if flight_length_check:
+            all_violations.append(flight_length_check)
 
-        origin_airport_check: None | OriginAirportError
         origin_airport_check = self._is_from_origin_airport()
-        all_violations.append(origin_airport_check) if origin_airport_check else None
+        if origin_airport_check:
+            all_violations.append(origin_airport_check)
 
-        destination_airport_check: None | DestinationAirportError
         destination_airport_check = self._is_to_destination_airport()
-        (all_violations.append(destination_airport_check) if destination_airport_check else None)
+        if destination_airport_check:
+            all_violations.append(destination_airport_check)
 
-        slow_speed_check: None | list[FlightTooSlowError]
         slow_speed_check = self._is_too_slow()
-        all_violations.extend(slow_speed_check) if slow_speed_check else None
+        all_violations.extend(slow_speed_check)
 
-        fast_speed_check: None | FlightTooFastError
         fast_speed_check = self._is_too_fast()
-        all_violations.append(fast_speed_check) if fast_speed_check else None
+        if fast_speed_check:
+            all_violations.append(fast_speed_check)
 
-        altitude_profile_check: None | list[FlightAltitudeProfileError | ROCDError]
         altitude_profile_check = self._is_expected_altitude_profile()
-        (all_violations.extend(altitude_profile_check) if altitude_profile_check else None)
+        all_violations.extend(altitude_profile_check)
 
         return all_violations

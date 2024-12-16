@@ -94,7 +94,7 @@ def global_airport_database(
     airports = airports.rename(
         columns={"latitude_deg": "latitude", "longitude_deg": "longitude", "gps_code": "icao_code"},
     )
-    airports.fillna({"elevation_ft": 0}, inplace=True)
+    airports.fillna({"elevation_ft": 0.0}, inplace=True)
 
     # Keep specific airport types used by commercial aviation
     subset = ("large_airport", "medium_airport", "small_airport", "heliport")
