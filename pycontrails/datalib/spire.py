@@ -11,6 +11,7 @@ import pandas.api.types as pdtypes
 from pycontrails.core import airports, flight
 from pycontrails.datalib.exceptions import (
     BadTrajectoryException,
+    BaseSpireError,
     DestinationAirportError,
     FlightAltitudeProfileError,
     FlightDuplicateTimestamps,
@@ -1034,7 +1035,7 @@ class ValidateTrajectoryHandler:
         These additional fields are needed to apply the validation ruleset.
         """
         if self._df is None:
-            msg = "No trajectory dataframe has been set. Call set() before calling this method."
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
             raise ValueError(msg)
 
         self._df = self._df.assign(
@@ -1082,35 +1083,48 @@ class ValidateTrajectoryHandler:
             arrival_airport_dist_m=self._df.apply(self._calc_dist_to_arrival_airport, axis=1),
         )
 
-    @classmethod
-    def _is_valid_schema(cls, df: pd.DataFrame) -> SchemaError | None:
+    def _is_valid_schema(self) -> SchemaError | None:
         """Verify that a pandas dataframe has required cols, and that they are of required type."""
-        col_types = df.dtypes
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
+        col_types = self._df.dtypes
         cols = set(col_types.index)
 
-        missing_cols = [i for i in cls.SCHEMA if i not in cols]
+        missing_cols = [i for i in self.SCHEMA if i not in cols]
         if missing_cols:
             return SchemaError(f"trajectory dataframe is missing expected fields: {missing_cols}")
 
         col_w_bad_dtypes = []
-        for col, check_fn in cls.SCHEMA.items():
+        for col, check_fn in self.SCHEMA.items():
             is_valid = check_fn(col_types[col])
             if not is_valid:
                 col_w_bad_dtypes.append(f"{col} failed check {check_fn.__name__}")
 
         if col_w_bad_dtypes:
-            return SchemaError(
-                f"trajectory dataframe has columns with invalid data types. "
-                f"\n {col_w_bad_dtypes}"
-            )
+            msg = f"Trajectory DataFrame has columns with invalid data types: {col_w_bad_dtypes}"
+            return SchemaError(msg)
 
-    def _is_timestamp_sorted(self) -> OrderingError | None:
+    def _is_timestamp_sorted_and_unique(self) -> list[OrderingError | FlightDuplicateTimestamps]:
         """Verify that the data is sorted by waypoint timestamp in ascending order."""
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
+        violations: list[OrderingError | FlightDuplicateTimestamps] = []
+
         ts_index = pd.Index(self._df["timestamp"])
         if not ts_index.is_monotonic_increasing:
-            return OrderingError(
-                "trajectory dataframe must be sorted by timestamp in ascending order."
-            )
+            msg = "Trajectory DataFrame must be sorted by timestamp in ascending order."
+            violations.append(OrderingError(msg))
+
+        if ts_index.has_duplicates:
+            n_duplicates = ts_index.duplicated().sum()
+            msg = f"Trajectory DataFrame has {n_duplicates} duplicate timestamps."
+            violations.append(FlightDuplicateTimestamps(msg))
+
+        return violations
 
     def _is_valid_invariant_fields(self) -> FlightInvariantFieldViolation | None:
         """
@@ -1118,7 +1132,11 @@ class ValidateTrajectoryHandler:
 
         Presence of null values does not constitute an invariance violation.
         """
-        invariant_fields = [
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
+        invariant_fields = (
             "icao_address",
             "flight_id",
             "callsign",
@@ -1129,27 +1147,16 @@ class ValidateTrajectoryHandler:
             "departure_scheduled_time",
             "arrival_airport_icao",
             "arrival_scheduled_time",
-        ]
+        )
 
         violations = []
         for k in invariant_fields:
-            if self._df[k].nunique() > 1:
+            if self._df[k].nunique(dropna=True) > 1:
                 violations.append(k)
 
-        if len(violations) > 0:
-            return FlightInvariantFieldViolation(
-                f"the following fields have multiple values for this trajectory. " f"{violations}"
-            )
-
-    def _is_valid_duplicate_timestamps(self) -> FlightDuplicateTimestamps | None:
-        """Verify that we do not have duplicate timestamps in the trajectory."""
-        timestamp_dupe_cnt = self._df["timestamp"].duplicated().sum()
-        if timestamp_dupe_cnt > 0:
-            return FlightDuplicateTimestamps(
-                f"duplicate waypoint timestamps found in "
-                f"this trajectory. "
-                f"found {timestamp_dupe_cnt} duplicates."
-            )
+        if violations:
+            msg = f"The following fields have multiple values for this trajectory: {violations}"
+            return FlightInvariantFieldViolation(msg)
 
     def _is_valid_flight_length(
         self,
@@ -1172,13 +1179,17 @@ class ValidateTrajectoryHandler:
 
     def _is_from_origin_airport(self) -> OriginAirportError | None:
         """Verify that the trajectory origin is a reasonable distance from the origin airport."""
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
         first_waypoint = self._df.iloc[0]
         first_waypoint_dist_km = first_waypoint["departure_airport_dist_m"] / 1000.0
         if first_waypoint_dist_km > self.AIRPORT_DISTANCE_THRESHOLD_KM:
             return OriginAirportError(
-                f"first waypoint in trajectory too far from departure airport icao: "
+                "First waypoint in trajectory too far from departure airport icao: "
                 f"{first_waypoint['departure_airport_icao']}. "
-                f"distance {first_waypoint_dist_km}km is greater than "
+                f"Distance {first_waypoint_dist_km}km is greater than "
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
 
@@ -1189,15 +1200,20 @@ class ValidateTrajectoryHandler:
         We do not assume that the destination airports are invariant in the dataframe,
         thus we handle the case of multiple airports listed.
         """
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
         last_waypoint = self._df.iloc[-1]
         last_waypoint_dist_km = last_waypoint["arrival_airport_dist_m"] / 1000.0
         if last_waypoint_dist_km > self.AIRPORT_DISTANCE_THRESHOLD_KM:
-            return DestinationAirportError(
-                f"last waypoint in trajectory too far from arrival airport icao: "
-                f"{last_waypoint['arrival_airport_icao']}."
-                f"distance {last_waypoint_dist_km}km is greater than "
+            msg = (
+                "Last waypoint in trajectory too far from arrival airport icao: "
+                f"{last_waypoint['arrival_airport_icao']}. "
+                f"Distance {last_waypoint_dist_km}km is greater than "
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
+            return DestinationAirportError(msg)
 
     def _is_too_slow(self) -> list[FlightTooSlowError]:
         """
@@ -1347,36 +1363,30 @@ class ValidateTrajectoryHandler:
         self._calculate_additional_fields()
         return self._df
 
-    def evaluate(self) -> list[Exception]:
+    def evaluate(self) -> list[BaseSpireError]:
         """Evaluate the flight trajectory for one or more violations."""
-
         if self._df is None:
-            msg = "No trajectory dataframe has been set. Call set() before calling this method."
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
             raise ValueError(msg)
 
-        all_violations: list[Exception] = []
+        all_violations: list[BaseSpireError] = []
 
         # Checks; Round 1
-        schema_check = self._is_valid_schema(self._df)
+        schema_check = self._is_valid_schema()
         if schema_check:
             all_violations.append(schema_check)
 
         # Checks; Round 2
-        timestamp_ordering_check = self._is_timestamp_sorted()
-        if timestamp_ordering_check:
-            all_violations.append(timestamp_ordering_check)
+        timestamp_check = self._is_timestamp_sorted_and_unique()
+        all_violations.extend(timestamp_check)
 
         invariant_fields_check = self._is_valid_invariant_fields()
         if invariant_fields_check:
             all_violations.append(invariant_fields_check)
 
-        duplicate_timestamps_check = self._is_valid_duplicate_timestamps()
-        if duplicate_timestamps_check:
-            all_violations.append(duplicate_timestamps_check)
-
         # we escape here if there are violations for the above checks.
         # we do this because some of the following checks assume no invariant field violations,
-        #   or timestamp dupes
+        # or timestamp dupes
         if all_violations:
             return all_violations
 
