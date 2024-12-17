@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -774,7 +775,7 @@ class ValidateTrajectoryHandler:
     MAX_FLIGHT_LENGTH_HR = 19.0
 
     # expected schema of pandas dataframe passed on initialization
-    SCHEMA = {
+    SCHEMA: ClassVar = {
         "icao_address": pdtypes.is_string_dtype,
         "flight_id": pdtypes.is_string_dtype,
         "callsign": pdtypes.is_string_dtype,
@@ -807,14 +808,15 @@ class ValidateTrajectoryHandler:
         ----------
         trajectory
             A dataframe representing a single flight trajectory.
-            Must include those columns itemized in ValidateTrajectoryHandler.SCHEMA.
+            Must include those columns itemized in :attr:`SCHEMA`.
         """
-        if len(trajectory) == 0:
-            raise BadTrajectoryException("flight trajectory is empty.")
-        if trajectory["flight_id"].nunique() > 1:
-            raise Exception(
-                "dataset passed to handler must be for a single flight instance (" "flight_id)."
-            )
+        if trajectory.empty:
+            msg = "The trajectory DataFrame is empty."
+            raise BadTrajectoryException(msg)
+        n_unique = trajectory["flight_id"].nunique()
+        if n_unique > 1:
+            msg = f"The trajectory DataFrame must have a unique flight_id. Found {n_unique}."
+            raise BadTrajectoryException(msg)
 
         self._df = trajectory.copy(deep=True)
 
@@ -849,9 +851,8 @@ class ValidateTrajectoryHandler:
         if len(matches) == 0:
             return np.nan, np.nan, np.nan
         if len(matches) > 1:
-            raise ValueError(
-                f"found multiple matches for aiport icao {airport_icao} in airports database."
-            )
+            msg = f"Found multiple matches for aiport icao {airport_icao} in airports database."
+            raise ValueError(msg)
 
         lat = matches["latitude"].iloc[0].item()
         lon = matches["longitude"].iloc[0].item()
@@ -1094,7 +1095,7 @@ class ValidateTrajectoryHandler:
 
         missing_cols = [i for i in self.SCHEMA if i not in cols]
         if missing_cols:
-            return SchemaError(f"trajectory dataframe is missing expected fields: {missing_cols}")
+            return SchemaError(f"Trajectory DataFrame is missing expected fields: {missing_cols}")
 
         col_w_bad_dtypes = []
         for col, check_fn in self.SCHEMA.items():
@@ -1103,8 +1104,9 @@ class ValidateTrajectoryHandler:
                 col_w_bad_dtypes.append(f"{col} failed check {check_fn.__name__}")
 
         if col_w_bad_dtypes:
-            msg = f"Trajectory DataFrame has columns with invalid data types: {col_w_bad_dtypes}"
-            return SchemaError(msg)
+            return SchemaError(
+                f"Trajectory DataFrame has columns with invalid data types: {col_w_bad_dtypes}"
+            )
 
     def _is_timestamp_sorted_and_unique(self) -> list[OrderingError | FlightDuplicateTimestamps]:
         """Verify that the data is sorted by waypoint timestamp in ascending order."""
@@ -1280,15 +1282,19 @@ class ValidateTrajectoryHandler:
 
         This is evaluated on instantaneous discrete steps between consecutive waypoints.
         """
-        above_inst_thresh = self._df[
-            self._df["ground_speed_m_s"] >= self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS
-        ]
-        if len(above_inst_thresh) > 0:
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
+        filt = self._df["ground_speed_m_s"] >= self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS
+
+        if filt.any():
+            above_inst_thresh = self._df[filt]
             return FlightTooFastError(
-                f"found {len(above_inst_thresh)} instances where speed between waypoints is "
-                f"above threshold of {self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS} m/s"
-                f" max value: {max(above_inst_thresh['ground_speed_m_s'])}, "
-                f"min value: {min(above_inst_thresh['ground_speed_m_s'])},"
+                f"Found {len(above_inst_thresh)} instances where speed between waypoints is "
+                f"above threshold of {self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS} m/s. "
+                f"max value: {above_inst_thresh['ground_speed_m_s'].max()}, "
+                f"min value: {above_inst_thresh['ground_speed_m_s'].min()}"
             )
 
     def _is_expected_altitude_profile(self) -> list[FlightAltitudeProfileError | ROCDError]:
@@ -1305,34 +1311,34 @@ class ValidateTrajectoryHandler:
         2) rate of instantaneous (between consecutive waypoint) climb or descent is above threshold,
            while aircraft is above the cruise altitude.
         """
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
 
         violations: list[FlightAltitudeProfileError | ROCDError] = []
 
         # only evaluate rocd errors when at cruising altitude
-        rocd_above_thres = self._df[
-            (self._df["rocd_fps"].abs() >= self.CRUISE_ROCD_THRESHOLD_FPS)
-            & (self._df["altitude_baro"] > self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT)
-        ]
-        if len(rocd_above_thres) > 0:
-            violations.append(
-                ROCDError(
-                    f"flight trajectory has rate of climb/descent values "
-                    "between consecutive waypoints that exceed threshold "
-                    f"of {self.CRUISE_ROCD_THRESHOLD_FPS} ft/sec. "
-                    f"Max value found: {np.nanmax(self._df['rocd_fps'].abs())}"
-                )
+        rocd_above_thres = (self._df["rocd_fps"].abs() >= self.CRUISE_ROCD_THRESHOLD_FPS) & (
+            self._df["altitude_baro"] > self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT
+        )
+        if rocd_above_thres.any():
+            msg = (
+                "Flight trajectory has rate of climb/descent values "
+                "between consecutive waypoints that exceed threshold "
+                f"of {self.CRUISE_ROCD_THRESHOLD_FPS} ft/sec. "
+                f"Max value found: {np.nanmax(self._df['rocd_fps'].abs())}"
             )
+            violations.append(ROCDError(msg))
 
         alt_below_thresh = self._df["altitude_baro"] <= self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT
         alt_thresh_transitions = alt_below_thresh.rolling(window=2).sum()
         transition_pts = alt_thresh_transitions[alt_thresh_transitions == 1]
         if len(transition_pts) > 2:
-            violations.append(
-                FlightAltitudeProfileError(
-                    f"flight trajectory dropped below altitude threshold"
-                    f"of {self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT}ft while in-flight."
-                )
+            msg = (
+                "flight trajectory dropped below altitude threshold "
+                f"of {self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT}ft while in-flight."
             )
+            violations.append(FlightAltitudeProfileError(msg))
 
         return violations
 
@@ -1347,17 +1353,19 @@ class ValidateTrajectoryHandler:
         but including the additional computed columns that are used in verification.
         e.g. elapsed_sec, ground_speed_m_s, etc.
         """
+        if self._df is None:
+            msg = "No trajectory DataFrame has been set. Call set() before calling this method."
+            raise ValueError(msg)
+
         violations = self.evaluate()
-        fatal_violations = [
-            SchemaError,
-            FlightDuplicateTimestamps,
-            FlightInvariantFieldViolation,
-        ]
-        if any([v in violations for v in fatal_violations]):
-            raise Exception(
-                f"validation dataframe cannot be returned "
-                f"if flight has violations(s): {violations}"
-            )
+
+        FatalException = (
+            SchemaError | OrderingError | FlightDuplicateTimestamps | FlightInvariantFieldViolation
+        )
+        if any(isinstance(v, FatalException) for v in violations):
+            msg = f"Validation DataFrame has fatal violation(s): {violations}"
+            raise BadTrajectoryException(msg)
+
         # safeguard to ensure this call follows the addition of the columns
         # assumes calculate_additional_fields is idempotent
         self._calculate_additional_fields()
