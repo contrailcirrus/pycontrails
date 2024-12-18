@@ -354,62 +354,76 @@ def test_maybe_downselect_met_rad(instance_params: dict[str, Any]):
     # initial selection
     time = np.datetime64("2018-12-31T23:00")
     met, rad = model._maybe_downselect_met_rad(None, None, time, time)
-    np.testing.assert_array_equal(met["time"].values, [np.datetime64("2019-01-01T00:00")])
-    np.testing.assert_array_equal(rad["time"].values, [np.datetime64("2018-12-31T23:30")])
+    np.testing.assert_array_equal(met.data["time"], [np.datetime64("2019-01-01T00:00")])
+    np.testing.assert_array_equal(rad.data["time"], [np.datetime64("2018-12-31T23:30")])
 
     # advance to after first forecast step
     time = np.datetime64("2019-01-01T00:15")
     met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
-        met["time"].values,
-        [
-            np.datetime64("2019-01-01T00:00"),
-            np.datetime64("2019-01-01T01:00"),
-        ],
+        met.data["time"],
+        [np.datetime64("2019-01-01T00:00"), np.datetime64("2019-01-01T01:00")],
     )
     np.testing.assert_array_equal(
-        rad["time"].values, [np.datetime64("2018-12-31T23:30"), np.datetime64("2019-01-01T00:30")]
+        rad.data["time"], [np.datetime64("2018-12-31T23:30"), np.datetime64("2019-01-01T00:30")]
     )
 
     # no update required
     time = np.datetime64("2019-01-01T00:20")
     met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
-        met["time"].values,
-        [
-            np.datetime64("2019-01-01T00:00"),
-            np.datetime64("2019-01-01T01:00"),
-        ],
+        met.data["time"],
+        [np.datetime64("2019-01-01T00:00"), np.datetime64("2019-01-01T01:00")],
     )
     np.testing.assert_array_equal(
-        rad["time"].values, [np.datetime64("2018-12-31T23:30"), np.datetime64("2019-01-01T00:30")]
+        rad.data["time"], [np.datetime64("2018-12-31T23:30"), np.datetime64("2019-01-01T00:30")]
     )
 
-    # advance one forecast step
+    # advance forward one forecast step
     time = np.datetime64("2019-01-01T01:15")
     met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
-        met["time"].values, [np.datetime64("2019-01-01T01:00"), np.datetime64("2019-01-01T02:00")]
+        met.data["time"], [np.datetime64("2019-01-01T01:00"), np.datetime64("2019-01-01T02:00")]
     )
     np.testing.assert_array_equal(
-        rad["time"].values, [np.datetime64("2019-01-01T00:30"), np.datetime64("2019-01-01T01:30")]
+        rad.data["time"], [np.datetime64("2019-01-01T00:30"), np.datetime64("2019-01-01T01:30")]
     )
 
-    # advance multiple forecast steps
+    # advance forward multiple forecast steps
     time = np.datetime64("2019-01-01T08:15")
     met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
     np.testing.assert_array_equal(
-        met["time"].values, [np.datetime64("2019-01-01T08:00"), np.datetime64("2019-01-01T09:00")]
+        met.data["time"], [np.datetime64("2019-01-01T08:00"), np.datetime64("2019-01-01T09:00")]
     )
     np.testing.assert_array_equal(
-        rad["time"].values, [np.datetime64("2019-01-01T07:30"), np.datetime64("2019-01-01T08:30")]
+        rad.data["time"], [np.datetime64("2019-01-01T07:30"), np.datetime64("2019-01-01T08:30")]
+    )
+
+    # advance backwards one forecast step
+    time = np.datetime64("2019-01-01T07:25")
+    met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
+    np.testing.assert_array_equal(
+        met.data["time"], [np.datetime64("2019-01-01T07:00"), np.datetime64("2019-01-01T08:00")]
+    )
+    np.testing.assert_array_equal(
+        rad.data["time"], [np.datetime64("2019-01-01T06:30"), np.datetime64("2019-01-01T07:30")]
+    )
+
+    # advance backwards multiple forecast steps
+    time = np.datetime64("2019-01-01T02:40")
+    met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
+    np.testing.assert_array_equal(
+        met.data["time"], [np.datetime64("2019-01-01T02:00"), np.datetime64("2019-01-01T03:00")]
+    )
+    np.testing.assert_array_equal(
+        rad.data["time"], [np.datetime64("2019-01-01T02:30"), np.datetime64("2019-01-01T03:30")]
     )
 
     # advance past end of forecast
     time = np.datetime64("2019-01-01T13:00")
     met, rad = model._maybe_downselect_met_rad(met, rad, time, time)
-    np.testing.assert_array_equal(met["time"].values, [np.datetime64("2019-01-01T12:00")])
-    np.testing.assert_array_equal(rad["time"].values, [np.datetime64("2019-01-01T11:30")])
+    np.testing.assert_array_equal(met.data["time"], [np.datetime64("2019-01-01T12:00")])
+    np.testing.assert_array_equal(rad.data["time"], [np.datetime64("2019-01-01T11:30")])
 
 
 ##############################################################
