@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import dataclasses
+import sys
 from typing import Any, NoReturn, overload
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import numpy as np
 import numpy.typing as npt
@@ -135,6 +141,9 @@ class DryAdvection(models.Model):
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
         self.downselect_met()
+        if not self.source.coords_intersect_met(self.met).any():
+            msg = "No source coordinates intersect met data."
+            raise ValueError(msg)
 
         self.source = self._prepare_source()
 
@@ -237,6 +246,18 @@ class DryAdvection(models.Model):
         )
 
         return GeoVectorDataset._from_fastpath(self.source.select(columns, copy=False).data)
+
+    @override
+    def downselect_met(self) -> None:
+        if not self.params["downselect_met"]:
+            return
+
+        buffers = {
+            f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
+            for coord in ("longitude", "latitude", "level")
+        }
+        buffers["time_buffer"] = (np.timedelta64(0, "ns"), self.params["max_age"])
+        self.met = self.source.downselect_met(self.met, **buffers)
 
 
 def _perform_interp_for_step(
