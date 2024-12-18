@@ -2880,8 +2880,15 @@ def maybe_downselect_mds(
     filt[big_indices] = False
     big_ds = big_ds.isel(time=filt)
 
-    # If little_mds is loaded into memory but big_mds is not,
-    # the concat operation below will load the slice of big_mds into memory.
+    # Manually load relevant parts of big_ds into memory before xr.concat
+    # It appears that without this, xr.concat will forget the in-memory
+    # arrays in little_ds
+    for var, da in little_ds.items():
+        if da._in_memory:
+            da2 = big_ds[var]
+            if not da2._in_memory:
+                da2.load()
+
     ds = xr.concat([little_ds, big_ds], dim="time")
     if not ds._indexes["time"].index.is_monotonic_increasing:  # type: ignore[attr-defined]
         # Rarely would we enter this: t0 would have to be before the first
