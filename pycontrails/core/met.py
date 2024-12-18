@@ -2884,6 +2884,8 @@ def maybe_downselect_mds(
     # the concat operation below will load the slice of big_mds into memory.
     ds = xr.concat([little_ds, big_ds], dim="time")
     if not ds._indexes["time"].index.is_monotonic_increasing:
-        # Rarely would we enter this
-        ds = ds.sortby("time")  # unlikely to enter this, but not impossible
+        # Rarely would we enter this: t0 would have to be before the first
+        # time in little_mds, and the various advection-based models generally
+        # proceed forward in time.
+        ds = ds.sortby("time")
     return MetDataset._from_fastpath(ds)
