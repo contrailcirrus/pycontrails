@@ -28,7 +28,7 @@ from pycontrails.core.aircraft_performance import (
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
-from pycontrails.core.met_var import AirTemperature, EastwardWind, NorthwardWind
+from pycontrails.core.met_var import AirTemperature, EastwardWind, MetVariable, NorthwardWind
 from pycontrails.models.ps_model import ps_operational_limits as ps_lims
 from pycontrails.models.ps_model.ps_aircraft_params import (
     PSAircraftEngineParams,
@@ -71,7 +71,7 @@ class PSFlight(AircraftPerformance):
 
     name = "PSFlight"
     long_name = "Poll-Schumann Aircraft Performance Model"
-    met_variables = (AirTemperature,)
+    met_variables: tuple[MetVariable, ...] = (AirTemperature,)
     optional_met_variables = EastwardWind, NorthwardWind
     default_params = PSFlightParams
 

@@ -13,6 +13,7 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import (
     AirTemperature,
     EastwardWind,
+    MetVariable,
     NorthwardWind,
     VerticalVelocity,
 )
@@ -89,7 +90,12 @@ class DryAdvection(models.Model):
 
     name = "dry_advection"
     long_name = "Emission plume advection without sedimentation"
-    met_variables = AirTemperature, EastwardWind, NorthwardWind, VerticalVelocity
+    met_variables: tuple[MetVariable, ...] = (
+        AirTemperature,
+        EastwardWind,
+        NorthwardWind,
+        VerticalVelocity,
+    )
     default_params = DryAdvectionParams
 
     met: MetDataset
