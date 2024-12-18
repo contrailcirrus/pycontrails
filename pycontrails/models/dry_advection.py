@@ -7,6 +7,7 @@ from typing import Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 
 from pycontrails.core import models
 from pycontrails.core.met import MetDataset
@@ -146,7 +147,7 @@ class DryAdvection(models.Model):
         max_depth = self.params["max_depth"]
 
         source_time = self.source["time"]
-        t0 = source_time.min()
+        t0 = pd.Timestamp(source_time.min()).floor(pd.Timedelta(dt_integration)).to_numpy()
         t1 = source_time.max()
         timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
 
