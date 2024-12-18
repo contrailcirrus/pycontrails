@@ -19,7 +19,7 @@ from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, SAFBlend
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.core.met import MetDataset
-from pycontrails.core.met_var import AirTemperature, SpecificHumidity
+from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.emissions import black_carbon, ffm2
@@ -75,7 +75,7 @@ class Emissions(Model):
 
     name = "emissions"
     long_name = "ICAO Emissions Databank (EDB)"
-    met_variables = AirTemperature, SpecificHumidity
+    met_variables: tuple[MetVariable, ...] = AirTemperature, SpecificHumidity
     default_params = EmissionsParams
 
     source: GeoVectorDataset

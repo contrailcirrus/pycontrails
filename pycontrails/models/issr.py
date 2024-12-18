@@ -10,7 +10,7 @@ import numpy as np
 import pycontrails
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
-from pycontrails.core.met_var import AirTemperature, SpecificHumidity
+from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.humidity_scaling import HumidityScaling
@@ -70,7 +70,7 @@ class ISSR(Model):
 
     name = "issr"
     long_name = "Ice super-saturated regions"
-    met_variables = AirTemperature, SpecificHumidity
+    met_variables: tuple[MetVariable, ...] = AirTemperature, SpecificHumidity
     default_params = ISSRParams
 
     @overload

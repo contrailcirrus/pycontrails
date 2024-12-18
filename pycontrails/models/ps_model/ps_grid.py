@@ -19,7 +19,7 @@ from pycontrails.core.aircraft_performance import (
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import JetA
 from pycontrails.core.met import MetDataset
-from pycontrails.core.met_var import AirTemperature
+from pycontrails.core.met_var import AirTemperature, MetVariable
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.ps_model import ps_model, ps_operational_limits
 from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParams
@@ -58,7 +58,7 @@ class PSGrid(AircraftPerformanceGrid):
 
     name = "PSGrid"
     long_name = "Poll-Schumann Aircraft Performance evaluated at arbitrary points"
-    met_variables = (AirTemperature,)
+    met_variables: tuple[MetVariable, ...] = (AirTemperature,)
     default_params = PSGridParams
 
     met: MetDataset
