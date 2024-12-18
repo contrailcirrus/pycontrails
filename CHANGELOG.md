@@ -7,6 +7,7 @@
 - This release brings a number of very minor performance improvements to the low-level pycontrails data structures (`VectorDataset` and `MetDataset`). Cumulatively, these changes should bring in a small but nontrivial speedup (~5%) when running a model such as `Cocip` or `DryAdvection` on a single `Flight` source.
   - Core `Flight` methods such as `copy`, `filter`, and `downselect_met` are now ~10x faster for typical use cases.
   - Converting between `Fleet` and `Flight` instances via `Fleet.from_seq` and `Fleet.to_flight_list` are also ~5x faster.
+- Implement low-memory met-downselection logic in `DryAdvection`. This is the same logic used in `CocipGrid` to reduce memory consumption by only loading the necessary time slices of the `met` data into memory. If `met` is already loaded into memory, this change will have no effect.
 
 ### Breaking Changes
 
@@ -17,6 +18,7 @@
 
 - Make slightly more explicit when data is copied in the `VectorDataset` constructor: data is now always shallow-copied, and the `copy` parameter governs whether to copy the underlying arrays.
 - Call `downselect_met` in `DryAdvection.eval`. (This was previously forgotten.)
+- Fix minor bug in `CocipGrid` downselect met logic introduced in v0.54.4. This bug may have caused some met slices to be reloaded when running `CocipGrid.eval` with lazily-loaded `met` and `rad` data.
 
 ### Internals
 
