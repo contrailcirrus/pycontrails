@@ -2817,3 +2817,73 @@ def _lowmem_masks(
         mask = ((time >= t_met[i]) if i == istart else (time > t_met[i])) & (time <= t_met[i + 1])
         if np.any(mask):
             yield mask
+
+
+def maybe_downselect_mds(
+    big_mds: MetDataset,
+    little_mds: MetDataset | None,
+    t0: np.datetime64,
+    t1: np.datetime64,
+) -> MetDataset:
+    """Possibly downselect ``big_mds`` in the time domain to cover ``[t0, t1]``.
+
+    If possible, ``little_mds`` is recycled to avoid re-loading data.
+
+    This implementation assumes ``t0 <= t1``, but this is not enforced.
+
+    If ``little_mds`` already covers the time range, it is returned as-is.
+
+    If ``big_mds`` doesn't cover the time range, no error is raised.
+
+    Parameters
+    ----------
+    big_mds : MetDataset
+        Larger MetDataset
+    little_mds : MetDataset | None
+        Smaller MetDataset. This is assumed to be a subset of ``big_mds``,
+        though the implementation may work if this is not the case.
+    t0, t1 : np.datetime64
+        Time range to cover
+
+    Returns
+    -------
+    MetDataset
+        MetDataset covering the time range ``[t0, t1]`` comprised of data from
+        ``little_mds`` when possible, otherwise from ``big_mds``.
+    """
+    if little_mds is None:
+        big_time = big_mds.indexes["time"].values
+        i0 = np.searchsorted(big_time, t0, side="right").item()
+        i0 = max(0, i0 - 1)
+        i1 = np.searchsorted(big_time, t1, side="left").item()
+        i1 = min(i1 + 1, big_time.size)
+        return MetDataset._from_fastpath(big_mds.data.isel(time=slice(i0, i1)))
+
+    little_time = little_mds.indexes["time"].values
+    if t0 >= little_time[0] and t1 <= little_time[-1]:
+        return little_mds
+
+    big_time = big_mds.indexes["time"].values
+    i0 = np.searchsorted(big_time, t0, side="right").item()
+    i0 = max(0, i0 - 1)
+    i1 = np.searchsorted(big_time, t1, side="left").item()
+    i1 = min(i1 + 1, big_time.size)
+    big_ds = big_mds.data.isel(time=slice(i0, i1))
+    big_time = big_ds._indexes["time"].index.values
+
+    # Select exactly the times in big_ds that are not in little_ds
+    _, little_indices, big_indices = np.intersect1d(
+        little_time, big_time, assume_unique=True, return_indices=True
+    )
+    little_ds = little_mds.data.isel(time=little_indices)
+    filt = np.ones_like(big_time, dtype=bool)
+    filt[big_indices] = False
+    big_ds = big_ds.isel(time=filt)
+
+    # If little_mds is loaded into memory but big_mds is not,
+    # the concat operation below will load the slice of big_mds into memory.
+    ds = xr.concat([little_ds, big_ds], dim="time")
+    if not ds._indexes["time"].index.is_monotonic_increasing:
+        # Rarely would we enter this
+        ds = ds.sortby("time")  # unlikely to enter this, but not impossible
+    return MetDataset._from_fastpath(ds)
