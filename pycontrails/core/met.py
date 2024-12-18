@@ -2869,7 +2869,7 @@ def maybe_downselect_mds(
     i1 = np.searchsorted(big_time, t1, side="left").item()
     i1 = min(i1 + 1, big_time.size)
     big_ds = big_mds.data.isel(time=slice(i0, i1))
-    big_time = big_ds._indexes["time"].index.values
+    big_time = big_ds._indexes["time"].index.values  # type: ignore[attr-defined]
 
     # Select exactly the times in big_ds that are not in little_ds
     _, little_indices, big_indices = np.intersect1d(
@@ -2883,7 +2883,7 @@ def maybe_downselect_mds(
     # If little_mds is loaded into memory but big_mds is not,
     # the concat operation below will load the slice of big_mds into memory.
     ds = xr.concat([little_ds, big_ds], dim="time")
-    if not ds._indexes["time"].index.is_monotonic_increasing:
+    if not ds._indexes["time"].index.is_monotonic_increasing:  # type: ignore[attr-defined]
         # Rarely would we enter this: t0 would have to be before the first
         # time in little_mds, and the various advection-based models generally
         # proceed forward in time.
