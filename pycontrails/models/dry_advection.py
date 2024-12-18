@@ -16,7 +16,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from pycontrails.core import models
-from pycontrails.core.met import MetDataset
+from pycontrails.core.met import MetDataset, maybe_downselect_mds
 from pycontrails.core.met_var import (
     AirTemperature,
     EastwardWind,
@@ -161,13 +161,19 @@ class DryAdvection(models.Model):
         timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
 
         vector = GeoVectorDataset()
+        met = None
 
         evolved = []
         for t in timesteps:
             filt = (source_time < t) & (source_time >= t - dt_integration)
             vector = vector + self.source.filter(filt, copy=False)
+
+            t0 = vector["time"].min()
+            t1 = vector["time"].max()
+            met = maybe_downselect_mds(self.met, met, t0, t1)
+
             vector = _evolve_one_step(
-                self.met,
+                met,
                 vector,
                 t,
                 sedimentation_rate=sedimentation_rate,
