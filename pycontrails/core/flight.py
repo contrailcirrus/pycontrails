@@ -957,6 +957,10 @@ class Flight(GeoVectorDataset):
                 msg = f"{msg} Pass 'keep_original_index=True' to keep the original index."
             warnings.warn(msg)
 
+        # Reorder columns (this is unimportant but makes the output more canonical)
+        coord_names = ("longitude", "latitude", "altitude", "time")
+        df = df[[*coord_names, *[c for c in df.columns if c not in set(coord_names)]]]
+
         data = {k: v.to_numpy() for k, v in df.items()}
         return type(self)._from_fastpath(data, attrs=self.attrs, fuel=self.fuel)
 
