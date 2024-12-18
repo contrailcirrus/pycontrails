@@ -465,15 +465,16 @@ def _evolve_one_step(
         dt,  # type: ignore[arg-type]
     )
 
-    out = GeoVectorDataset(
-        longitude=longitude_2,
-        latitude=latitude_2,
-        level=level_2,
-        time=np.full(longitude_2.shape, t),
-        copy=False,
+    out = GeoVectorDataset._from_fastpath(
+        {
+            "longitude": longitude_2,
+            "latitude": latitude_2,
+            "level": level_2,
+            "time": np.full(longitude_2.shape, t),
+            "age": vector["age"] + dt,
+            "waypoint": vector["waypoint"],
+        }
     )
-    out["age"] = vector["age"] + dt
-    out["waypoint"] = vector["waypoint"]
 
     azimuth = vector.get("azimuth")
     if azimuth is None:
