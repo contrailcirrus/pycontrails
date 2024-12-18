@@ -203,7 +203,7 @@ class DryAdvection(models.Model):
                 raise ValueError(
                     "If 'azimuth' is None, then 'width' and 'depth' must also be None."
                 )
-            return GeoVectorDataset(self.source.select(columns, copy=False), copy=False)
+            return GeoVectorDataset._from_fastpath(self.source.select(columns, copy=False).data)
 
         if "azimuth" not in self.source:
             self.source["azimuth"] = np.full_like(self.source["longitude"], azimuth)
@@ -229,7 +229,7 @@ class DryAdvection(models.Model):
             width, depth, sigma_yz=0.0
         )
 
-        return GeoVectorDataset._from_fastpath(self.source.select(columns, copy=False).data, {})
+        return GeoVectorDataset._from_fastpath(self.source.select(columns, copy=False).data)
 
 
 def _perform_interp_for_step(

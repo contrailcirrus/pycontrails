@@ -1140,7 +1140,6 @@ class Cocip(Model):
                 key: np.concatenate((latest_contrail[key], future_contrails[key]))
                 for key in ("longitude", "latitude", "level", "time")
             },
-            {},
         )
 
         # compute time buffer to ensure downselection extends to time_end
@@ -1181,7 +1180,7 @@ class Cocip(Model):
             "persistent": self._downwash_flight["persistent_1"],
         }
 
-        contrail = GeoVectorDataset._from_fastpath(downwash_contrail_data, {}).copy()
+        contrail = GeoVectorDataset._from_fastpath(downwash_contrail_data).copy()
         contrail["formation_time"] = contrail["time"].copy()
         contrail["age"] = contrail["formation_time"] - contrail["time"]
 
@@ -2313,7 +2312,6 @@ def calc_timestep_contrail_evolution(
             "altitude": altitude_2,
             "level": level_2,
         },
-        {},
     )
     intersection = contrail_2.coords_intersect_met(met)
     if not np.any(intersection):

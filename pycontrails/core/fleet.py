@@ -226,7 +226,7 @@ class Fleet(Flight):
 
         return cls._from_fastpath(
             data,
-            attrs or {},
+            attrs,
             fuel=fuel,
             fl_attrs=fl_attrs,
             final_waypoints=final_waypoints,

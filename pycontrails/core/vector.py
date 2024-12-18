@@ -322,7 +322,7 @@ class VectorDataset:
     def _from_fastpath(
         cls,
         data: dict[str, np.ndarray],
-        attrs: dict[str, Any],
+        attrs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> Self:
         """Create new instance from consistent data.
@@ -337,7 +337,7 @@ class VectorDataset:
         obj = cls.__new__(cls)
 
         obj.data = VectorDataDict(data)
-        obj.attrs = AttrDict(attrs)
+        obj.attrs = AttrDict(attrs or {})
 
         for key, value in kwargs.items():
             try:
@@ -716,7 +716,7 @@ class VectorDataset:
             return np.concatenate(values)
 
         data = {key: concat(key) for key in keys}
-        attrs = vectors[0].attrs if infer_attrs else {}
+        attrs = vectors[0].attrs if infer_attrs else None
 
         return cls._from_fastpath(data, attrs)
 
@@ -1161,7 +1161,7 @@ class VectorDataset:
             Empty VectorDataset instance.
         """
         data = _empty_vector_dict(keys)
-        return cls._from_fastpath(data, attrs or {}, **kwargs)
+        return cls._from_fastpath(data, attrs, **kwargs)
 
     @classmethod
     def from_dict(cls, obj: dict[str, Any], copy: bool = True, **obj_kwargs: Any) -> Self:
