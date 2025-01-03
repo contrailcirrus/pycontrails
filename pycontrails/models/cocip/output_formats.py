@@ -2259,3 +2259,4 @@ def compare_cocip_with_goes(
         plt.close()
 
         return output_path
+    return None

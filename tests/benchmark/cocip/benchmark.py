@@ -243,7 +243,7 @@ def parse_flight_results(fleet: Fleet) -> pd.DataFrame:
     fleet_df["contrail_age"] = fleet["contrail_age"] // pd.Timedelta("1s")
 
     # drop some excess columns
-    fleet_df = fleet_df.drop(
+    return fleet_df.drop(
         columns=[
             "co_ei",
             "hc_ei",
@@ -257,8 +257,6 @@ def parse_flight_results(fleet: Fleet) -> pd.DataFrame:
 
     # fill na with -9999
     # fleet_df = fleet_df.fillna(value=-9999)
-
-    return fleet_df
 
 
 def parse_contrail_results(contrail: pd.DataFrame) -> pd.DataFrame:
@@ -295,9 +293,7 @@ def parse_contrail_results(contrail: pd.DataFrame) -> pd.DataFrame:
         :, ["continuous", "persistent"]
     ].astype(int)
 
-    contrail = contrail.drop(columns=["age_hours", "cumul_heat", "cumul_differential_heat"])
+    return contrail.drop(columns=["age_hours", "cumul_heat", "cumul_differential_heat"])
 
     # fill na with -9999
     # contrail = contrail.fillna(value=-9999)
-
-    return contrail

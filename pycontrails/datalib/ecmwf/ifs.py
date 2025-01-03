@@ -247,9 +247,7 @@ class IFS(metsource.MetDataSource):
         ds_fl = ds_fl.drop_vars(names=["hyai", "hybi", "hyam", "hybm"])
 
         # merge all datasets using the "ds_fl" dimensions as the join keys
-        ds = xr.merge([ds_fl, ds_full, ds_surface, ds_rad], join="left")  # order matters!
-
-        return ds
+        return xr.merge([ds_fl, ds_full, ds_surface, ds_rad], join="left")  # order matters!
 
     def _calc_geopotential(self, ds: xr.Dataset) -> xr.DataArray:
         warnings.warn(

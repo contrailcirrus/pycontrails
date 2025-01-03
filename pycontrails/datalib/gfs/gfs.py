@@ -570,9 +570,7 @@ class GFSForecast(metsource.MetDataSource):
         ds = ds.expand_dims("time")
 
         # drop step/number
-        ds = ds.drop_vars(["step", "nominalTop", "surface"], errors="ignore")
-
-        return ds
+        return ds.drop_vars(["step", "nominalTop", "surface"], errors="ignore")
 
     def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> met.MetDataset:
         """Process the :class:`xr.Dataset` opened from cache or local files.

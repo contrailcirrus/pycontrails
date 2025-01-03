@@ -162,7 +162,7 @@ def find_nearest_airport(
     ) & airports["latitude"].between((latitude - bbox), (latitude + bbox))
 
     # Find the nearest airport from largest to smallest airport type
-    search_priority = ["large_airport", "medium_airport", "small_airport"]
+    search_priority = ("large_airport", "medium_airport", "small_airport")
 
     for airport_type in search_priority:
         is_airport_type = airports["type"] == airport_type
@@ -171,7 +171,7 @@ def find_nearest_airport(
         if len(nearest_airports) == 1:
             return nearest_airports["icao_code"].values[0]
 
-        elif len(nearest_airports) > 1:
+        if len(nearest_airports) > 1:
             distance = distance_to_airports(
                 nearest_airports,
                 longitude,
@@ -181,8 +181,7 @@ def find_nearest_airport(
             i_nearest = np.argmin(distance)
             return nearest_airports["icao_code"].values[i_nearest]
 
-        else:
-            continue
+        continue
 
     return None
 

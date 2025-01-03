@@ -1982,9 +1982,7 @@ def filter_altitude(
             result[i0:i1] = altitude_filt[i0:i1]
 
     # reapply Savitzky-Golay filter to smooth climb and descent
-    result = _sg_filter(result, window_length=kernel_size)
-
-    return result
+    return _sg_filter(result, window_length=kernel_size)
 
 
 def segment_duration(

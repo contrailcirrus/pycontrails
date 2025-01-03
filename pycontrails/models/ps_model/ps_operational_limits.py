@@ -390,7 +390,7 @@ def minimum_mach_num(
         )
         return amass_max - aircraft_mass
 
-    m = scipy.optimize.newton(
+    return scipy.optimize.newton(
         excess_mass,
         args=(
             air_pressure,
@@ -403,8 +403,6 @@ def minimum_mach_num(
         x1=np.full_like(air_pressure, 0.5),
         tol=1e-4,
     )
-
-    return m
 
 
 def maximum_mach_num(
@@ -450,15 +448,13 @@ def maximum_mach_num(
         atyp_param.p_inf_co,
     )
 
-    max_mach = scipy.optimize.newton(
+    return scipy.optimize.newton(
         func=get_excess_thrust_available,
         args=(air_temperature, air_pressure, aircraft_mass, theta, atyp_param),
         x0=mach_num_op_lim,
         x1=mach_num_op_lim - 0.01,
         tol=1e-4,
     ).clip(max=mach_num_op_lim)
-
-    return max_mach
 
 
 # ----------------

@@ -239,7 +239,7 @@ ignore-path = [
 line-length = 100
 
 [tool.ruff.lint]
-select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "RUF", "SIM", "UP"]
+select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "RET", "RUF", "SIM", "UP"]
 ignore = [
     "B028",
     "E402",

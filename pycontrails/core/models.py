@@ -986,6 +986,7 @@ def _prepare_q(
         return _prepare_q_cubic_spline(da, level)
 
     raise_invalid_q_method_error(q_method)
+    return None
 
 
 def _prepare_q_log_q_log_p(

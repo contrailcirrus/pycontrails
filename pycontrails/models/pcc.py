@@ -186,8 +186,7 @@ class PCC(Model):
 
             # issue recombining groups arises if "level" is in dims
             # convert "level" dimension to coordinate
-            b_crit_potential = b_crit_potential.squeeze("level")
-            return b_crit_potential
+            return b_crit_potential.squeeze("level")
 
         # apply calculation per pressure level
         return (

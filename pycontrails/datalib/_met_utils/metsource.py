@@ -265,7 +265,7 @@ def _find_match(
 
     # list of MetVariable options
     # here we extract the first MetVariable in var that is supported
-    elif isinstance(var, list | tuple):
+    if isinstance(var, list | tuple):
         for v in var:
             # sanity check since we don't support other types as lists
             if not isinstance(v, MetVariable):

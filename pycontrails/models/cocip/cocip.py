@@ -1587,8 +1587,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
                 rad.data["time"].attrs["shift_radiation_time"] = "variable"
             return rad
 
-        else:
-            shift_radiation_time = -np.timedelta64(30, "m")
+        shift_radiation_time = -np.timedelta64(30, "m")
 
     elif dataset == "ERA5" and product == "ensemble":
         shift_radiation_time = -np.timedelta64(90, "m")
@@ -1963,7 +1962,7 @@ def calc_outgoing_longwave_radiation(
     """
 
     if "olr" in vector:
-        return None
+        return
 
     # GFS contains OLR (toa_upward_longwave_flux) variable directly
     gfs_key = "toa_upward_longwave_flux"
