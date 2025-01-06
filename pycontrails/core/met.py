@@ -11,6 +11,7 @@ import typing
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import (
+    Callable,
     Generator,
     Hashable,
     Iterable,
@@ -40,6 +41,7 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
+import dask.array
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -2410,6 +2412,102 @@ class MetDataArray(MetBase):
 
         return da
 
+    @classmethod
+    def from_function(
+        cls,
+        fun: Callable[[np.ndarray, ...], np.ndarray],
+        coords: dict[str, np.ndarray],
+        chunks: dict[str, int] | str | None = "auto",
+    ):
+        """Create a :class:`MetDataArray` from a functional definition.
+
+        Parameters
+        ----------
+        fun : Callable[[np.ndarray, ...], np.ndarray]
+            Function that takes one-dimensional coordinates as arguments and returns values of the
+            variable in an n-dimensional array. The number and order of parameters must match the
+            number and order of coordinate arrays stored in :param:`coords`. For example, if
+            :param:`coords` contains three coordinate arrays with sizes ``M``, ``N``, and ``P``,
+            then invoking :param:`fun` with these coordinate arrays as arguments should produce an
+            array with shape ``(M, N, P)``.
+
+        coords : dict[str, np.ndarray]
+            Mapping from coordinate names to one-dimensional arrays of coordinate values.
+
+        chunks : dict[str, int] | str | None
+            Chunking scheme for underlying data. Passing ``chunks=None`` will produce a result
+            backed by an in-memory numpy array. Passing ``chunks="auto" (the default) will produce a
+            result backed by a dask array with chunks determined automatically. Otherwise,
+            :param:`chunks` must be a mapping from coordinate names to dask chunk sizes, and the
+            result will be backed by a dask array with chunk sizes defined by values in
+            :param:`chunks`. Omitting a coordinate from :param:`chunks` will produce a result with a
+            single chunk along the corresponding dimension.
+
+        Returns
+        -------
+        MetDataArray
+            MetDataArray with coordinates defined by :param:`coords` and values defined by
+            :param:`fun`.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from pycontrails.physics.units import m_to_T_isa, pl_to_m
+
+        >>> longitude = np.arange(0, 1)
+        >>> latitude = np.arange(0, 1)
+        >>> level = np.linspace(100, 1000, 10)
+        >>> time = np.datetime64("2025-01-01T00:00:00")
+        >>> mds = MetDataset.from_coords(longitude, latitude, level, time)
+        >>> mds.coords.keys()
+        dict_keys(['longitude', 'latitude', 'level', 'time'])
+
+        >>> T = lambda lon, lat, lev, t: m_to_T_isa(pl_to_m(lev))
+
+        >>> # Create lazy dask-backed variable by default
+        >>> mds["temperature"] = MetDataArray.from_function(T, mds.coords)
+
+        >>> # Control chunking with chunks argument
+        >>> mds["custom-chunks"] = MetDataArray.from_function(T, mds.coords, chunks={"level": 1})
+
+        >>> # Create in-memory variable with chunks=None
+        >>> mds["in-mem"] = MetDataArray.from_function(T, mds.coords, chunks=None)
+
+        >>> mds
+        MetDataset with data:
+        <BLANKLINE>
+        <xarray.Dataset> Size: 424B
+        Dimensions:            (longitude: 1, latitude: 1, level: 10, time: 1)
+        Coordinates:
+          * longitude          (longitude) float64 8B 0.0
+          * latitude           (latitude) float64 8B 0.0
+          * level              (level) float64 80B 100.0 200.0 300.0 ... 900.0 1e+03
+          * time               (time) datetime64[ns] 8B 2025-01-01
+            air_pressure       (level) float32 40B 1e+04 2e+04 3e+04 ... 9e+04 1e+05
+            altitude           (level) float32 40B 1.618e+04 1.178e+04 ... 988.5 110.9
+        Data variables:
+            temperature        (longitude, latitude, level, time) float64 80B \
+                dask.array<chunksize=(1, 1, 10, 1), meta=np.ndarray>
+            custom-chunks      (longitude, latitude, level, time) float64 80B \
+                dask.array<chunksize=(1, 1, 1, 1), meta=np.ndarray>
+            in-mem             (longitude, latitude, level, time) float64 80B 216.6 ....
+        """
+
+        shape = tuple(len(c) for c in coords.values())
+
+        if chunks is None:
+            data = np.fromfunction(_takeindex(fun, coords), shape=shape, dtype=int)
+        else:
+            data = dask.array.fromfunction(
+                _takeindex(fun, coords),
+                shape=shape,
+                chunks=_array_chunks(chunks, coords),
+                dtype=int,
+            )
+
+        da = xr.DataArray(data, dims=coords.keys(), coords=coords)
+        return MetDataArray(da)
+
 
 def _is_wrapped(longitude: np.ndarray) -> bool:
     """Check if ``longitude`` covers ``[-180, 180]``."""
@@ -2442,6 +2540,35 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
     except AttributeError:
         return False
     return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
+
+
+def _takeindex(
+    fun: Callable[[np.ndarray, ...], np.ndarray], coords: dict[str, np.ndarray]
+) -> Callable[[np.ndarray, ...], np.ndarray]:
+    """Convert expected function arguments from coordinates to coordinate indices."""
+
+    def wrapped(*idxs: np.ndarray) -> np.ndarray:
+        args = []
+        for idx, coord in zip(idxs, coords.values(), strict=True):
+            args.append(coord[idx])
+        return fun(*args)
+
+    return wrapped
+
+
+def _array_chunks(
+    chunks: dict[str, int] | str, coords: dict[str, np.ndarray]
+) -> tuple[int, ...] | str:
+    """Create tuple of chunks for dask array constructor."""
+
+    if isinstance(chunks, dict):
+        return tuple(chunks.get(key, -1) for key in coords)
+
+    if chunks != "auto":
+        msg = f"Unrecognized chunks argument {chunks}"
+        raise ValueError(msg)
+
+    return "auto"
 
 
 def shift_longitude(data: XArrayType, bound: float = -180.0) -> XArrayType:
