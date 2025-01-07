@@ -133,6 +133,47 @@ def test_metdataarray_constructor(
         MetDataArray(insufficient_da)
 
 
+def test_metdataarray_from_function(met_empty_pl: MetDataset) -> None:
+    """Test `MetDataArray` creation from functional definition."""
+
+    def fun(longitude, latitude, level, time):
+        return np.zeros(longitude.shape)
+
+    mda = MetDataArray.from_function(fun, met_empty_pl.coords, chunks=None)
+    met_empty_pl["random"] = mda
+
+    np.testing.assert_array_equal(met_empty_pl["random"].data.values, np.zeros(met_empty_pl.shape))
+
+
+def test_metdataarray_from_function_chunks(met_empty_pl: MetDataset) -> None:
+    """Test control of chunking."""
+
+    def _fun(longitude, latitude, level, time):
+        return hash(longitude) + hash(latitude) + hash(level) + hash(time)
+
+    fun = np.vectorize(_fun, otypes=[int])
+
+    mda1 = MetDataArray.from_function(fun, met_empty_pl.coords, chunks=None)
+    mda2 = MetDataArray.from_function(fun, met_empty_pl.coords, chunks="auto")
+    mda3 = MetDataArray.from_function(
+        fun, met_empty_pl.coords, chunks={"longitude": 1, "latitude": 1, "level": 2, "time": 1}
+    )
+    mda4 = MetDataArray.from_function(fun, met_empty_pl.coords, chunks={"level": 1})
+
+    assert mda1.in_memory
+
+    assert not mda2.in_memory
+    np.testing.assert_array_equal(mda2.data.values, mda1.data.values)
+
+    assert not mda3.in_memory
+    assert mda3.data.chunks == ((1, 1, 1), (1, 1), (2, 2), (1,))
+    np.testing.assert_array_equal(mda3.data.values, mda1.data.values)
+
+    assert not mda4.in_memory
+    assert mda4.data.chunks == ((3,), (2,), (1, 1, 1, 1), (1,))
+    np.testing.assert_array_equal(mda4.data.values, mda1.data.values)
+
+
 @pytest.mark.parametrize("wrap_longitude", [True, False])
 def test_pl_path_to_met_dataset(met_ecmwf_pl_path: str, wrap_longitude: bool):
     """Confirm that DataArray selection is consistent with attr MetDataArray.data."""

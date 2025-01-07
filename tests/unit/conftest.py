@@ -83,6 +83,16 @@ def override_cache() -> DiskCacheStore:
 
 
 @pytest.fixture(scope="session")
+def met_empty_pl() -> MetDataset:
+    """Empty pressure-level `MetDataset`."""
+    longitude = np.array([0.0, 1.0, 2.0])
+    latitude = np.array([-1.0, 0.0])
+    level = np.array([250.0, 500.0, 750.0, 1000.0])
+    time = np.datetime64("2025-01-01T00:00:00")
+    return MetDataset.from_coords(longitude, latitude, level, time)
+
+
+@pytest.fixture(scope="session")
 def met_pcc_pl(met_ecmwf_pl_path: str, override_cache: DiskCacheStore) -> MetDataset:
     """Met data (pressure levels) for PCC algorithm testing.
 

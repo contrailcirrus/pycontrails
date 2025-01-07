@@ -2424,12 +2424,23 @@ class MetDataArray(MetBase):
         Parameters
         ----------
         fun : Callable[[np.ndarray, ...], np.ndarray]
-            Function that takes one-dimensional coordinates as arguments and returns values of the
-            variable in an n-dimensional array. The number and order of parameters must match the
-            number and order of coordinate arrays stored in :param:`coords`. For example, if
-            :param:`coords` contains three coordinate arrays with sizes ``M``, ``N``, and ``P``,
-            then invoking :param:`fun` with these coordinate arrays as arguments should produce an
-            array with shape ``(M, N, P)``.
+            Function that takes coordinates as arguments and returns values of the variable. The
+            parameters and the return value must be n-dimensional arrays with the same shape. The
+            number of dimensions must match the number of coordinate arrays stored in
+            :param:`coords`, and the order of the function parameters must match the order of the
+            entries in :param:`coords`.
+            
+            If :param:`chunks` is ``None`` and :param:`coords` contains four coordinate arrays with
+            sizes ``M``, ``N``, ``P``, and ``Q``, :param:`fun` will be called with four arguments
+            with shape ``(M, N, P, Q)`` and should return a single array with shape ``(M, N, P,
+            Q)``. If :param:`chunks` is not None, :param:`fun` may be called multiple times with
+            chunks that contain subsets of the full ``(M, N, P, Q)`` coordinate arrays.
+
+            :py:function:`numpy.vectorize` can be used to create a function that accepts and returns
+            n-dimensional arrays from a function that accepts and returns scalars. The output
+            datatype may need to be explicitly specified using the ``otypes`` parameter when the
+            output from :py:function:`numpy.vectorize` is used to create a dask-backed
+            :class:``MetDataArray``.
 
         coords : dict[str, np.ndarray]
             Mapping from coordinate names to one-dimensional arrays of coordinate values.
@@ -2496,12 +2507,12 @@ class MetDataArray(MetBase):
         shape = tuple(len(c) for c in coords.values())
 
         if chunks is None:
-            data = np.fromfunction(_takeindex(fun, coords), shape=shape, dtype=int)
+            data = np.fromfunction(_take_index(fun, coords), shape=shape, dtype=int)
         else:
             data = dask.array.fromfunction(
-                _takeindex(fun, coords),
+                _take_index(fun, coords),
                 shape=shape,
-                chunks=_array_chunks(chunks, coords),
+                chunks=_dask_array_chunks(chunks, coords),
                 dtype=int,
             )
 
@@ -2542,7 +2553,7 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
     return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
 
 
-def _takeindex(
+def _take_index(
     fun: Callable[[np.ndarray, ...], np.ndarray], coords: dict[str, np.ndarray]
 ) -> Callable[[np.ndarray, ...], np.ndarray]:
     """Convert expected function arguments from coordinates to coordinate indices."""
@@ -2556,7 +2567,7 @@ def _takeindex(
     return wrapped
 
 
-def _array_chunks(
+def _dask_array_chunks(
     chunks: dict[str, int] | str, coords: dict[str, np.ndarray]
 ) -> tuple[int, ...] | str:
     """Create tuple of chunks for dask array constructor."""
