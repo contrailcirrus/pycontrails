@@ -119,9 +119,8 @@ class ERA5ModelLevel(ECMWFAPI):
         By default, False.
     url : str | None
         Override the default `cdsapi <https://github.com/ecmwf/cdsapi>`_ url.
-        As of August 2024, the url for the `CDS-Beta <https://cds-beta.climate.copernicus.eu>`_
-        is "https://cds-beta.climate.copernicus.eu/api", and the url for the legacy server is
-        "https://cds.climate.copernicus.eu/api/v2". If None, the url is set
+        As of January 2025, the url for the `CDS Server <https://cds.climate.copernicus.eu>`_
+        is "https://cds.climate.copernicus.eu/api". If None, the url is set
         by the ``CDSAPI_URL`` environment variable. If this is not defined, the
         ``cdsapi`` package will determine the url.
     key : str | None
@@ -465,13 +464,13 @@ class ERA5ModelLevel(ECMWFAPI):
             ds_ml = xr.open_dataset(ml_target)
             lnsp = xr.open_dataarray(lnsp_target)
 
-            # New CDS-Beta gives "valid_time" instead of "time"
+            # New CDS (Aug 2024) gives "valid_time" instead of "time"
             if "valid_time" in ds_ml:
                 ds_ml = ds_ml.rename(valid_time="time")
             if "valid_time" in lnsp.dims:
                 lnsp = lnsp.rename(valid_time="time")
 
-            # The legacy CDS gives "level" instead of "model_level"
+            # Legacy CDS (prior to Aug 2024) gives "level" instead of "model_level"
             if "level" in ds_ml.dims:
                 ds_ml = ds_ml.rename(level="model_level")
 
