@@ -6,6 +6,10 @@
 
 - Update the CDS URL referenced throughout pycontrails from ``https://cds-beta.climate.copernicus.eu`` to ``https://cds.climate.copernicus.eu``.
 
+### Internals
+
+- Change `AircraftPerformance` and downstream implementations for better support in running over `Fleet` sources. The runtime of `PSFlight` remains the same.
+
 ## v0.54.5
 
 ### Features

@@ -7,7 +7,7 @@ import functools
 import pathlib
 import sys
 from collections.abc import Mapping
-from typing import Any, NoReturn, overload
+from typing import Any
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -25,7 +25,6 @@ from pycontrails.core.aircraft_performance import (
     AircraftPerformanceData,
     AircraftPerformanceParams,
 )
-from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, EastwardWind, MetVariable, NorthwardWind
@@ -118,35 +117,8 @@ class PSFlight(AircraftPerformance):
             raise KeyError(msg)
         return False
 
-    @overload
-    def eval(self, source: Fleet, **params: Any) -> Fleet: ...
-
-    @overload
-    def eval(self, source: Flight, **params: Any) -> Flight: ...
-
-    @overload
-    def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
-
     @override
-    def eval(self, source: Flight | None = None, **params: Any) -> Flight:
-        self.update_params(params)
-        self.set_source(source)
-        self.source = self.require_source_type(Flight)
-        self.downselect_met()
-        self.set_source_met()
-
-        # Calculate true airspeed if not included on source
-        self.ensure_true_airspeed_on_source()
-
-        if isinstance(self.source, Fleet):
-            fls = [self._eval_flight(fl) for fl in self.source.to_flight_list()]
-            self.source = Fleet.from_seq(fls, attrs=self.source.attrs, broadcast_numeric=False)
-            return self.source
-
-        self.source = self._eval_flight(self.source)
-        return self.source
-
-    def _eval_flight(self, fl: Flight) -> Flight:
+    def eval_flight(self, fl: Flight) -> Flight:
         # Ensure aircraft type is available
         try:
             aircraft_type = fl.attrs["aircraft_type"]

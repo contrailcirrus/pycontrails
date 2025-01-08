@@ -96,21 +96,51 @@ class AircraftPerformance(Model):
 
     source: Flight
 
-    @abc.abstractmethod
     @overload
     def eval(self, source: Fleet, **params: Any) -> Fleet: ...
 
-    @abc.abstractmethod
     @overload
     def eval(self, source: Flight, **params: Any) -> Flight: ...
 
-    @abc.abstractmethod
     @overload
     def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
-    @abc.abstractmethod
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         """Evaluate the aircraft performance model.
+
+        Parameters
+        ----------
+        source : Flight
+            Flight trajectory to evaluate. Can be a :class:`Flight` or :class:`Fleet`.
+        params : Any
+            Override :attr:`params` with keyword arguments.
+
+        Returns
+        -------
+        Flight
+            Flight trajectory with aircraft performance data.
+        """
+        self.update_params(params)
+        self.set_source(source)
+        self.source = self.require_source_type(Flight)
+        self.downselect_met()
+        self.set_source_met()
+        self._cleanup_indices()
+
+        # Calculate true airspeed if not included on source
+        self.ensure_true_airspeed_on_source()
+
+        if isinstance(self.source, Fleet):
+            fls = [self.eval_flight(fl) for fl in self.source.to_flight_list()]
+            self.source = Fleet.from_seq(fls, attrs=self.source.attrs, broadcast_numeric=False)
+            return self.source
+
+        self.source = self.eval_flight(self.source)
+        return self.source
+
+    @abc.abstractmethod
+    def eval_flight(self, fl: Flight) -> Flight:
+        """Evaluate the aircraft performance model on a single flight trajectory.
 
         The implementing model adds the following fields to the source flight:
 
@@ -128,18 +158,6 @@ class AircraftPerformance(Model):
         - ``max_mach``: maximum Mach number
         - ``max_altitude``: maximum altitude, [:math:`m`]
         - ``total_fuel_burn``: total fuel burn, [:math:`kg`]
-
-        Parameters
-        ----------
-        source : Flight
-            Flight trajectory to evaluate.
-        params : Any
-            Override :attr:`params` with keyword arguments.
-
-        Returns
-        -------
-        Flight
-            Flight trajectory with aircraft performance data.
         """
 
     @override
