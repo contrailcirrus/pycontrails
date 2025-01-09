@@ -160,7 +160,7 @@ params = {
 }
 
 for fl in flights:
-    LOG.info(f'Validating {fl.attrs["flight_id"]}')
+    LOG.info(f"Validating {fl.attrs['flight_id']}")
     cocip = Cocip(met, rad=rad, params=params)
     cocip.eval(source=fl)
 
@@ -171,7 +171,7 @@ for fl in flights:
 
     # get flight, if its included
     try:
-        pycocip_flight = pd.read_csv(output_path / "flights" / f'{fl.attrs["flight_id"]}.csv')
+        pycocip_flight = pd.read_csv(output_path / "flights" / f"{fl.attrs['flight_id']}.csv")
     except FileNotFoundError:
         pycocip_flight = None
 
@@ -182,7 +182,7 @@ for fl in flights:
     try:
         support.validate_output(cocip, pycocip_flight, pycocip_flight_stats, pycocip_contrail)
     except AssertionError as e:
-        LOG.info(f'------- {fl.attrs["flight_id"]} invalid')
+        LOG.info(f"------- {fl.attrs['flight_id']} invalid")
         LOG.info(e)
         if flight_id is not None:
             raise (e)

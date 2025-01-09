@@ -153,7 +153,7 @@ class TestGCPCacheStore:
         _cache = GCPCacheStore(bucket=BUCKET)
         assert _cache.bucket == BUCKET
         assert _cache.cache_dir == (
-            f'{os.getenv("PYCONTRAILS_CACHE_DIR")}/'
+            f"{os.getenv('PYCONTRAILS_CACHE_DIR')}/"
             if "PYCONTRAILS_CACHE_DIR" in os.environ
             else ""
         )

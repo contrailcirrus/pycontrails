@@ -21,24 +21,24 @@ def to_atc_plan(plan: dict[str, Any]) -> str:
     --------
     :func:`parse_atc_plan`
     """
-    ret = f'(FPL-{plan["callsign"]}-{plan["flight_rules"]}'
-    ret += f'{plan["type_of_flight"]}\n'
+    ret = f"(FPL-{plan['callsign']}-{plan['flight_rules']}"
+    ret += f"{plan['type_of_flight']}\n"
     ret += "-"
     if "number_aircraft" in plan and plan["number_aircraft"] <= 10:
         ret += plan["number_aircraft"]
-    ret += f'{plan["type_of_aircraft"]}/{plan["wake_category"]}-'
-    ret += f'{plan["equipment"]}/{plan["transponder"]}\n'
-    ret += f'-{plan["departure_icao"]}{plan["time"]}\n'
-    ret += f'-{plan["speed_type"]}{plan["speed"]}{plan["level_type"]}'
-    ret += f'{plan["level"]} {plan["route"]}\n'
+    ret += f"{plan['type_of_aircraft']}/{plan['wake_category']}-"
+    ret += f"{plan['equipment']}/{plan['transponder']}\n"
+    ret += f"-{plan['departure_icao']}{plan['time']}\n"
+    ret += f"-{plan['speed_type']}{plan['speed']}{plan['level_type']}"
+    ret += f"{plan['level']} {plan['route']}\n"
     if "destination_icao" in plan and "duration" in plan:
-        ret += f'-{plan["destination_icao"]}{plan["duration"]}'
+        ret += f"-{plan['destination_icao']}{plan['duration']}"
     if "alt_icao" in plan:
-        ret += f' {plan["alt_icao"]}'
+        ret += f" {plan['alt_icao']}"
     if "second_alt_icao" in plan:
-        ret += f' {plan["second_alt_icao"]}'
+        ret += f" {plan['second_alt_icao']}"
     ret += "\n"
-    ret += f'-{plan["other_info"]})\n'
+    ret += f"-{plan['other_info']})\n"
     if "supplementary_info" in plan:
         ret += " ".join([f"{i[0]}/{i[1]}" for i in plan["supplementary_info"].items()])
 

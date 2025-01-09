@@ -891,7 +891,7 @@ class Flight(GeoVectorDataset):
         """
         methods = "geodesic", "linear"
         if fill_method not in methods:
-            raise ValueError(f'Unknown `fill_method`. Supported  methods: {", ".join(methods)}')
+            raise ValueError(f"Unknown `fill_method`. Supported  methods: {', '.join(methods)}")
 
         # STEP 0: If self is empty, return an empty flight
         if not self:

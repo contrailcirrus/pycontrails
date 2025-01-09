@@ -654,7 +654,7 @@ def histogram_matching(
         as a numpy array with the same shape and dtype as ``era5_rhi``.
     """
     if level_type not in ["pressure", "model"]:
-        msg = f"Invalid 'level_type' value '{level_type}'. " "Must be one of ['pressure', 'model']."
+        msg = f"Invalid 'level_type' value '{level_type}'. Must be one of ['pressure', 'model']."
         raise ValueError(msg)
     df = _load_quantiles(level_type)
     iagos_quantiles = df[("iagos", "iagos")]
