@@ -282,6 +282,35 @@ VerticalVelocity = MetVariable(
     ),
 )
 
+MassFractionOfCloudLiquidWaterInAir = MetVariable(
+    short_name="clw",
+    standard_name="mass_fraction_of_cloud_liquid_water_in_air",
+    long_name="Mass fraction of cloud liquid water in air",
+    units="kg kg**-1",
+    level_type="isobaricInhPa",
+    amip="clw",
+    description=("The mass fraction of cloud liquid water in moist air."),
+)
+
+MassFractionOfCloudIceInAir = MetVariable(
+    short_name="cli",
+    standard_name="mass_fraction_of_cloud_ice_in_air",
+    long_name="Mass fraction of cloud ice in air",
+    units="kg kg**-1",
+    level_type="isobaricInhPa",
+    amip="cli",
+    description=("The mass fraction of cloud ice in moist air."),
+)
+
+CloudAreaFractionInAtmosphereLayer = MetVariable(
+    short_name="cl",
+    standard_name="cloud_area_fraction_in_atmosphere_layer",
+    long_name="Cloud area fraction in atmosphere layer",
+    units="[0 - 1]",
+    level_type="isobaricInhPa",
+    description=("The fraction of the horizontal area of a grid cell that contains cloud."),
+)
+
 
 # ----
 # Single level variables
@@ -303,5 +332,38 @@ SurfacePressure = MetVariable(
         "on the surface of land, sea and in-land water. It is a measure of the "
         "weight of all the air in a column vertically above the area of the "
         "Earth's surface represented at a fixed point."
+    ),
+)
+
+TOANetDownwardShortwaveFlux = MetVariable(
+    short_name="rst",
+    standard_name="toa_net_downward_shortwave_flux",
+    long_name="TOA net downward shortwave flux",
+    units="W m**-2",
+    level_type="nominalTop",
+    amip="rst",
+    description=(
+        '"shortwave" means shortwave radiation. "toa" means top of atmosphere. '
+        '"Downward" indicates a vector component which is positive when directed '
+        "downward (negative upward). Net downward radiation is the difference "
+        "between radiation from above (downwelling) and radiation from below (upwelling). "
+        "In accordance with common usage in geophysical disciplines, "
+        '"flux" implies per unit area, called "flux density" in physics.'
+    ),
+)
+
+TOAOutgoingLongwaveFlux = MetVariable(
+    short_name="rlut",
+    standard_name="toa_outgoing_longwave_flux",
+    long_name="TOA outgoing longwave_flux",
+    units="W m**-2",
+    level_type="nominalTop",
+    amip="rlut",
+    description=(
+        '"longwave" means longwave radiation. "toa" means top of atmosphere. '
+        "The TOA outgoing longwave flux is the upwelling thermal radiative flux, "
+        'often called the "outgoing longwave radiation" or "OLR". '
+        "In accordance with common usage in geophysical disciplines, "
+        '"flux" implies per unit area, called "flux density" in physics.'
     ),
 )
