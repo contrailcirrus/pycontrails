@@ -45,7 +45,8 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
     met : MetDataset
         A MetDataset with the following variables:
         - "air_temperature"
-        - "specific_cloud_ice_water_content" or "ice_water_mixing_ratio"
+        - "mass_fraction_of_cloud_ice_in_air", "specific_cloud_ice_water_content",
+          or "ice_water_mixing_ratio"
 
     Returns
     -------
@@ -64,15 +65,21 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
     geopotential_height = _geopotential_height(met)
 
     # TODO: these are not *quite* the same, though we treat them the same for now
-    # ECMWF "specific_cloud_ice_water_content" is mass ice per mass of *moist* air
-    # GFS "ice_water_mixing_ratio" is mass ice per mass of *dry* air
+    # The generic "mass_fraction_of_cloud_ice_in_air" and ECMWF "specific_cloud_ice_water_content"
+    # are mass ice per mass of *moist* air,
+    # whereas GFS "ice_water_mixing_ratio" is mass ice per mass of *dry* air
     #
     # The method `cirrus_effective_extinction_coef` uses input of mass ice per mass of *dry* air,
-    # so the ECMWF data is not quite right.
-    try:
+    # so only the GFS data is exactly right.
+    if "mass_fraction_of_cloud_ice_in_air" in met.data:
+        ciwc = met.data["mass_fraction_of_cloud_ice_in_air"]
+    elif "specific_cloud_ice_water_content" in met.data:
         ciwc = met.data["specific_cloud_ice_water_content"]
-    except KeyError:
+    elif "ice_water_mixing_ratio" in met.data:
         ciwc = met.data["ice_water_mixing_ratio"]
+    else:
+        msg = "Could not find cloud ice variable"
+        raise KeyError(msg)
 
     beta_e = cirrus_effective_extinction_coef(
         ciwc,
