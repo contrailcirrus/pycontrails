@@ -212,6 +212,38 @@ def rad_cocip1() -> MetDataset:
 
 
 @pytest.fixture()
+def met_generic_cocip1() -> MetDataset:
+    """Generic meteorology to run cocip with ``flight-cocip1``."""
+    path = get_static_path("met-era5-cocip1.nc")
+    ds = xr.open_dataset(path).astype("float32")
+    ds["air_pressure"] = ds["air_pressure"].astype("float32")
+    ds["altitude"] = ds["altitude"].astype("float32")
+    ds = ds.rename(
+        {
+            "specific_cloud_ice_water_content": "mass_fraction_of_cloud_ice_in_air",
+            "fraction_of_cloud_cover": "cloud_area_fraction_in_atmosphere_layer",
+        }
+    )
+    return MetDataset(ds, provider="Generic")
+
+
+@pytest.fixture()
+def rad_generic_cocip1() -> MetDataset:
+    """Generic radiation data to run cocip with ``flight-cocip1``."""
+    path = get_static_path("rad-era5-cocip1.nc")
+    ds = xr.open_dataset(path)
+    ds = ds.rename(
+        {
+            "top_net_solar_radiation": "toa_net_downward_shortwave_flux",
+            "top_net_thermal_radiation": "toa_outgoing_longwave_flux",
+        }
+    )
+    ds["toa_outgoing_longwave_flux"] *= -1
+    ds = ds.assign_coords({"time": ds["time"] - np.timedelta64(30, "m")})
+    return MetDataset(ds, provider="Generic")
+
+
+@pytest.fixture()
 def met_cocip_nonuniform_time(met_cocip1: MetDataset) -> MetDataset:
     """Return a MetDataset with nonuniform time."""
     ds = met_cocip1.data
@@ -252,6 +284,35 @@ def rad_cocip2() -> MetDataset:
     path = get_static_path("rad-era5-cocip2.nc")
     ds = xr.open_dataset(path)
     return MetDataset(ds, provider="ECMWF", dataset="ERA5", product="reanalysis")
+
+
+@pytest.fixture()
+def met_generic_cocip2() -> MetDataset:
+    """Generic meteorology to run cocip with ``flight-cocip2.csv``."""
+    path = get_static_path("met-era5-cocip2.nc")
+    ds = xr.open_dataset(path)
+    ds = ds.rename(
+        {
+            "specific_cloud_ice_water_content": "mass_fraction_of_cloud_ice_in_air",
+        }
+    )
+    return MetDataset(ds, provider="Generic")
+
+
+@pytest.fixture()
+def rad_generic_cocip2() -> MetDataset:
+    """Generic radiation data to run cocip with ``flight-cocip2.csv``."""
+    path = get_static_path("rad-era5-cocip2.nc")
+    ds = xr.open_dataset(path)
+    ds = ds.rename(
+        {
+            "top_net_solar_radiation": "toa_net_downward_shortwave_flux",
+            "top_net_thermal_radiation": "toa_outgoing_longwave_flux",
+        }
+    )
+    ds["toa_outgoing_longwave_flux"] *= -1
+    ds["time"].attrs = {}  # don't mark time as already shifted
+    return MetDataset(ds, provider="Generic")
 
 
 @pytest.fixture()

@@ -82,24 +82,31 @@ class Cocip(Model):
         * - Parameter
           - ECMWF
           - GFS
+          - Generic
         * - Air Temperature
+          - ``air_temperature``
           - ``air_temperature``
           - ``air_temperature``
         * - Specific Humidity
           - ``specific_humidity``
           - ``specific_humidity``
+          - ``specific_humidity``
         * - Eastward wind
+          - ``eastward_wind``
           - ``eastward_wind``
           - ``eastward_wind``
         * - Northward wind
           - ``northward_wind``
           - ``northward_wind``
+          - ``northward_wind``
         * - Vertical velocity
+          - ``lagrangian_tendency_of_air_pressure``
           - ``lagrangian_tendency_of_air_pressure``
           - ``lagrangian_tendency_of_air_pressure``
         * - Ice water content
           - ``specific_cloud_ice_water_content``
           - ``ice_water_mixing_ratio``
+          - ``mass_fraction_of_cloud_ice_in_air``
 
     .. list-table:: Variable keys for single-level radiation data
         :header-rows: 1
@@ -107,12 +114,15 @@ class Cocip(Model):
         * - Parameter
           - ECMWF
           - GFS
+          - Generic
         * - Top solar radiation
           - ``top_net_solar_radiation``
           - ``toa_upward_shortwave_flux``
+          - ``toa_net_downward_shortwave_flux``
         * - Top thermal radiation
           - ``top_net_thermal_radiation``
           - ``toa_upward_longwave_flux``
+          - ``toa_outgoing_longwave_flux``
 
     **Modifications**
 
@@ -591,10 +601,12 @@ class Cocip(Model):
         if verbose_outputs:
             interpolate_met(met, self.source, "tau_cirrus", **interp_kwargs)
 
-            # handle ECMWF/GFS ciwc variables
+            # handle ECMWF/GFS/generic ciwc variables
             if (key := "specific_cloud_ice_water_content") in met:  # noqa: SIM114
                 interpolate_met(met, self.source, key, **interp_kwargs)
-            elif (key := "ice_water_mixing_ratio") in met:
+            elif (key := "ice_water_mixing_ratio") in met:  # noqa: SIM114
+                interpolate_met(met, self.source, key, **interp_kwargs)
+            elif (key := "mass_fraction_of_cloud_ice_in_air") in met:
                 interpolate_met(met, self.source, key, **interp_kwargs)
 
             self.source["rho_air"] = thermo.rho_d(
@@ -1988,23 +2000,32 @@ def calc_outgoing_longwave_radiation(
     Raises
     ------
     ValueError
-        If ``rad`` does not contain a ``"toa_upward_longwave_flux"``
-        or ``"top_net_thermal_radiation"`` variable.
+        If ``rad`` does not contain a ``"toa_outgoing_longwave_flux"``,
+        ``"toa_upward_longwave_flux"`` or ``"top_net_thermal_radiation"`` variable.
     """
 
     if "olr" in vector:
         return
 
-    # Generic and GFS contain OLR (toa_upward_longwave_flux) variable directly
-    generic_key = "toa_upward_longwave_flux"
+    # Generic contains OLR (toa_outgoing_longwave_flux) directly
+    generic_key = "toa_outgoing_longwave_flux"
     if generic_key in rad:
         interpolate_met(rad, vector, generic_key, "olr", **interp_kwargs)
+        return
+
+    # GFS contains OLR (toa_upward_longwave_flux) directly
+    gfs_key = "toa_upward_longwave_flux"
+    if gfs_key in rad:
+        interpolate_met(rad, vector, gfs_key, "olr", **interp_kwargs)
         return
 
     # ECMWF contains "top_net_thermal_radiation" which is -1 * OLR
     ecmwf_key = "top_net_thermal_radiation"
     if ecmwf_key not in rad:
-        msg = f"'rad' data must contain either '{generic_key}' or '{ecmwf_key}' (ECMWF) variable."
+        msg = (
+            f"'rad' data must contain either '{generic_key}' (generic), "
+            f"'{gfs_key}' (GFS), or '{ecmwf_key}' (ECMWF) variable."
+        )
         raise ValueError(msg)
 
     tntr = interpolate_met(rad, vector, ecmwf_key, **interp_kwargs)
