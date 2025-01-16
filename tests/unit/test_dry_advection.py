@@ -95,3 +95,41 @@ def test_compare_dry_advection_to_cocip(
     # Pin some mean values to demonstrate the difference in vertical advection
     assert df1_sl["level"].mean() == pytest.approx(219.56, abs=0.01)
     assert df2_sl["level"].mean() == pytest.approx(222.07, abs=0.1)
+
+
+@pytest.mark.parametrize(
+    ("verbose_outputs", "include_source_in_output"),
+    [(True, True), (True, False), (False, True), (False, False)],
+)
+def test_dry_advection_verbose_outputs(
+    met_cocip1: MetDataset,
+    source: GeoVectorDataset,
+    verbose_outputs: bool,
+    include_source_in_output: bool,
+) -> None:
+    """Test the :class:`DryAdvection` model."""
+    params = {
+        "max_age": np.timedelta64(1, "h"),
+        "dt_integration": np.timedelta64(5, "m"),
+        "verbose_outputs": verbose_outputs,
+        "include_source_in_output": include_source_in_output,
+    }
+
+    model = DryAdvection(met_cocip1, params)
+    out = model.eval(source)
+    assert isinstance(out, GeoVectorDataset)
+    n_variables = len(out.data)
+    n_rows = len(out)
+
+    extra_keys = ("ds_dz", "dsn_dz", "dT_dz")
+    if verbose_outputs:
+        assert all(key in out for key in extra_keys)
+        assert n_variables == 19
+    else:
+        assert not any(key in out for key in extra_keys)
+        assert n_variables == 16
+
+    if include_source_in_output:
+        assert n_rows == 3532 + len(source)
+    else:
+        assert n_rows == 3532

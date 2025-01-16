@@ -2,6 +2,14 @@
 
 ## v0.54.6 (unreleased)
 
+### Features
+
+- Add two new parameters to the `DryAdvection` model.
+  - If the `verbose_outputs` parameter is enabled, additional wind-shear data is included in the output.
+  - If the `include_source_in_output` parameter is enabled, the source data with any of the intermediate artifacts (e.g., interpolated met data, wind-shear data, etc.) is included in the output.
+
+  Both parameters are disabled by default.
+
 ### Fixes
 
 - Update the CDS URL referenced throughout pycontrails from ``https://cds-beta.climate.copernicus.eu`` to ``https://cds.climate.copernicus.eu``.
