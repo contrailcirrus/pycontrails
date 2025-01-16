@@ -63,6 +63,15 @@ class DryAdvectionParams(models.AdvectionBuffers):
     # If None, only pointwise advection is simulated without wind shear effects.
     azimuth: float | None = 0.0
 
+    #: Add additional intermediate variables to the output vector.
+    #: This includes interpolated met variables and wind-shear-derived geometry.
+    verbose_outputs: bool = False
+
+    #: Whether to include ``source`` points in the output vector. Enabling allows
+    #: the user to view additional data (e.g., interpolated met variables) for
+    #: source points as well as evolved points.
+    include_source_in_output: bool = False
+
 
 class DryAdvection(models.Model):
     """Simulate "dry advection" of an emissions plume with an elliptical cross section.
@@ -154,42 +163,51 @@ class DryAdvection(models.Model):
         sedimentation_rate = self.params["sedimentation_rate"]
         dz_m = self.params["dz_m"]
         max_depth = self.params["max_depth"]
+        verbose_outputs = self.params["verbose_outputs"]
 
         source_time = self.source["time"]
         t0 = pd.Timestamp(source_time.min()).floor(pd.Timedelta(dt_integration)).to_numpy()
         t1 = source_time.max()
         timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
 
-        vector = GeoVectorDataset()
+        vector2 = GeoVectorDataset()
         met = None
 
         evolved = []
         for t in timesteps:
             filt = (source_time < t) & (source_time >= t - dt_integration)
-            vector = vector + self.source.filter(filt, copy=False)
+            vector1 = vector2 + self.source.filter(filt, copy=False)
 
-            t0 = vector["time"].min()
-            t1 = vector["time"].max()
+            t0 = vector1["time"].min()
+            t1 = vector1["time"].max()
             met = maybe_downselect_mds(self.met, met, t0, t1)
 
-            vector = _evolve_one_step(
+            vector2 = _evolve_one_step(
                 met,
-                vector,
+                vector1,
                 t,
                 sedimentation_rate=sedimentation_rate,
                 dz_m=dz_m,
                 max_depth=max_depth,
+                verbose_outputs=verbose_outputs,
                 **interp_kwargs,
             )
+            evolved.append(vector1)
 
-            filt = (vector["age"] <= max_age) & vector.coords_intersect_met(self.met)
-            vector = vector.filter(filt)
+            filt = (vector2["age"] <= max_age) & vector2.coords_intersect_met(self.met)
+            vector2 = vector2.filter(filt)
 
-            evolved.append(vector)
-            if not vector and np.all(source_time < t):
+            if not vector2 and np.all(source_time < t):
                 break
 
-        return GeoVectorDataset.sum(evolved, fill_value=np.nan)
+        evolved.append(vector2)
+        out = GeoVectorDataset.sum(evolved, fill_value=np.nan)
+
+        if self.params["include_source_in_output"]:
+            return out
+
+        filt = out["age"] > np.timedelta64(0, "ns")
+        return out.filter(filt)
 
     def _prepare_source(self) -> GeoVectorDataset:
         r"""Prepare :attr:`source` vector for advection by wind-shear-derived variables.
@@ -364,8 +382,12 @@ def _calc_geometry(
     dz_m: float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
     max_depth: float | None,
+    verbose_outputs: bool,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Calculate wind-shear-derived geometry of evolved plume."""
+    """Calculate wind-shear-derived geometry of evolved plume.
+
+    This method mutates the input ``vector`` in place.
+    """
 
     u_wind = vector["u_wind"]
     v_wind = vector["v_wind"]
@@ -418,6 +440,11 @@ def _calc_geometry(
         sedimentation_impact_factor=0.0,
         eff_heat_rate=None,
     )
+
+    if verbose_outputs:
+        vector["ds_dz"] = ds_dz
+        vector["dsn_dz"] = dsn_dz
+        vector["dT_dz"] = dT_dz
 
     sigma_yy_2, sigma_zz_2, sigma_yz_2 = contrail_properties.plume_temporal_evolution(
         width,
@@ -477,9 +504,13 @@ def _evolve_one_step(
     sedimentation_rate: float,
     dz_m: float,
     max_depth: float | None,
+    verbose_outputs: bool,
     **interp_kwargs: Any,
 ) -> GeoVectorDataset:
-    """Evolve plume geometry by one step."""
+    """Evolve plume geometry by one step.
+
+    This method mutates the input ``vector`` in place.
+    """
 
     _perform_interp_for_step(met, vector, dz_m, **interp_kwargs)
     u_wind = vector["u_wind"]
@@ -494,9 +525,9 @@ def _evolve_one_step(
     level_2 = geo.advect_level(
         vector.level,
         vertical_velocity,
-        0.0,
-        0.0,
-        dt,  # type: ignore[arg-type]
+        rho_air=0.0,
+        terminal_fall_speed=0.0,
+        dt=dt,  # type: ignore[arg-type]
     )
 
     out = GeoVectorDataset._from_fastpath(
@@ -518,9 +549,10 @@ def _evolve_one_step(
     # Attach wind-shear-derived geometry to output vector
     azimuth_2, width_2, depth_2, sigma_yz_2, area_eff_2 = _calc_geometry(
         vector,
-        dz_m,
-        dt,  # type: ignore[arg-type]
-        max_depth,  # type: ignore[arg-type]
+        dz_m=dz_m,
+        dt=dt,  # type: ignore[arg-type]
+        max_depth=max_depth,  # type: ignore[arg-type]
+        verbose_outputs=verbose_outputs,
     )
     out["azimuth"] = azimuth_2
     out["width"] = width_2
