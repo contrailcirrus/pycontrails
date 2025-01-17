@@ -4,6 +4,8 @@
 
 ### Features
 
+- Add support for generic (model-agnostic) meteorology data to `Cocip` and `CocipGrid`.
+
 - Add two new parameters to the `DryAdvection` model.
   - If the `verbose_outputs` parameter is enabled, additional wind-shear data is included in the output.
   - If the `include_source_in_output` parameter is enabled, the source data with any of the intermediate artifacts (e.g., interpolated met data, wind-shear data, etc.) is included in the output.
