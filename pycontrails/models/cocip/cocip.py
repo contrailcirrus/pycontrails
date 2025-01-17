@@ -1540,11 +1540,6 @@ def _process_rad(rad: MetDataset) -> MetDataset:
     These variables are used to calculate the reflected solar radiation (RSR),
     and outgoing longwave radiation (OLR).
 
-    This routine is only used for radiation data from ECMWF models. In all other
-    cases it is the responsibility of the user to ensure that radiative fluxes
-    have units of W m-2 and to adjust the time coordinates, if appropriate, when
-    fluxes are time-averaged.
-
     The time stamp is adjusted by ``shift_radiation_time`` to account for
     accumulated values being averaged over the time period.
 
@@ -1938,7 +1933,7 @@ def calc_shortwave_radiation(
     Raises
     ------
     ValueError
-        If ``rad`` does not contain ``"top_net_downward_shortwave_flux"``,
+        If ``rad`` does not contain ``"toa_net_downward_shortwave_flux"``,
         ``"toa_upward_shortwave_flux"`` or ``"top_net_solar_radiation"`` variable.
 
     Notes
