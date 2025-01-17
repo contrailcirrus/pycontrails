@@ -38,10 +38,14 @@ def _segment_haversine_3d(
     Returns the distance between each waypoint in meters.
     """
     horizontal_distance = geo.segment_haversine(longitude, latitude)
+
     altitude_m = units.ft_to_m(altitude_ft)
-    alt0 = units.ft_to_m(altitude_m[:-1])
-    alt1 = units.ft_to_m(altitude_m[1:])
-    vertical_displacement = alt1 - alt0
+    alt0 = altitude_m[:-1]
+    alt1 = altitude_m[1:]
+    vertical_displacement = np.empty_like(altitude_m)
+    vertical_displacement[:-1] = alt1 - alt0
+    vertical_displacement[-1] = np.nan
+
     distance = (horizontal_distance**2 + vertical_displacement**2) ** 0.5
 
     # Roll the array to match usual pandas conventions.
