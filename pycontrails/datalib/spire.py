@@ -271,6 +271,8 @@ class ValidateTrajectoryHandler:
             msg = f"Trajectory DataFrame has columns with invalid data types: {col_w_bad_dtypes}"
             return SchemaError(msg)
 
+        return None
+
     def _is_timestamp_sorted_and_unique(self) -> list[OrderingError | FlightDuplicateTimestamps]:
         """Verify that the data is sorted by waypoint timestamp in ascending order."""
         if self._df is None:
@@ -323,6 +325,8 @@ class ValidateTrajectoryHandler:
             msg = f"The following fields have multiple values for this trajectory: {fields}"
             return FlightInvariantFieldViolation(msg)
 
+        return None
+
     def _is_valid_flight_length(self) -> FlightTooShortError | FlightTooLongError | None:
         """Verify that the flight is of a reasonable length."""
         if self._df is None:
@@ -344,6 +348,8 @@ class ValidateTrajectoryHandler:
                 f"this trajectory spans {flight_duration_hours:.2f} hours."
             )
 
+        return None
+
     def _is_from_origin_airport(self) -> OriginAirportError | None:
         """Verify the trajectory origin is a reasonable distance from the origin airport."""
         if self._df is None:
@@ -360,6 +366,8 @@ class ValidateTrajectoryHandler:
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
 
+        return None
+
     def _is_to_destination_airport(self) -> DestinationAirportError | None:
         """Verify the trajectory destination is reasonable distance from the destination airport."""
         if self._df is None:
@@ -375,6 +383,8 @@ class ValidateTrajectoryHandler:
                 f"Distance {last_waypoint_dist_km}km is greater than "
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
+
+        return None
 
     def _is_too_slow(self) -> list[FlightTooSlowError]:
         """
@@ -458,6 +468,8 @@ class ValidateTrajectoryHandler:
                 f"max value: {above_inst_thresh['ground_speed_m_s'].max()}, "
                 f"min value: {above_inst_thresh['ground_speed_m_s'].min()}"
             )
+
+        return None
 
     def _is_expected_altitude_profile(self) -> list[FlightAltitudeProfileError | ROCDError]:
         """
