@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pandas.api.types as pdtypes
 
-from pycontrails.core import airports, flight
+from pycontrails.core import airports
 from pycontrails.datalib.exceptions import (
     BadTrajectoryException,
     BaseSpireError,
@@ -195,7 +195,7 @@ class ValidateTrajectoryHandler:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
             raise ValueError(msg)
 
-        elapsed_seconds = flight.segment_duration(self._df["timestamp"].to_numpy())
+        elapsed_seconds = self._df["timestamp"].diff().dt.total_seconds()
         self._df["elapsed_seconds"] = elapsed_seconds
 
         elapsed_distance_m = _segment_haversine_3d(
@@ -329,7 +329,7 @@ class ValidateTrajectoryHandler:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
             raise ValueError(msg)
 
-        flight_duration_sec = (self._df["timestamp"].max() - self._df["timestamp"].min()).seconds
+        flight_duration_sec = np.ptp(self._df["timestamp"]).seconds
         flight_duration_hours = flight_duration_sec / 60.0 / 60.0
 
         if flight_duration_hours > self.MAX_FLIGHT_LENGTH_HR:
