@@ -251,13 +251,12 @@ class ValidateTrajectoryHandler:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
             raise ValueError(msg)
 
-        col_types = self._df.dtypes
-        cols = set(col_types.index)
-
-        missing_cols = [i for i in self.SCHEMA if i not in cols]
+        missing_cols = set(self.SCHEMA).difference(self._df)
         if missing_cols:
-            return SchemaError(f"Trajectory DataFrame is missing expected fields: {missing_cols}")
+            msg = f"Trajectory DataFrame is missing expected fields: {sorted(missing_cols)}"
+            return SchemaError(msg)
 
+        col_types = self._df.dtypes
         col_w_bad_dtypes = []
         for col, check_fn in self.SCHEMA.items():
             is_valid = check_fn(col_types[col])
@@ -265,9 +264,8 @@ class ValidateTrajectoryHandler:
                 col_w_bad_dtypes.append(f"{col} failed check {check_fn.__name__}")
 
         if col_w_bad_dtypes:
-            return SchemaError(
-                f"Trajectory DataFrame has columns with invalid data types: {col_w_bad_dtypes}"
-            )
+            msg = f"Trajectory DataFrame has columns with invalid data types: {col_w_bad_dtypes}"
+            return SchemaError(msg)
 
     def _is_timestamp_sorted_and_unique(self) -> list[OrderingError | FlightDuplicateTimestamps]:
         """Verify that the data is sorted by waypoint timestamp in ascending order."""
