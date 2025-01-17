@@ -68,11 +68,24 @@ class Cocip(Model):
     -----
     **Inputs**
 
-    The required meteorology variables depend on the data source (e.g. ECMWF, GFS).
+    The required meteorology variables depend on the data source. :class:`Cocip`
+    supports data-source-specific variables from ECMWF models (HRES, ERA5) and the NCEP GFS, plus
+    a generic set of model-agnostic variables.
 
     See :attr:`met_variables` and :attr:`rad_variables` for the list of required variables
     to the ``met`` and ``rad`` parameters, respectively.
     When an item in one of these arrays is a :class:`tuple`, variable keys depend on data source.
+
+    A warning will be raised if meteorology data is from a source not currently supported by
+    a pycontrails datalib. In this case it is the responsibility of the user to ensure that
+    meteorology data is formatted correctly. The warning can be suppressed with a context manager:
+
+    .. code-block:: python
+        :emphasize-lines: 1,2
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning, message="Unknown provider")
+            cocip = Cocip(met, rad, ...)
 
     The current list of required variables (labelled by ``"standard_name"``):
 
