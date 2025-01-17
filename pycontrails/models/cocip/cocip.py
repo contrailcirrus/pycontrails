@@ -81,8 +81,9 @@ class Cocip(Model):
     meteorology data is formatted correctly. The warning can be suppressed with a context manager:
 
     .. code-block:: python
-        :emphasize-lines: 1,2
+        :emphasize-lines: 2,3
 
+        import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning, message="Unknown provider")
             cocip = Cocip(met, rad, ...)
