@@ -57,6 +57,31 @@ def instance_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> dict[str,
     }
 
 
+@pytest.fixture()
+def instance_params_generic_met(
+    met_generic_cocip1: MetDataset, rad_generic_cocip1: MetDataset
+) -> dict[str, Any]:
+    """Return common parameters for `CocipGrid` model instances with generic meteorology.
+
+    Note the fixture is scoped "function".
+    """
+    # met_cocip1 has levels [200, 225, 250, 300]
+    np.testing.assert_array_equal(met_generic_cocip1.data["level"], [200, 225, 250, 300])
+
+    return {
+        "met": met_generic_cocip1,
+        "rad": rad_generic_cocip1,
+        "dt_integration": np.timedelta64(5, "m"),
+        # need to keep this super small to avoid advecting out of bounds
+        "max_age": np.timedelta64(90, "m"),
+        # explicitly raise error if we advect too far
+        "interpolation_bounds_error": True,
+        "target_split_size": 1000,
+        "target_split_size_pre_SAC_boost": 1,
+        "humidity_scaling": ExponentialBoostHumidityScaling(rhi_adj=0.9),
+    }
+
+
 def test_init_contrail_grid_minimal_params(met_cocip1: MetDataset, rad_cocip1: MetDataset) -> None:
     """Check that `CocipGrid` can be instantiated with a minimal set of parameters."""
     gc = CocipGrid(
@@ -450,6 +475,26 @@ def grid_results(
     return gc.eval(source=source, aircraft_performance=bada_grid_model)
 
 
+@pytest.fixture()
+def grid_results_generic_met(
+    instance_params_generic_met: dict[str, Any],
+    bada_grid_model: AircraftPerformanceGrid,
+) -> MetDataset:
+    """Run `CocipGrid` on three distinct times."""
+    t_step = np.timedelta64(20, "m")
+    start_time = np.datetime64("2019-01-01")
+    source = CocipGrid.create_source(
+        level=[220, 230, 240, 250],
+        time=np.arange(start_time, start_time + np.timedelta64(1, "h"), t_step),
+        longitude=np.linspace(-35, -25, 40),
+        latitude=np.linspace(51, 57, 20),
+    )
+
+    with pytest.warns(UserWarning, match="Unknown provider 'Generic'"):
+        gc = CocipGrid(**instance_params_generic_met)
+        return gc.eval(source=source, aircraft_performance=bada_grid_model)
+
+
 def test_atr20_outputs(
     instance_params: dict[str, Any],
     bada_grid_model: AircraftPerformanceGrid,
@@ -676,6 +721,13 @@ def test_grid_results(grid_results: MetDataset) -> None:
     point = grid_results.data.isel(longitude=14, latitude=19, level=2, time=2)
     assert point["contrail_age"].item() == 1.5
     assert point["ef_per_m"].item() == pytest.approx(43664804, rel=1e-3)
+
+
+def test_grid_results_generic_met(
+    grid_results: MetDataset, grid_results_generic_met: MetDataset
+) -> None:
+    """Test output from gridded CoCiP with generic meteorology."""
+    xr.testing.assert_equal(grid_results.data, grid_results_generic_met.data)
 
 
 @pytest.fixture()
