@@ -18,6 +18,7 @@
 
 ### Internals
 
+- Suppress mypy `return-value` errors for functions in `geo.py` where mypy fails to correctly infer return types of numpy ufuncs applied to xarray objects.
 - Change `AircraftPerformance` and downstream implementations for better support in running over `Fleet` sources. The runtime of `PSFlight` remains the same.
 
 ## v0.54.5
