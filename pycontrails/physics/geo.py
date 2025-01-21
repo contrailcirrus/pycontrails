@@ -516,7 +516,7 @@ def solar_constant(theta_rad: ArrayLike) -> ArrayLike:
         + (0.000077 * np.sin(theta_rad * 2))
     )
 
-    return constants.solar_constant * orbital_effect
+    return constants.solar_constant * orbital_effect  # type: ignore[return-value]
 
 
 def cosine_solar_zenith_angle(
@@ -662,7 +662,7 @@ def solar_declination_angle(theta_rad: ArrayLike) -> ArrayLike:
     :func:`cosine_solar_zenith_angle`
     """
     return (
-        0.396372
+        0.396372  # type: ignore[return-value]
         - (22.91327 * np.cos(theta_rad))
         + (4.02543 * np.sin(theta_rad))
         - (0.387205 * np.cos(2 * theta_rad))
@@ -729,7 +729,7 @@ def orbital_correction_for_solar_hour_angle(theta_rad: ArrayLike) -> ArrayLike:
     Tested against :cite:`noaaSolarCalculationDetails`
     """
     return (
-        0.004297
+        0.004297  # type: ignore[return-value]
         + (0.107029 * np.cos(theta_rad))
         - (1.837877 * np.sin(theta_rad))
         - (0.837378 * np.cos(2 * theta_rad))
