@@ -13,7 +13,7 @@ import numpy.typing as npt
 import pandas as pd
 
 import pycontrails
-from pycontrails.core import models
+from pycontrails.core import MetVariable, models
 from pycontrails.core.met import MetDataset, maybe_downselect_mds
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
 from pycontrails.models import humidity_scaling, sac
@@ -434,6 +434,39 @@ class CocipGrid(models.Model):
                 )
 
         return self.source
+
+    @classmethod
+    def generic_rad_variables(cls) -> tuple[MetVariable, ...]:
+        """Return a model-agnostic list of required radiation variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of model-agnostic variants of required variables
+        """
+        return tuple(v[0] if isinstance(v, tuple) else v for v in cls.rad_variables)
+
+    @classmethod
+    def ecmwf_rad_variables(cls) -> tuple[MetVariable, ...]:
+        """Return an ECMWF-specific list of required radiation variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of ECMWF-specific variants of required variables
+        """
+        return tuple(v[1] if isinstance(v, tuple) else v for v in cls.rad_variables)
+
+    @classmethod
+    def gfs_rad_variables(cls) -> tuple[MetVariable, ...]:
+        """Return a GFS-specific list of required radiation variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of GFS-specific variants of required variables
+        """
+        return tuple(v[2] if isinstance(v, tuple) else v for v in cls.rad_variables)
 
     # ---------------------------
     # Common Methods & Properties

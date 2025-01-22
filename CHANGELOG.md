@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.54.7 (unreleased)
+
+### Features
+
+- Add helper classmethods to `Model`, `Cocip`, and `CocipGrid` for generating lists of required variables from specific data sources.
+
 ## v0.54.6
 
 ### Features

@@ -23,6 +23,7 @@ from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
+from pycontrails.core.met_var import MetVariable
 from pycontrails.core.models import Model, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict
 from pycontrails.datalib import ecmwf, gfs
@@ -481,6 +482,39 @@ class Cocip(Model):
             return self.source.to_flight_list()  # type: ignore[attr-defined]
 
         return self.source
+
+    @classmethod
+    def generic_rad_variables(cls) -> tuple[MetVariable, ...]:
+        """Return a model-agnostic list of required radiation variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of model-agnostic variants of required variables
+        """
+        return tuple(v[0] if isinstance(v, tuple) else v for v in cls.rad_variables)
+
+    @classmethod
+    def ecmwf_rad_variables(cls) -> tuple[MetVariable, ...]:
+        """Return an ECMWF-specific list of required radiation variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of ECMWF-specific variants of required variables
+        """
+        return tuple(v[1] if isinstance(v, tuple) else v for v in cls.rad_variables)
+
+    @classmethod
+    def gfs_rad_variables(cls) -> tuple[MetVariable, ...]:
+        """Return a GFS-specific list of required radiation variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of GFS-specific variants of required variables
+        """
+        return tuple(v[2] if isinstance(v, tuple) else v for v in cls.rad_variables)
 
     def _set_timesteps(self) -> None:
         """Set the :attr:`timesteps` based on the ``source`` time range.

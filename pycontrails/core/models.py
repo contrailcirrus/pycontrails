@@ -276,6 +276,39 @@ class Model(ABC):
 
         return hashlib.sha1(bytes(_hash, "utf-8")).hexdigest()
 
+    @classmethod
+    def generic_met_variables(cls) -> tuple[MetVariable, ...]:
+        """Return a model-agnostic list of required meteorology variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of model-agnostic variants of required variables
+        """
+        return tuple(v[0] if isinstance(v, tuple) else v for v in cls.met_variables)
+
+    @classmethod
+    def ecmwf_met_variables(cls) -> tuple[MetVariable, ...]:
+        """Return an ECMWF-specific list of required meteorology variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of ECMWF-specific variants of required variables
+        """
+        return tuple(v[1] if isinstance(v, tuple) else v for v in cls.met_variables)
+
+    @classmethod
+    def gfs_met_variables(cls) -> tuple[MetVariable, ...]:
+        """Return a GFS-specific list of required meteorology variables.
+
+        Returns
+        -------
+        tuple[MetVariable]
+            List of GFS-specific variants of required variables
+        """
+        return tuple(v[2] if isinstance(v, tuple) else v for v in cls.met_variables)
+
     def _verify_met(self) -> None:
         """Verify integrity of :attr:`met`.
 
