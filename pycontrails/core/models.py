@@ -179,8 +179,10 @@ class Model(ABC):
 
     #: Required meteorology pressure level variables.
     #: Each element in the list is a :class:`MetVariable` or a ``tuple[MetVariable]``.
-    #: If element is a ``tuple[MetVariable]``, the variable depends on the data source.
-    #: Only one variable in the tuple is required.
+    #: If element is a ``tuple[MetVariable]``, the variable depends on the data source
+    #: and the tuple must include entries for (in order) a model-agnostic variable,
+    #: an ECMWF-specific variable, and a GFS-specific variable.
+    #: Only one of the three variable in the tuple is required for model evaluation.
     met_variables: tuple[MetVariable | tuple[MetVariable, ...], ...]
 
     #: Set of required parameters if processing already complete on ``met`` input.
