@@ -13,9 +13,10 @@ import numpy.typing as npt
 import pandas as pd
 
 import pycontrails
-from pycontrails.core import MetVariable, models
+from pycontrails.core import MetVariable, met_var, models
 from pycontrails.core.met import MetDataset, maybe_downselect_mds
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
+from pycontrails.datalib import ecmwf, gfs
 from pycontrails.models import humidity_scaling, sac
 from pycontrails.models.cocip import cocip, contrail_properties, wake_vortex, wind_shear
 from pycontrails.models.cocipgrid.cocip_grid_params import CocipGridParams
@@ -444,7 +445,9 @@ class CocipGrid(models.Model):
         tuple[MetVariable]
             List of model-agnostic variants of required variables
         """
-        return tuple(v[0] if isinstance(v, tuple) else v for v in cls.rad_variables)
+        return tuple(
+            models._find_match(required, met_var.MET_VARIABLES) for required in cls.rad_variables
+        )
 
     @classmethod
     def ecmwf_rad_variables(cls) -> tuple[MetVariable, ...]:
@@ -455,7 +458,9 @@ class CocipGrid(models.Model):
         tuple[MetVariable]
             List of ECMWF-specific variants of required variables
         """
-        return tuple(v[1] if isinstance(v, tuple) else v for v in cls.rad_variables)
+        return tuple(
+            models._find_match(required, ecmwf.ECMWF_VARIABLES) for required in cls.rad_variables
+        )
 
     @classmethod
     def gfs_rad_variables(cls) -> tuple[MetVariable, ...]:
@@ -466,7 +471,9 @@ class CocipGrid(models.Model):
         tuple[MetVariable]
             List of GFS-specific variants of required variables
         """
-        return tuple(v[2] if isinstance(v, tuple) else v for v in cls.rad_variables)
+        return tuple(
+            models._find_match(required, gfs.GFS_VARIABLES) for required in cls.rad_variables
+        )
 
     # ---------------------------
     # Common Methods & Properties

@@ -1963,5 +1963,5 @@ def test_cocip_survival_fraction(fl: Flight, met: MetDataset, rad: MetDataset):
 def test_cocip_met_rad_variables_helper(
     mvs: tuple[MetVariable, ...], target: tuple[MetVariable, ...]
 ) -> None:
-    """Test met and rad variable helper properties."""
+    """Test met and rad variable helper methods."""
     assert mvs == target

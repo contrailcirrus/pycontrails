@@ -367,3 +367,21 @@ TOAOutgoingLongwaveFlux = MetVariable(
         '"flux" implies per unit area, called "flux density" in physics.'
     ),
 )
+
+PRESSURE_LEVEL_VARIABLES = [
+    AirTemperature,
+    SpecificHumidity,
+    RelativeHumidity,
+    Geopotential,
+    GeopotentialHeight,
+    EastwardWind,
+    NorthwardWind,
+    VerticalVelocity,
+    MassFractionOfCloudLiquidWaterInAir,
+    MassFractionOfCloudIceInAir,
+    CloudAreaFractionInAtmosphereLayer,
+]
+
+SINGLE_LEVEL_VARIABLES = [SurfacePressure, TOANetDownwardShortwaveFlux, TOAOutgoingLongwaveFlux]
+
+MET_VARIABLES = PRESSURE_LEVEL_VARIABLES + SINGLE_LEVEL_VARIABLES

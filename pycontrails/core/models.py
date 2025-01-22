@@ -22,8 +22,10 @@ import xarray as xr
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataArray, MetDataset, MetVariable, originates_from_ecmwf
-from pycontrails.core.met_var import SpecificHumidity
+from pycontrails.core.met_var import MET_VARIABLES, SpecificHumidity
 from pycontrails.core.vector import GeoVectorDataset
+from pycontrails.datalib.ecmwf import ECMWF_VARIABLES
+from pycontrails.datalib.gfs import GFS_VARIABLES
 from pycontrails.utils.json import NumpyEncoder
 from pycontrails.utils.types import type_guard
 
@@ -180,7 +182,7 @@ class Model(ABC):
     #: Required meteorology pressure level variables.
     #: Each element in the list is a :class:`MetVariable` or a ``tuple[MetVariable]``.
     #: If element is a ``tuple[MetVariable]``, the variable depends on the data source
-    #: and the tuple must include entries for (in order) a model-agnostic variable,
+    #: and the tuple must include entries for a model-agnostic variable,
     #: an ECMWF-specific variable, and a GFS-specific variable.
     #: Only one of the three variable in the tuple is required for model evaluation.
     met_variables: tuple[MetVariable | tuple[MetVariable, ...], ...]
@@ -287,7 +289,7 @@ class Model(ABC):
         tuple[MetVariable]
             List of model-agnostic variants of required variables
         """
-        return tuple(v[0] if isinstance(v, tuple) else v for v in cls.met_variables)
+        return tuple(_find_match(required, MET_VARIABLES) for required in cls.met_variables)
 
     @classmethod
     def ecmwf_met_variables(cls) -> tuple[MetVariable, ...]:
@@ -298,7 +300,7 @@ class Model(ABC):
         tuple[MetVariable]
             List of ECMWF-specific variants of required variables
         """
-        return tuple(v[1] if isinstance(v, tuple) else v for v in cls.met_variables)
+        return tuple(_find_match(required, ECMWF_VARIABLES) for required in cls.met_variables)
 
     @classmethod
     def gfs_met_variables(cls) -> tuple[MetVariable, ...]:
@@ -309,7 +311,7 @@ class Model(ABC):
         tuple[MetVariable]
             List of GFS-specific variants of required variables
         """
-        return tuple(v[2] if isinstance(v, tuple) else v for v in cls.met_variables)
+        return tuple(_find_match(required, GFS_VARIABLES) for required in cls.met_variables)
 
     def _verify_met(self) -> None:
         """Verify integrity of :attr:`met`.
@@ -838,6 +840,42 @@ def _interp_grid_to_grid(
 
     msg = f"Unsupported q_method: {q_method}"
     raise NotImplementedError(msg)
+
+
+def _find_match(
+    required: MetVariable | Sequence[MetVariable], available: Sequence[MetVariable]
+) -> MetVariable:
+    """Find match for required met variable in list of data-source-specific met variables.
+
+    Parameters
+    ----------
+    required : MetVariable | Sequence[MetVariable]
+        Required met variable
+
+    available : Sequence[MetVariable]
+        Collection of data-source-specific met variables
+
+    Returns
+    -------
+    MetVariable
+        Match for required met variable in collection of data-source-specific met variables
+
+    Raises
+    ------
+    KeyError
+        Raised if not match is found
+    """
+    if isinstance(required, MetVariable):
+        return required
+
+    for var in required:
+        if var in available:
+            return var
+
+    required_keys = [v.standard_name for v in required]
+    available_keys = [v.standard_name for v in available]
+    msg = f"None of {required_keys} match variable in {available_keys}"
+    raise KeyError(msg)
 
 
 def _raise_missing_met_var(var: MetVariable | Sequence[MetVariable]) -> NoReturn:
