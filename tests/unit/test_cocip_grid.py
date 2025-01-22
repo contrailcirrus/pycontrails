@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from pycontrails import GeoVectorDataset, MetDataset
+from pycontrails import GeoVectorDataset, MetDataset, MetVariable
 from pycontrails.core.aircraft_performance import AircraftPerformance, AircraftPerformanceGrid
 from pycontrails.models.cocip import Cocip
 from pycontrails.models.cocipgrid import CocipGrid
@@ -1011,3 +1011,21 @@ def test_cocip_grid_one_hour_dt_integration(
     # Sum the number of grid cells producing persistent contrails
     # Prior to v0.54.4, this was 0
     assert out.data["ef_per_m"].fillna(0.0).astype(bool).sum() == 526
+
+
+@pytest.mark.parametrize(
+    ("grid_mvs", "traj_mvs"),
+    [
+        (CocipGrid.generic_met_variables(), Cocip.generic_met_variables()),
+        (CocipGrid.generic_rad_variables(), Cocip.generic_rad_variables()),
+        (CocipGrid.ecmwf_met_variables(), Cocip.ecmwf_met_variables()),
+        (CocipGrid.ecmwf_rad_variables(), Cocip.ecmwf_rad_variables()),
+        (CocipGrid.gfs_met_variables(), Cocip.gfs_met_variables()),
+        (CocipGrid.gfs_rad_variables(), Cocip.gfs_rad_variables()),
+    ],
+)
+def test_cocip_grid_met_rad_variables_helper(
+    grid_mvs: tuple[MetVariable, ...], traj_mvs: tuple[MetVariable, ...]
+) -> None:
+    """Test met and rad variable helper properties."""
+    assert grid_mvs == traj_mvs

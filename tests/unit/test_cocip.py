@@ -11,9 +11,13 @@ import pytest
 import xarray as xr
 
 from pycontrails import Fleet, Flight, MetDataset
+from pycontrails.core import met_var
 from pycontrails.core.aircraft_performance import AircraftPerformance
+from pycontrails.core.met_var import MetVariable
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.datalib.ecmwf import ERA5
+from pycontrails.datalib.ecmwf import variables as ecmwf_var
+from pycontrails.datalib.gfs import variables as gfs_var
 from pycontrails.models import humidity_scaling as hs
 from pycontrails.models.cocip import (
     Cocip,
@@ -1904,3 +1908,60 @@ def test_cocip_survival_fraction(fl: Flight, met: MetDataset, rad: MetDataset):
     cocip.eval(fl)
     assert len(cocip._sac_flight) == len(fl)
     assert "n_ice_per_m_1" in cocip._sac_flight
+
+
+@pytest.mark.parametrize(
+    ("mvs", "target"),
+    [
+        (
+            Cocip.generic_met_variables(),
+            (
+                met_var.AirTemperature,
+                met_var.SpecificHumidity,
+                met_var.EastwardWind,
+                met_var.NorthwardWind,
+                met_var.VerticalVelocity,
+                met_var.MassFractionOfCloudIceInAir,
+            ),
+        ),
+        (
+            Cocip.generic_rad_variables(),
+            (met_var.TOANetDownwardShortwaveFlux, met_var.TOAOutgoingLongwaveFlux),
+        ),
+        (
+            Cocip.ecmwf_met_variables(),
+            (
+                met_var.AirTemperature,
+                met_var.SpecificHumidity,
+                met_var.EastwardWind,
+                met_var.NorthwardWind,
+                met_var.VerticalVelocity,
+                ecmwf_var.SpecificCloudIceWaterContent,
+            ),
+        ),
+        (
+            Cocip.ecmwf_rad_variables(),
+            (ecmwf_var.TopNetSolarRadiation, ecmwf_var.TopNetThermalRadiation),
+        ),
+        (
+            Cocip.gfs_met_variables(),
+            (
+                met_var.AirTemperature,
+                met_var.SpecificHumidity,
+                met_var.EastwardWind,
+                met_var.NorthwardWind,
+                met_var.VerticalVelocity,
+                gfs_var.CloudIceWaterMixingRatio,
+            ),
+        ),
+        (
+            Cocip.gfs_rad_variables(),
+            (gfs_var.TOAUpwardShortwaveRadiation, gfs_var.TOAUpwardLongwaveRadiation),
+        ),
+    ],
+)
+def test_cocip_met_rad_variables_helper(
+    mvs: tuple[MetVariable, ...], target: tuple[MetVariable, ...]
+) -> None:
+    """Test met and rad variable helper properties."""
+    assert mvs == target
