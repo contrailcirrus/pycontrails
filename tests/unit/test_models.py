@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pycontrails import Flight, MetDataArray, MetDataset, Model, ModelParams
+from pycontrails.core import models
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 
 
@@ -461,3 +462,24 @@ def test_verify_met_when_met_none(flight_fake: Flight) -> None:
 
     out = model.eval(flight_fake)
     assert isinstance(out, Flight)
+
+
+def test_match_required_met_to_data_source() -> None:
+    """Test helper function for matching required met to data-source-specific options."""
+    assert models._find_match(required=AirTemperature, available=[]) == AirTemperature
+    assert (
+        models._find_match(required=[AirTemperature], available=[AirTemperature]) == AirTemperature
+    )
+    assert (
+        models._find_match(required=[AirTemperature, SpecificHumidity], available=[AirTemperature])
+        == AirTemperature
+    )
+    assert (
+        models._find_match(required=[AirTemperature], available=[AirTemperature, SpecificHumidity])
+        == AirTemperature
+    )
+
+    with pytest.raises(KeyError, match="None of"):
+        models._find_match(required=[AirTemperature], available=[])
+    with pytest.raises(KeyError, match="None of"):
+        models._find_match(required=[AirTemperature], available=[SpecificHumidity])
