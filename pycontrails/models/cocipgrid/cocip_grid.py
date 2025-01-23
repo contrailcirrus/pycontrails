@@ -13,10 +13,9 @@ import numpy.typing as npt
 import pandas as pd
 
 import pycontrails
-from pycontrails.core import MetVariable, met_var, models
+from pycontrails.core import models
 from pycontrails.core.met import MetDataset, maybe_downselect_mds
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
-from pycontrails.datalib import ecmwf, gfs
 from pycontrails.models import humidity_scaling, sac
 from pycontrails.models.cocip import cocip, contrail_properties, wake_vortex, wind_shear
 from pycontrails.models.cocipgrid.cocip_grid_params import CocipGridParams
@@ -89,6 +88,9 @@ class CocipGrid(models.Model):
     met_variables = cocip.Cocip.met_variables
     rad_variables = cocip.Cocip.rad_variables
     processed_met_variables = cocip.Cocip.processed_met_variables
+    generic_rad_variables = cocip.Cocip.generic_rad_variables
+    ecmwf_rad_variables = cocip.Cocip.ecmwf_rad_variables
+    gfs_rad_variables = cocip.Cocip.gfs_rad_variables
 
     #: Met data is not optional
     met: MetDataset
@@ -435,45 +437,6 @@ class CocipGrid(models.Model):
                 )
 
         return self.source
-
-    @classmethod
-    def generic_rad_variables(cls) -> tuple[MetVariable, ...]:
-        """Return a model-agnostic list of required radiation variables.
-
-        Returns
-        -------
-        tuple[MetVariable]
-            List of model-agnostic variants of required variables
-        """
-        return tuple(
-            models._find_match(required, met_var.MET_VARIABLES) for required in cls.rad_variables
-        )
-
-    @classmethod
-    def ecmwf_rad_variables(cls) -> tuple[MetVariable, ...]:
-        """Return an ECMWF-specific list of required radiation variables.
-
-        Returns
-        -------
-        tuple[MetVariable]
-            List of ECMWF-specific variants of required variables
-        """
-        return tuple(
-            models._find_match(required, ecmwf.ECMWF_VARIABLES) for required in cls.rad_variables
-        )
-
-    @classmethod
-    def gfs_rad_variables(cls) -> tuple[MetVariable, ...]:
-        """Return a GFS-specific list of required radiation variables.
-
-        Returns
-        -------
-        tuple[MetVariable]
-            List of GFS-specific variants of required variables
-        """
-        return tuple(
-            models._find_match(required, gfs.GFS_VARIABLES) for required in cls.rad_variables
-        )
 
     # ---------------------------
     # Common Methods & Properties
