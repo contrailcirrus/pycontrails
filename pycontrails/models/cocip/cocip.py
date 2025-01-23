@@ -492,10 +492,8 @@ class Cocip(Model):
         tuple[MetVariable]
             List of model-agnostic variants of required variables
         """
-        return tuple(
-            models._find_match(required, set(met_var.MET_VARIABLES))
-            for required in cls.rad_variables
-        )
+        available = set(met_var.MET_VARIABLES)
+        return tuple(models._find_match(required, available) for required in cls.rad_variables)
 
     @classmethod
     def ecmwf_rad_variables(cls) -> tuple[MetVariable, ...]:
@@ -506,10 +504,8 @@ class Cocip(Model):
         tuple[MetVariable]
             List of ECMWF-specific variants of required variables
         """
-        return tuple(
-            models._find_match(required, set(ecmwf.ECMWF_VARIABLES))
-            for required in cls.rad_variables
-        )
+        available = set(ecmwf.ECMWF_VARIABLES)
+        return tuple(models._find_match(required, available) for required in cls.rad_variables)
 
     @classmethod
     def gfs_rad_variables(cls) -> tuple[MetVariable, ...]:
@@ -520,9 +516,8 @@ class Cocip(Model):
         tuple[MetVariable]
             List of GFS-specific variants of required variables
         """
-        return tuple(
-            models._find_match(required, set(gfs.GFS_VARIABLES)) for required in cls.rad_variables
-        )
+        available = set(gfs.GFS_VARIABLES)
+        return tuple(models._find_match(required, available) for required in cls.rad_variables)
 
     def _set_timesteps(self) -> None:
         """Set the :attr:`timesteps` based on the ``source`` time range.
