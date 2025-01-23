@@ -493,7 +493,8 @@ class Cocip(Model):
             List of model-agnostic variants of required variables
         """
         return tuple(
-            models._find_match(required, met_var.MET_VARIABLES) for required in cls.rad_variables
+            models._find_match(required, set(met_var.MET_VARIABLES))
+            for required in cls.rad_variables
         )
 
     @classmethod
@@ -506,7 +507,8 @@ class Cocip(Model):
             List of ECMWF-specific variants of required variables
         """
         return tuple(
-            models._find_match(required, ecmwf.ECMWF_VARIABLES) for required in cls.rad_variables
+            models._find_match(required, set(ecmwf.ECMWF_VARIABLES))
+            for required in cls.rad_variables
         )
 
     @classmethod
@@ -519,7 +521,7 @@ class Cocip(Model):
             List of GFS-specific variants of required variables
         """
         return tuple(
-            models._find_match(required, gfs.GFS_VARIABLES) for required in cls.rad_variables
+            models._find_match(required, set(gfs.GFS_VARIABLES)) for required in cls.rad_variables
         )
 
     def _set_timesteps(self) -> None:
