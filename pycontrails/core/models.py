@@ -289,7 +289,8 @@ class Model(ABC):
         tuple[MetVariable]
             List of model-agnostic variants of required variables
         """
-        return tuple(_find_match(required, set(MET_VARIABLES)) for required in cls.met_variables)
+        available = set(MET_VARIABLES)
+        return tuple(_find_match(required, available) for required in cls.met_variables)
 
     @classmethod
     def ecmwf_met_variables(cls) -> tuple[MetVariable, ...]:
@@ -300,7 +301,8 @@ class Model(ABC):
         tuple[MetVariable]
             List of ECMWF-specific variants of required variables
         """
-        return tuple(_find_match(required, set(ECMWF_VARIABLES)) for required in cls.met_variables)
+        available = set(ECMWF_VARIABLES)
+        return tuple(_find_match(required, available) for required in cls.met_variables)
 
     @classmethod
     def gfs_met_variables(cls) -> tuple[MetVariable, ...]:
@@ -311,7 +313,8 @@ class Model(ABC):
         tuple[MetVariable]
             List of GFS-specific variants of required variables
         """
-        return tuple(_find_match(required, set(GFS_VARIABLES)) for required in cls.met_variables)
+        available = set(GFS_VARIABLES)
+        return tuple(_find_match(required, available) for required in cls.met_variables)
 
     def _verify_met(self) -> None:
         """Verify integrity of :attr:`met`.
