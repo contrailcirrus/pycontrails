@@ -32,7 +32,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 dependencies = [
     "dask>=2022.3",
     "numpy>=1.22",
-    "pandas>=2.2",
+    "pandas>=2.0",
     "scipy>=1.10",
     "typing-extensions>=4.5; python_version < '3.12'",
     "xarray>=2022.3",

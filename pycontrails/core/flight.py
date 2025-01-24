@@ -1388,7 +1388,7 @@ class Flight(GeoVectorDataset):
 
         jump_indices = _antimeridian_index(pd.Series(self["longitude"]))
 
-        def _group_to_feature(group: pd.DataFrame) -> dict[str, str | dict[str, Any]]:
+        def _group_to_feature(name: str, group: pd.DataFrame) -> dict[str, str | dict[str, Any]]:
             # assigns a different value to each group of consecutive indices
             subgrouping = group.index.to_series().diff().ne(1).cumsum()
 
@@ -1405,7 +1405,7 @@ class Flight(GeoVectorDataset):
             geometry = {"type": "MultiLineString", "coordinates": multi_ls}
 
             # adding in static properties
-            properties: dict[str, Any] = {key: group.name} if key is not None else {}
+            properties: dict[str, Any] = {key: name} if key is not None else {}
             properties.update(self.constants)
             return {"type": "Feature", "geometry": geometry, "properties": properties}
 
@@ -1415,7 +1415,7 @@ class Flight(GeoVectorDataset):
             # create a single group containing all rows of dataframe
             groups = self.dataframe.groupby(lambda _: 0)
 
-        features = groups.apply(_group_to_feature, include_groups=False).values.tolist()
+        features = [_group_to_feature(*name_group) for name_group in groups]
         return {"type": "FeatureCollection", "features": features}
 
     def to_traffic(self) -> traffic.core.Flight:

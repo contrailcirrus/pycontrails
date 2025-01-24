@@ -6,6 +6,10 @@
 
 - Add helper classmethods to `Model`, `Cocip`, and `CocipGrid` for generating lists of required variables from specific data sources.
 
+### Internals
+
+- Make `pycontrails` compatible with `pandas 2.0` and `pandas 2.1`.
+
 ## v0.54.6
 
 ### Features
