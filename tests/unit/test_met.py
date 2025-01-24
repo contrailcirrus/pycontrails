@@ -1401,5 +1401,5 @@ def test_float32_level(met_ecmwf_pl_path: str, copy: bool) -> None:
         assert mds.data["level"].dtype == np.float64
         return
 
-    with pytest.raises(ValueError, match="Level values must be of type float64"):
+    with pytest.raises(ValueError, match="Level values must have dtype <class 'numpy.float64'>"):
         MetDataset(ds, copy=copy)

@@ -150,11 +150,8 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         longitude = self.indexes["longitude"].to_numpy()
         if longitude.dtype != COORD_DTYPE:
-            raise ValueError(
-                "Longitude values must be of type float64. "
-                "Instantiate with 'copy=True' to convert to float64. "
-                "Instantiate with 'validate=False' to skip validation."
-            )
+            msg = f"Longitude values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
+            raise ValueError(msg)
 
         if self.is_wrapped:
             # Relax verification if the longitude has already been processed and wrapped
@@ -194,11 +191,8 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         latitude = self.indexes["latitude"].to_numpy()
         if latitude.dtype != COORD_DTYPE:
-            raise ValueError(
-                "Latitude values must be of type float64. "
-                "Instantiate with 'copy=True' to convert to float64. "
-                "Instantiate with 'validate=False' to skip validation."
-            )
+            msg = f"Latitude values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
+            raise ValueError(msg)
 
         if latitude[0] < -90.0:
             raise ValueError(
@@ -233,8 +227,8 @@ class MetBase(ABC, Generic[XArrayType]):
             if da.dims != self.dim_order:
                 if key is not None:
                     msg = (
-                        f"Data dimension not transposed on variable '{key}'. Instantiate with"
-                        " 'copy=True'."
+                        f"Data dimension not transposed on variable '{key}'. "
+                        "Instantiate with 'copy=True'."
                     )
                 else:
                     msg = "Data dimension not transposed. Instantiate with 'copy=True'."
@@ -258,11 +252,8 @@ class MetBase(ABC, Generic[XArrayType]):
         self._validate_latitude()
         self._validate_transpose()
         if self.data["level"].dtype != COORD_DTYPE:
-            raise ValueError(
-                "Level values must be of type float64. "
-                "Instantiate with 'copy=True' to convert to float64. "
-                "Instantiate with 'validate=False' to skip validation."
-            )
+            msg = f"Level values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
+            raise ValueError(msg)
 
     def _preprocess_dims(self, wrap_longitude: bool) -> None:
         """Confirm DataArray or Dataset include required dimension in a consistent format.
