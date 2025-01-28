@@ -6,7 +6,7 @@ class BaseSpireError(Exception):
 
 
 class BadTrajectoryException(BaseSpireError):
-    """Exception indicating a trajectory (flight instance) is invalid."""
+    """A generic exception indicating a trajectory (flight instance) is invalid."""
 
 
 class SchemaError(BaseSpireError):

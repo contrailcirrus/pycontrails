@@ -124,12 +124,17 @@ class ValidateTrajectoryHandler:
         if trajectory.empty:
             msg = "The trajectory DataFrame is empty."
             raise BadTrajectoryException(msg)
+
+        if "flight_id" not in trajectory:
+            msg = "The trajectory DataFrame must have a 'flight_id' column."
+            raise BadTrajectoryException(msg)
+
         n_unique = trajectory["flight_id"].nunique()
         if n_unique > 1:
             msg = f"The trajectory DataFrame must have a unique flight_id. Found {n_unique}."
             raise BadTrajectoryException(msg)
 
-        self._df = trajectory.copy(deep=True)
+        self._df = trajectory.copy()
 
     def unset(self) -> None:
         """Pop _df from handler state."""
@@ -362,7 +367,7 @@ class ValidateTrajectoryHandler:
             return OriginAirportError(
                 "First waypoint in trajectory too far from departure airport icao: "
                 f"{first_waypoint['departure_airport_icao']}. "
-                f"Distance {first_waypoint_dist_km}km is greater than "
+                f"Distance {first_waypoint_dist_km:.3f}km is greater than "
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
 
@@ -380,8 +385,8 @@ class ValidateTrajectoryHandler:
             return DestinationAirportError(
                 "Last waypoint in trajectory too far from arrival airport icao: "
                 f"{last_waypoint['arrival_airport_icao']}. "
-                f"Distance {last_waypoint_dist_km}km is greater than "
-                f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
+                f"Distance {last_waypoint_dist_km:.3f}km is greater than "
+                f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM:.3f}km."
             )
 
         return None
@@ -414,9 +419,10 @@ class ValidateTrajectoryHandler:
             violations.append(
                 FlightTooSlowError(
                     f"Found {len(below_inst_thresh)} instances where speed between waypoints is "
-                    f"below threshold of {self.INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS} m/s. "
-                    f"max value: {below_inst_thresh.max()}, "
-                    f"min value: {below_inst_thresh.min()},"
+                    "below threshold of "
+                    f"{self.INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS:.2f} m/s. "
+                    f"max value: {below_inst_thresh.max():.2f}, "
+                    f"min value: {below_inst_thresh.min():.2f},"
                 )
             )
 
@@ -444,21 +450,20 @@ class ValidateTrajectoryHandler:
         """
         Evaluate the flight trajectory for reasonably high speed.
 
-        This is evaluated on instantaneous discrete steps between consecutive waypoints.
+        This is evaluated on discrete steps between consecutive waypoints.
         """
         if self._df is None:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
             raise ValueError(msg)
 
-        filt = self._df["ground_speed_m_s"] >= self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS
-
-        if filt.any():
-            above_inst_thresh = self._df[filt]
+        cond = self._df["ground_speed_m_s"] >= self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS
+        if cond.any():
+            above_inst_thresh = self._df[cond]
             return FlightTooFastError(
                 f"Found {len(above_inst_thresh)} instances where speed between waypoints is "
-                f"above threshold of {self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS} m/s. "
-                f"max value: {above_inst_thresh['ground_speed_m_s'].max()}, "
-                f"min value: {above_inst_thresh['ground_speed_m_s'].min()}"
+                f"above threshold of {self.INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS:.2f} m/s. "
+                f"max value: {above_inst_thresh['ground_speed_m_s'].max():.2f}, "
+                f"min value: {above_inst_thresh['ground_speed_m_s'].min():.2f}"
             )
 
         return None
@@ -485,23 +490,23 @@ class ValidateTrajectoryHandler:
 
         # only evaluate rocd errors when at cruising altitude
         rocd_above_thres = (self._df["rocd_fps"].abs() >= self.CRUISE_ROCD_THRESHOLD_FPS) & (
-            self._df["altitude_baro"] > self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT
+            self._df["altitude_baro"] >= self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT
         )
         if rocd_above_thres.any():
             msg = (
                 "Flight trajectory has rate of climb/descent values "
                 "between consecutive waypoints that exceed threshold "
-                f"of {self.CRUISE_ROCD_THRESHOLD_FPS} ft/sec. "
-                f"Max value found: {np.nanmax(self._df['rocd_fps'].abs())}"
+                f"of {self.CRUISE_ROCD_THRESHOLD_FPS:.3f}ft/sec. "
+                f"Max value found: {self._df['rocd_fps'].abs().max():.3f}ft/sec"
             )
             violations.append(ROCDError(msg))
 
         alt_below_thresh = self._df["altitude_baro"] <= self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT
         alt_thresh_transitions = alt_below_thresh.rolling(window=2).sum()
-        transition_pts = alt_thresh_transitions[alt_thresh_transitions == 1]
-        if len(transition_pts) > 2:
+        cond = alt_thresh_transitions == 1
+        if cond.sum() > 2:
             msg = (
-                "flight trajectory dropped below altitude threshold "
+                "Flight trajectory dropped below altitude threshold "
                 f"of {self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT}ft while in-flight."
             )
             violations.append(FlightAltitudeProfileError(msg))
@@ -538,19 +543,30 @@ class ValidateTrajectoryHandler:
         return self._df
 
     def evaluate(self) -> list[BaseSpireError]:
-        """Evaluate the flight trajectory for one or more violations."""
+        """Evaluate the flight trajectory for one or more violations.
+
+        This method performs 3 rounds of checks:
+
+        1. Schema checks
+        2. Timestamp ordering and invariant field checks
+        3. Flight profile and motion checks
+
+        If any violations are found at the end of a round, the method returns the
+        current list of violations and does not proceed to the next round.
+        """
         if self._df is None:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
             raise ValueError(msg)
 
         all_violations: list[BaseSpireError] = []
 
-        # Checks; Round 1
+        # Round 1 checks
         schema_check = self._is_valid_schema()
         if schema_check:
             all_violations.append(schema_check)
+            return all_violations
 
-        # Checks; Round 2
+        # Round 2 checks: We're assuming the schema is valid
         timestamp_check = self._is_timestamp_sorted_and_unique()
         all_violations.extend(timestamp_check)
 
@@ -558,13 +574,11 @@ class ValidateTrajectoryHandler:
         if invariant_fields_check:
             all_violations.append(invariant_fields_check)
 
-        # we escape here if there are violations for the above checks.
-        # we do this because some of the following checks assume no invariant field violations,
-        # or timestamp dupes
         if all_violations:
             return all_violations
 
-        # Checks; Round 3
+        # Round 3 checks: We're assuming the schema and timestamps are valid
+        # and no invariant field violations
         self._calculate_additional_fields()
 
         flight_length_check = self._is_valid_flight_length()
