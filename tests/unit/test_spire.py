@@ -11,8 +11,7 @@ from pycontrails.datalib.spire import (
     _separate_by_cruise_phase,
     _separate_by_on_ground,
 )
-
-from .conftest import get_static_path
+from tests.unit import get_static_path
 
 
 def test_clean() -> None:

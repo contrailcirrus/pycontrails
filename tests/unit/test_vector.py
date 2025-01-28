@@ -11,8 +11,7 @@ import pytest
 
 from pycontrails import GeoVectorDataset, MetDataset, VectorDataset
 from pycontrails.core.vector import AttrDict, VectorDataDict
-
-from .conftest import get_static_path
+from tests.unit import get_static_path
 
 
 @pytest.fixture(scope="module")
