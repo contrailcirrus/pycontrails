@@ -1,92 +1,200 @@
-"""Test `Spire` datalib."""
+"""Test the ``ValidateTrajectoryHandler`` from the ``spire`` module."""
 
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-from pycontrails.datalib import spire
-from pycontrails.datalib.spire import (
-    _clean_trajectory_altitude,
-    _separate_by_cruise_phase,
-    _separate_by_on_ground,
+from pycontrails.datalib.spire import ValidateTrajectoryHandler
+from pycontrails.datalib.spire.exceptions import (
+    BadTrajectoryException,
+    FlightDuplicateTimestamps,
+    FlightInvariantFieldViolation,
+    FlightTooFastError,
+    OrderingError,
+    ROCDError,
+    SchemaError,
 )
 from tests.unit import get_static_path
 
 
-def test_clean() -> None:
-    """Test algorithms to identify and separate unique flight trajectories."""
+@pytest.fixture()
+def df() -> pd.DataFrame:
+    """Return some Spire data for testing.
 
-    df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    assert len(df.groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"])) == 5
+    This data appears to contain several distinct flight concatenated together.
+    """
+    return pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
 
-    clean = spire.clean(df)
-    assert (
-        len(clean.groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"])) == 5
+
+@pytest.fixture()
+def df_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Return some Spire data with additional fields for schema compatibility."""
+    return df.assign(
+        flight_id="123",
+        arrival_airport_icao="abc",
+        arrival_scheduled_time=df["timestamp"].iloc[-1],
+        departure_airport_icao="abc",
+        departure_scheduled_time=pd.to_datetime(df["departure_scheduled_time"].iloc[0]),
+        flight_number="abc",
+        ingestion_time=pd.Timestamp.now(),
     )
 
 
-def test_separate_using_ground_indicator():
-    """Test algorithms to identify unique flight trajectories from on the ground indicator."""
-    df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    cdf = spire.clean(df)
-
-    # Construct erroneous messages consisting of two unique flights with the same callsign
-    test = cdf.loc[cdf["callsign"].isin(["SHT88J", "BAW506"])].copy()
-    test["callsign"] = "killer-whale-1"
-
-    # Unable to identify unique flights because metadata is the same
-    assert len(test.groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"])) == 1
-
-    flight_ids = _separate_by_on_ground(test)
-    assert len(flight_ids.unique()) == 2
-
-    # Should handle slightly noisy "on_ground" signal
-    # (there is already a single "on_ground" outlier near the end in the dataset)
-    test.loc[2131:2132, "on_ground"] = False
-    test.loc[4500:4502, "on_ground"] = True
-
-    flight_ids = _separate_by_on_ground(test)
-    assert len(flight_ids.unique()) == 2
+@pytest.fixture()
+def df_single_callsign(df_schema: pd.DataFrame) -> pd.DataFrame:
+    """Return a DataFrame with a single callsign."""
+    callsign = df_schema["callsign"].iloc[0]  # noqa: F841
+    return df_schema.query("callsign == @callsign")
 
 
-def test_separate_with_multiple_cruise_phase():
-    """Test algorithms to identify unique flight trajectories with multiple cruise phases."""
-    df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    cdf = spire.clean(df)
+class TestValidateTrajectorySet:
+    """Test the different exceptions raised by the ``ValidateTrajectoryHandler``."""
 
-    # Construct erroneous messages consisting of two unique flights with the same callsign
-    test = cdf.loc[cdf["callsign"].isin(["BAW506", "BAW507"])].copy()
-    test["callsign"] = "killer-whale-2"
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.vth = ValidateTrajectoryHandler()
 
-    # In `spire.identify_flights`, we need to clean up individual trajectory
-    # altitudes before _separate_by_cruise_phase method works
-    test = _clean_trajectory_altitude(test)
+    def test_set_empty(self) -> None:
+        df = pd.DataFrame()
+        with pytest.raises(BadTrajectoryException, match="empty"):
+            self.vth.set(df)
 
-    # Unable to identify unique flights because metadata is the same
-    assert len(test.groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"])) == 1
+    def test_set_flight_id_missing(self) -> None:
+        df = pd.DataFrame({"longitude": [1, 2, 3]})
+        with pytest.raises(BadTrajectoryException, match="flight_id"):
+            self.vth.set(df)
 
-    flight_ids = _separate_by_cruise_phase(test)
-    assert len(flight_ids.unique()) == 1
+    def test_set_flight_id_not_unique(self) -> None:
+        df = pd.DataFrame({"flight_id": [1, 2, 3]})
+        with pytest.raises(BadTrajectoryException, match="flight_id"):
+            self.vth.set(df)
+
+    def test_set_correct(self) -> None:
+        df = pd.DataFrame({"flight_id": [1, 1, 1]})
+
+        assert self.vth._df is None
+        self.vth.set(df)
+        assert isinstance(self.vth._df, pd.DataFrame)
+
+        assert self.vth._df is not df
+        pd.testing.assert_frame_equal(self.vth._df, df)
+
+    def test_value_error_when_no_set(self) -> None:
+        vth = ValidateTrajectoryHandler()
+
+        with pytest.raises(ValueError, match="No trajectory DataFrame has been set"):
+            vth.evaluate()
+
+        with pytest.raises(ValueError, match="No trajectory DataFrame has been set"):
+            _ = vth.validation_df
 
 
-@pytest.mark.xfail(reason="Test not complete")
-def test_identify_flight_diversion() -> None:
-    """Test algorithms to identify flight diversion, and no separation is done."""
-    df = pd.read_parquet(get_static_path("flight-spire-data-cleaning.pq"))
-    cdf = spire.clean(df)
+def test_missing_fields(df: pd.DataFrame) -> None:
+    """Confirm a SchemaError is raised when the DataFrame is missing fields."""
+    df = df.assign(flight_id=1)
 
-    # Construct flight that is diverted
-    test = cdf.loc[cdf["callsign"] == "BAW506"].copy()
-    test.reset_index(drop=True, inplace=True)
-    altitude_ft_adjusted = test["altitude_baro"].to_numpy()
-    altitude_ft_adjusted[230:346] = test["altitude_baro"].values[539:655]
-    altitude_ft_adjusted[346:462] = test["altitude_baro"].values[15:131]
-    altitude_ft_adjusted[407:573] = 25000
-    test["altitude_baro"] = altitude_ft_adjusted
+    vth = ValidateTrajectoryHandler()
+    vth.set(df)
+    violations = vth.evaluate()
 
-    # Unable to identify unique flights because metadata is the same
-    assert len(test.groupby(["icao_address", "tail_number", "aircraft_type_icao", "callsign"])) == 1
+    assert len(violations) == 1
+    (exc,) = violations
+    assert isinstance(exc, SchemaError)
 
-    flight_ids = _separate_by_cruise_phase(test)
-    assert len(flight_ids.unique()) == 1
+    msg = exc.args[0]
+    assert msg.startswith("Trajectory DataFrame is missing expected fields")
+
+
+def test_wrong_dtypes(df: pd.DataFrame) -> None:
+    """Confirm a SchemaError is raised when the DataFrame has wrong dtypes."""
+    df = df.assign(
+        flight_id=1,
+        arrival_airport_icao="abc",
+        arrival_scheduled_time="2023-01-01",
+        departure_airport_icao="abc",
+        flight_number="abc",
+        ingestion_time="2023-01-01",
+    )
+
+    vth = ValidateTrajectoryHandler()
+    vth.set(df)
+    violations = vth.evaluate()
+
+    assert len(violations) == 1
+    (exc,) = violations
+    assert isinstance(exc, SchemaError)
+
+    msg = exc.args[0]
+    assert msg.startswith("Trajectory DataFrame has columns with invalid data types")
+
+
+def test_round2_violations(df_schema: pd.DataFrame) -> None:
+    """Confirm some of the round 2 violations are raised."""
+    vth = ValidateTrajectoryHandler()
+    vth.set(df_schema)
+    violations = vth.evaluate()
+    assert len(violations) == 2
+
+    exc0, exc1 = violations
+    assert isinstance(exc0, FlightDuplicateTimestamps)
+    assert isinstance(exc1, FlightInvariantFieldViolation)
+
+
+def test_timestamp_ordering(df_schema: pd.DataFrame) -> None:
+    """Confirm an OrderingError is raised when the timestamps are not in order."""
+    df = df_schema.iloc[:100]
+    df.iloc[1], df.iloc[2] = df.iloc[2], df.iloc[1]
+
+    vth = ValidateTrajectoryHandler()
+    vth.set(df)
+    violations = vth.evaluate()
+    assert len(violations) == 1
+
+    (exc,) = violations
+    assert isinstance(exc, OrderingError)
+
+
+def test_round3_violations(df_single_callsign: pd.DataFrame) -> None:
+    """Confirm some of the round 3 violations are raised.
+
+    This test is not particularly comprehensive, but it assures that at least
+    some of the round 3 violations are checked for.
+    """
+    vth = ValidateTrajectoryHandler()
+    vth.set(df_single_callsign)
+    violations = vth.evaluate()
+    assert len(violations) == 2
+
+    exc0, exc1 = violations
+    assert isinstance(exc0, FlightTooFastError)
+    assert isinstance(exc1, ROCDError)
+
+
+def test_violation_df(df_single_callsign: pd.DataFrame) -> None:
+    """Confirm the ``validation_df`` property returns a DataFrame that extends the input."""
+    df_in = df_single_callsign
+    vth = ValidateTrajectoryHandler()
+    vth.set(df_in)
+
+    df_out = vth.validation_df
+    assert isinstance(df_out, pd.DataFrame)
+    for k, v in df_in.items():
+        assert k in df_out
+        pd.testing.assert_series_equal(df_out[k], v)
+
+    additional_cols = set(df_out) - set(df_in)
+    assert additional_cols == {
+        "arrival_airport_alt_ft",
+        "arrival_airport_dist_m",
+        "arrival_airport_lat",
+        "arrival_airport_lon",
+        "departure_airport_alt_ft",
+        "departure_airport_dist_m",
+        "departure_airport_lat",
+        "departure_airport_lon",
+        "elapsed_distance_m",
+        "elapsed_seconds",
+        "ground_speed_m_s",
+        "rocd_fps",
+    }
