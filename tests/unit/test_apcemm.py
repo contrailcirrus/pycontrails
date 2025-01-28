@@ -17,8 +17,7 @@ from pycontrails.models.humidity_scaling import (
 )
 from pycontrails.models.ps_model import PSFlight
 from pycontrails.physics import constants
-
-from .conftest import get_static_path
+from tests.unit import get_static_path
 
 APCEMM_GIT_COMMIT = "9d8e1eeaa61cbdee1b1d03c65b5b033ded9159e4"
 

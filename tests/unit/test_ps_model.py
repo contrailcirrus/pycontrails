@@ -19,8 +19,7 @@ from pycontrails.models.ps_model import (
     ps_nominal_optimize_mach,
 )
 from pycontrails.physics import units
-
-from .conftest import get_static_path
+from tests.unit import get_static_path
 
 
 def test_aircraft_type_coverage() -> None:

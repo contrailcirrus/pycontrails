@@ -38,8 +38,7 @@ from pycontrails.models.humidity_scaling import (
     ExponentialBoostHumidityScaling,
     ExponentialBoostLatitudeCorrectionHumidityScaling,
 )
-
-from .conftest import get_static_path
+from tests.unit import get_static_path
 
 
 @pytest.fixture()

@@ -8,8 +8,7 @@ import pyproj
 import pytest
 
 from pycontrails.physics import constants, geo
-
-from .conftest import get_static_path
+from tests.unit import get_static_path
 
 
 @pytest.fixture()
