@@ -4,7 +4,8 @@
 
 ### Features
 
-- Add helper classmethods to `Model`, `Cocip`, and `CocipGrid` for generating lists of required variables from specific data sources.
+- Add helper `classmethods` to `Model`, `Cocip`, and `CocipGrid` for generating lists of required variables from specific data sources.
+- Add a `ValidateTrajectoryHandler` to the `spire` module to validate spire ADS-B data. This work is experimental and will be improved in future releases.
 
 ### Internals
 
