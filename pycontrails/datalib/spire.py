@@ -391,13 +391,9 @@ class ValidateTrajectoryHandler:
         Evaluate the flight trajectory for unreasonably slow speed.
 
         This is evaluated both for instantaneous discrete steps in the trajectory
-        (between consecutive waypoints),
-        and,
-        on a rolling average basis.
+        (between consecutive waypoints), and on a rolling average basis.
 
-        For instantaneous speed, we clip the trajectory by 10 rows on the head and tail.
-        (assuming the trajectory is resampled prior to applying the validation handler,
-        that is 10min on head or tail).
+        For instantaneous speed, we don't consider the first or last 10 minutes of the flight.
         """
         if self._df is None:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
@@ -405,44 +401,40 @@ class ValidateTrajectoryHandler:
 
         violations: list[FlightTooSlowError] = []
 
-        below_inst_thresh = self._df.iloc[10:, :].iloc[:-10, :][
-            self._df["ground_speed_m_s"] <= self.INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS
-        ]
-        if len(below_inst_thresh) > 0:
+        # NOTE: When we get here, we have already checked that the timestamps are sorted and unique.
+        gs = self._df.set_index("timestamp")["ground_speed_m_s"]
+
+        t0 = self._df["timestamp"].iloc[0]
+        t1 = self._df["timestamp"].iloc[-1]
+        cropped_gs = gs[t0 + pd.Timedelta(minutes=10) : t1 - pd.Timedelta(minutes=10)]
+
+        cond = cropped_gs <= self.INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS
+        if cond.any():
+            below_inst_thresh = cropped_gs[cond]
             violations.append(
                 FlightTooSlowError(
-                    f"found {len(below_inst_thresh)} instances where speed between waypoints is "
+                    f"Found {len(below_inst_thresh)} instances where speed between waypoints is "
                     f"below threshold of {self.INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS} m/s. "
-                    f" max value: {max(below_inst_thresh['ground_speed_m_s'])}, "
-                    f"min value: {min(below_inst_thresh['ground_speed_m_s'])},"
+                    f"max value: {below_inst_thresh.max()}, "
+                    f"min value: {below_inst_thresh.min()},"
                 )
             )
 
-        roll_speed = self._df[["timestamp", "ground_speed_m_s"]]
-        roll_speed.set_index("timestamp", inplace=True)
-        roll_speed = roll_speed.rolling(
-            pd.Timedelta(minutes=self.AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN)
-        ).mean()
-        # only consider averages occurring at least rolling_avg_period_min minutes
-        # after the flight origination (rolling window if backward looking)
-        roll_speed = roll_speed[
-            roll_speed.index
-            > roll_speed.index[0]
-            + pd.Timedelta(minutes=self.AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN)
-        ]
+        # Consider averages occurring at least window minutes after the flight origination
+        window = pd.Timedelta(minutes=self.AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN)
+        rolling_gs = gs.rolling(window).mean().loc[t0 + window :]
 
-        below_avg_thresh = roll_speed[
-            roll_speed["ground_speed_m_s"] <= self.AVG_LOW_GROUND_SPEED_THRESHOLD_MPS
-        ]
-        if len(below_avg_thresh) > 0:
+        cond = rolling_gs <= self.AVG_LOW_GROUND_SPEED_THRESHOLD_MPS
+        if cond.any():
+            below_avg_thresh = rolling_gs[cond]
             violations.append(
                 FlightTooSlowError(
-                    f"found {len(below_avg_thresh)} instances where rolling average speed is "
+                    f"Found {len(below_avg_thresh)} instances where rolling average speed is "
                     f"below threshold of {self.AVG_LOW_GROUND_SPEED_THRESHOLD_MPS} m/s "
                     f"(rolling window of "
                     f"{self.AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN} minutes). "
-                    f" max value: {max(below_avg_thresh['ground_speed_m_s'])}, "
-                    f"min value: {min(below_avg_thresh['ground_speed_m_s'])},"
+                    f"max value: {below_avg_thresh.max()}, "
+                    f"min value: {below_avg_thresh.min()},"
                 )
             )
 
