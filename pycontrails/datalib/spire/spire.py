@@ -1,4 +1,4 @@
-"""`Spire Aviation <https://spire.com/aviation/>`_ ADS-B data support."""
+"""Support for `Spire Aviation <https://spire.com/aviation/>`_ data validation."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import pandas as pd
 import pandas.api.types as pdtypes
 
 from pycontrails.core import airports
-from pycontrails.datalib.exceptions import (
+from pycontrails.datalib.spire.exceptions import (
     BadTrajectoryException,
     BaseSpireError,
     DestinationAirportError,
