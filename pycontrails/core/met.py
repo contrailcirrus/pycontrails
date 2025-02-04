@@ -426,7 +426,7 @@ class MetBase(ABC, Generic[XArrayType]):
         Assumes the longitude dimension is sorted (this is established by the
         :class:`MetDataset` or :class:`MetDataArray` constructor).
 
-        .. versionchanged 0.26.0::
+        .. versionchanged:: 0.26.0
 
             The previous implementation checked for the minimum and maximum longitude
             dimension values to be duplicated. The current implementation only checks for
@@ -483,7 +483,7 @@ class MetBase(ABC, Generic[XArrayType]):
 
         Does not yet save in parallel.
 
-        .. versionchanged::0.34.1
+        .. versionchanged:: 0.34.1
 
             If :attr:`cachestore` is None, this method assigns it
             to new :class:`DiskCacheStore`.
@@ -1169,19 +1169,45 @@ class MetDataset(MetBase):
         }
         return self._get_pycontrails_attr_template("product", supported, examples)
 
-    def standardize_variables(self, variables: Iterable[MetVariable]) -> None:
-        """Standardize variables **in-place**.
+    @overload
+    def standardize_variables(
+        self, variables: Iterable[MetVariable], inplace: Literal[False] = ...
+    ) -> Self: ...
+
+    @overload
+    def standardize_variables(
+        self, variables: Iterable[MetVariable], inplace: Literal[True]
+    ) -> None: ...
+
+    def standardize_variables(
+        self, variables: Iterable[MetVariable], inplace: bool = False
+    ) -> Self | None:
+        """Standardize variable names.
+
+        .. versionchanged:: 0.54.7
+
+            By default, this method returns a new :class:`MetDataset` instead
+            of renaming in place. To retain the old behavior, set ``inplace=True``.
 
         Parameters
         ----------
         variables : Iterable[MetVariable]
             Data source variables
+        inplace : bool, optional
+            If True, rename variables in place. Otherwise, return a new
+            :class:`MetDataset` with renamed variables.
 
         See Also
         --------
         :func:`standardize_variables`
         """
-        standardize_variables(self, variables)
+        data_renamed = standardize_variables(self.data, variables)
+
+        if not inplace:
+            self.data = data_renamed
+            return None
+
+        return type(self)._from_fastpath(data_renamed, cachestore=self.cachestore)
 
     @classmethod
     def from_coords(
@@ -2633,7 +2659,7 @@ def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:
     return data.where(cond, drop=True)
 
 
-def standardize_variables(ds: DatasetType, variables: Iterable[MetVariable]) -> DatasetType:
+def standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> xr.Dataset:
     """Rename all variables in dataset from short name to standard name.
 
     This function does not change any variables in ``ds`` that are not found in ``variables``.
@@ -2643,8 +2669,7 @@ def standardize_variables(ds: DatasetType, variables: Iterable[MetVariable]) -> 
     Parameters
     ----------
     ds : DatasetType
-        An :class:`xr.Dataset` or :class:`MetDataset`. When a :class:`MetDataset` is
-        passed, the underlying :class:`xr.Dataset` is modified in place.
+        An :class:`xr.Dataset`.
     variables : Iterable[MetVariable]
         Data source variables
 
@@ -2653,14 +2678,6 @@ def standardize_variables(ds: DatasetType, variables: Iterable[MetVariable]) -> 
     DatasetType
         Dataset with variables renamed to standard names
     """
-    if isinstance(ds, xr.Dataset):
-        return _standardize_variables(ds, variables)
-
-    ds.data = _standardize_variables(ds.data, variables)
-    return ds
-
-
-def _standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> xr.Dataset:
     variables_dict: dict[Hashable, str] = {v.short_name: v.standard_name for v in variables}
     name_dict = {var: variables_dict[var] for var in ds.data_vars if var in variables_dict}
     return ds.rename(name_dict)

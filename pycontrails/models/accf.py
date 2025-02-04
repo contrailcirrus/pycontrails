@@ -10,7 +10,7 @@ import xarray as xr
 
 import pycontrails
 from pycontrails.core.flight import Flight
-from pycontrails.core.met import MetDataset, standardize_variables
+from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import (
     AirTemperature,
     EastwardWind,
@@ -170,8 +170,8 @@ class ACCF(Model):
         **params_kwargs: Any,
     ) -> None:
         # Normalize ECMWF variables
-        variables = (v[0] if isinstance(v, tuple) else v for v in self.met_variables)
-        met = standardize_variables(met, variables)
+        variables = self.ecmwf_met_variables()
+        met = met.standardize_variables(variables)
 
         # If relative humidity is in percentage, convert to a proportion
         if met["relative_humidity"].attrs.get("units") == "%":
@@ -185,7 +185,7 @@ class ACCF(Model):
 
         if surface:
             surface = surface.copy()
-            surface = standardize_variables(surface, self.sur_variables)
+            surface = surface.standardize_variables(self.sur_variables)
             surface.data = _rad_instantaneous_to_accumulated(surface.data)
             self.surface = surface
 

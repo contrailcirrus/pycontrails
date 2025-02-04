@@ -7,6 +7,10 @@
 - Add helper `classmethods` to `Model`, `Cocip`, and `CocipGrid` for generating lists of required variables from specific data sources.
 - Add a `ValidateTrajectoryHandler` to the `spire` module to validate spire ADS-B data. This work is experimental and will be improved in future releases.
 
+### Breaking changes
+
+- The `MetDataset.standardize_variables` method now returns a new `MetDataset` rather than modifying the existing dataset in place. To retain the previous behavior, use `MetDataset.standardize_variables(..., inplace=True)`.
+
 ### Internals
 
 - Make `pycontrails` compatible with `pandas 2.0` and `pandas 2.1`.
