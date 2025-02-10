@@ -145,14 +145,15 @@ def z_total_length_scale(
     """
     # Calculate psi term
     fuel_dist = fuel_flow / true_airspeed   # Units: [:math:`kg m^{-1}`]
-    ice_dist = fuel_dist * aei_n            # Units: [:math:`m^{-1}`]
-    area_p = plume_area(wingspan)
-    n_ice_per_vol = ice_dist / area_p       # Units: [:math:`m^{-3}`]
-    psi = (3.38e12 / n_ice_per_vol) ** 0.16
+    n_ice_dist = fuel_dist * aei_n            # Units: [:math:`m^{-1}`]
+
+    n_ice_per_vol = n_ice_dist / plume_area(wingspan)       # Units: [:math:`m^{-3}`]
+    n_ice_per_vol_ref = 3.38e12 / plume_area(60.3)
+
+    psi = (n_ice_per_vol_ref / n_ice_per_vol) ** 0.16
 
     # Calculate total length-scale effect
     z_total = psi * (1.27 * z_atm + 0.42 * z_emit) - 0.49 * z_desc
-    z_total.clip(min=0.0, out=z_total)
     return z_total
 
 
