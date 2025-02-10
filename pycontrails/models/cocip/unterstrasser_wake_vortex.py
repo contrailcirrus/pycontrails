@@ -41,8 +41,9 @@ def ice_particle_number_survival_fraction(
     true_airspeed: npt.NDArray[np.floating],
     fuel_flow: npt.NDArray[np.floating],
     aei_n: npt.NDArray[np.floating],
-    z_desc: npt.NDArray[np.floating], *,
-    analytical_solution: bool = True
+    z_desc: npt.NDArray[np.floating],
+    *,
+    analytical_solution: bool = True,
 ) -> npt.NDArray[np.floating]:
     r"""
     Calculate fraction of ice particle number surviving the wake vortex phase and required inputs.
@@ -99,9 +100,7 @@ def ice_particle_number_survival_fraction(
         z_atm = z_atm_length_scale_numerical(air_temperature, rhi_0)
         z_emit = z_emit_length_scale_numerical(rho_emit, air_temperature)
 
-    z_total = z_total_length_scale(
-        z_atm, z_emit, z_desc, true_airspeed, fuel_flow, aei_n, wingspan
-    )
+    z_total = z_total_length_scale(z_atm, z_emit, z_desc, true_airspeed, fuel_flow, aei_n, wingspan)
     return _survival_fraction_from_length_scale(z_total)
 
 
@@ -145,17 +144,16 @@ def z_total_length_scale(
     - For `z_total`, see Eq. (9) and (10) in :cite:`lottermoserHighResolutionEarlyContrails2025`.
     """
     # Calculate psi term
-    fuel_dist = fuel_flow / true_airspeed   # Units: [:math:`kg m^{-1}`]
-    n_ice_dist = fuel_dist * aei_n            # Units: [:math:`m^{-1}`]
+    fuel_dist = fuel_flow / true_airspeed  # Units: [:math:`kg m^{-1}`]
+    n_ice_dist = fuel_dist * aei_n  # Units: [:math:`m^{-1}`]
 
-    n_ice_per_vol = n_ice_dist / plume_area(wingspan)       # Units: [:math:`m^{-3}`]
+    n_ice_per_vol = n_ice_dist / plume_area(wingspan)  # Units: [:math:`m^{-3}`]
     n_ice_per_vol_ref = 3.38e12 / plume_area(60.3)
 
     psi = (n_ice_per_vol_ref / n_ice_per_vol) ** 0.16
 
     # Calculate total length-scale effect
-    z_total = psi * (1.27 * z_atm + 0.42 * z_emit) - 0.49 * z_desc
-    return z_total
+    return psi * (1.27 * z_atm + 0.42 * z_emit) - 0.49 * z_desc
 
 
 def z_atm_length_scale_analytical(
@@ -187,7 +185,7 @@ def z_atm_length_scale_analytical(
     issr = rhi_0 > 1.0
 
     s_i = rhi_0 - 1.0
-    z_atm[issr] = 607.46 * s_i[issr]**0.897 * (air_temperature[issr] / 205.0)**2.225
+    z_atm[issr] = 607.46 * s_i[issr] ** 0.897 * (air_temperature[issr] / 205.0) ** 2.225
     return z_atm
 
 
@@ -235,7 +233,7 @@ def z_atm_length_scale_numerical(
         z_est = 0.5 * (z_1 + z_2)
         rhs = (thermo.e_sat_ice(air_temperature_issr + dry_adiabatic_lapse_rate * z_est)) / (
             air_temperature_issr + dry_adiabatic_lapse_rate * z_est
-        )**3.5
+        ) ** 3.5
         z_1[lhs > rhs] = z_est[lhs > rhs]
         z_2[lhs < rhs] = z_est[lhs < rhs]
 
@@ -341,15 +339,15 @@ def z_emit_length_scale_numerical(
     z_1 = np.zeros_like(rho_emit)
     z_2 = np.full_like(rho_emit, 1000.0)
 
-    lhs = (
-              thermo.e_sat_ice(air_temperature) / (constants.R_v * air_temperature**3.5)
-          ) + (rho_emit / (air_temperature**2.5))
+    lhs = (thermo.e_sat_ice(air_temperature) / (constants.R_v * air_temperature**3.5)) + (
+        rho_emit / (air_temperature**2.5)
+    )
 
     dry_adiabatic_lapse_rate = constants.g / constants.c_pd
     for _ in range(n_iter):
         z_est = 0.5 * (z_1 + z_2)
         rhs = thermo.e_sat_ice(air_temperature + dry_adiabatic_lapse_rate * z_est) / (
-            constants.R_v * (air_temperature + dry_adiabatic_lapse_rate * z_est)**3.5
+            constants.R_v * (air_temperature + dry_adiabatic_lapse_rate * z_est) ** 3.5
         )
         z_1[lhs > rhs] = z_est[lhs > rhs]
         z_2[lhs < rhs] = z_est[lhs < rhs]
