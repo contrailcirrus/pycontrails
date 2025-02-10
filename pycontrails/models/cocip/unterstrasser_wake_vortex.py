@@ -301,7 +301,7 @@ def z_emit_length_scale_analytical(
     """
     t_205 = air_temperature - 205.0
     return (
-        1.106
+        1106.6
         * ((rho_emit * 1e5) ** (0.678 + 0.0116 * t_205))
         * np.exp(-(0.0807 + 0.000428 * t_205) * t_205)
     )
