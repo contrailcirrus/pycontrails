@@ -103,6 +103,8 @@ class CocipParams(AdvectionBuffers):
     #:   Cocip output with ``preprocess_lowmem=True`` is only guaranteed to match output
     #:   with ``preprocess_lowmem=False`` when run with ``interpolation_bounds_error=True``
     #:   to ensure no out-of-bounds interpolation occurs.
+    #:
+    #: .. versionadded:: 0.52.3
     preprocess_lowmem: bool = False
 
     # --------------
@@ -114,6 +116,8 @@ class CocipParams(AdvectionBuffers):
     #: ``"auto"``, ``"tau_cirrus"`` will be computed during model initialization
     #: iff the met data is dask-backed. Otherwise, it will be computed during model
     #: evaluation after the met data is downselected.
+    #:
+    #: .. versionadded:: 0.47.1
     compute_tau_cirrus_in_model_init: bool | str = "auto"
 
     # ---------
@@ -152,10 +156,14 @@ class CocipParams(AdvectionBuffers):
     #: These are not standard CoCiP outputs but based on the derivation used
     #: in the first supplement to :cite:`yinPredictingClimateImpact2023`. ATR20 is defined
     #: as the average temperature response over a 20 year horizon.
+    #:
+    #: .. versionadded:: 0.50.0
     compute_atr20: bool = False
 
     #: Constant factor used to convert global- and year-mean RF, [:math:`W m^{-2}`],
     #: to ATR20, [:math:`K`], given by :cite:`yinPredictingClimateImpact2023`.
+    #:
+    #: .. versionadded:: 0.50.0
     global_rf_to_atr20_factor: float = 0.0151
 
     # ----------------
@@ -202,7 +210,8 @@ class CocipParams(AdvectionBuffers):
     #: number after the wake vortex phase based on the results from large eddy simulations.
     #: This replicates Fig. 4 of :cite:`karcherFormationRadiativeForcing2018`.
     #:
-    #:  .. versionadded:: 0.50.1, .. versionupdated:: 0.54.7?
+    #:  .. versionadded:: 0.50.1
+    #:  .. versionchanged:: 0.54.7
     unterstrasser_ice_survival_fraction: bool = False
 
     #: Experimental. Radiative heating effects on contrail cirrus properties.
