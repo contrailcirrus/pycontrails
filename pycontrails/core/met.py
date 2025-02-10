@@ -1203,7 +1203,7 @@ class MetDataset(MetBase):
         """
         data_renamed = standardize_variables(self.data, variables)
 
-        if not inplace:
+        if inplace:
             self.data = data_renamed
             return None
 
