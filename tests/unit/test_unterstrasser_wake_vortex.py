@@ -20,7 +20,7 @@ def test_unterstrasser_wake_vortex_length_scales() -> None:
     """Test Lottermoser & Unterstrasser (2025) length scales using values in Table A1."""
     air_temperature = np.array([217.0, 217.0, 225.0, 225.0, 233.0, 235.0])
     rhi_0 = np.array([1.20, 1.10, 1.20, 1.10, 1.20, 1.20])
-    wingspan = np.array([60.3, 60.3, 60.3, 60.3, 60.3, 60.3])
+    wingspan = np.ones_like(rhi_0) * 60.3
 
     # Emitted water vapor per dist: [:math:`kg m^{-1}`]
     i_0 = np.array([15.0, 15.0, 15.0, 15.0, 38.55, 38.55]) / 1000.0
@@ -51,20 +51,28 @@ def test_unterstrasser_wake_vortex_length_scales() -> None:
 
 
 def test_unterstrasser_wake_vortex_survival_fractions() -> None:
-    """Test Unterstrasser (2016) ice crystal survival fraction using values listed in Table A2."""
+    """Test Lottermoser & Unterstrasser (2025) ice crystal survival fraction in Table A1."""
     # Input parameters
+    n_ice_dist = np.array(
+        [338.0, 33.8, 3.38, 0.338, 0.0338, 338.0, 33.8, 3.38, 0.338, 0.0338]
+    ) * 1e12
+    wingspan = np.ones_like(n_ice_dist) * 60.3
 
-    # Aircraft types: B777, CRJ, A380, B737, B747, B777, B767
-    aei_n = np.array([2.8, 2.8, 2.8, 2.8, 2.8, 0.14, 100.0]) * 10**14
-    z_atm = np.array([0.0, 0.0, 276.0, 276.0, 148.0, 77.0, 78.0])
-    z_emit = np.array([279.0, 90.0, 96.0, 83.0, 98.0, 117.0, 81.0])
-    z_desc = np.array([339.0, 169.0, 399.0, 349.0, 548.0, 339.0, 339.0])
+    z_atm = np.array([164.0, 164.0, 164.0, 164.0, 164.0, 101.0, 101.0, 101.0, 101.0, 101.0])
+    z_emit = np.array([249.0, 249.0, 249.0, 249.0, 249.0, 102.0, 102.0, 102.0, 102.0, 102.0])
+    z_desc = np.ones_like(n_ice_dist) * 339.0
 
-    # Derived parameters
-    z_total_est = z_total_length_scale(aei_n, z_atm, z_emit, z_desc)
+    # Test function manually
+    n_ice_per_vol = n_ice_dist / plume_area(wingspan)  # Units: [:math:`m^{-3}`]
+    n_ice_per_vol_ref = 3.38e12 / plume_area(60.3)
+
+    psi = n_ice_per_vol_ref / n_ice_per_vol
+
+    # Calculate total length-scale effect manually as some input parameters are not available
+    z_total_est = (psi ** 0.16) * (1.27 * z_atm + 0.42 * z_emit) - 0.49 * z_desc
     f_surv_est = _survival_fraction_from_length_scale(z_total_est)
     np.testing.assert_array_almost_equal(
-        f_surv_est, [0.38, 0.099, 0.87, 0.88, 0.15, 0.78, 0.096], decimal=2
+        f_surv_est, [0.06, 0.23, 0.60, 0.87, 0.97, 0.0, 0.01, 0.10, 0.34, 0.73], decimal=2
     )
 
 
