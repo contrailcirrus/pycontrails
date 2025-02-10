@@ -197,12 +197,12 @@ class CocipParams(AdvectionBuffers):
     max_depth: float = 1500.0
 
     #: Experimental. Improved ice crystal number survival fraction in the wake vortex phase.
-    #: Implement :cite:`unterstrasserPropertiesYoungContrails2016`, who developed a
+    #: Implement :cite:`lottermoserHighResolutionEarlyContrails2025`, who developed a
     #: parametric model that estimates the survival fraction of the contrail ice crystal
     #: number after the wake vortex phase based on the results from large eddy simulations.
     #: This replicates Fig. 4 of :cite:`karcherFormationRadiativeForcing2018`.
     #:
-    #:  .. versionadded:: 0.50.1
+    #:  .. versionadded:: 0.50.1, .. versionupdated:: 0.54.7?
     unterstrasser_ice_survival_fraction: bool = False
 
     #: Experimental. Radiative heating effects on contrail cirrus properties.
