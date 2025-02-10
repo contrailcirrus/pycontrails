@@ -72,7 +72,7 @@ def ice_particle_number_survival_fraction(
         Final vertical displacement of the wake vortex, ``dz_max`` in :mod:`wake_vortex.py`,
         [:math:`m`].
     analytical_solution : bool
-        Use analytical solution to calculate `z_atm` and `z_emit` instead of numerical solution.
+        Use analytical solution to calculate ``z_atm`` and ``z_emit`` instead of numerical solution.
 
     Returns
     -------

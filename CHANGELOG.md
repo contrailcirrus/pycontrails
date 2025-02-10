@@ -6,6 +6,9 @@
 
 - Add helper `classmethods` to `Model`, `Cocip`, and `CocipGrid` for generating lists of required variables from specific data sources.
 - Add a `ValidateTrajectoryHandler` to the `spire` module to validate spire ADS-B data. This work is experimental and will be improved in future releases.
+- Update Unterstrasser (2016)'s parameterised model of the contrail ice crystal survival fraction to the latest version (Lottermoser & Unterstrasser, 2025). This update:
+  - improves the goodness of fit between the parameterised model and LES, and
+  - expands the parameter space for application to very low and very high nvPM inputs, different fuel types (where the EI H2Os are different), and higher ambient temperatures (up to 235 K) to accommodate for contrails formed by liquid hydrogen aircraft.
 
 ### Breaking changes
 
