@@ -40,7 +40,8 @@ def ice_particle_number_survival_fraction(
     true_airspeed: npt.NDArray[np.floating],
     fuel_flow: npt.NDArray[np.floating],
     aei_n: npt.NDArray[np.floating],
-    z_desc: npt.NDArray[np.floating],
+    z_desc: npt.NDArray[np.floating], *,
+    analytical_solution: bool = True
 ) -> npt.NDArray[np.floating]:
     r"""
     Calculate fraction of ice particle number surviving the wake vortex phase and required inputs.
@@ -68,6 +69,8 @@ def ice_particle_number_survival_fraction(
     z_desc : npt.NDArray[np.floating]
         Final vertical displacement of the wake vortex, ``dz_max`` in :mod:`wake_vortex.py`,
         [:math:`m`].
+    analytical_solution : bool
+        Use analytical solution to calculate `z_atm` and `z_emit` instead of numerical solution.
 
     Returns
     -------
@@ -77,16 +80,24 @@ def ice_particle_number_survival_fraction(
     References
     ----------
     - :cite:`unterstrasserPropertiesYoungContrails2016`
+    - :cite:`lottermoserHighResolutionEarlyContrails2025`
 
     Notes
     -----
     - For consistency in CoCiP, ``z_desc`` should be calculated using :func:`dz_max` instead of
       using :func:`z_desc_length_scale`.
     """
-    # Length scales
-    z_atm = z_atm_length_scale(air_temperature, rhi_0)
     rho_emit = emitted_water_vapour_concentration(ei_h2o, wingspan, true_airspeed, fuel_flow)
-    z_emit = z_emit_length_scale(rho_emit, air_temperature)
+
+    # Length scales
+    if analytical_solution:
+        z_atm = z_atm_length_scale_analytical(air_temperature, rhi_0)
+        z_emit = z_emit_length_scale_analytical(rho_emit, air_temperature)
+
+    else:
+        z_atm = z_atm_length_scale_numerical(air_temperature, rhi_0)
+        z_emit = z_emit_length_scale_numerical(rho_emit, air_temperature)
+
     z_total = z_total_length_scale(
         z_atm, z_emit, z_desc, true_airspeed, fuel_flow, aei_n, wingspan
     )
@@ -145,7 +156,40 @@ def z_total_length_scale(
     return z_total
 
 
-def z_atm_length_scale(
+def z_atm_length_scale_analytical(
+    air_temperature: npt.NDArray[np.floating],
+    rhi_0: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    """Calculate the length-scale effect of ambient supersaturation on the ice crystal mass budget.
+
+    Parameters
+    ----------
+    air_temperature : npt.NDArray[np.floating]
+        Ambient temperature for each waypoint, [:math:`K`].
+    rhi_0 : npt.NDArray[np.floating]
+        Relative humidity with respect to ice at the flight waypoint.
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        The effect of the ambient supersaturation on the ice crystal mass budget,
+        provided as a length scale equivalent, estimated with analytical fit [:math:`m`].
+
+    Notes
+    -----
+    - See Eq. (A2) in :cite:`lottermoserHighResolutionEarlyContrails2025`.
+    """
+    z_atm = np.zeros_like(rhi_0)
+
+    # Only perform operation when the ambient condition is supersaturated w.r.t. ice
+    issr = rhi_0 > 1.0
+
+    s_i = rhi_0 - 1.0
+    z_atm[issr] = 607.46 * s_i[issr]**0.897 * (air_temperature[issr] / 205.0)**2.225
+    return z_atm
+
+
+def z_atm_length_scale_numerical(
     air_temperature: npt.NDArray[np.floating],
     rhi_0: npt.NDArray[np.floating],
     *,
@@ -166,7 +210,7 @@ def z_atm_length_scale(
     -------
     npt.NDArray[np.floating]
         The effect of the ambient supersaturation on the ice crystal mass budget,
-        provided as a length scale equivalent, [:math:`m`].
+        provided as a length scale equivalent, estimated with numerical methods [:math:`m`].
 
     Notes
     -----
@@ -232,7 +276,38 @@ def emitted_water_vapour_concentration(
     return h2o_per_dist / area_p
 
 
-def z_emit_length_scale(
+def z_emit_length_scale_analytical(
+    rho_emit: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    """Calculate the length-scale effect of water vapour emissions on the ice crystal mass budget.
+
+    Parameters
+    ----------
+    rho_emit : npt.NDArray[np.floating] | float
+        Aircraft-emitted water vapour concentration in the plume, [:math:`kg m^{-3}`]
+    air_temperature : npt.NDArray[np.floating]
+        ambient temperature for each waypoint, [:math:`K`]
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        The effect of the aircraft water vapour emission on the ice crystal mass budget,
+        provided as a length scale equivalent, estimated with analytical fit [:math:`m`]
+
+    Notes
+    -----
+    - See Eq. (A3) in :cite:`lottermoserHighResolutionEarlyContrails2025`.
+    """
+    t_205 = air_temperature - 205.0
+    return (
+        1.106
+        * ((rho_emit * 1e5) ** (0.678 + 0.0116 * t_205))
+        * np.exp(-(0.0807 + 0.000428 * t_205) * t_205)
+    )
+
+
+def z_emit_length_scale_numerical(
     rho_emit: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
     *,
@@ -253,7 +328,7 @@ def z_emit_length_scale(
     -------
     npt.NDArray[np.floating]
         The effect of the aircraft water vapour emission on the ice crystal mass budget,
-        provided as a length scale equivalent, [:math:`m`]
+        provided as a length scale equivalent, estimated with numerical methods [:math:`m`]
 
     Notes
     -----
