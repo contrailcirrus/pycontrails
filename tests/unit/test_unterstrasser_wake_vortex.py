@@ -4,15 +4,13 @@ import numpy as np
 
 from pycontrails.models.cocip.unterstrasser_wake_vortex import (
     _survival_fraction_from_length_scale,
-    emitted_water_vapour_concentration,
     initial_contrail_depth,
     plume_area,
-    z_atm_length_scale_numerical,
     z_atm_length_scale_analytical,
+    z_atm_length_scale_numerical,
     z_desc_length_scale,
-    z_emit_length_scale_numerical,
     z_emit_length_scale_analytical,
-    z_total_length_scale,
+    z_emit_length_scale_numerical,
 )
 
 
@@ -53,9 +51,9 @@ def test_unterstrasser_wake_vortex_length_scales() -> None:
 def test_unterstrasser_wake_vortex_survival_fractions() -> None:
     """Test Lottermoser & Unterstrasser (2025) ice crystal survival fraction in Table A1."""
     # Input parameters
-    n_ice_dist = np.array(
-        [338.0, 33.8, 3.38, 0.338, 0.0338, 338.0, 33.8, 3.38, 0.338, 0.0338]
-    ) * 1e12
+    n_ice_dist = (
+        np.array([338.0, 33.8, 3.38, 0.338, 0.0338, 338.0, 33.8, 3.38, 0.338, 0.0338]) * 1e12
+    )
     wingspan = np.ones_like(n_ice_dist) * 60.3
 
     z_atm = np.array([164.0, 164.0, 164.0, 164.0, 164.0, 101.0, 101.0, 101.0, 101.0, 101.0])
@@ -69,7 +67,7 @@ def test_unterstrasser_wake_vortex_survival_fractions() -> None:
     psi = n_ice_per_vol_ref / n_ice_per_vol
 
     # Calculate total length-scale effect manually as some input parameters are not available
-    z_total_est = (psi ** 0.16) * (1.27 * z_atm + 0.42 * z_emit) - 0.49 * z_desc
+    z_total_est = (psi**0.16) * (1.27 * z_atm + 0.42 * z_emit) - 0.49 * z_desc
     f_surv_est = _survival_fraction_from_length_scale(z_total_est)
     np.testing.assert_array_almost_equal(
         f_surv_est, [0.06, 0.23, 0.60, 0.87, 0.97, 0.0, 0.01, 0.10, 0.34, 0.73], decimal=2
