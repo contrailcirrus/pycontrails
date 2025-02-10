@@ -4,8 +4,12 @@ Notes
 -----
 :cite:`unterstrasserPropertiesYoungContrails2016` provides a parameterized model of the
 survival fraction of the contrail ice crystal number ``f_surv`` during the  wake-vortex phase.
-The model was developed based on output from large eddy simulations, and improves agreement with
-LES outputs relative to the default survival fraction parameterization used in CoCiP.
+The model has since been updated in :cite:`lottermoserHighResolutionEarlyContrails2025`. This update
+expands the parameter space and can now be used for very low and very high soot inputs, different
+fuel types (where the EI H2Os are different), and higher ambient temperatures (up to 235 K) to
+accomodate for contrails formed by liquid hydrogen aircraft. The model was developed based on
+output from large eddy simulations, and improves agreement with LES outputs relative to the default
+survival fraction parameterization used in CoCiP.
 
 For comparison, CoCiP assumes that ``f_surv`` is equal to the change in the contrail ice water
 content (by mass) before and after the wake vortex phase. However, for larger (smaller) ice
@@ -14,6 +18,9 @@ by mass. This is particularly important in the "soot-poor" scenario, for example
 lean-burn engines where their soot emissions can be 3-4 orders of magnitude lower than conventional
 RQL engines.
 
+ADD CITATION TO BIBTEX:
+Lottermoser, A. and Unterstraßer, S.: High-resolution modelling of early contrail evolution from
+hydrogen-powered aircraft, EGUsphere [preprint], https://doi.org/10.5194/egusphere-2024-3859, 2025.
 """
 
 from __future__ import annotations
@@ -268,10 +275,10 @@ def plume_area(wingspan: npt.NDArray[np.floating] | float) -> npt.NDArray[np.flo
 
     Notes
     -----
-    - See eq. (A6) and (A7) in :cite:`unterstrasserPropertiesYoungContrails2016`.
+    - See Appendix A2 in eq. (A6) and (A7) in :cite:`lottermoserHighResolutionEarlyContrails2025`.
     """
     r_plume = 1.5 + 0.314 * wingspan
-    return 2.0 * 2.0 * np.pi * r_plume**2
+    return 2.0 * np.pi * r_plume**2
 
 
 def z_desc_length_scale(
