@@ -1,15 +1,16 @@
-"""Wave-vortex downwash functions from Unterstrasser (2016).
+"""Wave-vortex downwash functions from Lottermoser & Unterstrasser (2025).
 
 Notes
 -----
 :cite:`unterstrasserPropertiesYoungContrails2016` provides a parameterized model of the
 survival fraction of the contrail ice crystal number ``f_surv`` during the  wake-vortex phase.
 The model has since been updated in :cite:`lottermoserHighResolutionEarlyContrails2025`. This update
-expands the parameter space and can now be used for very low and very high soot inputs, different
-fuel types (where the EI H2Os are different), and higher ambient temperatures (up to 235 K) to
-accomodate for contrails formed by liquid hydrogen aircraft. The model was developed based on
-output from large eddy simulations, and improves agreement with LES outputs relative to the default
-survival fraction parameterization used in CoCiP.
+improves the goodness-of-fit between the parameterised model and LES, and expands the parameter
+space and can now be used for very low and very high soot inputs, different fuel types (where the
+EI H2Os are different), and higher ambient temperatures (up to 235 K) to accomodate for contrails
+formed by liquid hydrogen aircraft. The model was developed based on output from large eddy
+simulations, and improves agreement with LES outputs relative to the default survival fraction
+parameterization used in CoCiP.
 
 For comparison, CoCiP assumes that ``f_surv`` is equal to the change in the contrail ice water
 content (by mass) before and after the wake vortex phase. However, for larger (smaller) ice
