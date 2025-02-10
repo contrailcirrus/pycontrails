@@ -4,39 +4,49 @@ import numpy as np
 
 from pycontrails.models.cocip.unterstrasser_wake_vortex import (
     _survival_fraction_from_length_scale,
+    emitted_water_vapour_concentration,
     initial_contrail_depth,
     plume_area,
-    z_atm_length_scale,
+    z_atm_length_scale_numerical,
+    z_atm_length_scale_analytical,
     z_desc_length_scale,
-    z_emit_length_scale,
+    z_emit_length_scale_numerical,
+    z_emit_length_scale_analytical,
     z_total_length_scale,
 )
 
 
 def test_unterstrasser_wake_vortex_length_scales() -> None:
-    """Test Unterstrasser (2016) wake vortex length scales using values listed in Table A2."""
-    # Input parameters
+    """Test Lottermoser & Unterstrasser (2025) length scales using values in Table A1."""
+    air_temperature = np.array([217.0, 217.0, 225.0, 225.0, 233.0, 235.0])
+    rhi_0 = np.array([1.20, 1.10, 1.20, 1.10, 1.20, 1.20])
+    wingspan = np.array([60.3, 60.3, 60.3, 60.3, 60.3, 60.3])
 
-    # Aircraft types: B777, CRJ, A380, B737, B747, B777, B767
-    air_temperature = np.array([209.0, 217.0, 217.0, 217.0, 217.0, 217.0, 218.0])
-    rhi_0 = np.array([1.0, 1.0, 1.4, 1.4, 1.2, 1.1, 1.1])
-    wingspan = np.array([60.9, 21.2, 79.8, 34.4, 64.4, 60.9, 47.6])
-    h2o_per_dist = np.array([15.00, 1.77, 20.03, 3.70, 13.82, 15.0, 7.26]) / 1000  # Units: kg/m**3
+    # Emitted water vapor per dist: [:math:`kg m^{-1}`]
+    i_0 = np.array([15.0, 15.0, 15.0, 15.0, 38.55, 38.55]) / 1000.0
 
     # Derived parameters
     a_p = plume_area(wingspan)
-    rho_emit = h2o_per_dist / a_p
+    rho_emit = i_0 / a_p
 
-    # Test `z_atm`
-    z_atm_est = z_atm_length_scale(air_temperature, rhi_0)
+    # Test `z_atm` length scale
+    z_atm_numerical_est = z_atm_length_scale_numerical(air_temperature, rhi_0)
     np.testing.assert_array_almost_equal(
-        z_atm_est, [0.0, 0.0, 276.9, 276.9, 148.9, 77.6, 78.6], decimal=1
+        z_atm_numerical_est, [164.6, 85.4, 177.2, 92.3, 191.9, 194.8], decimal=1
+    )
+    z_atm_analytical_est = z_atm_length_scale_analytical(air_temperature, rhi_0)
+    np.testing.assert_array_almost_equal(
+        z_atm_analytical_est, [162.7, 87.4, 176.4, 94.7, 190.7, 194.3], decimal=1
     )
 
-    # Test `z_emit`
-    z_emit_est = z_emit_length_scale(rho_emit, air_temperature)
+    # Test `z_emit` length scale
+    z_emit_numerical_est = z_emit_length_scale_numerical(rho_emit, air_temperature)
     np.testing.assert_array_almost_equal(
-        z_emit_est, [280.8, 90.3, 96.2, 83.5, 99.1, 118.7, 81.5], decimal=1
+        z_emit_numerical_est, [249.5, 249.5, 109.9, 109.9, 123.5, 102.1], decimal=1
+    )
+    z_emit_analytical_est = z_emit_length_scale_analytical(rho_emit, air_temperature)
+    np.testing.assert_array_almost_equal(
+        z_emit_analytical_est, [250.2, 250.2, 111.6, 111.6, 121.5, 99.3], decimal=1
     )
 
 
