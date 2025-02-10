@@ -18,7 +18,7 @@ by mass. This is particularly important in the "soot-poor" scenario, for example
 lean-burn engines where their soot emissions can be 3-4 orders of magnitude lower than conventional
 RQL engines.
 
-ADD CITATION TO BIBTEX:
+ADD CITATION TO BIBTEX: :cite:`lottermoserHighResolutionEarlyContrails2025`
 Lottermoser, A. and Unterstraßer, S.: High-resolution modelling of early contrail evolution from
 hydrogen-powered aircraft, EGUsphere [preprint], https://doi.org/10.5194/egusphere-2024-3859, 2025.
 """
@@ -80,7 +80,6 @@ def ice_particle_number_survival_fraction(
 
     Notes
     -----
-    - See eq. (3), (9), and (10) in :cite:`unterstrasserPropertiesYoungContrails2016`.
     - For consistency in CoCiP, ``z_desc`` should be calculated using :func:`dz_max` instead of
       using :func:`z_desc_length_scale`.
     """
@@ -88,41 +87,60 @@ def ice_particle_number_survival_fraction(
     z_atm = z_atm_length_scale(air_temperature, rhi_0)
     rho_emit = emitted_water_vapour_concentration(ei_h2o, wingspan, true_airspeed, fuel_flow)
     z_emit = z_emit_length_scale(rho_emit, air_temperature)
-    z_total = z_total_length_scale(aei_n, z_atm, z_emit, z_desc)
+    z_total = z_total_length_scale(
+        z_atm, z_emit, z_desc, true_airspeed, fuel_flow, aei_n, wingspan
+    )
     return _survival_fraction_from_length_scale(z_total)
 
 
 def z_total_length_scale(
-    aei_n: npt.NDArray[np.floating],
     z_atm: npt.NDArray[np.floating],
     z_emit: npt.NDArray[np.floating],
     z_desc: npt.NDArray[np.floating],
+    true_airspeed: npt.NDArray[np.floating],
+    fuel_flow: npt.NDArray[np.floating],
+    aei_n: npt.NDArray[np.floating],
+    wingspan: npt.NDArray[np.floating] | float,
 ) -> npt.NDArray[np.floating]:
     """
     Calculate the total length-scale effect of the wake vortex downwash.
 
     Parameters
     ----------
-    aei_n : npt.NDArray[np.floating]
-        Apparent ice crystal number emissions index at contrail formation, [:math:`kg^{-1}`]
     z_atm : npt.NDArray[np.floating]
         Length-scale effect of ambient supersaturation on the ice crystal mass budget, [:math:`m`]
     z_emit : npt.NDArray[np.floating]
         Length-scale effect of water vapour emissions on the ice crystal mass budget, [:math:`m`]
     z_desc : npt.NDArray[np.floating]
         Final vertical displacement of the wake vortex, `dz_max` in `wake_vortex.py`, [:math:`m`]
+    true_airspeed : npt.NDArray[np.floating]
+        true airspeed for each waypoint, [:math:`m s^{-1}`]
+    fuel_flow : npt.NDArray[np.floating]
+        Fuel mass flow rate, [:math:`kg s^{-1}`]
+    aei_n : npt.NDArray[np.floating]
+        Apparent ice crystal number emissions index at contrail formation, [:math:`kg^{-1}`]
+    wingspan : npt.NDArray[np.floating] | float
+        aircraft wingspan, [:math:`m`]
 
     Returns
     -------
     npt.NDArray[np.floating]
         Total length-scale effect of the wake vortex downwash, [:math:`m`]
+
+    Notes
+    -----
+    - For `psi`, see Appendix A1 in :cite:`lottermoserHighResolutionEarlyContrails2025`.
+    - For `z_total`, see Eq. (9) and (10) in :cite:`lottermoserHighResolutionEarlyContrails2025`.
     """
-    alpha_base = (aei_n / 2.8e14) ** (-0.18)
-    alpha_atm = 1.7 * alpha_base
-    alpha_emit = 1.15 * alpha_base
+    # Calculate psi term
+    fuel_dist = fuel_flow / true_airspeed   # Units: [:math:`kg m^{-1}`]
+    ice_dist = fuel_dist * aei_n            # Units: [:math:`m^{-1}`]
+    area_p = plume_area(wingspan)
+    n_ice_per_vol = ice_dist / area_p       # Units: [:math:`m^{-3}`]
+    psi = (3.38e12 / n_ice_per_vol) ** 0.16
 
-    z_total = alpha_atm * z_atm + alpha_emit * z_emit - 0.6 * z_desc
-
+    # Calculate total length-scale effect
+    z_total = psi * (1.27 * z_atm + 0.42 * z_emit) - 0.49 * z_desc
     z_total.clip(min=0.0, out=z_total)
     return z_total
 
@@ -152,7 +170,7 @@ def z_atm_length_scale(
 
     Notes
     -----
-    - See eq. (5) in :cite:`unterstrasserPropertiesYoungContrails2016`.
+    - See Eq. (6) in :cite:`lottermoserHighResolutionEarlyContrails2025`.
     """
     # Only perform operation when the ambient condition is supersaturated w.r.t. ice
     issr = rhi_0 > 1.0
@@ -164,14 +182,14 @@ def z_atm_length_scale(
     # Did not use scipy functions because it is unstable when dealing with np.arrays
     z_1 = np.zeros_like(rhi_issr)
     z_2 = np.full_like(rhi_issr, 1000.0)
-    lhs = rhi_issr * thermo.e_sat_ice(air_temperature_issr) / air_temperature_issr
+    lhs = rhi_issr * thermo.e_sat_ice(air_temperature_issr) / (air_temperature_issr**3.5)
 
     dry_adiabatic_lapse_rate = constants.g / constants.c_pd
     for _ in range(n_iter):
         z_est = 0.5 * (z_1 + z_2)
         rhs = (thermo.e_sat_ice(air_temperature_issr + dry_adiabatic_lapse_rate * z_est)) / (
             air_temperature_issr + dry_adiabatic_lapse_rate * z_est
-        )
+        )**3.5
         z_1[lhs > rhs] = z_est[lhs > rhs]
         z_2[lhs < rhs] = z_est[lhs < rhs]
 
@@ -239,20 +257,22 @@ def z_emit_length_scale(
 
     Notes
     -----
-    - See eq. (7) in :cite:`unterstrasserPropertiesYoungContrails2016`.
+    - See Eq. (7) in :cite:`lottermoserHighResolutionEarlyContrails2025`.
     """
     # Solve non-linear equation numerically using the bisection method
     # Did not use scipy functions because it is unstable when dealing with np.arrays
     z_1 = np.zeros_like(rho_emit)
     z_2 = np.full_like(rho_emit, 1000.0)
 
-    lhs = (thermo.e_sat_ice(air_temperature) / (constants.R_v * air_temperature)) + rho_emit
+    lhs = (
+              thermo.e_sat_ice(air_temperature) / (constants.R_v * air_temperature**3.5)
+          ) + (rho_emit / (air_temperature**2.5))
 
     dry_adiabatic_lapse_rate = constants.g / constants.c_pd
     for _ in range(n_iter):
         z_est = 0.5 * (z_1 + z_2)
         rhs = thermo.e_sat_ice(air_temperature + dry_adiabatic_lapse_rate * z_est) / (
-            constants.R_v * (air_temperature + dry_adiabatic_lapse_rate * z_est)
+            constants.R_v * (air_temperature + dry_adiabatic_lapse_rate * z_est)**3.5
         )
         z_1[lhs > rhs] = z_est[lhs > rhs]
         z_2[lhs < rhs] = z_est[lhs < rhs]
@@ -375,7 +395,7 @@ def _survival_fraction_from_length_scale(
     npt.NDArray[np.floating]
         Fraction of ice particle number surviving the wake vortex phase
     """
-    f_surv = 0.45 + (1.19 / np.pi) * np.arctan(-1.35 + (z_total / 100.0))
+    f_surv = 0.42 + (1.31 / np.pi) * np.arctan(-1.00 + (z_total / 100.0))
     np.clip(f_surv, 0.0, 1.0, out=f_surv)
     return f_surv
 
