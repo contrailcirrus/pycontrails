@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pycontrails"
-authors = [{ name = "Breakthrough Energy", email = "py@contrails.org" }]
+authors = [{ name = "Contrails.org", email = "py@contrails.org" }]
 description = "Python library for modeling aviation climate impacts"
 keywords = ["contrails", "climate", "aviation", "geospatial"]
 # https://pypi.org/classifiers/

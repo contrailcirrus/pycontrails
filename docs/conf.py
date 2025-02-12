@@ -15,9 +15,11 @@ import pycontrails
 # -- Project information -----------------------------------------------------
 
 project = "pycontrails"
-copyright = f"2021-{datetime.datetime.now().year}, Breakthrough Energy"
+copyright = (
+    f"2021-{datetime.datetime.now().year}, Contrails.org and the Breakthrough Energy Foundation"
+)
 
-author = "Breakthrough Energy"
+author = "Contrails.org"
 version = pycontrails.__version__
 release = pycontrails.__version__
 
