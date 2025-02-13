@@ -71,6 +71,8 @@ class AircraftPerformanceParams(ModelParams, CommonAircraftPerformanceParams):
     #: level with zero wind when computing true airspeed. In other words,
     #: approximate low-altitude true airspeed with the ground speed. Enabling
     #: this does NOT remove any NaN values in the ``met`` data itself.
+    #: In the case that ``met`` is not provided, any missing values are
+    #: filled with zero wind.
     fill_low_altitude_with_zero_wind: bool = False
 
 
@@ -531,8 +533,12 @@ class AircraftPerformance(Model):
         v = interpolate_met(self.met, self.source, "northward_wind", "v_wind", **self.interp_kwargs)
 
         if fill_with_groundspeed:
-            met_level_max = self.met.data["level"][-1].item()  # type: ignore[union-attr]
-            cond = self.source.level > met_level_max
+            if self.met is None:
+                cond = np.isnan(u) & np.isnan(v)
+            else:
+                met_level_max = self.met.data["level"][-1].item()  # type: ignore[union-attr]
+                cond = self.source.level > met_level_max
+
             # We DON'T overwrite the original u and v arrays already attached to the source
             u = np.where(cond, 0.0, u)
             v = np.where(cond, 0.0, v)
