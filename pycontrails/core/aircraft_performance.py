@@ -509,7 +509,8 @@ class AircraftPerformance(Model):
             tas[cond] = self.source.segment_groundspeed()[cond]
             return tas
 
-        wind_available = ("eastward_wind" in self.source and "northward_wind" in self.source) or (
+        # Use current cocip convention: eastward_wind on met, u_wind on source
+        wind_available = ("u_wind" in self.source and "v_wind" in self.source) or (
             self.met is not None and "eastward_wind" in self.met and "northward_wind" in self.met
         )
 
@@ -526,8 +527,8 @@ class AircraftPerformance(Model):
             )
             raise ValueError(msg)
 
-        u = interpolate_met(self.met, self.source, "eastward_wind", **self.interp_kwargs)
-        v = interpolate_met(self.met, self.source, "northward_wind", **self.interp_kwargs)
+        u = interpolate_met(self.met, self.source, "eastward_wind", "u_wind", **self.interp_kwargs)
+        v = interpolate_met(self.met, self.source, "northward_wind", "v_wind", **self.interp_kwargs)
 
         if fill_with_groundspeed:
             met_level_max = self.met.data["level"][-1].item()  # type: ignore[union-attr]
