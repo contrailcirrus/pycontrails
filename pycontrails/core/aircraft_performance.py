@@ -664,28 +664,3 @@ def _fill_low_altitude_with_isa_temperature(vector: GeoVectorDataset, met_level_
 
     t_isa = vector.T_isa()
     air_temperature[cond] = t_isa[cond]
-
-
-def _fill_low_altitude_tas_with_true_groundspeed(fl: Flight, met_level_max: float) -> None:
-    """Fill low-altitude NaN values in ``true_airspeed`` with ground speed.
-
-    The ``true_airspeed`` param is assumed to have been computed by
-    interpolating against a gridded wind field that did not necessarily
-    extend to the surface. This function fills points below the lowest
-    altitude in the gridded data with ground speed values.
-
-    This function operates in-place and modifies the ``true_airspeed`` field.
-
-    Parameters
-    ----------
-    fl : Flight
-        Flight instance associated with the ``true_airspeed`` data.
-    met_level_max : float
-        The maximum level in the met data, [:math:`hPa`].
-    """
-    tas = fl["true_airspeed"]
-    is_nan = np.isnan(tas)
-    low_alt = fl.level > met_level_max
-    cond = is_nan & low_alt
-
-    tas[cond] = fl.segment_groundspeed()[cond]
