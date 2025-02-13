@@ -507,6 +507,9 @@ class VectorDataset:
         >>> vector.get_data_or_attr("c", default=5)
         5
 
+        See Also
+        --------
+        lookup_constant
         """
         marker = self.__marker
 
@@ -1012,6 +1015,69 @@ class VectorDataset:
             if (isinstance(val, int | float | np.number) and attr not in ignore_keys)
         )
         self.broadcast_attrs(numeric_attrs, overwrite)
+
+    def lookup_constant(self, key: str, default: Any = __marker) -> Any:
+        """Get a constant value from :attr:`attrs` or :attr:`data`.
+
+        - If ``key`` is found in :attr:`attrs`, the value is returned.
+        - If ``key`` is found in :attr:`data`, the common value is returned if all
+          values are equal.
+        - If ``key`` is not found in :attr:`attrs` or :attr:`data` and a ``default`` is provided,
+          the ``default`` is returned.
+        - Otherwise, a KeyError is raised.
+
+        Parameters
+        ----------
+        key : str
+            Key to look for.
+        default : Any, optional
+            Default value to return if ``key`` is not found in :attr:`attrs` or :attr:`data`.
+
+        Returns
+        -------
+        Any
+            The constant value for ``key``.
+
+        Raises
+        ------
+        KeyError
+            If ``key`` is not found in :attr:`attrs` or the values in :attr:`data` are not equal
+            and ``default`` is not provided.
+
+        Examples
+        --------
+        >>> vector = VectorDataset({"a": [1, 1, 1], "b": [2, 2, 3]})
+        >>> vector.lookup_constant("a")
+        np.int64(1)
+        >>> vector.lookup_constant("b")
+        Traceback (most recent call last):
+        ...
+        KeyError: "A constant key 'b' not found in attrs or data"
+        >>> vector.lookup_constant("b", 3)
+        3
+
+        See Also
+        --------
+        get_data_or_attr
+        GeoVectorDataset.constants
+        """
+        marker = self.__marker
+
+        out = self.attrs.get(key, marker)
+        if out is not marker:
+            return out
+
+        out = self.data.get(key, marker)
+        if out is not marker:
+            vals = np.unique(out)
+            if len(vals) == 1:
+                return vals[0]
+
+        if default is not marker:
+            return default
+
+        msg = f"A constant key '{key}' not found in attrs or data"
+        raise KeyError(msg)
 
     # ------------
     # I / O

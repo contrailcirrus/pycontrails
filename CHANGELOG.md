@@ -23,6 +23,7 @@
 
 - Make `pycontrails` compatible with `pandas 2.0` and `pandas 2.1`.
 - Avoid auto-promotion of float32 to float64 within the `Emissions` model run-time.
+- Add convenience `VectorDataset.lookup_constant` method.
 
 ## v0.54.6
 

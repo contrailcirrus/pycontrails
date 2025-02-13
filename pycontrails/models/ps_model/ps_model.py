@@ -121,7 +121,7 @@ class PSFlight(AircraftPerformance):
     def eval_flight(self, fl: Flight) -> Flight:
         # Ensure aircraft type is available
         try:
-            aircraft_type = fl.attrs["aircraft_type"]
+            aircraft_type = fl.lookup_constant("aircraft_type")
         except KeyError as exc:
             msg = "`aircraft_type` required on flight attrs"
             raise KeyError(msg) from exc
