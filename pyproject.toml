@@ -268,4 +268,4 @@ fixture-parentheses = true
 # Relevant for RUF009
 # https://docs.astral.sh/ruff/settings/#lint_flake8-bugbear_extend-immutable-calls
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["numpy.timedelta64", "os.path.join"]
+extend-immutable-calls = ["numpy.timedelta64", "numpy.float32", "os.path.join"]

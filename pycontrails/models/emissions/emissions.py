@@ -192,7 +192,7 @@ class Emissions(Model):
             try:
                 edb_gaseous = self.edb_engine_gaseous[engine_uid]  # type: ignore[index]
             except KeyError:
-                self.source["thrust_setting"] = np.full(shape=len(self.source), fill_value=np.nan)
+                self.source["thrust_setting"] = np.full(len(self.source), np.nan, dtype=np.float32)
             else:
                 self.source["thrust_setting"] = get_thrust_setting(
                     edb_gaseous,
@@ -297,9 +297,9 @@ class Emissions(Model):
         """
         self.source.attrs["gaseous_data_source"] = "Constant"
 
-        nox_ei = np.full(shape=len(self.source), fill_value=15.14)
-        co_ei = np.full(shape=len(self.source), fill_value=3.61)
-        hc_ei = np.full(shape=len(self.source), fill_value=0.520)
+        nox_ei = np.full(shape=len(self.source), fill_value=15.14, dtype=np.float32)
+        co_ei = np.full(shape=len(self.source), fill_value=3.61, dtype=np.float32)
+        hc_ei = np.full(shape=len(self.source), fill_value=0.520, dtype=np.float32)
 
         self.source["nox_ei"] = nox_ei * 1e-3  # g-NOx/kg-fuel to kg-NOx/kg-fuel
         self.source["co_ei"] = co_ei * 1e-3  # g-CO/kg-fuel to kg-CO/kg-fuel
@@ -493,8 +493,8 @@ class Emissions(Model):
         - :cite:`schumannDehydrationEffectsContrails2015`
         """
         nvpm_data_source = "Constant"
-        nvpm_ei_m = np.full(shape=len(self.source), fill_value=(0.088 * 1e-3))  # g to kg
-        nvpm_ei_n = np.full(shape=len(self.source), fill_value=self.params["default_nvpm_ei_n"])
+        nvpm_ei_m = np.full(len(self.source), 0.088 * 1e-3, dtype=np.float32)  # g to kg
+        nvpm_ei_n = np.full(len(self.source), self.params["default_nvpm_ei_n"], dtype=np.float32)
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
 
     def _total_pollutant_emissions(self) -> None:
@@ -916,7 +916,7 @@ def get_thrust_setting(
     )
 
     thrust_setting = fuel_flow_per_engine / edb_gaseous.ff_100
-    thrust_setting.clip(0.03, 1, out=thrust_setting)  # clip in place
+    thrust_setting.clip(0.03, 1.0, out=thrust_setting)  # clip in place
     return thrust_setting
 
 

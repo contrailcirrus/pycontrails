@@ -98,7 +98,7 @@ def flame_temperature(t_3: ArrayScalarLike) -> ArrayScalarLike:
     ArrayScalarLike
         Flame temperature at the combustion chamber, [:math:`K`]
     """
-    return 0.9 * t_3 + 2120
+    return 0.9 * t_3 + 2120.0
 
 
 def bc_mass_concentration_fox(
@@ -125,7 +125,11 @@ def bc_mass_concentration_fox(
     npt.NDArray[np.floating]:
         Black carbon mass concentration for ground conditions, [:math:`mg m^{-3}`]
     """
-    return fuel_flow * (356 * np.exp(-6390 / t_fl) - 608 * afr * np.exp(-19778 / t_fl))
+    # avoid float32 -> float64 promotion
+    coeff = 356.0 * np.exp(np.float32(-6390.0) / t_fl) - 608.0 * afr * np.exp(
+        np.float32(-19778.0) / t_fl
+    )
+    return fuel_flow * coeff
 
 
 def bc_mass_concentration_cruise_fox(
@@ -209,7 +213,7 @@ def dopelheuer_lecht_scaling_factor(
     ----------
     - :cite:`dopelheuerInfluenceEnginePerformance1998`
     """
-    exp_term = np.exp(20000 / t_fl_cru) / np.exp(20000 / t_fl_ref)
+    exp_term = np.exp(20000.0 / t_fl_cru - 20000.0 / t_fl_ref)
     return (afr_ref / afr_cru) ** 2.5 * (p_3_cru / p_3_ref) ** 1.35 * exp_term
 
 
@@ -295,7 +299,7 @@ def turbine_inlet_temperature_imfox(afr: npt.NDArray[np.floating]) -> npt.NDArra
     ----------
     - :cite:`abrahamsonPredictiveModelDevelopment2016`
     """
-    return 490 + 42266 / afr
+    return 490.0 + 42266.0 / afr
 
 
 def bc_mass_concentration_imfox(
@@ -325,9 +329,10 @@ def bc_mass_concentration_imfox(
     npt.NDArray[np.floating]
         Black carbon mass concentration, [:math:`mg m^{-3}`]
     """
-    exp_term = np.exp(13.6 - fuel_hydrogen)
-    formation_term = 295 * np.exp(-6390 / t_4)
-    oxidation_term = 608 * afr * np.exp(-19778 / t_4)
+    # avoid float32 -> float64 promotion
+    exp_term = np.exp(np.float32(13.6) - fuel_hydrogen)
+    formation_term = 295.0 * np.exp(np.float32(-6390.0) / t_4)
+    oxidation_term = 608.0 * afr * np.exp(np.float32(-19778.0) / t_4)
     return fuel_flow_per_engine * exp_term * (formation_term - oxidation_term)
 
 
@@ -453,11 +458,11 @@ def number_emissions_index_fractal_aggregates(
     nvpm_ei_m: npt.NDArray[np.floating],
     gmd: npt.NDArray[np.floating],
     *,
-    gsd: float | npt.NDArray[np.floating] = 1.80,
-    rho_bc: float = 1770,
-    k_tem: float = 1.621e-5,
-    d_tem: float = 0.39,
-    d_fm: float = 2.76,
+    gsd: float | np.float32 | npt.NDArray[np.floating] = np.float32(1.80),  # avoid promotion
+    rho_bc: float | np.float32 = np.float32(1770.0),
+    k_tem: float | np.float32 = np.float32(1.621e-5),
+    d_tem: float | np.float32 = np.float32(0.39),
+    d_fm: float | np.float32 = np.float32(2.76),
 ) -> npt.NDArray[np.floating]:
     """
     Estimate the black carbon number emission index using the fractal aggregates (FA) model.
@@ -494,9 +499,9 @@ def number_emissions_index_fractal_aggregates(
     - ``rho_bc``: :cite:`parkMeasurementInherentMaterial2004`
     - ``k_tem``, ``d_tem``: :cite:`dastanpourObservationsCorrelationPrimary2014`
     """
-    phi = 3 * d_tem + (1 - d_tem) * d_fm
+    phi = 3.0 * d_tem + (1.0 - d_tem) * d_fm
     exponential_term = np.exp(0.5 * phi**2 * np.log(gsd) ** 2)
-    denom = rho_bc * (np.pi / 6) * k_tem ** (3 - d_fm) * gmd**phi * exponential_term
+    denom = rho_bc * (np.pi / 6.0) * k_tem ** (3.0 - d_fm) * gmd**phi * exponential_term
     return nvpm_ei_m / denom
 
 

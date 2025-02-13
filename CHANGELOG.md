@@ -22,6 +22,7 @@
 ### Internals
 
 - Make `pycontrails` compatible with `pandas 2.0` and `pandas 2.1`.
+- Avoid auto-promotion of float32 to float64 within the `Emissions` model run-time.
 
 ## v0.54.6
 
