@@ -71,6 +71,8 @@ class AircraftPerformanceParams(ModelParams, CommonAircraftPerformanceParams):
     #: level with zero wind when computing true airspeed. In other words,
     #: approximate low-altitude true airspeed with the ground speed. Enabling
     #: this does NOT remove any NaN values in the ``met`` data itself.
+    #: In the case that ``met`` is not provided, any missing values are
+    #: filled with zero wind.
     fill_low_altitude_with_zero_wind: bool = False
 
 
@@ -509,7 +511,8 @@ class AircraftPerformance(Model):
             tas[cond] = self.source.segment_groundspeed()[cond]
             return tas
 
-        wind_available = ("eastward_wind" in self.source and "northward_wind" in self.source) or (
+        # Use current cocip convention: eastward_wind on met, u_wind on source
+        wind_available = ("u_wind" in self.source and "v_wind" in self.source) or (
             self.met is not None and "eastward_wind" in self.met and "northward_wind" in self.met
         )
 
@@ -526,12 +529,16 @@ class AircraftPerformance(Model):
             )
             raise ValueError(msg)
 
-        u = interpolate_met(self.met, self.source, "eastward_wind", **self.interp_kwargs)
-        v = interpolate_met(self.met, self.source, "northward_wind", **self.interp_kwargs)
+        u = interpolate_met(self.met, self.source, "eastward_wind", "u_wind", **self.interp_kwargs)
+        v = interpolate_met(self.met, self.source, "northward_wind", "v_wind", **self.interp_kwargs)
 
         if fill_with_groundspeed:
-            met_level_max = self.met.data["level"][-1].item()  # type: ignore[union-attr]
-            cond = self.source.level > met_level_max
+            if self.met is None:
+                cond = np.isnan(u) & np.isnan(v)
+            else:
+                met_level_max = self.met.data["level"][-1].item()  # type: ignore[union-attr]
+                cond = self.source.level > met_level_max
+
             # We DON'T overwrite the original u and v arrays already attached to the source
             u = np.where(cond, 0.0, u)
             v = np.where(cond, 0.0, v)
@@ -657,28 +664,3 @@ def _fill_low_altitude_with_isa_temperature(vector: GeoVectorDataset, met_level_
 
     t_isa = vector.T_isa()
     air_temperature[cond] = t_isa[cond]
-
-
-def _fill_low_altitude_tas_with_true_groundspeed(fl: Flight, met_level_max: float) -> None:
-    """Fill low-altitude NaN values in ``true_airspeed`` with ground speed.
-
-    The ``true_airspeed`` param is assumed to have been computed by
-    interpolating against a gridded wind field that did not necessarily
-    extend to the surface. This function fills points below the lowest
-    altitude in the gridded data with ground speed values.
-
-    This function operates in-place and modifies the ``true_airspeed`` field.
-
-    Parameters
-    ----------
-    fl : Flight
-        Flight instance associated with the ``true_airspeed`` data.
-    met_level_max : float
-        The maximum level in the met data, [:math:`hPa`].
-    """
-    tas = fl["true_airspeed"]
-    is_nan = np.isnan(tas)
-    low_alt = fl.level > met_level_max
-    cond = is_nan & low_alt
-
-    tas[cond] = fl.segment_groundspeed()[cond]

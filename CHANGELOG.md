@@ -14,9 +14,16 @@
 
 - The `MetDataset.standardize_variables` method now returns a new `MetDataset` rather than modifying the existing dataset in place. To retain the previous behavior, use `MetDataset.standardize_variables(..., inplace=True)`.
 
+### Fixes
+
+- Change naming convention for eastward and northward wind fields in `AircraftPerformance` models for consistency with the `Cocip` and `DryAdvection` models. Fields on the `source` are now named `u_wind` and `v_wind` instead of `eastward_wind` and `northward_wind`. Under some paths of computation, this avoids a redundant interpolation.
+- Fix the `AircraftPerformance.ensure_true_airspeed_on_source` method in the case when the `met` attr is None and the `fill_with_groundspeed` parameter is enabled.
+
 ### Internals
 
 - Make `pycontrails` compatible with `pandas 2.0` and `pandas 2.1`.
+- Avoid auto-promotion of float32 to float64 within the `Emissions` model run-time.
+- Add convenience `VectorDataset.lookup_constant` method.
 
 ## v0.54.6
 
