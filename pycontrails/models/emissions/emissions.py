@@ -169,7 +169,7 @@ class Emissions(Model):
             )
 
         if "n_engine" not in self.source.attrs:
-            aircraft_type = self.source.lookup_constant("aircraft_type", None)
+            aircraft_type = self.source.get_constant("aircraft_type", None)
             self.source.attrs["n_engine"] = self.default_engines.at[aircraft_type, "n_engine"]
 
         try:
