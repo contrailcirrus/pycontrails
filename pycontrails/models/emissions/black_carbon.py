@@ -458,11 +458,11 @@ def number_emissions_index_fractal_aggregates(
     nvpm_ei_m: npt.NDArray[np.floating],
     gmd: npt.NDArray[np.floating],
     *,
-    gsd: float | np.float32 | npt.NDArray[np.floating] = np.float32(1.80),  # avoid promotion
-    rho_bc: float | np.float32 = np.float32(1770.0),
-    k_tem: float | np.float32 = np.float32(1.621e-5),
-    d_tem: float | np.float32 = np.float32(0.39),
-    d_fm: float | np.float32 = np.float32(2.76),
+    gsd: float | np.floating | npt.NDArray[np.floating] = np.float32(1.80),  # avoid promotion
+    rho_bc: float | np.floating = np.float32(1770.0),
+    k_tem: float | np.floating = np.float32(1.621e-5),
+    d_tem: float | np.floating = np.float32(0.39),
+    d_fm: float | np.floating = np.float32(2.76),
 ) -> npt.NDArray[np.floating]:
     """
     Estimate the black carbon number emission index using the fractal aggregates (FA) model.
