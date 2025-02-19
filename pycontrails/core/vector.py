@@ -509,7 +509,7 @@ class VectorDataset:
 
         See Also
         --------
-        lookup_constant
+        get_constant
         """
         marker = self.__marker
 
@@ -1047,13 +1047,13 @@ class VectorDataset:
         Examples
         --------
         >>> vector = VectorDataset({"a": [1, 1, 1], "b": [2, 2, 3]})
-        >>> vector.lookup_constant("a")
+        >>> vector.get_constant("a")
         np.int64(1)
-        >>> vector.lookup_constant("b")
+        >>> vector.get_constant("b")
         Traceback (most recent call last):
         ...
         KeyError: "A constant key 'b' not found in attrs or data"
-        >>> vector.lookup_constant("b", 3)
+        >>> vector.get_constant("b", 3)
         3
 
         See Also
