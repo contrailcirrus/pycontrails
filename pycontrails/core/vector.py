@@ -1016,7 +1016,7 @@ class VectorDataset:
         )
         self.broadcast_attrs(numeric_attrs, overwrite)
 
-    def lookup_constant(self, key: str, default: Any = __marker) -> Any:
+    def get_constant(self, key: str, default: Any = __marker) -> Any:
         """Get a constant value from :attr:`attrs` or :attr:`data`.
 
         - If ``key`` is found in :attr:`attrs`, the value is returned.
