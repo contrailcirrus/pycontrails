@@ -2211,8 +2211,6 @@ def calc_contrail_properties(
         air_temperature += contrail["cumul_heat"]
 
     # get required radiation
-    theta_rad = geo.orbital_position(time)
-    sd0 = geo.solar_constant(theta_rad)
     sdr = contrail["sdr"]
     rsr = contrail["rsr"]
     olr = contrail["olr"]
@@ -2247,6 +2245,9 @@ def calc_contrail_properties(
     diffuse_h = contrail_properties.horizontal_diffusivity(ds_dz, depth)
 
     if radiative_heating_effects:
+        # theta_rad has float64 dtype, convert back to float32 if needed
+        theta_rad = geo.orbital_position(time).astype(sdr.dtype, copy=False)
+        sd0 = geo.solar_constant(theta_rad)
         heat_rate = radiative_heating.heating_rate(
             air_temperature=air_temperature,
             rhi=rhi,
