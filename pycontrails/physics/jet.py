@@ -21,8 +21,8 @@ from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 
 logger = logging.getLogger(__name__)
 _path_to_static = pathlib.Path(__file__).parent / "static"
-PLF_PATH = _path_to_static / "iata-passenger-load-factors-20241115.csv"
-CLF_PATH = _path_to_static / "iata-cargo-load-factors-20241115.csv"
+PLF_PATH = _path_to_static / "iata-passenger-load-factors-20250221.csv"
+CLF_PATH = _path_to_static / "iata-cargo-load-factors-20250221.csv"
 
 
 # -------------------
