@@ -431,8 +431,9 @@ def aircraft_load_factor(
     float
         Passenger/cargo load factor [0 - 1], unitless
     """
-    # If origin airport is provided, use regional load factor
-    if origin_airport_icao is not None:
+    # If origin airport is provided, use regional load factor.
+    # Otherwise, do not allow empty string and `None` to pass
+    if origin_airport_icao:
         first_letter = origin_airport_icao[0]
         region = AIRPORT_TO_REGION.get(first_letter, "Global")
     else:
