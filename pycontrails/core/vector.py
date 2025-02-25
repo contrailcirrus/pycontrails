@@ -1067,9 +1067,17 @@ class VectorDataset:
         if out is not marker:
             return out
 
-        out = self.data.get(key, marker)
-        if out is not marker:
-            vals = np.unique(out)
+        arr: np.ndarray = self.data.get(key, marker)  # type: ignore[arg-type]
+        if arr is not marker:
+            try:
+                vals = np.unique(arr)
+            except TypeError:
+                # A TypeError can occur if the arr has object dtype and contains None
+                # Handle this case by returning None
+                if arr.dtype == object and np.all(arr == None):  # noqa: E711
+                    return None
+                raise
+
             if len(vals) == 1:
                 return vals[0]
 
