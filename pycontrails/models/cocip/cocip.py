@@ -997,14 +997,14 @@ class Cocip(Model):
         else:
             f_surv = contrail_properties.ice_particle_survival_fraction(iwc, iwc_1)
 
-        n_ice_per_m_1 = contrail_properties.ice_particle_number(
+        n_ice_per_m_0 = contrail_properties.initial_ice_particle_number(
             nvpm_ei_n=nvpm_ei_n,
             fuel_dist=fuel_dist,
-            f_surv=f_surv,
             air_temperature=air_temperature,
             T_crit_sac=T_critical_sac,
             min_ice_particle_number_nvpm_ei_n=self.params["min_ice_particle_number_nvpm_ei_n"],
         )
+        n_ice_per_m_1 = n_ice_per_m_0 * f_surv
 
         # Check for persistent initial_contrails
         persistent_1 = contrail_properties.initial_persistent(iwc_1, rhi_1)
@@ -1018,6 +1018,8 @@ class Cocip(Model):
         self._sac_flight["rho_air_1"] = rho_air_1
         self._sac_flight["rhi_1"] = rhi_1
         self._sac_flight["iwc_1"] = iwc_1
+        self._sac_flight["f_surv"] = f_surv
+        self._sac_flight["n_ice_per_m_0"] = n_ice_per_m_0
         self._sac_flight["n_ice_per_m_1"] = n_ice_per_m_1
         self._sac_flight["persistent_1"] = persistent_1
 
@@ -1384,7 +1386,13 @@ class Cocip(Model):
         if verbose_outputs:
             sac_cols += ["dT_dz", "ds_dz", "dz_max"]
 
-        downwash_cols = ["rho_air_1", "iwc_1", "n_ice_per_m_1"]
+        downwash_cols = [
+            "rho_air_1",
+            "iwc_1",
+            "f_surv",
+            "n_ice_per_m_0",
+            "n_ice_per_m_1",
+        ]
         df = pd.concat(
             [
                 self.source.dataframe.set_index(col_idx),

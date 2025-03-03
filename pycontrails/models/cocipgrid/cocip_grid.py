@@ -1488,18 +1488,18 @@ def find_initial_persistent_contrails(
     )
     iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
     f_surv = contrail_properties.ice_particle_survival_fraction(iwc, iwc_1)
-    n_ice_per_m = contrail_properties.ice_particle_number(
+    n_ice_per_m_0 = contrail_properties.initial_ice_particle_number(
         nvpm_ei_n=nvpm_ei_n,
         fuel_dist=fuel_dist,
-        f_surv=f_surv,
         air_temperature=air_temperature,
         T_crit_sac=T_crit_sac,
         min_ice_particle_number_nvpm_ei_n=params["min_ice_particle_number_nvpm_ei_n"],
     )
+    n_ice_per_m_1 = n_ice_per_m_0 * f_surv
 
     # The logic below corresponds to Cocip._create_downwash_contrail (roughly)
     contrail["iwc"] = iwc_1
-    contrail["n_ice_per_m"] = n_ice_per_m
+    contrail["n_ice_per_m"] = n_ice_per_m_1
 
     # Check for persistent initial_contrails
     rhi_1 = contrail["rhi"]

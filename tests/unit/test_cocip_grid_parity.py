@@ -102,7 +102,7 @@ def test_parity(
 
     # source data has been copied on eval
     assert len(fl.data) == 16
-    assert len(cocip.source.data) == 66
+    assert len(cocip.source.data) == 68
     downwash1 = cocip._downwash_contrail.dataframe.set_index("waypoint")
 
     cg = CocipGrid(

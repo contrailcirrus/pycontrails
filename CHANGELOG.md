@@ -5,6 +5,8 @@
 ### Internals
 
 - Update the `pycontrails.physics.static` CSV files to include newly released global and regional passenger and cargo load factor data from IATA (Oct-2024 to Dec-2024).
+- Attach `n_ice_per_m_0` and `f_surv` to the downwash flight computed in the `Cocip` runtime. This data is now saved as part of the `Cocip` output.
+- Rename and modify `contrail_properties.ice_particle_number` to `contrail_properties.initial_ice_particle_number`.
 
 ## v0.54.7
 
