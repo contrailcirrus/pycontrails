@@ -1107,7 +1107,7 @@ def _contrail_optical_depth_above_contrail_layer(
 
     lon_coords = da["longitude"].values
     wrap_longitude = (lon_coords[-1] + lon_coords[0] + np.diff(lon_coords)[0]) == 0.0
-    mda = MetDataArray(da, wrap_longitude=wrap_longitude, copy=False)
+    mda = MetDataArray(da, wrap_longitude=wrap_longitude)
 
     # Interpolate to contrails_level
     contrails_level["tau_contrails_above"] = contrails_level.intersect_met(mda)
@@ -1136,7 +1136,7 @@ def _rsr_and_olr_with_contrail_overlap(
     # Change in radiation fields
     lon_coords = delta_rad_t["longitude"].values
     wrap_longitude = (lon_coords[-1] + lon_coords[0] + np.diff(lon_coords)[0]) == 0.0
-    mds = MetDataset(delta_rad_t, wrap_longitude=wrap_longitude, copy=False)
+    mds = MetDataset(delta_rad_t, wrap_longitude=wrap_longitude)
 
     # Interpolate radiation fields to obtain `rsr_overlap` and `olr_overlap`
     delta_rsr = contrails_level.intersect_met(mds["rsr"])
