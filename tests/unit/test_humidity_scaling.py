@@ -179,7 +179,7 @@ def test_description(scaler_cls: type) -> None:
 
 
 def test_pin_specific_description() -> None:
-    """Pin description for HumidityscalementConstantExponentialBoost (default for models)."""
+    """Pin description for ExponentialBoostHumidityScaling (default for models)."""
     scaler = hs.ExponentialBoostHumidityScaling()
     assert scaler.description == {
         "name": "exponential_boost",
@@ -267,22 +267,29 @@ def custom() -> VectorDataset:
 
 
 @pytest.mark.parametrize("q_method", [None, "cubic-spline"])
-def test_global_rhi_correction(custom: VectorDataset, q_method: str | None) -> None:
+@pytest.mark.parametrize("level_type", ["pressure", "model"])
+def test_exp_boost_lat_correction(
+    custom: VectorDataset, q_method: str | None, level_type: str | None
+) -> None:
     """Check `ExponentialBoostLatitudeCorrectionHumidityScaling` implementation."""
     scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling()
 
     with pytest.raises(KeyError, match="latitude"):
-        scaler.scale(custom["q"], custom["T"], custom["p"], **scaler.params, q_method=q_method)
+        scaler.scale(
+            custom["q"], custom["T"], custom["p"], q_method=q_method, level_type=level_type
+        )
 
     _, rhi_cor = scaler.scale(
         custom["q"],
         custom["T"],
         custom["p"],
         latitude=custom["latitude"],
-        **scaler.params,
         q_method=q_method,
+        level_type=level_type,
     )
-    if q_method is None:
+    if level_type == "model":
+        assert rhi_cor.mean() == 1.115508423978924
+    elif q_method is None:
         np.testing.assert_allclose(rhi_cor, custom["rhi_cor"], atol=1e-5)
         assert rhi_cor.mean() == 1.0545183974070191
     else:
@@ -290,6 +297,31 @@ def test_global_rhi_correction(custom: VectorDataset, q_method: str | None) -> N
         assert np.all(rhi_cor >= custom["rhi_cor"])
         np.testing.assert_allclose(rhi_cor, custom["rhi_cor"], rtol=0.1)
         assert rhi_cor.mean() == 1.09371812002226
+
+
+def test_exp_boost_lat_correction_level_type() -> None:
+    """Test `ExponentialBoostLatitudeCorrectionHumidityScaling` level type selection."""
+    with pytest.warns(DeprecationWarning, match="The default level_type will change"):
+        model = hs.ExponentialBoostLatitudeCorrectionHumidityScaling()
+    assert model.params["level_type"] == "pressure"
+
+    model = hs.ExponentialBoostLatitudeCorrectionHumidityScaling(level_type="pressure")
+    assert model.params["level_type"] == "pressure"
+
+    model = hs.ExponentialBoostLatitudeCorrectionHumidityScaling(level_type="model")
+    assert model.params["level_type"] == "model"
+
+
+def test_exp_boost_lat_correction_invalid_level_type(
+    met_issr: MetDataset,
+    ensemble_vector: GeoVectorDataset,
+) -> None:
+    """Test histogram matching with invalid level type."""
+    models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
+    models.interpolate_met(met_issr, ensemble_vector, "specific_humidity")
+    model = hs.ExponentialBoostLatitudeCorrectionHumidityScaling(level_type="foo")
+    with pytest.raises(ValueError, match="Invalid 'level_type'"):
+        model.eval(ensemble_vector)
 
 
 @pytest.fixture(scope="module")
