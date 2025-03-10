@@ -321,7 +321,22 @@ class _SigmoidCoefficients:
 
 
 @functools.cache
-def _load_sigmoid_coef(q_method: str | None) -> _SigmoidCoefficients:
+def _load_sigmoid_coef(q_method: str | None, level_type: str | None) -> _SigmoidCoefficients:
+    if level_type == "model":
+        return _SigmoidCoefficients(
+            a1=0.026302083473778933,
+            a2=0.9651041666272301,
+            a3=2.250107435038734,
+            a4=36.549393263544914,
+            b1=0.489062500000000095,
+            b2=2.210937499999999,
+            b3=4.182743010484767,
+            b4=17.53378893219587,
+        )
+    if level_type != "pressure":
+        msg = f"Invalid 'level_type' value '{level_type}'. Must be one of ['pressure', 'model']."
+        raise ValueError(msg)
+
     if q_method is None:
         return _SigmoidCoefficients(
             a1=0.062621,
@@ -345,6 +360,14 @@ def _load_sigmoid_coef(q_method: str | None) -> _SigmoidCoefficients:
             b4=21.549,
         )
     raise NotImplementedError(f"Unsupported q_method: {q_method}")
+
+
+@dataclasses.dataclass
+class ExponentialBoostLatitudeCorrectionParams(models.ModelParams):
+    """Parameters for :class:`ExponentialBoostLatitudeCorrectionHumidityScaling`."""
+
+    #: The ERA5 vertical level type. Must be one of ``"pressure"`` or ``"model"``.
+    level_type: str = "pressure"
 
 
 class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
@@ -406,12 +429,30 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
     name = "exponential_boost_latitude_customization"
     long_name = "Latitude specific humidity scaling composed with exponential boosting"
     formula = "rhi -> (rhi / rhi_adj) ^ rhi_boost_exponent"
-    default_params = models.ModelParams
+    default_params = ExponentialBoostLatitudeCorrectionParams
     scaler_specific_keys = ("latitude",)
+
+    def __init__(
+        self,
+        met: MetDataset | None = None,
+        params: dict[str, Any] | None = None,
+        **params_kwargs: Any,
+    ):
+        if (params is None or "level_type" not in params) and (
+            params_kwargs is None or "level_type" not in params_kwargs
+        ):
+            msg = (
+                "The default level_type will change from 'pressure' to 'model' "
+                "in a future release. To silence this warning, provide a 'level_type' "
+                "value when instantiating ExponentialBoostLatitudeCorrectionHumidityScaling."
+            )
+            warnings.warn(msg, DeprecationWarning)
+        super().__init__(met, params, **params_kwargs)
 
     def _scale_kwargs(self) -> dict[str, Any]:
         q_method = self.params["interpolation_q_method"]
-        return {**super()._scale_kwargs(), "q_method": q_method}
+        level_type = self.params["level_type"]
+        return {**super()._scale_kwargs(), "q_method": q_method, "level_type": level_type}
 
     @override
     def scale(
@@ -423,7 +464,8 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
     ) -> tuple[ArrayLike, ArrayLike]:
         # Get sigmoid coefficients
         q_method = kwargs["q_method"]
-        coef = _load_sigmoid_coef(q_method)
+        level_type = kwargs["level_type"]
+        coef = _load_sigmoid_coef(q_method, level_type)
 
         # Use the dtype of specific_humidity to determine the precision of the
         # the calculation. If working with gridded data here, latitude will have
