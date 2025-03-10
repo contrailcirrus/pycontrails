@@ -999,8 +999,5 @@ def get_aircraft_synonym_dict_ps() -> dict[str, str]:
         Dictionary of the form ``{"icao_aircraft_type": "ps_aircraft_type"}``.
     """
     # get path to static PS synonym list
-    synonym_path = pathlib.Path(__file__).parent / "static" / "ps-synonym-list-20240524.csv"
-    df_atyp_icao_to_ps = pd.read_csv(
-        synonym_path, usecols=["ICAO Aircraft Code", "PS ATYP"], index_col=0
-    )
-    return df_atyp_icao_to_ps.squeeze("columns").to_dict()
+    df_atyp_icao_to_ps = pd.read_csv(PS_SYNONYM_FILE_PATH, index_col="ICAO Aircraft Code")
+    return df_atyp_icao_to_ps["PS ATYP"].to_dict()
