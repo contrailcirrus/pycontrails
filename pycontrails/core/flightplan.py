@@ -194,6 +194,11 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
 
     # Other info
     if len(basic) > 8:
+        info = basic[8]
+        idx = info.find('DOF')
+        if idx != -1 :
+            flightplan['departure_date'] = info[idx+4:idx+10]
+
         flightplan["other_info"] = basic[8]
 
     # Supl. Info

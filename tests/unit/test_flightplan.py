@@ -31,6 +31,7 @@ def test_flightplan_one() -> None:
     assert fp_dict["speed_type"] == "N"
     assert fp_dict["speed"] == "0474"
     assert fp_dict["level_type"] == "F"
+    assert fp_dict["departure_date"] == "140501"
     assert fp_dict["level"] == "360"
     assert (
         fp_dict["route"] == "IMVUR1Z IMVUR N63 SAM N19 ADKIK DCT MOPAT DCT  "
@@ -72,6 +73,7 @@ def test_flightplan_two() -> None:
     assert fp_dict["route"] == "DCT"
     assert fp_dict["destination_icao"] == "PAEN"
     assert fp_dict["duration"] == "0600"
+    assert fp_dict["departure_date"] == "170428"
     assert fp_dict["other_info"] == "DOF/170428 RMK/DO NOT POST"
 
     assert (
