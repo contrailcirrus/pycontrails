@@ -11,10 +11,11 @@ def test_flightplan_one() -> None:
         "-EGGL1040 -N0474F360 IMVUR1Z IMVUR N63 SAM N19 ADKIK DCT "
         "MOPAT DCT  LIMRI/M083F360 DCT 51N020W 47N030W/M083F380 40N040W "
         "34N045W  28N050W/M083F400 24N055W 19N060W DCT AMTTO DCT ANU DCT "
+        "-KJFK2300"
         "-PBN/A1B1C1D1L1O1S1S2 NAV/RNVD1E2A1 DAT/SVM DOF/140501 REG/DALFA "
         "EET/OKAC0037 ORBB0052 LTAA0159 UKFV0308 UKOV0333 LUUU0344 UKLV0406"
-        "EPWW0427 ESAA0521 EKDK0540 ENOR0557 SEL/DFBH OPR/GEC RVR/200) "
-        "-E/0740 P/3 R/E S/ J/ A/WHITE BLUE TAIL"
+        "EPWW0427 ESAA0521 EKDK0540 ENOR0557 SEL/DFBH OPR/GEC RVR/200 "
+        "-E/0740 P/3 R/E S/ J/ A/WHITE BLUE TAIL )"
     )
 
     fp_dict = flightplan.parse_atc_plan(atc_plan_str)
@@ -31,13 +32,18 @@ def test_flightplan_one() -> None:
     assert fp_dict["speed_type"] == "N"
     assert fp_dict["speed"] == "0474"
     assert fp_dict["level_type"] == "F"
+    assert fp_dict["departure_date"] == "140501"
     assert fp_dict["level"] == "360"
     assert (
         fp_dict["route"] == "IMVUR1Z IMVUR N63 SAM N19 ADKIK DCT MOPAT DCT  "
         "LIMRI/M083F360 DCT 51N020W 47N030W/M083F380 40N040W 34N045W  28N050W/M083F400 "
         "24N055W 19N060W DCT AMTTO DCT ANU DCT"
     )
-    assert fp_dict["other_info"] == "E/0740 P/3 R/E S/ J/ A/WHITE BLUE TAIL"
+    assert (
+        fp_dict["other_info"] == "PBN/A1B1C1D1L1O1S1S2 NAV/RNVD1E2A1 DAT/SVM DOF/140501 "
+        "REG/DALFA EET/OKAC0037 ORBB0052 LTAA0159 UKFV0308 UKOV0333 LUUU0344 UKLV0406EPWW0427 "
+        "ESAA0521 EKDK0540 ENOR0557 SEL/DFBH OPR/GEC RVR/200"
+    )
 
     assert (
         flightplan.to_atc_plan(fp_dict) == "(FPL-GEC8145-IN\n"
@@ -46,8 +52,11 @@ def test_flightplan_one() -> None:
         "-N0474F360 IMVUR1Z IMVUR N63 SAM N19 ADKIK DCT MOPAT DCT  "
         "LIMRI/M083F360 DCT 51N020W 47N030W/M083F380 40N040W 34N045W  "
         "28N050W/M083F400 24N055W 19N060W DCT AMTTO DCT ANU DCT\n"
-        "\n"
-        "-E/0740 P/3 R/E S/ J/ A/WHITE BLUE TAIL)"
+        "-KJFK2300\n"
+        "-PBN/A1B1C1D1L1O1S1S2 NAV/RNVD1E2A1 DAT/SVM DOF/140501 "
+        "REG/DALFA EET/OKAC0037 ORBB0052 LTAA0159 UKFV0308 UKOV0333 LUUU0344 UKLV0406EPWW0427 "
+        "ESAA0521 EKDK0540 ENOR0557 SEL/DFBH OPR/GEC RVR/200\n"
+        "-E/0740 P/3 R/E S/ J/ A/WHITE BLUE TAIL )"
     )
 
 
@@ -72,6 +81,7 @@ def test_flightplan_two() -> None:
     assert fp_dict["route"] == "DCT"
     assert fp_dict["destination_icao"] == "PAEN"
     assert fp_dict["duration"] == "0600"
+    assert fp_dict["departure_date"] == "170428"
     assert fp_dict["other_info"] == "DOF/170428 RMK/DO NOT POST"
 
     assert (
