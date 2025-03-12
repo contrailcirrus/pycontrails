@@ -38,9 +38,12 @@ def to_atc_plan(plan: dict[str, Any]) -> str:
     if "second_alt_icao" in plan:
         ret += f" {plan['second_alt_icao']}"
     ret += "\n"
-    ret += f"-{plan['other_info']})\n"
+    ret += f"-{plan['other_info']}"
     if "supplementary_info" in plan:
+        ret += "\n-"
         ret += " ".join([f"{i[0]}/{i[1]}" for i in plan["supplementary_info"].items()])
+
+    ret += ')'
 
     if ret[-1] == "\n":
         ret = ret[:-1]
@@ -199,7 +202,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
         if idx != -1 :
             flightplan['departure_date'] = info[idx+4:idx+10]
 
-        flightplan["other_info"] = basic[8]
+        flightplan["other_info"] = basic[8].strip()
 
     # Supl. Info
     if len(basic) > 9:
