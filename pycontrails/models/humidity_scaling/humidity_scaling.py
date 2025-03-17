@@ -438,9 +438,7 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
     ):
-        if (params is None or "level_type" not in params) and (
-            params_kwargs is None or "level_type" not in params_kwargs
-        ):
+        if (params is None or "level_type" not in params) and ("level_type" not in params_kwargs):
             msg = (
                 "The default level_type will change from 'pressure' to 'model' "
                 "in a future release. To silence this warning, provide a 'level_type' "
