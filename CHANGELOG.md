@@ -7,6 +7,7 @@
 - Update the Poll-Schumann Aircraft Performance model:
   - Support the Support Boeing 737 MAX 10 aircraft type.
   - Update aircraft maximum landing weight, maximum zero fuel weight, operating empty weight, and maximum payload within the static CSVs for existing aircraft types as recommended by Ian Poll.
+- Add `ExponentialBoostLatitudeCorrectionHumidityScaling` calibrated for model-level ERA5 data.
 
 ### Internals
 
