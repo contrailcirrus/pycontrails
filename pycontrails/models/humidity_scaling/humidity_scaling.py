@@ -321,7 +321,7 @@ class _SigmoidCoefficients:
 
 
 @functools.cache
-def _load_sigmoid_coef(q_method: str | None, level_type: str | None) -> _SigmoidCoefficients:
+def _load_sigmoid_coef(q_method: str | None, level_type: str) -> _SigmoidCoefficients:
     if level_type == "model":
         return _SigmoidCoefficients(
             a1=0.026302083473778933,
