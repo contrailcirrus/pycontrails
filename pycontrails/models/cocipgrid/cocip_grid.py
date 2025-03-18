@@ -2152,18 +2152,18 @@ def result_to_metdataset(
     size = np.prod(shape)
 
     dtype = result["ef"].dtype if result else np.float32
-    contrail_age = np.zeros(size, dtype=np.float32)
-    ef_per_m = np.zeros(size, dtype=dtype)
+    contrail_age_1d = np.zeros(size, dtype=np.float32)
+    ef_per_m_1d = np.zeros(size, dtype=dtype)
 
     if result:
         contrail_idx = result["index"]
         # Step 1: Contrail age. Convert from timedelta to float
-        contrail_age[contrail_idx] = result["age"] / np.timedelta64(1, "h")
+        contrail_age_1d[contrail_idx] = result["age"] / np.timedelta64(1, "h")
         # Step 2: EF
-        ef_per_m[contrail_idx] = result["ef"] / nominal_segment_length
+        ef_per_m_1d[contrail_idx] = result["ef"] / nominal_segment_length
 
-    contrail_age = contrail_age.reshape(shape)
-    ef_per_m = ef_per_m.reshape(shape)
+    contrail_age_4d = contrail_age_1d.reshape(shape)
+    ef_per_m_4d = ef_per_m_1d.reshape(shape)
 
     # Step 3: Dataset dims and attrs
     dims = tuple(source.coords)
@@ -2171,8 +2171,8 @@ def result_to_metdataset(
 
     # Step 4: Dataset core variables
     data_vars = {
-        "contrail_age": (dims, contrail_age, local_attrs["contrail_age"]),
-        "ef_per_m": (dims, ef_per_m, local_attrs["ef_per_m"]),
+        "contrail_age": (dims, contrail_age_4d, local_attrs["contrail_age"]),
+        "ef_per_m": (dims, ef_per_m_4d, local_attrs["ef_per_m"]),
     }
 
     # Step 5: Dataset variables from verbose_dicts
