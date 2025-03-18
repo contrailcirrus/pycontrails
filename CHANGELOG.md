@@ -2,6 +2,10 @@
 
 ## 0.54.8 (unreleased)
 
+### Features
+
+- Add `ExponentialBoostLatitudeCorrectionHumidityScaling` calibrated for model-level ERA5 data.
+
 ### Internals
 
 - Update the `pycontrails.physics.static` CSV files to include newly released global and regional passenger and cargo load factor data from IATA (Oct-2024 to Dec-2024).
