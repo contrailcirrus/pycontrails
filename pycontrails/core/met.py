@@ -2643,19 +2643,24 @@ def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:
             "or length 6 [west, south, min-level, east, north, max-level]"
         )
 
+    if west <= east:
+        # Return a view of the data
+        # If data is lazy, this will not load the data
+        return data.sel(
+            longitude=slice(west, east),
+            latitude=slice(south, north),
+            level=slice(level_min, level_max),
+        )
+
+    # In this case, the bbox spans the antimeridian
+    # If data is lazy, this will load the data (data.where is not lazy AFAIK)
     cond = (
         (data["latitude"] >= south)
         & (data["latitude"] <= north)
         & (data["level"] >= level_min)
         & (data["level"] <= level_max)
+        & ((data["longitude"] >= west) | (data["longitude"] <= east))
     )
-
-    # wrapping longitude
-    if west <= east:
-        cond = cond & (data["longitude"] >= west) & (data["longitude"] <= east)
-    else:
-        cond = cond & ((data["longitude"] >= west) | (data["longitude"] <= east))
-
     return data.where(cond, drop=True)
 
 
