@@ -1191,7 +1191,7 @@ def meteorological_time_slice_statistics(
     met = humidity_scaling.eval(met)
     rhi = met["rhi"].data.sel(level=slice(150, 300))
     rhi = rhi.interp(time=time)
-    is_issr = rhi > 1
+    is_issr = rhi > 1.0
 
     # Cirrus in a longitude-latitude grid
     if cirrus_coverage is None:
