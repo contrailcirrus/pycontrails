@@ -69,6 +69,7 @@ def test_model_output_to_netcdf(
 
         assert path.stat().st_size > 10000
 
-        assert ds.attrs == xr.open_dataset(temp_file).attrs
+        # Specifying the decode_timedelta silences an xarray warning
+        assert ds.attrs == xr.open_dataset(temp_file, decode_timedelta=True).attrs
 
     assert not path.is_file()
