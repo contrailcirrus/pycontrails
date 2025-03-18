@@ -1188,9 +1188,17 @@ def meteorological_time_slice_statistics(
     )
 
     # ISSR: Volume of airspace with RHi > 100% between FL300 and FL450
-    met = humidity_scaling.eval(met)
-    rhi = met["rhi"].data.sel(level=slice(150, 300))
-    rhi = rhi.interp(time=time)
+    met_cruise = MetDataset(met.data.sel(level=slice(150, 300)))
+    rhi = humidity_scaling.eval(met_cruise)["rhi"].data
+
+    try:
+        # If the given time is already in the dataset, select the time slice
+        i = rhi.get_index("time").get_loc(time)
+    except KeyError:
+        rhi = rhi.interp(time=time)
+    else:
+        rhi = rhi.isel(time=i)
+
     is_issr = rhi > 1.0
 
     # Cirrus in a longitude-latitude grid
