@@ -1647,6 +1647,8 @@ def calc_evolve_one_step(
         q_t2=specific_humidity_t2,
         q_sat_t1=q_sat_t1,
         q_sat_t2=q_sat_t2,
+        # FIXME
+        q_sat_t2_sed=q_sat_t1,
         mass_plume_t1=plume_mass_per_m_t1,
         mass_plume_t2=plume_mass_per_m_t2,
     )
