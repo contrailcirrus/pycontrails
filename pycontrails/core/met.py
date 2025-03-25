@@ -11,6 +11,7 @@ import typing
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import (
+    Callable,
     Generator,
     Hashable,
     Iterable,
@@ -40,6 +41,7 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
+import dask.array
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -150,8 +152,11 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         longitude = self.indexes["longitude"].to_numpy()
         if longitude.dtype != COORD_DTYPE:
-            msg = f"Longitude values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
-            raise ValueError(msg)
+            raise ValueError(
+                "Longitude values must be of type float64. "
+                "Instantiate with 'copy=True' to convert to float64. "
+                "Instantiate with 'validate=False' to skip validation."
+            )
 
         if self.is_wrapped:
             # Relax verification if the longitude has already been processed and wrapped
@@ -191,8 +196,11 @@ class MetBase(ABC, Generic[XArrayType]):
         """
         latitude = self.indexes["latitude"].to_numpy()
         if latitude.dtype != COORD_DTYPE:
-            msg = f"Latitude values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
-            raise ValueError(msg)
+            raise ValueError(
+                "Latitude values must be of type float64. "
+                "Instantiate with 'copy=True' to convert to float64. "
+                "Instantiate with 'validate=False' to skip validation."
+            )
 
         if latitude[0] < -90.0:
             raise ValueError(
@@ -227,8 +235,8 @@ class MetBase(ABC, Generic[XArrayType]):
             if da.dims != self.dim_order:
                 if key is not None:
                     msg = (
-                        f"Data dimension not transposed on variable '{key}'. "
-                        "Instantiate with 'copy=True'."
+                        f"Data dimension not transposed on variable '{key}'. Instantiate with"
+                        " 'copy=True'."
                     )
                 else:
                     msg = "Data dimension not transposed. Instantiate with 'copy=True'."
@@ -252,8 +260,11 @@ class MetBase(ABC, Generic[XArrayType]):
         self._validate_latitude()
         self._validate_transpose()
         if self.data["level"].dtype != COORD_DTYPE:
-            msg = f"Level values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
-            raise ValueError(msg)
+            raise ValueError(
+                "Level values must be of type float64. "
+                "Instantiate with 'copy=True' to convert to float64. "
+                "Instantiate with 'validate=False' to skip validation."
+            )
 
     def _preprocess_dims(self, wrap_longitude: bool) -> None:
         """Confirm DataArray or Dataset include required dimension in a consistent format.
@@ -426,7 +437,7 @@ class MetBase(ABC, Generic[XArrayType]):
         Assumes the longitude dimension is sorted (this is established by the
         :class:`MetDataset` or :class:`MetDataArray` constructor).
 
-        .. versionchanged:: 0.26.0
+        .. versionchanged 0.26.0::
 
             The previous implementation checked for the minimum and maximum longitude
             dimension values to be duplicated. The current implementation only checks for
@@ -483,7 +494,7 @@ class MetBase(ABC, Generic[XArrayType]):
 
         Does not yet save in parallel.
 
-        .. versionchanged:: 0.34.1
+        .. versionchanged::0.34.1
 
             If :attr:`cachestore` is None, this method assigns it
             to new :class:`DiskCacheStore`.
@@ -1169,45 +1180,19 @@ class MetDataset(MetBase):
         }
         return self._get_pycontrails_attr_template("product", supported, examples)
 
-    @overload
-    def standardize_variables(
-        self, variables: Iterable[MetVariable], inplace: Literal[False] = ...
-    ) -> Self: ...
-
-    @overload
-    def standardize_variables(
-        self, variables: Iterable[MetVariable], inplace: Literal[True]
-    ) -> None: ...
-
-    def standardize_variables(
-        self, variables: Iterable[MetVariable], inplace: bool = False
-    ) -> Self | None:
-        """Standardize variable names.
-
-        .. versionchanged:: 0.54.7
-
-            By default, this method returns a new :class:`MetDataset` instead
-            of renaming in place. To retain the old behavior, set ``inplace=True``.
+    def standardize_variables(self, variables: Iterable[MetVariable]) -> None:
+        """Standardize variables **in-place**.
 
         Parameters
         ----------
         variables : Iterable[MetVariable]
             Data source variables
-        inplace : bool, optional
-            If True, rename variables in place. Otherwise, return a new
-            :class:`MetDataset` with renamed variables.
 
         See Also
         --------
         :func:`standardize_variables`
         """
-        data_renamed = standardize_variables(self.data, variables)
-
-        if inplace:
-            self.data = data_renamed
-            return None
-
-        return type(self)._from_fastpath(data_renamed, cachestore=self.cachestore)
+        standardize_variables(self, variables)
 
     @classmethod
     def from_coords(
@@ -2410,6 +2395,113 @@ class MetDataArray(MetBase):
 
         return da
 
+    @classmethod
+    def from_function(
+        cls,
+        fun: Callable[[np.ndarray, ...], np.ndarray],
+        coords: dict[str, np.ndarray],
+        chunks: dict[str, int] | str | None = "auto",
+    ):
+        """Create a :class:`MetDataArray` from a functional definition.
+
+        Parameters
+        ----------
+        fun : Callable[[np.ndarray, ...], np.ndarray]
+            Function that takes coordinates as arguments and returns values of the variable. The
+            parameters and the return value must be n-dimensional arrays with the same shape. The
+            number of dimensions must match the number of coordinate arrays stored in
+            :param:`coords`, and the order of the function parameters must match the order of the
+            entries in :param:`coords`.
+            
+            If :param:`chunks` is ``None`` and :param:`coords` contains four coordinate arrays with
+            sizes ``M``, ``N``, ``P``, and ``Q``, :param:`fun` will be called with four arguments
+            with shape ``(M, N, P, Q)`` and should return a single array with shape ``(M, N, P,
+            Q)``. If :param:`chunks` is not None, :param:`fun` may be called multiple times with
+            chunks that contain subsets of the full ``(M, N, P, Q)`` coordinate arrays.
+
+            :py:function:`numpy.vectorize` can be used to create a function that accepts and returns
+            n-dimensional arrays from a function that accepts and returns scalars. The output
+            datatype may need to be explicitly specified using the ``otypes`` parameter when the
+            output from :py:function:`numpy.vectorize` is used to create a dask-backed
+            :class:``MetDataArray``.
+
+        coords : dict[str, np.ndarray]
+            Mapping from coordinate names to one-dimensional arrays of coordinate values.
+
+        chunks : dict[str, int] | str | None
+            Chunking scheme for underlying data. Passing ``chunks=None`` will produce a result
+            backed by an in-memory numpy array. Passing ``chunks="auto" (the default) will produce a
+            result backed by a dask array with chunks determined automatically. Otherwise,
+            :param:`chunks` must be a mapping from coordinate names to dask chunk sizes, and the
+            result will be backed by a dask array with chunk sizes defined by values in
+            :param:`chunks`. Omitting a coordinate from :param:`chunks` will produce a result with a
+            single chunk along the corresponding dimension.
+
+        Returns
+        -------
+        MetDataArray
+            MetDataArray with coordinates defined by :param:`coords` and values defined by
+            :param:`fun`.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from pycontrails.physics.units import m_to_T_isa, pl_to_m
+
+        >>> longitude = np.arange(0, 1)
+        >>> latitude = np.arange(0, 1)
+        >>> level = np.linspace(100, 1000, 10)
+        >>> time = np.datetime64("2025-01-01T00:00:00")
+        >>> mds = MetDataset.from_coords(longitude, latitude, level, time)
+        >>> mds.coords.keys()
+        dict_keys(['longitude', 'latitude', 'level', 'time'])
+
+        >>> T = lambda lon, lat, lev, t: m_to_T_isa(pl_to_m(lev))
+
+        >>> # Create lazy dask-backed variable by default
+        >>> mds["temperature"] = MetDataArray.from_function(T, mds.coords)
+
+        >>> # Control chunking with chunks argument
+        >>> mds["custom-chunks"] = MetDataArray.from_function(T, mds.coords, chunks={"level": 1})
+
+        >>> # Create in-memory variable with chunks=None
+        >>> mds["in-mem"] = MetDataArray.from_function(T, mds.coords, chunks=None)
+
+        >>> mds
+        MetDataset with data:
+        <BLANKLINE>
+        <xarray.Dataset> Size: 424B
+        Dimensions:            (longitude: 1, latitude: 1, level: 10, time: 1)
+        Coordinates:
+          * longitude          (longitude) float64 8B 0.0
+          * latitude           (latitude) float64 8B 0.0
+          * level              (level) float64 80B 100.0 200.0 300.0 ... 900.0 1e+03
+          * time               (time) datetime64[ns] 8B 2025-01-01
+            air_pressure       (level) float32 40B 1e+04 2e+04 3e+04 ... 9e+04 1e+05
+            altitude           (level) float32 40B 1.618e+04 1.178e+04 ... 988.5 110.9
+        Data variables:
+            temperature        (longitude, latitude, level, time) float64 80B \
+                dask.array<chunksize=(1, 1, 10, 1), meta=np.ndarray>
+            custom-chunks      (longitude, latitude, level, time) float64 80B \
+                dask.array<chunksize=(1, 1, 1, 1), meta=np.ndarray>
+            in-mem             (longitude, latitude, level, time) float64 80B 216.6 ....
+        """
+
+        shape = tuple(len(c) for c in coords.values())
+
+        if chunks is None:
+            data = np.fromfunction(_take_index(fun, coords), shape=shape, dtype=int)
+        else:
+            data = dask.array.fromfunction(
+                _take_index(fun, coords),
+                shape=shape,
+                chunks=_dask_array_chunks(chunks, coords),
+                dtype=int,
+            )
+
+        da = xr.DataArray(data, dims=coords.keys(), coords=coords)
+        return MetDataArray(da)
+
 
 def _is_wrapped(longitude: np.ndarray) -> bool:
     """Check if ``longitude`` covers ``[-180, 180]``."""
@@ -2442,6 +2534,35 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
     except AttributeError:
         return False
     return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
+
+
+def _take_index(
+    fun: Callable[[np.ndarray, ...], np.ndarray], coords: dict[str, np.ndarray]
+) -> Callable[[np.ndarray, ...], np.ndarray]:
+    """Convert expected function arguments from coordinates to coordinate indices."""
+
+    def wrapped(*idxs: np.ndarray) -> np.ndarray:
+        args = []
+        for idx, coord in zip(idxs, coords.values(), strict=True):
+            args.append(coord[idx])
+        return fun(*args)
+
+    return wrapped
+
+
+def _dask_array_chunks(
+    chunks: dict[str, int] | str, coords: dict[str, np.ndarray]
+) -> tuple[int, ...] | str:
+    """Create tuple of chunks for dask array constructor."""
+
+    if isinstance(chunks, dict):
+        return tuple(chunks.get(key, -1) for key in coords)
+
+    if chunks != "auto":
+        msg = f"Unrecognized chunks argument {chunks}"
+        raise ValueError(msg)
+
+    return "auto"
 
 
 def shift_longitude(data: XArrayType, bound: float = -180.0) -> XArrayType:
@@ -2643,28 +2764,23 @@ def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:
             "or length 6 [west, south, min-level, east, north, max-level]"
         )
 
-    if west <= east:
-        # Return a view of the data
-        # If data is lazy, this will not load the data
-        return data.sel(
-            longitude=slice(west, east),
-            latitude=slice(south, north),
-            level=slice(level_min, level_max),
-        )
-
-    # In this case, the bbox spans the antimeridian
-    # If data is lazy, this will load the data (data.where is not lazy AFAIK)
     cond = (
         (data["latitude"] >= south)
         & (data["latitude"] <= north)
         & (data["level"] >= level_min)
         & (data["level"] <= level_max)
-        & ((data["longitude"] >= west) | (data["longitude"] <= east))
     )
+
+    # wrapping longitude
+    if west <= east:
+        cond = cond & (data["longitude"] >= west) & (data["longitude"] <= east)
+    else:
+        cond = cond & ((data["longitude"] >= west) | (data["longitude"] <= east))
+
     return data.where(cond, drop=True)
 
 
-def standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> xr.Dataset:
+def standardize_variables(ds: DatasetType, variables: Iterable[MetVariable]) -> DatasetType:
     """Rename all variables in dataset from short name to standard name.
 
     This function does not change any variables in ``ds`` that are not found in ``variables``.
@@ -2674,7 +2790,8 @@ def standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> x
     Parameters
     ----------
     ds : DatasetType
-        An :class:`xr.Dataset`.
+        An :class:`xr.Dataset` or :class:`MetDataset`. When a :class:`MetDataset` is
+        passed, the underlying :class:`xr.Dataset` is modified in place.
     variables : Iterable[MetVariable]
         Data source variables
 
@@ -2683,6 +2800,14 @@ def standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> x
     DatasetType
         Dataset with variables renamed to standard names
     """
+    if isinstance(ds, xr.Dataset):
+        return _standardize_variables(ds, variables)
+
+    ds.data = _standardize_variables(ds.data, variables)
+    return ds
+
+
+def _standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> xr.Dataset:
     variables_dict: dict[Hashable, str] = {v.short_name: v.standard_name for v in variables}
     name_dict = {var: variables_dict[var] for var in ds.data_vars if var in variables_dict}
     return ds.rename(name_dict)
