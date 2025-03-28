@@ -26,7 +26,7 @@ def test_aircraft_type_coverage() -> None:
     ps_model = ps.PSFlight()
 
     # There are currently 63 aircraft types supported by the PS model
-    assert len(ps_model.aircraft_engine_params) == 67
+    assert len(ps_model.aircraft_engine_params) == 68
 
     # Test PS model coverage: commonly used aircraft types
     aircraft_types = ["A320", "A332", "A359", "A388", "B737", "B763", "B77L", "B789"]
@@ -55,10 +55,10 @@ def test_synonym_list() -> None:
     ps_model = ps.PSFlight()
 
     # PS model now supports 102 aircraft types with the synonym list
-    assert len(ps_model.synonym_dict) == 102
+    assert len(ps_model.synonym_dict) == 103
 
     # There are 67 unique aircraft types supported by the PS model
-    assert len(set(ps_model.synonym_dict.values())) == 67
+    assert len(set(ps_model.synonym_dict.values())) == 68
     assert len(ps_model.aircraft_engine_params) == len(set(ps_model.synonym_dict.values()))
 
     # Check aircraft type availability
