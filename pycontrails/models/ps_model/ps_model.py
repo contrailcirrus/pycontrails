@@ -39,7 +39,7 @@ from pycontrails.utils.types import ArrayOrFloat
 # mypy: disable-error-code = "type-var, arg-type"
 
 #: Path to the Poll-Schumann aircraft parameters CSV file.
-PS_SYNONYM_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-synonym-list-20240524.csv"
+PS_SYNONYM_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-synonym-list-20250328.csv"
 
 
 @dataclasses.dataclass
