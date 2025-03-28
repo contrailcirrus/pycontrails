@@ -2,6 +2,12 @@
 
 ## 0.54.8 (unreleased)
 
+### Features
+
+- Update the Poll-Schumann Aircraft Performance model:
+  - Support the Support Boeing 737 MAX 10 aircraft type.
+  - Update aircraft maximum landing weight, maximum zero fuel weight, operating empty weight, and maximum payload within the static CSVs for existing aircraft types as recommended by Ian Poll.
+
 ### Internals
 
 - Update the `pycontrails.physics.static` CSV files to include newly released global and regional passenger and cargo load factor data from IATA (Oct-2024 to Dec-2024).
