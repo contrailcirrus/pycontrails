@@ -1341,12 +1341,12 @@ def new_effective_area_from_sigma(
 
 def new_ice_water_content(
     iwc_t1: npt.NDArray[np.floating],
-    q_t1: npt.NDArray[np.floating],
+    q_sed: npt.NDArray[np.floating],
     q_t2: npt.NDArray[np.floating],
-    q_sat_t1: npt.NDArray[np.floating],
+    q_sat_sed: npt.NDArray[np.floating],
     q_sat_t2: npt.NDArray[np.floating],
-    q_sat_t2_sed: npt.NDArray[np.floating],
     mass_plume_t1: npt.NDArray[np.floating],
+    mass_plume_sed: npt.NDArray[np.floating],
     mass_plume_t2: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
     """
@@ -1360,18 +1360,27 @@ def new_ice_water_content(
     q_t1 : npt.NDArray[np.floating]
         specific humidity for each waypoint at the start of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+    q_sed : npt.NDArray[np.floating]
+        specific humidity for each waypoint
+        after sedimentation, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_t2 : npt.NDArray[np.floating]
         specific humidity for each waypoint at the end of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_sat_t1 : npt.NDArray[np.floating]
         saturation humidity for each waypoint at the start of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+    q_sat_sed : npt.NDArray[np.floating]
+        saturation humidity for each waypoint
+        after sedimentation, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_sat_t2 : npt.NDArray[np.floating]
         saturation humidity for each waypoint at the end of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     mass_plume_t1 : npt.NDArray[np.floating]
         contrail plume mass per unit length at the start of the
         time step, [:math:`kg_{air} m^{-1}`]
+    mass_plume_sed : npt.NDArray[np.floating]
+        contrail plume mass per unit length
+        after sedimentation, [:math:`kg_{air} m^{-1}`]
     mass_plume_t2 : npt.NDArray[np.floating]
         contrail plume mass per unit length at the end of the
         time step, [:math:`kg_{air} m^{-1}`]
@@ -1381,7 +1390,7 @@ def new_ice_water_content(
     npt.NDArray[np.floating]
         Contrail ice water content at the end of the time step, [:math:`kg_{ice} kg_{air}^{-1}`]
 
-    Notes
+    Notes (TODO: update)
     -----
     (1) The ice water content is fully conservative.
     (2) ``mass_h2o_t2``: the total H2O mass (ice + vapour) per unit of
@@ -1392,14 +1401,10 @@ def new_ice_water_content(
         (releases) H2O from (to) surrounding air.
     (5) ``iwc_t2 = mass_h2o_t2 / mass_plume_t2 - q_sat_t2``: H2O in the
         gas phase is removed (``- q_sat_t2``).
+    (X) TODO: add term missing sedimentation term
     """
-    q_mean = 0.5 * (q_t1 + q_t2 - (q_sat_t1 + q_sat_t2_sed))
-    mass_h2o_t1 = mass_plume_t1 * (iwc_t1 + q_sat_t1)
-    mass_h2o_t2 = (
-        mass_h2o_t1
-        + (mass_plume_t2 - mass_plume_t1) * q_mean
-        + (mass_plume_t2 * q_sat_t2_sed - mass_plume_t1 * q_sat_t1)
-    )
+    delta_mass_h2o_mix = mass_plume_t2 * q_t2 - mass_plume_sed * q_sed
+    mass_h2o_t2 = mass_plume_sed * q_sat_sed + mass_plume_t1 * iwc_t1 + delta_mass_h2o_mix
     iwc_t2 = (mass_h2o_t2 / mass_plume_t2) - q_sat_t2
     iwc_t2.clip(min=0.0, out=iwc_t2)
     return iwc_t2
