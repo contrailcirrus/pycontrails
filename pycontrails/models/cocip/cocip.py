@@ -2521,16 +2521,15 @@ def calc_timestep_contrail_evolution(
     depth_1 = contrail_1["depth"]
 
     # get required met values for evolution calculations
-    q_sat_1 = contrail_1["q_sat"]
     rho_air_1 = contrail_1["rho_air"]
     u_wind_1 = contrail_1["u_wind"]
     v_wind_1 = contrail_1["v_wind"]
 
-    specific_humidity_1 = contrail_1["specific_humidity"]
     vertical_velocity_1 = contrail_1["vertical_velocity"]
     iwc_1 = contrail_1["iwc"]
 
     # get required contrail_1 properties
+    area_eff_1 = contrail_1["area_eff"]
     sigma_yz_1 = contrail_1["sigma_yz"]
     dsn_dz_1 = contrail_1["dsn_dz"]
     terminal_fall_speed_1 = contrail_1["terminal_fall_speed"]
@@ -2653,39 +2652,32 @@ def calc_timestep_contrail_evolution(
     contrail_2["rho_air"] = rho_air_2
     contrail_2["q_sat"] = q_sat_2
 
-    # compute change in q_sat due to sedimentation
-    level_2_nosed = geo.advect_level(level_1, vertical_velocity_1, rho_air_1, 0.0, dt)
-    contrail_2_nosed = GeoVectorDataset(
+    # compute mass, humidity, and saturation specific humidity after sedimentation
+    level_sed = geo.advect_level(level_1, 0.0, rho_air_1, terminal_fall_speed_1, dt)
+    contrail_sed = GeoVectorDataset(
         {
-            "time": time_2_array,
-            "longitude": longitude_2,
-            "latitude": latitude_2,
-            "level": level_2_nosed,
+            "time": time_1,
+            "longitude": longitude_1,
+            "latitude": latitude_1,
+            "level": level_sed,
         },
         copy=False,
     )
-
-    air_temperature_2_nosed = interpolate_met(
-        met, contrail_2_nosed, "air_temperature", **interp_kwargs
-    )
-    if params["radiative_heating_effects"]:
-        air_temperature_2_nosed += contrail_2["cumul_heat"]
-
-    interpolate_met(met, contrail_2_nosed, "specific_humidity", **interp_kwargs)
-    humidity_scaling = params["humidity_scaling"]
+    air_temperature_sed = interpolate_met(met, contrail_sed, "air_temperature", **interp_kwargs)
+    specific_humidity_sed = interpolate_met(met, contrail_sed, "specific_humidity", **interp_kwargs)
     if humidity_scaling is not None:
-        humidity_scaling.eval(contrail_2_nosed, copy_source=False)
+        humidity_scaling.eval(contrail_sed, copy_source=False)
     else:
-        contrail_2_nosed["air_pressure"] = contrail_2_nosed.air_pressure
-        contrail_2_nosed["rhi"] = thermo.rhi(
-            contrail_2_nosed["specific_humidity"],
-            air_temperature_2_nosed,
-            contrail_2_nosed["air_pressure"],
+        contrail_sed["air_pressure"] = contrail_sed.air_pressure
+        contrail_sed["rhi"] = thermo.rhi(
+            contrail_sed["specific_humidity"],
+            air_temperature_sed,
+            contrail_sed["air_pressure"],
         )
-
-    air_pressure_2_nosed = contrail_2_nosed["air_pressure"]
-    q_sat_2_nosed = thermo.q_sat_ice(air_temperature_2_nosed, air_pressure_2_nosed)
-    q_sat_2_sed = q_sat_1 + q_sat_2 - q_sat_2_nosed
+    air_pressure_sed = contrail_sed["air_pressure"]
+    q_sat_sed = thermo.q_sat_ice(air_temperature_sed, air_pressure_sed)
+    rho_air_sed = thermo.rho_d(air_temperature_sed, air_pressure_sed)
+    plume_mass_per_m_sed = contrail_properties.plume_mass_per_distance(area_eff_1, rho_air_sed)
 
     # New contrail ice particle mass and number
     area_eff_2 = contrail_properties.new_effective_area_from_sigma(
@@ -2694,12 +2686,12 @@ def calc_timestep_contrail_evolution(
     plume_mass_per_m_2 = contrail_properties.plume_mass_per_distance(area_eff_2, rho_air_2)
     iwc_2 = contrail_properties.new_ice_water_content(
         iwc_1,
-        specific_humidity_1,
+        specific_humidity_sed,
         specific_humidity_2,
-        q_sat_1,
+        q_sat_sed,
         q_sat_2,
-        q_sat_2_sed,
         plume_mass_per_m_1,
+        plume_mass_per_m_sed,
         plume_mass_per_m_2,
     )
     n_ice_per_m_2 = contrail_properties.new_ice_particle_number(

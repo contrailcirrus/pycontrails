@@ -821,7 +821,7 @@ def advect_latitude(
 
 def advect_level(
     level: ArrayLike,
-    vertical_velocity: ArrayLike,
+    vertical_velocity: ArrayLike | float,
     rho_air: ArrayLike | float,
     terminal_fall_speed: ArrayLike | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
