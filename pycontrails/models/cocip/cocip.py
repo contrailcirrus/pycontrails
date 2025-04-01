@@ -2521,10 +2521,12 @@ def calc_timestep_contrail_evolution(
     depth_1 = contrail_1["depth"]
 
     # get required met values for evolution calculations
+    q_sat_1 = contrail_1["q_sat"]
     rho_air_1 = contrail_1["rho_air"]
     u_wind_1 = contrail_1["u_wind"]
     v_wind_1 = contrail_1["v_wind"]
 
+    specific_humidity_1 = contrail_1["specific_humidity"]
     vertical_velocity_1 = contrail_1["vertical_velocity"]
     iwc_1 = contrail_1["iwc"]
 
@@ -2659,7 +2661,6 @@ def calc_timestep_contrail_evolution(
 
     # ... using revised ice budget ...
     if params["revised_contrail_ice_budget"]:
-        # compute mass, humidity, and saturation specific humidity after sedimentation
         level_sed = geo.advect_level(level_1, 0.0, rho_air_1, terminal_fall_speed_1, dt)
         contrail_sed = GeoVectorDataset._from_fastpath(
             {
@@ -2685,25 +2686,44 @@ def calc_timestep_contrail_evolution(
         air_pressure_sed = contrail_sed["air_pressure"]
         q_sat_sed = thermo.q_sat_ice(air_temperature_sed, air_pressure_sed)
         rho_air_sed = thermo.rho_d(air_temperature_sed, air_pressure_sed)
+
         area_eff_1 = contrail_1["area_eff"]
         plume_mass_per_m_sed = contrail_properties.plume_mass_per_distance(area_eff_1, rho_air_sed)
+        depth_eff_1 = contrail_properties.plume_effective_depth(width_1, area_eff_1)
+
+        n_ice_per_vol_1 = contrail_properties.ice_particle_number_per_volume_of_plume(
+            n_ice_per_m_1, area_eff_1
+        )
+        n_ice_per_kg_1 = contrail_properties.ice_particle_number_per_mass_of_air(
+            n_ice_per_vol_1, rho_air_1
+        )
+        r_vol_1 = contrail_properties.ice_particle_volume_mean_radius(iwc_1, n_ice_per_kg_1)
+        air_temperature_1 = contrail_1["air_temperature"]
+        air_pressure_1 = contrail_1["air_pressure"]
+        vapor_diffusivity_1 = thermo.diffusivity_water_vapor(air_temperature_1, air_pressure_1)
+        phase_relax_rate_1 = contrail_properties.phase_relaxation_rate(
+            r_vol_1, n_ice_per_vol_1, vapor_diffusivity_1
+        )
 
         iwc_2 = contrail_properties.new_ice_water_content_revised(
             iwc_1,
+            specific_humidity_1,
             specific_humidity_sed,
             specific_humidity_2,
+            q_sat_1,
             q_sat_sed,
             q_sat_2,
             plume_mass_per_m_1,
             plume_mass_per_m_sed,
             plume_mass_per_m_2,
+            depth_eff_1,
+            terminal_fall_speed_1,
+            phase_relax_rate_1,
+            dt,
         )
 
     # ... or original ice budget
     else:
-        q_sat_1 = contrail_1["q_sat"]
-        specific_humidity_1 = contrail_1["specific_humidity"]
-
         iwc_2 = contrail_properties.new_ice_water_content(
             iwc_1,
             specific_humidity_1,
