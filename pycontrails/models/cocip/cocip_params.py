@@ -297,6 +297,11 @@ class CocipParams(AdvectionBuffers):
     #: Primarily used to support uncertainty estimation.
     rf_lw_enhancement_factor: float = 1.0
 
+    #: Experimental: use revised contrail ice budget (to be described in a forthcoming paper).
+    #: The revised ice budget includes tendencies associated with sedimentation across an
+    #: ambient humidity gradient.
+    revised_contrail_ice_budget: bool = False
+
     # ---------------------------------------
     # Conditions for end of contrail lifetime
     # ---------------------------------------
