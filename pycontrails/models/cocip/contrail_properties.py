@@ -1341,6 +1341,67 @@ def new_effective_area_from_sigma(
 
 def new_ice_water_content(
     iwc_t1: npt.NDArray[np.floating],
+    q_t1: npt.NDArray[np.floating],
+    q_t2: npt.NDArray[np.floating],
+    q_sat_t1: npt.NDArray[np.floating],
+    q_sat_t2: npt.NDArray[np.floating],
+    mass_plume_t1: npt.NDArray[np.floating],
+    mass_plume_t2: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    """
+    Calculate the new contrail ice water content after the time integration step (``iwc_t2``).
+
+    Parameters
+    ----------
+    iwc_t1 : npt.NDArray[np.floating]
+        contrail ice water content, i.e., contrail ice mass per kg of air,
+        at the start of the time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+    q_t1 : npt.NDArray[np.floating]
+        specific humidity for each waypoint at the start of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+    q_t2 : npt.NDArray[np.floating]
+        specific humidity for each waypoint at the end of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+    q_sat_t1 : npt.NDArray[np.floating]
+        saturation humidity for each waypoint at the start of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+    q_sat_t2 : npt.NDArray[np.floating]
+        saturation humidity for each waypoint at the end of the
+        time step, [:math:`kg_{H_{2}O}/kg_{air}`]
+    mass_plume_t1 : npt.NDArray[np.floating]
+        contrail plume mass per unit length at the start of the
+        time step, [:math:`kg_{air} m^{-1}`]
+    mass_plume_t2 : npt.NDArray[np.floating]
+        contrail plume mass per unit length at the end of the
+        time step, [:math:`kg_{air} m^{-1}`]
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Contrail ice water content at the end of the time step, [:math:`kg_{ice} kg_{air}^{-1}`]
+
+    Notes
+    -----
+    (1) The ice water content is fully conservative.
+    (2) ``mass_h2o_t2``: the total H2O mass (ice + vapour) per unit of
+        contrail plume [Units of kg-H2O/m]
+    (3) ``q_sat`` is used to calculate mass_h2o because air inside the
+        contrail is assumed to be ice saturated.
+    (4) ``(mass_plume_t2 - mass_plume) * q_mean``: contrail absorbs
+        (releases) H2O from (to) surrounding air.
+    (5) ``iwc_t2 = mass_h2o_t2 / mass_plume_t2 - q_sat_t2``: H2O in the
+        gas phase is removed (``- q_sat_t2``).
+    """
+    q_mean = 0.5 * (q_t1 + q_t2)
+    mass_h2o_t1 = mass_plume_t1 * (iwc_t1 + q_sat_t1)
+    mass_h2o_t2 = mass_h2o_t1 + (mass_plume_t2 - mass_plume_t1) * q_mean
+    iwc_t2 = (mass_h2o_t2 / mass_plume_t2) - q_sat_t2
+    iwc_t2.clip(min=0.0, out=iwc_t2)
+    return iwc_t2
+
+
+def new_ice_water_content_revised(
+    iwc_t1: npt.NDArray[np.floating],
     q_sed: npt.NDArray[np.floating],
     q_t2: npt.NDArray[np.floating],
     q_sat_sed: npt.NDArray[np.floating],
