@@ -835,6 +835,50 @@ def ice_particle_mass(r_ice_vol: npt.NDArray[np.floating]) -> npt.NDArray[np.flo
     return ((4 / 3) * np.pi * r_ice_vol**3) * constants.rho_ice
 
 
+def phase_relaxation_rate(
+    r_ice_vol: npt.NDArray[np.floating],
+    n_ice_per_vol: npt.NDArray[np.floating],
+    diffusivity_water_vapor: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    """
+    Calculate the contrail phase relaxation rate.
+
+    The phase relaxation rate is the inverse of the time scale over which specific humidity inside
+    a contrail relaxes toward saturation due to sublimation or deposition.
+
+    Parameters
+    ----------
+    r_ice_vol : npt.NDArray[np.floating]
+        Ice particle volume mean radius, [:math:`m`]
+
+    n_ice_per_vol: npt.NDArray[np.floating]
+        Number of ice particles per contrail plume volume, [:math:`m^3`]
+
+    diffusivity_water_vapor: npt.NDArray[np.floating]
+        Molecular diffusivity of water vapor, [:math:`m^2 s^{-1}`]
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Phase relaxation rate, [:math:`s^{-1}`]
+
+    References
+    ----------
+    - :cite:`hallPrupaccherSurvivalIceParticles1976`
+    - :cite:`prupaccherKlettMicrophysicsCloudsPrecipitation2010`
+
+    Notes
+    -----
+    The phase relaxation time scale provided by this function is based on a model
+    for diffusional growth of spherical ice crystals.
+
+    See Also
+    --------
+    :func:`thermo.diffusivity_water_vapor`
+    """
+    return 4.0 * np.pi * r_ice_vol * n_ice_per_vol * diffusivity_water_vapor
+
+
 def horizontal_diffusivity(
     ds_dz: npt.NDArray[np.floating],
     depth: npt.NDArray[np.floating],
@@ -1402,13 +1446,19 @@ def new_ice_water_content(
 
 def new_ice_water_content_revised(
     iwc_t1: npt.NDArray[np.floating],
+    q_t1: npt.NDArray[np.floating],
     q_sed: npt.NDArray[np.floating],
     q_t2: npt.NDArray[np.floating],
+    q_sat_t1: npt.NDArray[np.floating],
     q_sat_sed: npt.NDArray[np.floating],
     q_sat_t2: npt.NDArray[np.floating],
     mass_plume_t1: npt.NDArray[np.floating],
     mass_plume_sed: npt.NDArray[np.floating],
     mass_plume_t2: npt.NDArray[np.floating],
+    depth_eff: npt.NDArray[np.floating],
+    terminal_fall_speed: npt.NDArray[np.floating],
+    phase_relax_rate: npt.NDArray[np.floating],
+    dt: npt.NDArray[np.timedelta64],
 ) -> npt.NDArray[np.floating]:
     """
     Calculate the new contrail ice water content after the time integration step (``iwc_t2``).
@@ -1445,6 +1495,14 @@ def new_ice_water_content_revised(
     mass_plume_t2 : npt.NDArray[np.floating]
         contrail plume mass per unit length at the end of the
         time step, [:math:`kg_{air} m^{-1}`]
+    depth_eff : npt.NDArray[np.floating]
+        effective depth of contrail plume, [:math:`m`]
+    terminal_fall_speed : npt.NDArray[np.floating]
+        terminal fall speed of contrail plume, [:math:m `s^{-1}`]
+    phase_relax_rate : npt.NDArray[np.floating]
+        phase relaxation rate in the contrail, [:math:`s^{-1}`]
+    dt : npt.NDArray[np.timedelta64]
+        length of time integration step, [:math:`s`]
 
     Returns
     -------
@@ -1462,10 +1520,31 @@ def new_ice_water_content_revised(
         (releases) H2O from (to) surrounding air.
     (5) ``iwc_t2 = mass_h2o_t2 / mass_plume_t2 - q_sat_t2``: H2O in the
         gas phase is removed (``- q_sat_t2``).
-    (X) TODO: add term missing sedimentation term
     """
+    # change from falling through sub/supersaturated air
+    dt_s = units.dt_to_seconds(dt, iwc_t1.dtype)
+    qa = 0.5 * (q_t1 + q_sed)
+    qs = 0.5 * (q_sat_t1 + q_sat_sed)
+    m = 0.5 * (mass_plume_t1 + mass_plume_sed)
+    delta_mass_h2o_sed = (
+        m
+        * (qs - qa)
+        * np.expm1(-depth_eff * phase_relax_rate / terminal_fall_speed)
+        * terminal_fall_speed
+        * dt_s
+        / depth_eff
+    )
+
+    # change from mixing
     delta_mass_h2o_mix = mass_plume_t2 * q_t2 - mass_plume_sed * q_sed
-    mass_h2o_t2 = mass_plume_sed * q_sat_sed + mass_plume_t1 * iwc_t1 + delta_mass_h2o_mix
+
+    # updated ice water content
+    mass_h2o_t2 = (
+        mass_plume_sed * q_sat_sed
+        + mass_plume_t1 * iwc_t1
+        + delta_mass_h2o_mix
+        + delta_mass_h2o_sed
+    )
     iwc_t2 = (mass_h2o_t2 / mass_plume_t2) - q_sat_t2
     iwc_t2.clip(min=0.0, out=iwc_t2)
     return iwc_t2
