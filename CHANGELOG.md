@@ -15,6 +15,7 @@
 - Rename and modify `contrail_properties.ice_particle_number` to `contrail_properties.initial_ice_particle_number`.
 - Rename `ValidateTrajectoryHandler.CRUISE_ROCD_THRESHOLD_FPS` -> `ValidateTrajectoryHandler.ROCD_THRESHOLD_FPS`. Update its value from 4.2 ft/sec ->  83.25 ft/sec.
 - Remove the altitude filter on the `ValidateTrajectoryHandler` ROCD check. Now all waypoints are checked for ROCD violations.
+- Correctly parse "DOF" (departure date) field from flight plan in the `flightplan` module.
 
 ## v0.54.7
 
