@@ -322,7 +322,15 @@ class _SigmoidCoefficients:
 
 @functools.cache
 def _load_sigmoid_coef(q_method: str | None, level_type: str) -> _SigmoidCoefficients:
+    available = ("pressure", "model")
+    if level_type not in available:
+        msg = f"Invalid 'level_type' value '{level_type}'. Must be one of {available}."
+        raise ValueError(msg)
+
     if level_type == "model":
+        if q_method is not None:
+            msg = "Parameter 'q_method' must be None for model-level data."
+            raise ValueError(msg)
         return _SigmoidCoefficients(
             a1=0.026302083473778933,
             a2=0.9651041666272301,
@@ -333,9 +341,6 @@ def _load_sigmoid_coef(q_method: str | None, level_type: str) -> _SigmoidCoeffic
             b3=4.182743010484767,
             b4=17.53378893219587,
         )
-    if level_type != "pressure":
-        msg = f"Invalid 'level_type' value '{level_type}'. Must be one of ['pressure', 'model']."
-        raise ValueError(msg)
 
     if q_method is None:
         return _SigmoidCoefficients(
