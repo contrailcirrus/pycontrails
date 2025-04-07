@@ -266,6 +266,8 @@ class DiskCacheStore(CacheStore):
         >>> # put a file directly
         >>> disk_cache.put("README.md", "test/file.md")
         'test/file.md'
+
+        >>> disk_cache.clear()  # cleanup
         """
 
         if not pathlib.Path(data_path).is_file():
@@ -312,6 +314,8 @@ class DiskCacheStore(CacheStore):
         >>> # returns a path
         >>> disk_cache.get("test/file.md")
         'cache/test/file.md'
+
+        >>> disk_cache.clear()  # cleanup
         """
         return self.path(cache_path)
 
