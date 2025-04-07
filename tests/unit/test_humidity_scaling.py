@@ -274,9 +274,25 @@ def test_exp_boost_lat_correction(
     """Check `ExponentialBoostLatitudeCorrectionHumidityScaling` implementation."""
     scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling()
 
+    if level_type == "model" and q_method == "cubic-spline":
+        with pytest.raises(ValueError, match="must be None"):
+            scaler.scale(
+                custom["q"],
+                custom["T"],
+                custom["p"],
+                latitude=custom["latitude"],
+                q_method=q_method,
+                level_type=level_type,
+            )
+        return
+
     with pytest.raises(KeyError, match="latitude"):
         scaler.scale(
-            custom["q"], custom["T"], custom["p"], q_method=q_method, level_type=level_type
+            custom["q"],
+            custom["T"],
+            custom["p"],
+            q_method=q_method,
+            level_type=level_type,
         )
 
     _, rhi_cor = scaler.scale(
