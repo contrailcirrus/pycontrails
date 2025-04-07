@@ -202,7 +202,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
         if idx != -1:
             flightplan["departure_date"] = info[idx + 4 : idx + 10]
 
-        flightplan["other_info"] = basic[8].strip()
+        flightplan["other_info"] = info.strip()
 
     # Supl. Info
     if len(basic) > 9:
