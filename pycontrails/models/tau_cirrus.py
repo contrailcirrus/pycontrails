@@ -44,6 +44,7 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
     ----------
     met : MetDataset
         A MetDataset with the following variables:
+
         - "air_temperature"
         - "mass_fraction_of_cloud_ice_in_air", "specific_cloud_ice_water_content",
           or "ice_water_mixing_ratio"
