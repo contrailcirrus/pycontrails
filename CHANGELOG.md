@@ -13,12 +13,8 @@
 - Update the `pycontrails.physics.static` CSV files to include newly released global and regional passenger and cargo load factor data from IATA (Oct-2024 to Dec-2024).
 - Attach `n_ice_per_m_0` and `f_surv` to the downwash flight computed in the `Cocip` runtime. This data is now saved as part of the `Cocip` output.
 - Rename and modify `contrail_properties.ice_particle_number` to `contrail_properties.initial_ice_particle_number`.
-
-### Breaking Changes
-
-- Renames the ROCD threshold class variable in the ValidateTrajectoryHandler
-- Update the default ROCD threshold in the ValidateTrajectoryHandler from ~ 4ft/sec -> ~80ft/sec
-- Removes the filter on the ROCD check that only considers waypoints above a minimum altitude
+- Rename `ValidateTrajectoryHandler.CRUISE_ROCD_THRESHOLD_FPS` -> `ValidateTrajectoryHandler.ROCD_THRESHOLD_FPS`. Update its value from 4.2 ft/sec ->  83.25 ft/sec.
+- Remove the altitude filter on the `ValidateTrajectoryHandler` ROCD check. Now all waypoints are checked for ROCD violations.
 
 ## v0.54.7
 
