@@ -75,7 +75,7 @@ class ValidateTrajectoryHandler:
     <LINK HERE TO HOSTED REFERENCE EXAMPLE(S)>.
     """
 
-    CRUISE_ROCD_THRESHOLD_FPS = 4.2  # 4.2 ft/sec ~= 250 ft/min
+    ROCD_THRESHOLD_FPS = 83.25  # 83.25 ft/sec ~= 5000 ft/min
     CRUISE_LOW_ALTITUDE_THRESHOLD_FT = 15000.0  # lowest expected cruise altitude
     INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS = 350.0  # 350m/sec ~= 780mph ~= 1260kph
     INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS = 45.0  # 45m/sec ~= 100mph ~= 160kph
@@ -473,12 +473,12 @@ class ValidateTrajectoryHandler:
         Evaluate flight altitude profile.
 
         Failure modes include:
-        RocdError
+        FlightAltitudeProfileError
         1) flight climbs above alt threshold,
             then descends below that threshold one or more times,
             before making final descent to land.
 
-        FlightAltitudeProfileError
+        RocdError
         2) rate of instantaneous (between consecutive waypoint) climb or descent is above threshold,
            while aircraft is above the cruise altitude.
         """
@@ -488,15 +488,13 @@ class ValidateTrajectoryHandler:
 
         violations: list[FlightAltitudeProfileError | ROCDError] = []
 
-        # only evaluate rocd errors when at cruising altitude
-        rocd_above_thres = (self._df["rocd_fps"].abs() >= self.CRUISE_ROCD_THRESHOLD_FPS) & (
-            self._df["altitude_baro"] >= self.CRUISE_LOW_ALTITUDE_THRESHOLD_FT
-        )
+        # evaluate ROCD
+        rocd_above_thres = self._df["rocd_fps"].abs() >= self.ROCD_THRESHOLD_FPS
         if rocd_above_thres.any():
             msg = (
                 "Flight trajectory has rate of climb/descent values "
                 "between consecutive waypoints that exceed threshold "
-                f"of {self.CRUISE_ROCD_THRESHOLD_FPS:.3f}ft/sec. "
+                f"of {self.ROCD_THRESHOLD_FPS:.3f}ft/sec. "
                 f"Max value found: {self._df['rocd_fps'].abs().max():.3f}ft/sec"
             )
             violations.append(ROCDError(msg))
