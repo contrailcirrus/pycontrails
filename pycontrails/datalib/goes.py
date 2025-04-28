@@ -660,6 +660,10 @@ def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float3
     ----------
     - `Unidata's true color recipe <https://unidata.github.io/python-gallery/examples/mapping_GOES16_TrueColor.html>`_
     """
+    if not np.all(np.isin([1, 2, 3], da["band_id"])):
+        msg = "DataArray must contain bands 1, 2, and 3 for true color"
+        raise ValueError(msg)
+
     red = da.sel(band_id=2).values
     green = da.sel(band_id=3).values
     blue = da.sel(band_id=1).values
@@ -716,6 +720,9 @@ def to_ash(da: xr.DataArray, convention: str = "SEVIRI") -> npt.NDArray[np.float
     array([0.0127004 , 0.22793579, 0.3930847 ], dtype=float32)
     """
     if convention == "standard":
+        if not np.all(np.isin([11, 13, 14, 15], da["band_id"])):
+            msg = "DataArray must contain bands 11, 13, 14, and 15 for standard ash"
+            raise ValueError(msg)
         c11 = da.sel(band_id=11).values  # 8.44
         c13 = da.sel(band_id=13).values  # 10.33
         c14 = da.sel(band_id=14).values  # 11.19
@@ -725,7 +732,10 @@ def to_ash(da: xr.DataArray, convention: str = "SEVIRI") -> npt.NDArray[np.float
         green = c14 - c11
         blue = c13
 
-    elif convention in ["SEVIRI", "MIT"]:  # retain MIT for backwards compatibility
+    elif convention in ("SEVIRI", "MIT"):  # retain MIT for backwards compatibility
+        if not np.all(np.isin([11, 14, 15], da["band_id"])):
+            msg = "DataArray must contain bands 11, 14, and 15 for SEVIRI ash"
+            raise ValueError(msg)
         c11 = da.sel(band_id=11).values  # 8.44
         c14 = da.sel(band_id=14).values  # 11.19
         c15 = da.sel(band_id=15).values  # 12.27
