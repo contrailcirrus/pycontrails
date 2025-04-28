@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.54.9
+
+### Features
+
+- Include new `goes.correct_parallax` function in the `GOES` datalib to correct for parallax artifacts in GOES imagery. This function can be used to better superimpose flight and contrail data over GOES imagery.
+
 ## 0.54.8
 
 ### Features
