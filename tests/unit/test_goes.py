@@ -139,3 +139,45 @@ def test_goes_get_with_cache(t: str, cachestore: DiskCacheStore) -> None:
 
     t_str = pd.Timestamp(t).strftime("%Y%m%d%H%M")
     assert cachestore.listdir() == [f"M2_{t_str}_C02.nc"]
+
+
+def test_goes_parallax_correct():
+    """Test the ``parallax_correct`` function."""
+    downloader = goes.GOES(region="m1", cachestore=None, channels=("C01", "C02", "C03"))
+    da = downloader.get("2023-09-15T15:34")
+
+    # If we're right above nadir, the parallax correction shouldn't change anything
+    lon0 = [-75]
+    lat0 = [0]
+    alt = [10000]
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    assert lon0 == pytest.approx(lon1)
+    assert lat0 == pytest.approx(lat1)
+
+    # If we're due north, the parallax correction should shift the latitude only
+    lon0 = [-75]
+    lat0 = [44]
+    alt = [10000]
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    assert lon0 == pytest.approx(lon1)
+    assert lat1.item() == pytest.approx(44.11, abs=0.01)
+
+    # If we're due east, the parallax correction should shift the longitude only
+    lon0 = [-33]
+    lat0 = [0]
+    alt = [10000]
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    assert lat0 == pytest.approx(lat1)
+    assert lon1.item() == pytest.approx(-32.90, abs=0.01)
+
+    # In general, parallax correction doesn't shift more than +/- 0.1 degrees
+    rng = np.random.default_rng(444333222111)
+    n = 1000
+    lon0 = rng.uniform(-100, -50, n)
+    lat0 = rng.uniform(-70, 70, n)
+    alt = rng.uniform(1000, 20000, n)
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    assert np.all(np.abs(lon0 - lon1) < 1.0)
+    assert np.all(np.abs(lat0 - lat1) < 1.0)
+    assert np.mean(np.abs(lon0 - lon1)) == pytest.approx(0.07, abs=0.01)
+    assert np.mean(np.abs(lat0 - lat1)) == pytest.approx(0.11, abs=0.01)
