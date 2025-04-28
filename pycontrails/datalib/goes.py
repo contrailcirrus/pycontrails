@@ -780,3 +780,108 @@ def _clip_and_scale(
         Clipped and scaled array.
     """
     return (arr.clip(low, high) - low) / (high - low)
+
+
+def parallax_correct(
+    longitude: npt.NDArray[np.floating],
+    latitude: npt.NDArray[np.floating],
+    altitude: npt.NDArray[np.floating],
+    goes_da: xr.DataArray,
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    """Apply parallax correction to WGS84 geodetic coordinates based on satellite perspective.
+
+    This function considers the ray from the satellite to the points of interest and finds
+    the intersection of this ray with the WGS84 ellipsoid. The intersection point is then
+    returned as the corrected longitude and latitude coordinates.
+
+    This function requires the :mod:`pyproj` package to be installed.
+
+    Parameters
+    ----------
+    longitude : npt.NDArray[np.floating]
+        A 1D array of longitudes in degrees.
+    latitude : npt.NDArray[np.floating]
+        A 1D array of latitudes in degrees.
+    altitude : npt.NDArray[np.floating]
+        A 1D array of altitudes in meters.
+    goes_da : xr.DataArray
+        DataArray containing the GOES projection information. Only the ``goes_imager_projection``
+        field of the :attr:`xr.DataArray.attrs` is used.
+
+    Returns
+    -------
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
+        A tuple containing the corrected longitude and latitude coordinates.
+
+    """
+    goes_imager_projection = goes_da.attrs["goes_imager_projection"]
+    sat_lon = goes_imager_projection["longitude_of_projection_origin"]
+    sat_lat = goes_imager_projection["latitude_of_projection_origin"]
+    sat_alt = goes_imager_projection["perspective_point_height"]
+
+    try:
+        import pyproj
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            name="parallax_correct function",
+            package_name="pyproj",
+            module_not_found_error=exc,
+            pycontrails_optional_package="pyproj",
+        )
+
+    # Convert from WGS84 to ECEF coordinates
+    ecef_crs = pyproj.CRS("EPSG:4978")
+    transformer = pyproj.Transformer.from_crs("WGS84", ecef_crs, always_xy=True)
+
+    p0 = np.array(transformer.transform(sat_lon, sat_lat, sat_alt)).reshape(3, 1)
+    p1 = np.array(transformer.transform(longitude, latitude, altitude))
+
+    # Major and minor axes of the ellipsoid
+    a = ecef_crs.ellipsoid.semi_major_metre
+    b = ecef_crs.ellipsoid.semi_minor_metre
+    intersection = _intersection_with_ellipsoid(p0, p1, a, b)
+
+    # Convert back to WGS84 coordinates
+    inv_transformer = pyproj.Transformer.from_crs(ecef_crs, "WGS84", always_xy=True)
+    return inv_transformer.transform(*intersection)[:2]  # final coord is (close to) 0
+
+
+def _intersection_with_ellipsoid(
+    p0: npt.NDArray[np.floating],
+    p1: npt.NDArray[np.floating],
+    a: float,
+    b: float,
+) -> npt.NDArray[np.floating]:
+    """Find the intersection of a line with the surface of the WGS84 ellipsoid."""
+    # Calculate the direction vector
+    px, py, pz = p0
+    v = p1 - p0
+    vx, vy, vz = v
+
+    # The line between p0 and p1 in parametric form is p(t) = p0 + t * v
+    # We need to find t such that p(t) lies on the ellipsoid
+    # x^2 / a^2 + y^2 / a^2 + z^2 / b^2 = 1
+    # (px + t * vx)^2 / a^2 + (py + t * vy)^2 / a^2 + (pz + t * vz)^2 / b^2 = 1
+    # Rearranging gives a quadratic in t
+
+    # Calculate the coefficients of this quadratic equation
+    A = vx**2 / a**2 + vy**2 / a**2 + vz**2 / b**2
+    B = 2 * (px * vx / a**2 + py * vy / a**2 + pz * vz / b**2)
+    C = px**2 / a**2 + py**2 / a**2 + pz**2 / b**2 - 1.0
+
+    # Calculate the discriminant
+    D = B**2 - 4 * A * C
+    sqrtD = np.sqrt(D, where=D >= 0, out=np.full_like(D, np.nan))
+
+    # Calculate the two possible solutions for t
+    t0 = (-B + sqrtD) / (2.0 * A)
+    t1 = (-B - sqrtD) / (2.0 * A)
+
+    # Calculate the intersection points
+    intersection0 = p0 + t0 * v
+    intersection1 = p0 + t1 * v
+
+    # CRUDE: Pick the intersection point that is closer to the satellite
+    d0 = np.linalg.norm(intersection0 - p0, axis=0)
+    d1 = np.linalg.norm(intersection1 - p0, axis=0)
+    return np.where(d0 < d1, intersection0, intersection1)
