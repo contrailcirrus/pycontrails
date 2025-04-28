@@ -1080,7 +1080,33 @@ class Cocip(Model):
 
         # Intersect with rad dataset
         calc_radiative_properties(self._downwash_contrail, self.params)
+        # if self.params['verbose_outputs']:
+        #     # Add effective radius
 
+        #     # effective area
+        #     area_eff = contrail_properties.plume_effective_cross_sectional_area(
+        #         self._downwash_contrail['width'],
+        #         self._downwash_contrail['depth'],
+        #         self._downwash_contrail['sigma_yz']
+        #     )
+
+        #     # ice particles
+        #     n_ice_per_vol = contrail_properties.ice_particle_number_per_volume_of_plume(
+        #         self._downwash_contrail['n_ice_per_m'], area_eff
+        #     )
+        #     n_ice_per_kg_air = contrail_properties.ice_particle_number_per_mass_of_air(
+        #         n_ice_per_vol, self._downwash_contrail['rho_air']
+        #     )
+        #     r_vol_ice_2 = contrail_properties.ice_particle_volume_mean_radius(
+        # self._downwash_contrail['iwc'],
+        # n_ice_per_kg_air
+        # )
+        #     r_vol_um_2 = r_vol_ice_2*1e6
+        #     self._downwash_contrail['reff']= radiative_forcing.effective_radius(
+        # r_vol_um_2,
+        # self.params['habit_distributions'],
+        # self.params['radius_threshold_um']
+        # )
         if self.params["preprocess_lowmem"]:
             return None, None
         return met, rad
@@ -1354,6 +1380,12 @@ class Cocip(Model):
             self.contrail = tmp.set_index("index")
             self.contrail["dt_integration"] = first_dt
             self.contrail.fillna({"dt_integration": self.params["dt_integration"]}, inplace=True)
+
+            # Add effective radius to the contrail waypoint outputs
+            r_vol_um = self.contrail["r_ice_vol"] * 1e6
+            self.contrail["reff"] = radiative_forcing.effective_radius(
+                r_vol_um, self.params["habit_distributions"], self.params["radius_threshold_um"]
+            )
 
             # ---
             # Create contrail xr.Dataset (self.contrail_dataset)
@@ -2537,6 +2569,21 @@ def calc_timestep_contrail_evolution(
         params["radiative_heating_effects"],
     )
     calc_radiative_properties(contrail_2, params)
+    # if params['verbose_outputs']:
+    #     # Add effective radius
+    #     n_ice_per_vol_2 = contrail_properties.ice_particle_number_per_volume_of_plume(
+    #     n_ice_per_m_2, area_eff_2
+    # )
+    #     n_ice_per_kg_air = contrail_properties.ice_particle_number_per_mass_of_air(
+    #         n_ice_per_vol_2, rho_air_2
+    #     )
+    #     r_vol_ice_2 = contrail_properties.ice_particle_volume_mean_radius(iwc_2, n_ice_per_kg_air)
+    #     r_vol_um_2 = r_vol_ice_2*1e6
+    #     contrail_2['reff']= radiative_forcing.effective_radius(
+    # r_vol_um_2,
+    # params['habit_distributions'],
+    # params['radius_threshold_um']
+    # )
 
     # get properties to measure persistence
     latitude_2 = contrail_2["latitude"]
