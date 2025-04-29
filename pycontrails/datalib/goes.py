@@ -870,7 +870,7 @@ def _intersection_with_ellipsoid(
     a: float,
     b: float,
 ) -> npt.NDArray[np.floating]:
-    """Find the intersection of a line with the surface of the WGS84 ellipsoid."""
+    """Find the intersection of a line with the surface of an ellipsoid."""
     # Calculate the direction vector
     px, py, pz = p0
     v = p1 - p0
