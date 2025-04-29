@@ -568,6 +568,7 @@ def _load_via_tempfile(data: bytes) -> xr.Dataset:
     """Load xarray dataset via temporary file."""
     with tempfile.NamedTemporaryFile(buffering=0) as tmp:
         tmp.write(data)
+        tmp.flush()
         return xr.load_dataset(tmp.name)
 
 
