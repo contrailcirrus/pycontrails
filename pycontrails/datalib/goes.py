@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime
 import enum
+import os
 import tempfile
 from collections.abc import Iterable
 
@@ -566,10 +567,12 @@ class GOES:
 
 def _load_via_tempfile(data: bytes) -> xr.Dataset:
     """Load xarray dataset via temporary file."""
-    with tempfile.NamedTemporaryFile(buffering=0) as tmp:
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(data)
-        tmp.flush()
+    try:
         return xr.load_dataset(tmp.name)
+    finally:
+        os.remove(tmp.name)
 
 
 def _concat_c02(ds1: XArrayType, ds2: XArrayType) -> XArrayType:
