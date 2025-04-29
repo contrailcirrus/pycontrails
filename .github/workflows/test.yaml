@@ -70,8 +70,8 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      # download BADA files for testing
-      - name: BADA files
+      - name: Download BADA files
+        timeout-minutes: 5  # `gcloud storage cp` occasionally hangs on windows
         run: |
           mkdir -p ${{ env.BADA_CACHE_DIR }}
           gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
