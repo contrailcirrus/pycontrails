@@ -141,43 +141,77 @@ def test_goes_get_with_cache(t: str, cachestore: DiskCacheStore) -> None:
     assert cachestore.listdir() == [f"M2_{t_str}_C02.nc"]
 
 
-def test_goes_parallax_correct():
-    """Test the ``parallax_correct`` function."""
+@pytest.fixture(scope="module")
+def goes_data() -> xr.DataArray:
+    """A fixture that returns a sample GOES data array for parallax correction tests."""
     downloader = goes.GOES(region="m1", cachestore=None, channels=("C01", "C02", "C03"))
-    da = downloader.get("2023-09-15T15:34")
+    return downloader.get("2023-09-15T15:34")
 
+
+def test_goes_parallax_correct_above_nadir(goes_data: xr.DataArray) -> None:
+    """Test the ``parallax_correct`` function."""
     # If we're right above nadir, the parallax correction shouldn't change anything
-    lon0 = [-75]
-    lat0 = [0]
-    alt = [10000]
-    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    lon0 = np.array([-75.0])
+    lat0 = np.array([0.0])
+    alt = np.array([10000.0])
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, goes_data)
     assert lon0 == pytest.approx(lon1)
     assert lat0 == pytest.approx(lat1)
 
+
+def test_goes_parallax_correct_due_north(goes_data: xr.DataArray) -> None:
+    """Test the ``parallax_correct`` function."""
     # If we're due north, the parallax correction should shift the latitude only
-    lon0 = [-75]
-    lat0 = [44]
-    alt = [10000]
-    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    lon0 = np.array([-75.0])
+    lat0 = np.array([44.0])
+    alt = np.array([10000.0])
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, goes_data)
     assert lon0 == pytest.approx(lon1)
     assert lat1.item() == pytest.approx(44.11, abs=0.01)
 
+
+def test_goes_parallax_correct_due_east(goes_data: xr.DataArray) -> None:
+    """Test the ``parallax_correct`` function."""
     # If we're due east, the parallax correction should shift the longitude only
-    lon0 = [-33]
-    lat0 = [0]
-    alt = [10000]
-    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    lon0 = np.array([-33.0])
+    lat0 = np.array([0.0])
+    alt = np.array([10000.0])
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, goes_data)
     assert lat0 == pytest.approx(lat1)
     assert lon1.item() == pytest.approx(-32.90, abs=0.01)
 
+
+def test_goes_parallax_correct_random(goes_data: xr.DataArray) -> None:
+    """Test the ``parallax_correct`` function."""
     # In general, parallax correction doesn't shift more than +/- 0.1 degrees
     rng = np.random.default_rng(444333222111)
     n = 1000
     lon0 = rng.uniform(-100, -50, n)
     lat0 = rng.uniform(-70, 70, n)
     alt = rng.uniform(1000, 20000, n)
-    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, da)
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, goes_data)
     assert np.all(np.abs(lon0 - lon1) < 1.0)
     assert np.all(np.abs(lat0 - lat1) < 1.0)
     assert np.mean(np.abs(lon0 - lon1)) == pytest.approx(0.07, abs=0.01)
     assert np.mean(np.abs(lat0 - lat1)) == pytest.approx(0.11, abs=0.01)
+
+
+def test_goes_parallax_correct_opposite_side(goes_data: xr.DataArray) -> None:
+    """Test the ``parallax_correct`` function."""
+
+    lon0 = np.arange(-179.5, 180, 1, dtype=float)
+    opposite_side = np.abs(((lon0 - -75 + 180) % 360) - 180) > 90
+    lat0 = np.zeros_like(lon0)
+    alt = np.full_like(lon0, 10000)
+
+    lon1, lat1 = goes.parallax_correct(lon0, lat0, alt, goes_data)
+
+    # If we're on the opposite side of the globe, the parallax correction returns nan
+    assert np.all(np.isnan(lon1[opposite_side]))
+    assert np.all(np.isnan(lat1[opposite_side]))
+
+    # If we're on the same side of the globe, the parallax correction generally returns non-nan
+    # However, when the ray between the satellite and the aircraft is close to the horizon,
+    # it may miss the surface. This occurs for the first and last 12 points in this array.
+    assert np.all(np.isfinite(lon1[~opposite_side][12:-12]))
+    assert np.all(np.isfinite(lat1[~opposite_side][12:-12]))
