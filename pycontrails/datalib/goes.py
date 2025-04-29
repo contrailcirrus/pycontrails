@@ -788,11 +788,25 @@ def parallax_correct(
     altitude: npt.NDArray[np.floating],
     goes_da: xr.DataArray,
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-    """Apply parallax correction to WGS84 geodetic coordinates based on satellite perspective.
+    r"""Apply parallax correction to WGS84 geodetic coordinates based on satellite perspective.
 
     This function considers the ray from the satellite to the points of interest and finds
     the intersection of this ray with the WGS84 ellipsoid. The intersection point is then
     returned as the corrected longitude and latitude coordinates.
+
+    ::
+
+       @ satellite
+        \
+         \
+          \
+           \
+            \
+             * aircraft
+              \
+               \
+                x parallax corrected aircraft
+        -------------------------  surface
 
     This function requires the :mod:`pyproj` package to be installed.
 
