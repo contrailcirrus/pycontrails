@@ -812,6 +812,9 @@ def parallax_correct(
                 x parallax corrected aircraft
         -------------------------  surface
 
+    If the point of interest is not visible from the satellite (ie, on the opposite side of the
+    earth), the function returns nan for the corrected coordinates.
+
     This function requires the :mod:`pyproj` package to be installed.
 
     Parameters
@@ -851,7 +854,7 @@ def parallax_correct(
     ecef_crs = pyproj.CRS("EPSG:4978")
     transformer = pyproj.Transformer.from_crs("WGS84", ecef_crs, always_xy=True)
 
-    p0 = np.array(transformer.transform(sat_lon, sat_lat, sat_alt)).reshape(3, 1)
+    p0 = np.array(transformer.transform([sat_lon], [sat_lat], [sat_alt]))
     p1 = np.array(transformer.transform(longitude, latitude, altitude))
 
     # Major and minor axes of the ellipsoid
@@ -899,7 +902,15 @@ def _intersection_with_ellipsoid(
     intersection0 = p0 + t0 * v
     intersection1 = p0 + t1 * v
 
-    # CRUDE: Pick the intersection point that is closer to the satellite
-    d0 = np.linalg.norm(intersection0 - p0, axis=0)
-    d1 = np.linalg.norm(intersection1 - p0, axis=0)
-    return np.where(d0 < d1, intersection0, intersection1)
+    # Pick the intersection point that is closer to the aircraft (p1)
+    d0 = np.linalg.norm(intersection0 - p1, axis=0)
+    d1 = np.linalg.norm(intersection1 - p1, axis=0)
+    out = np.where(d0 < d1, intersection0, intersection1)
+
+    # Fill the points in which the aircraft is not visible by the satellite with nan
+    # This occurs when the earth is between the satellite and the aircraft
+    # In other words, we can check for t0 < 1 (or t1 < 1)
+    opposite_side = t0 < 1.0
+    out[:, opposite_side] = np.nan
+
+    return out
