@@ -9,9 +9,9 @@ import warnings
 from typing import Any, Generic, NoReturn, overload
 
 if sys.version_info >= (3, 12):
-    from typing import override
+    pass
 else:
-    from typing_extensions import override
+    pass
 
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +20,7 @@ from pycontrails.core import flight, fuel
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
+from pycontrails.core.met_var import AirTemperature, EastwardWind, MetVariable, NorthwardWind
 from pycontrails.core.models import Model, ModelParams, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import jet
@@ -97,6 +98,9 @@ class AircraftPerformance(Model):
     """
 
     source: Flight
+    met_variables: tuple[MetVariable, ...] = ()
+    optional_met_variables = (AirTemperature, EastwardWind, NorthwardWind)
+    default_params = AircraftPerformanceParams
 
     @overload
     def eval(self, source: Fleet, **params: Any) -> Fleet: ...
@@ -129,7 +133,8 @@ class AircraftPerformance(Model):
         self.set_source_met()
         self._cleanup_indices()
 
-        # Calculate true airspeed if not included on source
+        # Calculate temperature and true airspeed if not included on source
+        self.ensure_air_temperature_on_source()
         self.ensure_true_airspeed_on_source()
 
         if isinstance(self.source, Fleet):
@@ -161,23 +166,6 @@ class AircraftPerformance(Model):
         - ``max_altitude``: maximum altitude, [:math:`m`]
         - ``total_fuel_burn``: total fuel burn, [:math:`kg`]
         """
-
-    @override
-    def set_source_met(self, *args: Any, **kwargs: Any) -> None:
-        fill_with_isa = self.params["fill_low_altitude_with_isa_temperature"]
-        if fill_with_isa and (self.met is None or "air_temperature" not in self.met):
-            if "air_temperature" in self.source:
-                _fill_low_altitude_with_isa_temperature(self.source, 0.0)
-            else:
-                self.source["air_temperature"] = self.source.T_isa()
-            fill_with_isa = False  # we've just filled it
-
-        super().set_source_met(*args, **kwargs)
-        if not fill_with_isa:
-            return
-
-        met_level_0 = self.met.data["level"][-1].item()  # type: ignore[union-attr]
-        _fill_low_altitude_with_isa_temperature(self.source, met_level_0)
 
     def simulate_fuel_and_performance(
         self,
@@ -491,25 +479,59 @@ class AircraftPerformance(Model):
             Derived performance metrics at each waypoint.
         """
 
-    def ensure_true_airspeed_on_source(self) -> npt.NDArray[np.floating]:
+    def ensure_air_temperature_on_source(self) -> None:
+        """Add ``air_temperature`` field to :attr:`source` data if not already present.
+
+        This function operates in-place. If ``air_temperature`` is not already present
+        on :attr:`source`, it is calculated by interpolation from met data.
+        """
+        fill_with_isa = self.params["fill_low_altitude_with_isa_temperature"]
+
+        if "air_temperature" in self.source:
+            if not fill_with_isa:
+                return
+            _fill_low_altitude_with_isa_temperature(self.source, 0.0)
+            return
+
+        temp_available = self.met is not None and "air_temperature" in self.met
+
+        if not temp_available:
+            if fill_with_isa:
+                self.source["air_temperature"] = self.source.T_isa()
+                return
+            msg = (
+                "Cannot compute air temperature without providing met data that includes an "
+                "'air_temperature' variable. Either include met data with 'air_temperature' "
+                "in the model constructor, define 'air_temperature' data on the flight, or set "
+                "'fill_low_altitude_with_isa_temperature' to True."
+            )
+            raise ValueError(msg)
+
+        self.source["air_temperature"] = interpolate_met(
+            self.met, self.source, "air_temperature", **self.interp_kwargs
+        )
+
+        if not fill_with_isa:
+            return
+
+        met_level_0 = self.met.data["level"][-1].item()  # type: ignore[union-attr]
+        _fill_low_altitude_with_isa_temperature(self.source, met_level_0)
+
+    def ensure_true_airspeed_on_source(self) -> None:
         """Add ``true_airspeed`` field to :attr:`source` data if not already present.
 
-        Returns
-        -------
-        npt.NDArray[np.floating]
-            True airspeed, [:math:`m s^{-1}`]. If ``true_airspeed`` is already present
-            on :attr:`source`, this is returned directly. Otherwise, it is calculated
-            using :meth:`Flight.segment_true_airspeed`.
+        This function operates in-place. If ``true_airspeed`` is not already present
+        on :attr:`source`, it is calculated using :meth:`Flight.segment_true_airspeed`.
         """
         tas = self.source.get("true_airspeed")
         fill_with_groundspeed = self.params["fill_low_altitude_with_zero_wind"]
 
         if tas is not None:
             if not fill_with_groundspeed:
-                return tas
+                return
             cond = np.isnan(tas)
             tas[cond] = self.source.segment_groundspeed()[cond]
-            return tas
+            return
 
         # Use current cocip convention: eastward_wind on met, u_wind on source
         wind_available = ("u_wind" in self.source and "v_wind" in self.source) or (
@@ -520,7 +542,7 @@ class AircraftPerformance(Model):
             if fill_with_groundspeed:
                 tas = self.source.segment_groundspeed()
                 self.source["true_airspeed"] = tas
-                return tas
+                return
             msg = (
                 "Cannot compute 'true_airspeed' without 'eastward_wind' and 'northward_wind' "
                 "met data. Either include met data in the model constructor, define "
@@ -545,7 +567,6 @@ class AircraftPerformance(Model):
 
         out = self.source.segment_true_airspeed(u, v)
         self.source["true_airspeed"] = out
-        return out
 
 
 @dataclasses.dataclass

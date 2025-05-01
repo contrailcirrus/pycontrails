@@ -188,7 +188,7 @@ def test_ps_model() -> None:
     np.testing.assert_array_almost_equal(fuel_flow, [0.593, 0.578], decimal=3)
 
 
-def test_mach_number_limits_scalar():
+def test_mach_number_limits_scalar() -> None:
     # Extract aircraft properties for aircraft type (A320)
     aircraft_type_icao = "A320"
     ps_model = ps.PSFlight()
@@ -228,7 +228,7 @@ def test_mach_number_limits_scalar():
     )
 
 
-def test_mach_number_limits_vector():
+def test_mach_number_limits_vector() -> None:
     # Extract aircraft properties for aircraft type (A320)
     aircraft_type_icao = "A320"
     ps_model = ps.PSFlight()
@@ -268,7 +268,7 @@ def test_mach_number_limits_vector():
     )
 
 
-def test_thrust_coefficient_limits():
+def test_thrust_coefficient_limits() -> None:
     # Extract aircraft properties for aircraft type (A320)
     aircraft_type_icao = "A320"
     ps_model = ps.PSFlight()
@@ -486,7 +486,7 @@ def test_ps_nominal_grid(aircraft_type: str) -> None:
     assert 0.7 < ds.attrs["mach_number"] < 0.8
 
 
-def test_ps_optimal_mach():
+def test_ps_optimal_mach() -> None:
     # Extract aircraft properties for aircraft type (A320)
     aircraft_type_icao = "A320"
 
@@ -621,9 +621,41 @@ def test_fill_low_altitude_with_zero_wind(
     fl1 = model1.eval(flight_fake)
     fl2 = model2.eval(flight_fake)
 
-    # if air temperature is computed, the model can estimate fuel flow
+    # if true air speed is computed, the model can estimate fuel flow
     assert np.sum(np.isfinite(fl1["fuel_flow"])) == 499  # all but the last value
     assert np.sum(np.isfinite(fl2["fuel_flow"])) == 242  # missing everything below lowest met level
+
+
+def test_missing_air_temperature(flight_fake: Flight) -> None:
+    """Test error message for missing air temperature."""
+
+    flight_fake["true_airspeed"] = np.full(flight_fake.size, 230.0)
+    flight_fake.attrs["aircraft_type"] = "B738"
+
+    model1 = PSFlight(fill_low_altitude_with_isa_temperature=True)
+    model2 = PSFlight(fill_low_altitude_with_isa_temperature=False)
+
+    fl1 = model1.eval(flight_fake)
+    with pytest.raises(ValueError, match="Cannot compute air temperature"):
+        _ = model2.eval(flight_fake)
+
+    assert np.sum(np.isfinite(fl1["fuel_flow"])) == 499  # all but the last value
+
+
+def test_missing_true_air_speed(flight_fake: Flight) -> None:
+    """Test error message for missing true air speed and wind data."""
+
+    flight_fake["air_temperature"] = flight_fake.T_isa()
+    flight_fake.attrs["aircraft_type"] = "B738"
+
+    model1 = PSFlight(fill_low_altitude_with_zero_wind=True)
+    model2 = PSFlight(fill_low_altitude_with_zero_wind=False)
+
+    fl1 = model1.eval(flight_fake)
+    with pytest.raises(ValueError, match="Cannot compute 'true_airspeed'"):
+        _ = model2.eval(flight_fake)
+
+    assert np.sum(np.isfinite(fl1["fuel_flow"])) == 499  # all but the last value
 
 
 def test_ps_flight_on_fleet() -> None:
