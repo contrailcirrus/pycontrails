@@ -9,6 +9,7 @@
 ### Breaking changes
 
 - Air temperature is now an optional met variable in `PSFlight`. Code that uses `PSFlight.met_variables` may need to be updated.
+- The `ensure_true_airspeed_on_source` method of the `AircraftPerformance` class now operates fully in-place and no longer returns a value. Code that relies on a return value may need to be updated.
 
 ### Internals
 
