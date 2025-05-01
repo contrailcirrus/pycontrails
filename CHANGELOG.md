@@ -1,10 +1,19 @@
 # Changelog
 
-## 0.54.9
+## 0.54.9 (unreleased)
 
 ### Features
 
 - Include new `goes.correct_parallax` function in the `GOES` datalib to correct for parallax artifacts in GOES imagery. This function can be used to better superimpose flight and contrail data over GOES imagery.
+
+### Breaking changes
+
+- Air temperature is now an optional met variable in `PSFlight`. Code that uses `PSFlight.met_variables` may need to be updated.
+
+### Internals
+
+- Define `default_parameters`, `met_variables`, and `optional_met_variables` for the `AircraftPerformance` abstract base class.
+- Remove the definitions of `met_variables` and `optional_met_variables` from `PSFlight`. These are now inherited from `AircraftPerformance`.
 
 ## 0.54.8
 
