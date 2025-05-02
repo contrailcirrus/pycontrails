@@ -507,9 +507,7 @@ class AircraftPerformance(Model):
             )
             raise ValueError(msg)
 
-        self.source["air_temperature"] = interpolate_met(
-            self.met, self.source, "air_temperature", **self.interp_kwargs
-        )
+        interpolate_met(self.met, self.source, "air_temperature", **self.interp_kwargs)
 
         if not fill_with_isa:
             return
