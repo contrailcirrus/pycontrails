@@ -4,14 +4,8 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-import sys
 import warnings
 from typing import Any, Generic, NoReturn, overload
-
-if sys.version_info >= (3, 12):
-    pass
-else:
-    pass
 
 import numpy as np
 import numpy.typing as npt
