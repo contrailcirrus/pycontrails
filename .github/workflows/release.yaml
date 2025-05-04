@@ -158,6 +158,8 @@ jobs:
       - name: Trigger pycontrails-bada tests
         run: |
           gh api \
+          --method POST \
+          -H "Accept: application/vnd.github.v3+json" \
           /repos/contrailcirrus/pycontrails-bada/dispatches \
           -f event_type="pycontrails-release"
         env:
