@@ -152,7 +152,6 @@ jobs:
     needs:
       - publish-to-pypi
 
-    # Run the gh api command to trigger the workflow
     runs-on: ubuntu-latest
     steps:
       - name: Trigger pycontrails-bada tests
