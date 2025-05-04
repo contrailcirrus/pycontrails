@@ -14,134 +14,149 @@ on:
 permissions: {}
 
 jobs:
-  check-main-test-status:
+  # check-main-test-status:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: OS Dependencies
+  #       run: sudo apt-get install -y curl jq
+
+  #     - uses: actions/checkout@v4
+
+  #     - name: Check main test status
+  #       run: make main-test-status
+
+  # build-wheels:
+  #   name: Build wheels on ${{ matrix.os }}
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [ubuntu-latest, windows-latest, macos-latest]
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     # https://cibuildwheel.readthedocs.io/en/stable/options/#testing
+  #     - name: Build wheels
+  #       uses: pypa/cibuildwheel@v2.23
+  #       env:
+  #         CIBW_BUILD: cp310-* cp311-* cp312-* cp313-*
+  #         CIBW_SKIP: '*-win32 *-manylinux_i686 *-musllinux*'
+  #         CIBW_BUILD_VERBOSITY: 3
+  #         CIBW_ARCHS_MACOS: x86_64 arm64
+  #         CIBW_TEST_SKIP: '*-macosx_arm64'
+  #         # Completely isolate tests to prevent cibuildwheel from importing the
+  #         # source instead of the wheel. This happens when tests/__init__.py is read.
+  #         CIBW_TEST_EXTRAS: "complete,dev"
+  #         # Make sure GITHUB_ACTIONS
+  #         # (used to selectively skip expensive unit test)
+  #         # is passed through when testing linux wheels
+  #         CIBW_ENVIRONMENT_PASS_LINUX: GITHUB_ACTIONS
+  #         CIBW_TEST_COMMAND: >
+  #           mv {project}/pycontrails {project}/pycontrails-bak &&
+  #           python -m pytest {project}/tests -vv &&
+  #           mv {project}/pycontrails-bak {project}/pycontrails
+
+  #     - name: Upload wheels
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: wheels-${{ matrix.os }}-artifact
+  #         path: ./wheelhouse/*.whl
+
+  # build-sdist:
+  #   name: Build source distribution
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: Build sdist
+  #       run: pipx run build --sdist
+
+  #     - name: Upload sdist
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: sdist-artifact
+  #         path: dist/*.tar.gz
+
+  # # Publish using PyPI trusted publishing
+  # # https://docs.pypi.org/trusted-publishers/using-a-publisher/
+  # # https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+  # publish-to-testpypi:
+  #   needs:
+  #     - build-wheels
+  #     - build-sdist
+  #   runs-on: ubuntu-latest
+
+  #   environment:
+  #     name: testpypi
+  #     url: https://test.pypi.org/p/pycontrails
+  #   permissions:
+  #     id-token: write
+
+  #   steps:
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         path: artifacts
+
+  #     - name: Unpack artifacts into dist
+  #       run: |
+  #         mkdir -p dist
+  #         mv artifacts/wheels-*-artifact/*.whl dist/
+  #         mv artifacts/sdist-artifact/*.tar.gz dist/
+  #         ls -al dist
+
+  #     - name: Publish distribution 📦 to Test PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+  #       with:
+  #         repository-url: https://test.pypi.org/legacy/
+  #         verbose: true
+
+  # publish-to-pypi:
+  #   if: ${{ github.event_name == 'release'}}
+  #   needs:
+  #     - build-wheels
+  #     - build-sdist
+  #     - check-main-test-status
+  #   runs-on: ubuntu-latest
+
+  #   environment:
+  #     name: pypi
+  #     url: https://pypi.org/p/pycontrails
+  #   permissions:
+  #     id-token: write
+
+  #   steps:
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         path: artifacts
+
+  #     - name: Unpack artifacts into dist
+  #       run: |
+  #         mkdir -p dist
+  #         mv artifacts/wheels-*-artifact/*.whl dist/
+  #         mv artifacts/sdist-artifact/*.tar.gz dist/
+  #         ls -al dist
+
+  #     - name: Publish distribution 📦 to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+
+  run-pycontrails-bada-tests:
+    # Run the test workflow in pycontrails-bada after publishing to PyPI
+    # if: ${{ github.event_name == 'release'}}
+    # needs:
+    #   - publish-to-pypi
+
+    # Run the gh api command to trigger the workflow
     runs-on: ubuntu-latest
     steps:
-      - name: OS Dependencies
-        run: sudo apt-get install -y curl jq
-
-      - uses: actions/checkout@v4
-
-      - name: Check main test status
-        run: make main-test-status
-
-  build-wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # https://cibuildwheel.readthedocs.io/en/stable/options/#testing
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.23
-        env:
-          CIBW_BUILD: cp310-* cp311-* cp312-* cp313-*
-          CIBW_SKIP: '*-win32 *-manylinux_i686 *-musllinux*'
-          CIBW_BUILD_VERBOSITY: 3
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_TEST_SKIP: '*-macosx_arm64'
-          # Completely isolate tests to prevent cibuildwheel from importing the
-          # source instead of the wheel. This happens when tests/__init__.py is read.
-          CIBW_TEST_EXTRAS: "complete,dev"
-          # Make sure GITHUB_ACTIONS
-          # (used to selectively skip expensive unit test)
-          # is passed through when testing linux wheels
-          CIBW_ENVIRONMENT_PASS_LINUX: GITHUB_ACTIONS
-          CIBW_TEST_COMMAND: >
-            mv {project}/pycontrails {project}/pycontrails-bak &&
-            python -m pytest {project}/tests -vv &&
-            mv {project}/pycontrails-bak {project}/pycontrails
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-${{ matrix.os }}-artifact
-          path: ./wheelhouse/*.whl
-
-  build-sdist:
-    name: Build source distribution
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Build sdist
-        run: pipx run build --sdist
-
-      - name: Upload sdist
-        uses: actions/upload-artifact@v4
-        with:
-          name: sdist-artifact
-          path: dist/*.tar.gz
-
-  # Publish using PyPI trusted publishing
-  # https://docs.pypi.org/trusted-publishers/using-a-publisher/
-  # https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
-  publish-to-testpypi:
-    needs:
-      - build-wheels
-      - build-sdist
-    runs-on: ubuntu-latest
-
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/pycontrails
-    permissions:
-      id-token: write
-
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Unpack artifacts into dist
+      - name: Trigger pycontrails-bada tests
         run: |
-          mkdir -p dist
-          mv artifacts/wheels-*-artifact/*.whl dist/
-          mv artifacts/sdist-artifact/*.tar.gz dist/
-          ls -al dist
-
-      - name: Publish distribution 📦 to Test PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          verbose: true
-
-  publish-to-pypi:
-    if: ${{ github.event_name == 'release'}}
-    needs:
-      - build-wheels
-      - build-sdist
-      - check-main-test-status
-    runs-on: ubuntu-latest
-
-    environment:
-      name: pypi
-      url: https://pypi.org/p/pycontrails
-    permissions:
-      id-token: write
-
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Unpack artifacts into dist
-        run: |
-          mkdir -p dist
-          mv artifacts/wheels-*-artifact/*.whl dist/
-          mv artifacts/sdist-artifact/*.tar.gz dist/
-          ls -al dist
-
-      - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+          gh api \
+          /repos/contrailcirrus/pycontrails-bada/dispatches \
+          -f event_type="pycontrails-release"
