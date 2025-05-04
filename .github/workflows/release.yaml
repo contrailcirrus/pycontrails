@@ -160,3 +160,5 @@ jobs:
           gh api \
           /repos/contrailcirrus/pycontrails-bada/dispatches \
           -f event_type="pycontrails-release"
+        env:
+          GH_TOKEN: ${{ secrets.GH_ROBOT_USER_PAT }}
