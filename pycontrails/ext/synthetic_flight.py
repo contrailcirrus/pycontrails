@@ -207,7 +207,7 @@ class SyntheticFlight:
 
     def _id(self) -> int:
         """Get random flight ID."""
-        return self.rng.integers(100_000, 999_999)
+        return self.rng.integers(100_000, 999_999).item()
 
     def _define_aircraft(self) -> None:
         """Define or update instance variables pertaining to flight aircrafts.
