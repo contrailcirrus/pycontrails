@@ -10,11 +10,13 @@
 
 - Air temperature is now an optional met variable in `PSFlight`. Code that uses `PSFlight.met_variables` may need to be updated.
 - The `ensure_true_airspeed_on_source` method of the `AircraftPerformance` class now operates fully in-place and no longer returns a value. Code that relies on a return value may need to be updated.
+- `PSFlight.eval_flight` now retrieves all inputs to performance calculations from the `Flight` parameter rather than the `PSFlight` model source. Code may need to be updated if constants for `aircraft_mass`, `thrust`, `engine_efficiency`, or `fuel_flow` were stored as attributes in a `Fleet`, as these attributes are lost when a `Fleet` is converted to a `Flight` list prior to calling `eval_flight`.
 
 ### Internals
 
 - Define `default_parameters`, `met_variables`, and `optional_met_variables` for the `AircraftPerformance` abstract base class.
 - Remove the definitions of `met_variables` and `optional_met_variables` from `PSFlight`. These are now inherited from `AircraftPerformance`.
+- Retrieve aircraft mass, thrust, engine efficiency, and fuel flow from `Flight` parameter rather than model source in `PSFlight.eval_flight`.
 
 ## 0.54.8
 

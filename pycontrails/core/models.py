@@ -706,6 +706,70 @@ class Model(ABC):
     # https://github.com/python/cpython/blob/618b7a8260bb40290d6551f24885931077309590/Lib/collections/__init__.py#L231
     __marker = object()
 
+    def get_data_param(
+        self, other: SourceType, key: str, default: Any = __marker, *, set_attr: bool = True
+    ) -> Any:
+        """Get data from other source-compatible object with default set by model parameter key.
+
+        Retrieves data with the following hierarchy:
+
+        1. :attr:`other.data[key]`. Returns ``np.ndarray | xr.DataArray``.
+        2. :attr:`other.attrs[key]`
+        3. :attr:`params[key]`
+        4. ``default``
+
+        In case 3., the value of :attr:`params[key]` is attached to :attr:`other.attrs[key]`
+        unless ``set_attr`` is set to False.
+
+        Parameters
+        ----------
+        key : str
+            Key to retrieve
+        default : Any, optional
+            Default value if key is not found.
+        set_attr : bool, optional
+            If True (default), set :attr:`source.attrs[key]` to :attr:`params[key]` if found.
+            This allows for better post model evaluation tracking.
+
+        Returns
+        -------
+        Any
+            Value(s) found for key in ``other`` data, ``other`` attrs, or model params
+
+        Raises
+        ------
+        KeyError
+            Raises KeyError if key is not found in any location and ``default`` is not provided.
+
+
+        See Also
+        --------
+        - get_source_param
+        - GeoVectorDataset.get_data_or_attr
+        """
+        marker = self.__marker
+
+        out = other.data.get(key, marker)
+        if out is not marker:
+            return out
+
+        out = other.attrs.get(key, marker)
+        if out is not marker:
+            return out
+
+        out = self.params.get(key, marker)
+        if out is not marker:
+            if set_attr:
+                other.attrs[key] = out
+
+            return out
+
+        if default is not marker:
+            return default
+
+        msg = f"Key '{key}' not found in source data, attrs, or model params"
+        raise KeyError(msg)
+
     def get_source_param(self, key: str, default: Any = __marker, *, set_attr: bool = True) -> Any:
         """Get source data with default set by parameter key.
 
@@ -716,7 +780,8 @@ class Model(ABC):
         3. :attr:`params[key]`
         4. ``default``
 
-        In case 3., the value of :attr:`params[key]` is attached to :attr:`source.attrs[key]`.
+        In case 3., the value of :attr:`params[key]` is attached to :attr:`source.attrs[key]`
+        unless ``set_attr`` is set to False.
 
         Parameters
         ----------
@@ -740,30 +805,10 @@ class Model(ABC):
 
         See Also
         --------
+        - get_data_param
         - GeoVectorDataset.get_data_or_attr
         """
-        marker = self.__marker
-
-        out = self.source.data.get(key, marker)
-        if out is not marker:
-            return out
-
-        out = self.source.attrs.get(key, marker)
-        if out is not marker:
-            return out
-
-        out = self.params.get(key, marker)
-        if out is not marker:
-            if set_attr:
-                self.source.attrs[key] = out
-
-            return out
-
-        if default is not marker:
-            return default
-
-        msg = f"Key '{key}' not found in source data, attrs, or model params"
-        raise KeyError(msg)
+        return self.get_data_param(self.source, key, default, set_attr=set_attr)
 
     def _cleanup_indices(self) -> None:
         """Cleanup indices artifacts if ``params["interpolation_use_indices"]`` is True."""

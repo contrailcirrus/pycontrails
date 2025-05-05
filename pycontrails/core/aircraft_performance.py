@@ -93,7 +93,7 @@ class AircraftPerformance(Model):
 
     source: Flight
     met_variables: tuple[MetVariable, ...] = ()
-    optional_met_variables = (AirTemperature, EastwardWind, NorthwardWind)
+    optional_met_variables: tuple[MetVariable, ...] = (AirTemperature, EastwardWind, NorthwardWind)
     default_params = AircraftPerformanceParams
 
     @overload
