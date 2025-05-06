@@ -217,6 +217,8 @@ class DryAdvection(models.Model):
         - ``age``: Age of plume.
         - ``waypoint``: Identifier for each waypoint.
 
+        If ``flight_id`` is present in :attr:`source`, it is retained.
+
         If `"azimuth"` is present in :attr:`source`, `source.attrs`, or :attr:`params`,
         the following variables will also be added:
 
@@ -236,6 +238,9 @@ class DryAdvection(models.Model):
         self.source.setdefault("waypoint", np.arange(self.source.size))
 
         columns = ["longitude", "latitude", "level", "time", "age", "waypoint"]
+        if "flight_id" in self.source:
+            columns.append("flight_id")
+
         azimuth = self.get_source_param("azimuth", set_attr=False)
         if azimuth is None:
             # Early exit for pointwise only simulation
@@ -540,6 +545,10 @@ def _evolve_one_step(
             "waypoint": vector["waypoint"],
         }
     )
+
+    flight_id = vector.get("flight_id")
+    if flight_id is not None:
+        out["flight_id"] = flight_id
 
     azimuth = vector.get("azimuth")
     if azimuth is None:
