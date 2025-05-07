@@ -4,7 +4,7 @@
 
 ### Features
 
-- Output from the `DryAdvection` model will include a `flight_id` column if one is present in the model source.
+- Output from the `DryAdvection` model will include a `flight_id` column when run with a `Flight` or a `Fleet`.
 
 ## 0.54.9
 
