@@ -133,3 +133,38 @@ def test_dry_advection_verbose_outputs(
         assert n_rows == 3532 + len(source)
     else:
         assert n_rows == 3532
+
+
+@pytest.mark.parametrize("include_source_in_output", [True, False])
+def test_dry_advection_flight_id_in_output(
+    met_cocip1: MetDataset, source: GeoVectorDataset, include_source_in_output: bool
+) -> None:
+    """Test the inclusion of a ``flight_id`` column in :class:`DryAdvection` output."""
+    params = {
+        "max_age": np.timedelta64(1, "h"),
+        "dt_integration": np.timedelta64(5, "m"),
+        "include_source_in_output": include_source_in_output,
+    }
+
+    model = DryAdvection(met_cocip1, params)
+    out = model.eval(source)
+
+    assert "flight_id" not in source
+    assert "flight_id" not in out
+
+    source1 = source.filter(source["latitude"] < 55.0, copy=True)
+    source2 = source.filter(source["latitude"] >= 55, copy=True)
+    source1["flight_id"] = np.full(len(source1), "flight1")
+    source2["flight_id"] = np.full(len(source2), "flight2")
+    source = source1 + source2
+    model = DryAdvection(met_cocip1, params)
+    out = model.eval(source)
+
+    assert "flight_id" in source
+    assert "flight_id" in out
+    if include_source_in_output:
+        assert (out["flight_id"] == "flight1").sum() == 2059 + len(source1)
+        assert (out["flight_id"] == "flight2").sum() == 1473 + len(source2)
+    else:
+        assert (out["flight_id"] == "flight1").sum() == 2059
+        assert (out["flight_id"] == "flight2").sum() == 1473
