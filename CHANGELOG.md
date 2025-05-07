@@ -6,6 +6,10 @@
 
 - Output from the `DryAdvection` model will include a `flight_id` column when run with a `Flight` or a `Fleet`.
 
+### Internals
+
+- Fix errors in "See Also" sections of `Model` docstrings.
+
 ## 0.54.9
 
 ### Features

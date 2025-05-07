@@ -543,7 +543,7 @@ class Model(ABC):
 
         See Also
         --------
-        - :meth:`eval`
+        eval
         """
         self.source = self._get_source(source)
 
@@ -744,8 +744,8 @@ class Model(ABC):
 
         See Also
         --------
-        - get_source_param
-        - GeoVectorDataset.get_data_or_attr
+        get_source_param
+        pycontrails.core.vector.GeoVectorDataset.get_data_or_attr
         """
         marker = self.__marker
 
@@ -805,8 +805,8 @@ class Model(ABC):
 
         See Also
         --------
-        - get_data_param
-        - GeoVectorDataset.get_data_or_attr
+        get_data_param
+        pycontrails.core.vector.GeoVectorDataset.get_data_or_attr
         """
         return self.get_data_param(self.source, key, default, set_attr=set_attr)
 
