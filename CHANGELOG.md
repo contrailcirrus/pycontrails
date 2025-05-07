@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.54.10 (unreleased)
+
+### Features
+
+- Output from the `DryAdvection` model will include a `flight_id` column if once is present in the model source.
+
 ## 0.54.9
 
 ### Features
