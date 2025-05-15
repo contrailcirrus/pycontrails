@@ -258,10 +258,10 @@ def gcs_goes_path(
     >>> pprint(paths)
     ['gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C01_G16_s20230930211249_e20230930211309_c20230930211386.nc']
 
-    >>> t = datetime.datetime(2025, 5, 4, 3, 2, 1)
+    >>> t = datetime.datetime(2025, 5, 4, 3, 2)
     >>> paths = gcs_goes_path(t, GOESRegion.M2, channels="C01")
     >>> pprint(paths)
-    ['gcp-public-data-goes-16/ABI-L2-CMIPM/2025/124/03/OR_ABI-L2-CMIPM2-M6C01_G19_s20251241210249_e20251241211309_c20251241211386.nc']
+    ['gcp-public-data-goes-19/ABI-L2-CMIPM/2025/124/03/OR_ABI-L2-CMIPM2-M6C01_G19_s20251240302557_e20251240303014_c20251240303092.nc']
 
     """
     time = _check_time_resolution(time, region)
