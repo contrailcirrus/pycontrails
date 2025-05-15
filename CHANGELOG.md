@@ -1,19 +1,19 @@
 # Changelog
 
-## 0.54.10 (unreleased)
+## 0.54.10
 
 ### Features
 
 - Output from the `DryAdvection` model will include a `flight_id` column when run with a `Flight` or a `Fleet`.
 
-### Internals
-
-- Fix errors in "See Also" sections of `Model` docstrings.
-
 ### Fixes
 
 - GOES data download for GOES-East now supports the GOES-16 -> GOES-19 transition. The default GCS bucket is automatically selected based on the requested date (using 2025-04-04 as the cutoff). For pre-transition data, this change is backwards compatible with previous versions of pycontrails.
 - Pass the `GOES.fs` instance to the `gcs_goes_path` function from the `GOES.gcs_goes_path` method to avoid repeated GCS file system client instantiation.
+
+### Internals
+
+- Fix errors in "See Also" sections of `Model` docstrings.
 
 ## 0.54.9
 
