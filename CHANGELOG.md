@@ -10,6 +10,11 @@
 
 - Fix errors in "See Also" sections of `Model` docstrings.
 
+### Fixes
+
+- GOES data download for GOES-East now supports the GOES-16 -> GOES-19 transition. The default GCS bucket is automatically selected based on the requested date (using 2025-04-04 as the cutoff). For pre-transition data, this change is backwards compatible with previous versions of pycontrails.
+- Pass the `GOES.fs` instance to the `gcs_goes_path` function from the `GOES.gcs_goes_path` method to avoid repeated GCS file system client instantiation.
+
 ## 0.54.9
 
 ### Features
