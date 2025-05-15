@@ -59,6 +59,22 @@ DEFAULT_CHANNELS = "C11", "C14", "C15"
 #: See `GOES ABI scan information <https://www.goes-r.gov/users/abiScanModeInfo.html>`_.
 GOES_SCAN_MODE_CHANGE = datetime.datetime(2019, 4, 2, 16)
 
+#: The date at which GOES-19 data started being available. This is used to
+#: determine the source (GOES-16 or GOES-19) of requested. In particular,
+#: Mesoscale images are only available for GOES-East from GOES-19 after this date.
+#: See the `NOAA press release <https://www.noaa.gov/news-release/noaas-goes-19-satellite-now-operational-providing-critical-new-data-to-forecasters>`_.
+GOES_16_19_SWITCH_DATE = datetime.datetime(2025, 4, 4)
+
+#: The GCS bucket for GOES-East data before ``GOES_16_19_SWITCH_DATE``.
+GOES_16_BUCKET = "gcp-public-data-goes-16"
+
+#: The GCS bucket for GOES-West data. Note that GOES-17 has degraded data quality
+#: and is not recommended for use. This bucket isn't used by the ``GOES`` handler by default.
+GOES_18_BUCKET = "gcp-public-data-goes-18"
+
+#: The GCS bucket for GOES-East data after ``GOES_16_19_SWITCH_DATE``.
+GOES_19_BUCKET = "gcp-public-data-goes-19"
+
 
 class GOESRegion(enum.Enum):
     """GOES Region of interest.
@@ -187,7 +203,7 @@ def gcs_goes_path(
     time: datetime.datetime,
     region: GOESRegion,
     channels: str | Iterable[str] | None = None,
-    bucket: str = "gcp-public-data-goes-16",
+    bucket: str | None = None,
     fs: gcsfs.GCSFileSystem | None = None,
 ) -> list[str]:
     """Return GCS paths to GOES data at the given time for the given region and channels.
@@ -208,6 +224,12 @@ def gcs_goes_path(
         set ``channels=("C11", "C14", "C15")``. For the true color scheme,
         set ``channels=("C01", "C02", "C03")``. By default, the channels
         required by the SEVIRI ash color scheme are used.
+    bucket : str | None
+        GCS bucket for GOES data. If None, the bucket is automatically
+        set to ``GOES_16_BUCKET`` if ``time`` is before
+        ``GOES_16_19_SWITCH_DATE`` and ``GOES_19_BUCKET`` otherwise.
+    fs : gcsfs.GCSFileSystem | None
+        GCS file system instance. If None, a default anonymous instance is created.
 
     Returns
     -------
@@ -236,6 +258,11 @@ def gcs_goes_path(
     >>> pprint(paths)
     ['gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C01_G16_s20230930211249_e20230930211309_c20230930211386.nc']
 
+    >>> t = datetime.datetime(2025, 5, 4, 3, 2, 1)
+    >>> paths = gcs_goes_path(t, GOESRegion.M2, channels="C01")
+    >>> pprint(paths)
+    ['gcp-public-data-goes-16/ABI-L2-CMIPM/2025/124/03/OR_ABI-L2-CMIPM2-M6C01_G19_s20251241210249_e20251241211309_c20251241211386.nc']
+
     """
     time = _check_time_resolution(time, region)
     year = time.strftime("%Y")
@@ -247,7 +274,10 @@ def gcs_goes_path(
     product_name = "CMIP"  # Cloud and Moisture Imagery
     product = f"{sensor}-{level}-{product_name}{region.name[0]}"
 
-    bucket = bucket.removeprefix("gs://")
+    if bucket is None:
+        bucket = GOES_16_BUCKET if time < GOES_16_19_SWITCH_DATE else GOES_19_BUCKET
+    else:
+        bucket = bucket.removeprefix("gs://")
 
     path_prefix = f"gs://{bucket}/{product}/{year}/{yday}/{hour}/"
 
@@ -267,7 +297,13 @@ def gcs_goes_path(
             time_str = f"{time_str[:-1]}6"
 
     name_prefix = f"OR_{product[:-1]}{region.name}-{mode}"
-    name_suffix = f"_G16_s{time_str}*"
+
+    try:
+        satellite_number = int(bucket[-2:])  # 16 or 18 or 19 -- this may fail for custom buckets
+    except (ValueError, IndexError) as exc:
+        msg = f"Bucket name {bucket} does not end with a valid satellite number."
+        raise ValueError(msg) from exc
+    name_suffix = f"_G{satellite_number}_s{time_str}*"
 
     channels = _parse_channels(channels)
 
@@ -323,8 +359,12 @@ class GOES:
     cachestore : cache.CacheStore | None
         Cache store for GOES data. If None, data is downloaded directly into
         memory. By default, a :class:`cache.DiskCacheStore` is used.
-    goes_bucket : str = "gcp-public-data-goes-16"
-        GCP bucket for GOES data. AWS access is not supported.
+    goes_bucket : str | None = None
+        GCP bucket for GOES data. If None, the bucket is automatically
+        set to ``GOES_16_BUCKET`` if the requested time is before
+        ``GOES_16_19_SWITCH_DATE`` and ``GOES_19_BUCKET`` otherwise.
+        The satellite number used for filename construction is derived from the
+        last two characters of this bucket name.
 
     See Also
     --------
@@ -396,7 +436,7 @@ class GOES:
         region: GOESRegion | str = GOESRegion.F,
         channels: str | Iterable[str] | None = None,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
-        goes_bucket: str = "gcp-public-data-goes-16",
+        goes_bucket: str | None = None,
     ) -> None:
         self.region = _parse_region(region)
         self.channels = _parse_channels(channels)
@@ -435,7 +475,7 @@ class GOES:
             List of GCS paths to GOES data.
         """
         channels = channels or self.channels
-        return gcs_goes_path(time, self.region, channels, self.goes_bucket)
+        return gcs_goes_path(time, self.region, channels, bucket=self.goes_bucket, fs=self.fs)
 
     def _lpaths(self, time: datetime.datetime) -> dict[str, str]:
         """Construct names for local netcdf files using the :attr:`cachestore`.

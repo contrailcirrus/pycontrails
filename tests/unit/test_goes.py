@@ -215,3 +215,20 @@ def test_goes_parallax_correct_opposite_side(goes_data: xr.DataArray) -> None:
     # it may miss the surface. This occurs for the first and last 12 points in this array.
     assert np.all(np.isfinite(lon1[~opposite_side][12:-12]))
     assert np.all(np.isfinite(lat1[~opposite_side][12:-12]))
+
+
+@pytest.mark.skipif(IS_WINDOWS, reason="cannot easily install h5py on windows")
+@pytest.mark.skipif(OFFLINE, reason="offline")
+def test_goes_19() -> None:
+    """Confirm that we can access GOES-19 data."""
+    downloader = goes.GOES(region="m1", cachestore=None, channels="C02")
+    assert downloader.cachestore is None
+
+    da = downloader.get("2025-04-15T15:34")
+    assert isinstance(da, xr.DataArray)
+
+    assert da.shape == (1, 2000, 2000)  # C02 has 0.5 km resolution
+    assert da.name == "CMI"
+    assert da.dims == ("band_id", "y", "x")
+    assert da.dtype == "float32"
+    assert da["band_id"].values.tolist() == [2]
