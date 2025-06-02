@@ -304,9 +304,9 @@ class VectorDataset:
                 self.data = VectorDataDict({k: v.to_numpy(copy=copy) for k, v in data.items()})
             else:
                 time = _handle_time_column(time)
-                data = {k: v.to_numpy(copy=copy) for k, v in data.items() if k != "time"}
-                data["time"] = time.to_numpy(copy=copy)
-                self.data = VectorDataDict(data)
+                data_np = {k: v.to_numpy(copy=copy) for k, v in data.items() if k != "time"}
+                data_np["time"] = time.to_numpy(copy=copy)
+                self.data = VectorDataDict(data_np)
 
         # For anything else, we assume it is a dictionary of array-like and attach it
         else:
