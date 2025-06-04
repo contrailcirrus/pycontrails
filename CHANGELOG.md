@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.54.11 (unreleased)
+
+### Fixes
+
+- Fix the `GOES` interface caching mechanism when a custom `goes_bucket` is provided. This allows users to cache both GOES-16 and GOES-18 data without conflicts.
+
 ## 0.54.10
 
 ### Features
