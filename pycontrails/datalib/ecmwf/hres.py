@@ -120,6 +120,8 @@ class HRES(ECMWFAPI):
         }
 
     Credentials can also be provided directly ``url`` ``key``, and ``email`` keyword args.
+    A third option is to set the environment variables ``ECMWF_API_URL``, ``ECMWF_API_KEY``,
+    and ``ECMWF_API_EMAIL``.
 
     See `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ documentation
     for more information.
