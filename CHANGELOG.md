@@ -5,6 +5,7 @@
 ### Fixes
 
 - Fix the `GOES` interface caching mechanism when a custom `goes_bucket` is provided. This allows users to cache both GOES-16 and GOES-18 data without conflicts.
+- Officially support the "scda" HRES stream (useful for forecast reference times 06Z and 18Z). Previously, this was implicitly assumed.
 
 ## 0.54.10
 
