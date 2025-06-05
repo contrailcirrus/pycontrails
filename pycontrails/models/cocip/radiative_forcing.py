@@ -444,6 +444,42 @@ def effective_radius_myhre(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np
     return np.minimum(r_vol_um, 45.0)
 
 
+def effective_radius(
+    r_vol_um: npt.NDArray[np.floating],
+    habit_distributions: npt.NDArray[np.floating],
+    radius_threshold_um: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    r"""
+    Calculate the effective radius of contrail ice particles for each waypoints.
+
+    For each waypoints, all the habits are assumed by applying a weighted harmonic mean.
+
+    Parameters
+    ----------
+    r_vol_um : npt.NDArray[np.floating]
+        Contrail ice particle volume mean radius, [:math:`\mu m`]
+    habit_distributions : npt.NDArray[np.floating]
+        Habit weight distributions.
+        See :attr:`CocipParams().habit_distributions`
+    radius_threshold_um : npt.NDArray[np.floating]
+        Radius thresholds for habit distributions.
+        See :attr:`CocipParams.radius_threshold_um`
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Effective radius, [:math:`\mu m`]
+    """
+    weights = habit_weights(r_vol_um, habit_distributions, radius_threshold_um)
+    habit_weight_mask = weights > 0
+    idx0, idx1 = np.nonzero(habit_weight_mask)
+    r_vol_um_h = r_vol_um[idx0]
+    r_eff_um_h = effective_radius_by_habit(r_vol_um_h, idx1)
+    r_eff_um = np.zeros_like(weights)
+    r_eff_um[idx0, idx1] = weights[idx0, idx1] / r_eff_um_h
+    return 1.0 / np.sum(r_eff_um, axis=1)  # weighted harmonic mean
+
+
 # -----------------
 # Radiative Forcing
 # -----------------

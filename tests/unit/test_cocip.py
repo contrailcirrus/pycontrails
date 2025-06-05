@@ -1799,6 +1799,20 @@ def test_radiative_heating_effects():
     assert 0 < ratio < 1
 
 
+def test_effective_radius(cocip_persistent: Cocip):
+    """Test effective radius implementation."""
+    contrail_output = pd.read_json(get_static_path("cocip-contrail-output.json"), orient="records")
+    assert "reff" in contrail_output
+    assert "reff" in cocip_persistent.contrail
+
+    np.testing.assert_allclose(
+        cocip_persistent.contrail["reff"],
+        contrail_output["reff"],
+        err_msg="reff",
+        rtol=1e-5,
+    )
+
+
 @pytest.mark.parametrize("max_altitude", [11200, None])
 def test_max_altitude_param(fl: Flight, met: MetDataset, rad: MetDataset, max_altitude):
     """Confirm that the max_altitude parameter can be disabled."""
