@@ -253,7 +253,6 @@ class HRES(ECMWFAPI):
         variables: metsource.VariableInput,
         pressure_levels: metsource.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
-        cachepath: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float = 0.25,
         stream: str = "oper",
         field_type: str = "fc",
