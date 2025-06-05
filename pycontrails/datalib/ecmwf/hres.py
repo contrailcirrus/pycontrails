@@ -332,7 +332,7 @@ class HRES(ECMWFAPI):
 
         if self.forecast_time.hour in (0, 12) and stream == "scda":
             raise ValueError(
-                f"Stream {stream} is not compatible with forecast_time {self.forecast_time}"
+                f"Stream {stream} is not compatible with forecast_time {self.forecast_time}. "
                 "Set stream='oper' for 00 and 12 UTC forecast times."
             )
 
