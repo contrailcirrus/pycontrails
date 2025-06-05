@@ -455,7 +455,7 @@ class GOES:
         """Return string representation."""
         return (
             f"GOES(region={self.region}, channels={sorted(self.channels)}, "
-            f"bucket={self.goes_bucket})"
+            f"goes_bucket={self.goes_bucket})"
         )
 
     def gcs_goes_path(self, time: datetime.datetime, channels: set[str] | None = None) -> list[str]:
