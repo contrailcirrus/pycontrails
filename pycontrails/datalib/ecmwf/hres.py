@@ -165,7 +165,7 @@ class HRES(ECMWFAPI):
         control forecast (cf), analysis (an).
         Defaults to "fc".
     forecast_time : DatetimeLike, optional
-        Specify forecast reference time (the time at which the model is run).
+        Specify forecast reference time (the time at which the forecast was initialized).
         Defaults to None.
     cachestore : cache.CacheStore | None, optional
         Cache data store for staging data files.
