@@ -133,7 +133,7 @@ class HRES(ECMWFAPI):
         Input must be a datetime-like or tuple of datetime-like
         (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
-        If ``forecast_time`` is unspecified, the forecast time will
+        If ``forecast_time`` is unspecified, the forecast reference time will
         be assumed to be the nearest synoptic hour: 00, 06, 12, 18.
         All subsequent times will be downloaded for relative to :attr:`forecast_time`.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
@@ -165,7 +165,7 @@ class HRES(ECMWFAPI):
         control forecast (cf), analysis (an).
         Defaults to "fc".
     forecast_time : DatetimeLike, optional
-        Specify forecast run by runtime.
+        Specify forecast reference time (the time at which the model is run).
         Defaults to None.
     cachestore : cache.CacheStore | None, optional
         Cache data store for staging data files.
