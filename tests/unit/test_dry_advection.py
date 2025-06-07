@@ -168,3 +168,33 @@ def test_dry_advection_flight_id_in_output(
     else:
         assert (out["flight_id"] == "flight1").sum() == 2059
         assert (out["flight_id"] == "flight2").sum() == 1473
+
+
+def test_dry_advection_gap_in_waypoints(met_cocip1: MetDataset) -> None:
+    """Confirm fix for bug in which a large temporal gap between waypoints broke implementation."""
+    params = {
+        "max_age": np.timedelta64(20, "m"),
+        "dt_integration": np.timedelta64(1, "m"),
+    }
+
+    t0 = met_cocip1.data["time"].isel(time=0).values
+    t1 = t0 + np.timedelta64(30, "m")
+
+    model = DryAdvection(met_cocip1, params)
+    source = GeoVectorDataset(
+        longitude=[-30.0, -30.0],
+        latitude=[55.0, 55.0],
+        level=[250.0, 250.0],
+        time=[t0, t1],
+    )
+    out = model.eval(source)
+    assert isinstance(out, GeoVectorDataset)
+
+    # The output should have 20 times for waypoint 1 and 20 times for waypoint 2
+    waypoint0 = out.dataframe.query("waypoint == 0")
+    expected0 = pd.date_range(t0, periods=21, freq="1min", inclusive="right").to_series(name="time")
+    pd.testing.assert_series_equal(waypoint0["time"], expected0, check_index=False)
+
+    waypoint1 = out.dataframe.query("waypoint == 1")
+    expected1 = pd.date_range(t1, periods=21, freq="1min", inclusive="right").to_series(name="time")
+    pd.testing.assert_series_equal(waypoint1["time"], expected1, check_index=False)
