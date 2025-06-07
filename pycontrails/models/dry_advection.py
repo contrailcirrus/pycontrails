@@ -177,6 +177,9 @@ class DryAdvection(models.Model):
         for t in timesteps:
             filt = (source_time < t) & (source_time >= t - dt_integration)
             vector1 = vector2 + self.source.filter(filt, copy=False)
+            if vector1.size == 0:
+                vector2 = GeoVectorDataset()
+                continue
 
             t0 = vector1["time"].min()
             t1 = vector1["time"].max()
