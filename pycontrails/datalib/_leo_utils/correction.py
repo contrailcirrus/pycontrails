@@ -230,7 +230,7 @@ def estimate_scan_time(
 
     distance = line.project(points)
     projected = line.interpolate(distance)
-    projected_x, _ = shapely.LineString(projected).xy
+    projected_x = shapely.get_coordinates(projected)[:, 0]
 
     assert ephemeris_utm["t"].dtype == "datetime64[ns]"
     assert ephemeris_utm["x"].diff().iloc[1:].lt(0).all()
