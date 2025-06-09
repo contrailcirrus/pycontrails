@@ -97,8 +97,8 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     --------
     :func:`to_atc_plan`
     """
-    atc_plan = atc_plan.replace("\r", "")
-    atc_plan = atc_plan.replace("\n", "")
+    atc_plan = atc_plan.replace("\r", " ")
+    atc_plan = atc_plan.replace("\n", " ")
     atc_plan = atc_plan.upper()
     atc_plan = atc_plan.strip()
 
@@ -169,7 +169,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
             if len(groups) > 3:
                 flightplan["level"] = groups[3]
 
-            flightplan["route"] = basic[6][len("".join(groups)) :].strip()
+            flightplan["route"] = basic[6][len("".join(groups)):].strip()
         else:
             flightplan["route"] = basic[6].strip()
 
@@ -189,7 +189,8 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
         if len(groups) > 3:
             flightplan["alt_icao"] = groups[3]
 
-        matches = re.match(r"(\D{4})(\d{4})(\s{1})(\D{4})(\s{1})(\D{4})", basic[7])
+        matches = re.match(
+            r"(\D{4})(\d{4})(\s{1})(\D{4})(\s{1})(\D{4})", basic[7])
         groups = matches.groups() if matches else ()
 
         if len(groups) > 5:
@@ -200,7 +201,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
         info = basic[8]
         idx = info.find("DOF")
         if idx != -1:
-            flightplan["departure_date"] = info[idx + 4 : idx + 10]
+            flightplan["departure_date"] = info[idx + 4: idx + 10]
 
         flightplan["other_info"] = info.strip()
 
@@ -216,12 +217,12 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
                 next_key = sup_match[i + 1]
                 next_idx = basic[9].find(next_key)
 
-                val = basic[9][this_idx + 2 : next_idx - 1]
+                val = basic[9][this_idx + 2: next_idx - 1]
                 suplInfo[this_key[0]] = val
 
             last_key = sup_match[-1]
             last_idx = basic[9].find(last_key)
-            suplInfo[last_key[0]] = basic[9][last_idx + 2 :]
+            suplInfo[last_key[0]] = basic[9][last_idx + 2:]
 
             flightplan["supplementary_info"] = suplInfo
 
