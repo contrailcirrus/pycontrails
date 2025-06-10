@@ -120,6 +120,8 @@ class HRES(ECMWFAPI):
         }
 
     Credentials can also be provided directly ``url`` ``key``, and ``email`` keyword args.
+    A third option is to set the environment variables ``ECMWF_API_URL``, ``ECMWF_API_KEY``,
+    and ``ECMWF_API_EMAIL``.
 
     See `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ documentation
     for more information.
@@ -131,7 +133,7 @@ class HRES(ECMWFAPI):
         Input must be a datetime-like or tuple of datetime-like
         (datetime, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
-        If ``forecast_time`` is unspecified, the forecast time will
+        If ``forecast_time`` is unspecified, the forecast reference time will
         be assumed to be the nearest synoptic hour: 00, 06, 12, 18.
         All subsequent times will be downloaded for relative to :attr:`forecast_time`.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
@@ -150,14 +152,20 @@ class HRES(ECMWFAPI):
         Specify latitude/longitude grid spacing in data.
         Defaults to 0.25.
     stream : str, optional
-        "oper" = atmospheric model/HRES, "enfo" = ensemble forecast.
-        Defaults to "oper" (HRES),
+        - "oper" = high resolution forecast, atmospheric fields, run at hours 00Z and 12Z
+        - "scda" = short cut-off high resolution forecast, atmospheric fields,
+          run at hours 06Z and 18Z
+        - "enfo" = ensemble forecast, atmospheric fields, run at hours 00Z, 06Z, 12Z, and 18Z
+        Defaults to "oper" (HRES).
+        If the stream is incompatible with a provided forecast_time, a ``ValueError`` is raised.
+        See the `ECMWF documentation <https://confluence.ecmwf.int/display/DAC/ECMWF+open+data%3A+real-time+forecasts+from+IFS+and+AIFS>`_
+        for additional information.
     field_type : str, optional
         Field type can be e.g. forecast (fc), perturbed forecast (pf),
         control forecast (cf), analysis (an).
         Defaults to "fc".
     forecast_time : DatetimeLike, optional
-        Specify forecast run by runtime.
+        Specify forecast reference time (the time at which the forecast was initialized).
         Defaults to None.
     cachestore : cache.CacheStore | None, optional
         Cache data store for staging data files.
@@ -230,7 +238,7 @@ class HRES(ECMWFAPI):
 
     __slots__ = ("email", "field_type", "forecast_time", "key", "server", "stream", "url")
 
-    #: stream type, "oper" = atmospheric model/HRES, "enfo" = ensemble forecast.
+    #: stream type, "oper" or "scda" for atmospheric model/HRES, "enfo" for ensemble forecast.
     stream: str
 
     #: Field type, forecast ("fc"), perturbed forecast ("pf"),
@@ -251,7 +259,6 @@ class HRES(ECMWFAPI):
         variables: metsource.VariableInput,
         pressure_levels: metsource.PressureLevelInput = -1,
         paths: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
-        cachepath: str | list[str] | pathlib.Path | list[pathlib.Path] | None = None,
         grid: float = 0.25,
         stream: str = "oper",
         field_type: str = "fc",
@@ -276,9 +283,7 @@ class HRES(ECMWFAPI):
         self.server = ECMWFService("mars", url=url, key=key, email=email)
         self.paths = paths
 
-        if cachestore is self.__marker:
-            cachestore = cache.DiskCacheStore()
-        self.cachestore = cachestore
+        self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
 
         if time is None and paths is None:
             raise ValueError("Time input is required when paths is None")
@@ -290,14 +295,6 @@ class HRES(ECMWFAPI):
         self.variables = metsource.parse_variables(variables, self.supported_variables)
 
         self.grid = metsource.parse_grid(grid, [0.1, 0.25, 0.5, 1])  # lat/lon degree resolution
-
-        # "enfo" = ensemble forecast
-        # "oper" = atmospheric model/HRES
-        if stream not in ("oper", "enfo"):
-            msg = "Parameter stream must be 'oper' or 'enfo'"
-            raise ValueError(msg)
-
-        self.stream = stream
 
         # "fc" = forecast
         # "pf" = perturbed forecast
@@ -322,7 +319,29 @@ class HRES(ECMWFAPI):
             # round first element to the nearest 6 hour time (00, 06, 12, 18 UTC) for forecast_time
             self.forecast_time = metsource.round_hour(self.timesteps[0], 6)
 
-        # when no forecast_time or time input, forecast_time is defined in _open_and_cache
+        # NOTE: when no forecast_time or time input, forecast_time is defined in _open_and_cache
+        # This could occur when only the paths parameter is provided
+
+        # "enfo" = ensemble forecast
+        # "oper" = atmospheric model/HRES for 00 and 12 model runs
+        # "scda" = atmospheric model/HRES for 06 and 18 model runs
+        available_streams = ("oper", "enfo", "scda")
+        if stream not in available_streams:
+            msg = f"Parameter stream must be one of {available_streams}"
+            raise ValueError(msg)
+
+        if self.forecast_time.hour in (0, 12) and stream == "scda":
+            raise ValueError(
+                f"Stream {stream} is not compatible with forecast_time {self.forecast_time}. "
+                "Set stream='oper' for 00 and 12 UTC forecast times."
+            )
+
+        if self.forecast_time.hour in (6, 18) and stream == "oper":
+            raise ValueError(
+                f"Stream {stream} is not compatible with forecast_time {self.forecast_time}. "
+                "Set stream='scda' for 06 and 18 UTC forecast times."
+            )
+        self.stream = stream
 
     def __repr__(self) -> str:
         base = super().__repr__()
@@ -642,7 +661,7 @@ class HRES(ECMWFAPI):
 
     @override
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
-        if self.stream == "oper":
+        if self.stream in ("oper", "scda"):
             product = "forecast"
         elif self.stream == "enfo":
             product = "ensemble"
@@ -689,8 +708,8 @@ class HRES(ECMWFAPI):
         xr_kwargs.setdefault("parallel", False)
         ds = self.open_dataset(self.paths, **xr_kwargs)
 
-        # set forecast time if its not already defined
-        if not getattr(self, "forecast_time", None):
+        # set forecast time if it's not defined (this occurs when only the paths param is provided)
+        if not hasattr(self, "forecast_time"):
             self.forecast_time = ds["time"].values.astype("datetime64[s]").tolist()  # type: ignore[assignment]
 
         # check that forecast_time is correct if defined

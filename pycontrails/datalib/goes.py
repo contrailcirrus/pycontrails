@@ -453,7 +453,10 @@ class GOES:
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return f"GOES(region='{self.region}', channels={sorted(self.channels)})"
+        return (
+            f"GOES(region={self.region}, channels={sorted(self.channels)}, "
+            f"goes_bucket={self.goes_bucket})"
+        )
 
     def gcs_goes_path(self, time: datetime.datetime, channels: set[str] | None = None) -> list[str]:
         """Return GCS paths to GOES data at given time.
@@ -488,7 +491,11 @@ class GOES:
 
         out = {}
         for c in self.channels:
-            name = f"{self.region.name}_{t_str}_{c}.nc"
+            if self.goes_bucket:
+                name = f"{self.goes_bucket}_{self.region.name}_{t_str}_{c}.nc"
+            else:
+                name = f"{self.region.name}_{t_str}_{c}.nc"
+
             lpath = self.cachestore.path(name)
             out[c] = lpath
 

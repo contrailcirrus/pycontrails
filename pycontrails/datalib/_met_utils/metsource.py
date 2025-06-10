@@ -320,7 +320,7 @@ def parse_grid(grid: float, supported: Sequence[float]) -> float:
 
 
 def round_hour(time: datetime, hour: int) -> datetime:
-    """Round time to the nearest whole hour before input time.
+    """Floor time to the nearest whole hour before input time.
 
     Parameters
     ----------
@@ -337,7 +337,7 @@ def round_hour(time: datetime, hour: int) -> datetime:
     Raises
     ------
     ValueError
-        Description
+        If ``hour`` isn't one of 1, 2, 3, ..., 22, 23.
     """
     if hour not in range(1, 24):
         msg = f"hour must be between [1, 23], got {hour}"
