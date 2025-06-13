@@ -3,38 +3,11 @@
 This modules requires `GeoPandas <https://geopandas.org/>`_.
 """
 
-import re
-
 import geopandas as gpd
 import pandas as pd
 import shapely
 
 from pycontrails.core import cache
-
-
-def _split_antimeridian(polygon: shapely.Polygon) -> shapely.MultiPolygon:
-    """Split a polygon into two polygons at the antimeridian.
-
-    This implementation assumes that the passed polygon is actually situated
-    on the antimeridian and does simultaneously cross the meridian.
-    """
-    # Shift the x-coordinates of the polygon to the right
-    # The `valid_poly` will not be valid if the polygon spans the meridian
-    valid_poly = shapely.ops.transform(lambda x, y: (x if x >= 0.0 else x + 360.0, y), polygon)
-    if not valid_poly.is_valid:
-        raise ValueError("Invalid polygon before splitting at the antimeridian.")
-
-    eastern_hemi = shapely.geometry.box(0.0, -90.0, 180.0, 90.0)
-    western_hemi = shapely.geometry.box(180.0, -90.0, 360.0, 90.0)
-
-    western_poly = valid_poly.intersection(western_hemi)
-    western_poly = shapely.ops.transform(lambda x, y: (x - 360.0, y), western_poly)  # shift back
-    eastern_poly = valid_poly.intersection(eastern_hemi)
-
-    if not western_poly.is_valid or not eastern_poly.is_valid:
-        raise ValueError("Invalid polygon after splitting at the antimeridian.")
-
-    return shapely.MultiPolygon([western_poly, eastern_poly])
 
 
 def _download_landsat_metadata() -> pd.DataFrame:
@@ -97,7 +70,7 @@ def _landsat_metadata_to_geodataframe(df: pd.DataFrame) -> gpd.GeoDataFrame:
         .reshape(-1, 5, 2)
     )
 
-    out = gpd.GeoDataFrame(
+    return gpd.GeoDataFrame(
         df,
         geometry=polys,
         crs="EPSG:4326",
@@ -112,11 +85,6 @@ def _landsat_metadata_to_geodataframe(df: pd.DataFrame) -> gpd.GeoDataFrame:
             "geometry",
         ],
     )
-
-    # Split polygons that cross the antimeridian
-    invalid = ~out.is_valid
-    out.loc[invalid, "geometry"] = out.loc[invalid, "geometry"].apply(_split_antimeridian)
-    return out
 
 
 def open_landsat_metadata(
@@ -151,75 +119,3 @@ def open_landsat_metadata(
     gdf = _landsat_metadata_to_geodataframe(df)
     gdf.to_parquet(cachestore.path(cache_key), index=False)
     return gdf
-
-
-def parse_ephemeris_landsat(ang_content: str) -> pd.DataFrame:
-    """Find the EPHEMERIS group in a ANG text file and extract the data arrays.
-
-    Parameters
-    ----------
-    ang_content : str
-        The content of the ANG file as a string.
-
-    Returns
-    -------
-    pd.DataFrame
-        A :class:`pandas.DataFrame` containing the ephemeris track with columns:
-        - EPHEMERIS_TIME: Timestamps of the ephemeris data.
-        - EPHEMERIS_ECEF_X: ECEF X coordinates.
-        - EPHEMERIS_ECEF_Y: ECEF Y coordinates.
-        - EPHEMERIS_ECEF_Z: ECEF Z coordinates.
-    """
-
-    # Find GROUP = EPHEMERIS, capture everything non-greedily (.*?) until END_GROUP = EPHEMERIS
-    pattern = r"GROUP\s*=\s*EPHEMERIS\s*(.*?)\s*END_GROUP\s*=\s*EPHEMERIS"
-    match = re.search(pattern, ang_content, flags=re.DOTALL)
-    if match is None:
-        raise ValueError("No data found for EPHEMERIS group in the ANG content.")
-    ephemeris_content = match.group(1)
-
-    pattern = r"EPHEMERIS_EPOCH_YEAR\s*=\s*(\d+)"
-    match = re.search(pattern, ephemeris_content)
-    if match is None:
-        raise ValueError("No data found for EPHEMERIS_EPOCH_YEAR in the ANG content.")
-    year = int(match.group(1))
-
-    pattern = r"EPHEMERIS_EPOCH_DAY\s*=\s*(\d+)"
-    match = re.search(pattern, ephemeris_content)
-    if match is None:
-        raise ValueError("No data found for EPHEMERIS_EPOCH_DAY in the ANG content.")
-    day = int(match.group(1))
-
-    pattern = r"EPHEMERIS_EPOCH_SECONDS\s*=\s*(\d+\.\d+)"
-    match = re.search(pattern, ephemeris_content)
-    if match is None:
-        raise ValueError("No data found for EPHEMERIS_EPOCH_SECONDS in the ANG content.")
-    seconds = float(match.group(1))
-
-    t0 = (
-        pd.Timestamp(year=year, month=1, day=1)
-        + pd.Timedelta(days=day - 1)
-        + pd.Timedelta(seconds=seconds)
-    )
-
-    # Find all the EPHEMERIS_* arrays
-    array_patterns = {
-        "EPHEMERIS_TIME": r"EPHEMERIS_TIME\s*=\s*\((.*?)\)",
-        "EPHEMERIS_ECEF_X": r"EPHEMERIS_ECEF_X\s*=\s*\((.*?)\)",
-        "EPHEMERIS_ECEF_Y": r"EPHEMERIS_ECEF_Y\s*=\s*\((.*?)\)",
-        "EPHEMERIS_ECEF_Z": r"EPHEMERIS_ECEF_Z\s*=\s*\((.*?)\)",
-    }
-
-    arrays = {}
-    for key, pattern in array_patterns.items():
-        match = re.search(pattern, ephemeris_content, flags=re.DOTALL)
-        if match is None:
-            raise ValueError(f"No data found for {key} in the ANG content.")
-        data_str = match.group(1)
-
-        data_list = [float(x.strip()) for x in data_str.split(",")]
-        if key == "EPHEMERIS_TIME":
-            data_list = [t0 + pd.Timedelta(seconds=t) for t in data_list]
-        arrays[key] = data_list
-
-    return pd.DataFrame(arrays)
