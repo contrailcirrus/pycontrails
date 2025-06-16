@@ -10,6 +10,31 @@ import shapely
 from pycontrails.core import cache
 
 
+def _split_antimeridian(polygon: shapely.Polygon) -> shapely.MultiPolygon:
+    """Split a polygon into two polygons at the antimeridian.
+
+    This implementation assumes that the passed polygon is actually situated
+    on the antimeridian and does simultaneously cross the meridian.
+    """
+    # Shift the x-coordinates of the polygon to the right
+    # The `valid_poly` will not be valid if the polygon spans the meridian
+    valid_poly = shapely.ops.transform(lambda x, y: (x if x >= 0.0 else x + 360.0, y), polygon)
+    if not valid_poly.is_valid:
+        raise ValueError("Invalid polygon before splitting at the antimeridian.")
+
+    eastern_hemi = shapely.geometry.box(0.0, -90.0, 180.0, 90.0)
+    western_hemi = shapely.geometry.box(180.0, -90.0, 360.0, 90.0)
+
+    western_poly = valid_poly.intersection(western_hemi)
+    western_poly = shapely.ops.transform(lambda x, y: (x - 360.0, y), western_poly)  # shift back
+    eastern_poly = valid_poly.intersection(eastern_hemi)
+
+    if not western_poly.is_valid or not eastern_poly.is_valid:
+        raise ValueError("Invalid polygon after splitting at the antimeridian.")
+
+    return shapely.MultiPolygon([western_poly, eastern_poly])
+
+
 def _download_landsat_metadata() -> pd.DataFrame:
     """Download and parse the Landsat metadata CSV file from USGS.
 
@@ -70,7 +95,7 @@ def _landsat_metadata_to_geodataframe(df: pd.DataFrame) -> gpd.GeoDataFrame:
         .reshape(-1, 5, 2)
     )
 
-    return gpd.GeoDataFrame(
+    out = gpd.GeoDataFrame(
         df,
         geometry=polys,
         crs="EPSG:4326",
@@ -85,6 +110,11 @@ def _landsat_metadata_to_geodataframe(df: pd.DataFrame) -> gpd.GeoDataFrame:
             "geometry",
         ],
     )
+
+    # Split polygons that cross the antimeridian
+    invalid = ~out.is_valid
+    out.loc[invalid, "geometry"] = out.loc[invalid, "geometry"].apply(_split_antimeridian)
+    return out
 
 
 def open_landsat_metadata(
