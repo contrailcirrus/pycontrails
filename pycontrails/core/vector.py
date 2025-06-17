@@ -242,7 +242,7 @@ def _empty_vector_dict(keys: Iterable[str]) -> dict[str, np.ndarray]:
     return data
 
 
-class VectorDataset:
+class VectorDataset:  # noqa: PLW1641
     """Base class to hold 1D arrays of consistent size.
 
     Parameters
@@ -564,7 +564,7 @@ class VectorDataset:
         _repr = f"{class_name} [{n_keys} keys x {self.size} length, {n_attrs} attributes]"
 
         keys = list(self)
-        keys = keys[0:5] + ["..."] + keys[-1:] if len(keys) > 5 else keys
+        keys = [*keys[0:5], "...", *keys[-1:]] if len(keys) > 5 else keys
         _repr += f"\n\tKeys: {', '.join(keys)}"
 
         attrs = self._display_attrs()
