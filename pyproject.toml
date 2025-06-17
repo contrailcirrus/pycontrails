@@ -211,6 +211,7 @@ filterwarnings = [
     "ignore:.*IPyNbFile:pytest.PytestRemovedIn9Warning:_pytest.nodes",
     "ignore:.*pkg_resources:DeprecationWarning",
     "ignore:The default level_type will change:DeprecationWarning",
+    "ignore:Conversion of an array with ndim > 0 to a scalar:DeprecationWarning:pyproj.transformer",
 ]
 testpaths = ["tests/unit"]
 
