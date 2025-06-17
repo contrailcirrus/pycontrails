@@ -2138,7 +2138,8 @@ def compare_cocip_with_goes(
         File path of saved CoCiP-GOES image if ``path_write_img`` is provided.
     """
 
-    from pycontrails.datalib.goes import GOES, extract_goes_visualization
+    # We'll get a nice error message if dependencies are not installed
+    from pycontrails.datalib import goes
 
     try:
         import cartopy.crs as ccrs
@@ -2213,9 +2214,8 @@ def compare_cocip_with_goes(
     _contrail = _contrail.filter(is_in_domain)
 
     # Download GOES image at `time`
-    goes = GOES(region=region)
-    da = goes.get(time)
-    rgb, transform, extent = extract_goes_visualization(da)
+    da = goes.GOES(region=region).get(time)
+    rgb, transform, extent = goes.extract_goes_visualization(da)
     bbox = spatial_bbox[0], spatial_bbox[2], spatial_bbox[1], spatial_bbox[3]
 
     # Calculate optimal figure dimensions
