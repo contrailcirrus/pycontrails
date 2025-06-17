@@ -17,7 +17,6 @@ else:
 
 LOG = logging.getLogger(__name__)
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -370,16 +369,14 @@ class HRES(ECMWFAPI):
         list[tuple[pd.Timestamp, pd.Timestamp]]
             List of tuple time bounds that can be used as inputs to :class:`HRES(time=...)`
         """
-        time_ranges = np.unique(
-            [pd.Timestamp(t.year, t.month, t.day, 12 * (t.hour // 12)) for t in timesteps]
-        )
+        time_ranges = sorted({t.floor("12h") for t in timesteps})
 
         if len(time_ranges) == 1:
-            time_ranges = [(timesteps[0], timesteps[-1])]
-        else:
-            time_ranges[0] = (timesteps[0], time_ranges[1] - pd.Timedelta(hours=1))
-            time_ranges[1:-1] = [(t, t + pd.Timedelta(hours=11)) for t in time_ranges[1:-1]]
-            time_ranges[-1] = (time_ranges[-1], timesteps[-1])
+            return [(timesteps[0], timesteps[-1])]
+
+        time_ranges[0] = (timesteps[0], time_ranges[1] - pd.Timedelta(hours=1))
+        time_ranges[1:-1] = [(t, t + pd.Timedelta(hours=11)) for t in time_ranges[1:-1]]
+        time_ranges[-1] = (time_ranges[-1], timesteps[-1])
 
         return time_ranges
 

@@ -238,7 +238,7 @@ def _contours_to_polygons(
                 latitude=latitude,
                 precision=precision,
                 buffer=buffer,
-                i=child_i,
+                i=child_i,  # type: ignore[arg-type]
             )
 
             candidate = shapely.Polygon(polygon.exterior, [h.exterior for h in holes])

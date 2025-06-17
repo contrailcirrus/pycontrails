@@ -2198,11 +2198,11 @@ def result_merge_source(
     """Merge ``results`` and ``verbose_dict`` onto ``source``."""
 
     # Initialize the main output arrays to all zeros
-    dtype = result["age"].dtype if result else "timedelta64[ns]"
-    contrail_age = np.zeros(source.size, dtype=dtype)
+    age_dtype = result["age"].dtype if result else "timedelta64[ns]"
+    contrail_age = np.zeros(source.size, dtype=age_dtype)
 
-    dtype = result["ef"].dtype if result else np.float32
-    ef_per_m = np.zeros(source.size, dtype=dtype)
+    ef_dtype = result["ef"].dtype if result else np.float32
+    ef_per_m = np.zeros(source.size, dtype=ef_dtype)
 
     # If there are results, merge them in
     if result:
