@@ -88,12 +88,12 @@ def test_buffer_domain_time_like():
     assert sl.start == 66
     assert sl.stop == 175
 
-    with pytest.warns(UserWarning):
-        buffer = buffer[0], -buffer[1]
+    buffer = buffer[0], -buffer[1]
+    with pytest.warns(UserWarning, match="negative value"):
         coordinates.slice_domain(domain, request, buffer)
 
-    with pytest.warns(UserWarning):
-        buffer = -buffer[0], buffer[1]
+    buffer = -buffer[0], buffer[1]
+    with pytest.warns(UserWarning, match="negative value"):
         coordinates.slice_domain(domain, request, buffer)
 
 
@@ -108,12 +108,12 @@ def test_buffer_domain_warning():
     sl = coordinates.slice_domain(domain, request, buffer)
     np.testing.assert_array_equal(domain[sl], domain[(domain <= 101) & (domain >= -101)])
 
-    with pytest.warns(UserWarning):
-        buffer = -1, 0
+    buffer = -1, 0
+    with pytest.warns(UserWarning, match="negative value"):
         coordinates.slice_domain(domain, request, buffer)
 
-    with pytest.warns(UserWarning):
-        buffer = 3, -1
+    buffer = 3, -1
+    with pytest.warns(UserWarning, match="negative value"):
         coordinates.slice_domain(domain, request, buffer)
 
 

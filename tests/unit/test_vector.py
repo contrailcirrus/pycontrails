@@ -759,17 +759,23 @@ def test_time_parsing(random_geo_path: VectorDataset) -> None:
     data.update(time=[1000000000, 1000000060, 1000000120, 1000000240])
     with pytest.warns(UserWarning, match="time"):
         gvds = GeoVectorDataset(data)
-        assert gvds["time"][0] == np.datetime64("2001-09-09 01:46:40", "ns")
+
+    assert gvds["time"][0] == np.datetime64("2001-09-09 01:46:40", "ns")
 
     # reasonable int times are supported
     data.update(time=[1000000000000, 1000000060000, 1000000120000, 1000000240000])
     with pytest.warns(UserWarning, match="time"):
         vector = GeoVectorDataset(data)
-        assert vector["time"][0] == np.datetime64("2001-09-09 01:46:40", "ns")
+
+    assert vector["time"][0] == np.datetime64("2001-09-09 01:46:40", "ns")
 
     # random strings cannot be converted
     data.update(time=["hello", "world", "con", "trail"])
-    with pytest.warns(UserWarning), pytest.raises(ValueError, match="time"):
+    with (
+        pytest.warns(UserWarning, match="time"),
+        pytest.warns(UserWarning, match="infer format"),
+        pytest.raises(ValueError, match="time"),
+    ):
         GeoVectorDataset(data)
 
     # UTC timezones are stripped

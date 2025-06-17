@@ -7,7 +7,7 @@ import pandas as pd
 import pyproj
 import pytest
 
-from pycontrails.physics import constants, geo
+from pycontrails.physics import constants, geo, units
 from tests.unit import get_static_path
 
 
@@ -172,7 +172,6 @@ def deprecated_segment_angle(
     --------
     :func:`haversine`
     """
-    from pycontrails.physics import constants, units
 
     lats_next = np.roll(latitude, -1)
     lats_avg = 0.5 * (latitude + lats_next)

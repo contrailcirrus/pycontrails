@@ -492,6 +492,8 @@ def grid_results_generic_met(
 
     with pytest.warns(UserWarning, match="Unknown provider 'Generic'"):
         gc = CocipGrid(**instance_params_generic_met)
+
+    with pytest.warns(UserWarning, match="Unknown provider 'Generic'"):
         return gc.eval(source=source, aircraft_performance=bada_grid_model)
 
 
