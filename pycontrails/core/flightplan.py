@@ -97,8 +97,8 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     --------
     :func:`to_atc_plan`
     """
-    atc_plan = atc_plan.replace("\r", "")
-    atc_plan = atc_plan.replace("\n", "")
+    atc_plan = atc_plan.replace("\r", " ")
+    atc_plan = atc_plan.replace("\n", " ")
     atc_plan = atc_plan.upper()
     atc_plan = atc_plan.strip()
 
