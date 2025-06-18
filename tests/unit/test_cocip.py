@@ -244,6 +244,7 @@ def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
         "met_time_buffer": (np.timedelta64(0, "h"), np.timedelta64(1, "h")),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
+        "output_effective_radius": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
 
@@ -270,6 +271,7 @@ def cocip_persistent_lowmem(fl: Flight, met: MetDataset, rad: MetDataset) -> Coc
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
         "preprocess_lowmem": True,
+        "output_effective_radius": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
     with pytest.warns(UserWarning, match="At time .* contrail has no intersection with the met"):
@@ -292,6 +294,7 @@ def cocip_persistent_lowmem_indices(fl: Flight, met: MetDataset, rad: MetDataset
         "compute_atr20": True,
         "preprocess_lowmem": True,
         "interpolation_use_indices": True,
+        "output_effective_radius": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
     with pytest.warns(UserWarning, match="At time .* contrail has no intersection with the met"):
@@ -318,6 +321,7 @@ def cocip_persistent_generic(
         "met_time_buffer": (np.timedelta64(0, "h"), np.timedelta64(1, "h")),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
+        "output_effective_radius": True,
     }
     with pytest.warns(UserWarning, match="Unknown provider 'Generic'"):
         cocip = Cocip(met_generic_cocip1.copy(), rad=rad_generic_cocip1.copy(), params=params)
