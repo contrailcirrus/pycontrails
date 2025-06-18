@@ -243,6 +243,7 @@ def cocip_persistent(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
         "met_time_buffer": (np.timedelta64(0, "h"), np.timedelta64(1, "h")),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
+        "output_effective_radius": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
 
@@ -269,6 +270,7 @@ def cocip_persistent_lowmem(fl: Flight, met: MetDataset, rad: MetDataset) -> Coc
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
         "preprocess_lowmem": True,
+        "output_effective_radius": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
     with pytest.warns(UserWarning, match="At time .* contrail has no intersection with the met"):
@@ -291,6 +293,7 @@ def cocip_persistent_lowmem_indices(fl: Flight, met: MetDataset, rad: MetDataset
         "compute_atr20": True,
         "preprocess_lowmem": True,
         "interpolation_use_indices": True,
+        "output_effective_radius": True,
     }
     cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
     with pytest.warns(UserWarning, match="At time .* contrail has no intersection with the met"):
@@ -317,6 +320,7 @@ def cocip_persistent_generic(
         "met_time_buffer": (np.timedelta64(0, "h"), np.timedelta64(1, "h")),
         "humidity_scaling": ExponentialBoostHumidityScaling(),
         "compute_atr20": True,
+        "output_effective_radius": True,
     }
     with pytest.warns(UserWarning, match="Unknown provider 'Generic'"):
         cocip = Cocip(met_generic_cocip1.copy(), rad=rad_generic_cocip1.copy(), params=params)
@@ -1797,6 +1801,20 @@ def test_radiative_heating_effects():
 
     ratio = eff_heat_rate / d_heat_rate
     assert 0 < ratio < 1
+
+
+def test_effective_radius(cocip_persistent: Cocip):
+    """Test effective radius implementation."""
+    contrail_output = pd.read_json(get_static_path("cocip-contrail-output.json"), orient="records")
+    assert "reff" in contrail_output
+    assert "reff" in cocip_persistent.contrail
+
+    np.testing.assert_allclose(
+        cocip_persistent.contrail["reff"],
+        contrail_output["reff"],
+        err_msg="reff",
+        rtol=1e-5,
+    )
 
 
 @pytest.mark.parametrize("max_altitude", [11200, None])
