@@ -164,8 +164,9 @@ Dry Advection
 ACCF
 """"
 
-    This model is an interface over the DLR / UMadrid `climaccf <https://github.com/dlr-pa/climaccf>`__ package.
-    See :ref:`accf-install` for more information.
+    This model is an interface over the DLR / UMadrid `climaccf <https://github.com/dlr-pa/climaccf>`__
+    package for `ACCF modeling <https://gmd.copernicus.org/preprints/gmd-2022-203/>`__. It
+    requires the ``pycontrails[accf]`` extra to be installed.
 
 .. autosummary::
     :toctree: api/

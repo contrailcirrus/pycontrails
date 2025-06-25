@@ -11,6 +11,7 @@
 ### Internals
 
 - Support [ruff 0.12.0](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md#0120).
+- Update the ACCF install documentation. Add `pycontrails[accf]` optional extra dependency.
 
 ## 0.54.10
 

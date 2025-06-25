@@ -46,6 +46,9 @@ Issues = "https://github.com/contrailcirrus/pycontrails/issues"
 Repository = "https://github.com/contrailcirrus/pycontrails"
 
 [project.optional-dependencies]
+
+accf = ["climaccf @ git+ssh://git@github.com/dlr-pa/climaccf"]
+
 # All non-development dependencies
 # Only dependencies that work on all python versions
 complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]

@@ -55,6 +55,7 @@ The ``pycontrails`` package uses optional dependencies for specific features:
     $ pip install "pycontrails[jupyter]"  # Jupyter notebook and lab interface
     $ pip install "pycontrails[vis]"      # Polygon construction methods and plotting support
     $ pip install "pycontrails[zarr]"     # Load data from remote Zarr stores
+    $ pip install "pycontrails[accf]"     # ACCF model interface - https://gmd.copernicus.org/preprints/gmd-2022-203
 
     # These packages may not support the latest python version
     # and are excluded from "complete"
@@ -134,13 +135,3 @@ to the `Cirium <https://www.cirium.com/>`__ database of jet engines.
 
     pip install "pycontrails-cirium @ git+ssh://git@github.com/contrailcirrus/pycontrails-cirium.git"
 
-.. _accf-install:
-
-ACCF
-~~~~
-
-Interface to DLR / UMadrid `ACCF model <https://gmd.copernicus.org/preprints/gmd-2022-203/>`__.
-
-.. code-block:: bash
-
-    pip install "climaccf @ git+ssh://git@github.com/dlr-pa/climaccf"
