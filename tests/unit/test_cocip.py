@@ -32,7 +32,10 @@ from pycontrails.models.cocip.output_formats import (
     longitude_latitude_grid,
     time_slice_statistics,
 )
-from pycontrails.models.cocip.radiative_forcing import contrail_contrail_overlap_radiative_effects
+from pycontrails.models.cocip.radiative_forcing import (
+    contrail_contrail_overlap_radiative_effects,
+    effective_radius,
+)
 from pycontrails.models.humidity_scaling import (
     ConstantHumidityScaling,
     ExponentialBoostHumidityScaling,
@@ -1797,6 +1800,26 @@ def test_radiative_heating_effects():
 
     ratio = eff_heat_rate / d_heat_rate
     assert 0 < ratio < 1
+
+
+def test_effective_radius(cocip_persistent: Cocip):
+    """Verify effective radius isn't in the final dataset since output_effective_radius = False
+    by default. Verify also the effective radius value.
+    """
+    contrail_output = pd.read_json(get_static_path("cocip-contrail-output.json"), orient="records")
+    assert "reff" not in contrail_output
+    assert "reff" not in cocip_persistent.contrail
+
+    cocip_params = CocipParams()
+
+    r_ice_vol = contrail_output["r_ice_vol"]
+    r_vol_um = r_ice_vol * 1e6
+    reff = effective_radius(
+        r_vol_um, cocip_params.habit_distributions, cocip_params.radius_threshold_um
+    )
+
+    assert np.all(reff.mean() > 0)
+    assert np.all(reff.mean() < 45)
 
 
 @pytest.mark.parametrize("max_altitude", [11200, None])
