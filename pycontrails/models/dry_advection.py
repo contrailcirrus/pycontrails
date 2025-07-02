@@ -124,8 +124,13 @@ class DryAdvection(models.Model):
     @overload
     def eval(self, source: None = ..., **params: Any) -> NoReturn: ...
 
-    def eval(self, source: GeoVectorDataset | None = None, **params: Any) -> GeoVectorDataset:
-        """Simulate dry advection (no sedimentation) of arbitrary points.
+    def eval(
+        self,
+        source: GeoVectorDataset | None = None,
+        output_datetimes: npt.NDArray[np.datetime64] | None = None,
+        **params: Any,
+    ) -> GeoVectorDataset:
+        """Simulate dry advection of arbitrary points.
 
         Like :class:`Cocip`, this model adds a "waypoint" column to the :attr:`source`.
 
@@ -138,6 +143,12 @@ class DryAdvection(models.Model):
             want to use wind shear effects for a flight.
             In the current implementation, any existing meteorological variables in the ``source``
             are ignored. The ``source`` will be interpolated against the :attr:`met` dataset.
+
+        output_datetimes : npt.NDArray[np.datetime64], optional
+            Simulation output times. If not provided, output is provided at the end of every
+            time step. Note that using this argument may lead to changes in simulation results
+            if output is requested at times that are not aligned with default model timesteps.
+
         params : Any
             Overwrite model parameters defined in ``__init__``.
 
@@ -170,6 +181,10 @@ class DryAdvection(models.Model):
         t1 = source_time.max()
         timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
 
+        if output_datetimes is not None:
+            mask = (output_datetimes > timesteps[0]) & (output_datetimes < timesteps[-1])
+            timesteps = np.sort(np.concat((timesteps, output_datetimes[mask])))
+
         vector2 = GeoVectorDataset()
         met = None
 
@@ -192,7 +207,9 @@ class DryAdvection(models.Model):
                 verbose_outputs=verbose_outputs,
                 **interp_kwargs,
             )
-            evolved.append(vector1)
+
+            if output_datetimes is None or t in output_datetimes:
+                evolved.append(vector1)
 
             filt = (vector2["age"] <= max_age) & vector2.coords_intersect_met(self.met)
             vector2 = vector2.filter(filt)
@@ -200,7 +217,9 @@ class DryAdvection(models.Model):
             if not vector2 and np.all(source_time < t):
                 break
 
-        evolved.append(vector2)
+        if output_datetimes is None or timesteps[-1] in output_datetimes:
+            evolved.append(vector2)
+
         out = GeoVectorDataset.sum(evolved, fill_value=np.nan)
 
         if self.params["include_source_in_output"]:
