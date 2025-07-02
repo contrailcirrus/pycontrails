@@ -178,8 +178,6 @@ def _scan_angle_correction_chunk(
     zn = ds["VZA"]
     az = ds["VAA"]
 
-    # We take an argmin below, so if zn or az is entirely nan, we will get
-    # a numpy All-NaN slice error. Avoid this by checking here.
     if zn.isnull().all() or az.isnull().all():
         return np.full_like(x, fill_value=np.nan), np.full_like(y, fill_value=np.nan)
 
@@ -203,6 +201,14 @@ def _scan_angle_correction_chunk(
     # Find the closest point in the lifted array to the original point
     # Do this for each point in the points dimension
     dist_squared = (x_da - x_lift) ** 2 + (y_da - y_lift) ** 2
+
+    # We take an argmin below, so we need to avoid a numpy All-NaN slice error.
+    # Simply filling with a large finite value (not np.inf) will work because
+    # we check the distance against a threshold later. See comment below for
+    # threshold details.
+    threshold = 15.0**2 + 15.0**2
+    dist_squared = dist_squared.fillna(2.0 * threshold)
+
     indices = dist_squared.argmin(dim=["x", "y"])
 
     # After we lift, the distance between the lifted point and the original point
@@ -210,7 +216,6 @@ def _scan_angle_correction_chunk(
     # or nan values in the image may have caused the lifted point to be invalid.
     # So we check that the distance is small enough. Here, ds has 30m pixels, so
     # valid lifts should be within 15^2 + 15^2 of the original point.
-    threshold = 15.0**2 + 15.0**2
     valid = dist_squared.isel(indices) <= threshold
 
     x_out = ds["x"].isel(x=indices["x"]).where(valid).to_numpy()
