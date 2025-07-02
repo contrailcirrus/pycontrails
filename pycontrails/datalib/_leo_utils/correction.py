@@ -177,6 +177,12 @@ def _scan_angle_correction_chunk(
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     zn = ds["VZA"]
     az = ds["VAA"]
+
+    # We take an argmin below, so if zn or az is entirely nan, we will get
+    # a numpy All-NaN slice error. Avoid this by checking here.
+    if zn.isnull().all() or az.isnull().all():
+        return np.full_like(x, fill_value=np.nan), np.full_like(y, fill_value=np.nan)
+
     zn_rad = np.deg2rad(zn)
     az_rad = np.deg2rad(az)
 
