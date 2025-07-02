@@ -801,6 +801,7 @@ class Flight(GeoVectorDataset):
     def resample_and_fill(
         self,
         freq: str = "1min",
+        time_override: pd.DatetimeIndex | None = None,
         fill_method: str = "geodesic",
         geodesic_threshold: float = 100e3,
         nominal_rocd: float = constants.nominal_rocd,
@@ -823,6 +824,9 @@ class Flight(GeoVectorDataset):
         ----------
         freq : str, optional
             Resampling frequency, by default "1min"
+        time_override : pd.DatetimeIndex | None
+            If present, override resampling times computed based on :param:`freq`.
+            :param:`freq` is ignored if :param:`time_override` is provided.
         fill_method : {"geodesic", "linear"}, optional
             Choose between ``"geodesic"`` and ``"linear"``, by default ``"geodesic"``.
             In geodesic mode, large gaps between waypoints are filled with geodesic
@@ -933,7 +937,7 @@ class Flight(GeoVectorDataset):
         # STEP 5: Resample flight to freq
         # Save altitudes to copy over - these just get rounded down in time.
         # Also get target sample indices
-        df, t = _resample_to_freq(df, freq)
+        df, t = _resample_to_freq(df, freq, time_override)
 
         if shift is not None:
             # We need to translate back to the original chart here
@@ -2129,7 +2133,9 @@ def segment_rocd(
     return T_correction * out  # type: ignore[return-value]
 
 
-def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
+def _resample_to_freq(
+    df: pd.DataFrame, freq: str, time_override: pd.DatetimeIndex | None = None
+) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
     """Resample a DataFrame to a given frequency.
 
     This function is used to resample a DataFrame to a given frequency. The new
@@ -2145,6 +2151,9 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
     freq : str
         Frequency to resample to. See :func:`pd.DataFrame.resample` for
         valid frequency strings.
+    time_override : pd.DatetimeIndex | None
+        Set of timestamps used to override those computed based on :param:`freq`.
+        By default, timestamps computed based on :param:`freq` are used.
 
     Returns
     -------
@@ -2154,9 +2163,14 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
 
     # Manually create a new index that includes all the original index values
     # and the resampled-to-freq index values.
-    t0 = df.index[0].ceil(freq)
-    t1 = df.index[-1]
-    t = pd.date_range(t0, t1, freq=freq, name="time")
+    if time_override is None:
+        t0 = df.index[0].ceil(freq)
+        t1 = df.index[-1]
+        t = pd.date_range(t0, t1, freq=freq, name="time")
+    else:
+        t0 = df.index[0]
+        t1 = df.index[-1]
+        t = time_override[(time_override >= t0) & (time_override <= t1)].rename("time")
 
     concat_arr = np.concatenate([df.index, t])
     concat_arr = np.unique(concat_arr)
