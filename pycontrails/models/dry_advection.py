@@ -182,16 +182,21 @@ class DryAdvection(models.Model):
         timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
 
         if output_datetimes is not None:
-            mask = (output_datetimes > timesteps[0]) & (output_datetimes < timesteps[-1])
-            timesteps = np.sort(np.concat((timesteps, output_datetimes[mask])))
+            mask = (output_datetimes > t0) & (output_datetimes < timesteps[-1])
+            timesteps = np.sort(np.unique(np.concat((timesteps, output_datetimes[mask]))))
 
         vector2 = GeoVectorDataset()
         met = None
 
         evolved = []
-        for t in timesteps:
-            filt = (source_time < t) & (source_time >= t - dt_integration)
+        ti = t0
+        for tf in timesteps:
+            filt = (source_time < tf) & (source_time >= ti)
             vector1 = vector2 + self.source.filter(filt, copy=False)
+
+            if not vector1:
+                ti = tf
+                continue
 
             t0 = vector1["time"].min()
             t1 = vector1["time"].max()
@@ -200,7 +205,7 @@ class DryAdvection(models.Model):
             vector2 = _evolve_one_step(
                 met,
                 vector1,
-                t,
+                tf,
                 sedimentation_rate=sedimentation_rate,
                 dz_m=dz_m,
                 max_depth=max_depth,
@@ -208,14 +213,16 @@ class DryAdvection(models.Model):
                 **interp_kwargs,
             )
 
-            if output_datetimes is None or t in output_datetimes:
+            if output_datetimes is None or ti in output_datetimes:
                 evolved.append(vector1)
 
             filt = (vector2["age"] <= max_age) & vector2.coords_intersect_met(self.met)
             vector2 = vector2.filter(filt)
 
-            if not vector2 and np.all(source_time < t):
+            if not vector2 and np.all(source_time < tf):
                 break
+
+            ti = tf
 
         if output_datetimes is None or timesteps[-1] in output_datetimes:
             evolved.append(vector2)
