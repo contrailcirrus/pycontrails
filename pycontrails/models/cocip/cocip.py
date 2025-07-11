@@ -2147,6 +2147,12 @@ def calc_radiative_properties(contrail: GeoVectorDataset, params: dict[str, Any]
         r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus_, habit_weights
     )
 
+    if params["output_effective_radius"]:
+        # Add effective radius to the contrail waypoint outputs
+        contrail["reff"] = radiative_forcing.effective_radius(
+            r_vol_um, params["habit_distributions"], params["radius_threshold_um"]
+        )
+
     # scale RF by enhancement factors
     rf_lw_scaled = rf_lw * params["rf_lw_enhancement_factor"]
     rf_sw_scaled = rf_sw * params["rf_sw_enhancement_factor"]

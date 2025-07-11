@@ -152,6 +152,9 @@ class CocipParams(AdvectionBuffers):
     #: :attr:`CocipGridParams.verbose_outputs_evolution`.
     verbose_outputs: bool = False
 
+    #: Add effective radius to contrail output.
+    output_effective_radius: bool = False
+
     #: Add additional metric of ATR20 and global yearly mean RF to model output.
     #: These are not standard CoCiP outputs but based on the derivation used
     #: in the first supplement to :cite:`yinPredictingClimateImpact2023`. ATR20 is defined

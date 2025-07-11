@@ -992,6 +992,19 @@ def test_verbose_outputs_formation(
     assert ds["iwc"].mean() == pytest.approx(4.4621e-06, rel=rel)
 
 
+def test_effective_radius(
+    instance_params: dict[str, Any],
+    source: MetDataset,
+) -> None:
+    """Confirm the effective_radius value."""
+    instance_params["output_effective_radius"] = True
+    gc = CocipGrid(**instance_params, aircraft_performance=PSGrid())
+    out = gc.eval(source=source)
+
+    assert np.all(out.data["reff"].mean() > 0)
+    assert np.all(out.data["reff"].mean() < 45)
+
+
 def test_cocip_grid_one_hour_dt_integration(
     source: MetDataset, instance_params: dict[str, Any]
 ) -> None:
