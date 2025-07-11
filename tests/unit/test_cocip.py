@@ -34,7 +34,6 @@ from pycontrails.models.cocip.output_formats import (
 )
 from pycontrails.models.cocip.radiative_forcing import (
     contrail_contrail_overlap_radiative_effects,
-    effective_radius,
 )
 from pycontrails.models.humidity_scaling import (
     ConstantHumidityScaling,
@@ -411,6 +410,32 @@ def cocip_persistent2_generic(
     with pytest.warns(UserWarning, match="Unknown provider 'Generic'"):
         cocip = Cocip(met=met_generic_cocip2.copy(), rad=rad_generic_cocip2.copy(), params=params)
     cocip.eval(source=flight_cocip2)
+
+    return cocip
+
+
+@pytest.fixture()
+def cocip_with_effective_radius(fl: Flight, met: MetDataset, rad: MetDataset) -> Cocip:
+    """Return `Cocip` instance by adding the effective radius in the output."""
+
+    fl.update(longitude=np.linspace(-29, -32, 20))
+    fl.update(latitude=np.linspace(56, 57, 20))
+    fl.update(altitude=np.linspace(10900, 10900, 20))
+
+    params = {
+        "max_age": np.timedelta64(3, "h"),
+        "process_emissions": False,
+        "humidity_scaling": ExponentialBoostHumidityScaling(),
+        "output_effective_radius": True,
+    }
+
+    cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
+
+    # Eventually the advected waypoints will blow out of bounds
+    # Specifically, there is a contrail at 4:30 with latitude larger than 59
+    # We acknowledge this here
+    with pytest.warns(UserWarning, match="At time .* contrail has no intersection with the met"):
+        cocip.eval(source=fl)
 
     return cocip
 
@@ -1802,7 +1827,7 @@ def test_radiative_heating_effects():
     assert 0 < ratio < 1
 
 
-def test_effective_radius(cocip_persistent: Cocip):
+def test_effective_radius(cocip_persistent: Cocip, cocip_with_effective_radius: Cocip):
     """Verify effective radius isn't in the final dataset since output_effective_radius = False
     by default. Verify also the effective radius value.
     """
@@ -1810,13 +1835,7 @@ def test_effective_radius(cocip_persistent: Cocip):
     assert "reff" not in contrail_output
     assert "reff" not in cocip_persistent.contrail
 
-    cocip_params = CocipParams()
-
-    r_ice_vol = contrail_output["r_ice_vol"]
-    r_vol_um = r_ice_vol * 1e6
-    reff = effective_radius(
-        r_vol_um, cocip_params.habit_distributions, cocip_params.radius_threshold_um
-    )
+    reff = cocip_with_effective_radius.contrail["reff"]
 
     assert np.all(reff.mean() > 0)
     assert np.all(reff.mean() < 45)

@@ -450,9 +450,14 @@ def effective_radius(
     radius_threshold_um: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
     r"""
-    Calculate the effective radius of contrail ice particles for each waypoints.
+    Calculate the effective radius of contrail ice particles for each waypoint.
 
-    For each waypoints, all the habits are assumed by applying a weighted harmonic mean.
+    For each waypoint, all the habits are assumed by applying a weighted harmonic mean.
+    This choice is motivated by the fact that the harmonic mean gives greater influence to smaller
+    radius values (provided they are significantly weighted) which aligns with the physical
+    behavior of contrails.
+    The harmonic mean thus provides a more accurate and conservative estimate of the effective
+    radius by reflecting the stronger radiative impact of smaller ice crystals.
 
     Parameters
     ----------

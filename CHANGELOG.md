@@ -7,6 +7,7 @@
 - Fix the `GOES` interface caching mechanism when a custom `goes_bucket` is provided. This allows users to cache both GOES-16 and GOES-18 data without conflicts.
 - Officially support the "scda" HRES stream (useful for forecast reference times 06Z and 18Z). Previously, this was implicitly assumed.
 - Fix an issue with how the `parse_atc_plan` method handles newline characters in the flightplan string.
+- Add the effective radius parameter `reff` to Cocip and CocipGrid output if the `output_effective_radius` parameter is True.
 
 ### Internals
 
