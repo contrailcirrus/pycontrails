@@ -522,7 +522,7 @@ class MetBase(ABC, Generic[XArrayType]):
         return self.data.__len__()
 
     @property
-    def attrs(self) -> dict[Hashable, Any]:
+    def attrs(self) -> dict[str, Any]:
         """Pass through to :attr:`self.data.attrs`."""
         return self.data.attrs
 
