@@ -2,11 +2,16 @@
 
 ## 0.54.11 (unreleased)
 
+### Features
+
+- Add new `target_time` parameter to the `DryAdvection` model. If provided, this parameter overrides the `max_age` parameter and allows the model to advect all waypoints to the specified time. This is useful for running advection simulations over a fixed time period rather than a fixed age. The `target_time` parameter is optional and defaults to `None`, in which case the model behaves as before.
+
 ### Fixes
 
 - Fix the `GOES` interface caching mechanism when a custom `goes_bucket` is provided. This allows users to cache both GOES-16 and GOES-18 data without conflicts.
 - Officially support the "scda" HRES stream (useful for forecast reference times 06Z and 18Z). Previously, this was implicitly assumed.
 - Fix an issue with how the `parse_atc_plan` method handles newline characters in the flightplan string.
+- Fix an issue with the `DryAdvection.eval` implementation in which a large temporal gap between waypoints caused the model to end prematurely.
 
 ### Internals
 
