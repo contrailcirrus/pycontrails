@@ -219,5 +219,5 @@ def test_dry_advection_with_target_time(
         pd.Timestamp(target_time).ceil("5min"),
         freq="5min",
         inclusive="right",
-    ).to_numpy()
+    )[1:].to_numpy()  # the very first waypoint blows out of bounds, so it's not in the output
     np.testing.assert_array_equal(np.unique(out["time"]), expected_times)
