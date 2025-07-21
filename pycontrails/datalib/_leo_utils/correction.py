@@ -127,6 +127,14 @@ def scan_angle_correction_fl(
     tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
         The corrected x and y coordinates as numpy arrays.
     """
+    # Confirm that x is monotonically increasing and y is decreasing
+    # (This is assumed in the filtering logic below)
+    if not np.all(np.diff(ds["x"]) > 0.0):
+        msg = "ds['x'] must be monotonically increasing"
+        raise ValueError(msg)
+    if not np.all(np.diff(ds["y"]) < 0.0):
+        msg = "ds['y'] must be monotonically decreasing"
+        raise ValueError(msg)
 
     # Break into overlapping chunks each with core rectangle chunk_size x chunk_size
     # Use a pixel buffer to avoid translating off the edge
@@ -144,7 +152,9 @@ def scan_angle_correction_fl(
         i1 = min(ds["x"].size, i + chunk_size + chunk_buffer)
         j0 = max(0, j - chunk_buffer)
         j1 = min(ds["y"].size, j + chunk_size + chunk_buffer)
-        ds_chunk = ds.isel(x=slice(i0, i1), y=slice(j0, j1))
+
+        # The _scan_angle_correction_chunk function fails for dask-backed arrays, so load here
+        ds_chunk = ds.isel(x=slice(i0, i1), y=slice(j0, j1))[["VAA", "VZA"]].load()
 
         if ds_chunk["VAA"].isnull().all():
             continue
