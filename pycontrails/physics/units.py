@@ -107,7 +107,7 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
 
 
 def _low_altitude_m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-    T_isa: np.ndarray = m_to_T_isa(h)
+    T_isa = m_to_T_isa(h)
     power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
     return (constants.p_surface * (T_isa / constants.T_msl) ** power_term) / 100.0
 
