@@ -40,6 +40,11 @@ class DryAdvectionParams(models.AdvectionBuffers):
     #: Max age of plume evolution.
     max_age: np.timedelta64 = np.timedelta64(20, "h")
 
+    #: The terminal time of the advection simulation. If provided, the ``max_age`` is
+    #: ignored and the model advects all waypoints to cover this time.
+    #: .. versionadded:: 0.54.11
+    target_time: np.datetime64 | None = None
+
     #: Rate of change of pressure due to sedimentation [:math:`Pa/s`]
     sedimentation_rate: float = 0.0
 
@@ -160,6 +165,7 @@ class DryAdvection(models.Model):
 
         dt_integration = self.params["dt_integration"]
         max_age = self.params["max_age"]
+        target_time = self.params["target_time"]
         sedimentation_rate = self.params["sedimentation_rate"]
         dz_m = self.params["dz_m"]
         max_depth = self.params["max_depth"]
@@ -167,8 +173,13 @@ class DryAdvection(models.Model):
 
         source_time = self.source["time"]
         t0 = pd.Timestamp(source_time.min()).floor(pd.Timedelta(dt_integration)).to_numpy()
-        t1 = source_time.max()
-        timesteps = np.arange(t0 + dt_integration, t1 + dt_integration + max_age, dt_integration)
+        if target_time is not None:
+            timesteps = np.arange(t0 + dt_integration, target_time + dt_integration, dt_integration)
+        else:
+            t1 = source_time.max()
+            timesteps = np.arange(
+                t0 + dt_integration, t1 + dt_integration + max_age, dt_integration
+            )
 
         vector2 = GeoVectorDataset()
         met = None
@@ -197,7 +208,9 @@ class DryAdvection(models.Model):
             )
             evolved.append(vector1)
 
-            filt = (vector2["age"] <= max_age) & vector2.coords_intersect_met(self.met)
+            filt = vector2.coords_intersect_met(self.met)
+            if target_time is None:
+                filt &= vector2["age"] <= max_age
             vector2 = vector2.filter(filt)
 
             if not vector2 and np.all(source_time < t):
