@@ -198,3 +198,26 @@ def test_dry_advection_gap_in_waypoints(met_cocip1: MetDataset) -> None:
     waypoint1 = out.dataframe.query("waypoint == 1")
     expected1 = pd.date_range(t1, periods=21, freq="1min", inclusive="right").to_series(name="time")
     pd.testing.assert_series_equal(waypoint1["time"], expected1, check_index=False)
+
+
+def test_dry_advection_with_target_time(
+    met_cocip1: MetDataset, flight_cocip1: GeoVectorDataset
+) -> None:
+    """Test the :class:`DryAdvection` model with a target time parameter."""
+    target_time = flight_cocip1["time"][-1] - np.timedelta64(7, "m")  # 7 minutes before the last
+    params = {"target_time": target_time, "dt_integration": np.timedelta64(5, "m")}
+
+    model = DryAdvection(met_cocip1, params)
+    out = model.eval(flight_cocip1)
+
+    assert isinstance(out, GeoVectorDataset)
+    assert len(out) == 159
+
+    # The output includes all times to just beyond the target time
+    expected_times = pd.date_range(
+        pd.Timestamp(flight_cocip1["time"].min()).floor("5min"),
+        pd.Timestamp(target_time).ceil("5min"),
+        freq="5min",
+        inclusive="right",
+    ).to_numpy()
+    np.testing.assert_array_equal(np.unique(out["time"]), expected_times)
