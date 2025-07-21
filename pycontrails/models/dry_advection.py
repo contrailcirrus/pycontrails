@@ -191,6 +191,7 @@ class DryAdvection(models.Model):
             if vector1.size == 0:
                 vector2 = GeoVectorDataset()
                 continue
+            evolved.append(vector1)  # NOTE: vector1 is mutated below (geometry and weather added)
 
             t0 = vector1["time"].min()
             t1 = vector1["time"].max()
@@ -206,7 +207,6 @@ class DryAdvection(models.Model):
                 verbose_outputs=verbose_outputs,
                 **interp_kwargs,
             )
-            evolved.append(vector1)
 
             filt = vector2.coords_intersect_met(self.met)
             if target_time is None:
