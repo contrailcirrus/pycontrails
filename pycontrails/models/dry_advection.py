@@ -40,8 +40,9 @@ class DryAdvectionParams(models.AdvectionBuffers):
     #: Max age of plume evolution.
     max_age: np.timedelta64 = np.timedelta64(20, "h")
 
-    #: The terminal time of the advection simulation. If provided, the ``max_age`` is
+    #: The terminal time of the advection simulation. If provided, the ``max_age`` parameter is
     #: ignored and the model advects all waypoints to cover this time.
+    #:
     #: .. versionadded:: 0.54.11
     target_time: np.datetime64 | None = None
 
@@ -176,9 +177,10 @@ class DryAdvection(models.Model):
         if target_time is not None:
             timesteps = np.arange(t0 + dt_integration, target_time + dt_integration, dt_integration)
         else:
-            t1 = source_time.max()
             timesteps = np.arange(
-                t0 + dt_integration, t1 + dt_integration + max_age, dt_integration
+                t0 + dt_integration,
+                source_time.max() + dt_integration + max_age,
+                dt_integration,
             )
 
         vector2 = GeoVectorDataset()
