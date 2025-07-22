@@ -955,7 +955,7 @@ class Flight(GeoVectorDataset):
 
         # finally reset index
         df = df.reset_index()
-        if df.empty:
+        if df.empty and time_override is None:
             msg = "Method 'resample_and_fill' returns in an empty Flight."
             if not keep_original_index:
                 msg = f"{msg} Pass 'keep_original_index=True' to keep the original index."
