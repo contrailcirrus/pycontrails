@@ -44,7 +44,7 @@ class DryAdvectionParams(models.AdvectionBuffers):
     #: Advection timesteps. If provided, ``dt_integration`` will be ignored.
     #:
     #: .. versionadded:: 0.54.11
-    timesteps: npt.NDArray[np.timedelta64] | None = None
+    timesteps: npt.NDArray[np.datetime64] | None = None
 
     #: Rate of change of pressure due to sedimentation [:math:`Pa/s`]
     sedimentation_rate: float = 0.0
