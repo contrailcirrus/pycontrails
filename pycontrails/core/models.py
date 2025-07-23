@@ -1311,7 +1311,11 @@ def update_param_dict(param_dict: dict[str, Any], new_params: dict[str, Any]) ->
             raise KeyError(msg) from None
 
         # Convenience: convert timedelta64-like params
-        if isinstance(old_value, np.timedelta64) and not isinstance(value, np.timedelta64):
+        if (
+            isinstance(old_value, np.timedelta64)
+            and not isinstance(value, np.timedelta64)
+            and value is not None
+        ):
             value = pd.to_timedelta(value).to_numpy()
 
         param_dict[param] = value
