@@ -6,6 +6,8 @@
 
 - Add new `timesteps` parameter to the `DryAdvection` model. If provided, this parameter overrides the timesteps computed by the model. Providing `timesteps` and setting the `max_age` parameter to `None` allows the model to advect all waypoints to the specified times. This is useful for running advection simulations over a fixed time period rather than to a fixed age. The `timesteps` parameter is optional and defaults to `None`, in which case the model behaves as before.
 
+- Add new `time` parameter to `Flight.resample_and_fill`. If provided, flights will be resampled to times in `time` rather than to times computed based on `freq`. The `time` parameter is optional and defaults to `None`, in which case `Flight.resample_and_fill` behaves as before.
+
 ### Fixes
 
 - Fix the `GOES` interface caching mechanism when a custom `goes_bucket` is provided. This allows users to cache both GOES-16 and GOES-18 data without conflicts.

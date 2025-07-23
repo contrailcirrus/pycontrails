@@ -408,6 +408,23 @@ def test_resample_keep_original(fl: Flight) -> None:
     assert len(fl) + len(fl3) == len(fl2) + 1  # 1 duplicate time
 
 
+def test_resample_to_time(fl: Flight) -> None:
+    """Test Flight.resample_and_fill() with specified resampling times."""
+    fl2 = fl.resample_and_fill("10min")
+    time = fl2["time"]
+    fl3 = fl.resample_and_fill(time=time)
+    pd.testing.assert_frame_equal(fl2.dataframe, fl3.dataframe)
+
+    # check handling of out-of-bounds times
+    time = np.arange(
+        fl2["time"].min() - np.timedelta64(1, "D"),
+        fl2["time"].max() + np.timedelta64(1, "D"),
+        np.timedelta64(10, "m"),
+    )
+    fl4 = fl.resample_and_fill(time=time)
+    pd.testing.assert_frame_equal(fl2.dataframe, fl4.dataframe)
+
+
 def test_altitude_interpolation(fl: Flight) -> None:
     """Check the ROCD of the interpolated altitude."""
 
