@@ -806,18 +806,23 @@ class Flight(GeoVectorDataset):
         nominal_rocd: float = constants.nominal_rocd,
         drop: bool = True,
         keep_original_index: bool = False,
+        time: npt.NDArray[np.datetime64] | None = None,
     ) -> Self:
         """Resample and fill flight trajectory with geodesics and linear interpolation.
 
-        Waypoints are resampled according to the frequency ``freq``. Values for :attr:`data`
-        columns ``longitude``, ``latitude``, and ``altitude`` are interpolated.
+        Waypoints are resampled according to the frequency ``freq`` or to the times in ``time``.
+        Values for :attr:`data` columns ``longitude``, ``latitude``, and ``altitude``
+        are interpolated.
 
-        Resampled waypoints will include all multiples of ``freq`` between the flight
-        start and end time. For example, when resampling to a frequency of 1 minute,
-        a flight that starts at 2020/1/1 00:00:59 and ends at 2020/1/1 00:01:01
+        When resampled based on ``freq``, waypoints will include all multiples of ``freq``
+        between the flight start and end time. For example, when resampling to a frequency of
+        1 minute, a flight that starts at 2020/1/1 00:00:59 and ends at 2020/1/1 00:01:01
         will return a single waypoint at 2020/1/1 00:01:00, whereas a flight that
         starts at 2020/1/1 00:01:01 and ends at 2020/1/1 00:01:59 will return an empty
         flight.
+
+        When resampled based on ``time``, waypoints will include all times between the
+        flight start and end time.
 
         Parameters
         ----------
@@ -844,6 +849,9 @@ class Flight(GeoVectorDataset):
             Keep the original index of the :class:`Flight` in addition to the new
             resampled index. Defaults to ``False``.
             .. versionadded:: 0.45.2
+        time : npt.NDArray[np.datetime64], optional
+            Times to resample to. Will override ``freq`` if provided.
+            .. versionadded:: 0.54.11
 
         Returns
         -------
@@ -930,10 +938,10 @@ class Flight(GeoVectorDataset):
         if shift is not None:
             df["longitude"] = (df["longitude"] - shift) % 360.0
 
-        # STEP 5: Resample flight to freq
+        # STEP 5: Resample flight
         # Save altitudes to copy over - these just get rounded down in time.
         # Also get target sample indices
-        df, t = _resample_to_freq(df, freq)
+        df, t = _resample_to_freq_or_time(df, freq, time)
 
         if shift is not None:
             # We need to translate back to the original chart here
@@ -2129,13 +2137,14 @@ def segment_rocd(
     return T_correction * out  # type: ignore[return-value]
 
 
-def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
+def _resample_to_freq_or_time(
+    df: pd.DataFrame, freq: str, time: npt.NDArray[np.datetime64] | None
+) -> tuple[pd.DataFrame, pd.DatetimeIndex]:
     """Resample a DataFrame to a given frequency.
 
-    This function is used to resample a DataFrame to a given frequency. The new
-    index will include all the original index values and the new resampled-to-freq
-    index values. The "longitude" and "latitude" columns will be linearly interpolated
-    to the new index values.
+    This function is used to resample a DataFrame to a given frequency or a specified set of times.
+    The new index will include all the original index values and the new resampled index values.
+    The "longitude" and "latitude" columns will be linearly interpolated to the new index values.
 
     Parameters
     ----------
@@ -2145,6 +2154,8 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
     freq : str
         Frequency to resample to. See :func:`pd.DataFrame.resample` for
         valid frequency strings.
+    time : pd.DatetimeIndex | None
+        Times to resample to. Overrides ``freq`` if not ``None``.
 
     Returns
     -------
@@ -2153,10 +2164,14 @@ def _resample_to_freq(df: pd.DataFrame, freq: str) -> tuple[pd.DataFrame, pd.Dat
     """
 
     # Manually create a new index that includes all the original index values
-    # and the resampled-to-freq index values.
-    t0 = df.index[0].ceil(freq)
-    t1 = df.index[-1]
-    t = pd.date_range(t0, t1, freq=freq, name="time")
+    # and the resampled index values
+    if time is None:
+        t0 = df.index[0].ceil(freq)
+        t1 = df.index[-1]
+        t = pd.date_range(t0, t1, freq=freq, name="time")
+    else:
+        mask = (time >= df.index[0]) & (time <= df.index[-1])
+        t = pd.DatetimeIndex(time[mask], name="time")
 
     concat_arr = np.concatenate([df.index, t])
     concat_arr = np.unique(concat_arr)
