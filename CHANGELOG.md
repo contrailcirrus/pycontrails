@@ -4,7 +4,7 @@
 
 ### Features
 
-- Add new `target_time` parameter to the `DryAdvection` model. If provided, this parameter overrides the `max_age` parameter and allows the model to advect all waypoints to the specified time. This is useful for running advection simulations over a fixed time period rather than a fixed age. The `target_time` parameter is optional and defaults to `None`, in which case the model behaves as before.
+- Add new `timesteps` parameter to the `DryAdvection` model. If provided, this parameter overrides the timesteps computed by the model. Providing `timesteps` and setting the `max_age` parameter to `None` allows the model to advect all waypoints to the specified times. This is useful for running advection simulations over a fixed time period rather than to a fixed age. The `timesteps` parameter is optional and defaults to `None`, in which case the model behaves as before.
 
 ### Fixes
 

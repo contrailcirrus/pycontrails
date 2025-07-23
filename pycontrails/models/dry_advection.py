@@ -37,8 +37,12 @@ class DryAdvectionParams(models.AdvectionBuffers):
     #: are interpolated against met data once each ``dt_integration``.
     dt_integration: np.timedelta64 = np.timedelta64(30, "m")
 
-    #: Max age of plume evolution.
-    max_age: np.timedelta64 = np.timedelta64(20, "h")
+    #: Max age of plume evolution. If set to ``None``, ``timesteps`` must not be None
+    #: and advection will continue until the final timestep for all plumes.
+    max_age: np.timedelta64 | None = np.timedelta64(20, "h")
+
+    #: Advection timesteps. If provided, ``dt_integration`` will be ignored.
+    timesteps: npt.NDArray[np.timedelta64] | None = None
 
     #: The terminal time of the advection simulation. If provided, the ``max_age`` parameter is
     #: ignored and the model advects all waypoints to cover this time.
@@ -153,6 +157,13 @@ class DryAdvection(models.Model):
             Advected points.
         """
         self.update_params(params)
+
+        max_age = self.params["max_age"]
+        timesteps = self.params["timesteps"]
+        if max_age is None and timesteps is None:
+            msg = "Timesteps must be set using the timesteps parameter when max_age is None"
+            raise ValueError(msg)
+
         self.set_source(source)
         self.source = self.require_source_type(GeoVectorDataset)
         self.downselect_met()
@@ -165,30 +176,28 @@ class DryAdvection(models.Model):
         interp_kwargs = self.interp_kwargs
 
         dt_integration = self.params["dt_integration"]
-        max_age = self.params["max_age"]
-        target_time = self.params["target_time"]
         sedimentation_rate = self.params["sedimentation_rate"]
         dz_m = self.params["dz_m"]
         max_depth = self.params["max_depth"]
         verbose_outputs = self.params["verbose_outputs"]
-
         source_time = self.source["time"]
-        t0 = pd.Timestamp(source_time.min()).floor(pd.Timedelta(dt_integration)).to_numpy()
-        if target_time is not None:
-            timesteps = np.arange(t0 + dt_integration, target_time + dt_integration, dt_integration)
-        else:
+
+        if timesteps is None:
+            t0 = pd.Timestamp(source_time.min()).floor(pd.Timedelta(dt_integration)).to_numpy()
+            t1 = source_time.max()
             timesteps = np.arange(
-                t0 + dt_integration,
-                source_time.max() + dt_integration + max_age,
-                dt_integration,
+                t0 + dt_integration, t1 + dt_integration + max_age, dt_integration
             )
 
         vector2 = GeoVectorDataset()
         met = None
 
         evolved = []
+        tmin = source_time.min()
         for t in timesteps:
-            filt = (source_time < t) & (source_time >= t - dt_integration)
+            filt = (source_time < t) & (source_time >= tmin)
+            tmin = t
+
             vector1 = vector2 + self.source.filter(filt, copy=False)
             if vector1.size == 0:
                 vector2 = GeoVectorDataset()
@@ -211,7 +220,7 @@ class DryAdvection(models.Model):
             )
 
             filt = vector2.coords_intersect_met(self.met)
-            if target_time is None:
+            if max_age is not None:
                 filt &= vector2["age"] <= max_age
             vector2 = vector2.filter(filt)
 
@@ -303,7 +312,14 @@ class DryAdvection(models.Model):
             f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
             for coord in ("longitude", "latitude", "level")
         }
-        buffers["time_buffer"] = (np.timedelta64(0, "ns"), self.params["max_age"])
+
+        max_age = self.params["max_age"]
+        if max_age is None:
+            max_age = max(
+                np.timedelta64(0), self.params["timesteps"].max() - self.source["time"].max()
+            )
+        buffers["time_buffer"] = (np.timedelta64(0, "ns"), max_age)
+
         self.met = self.source.downselect_met(self.met, **buffers)
 
 

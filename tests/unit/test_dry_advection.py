@@ -200,24 +200,31 @@ def test_dry_advection_gap_in_waypoints(met_cocip1: MetDataset) -> None:
     pd.testing.assert_series_equal(waypoint1["time"], expected1, check_index=False)
 
 
-def test_dry_advection_with_target_time(
+def test_dry_advection_with_timesteps(
     met_cocip1: MetDataset, flight_cocip1: GeoVectorDataset
 ) -> None:
-    """Test the :class:`DryAdvection` model with a target time parameter."""
-    target_time = flight_cocip1["time"][-1] - np.timedelta64(7, "m")  # 7 minutes before the last
-    params = {"target_time": target_time, "dt_integration": np.timedelta64(5, "m")}
+    """Test the :class:`DryAdvection` model with manually-specified timesteps."""
+    timesteps = np.arange(
+        flight_cocip1["time"].min() + np.timedelta64(5, "m"),
+        flight_cocip1["time"].max() - np.timedelta64(2, "m"),
+        np.timedelta64(5, "m"),
+    )
 
-    model = DryAdvection(met_cocip1, params)
+    model = DryAdvection(met_cocip1, max_age=None)
+    with pytest.raises(ValueError, match="Timesteps must be set"):
+        model.eval(flight_cocip1)
+
+    model = DryAdvection(met_cocip1, max_age=None, timesteps=timesteps)
     out = model.eval(flight_cocip1)
 
     assert isinstance(out, GeoVectorDataset)
     assert len(out) == 159
+    # the very first waypoint blows out of bounds, so it's not in the output
+    np.testing.assert_array_equal(np.unique(out["time"]), timesteps[1:])
 
-    # The output includes all times to just beyond the target time
-    expected_times = pd.date_range(
-        pd.Timestamp(flight_cocip1["time"].min()).floor("5min"),
-        pd.Timestamp(target_time).ceil("5min"),
-        freq="5min",
-        inclusive="right",
-    )[1:].to_numpy()  # the very first waypoint blows out of bounds, so it's not in the output
-    np.testing.assert_array_equal(np.unique(out["time"]), expected_times)
+    model = DryAdvection(met_cocip1, max_age=np.timedelta64(10, "m"), timesteps=timesteps)
+    out = model.eval(flight_cocip1)
+
+    assert isinstance(out, GeoVectorDataset)
+    assert len(out) == 35
+    assert out["age"].max() <= np.timedelta64(10, "m")
