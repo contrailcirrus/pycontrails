@@ -42,13 +42,9 @@ class DryAdvectionParams(models.AdvectionBuffers):
     max_age: np.timedelta64 | None = np.timedelta64(20, "h")
 
     #: Advection timesteps. If provided, ``dt_integration`` will be ignored.
-    timesteps: npt.NDArray[np.timedelta64] | None = None
-
-    #: The terminal time of the advection simulation. If provided, the ``max_age`` parameter is
-    #: ignored and the model advects all waypoints to cover this time.
     #:
     #: .. versionadded:: 0.54.11
-    target_time: np.datetime64 | None = None
+    timesteps: npt.NDArray[np.timedelta64] | None = None
 
     #: Rate of change of pressure due to sedimentation [:math:`Pa/s`]
     sedimentation_rate: float = 0.0
