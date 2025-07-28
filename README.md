@@ -25,7 +25,7 @@ Documentation and examples available at [py.contrails.org](https://py.contrails.
 
 ### Install with pip
 
-You can install pycontrails from PyPI with `pip` (Python 3.10 or later required):
+You can install pycontrails from PyPI with `pip` (Python 3.11 or later required):
 
 ```bash
 $ pip install pycontrails
