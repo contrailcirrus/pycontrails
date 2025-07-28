@@ -76,6 +76,8 @@
 
 ### Internals
 
+- Drop support for python 3.10 per [NEP 29](https://numpy.org/neps/nep-0029-deprecation_policy.html).
+- Build wheels for python 3.14. These are not yet tested in the CI (not all dependencies support python 3.14 yet).
 - Support [PEP 639](https://peps.python.org/pep-0639/).
 - Support [ruff 0.12.0](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md#0120).
 - Remove the `dep_license` optional dependency from the `dev` extras.
