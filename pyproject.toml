@@ -1,6 +1,6 @@
 # https://setuptools.readthedocs.io/en/latest/
 [build-system]
-requires = ["cython>=3", "numpy>=2.0.0", "setuptools>=64", "setuptools-scm>=8"]
+requires = ["cython>=3", "numpy>=2.0.0", "setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,7 +12,6 @@ keywords = ["contrails", "climate", "aviation", "geospatial"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -26,7 +25,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 readme = { file = "README.md", content-type = "text/markdown" }
 
 dependencies = [
@@ -149,7 +149,6 @@ zarr = ["fsspec>=2022.7.1", "gcsfs>=2022.7.1", "zarr>=2.12"]
 
 # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 [tool.setuptools]
-license-files = ["LICENSE", "NOTICE"]
 include-package-data = false
 
 # Note that setuptools-scm changes some of the default behavior of setuptools
