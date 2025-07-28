@@ -55,7 +55,6 @@ complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
-    "dep_license",
     "fastparquet>=0.8",
     "ipdb>=0.13",
     "memory_profiler",
@@ -216,11 +215,6 @@ filterwarnings = [
     "ignore:Conversion of an array with ndim > 0 to a scalar:DeprecationWarning:pyproj.transformer",
 ]
 testpaths = ["tests/unit"]
-
-# license check
-# https://github.com/abduhbm/dep-license
-[tool.deplic]
-banned = ["AGPL-3.0", "GPL", "AGPL"]
 
 # RST linter
 # https://github.com/pycqa/doc8

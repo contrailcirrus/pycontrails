@@ -51,12 +51,6 @@ clean: docs-clean
 remove: clean
 	pip uninstall pycontrails
 
-licenses:
-	deplic .
-
-check-licenses:
-	deplic -c setup.cfg .
-
 # -----------
 # Extensions
 # -----------
