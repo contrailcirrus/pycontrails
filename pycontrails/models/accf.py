@@ -22,7 +22,6 @@ from pycontrails.core.met_var import (
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.datalib import ecmwf
-from pycontrails.utils import dependencies
 
 
 def wide_body_jets() -> set[str]:
@@ -224,12 +223,11 @@ class ACCF(Model):
         try:
             from climaccf.accf import GeTaCCFs
         except ModuleNotFoundError as e:
-            dependencies.raise_module_not_found_error(
-                name="ACCF.eval method",
-                package_name="climaccf",
-                module_not_found_error=e,
-                pycontrails_optional_package="accf",
+            msg = (
+                "ACCF.eval method requires the 'climaccf' package. This can be installed "
+                "with 'pip install git+https://github.com/dlr-pa/climaccf.git'."
             )
+            raise ModuleNotFoundError(msg) from e
 
         self.update_params(params)
         self.set_source(source)

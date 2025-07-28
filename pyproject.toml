@@ -46,8 +46,8 @@ Issues = "https://github.com/contrailcirrus/pycontrails/issues"
 Repository = "https://github.com/contrailcirrus/pycontrails"
 
 [project.optional-dependencies]
-
-accf = ["climaccf @ git+ssh://git@github.com/dlr-pa/climaccf"]
+# Avoid temptation to add climaccf direct dependency here (incompatibility with PyPI upload)
+# https://github.com/contrailcirrus/pycontrails/actions/runs/16559933036/job/46828399753
 
 # All non-development dependencies
 # Only dependencies that work on all python versions
