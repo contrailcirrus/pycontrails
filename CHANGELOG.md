@@ -1,11 +1,10 @@
 # Changelog
 
-## 0.54.11 (unreleased)
+## 0.54.11
 
 ### Features
 
 - Add new `timesteps` parameter to the `DryAdvection` model. If provided, this parameter overrides the timesteps computed by the model. Providing `timesteps` and setting the `max_age` parameter to `None` allows the model to advect all waypoints to the specified times. This is useful for running advection simulations over a fixed time period rather than to a fixed age. The `timesteps` parameter is optional and defaults to `None`, in which case the model behaves as before.
-
 - Add new `time` parameter to `Flight.resample_and_fill`. If provided, flights will be resampled to times in `time` rather than to times computed based on `freq`. The `time` parameter is optional and defaults to `None`, in which case `Flight.resample_and_fill` behaves as before.
 
 ### Fixes
@@ -14,11 +13,13 @@
 - Officially support the "scda" HRES stream (useful for forecast reference times 06Z and 18Z). Previously, this was implicitly assumed.
 - Fix an issue with how the `parse_atc_plan` method handles newline characters in the flightplan string.
 - Fix an issue with the `DryAdvection.eval` implementation in which a large temporal gap between waypoints caused the model to end prematurely.
+- Fix the error message emitted by `ACCF.eval` if the [`climaccf`](https://github.com/dlr-pa/climaccf) package is not installed. (The `climaccf` package can be installed with `pip install git+https://github.com/dlr-pa/climaccf.git`.)
 
 ### Internals
 
 - Support [PEP 639](https://peps.python.org/pep-0639/).
 - Support [ruff 0.12.0](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md#0120).
+- Remove the `dep_license` optional dependency from the `dev` extras.
 
 ## 0.54.10
 
