@@ -1,133 +1,108 @@
-"""Download and parse Sentinel metadata."""
-
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+"""Download and parse Sentinel metadata.
+"""
 
 import numpy as np
-import numpy.typing as npt
-import pandas as pd
-import pyproj
+import xml.etree.ElementTree as ET
 import rasterio
-import xarray as xr
 from rasterio.enums import Resampling
-from scipy.interpolate import griddata
 from skimage.transform import resize
-
-BAND_ID_MAPPING = {
-    "B01": 0,
-    "B02": 1,
-    "B03": 2,
-    "B04": 3,
-    "B05": 4,
-    "B06": 5,
-    "B07": 6,
-    "B08": 7,
-    "B8A": 8,
-    "B09": 9,
-    "B10": 10,
-    "B11": 11,
-    "B12": 12,
-}
+from scipy.interpolate import griddata
+import xarray as xr
+import pandas as pd
+from datetime import datetime, timedelta, timezone
+import numpy.typing as npt
 
 
-def _band_id(band: str) -> int:
-    """Get band ID used in some metadata files."""
-    if band in (f"B{i:2d}" for i in range(1, 9)):
-        return int(band[1:]) - 1
-    if band == "B8A":
-        return 8
-    return int(band[1:])
-
-
-def parse_viewing_incidence_angle_by_detector(
-    metadata_path: str, target_detector_id: str, target_band_id: str = "2"
-) -> tuple[np.ndarray, np.ndarray]:
+def parse_viewing_incidence_angle_by_detector(metadata_path, target_detector_id, target_band_id="2"):
     """
-    Read sensor incidence angles from metadata.
-
-    Parameters
-    ----------
-    metadata_path : str
-        Path to the XML file containing TILE metadata.
-    target_detector_id : str
-        Target Detector_ID.
-    target_band_id : str
-        Starts from 0 (e.g. band 2 (blue) = band_id "1")
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray]
-        Zenith Angles, Azimuth Angles ((23x23) numpy arrays)
-    """
-    tree = ET.parse(metadata_path)
-    root = tree.getroot()
-
-    tile_angles_element = root.find(".//Tile_Angles")
-    if tile_angles_element is not None:
-        for band in tile_angles_element.findall(".//Viewing_Incidence_Angles_Grids"):
-            band_id = band.get("bandId")
-            detector_id = band.get("detectorId")
-
-            if band_id == target_band_id and detector_id == target_detector_id:
-                zenith_element = band.find(".//Zenith")
-                azimuth_element = band.find(".//Azimuth")
-
-                if zenith_element is not None and azimuth_element is not None:
-                    zenith_values_list = zenith_element.find(".//Values_List")
-                    azimuth_values_list = azimuth_element.find(".//Values_List")
-
-                    zenith_2d_array = []
-                    azimuth_2d_array = []
-
-                    if zenith_values_list is not None:
-                        for values in zenith_values_list.findall(".//VALUES"):
-                            if values.text is not None:
-                                zenith_row = list(map(float, values.text.split()))
-                                zenith_2d_array.append(zenith_row)
-
-                    if azimuth_values_list is not None:
-                        for values in azimuth_values_list.findall(".//VALUES"):
-                            if values.text is not None:
-                                azimuth_row = list(map(float, values.text.split()))
-                                azimuth_2d_array.append(azimuth_row)
-
-                    return np.array(zenith_2d_array), np.array(azimuth_2d_array)
-
-        # If no matching band/detector found, return empty arrays
-        return np.array([]), np.array([])
-
-    raise ValueError("Viewing_Incidence_Angles_Grids element not found.")
-
-
-def parse_viewing_incidence_angles(
-    metadata_path: str, target_band_id: str = "2"
-) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Read sensor incidence angles from metadata. Returns the total of all detectors.
-
-    Parameters
-    ----------
+    Read sensor incidence angles from metadata
+    
+    Parameters:
     - metadata_path (str): Path to the XML file containing TILE metadata.
+    - target_detector_id (str): Target Detector_ID. 
     - target_band_id (str): Starts from 0 (e.g. band 2 (blue) = band_id "1")
 
-    Returns
-    -------
+    Returns:
     - tuple: Zenith Angles, Azimuth Angles ((23x23) numpy array)
     """
-    total_zenith = np.full((23, 23), np.nan, dtype=np.float64)
-    total_azimuth = np.full((23, 23), np.nan, dtype=np.float64)
+    xml_file = metadata_path
+
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    tile_angles_element = root.find('.//Tile_Angles')
+    if tile_angles_element is not None:
+        for band in tile_angles_element.findall('.//Viewing_Incidence_Angles_Grids'):
+            band_id = band.get('bandId')
+            detector_id = band.get('detectorId')
+            
+            if band_id == target_band_id and detector_id == target_detector_id:
+
+                zenith_element = band.find('.//Zenith')
+                azimuth_element = band.find('.//Azimuth')
+                
+                if zenith_element is not None and azimuth_element is not None:
+                    # Extract the Values_List from both Zenith and Azimuth
+                    zenith_values_list = zenith_element.find('.//Values_List')
+                    azimuth_values_list = azimuth_element.find('.//Values_List')
+                    
+                    # Initialize 2D arrays to hold the values
+                    zenith_2d_array = []
+                    azimuth_2d_array = []
+                    
+                    # Extract and store Zenith values in a 2D array
+                    if zenith_values_list is not None:
+                        zenith_values = zenith_values_list.findall('.//VALUES')
+                        for values in zenith_values:
+                            # Split the space-separated string into individual values and convert to floats
+                            zenith_row = list(map(float, values.text.split()))
+                            zenith_2d_array.append(zenith_row)
+                    
+                    # Extract and store Azimuth values in a 2D array
+                    if azimuth_values_list is not None:
+                        azimuth_values = azimuth_values_list.findall('.//VALUES')
+                        for values in azimuth_values:
+                            # Split the space-separated string into individual values and convert to floats
+                            azimuth_row = list(map(float, values.text.split()))
+                            azimuth_2d_array.append(azimuth_row)
+                    
+                    # Print the resulting 2D arrays (for debugging)
+                    return zenith_2d_array, azimuth_2d_array
+
+        else:
+            return None, None
+    else:
+        print("Viewing_Incidence_Angles_Grids element not found.")
+
+
+def parse_viewing_incidence_angles(metadata_path, target_band_id="2"):
+    """
+    Read sensor incidence angles from metadata. Returns the total of all detectors
+    
+    Parameters:
+    - xml_file (str): Path to the XML file containing TILE metadata.
+    - target_band_id (str): Starts from 0 (e.g. band 2 (blue) = band_id "1")
+
+    Returns:
+    - tuple: Zenith Angles, Azimuth Angles ((23x23) numpy array)
+    """
+    total_zenith = None
+    total_azimuth = None
 
     # loop over all 12 detector id's
     for detector_id in [str(i) for i in range(1, 13)]:
-        zen, azi = parse_viewing_incidence_angle_by_detector(
-            metadata_path, detector_id, target_band_id
-        )
-        if zen is None or azi is None or zen.size == 0 or azi.size == 0:
+        zen, azi = parse_viewing_incidence_angle_by_detector(metadata_path, detector_id, target_band_id)
+        if zen is None or azi is None:
             continue
 
         # convert to np array
         zen_array = np.array(zen, dtype=np.float64)
         azi_array = np.array(azi, dtype=np.float64)
+
+        # in the first time, initialize to the correct 23x23 shape
+        if total_zenith is None:
+            total_zenith = np.full(zen_array.shape, np.nan)
+            total_azimuth = np.full(azi_array.shape, np.nan)
 
         # remove NaN values
         mask = ~np.isnan(zen_array)
@@ -138,24 +113,21 @@ def parse_viewing_incidence_angles(
     return total_zenith, total_azimuth
 
 
-def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDArray[np.integer]:
+def parse_high_res_detector_mask(metadata_path:str, scale:int=10) -> npt.NDArray[np.integer]:
     """
-    Load in the detector mask.
-
-    Contains a pixel level mask indicating which detector [1-12] captured the pixel.
-
-    Lower the resolution with 'scale' to speed up processing.
+    Load in the detector mask. Contains a pixel level mask indicating which detector [1-12] 
+    captured the pixel. 
+    
+    Lower the resolution with 'scale' to speed up processing. 
     Scale 1 -> 10m resolution. Scale 10 -> 100m resolution.
 
-    Parameters
-    ----------
-    - metadata_path (str): Path to the file containing metadata. Usually in the
-      {base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.jp2 path.
-    - scale (int): Indicates by which factor to lower the resolution.
+    Parameters:
+    - metadata_path (str): Path to the file containing metadata. Usually in the 
+    {base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.jp2 path.
+    - scale (int): Indicates by which factor to lower the resolution. 
 
-    Returns
-    -------
-    - np.ndarray: 2D array of detector IDs (1 to 12), shape (height, width)
+    Returns:
+    - np.ndarray: 2D array of detector IDs (1–12), shape (height, width)
     """
     # Make sure scale is an integer
     scale = int(scale)
@@ -165,17 +137,26 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
         # image = src.read(1)
         image = src.read(
             1,
-            out_shape=(int(src.count), int(src.height // scale), int(src.width // scale)),
-            resampling=Resampling.nearest,
+            out_shape=(
+                int(src.count),
+                int(src.height // scale),
+                int(src.width // scale)
+            ),
+            resampling=Resampling.nearest
         )
-
+        
         # Scale transform for new resolution
         transform = src.transform * src.transform.scale(
-            (src.width / image.shape[-1]), (src.height / image.shape[-2])
+            (src.width / image.shape[-1]),
+            (src.height / image.shape[-2])
         )
 
         profile = src.profile
-        profile.update({"height": image.shape[0], "width": image.shape[1], "transform": transform})
+        profile.update({
+            'height': image.shape[0],
+            'width': image.shape[1],
+            'transform': transform
+        })
 
     return image
 
@@ -234,31 +215,30 @@ def read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarray
     return x, y
 
 
-def parse_high_res_viewing_incidence_angles(
-    tile_metadata_path: str, detector_band_metadata_path: str, scale: int = 10
-) -> xr.Dataset:
+def parse_high_res_viewing_incidence_angles(tile_metadata_path, detector_band_metadata_path, scale=10) -> xr.Dataset:
     """
-    Parse high-resolution viewing incidence angles (zenith and azimuth).
+    Parses and returns high-resolution viewing incidence angles (zenith and azimuth)
+    for a given Sentinel-2 tile as an xarray.Dataset.
 
-    Parameters
-    ----------
+    Parameters:
+    -----------
     tile_metadata_path : str
         Path to the tile-level metadata file (usually MTD_TL.xml).
     detector_band_metadata_path : str
         Path to the detector-specific metadata file (e.g., MTD_DETFOO_B03.jp2).
-    scale : int, optional
-        Desired resolution scale (default is 10, e.g., 10 for 10m resolution).
+    scale : int, optional (default=10)
+        Desired resolution scale (e.g., 10 for 10m resolution).
 
-    Returns
-    -------
-    xr.Dataset
+    Returns:
+    --------
+    xarray.Dataset
         Dataset with coordinates ('y', 'x') containing:
         - VZA: View Zenith Angle
         - VAA: View Azimuth Angle
 
-    Raises
-    ------
-    ValueError
+    Raises:
+    -------
+    ValueError:
         If required data (zenith or azimuth) cannot be parsed.
     """
     try:
@@ -279,19 +259,17 @@ def parse_high_res_viewing_incidence_angles(
             low_res_zenith,
             output_shape=detector_mask.shape,
             order=1,
-            mode="edge",
+            mode='edge',
             anti_aliasing=True,
-            preserve_range=True,
+            preserve_range=True
         )
 
         # Dictionary to store upsampled azimuth data per detector
         low_res_azimuth_dict = {}
 
         for detector_id in [str(i) for i in range(1, 13)]:
-            zen, azi = parse_viewing_incidence_angle_by_detector(
-                tile_metadata_path, detector_id, "2"
-            )
-            if zen is None or azi is None or zen.size == 0 or azi.size == 0:
+            zen, azi = parse_viewing_incidence_angle_by_detector(tile_metadata_path, detector_id, "2")
+            if zen is None or azi is None:
                 continue
 
             azi_array = np.array(azi, dtype=np.float64)
@@ -301,9 +279,9 @@ def parse_high_res_viewing_incidence_angles(
                 azi_extrapolated,
                 output_shape=detector_mask.shape,
                 order=1,
-                mode="edge",
+                mode='edge',
                 anti_aliasing=True,
-                preserve_range=True,
+                preserve_range=True
             )
 
             low_res_azimuth_dict[detector_id] = azi_extrapolated_highres
@@ -333,8 +311,11 @@ def parse_high_res_viewing_incidence_angles(
         # Save the extent for metadata
         extent = (x_min, x_max, y_min, y_max)
 
+        print(f"high_res_zenith dtype: {high_res_zenith.dtype}")
+        print(f"high_res_azimuth dtype: {high_res_azimuth.dtype}")
+
         # Create xarray.Dataset
-        return xr.Dataset(
+        viewing_angles_ds = xr.Dataset(
             data_vars={
                 "VZA": (("y", "x"), high_res_zenith.astype(np.float32)),
                 "VAA": (("y", "x"), high_res_azimuth),
@@ -343,233 +324,65 @@ def parse_high_res_viewing_incidence_angles(
                 "x": x_coords,
                 "y": y_coords,
             },
-            attrs={"title": "Sentinel Viewing Incidence Angles", "scale": scale, "extent": extent},
+            attrs={
+                "title": "High-resolution Viewing Incidence Angles",
+                "description": "Zenith and Azimuth angles resampled to high resolution from Sentinel-2 metadata",
+                "scale": scale,
+                "extent": extent
+            }
         )
 
+        return viewing_angles_ds
+
     except Exception as e:
-        raise RuntimeError(f"Failed to parse high-resolution viewing incidence angles: {e}") from e
+        raise RuntimeError(f"Failed to parse high-resolution viewing incidence angles: {e}")
 
 
-def parse_ephemeris_sentinel(datatsrip_metadata_path: str) -> pd.DataFrame:
-    """Return the ephemeris data from the DATASTRIP xml file.
-
-    Parameters
-    ----------
-    datatsrip_metadata_path : str
-        The location of the DATASTRIP xml file
-
-    Returns
-    -------
-    pd.DataFrame
-        A :class:`pandas.DataFrame` containing the ephemeris track with columns:
-        - EPHEMERIS_TIME: Timestamps of the ephemeris data.
-        - EPHEMERIS_ECEF_X: ECEF X coordinates.
-        - EPHEMERIS_ECEF_Y: ECEF Y coordinates.
-        - EPHEMERIS_ECEF_Z: ECEF Z coordinates.
-    """
+def parse_ephemeris_sentinel(datatsrip_metadata_path) -> pd.DataFrame:
+    # Parse XML
     tree = ET.parse(datatsrip_metadata_path)
     root = tree.getroot()
 
+    # Get namespace
     ns = root[0].tag.split("}")[0][1:]
 
+    # Find Ephemeris data
     satellite_ancillary_data = root.find(f".//{{{ns}}}Satellite_Ancillary_Data_Info")
 
-    if satellite_ancillary_data is None:
-        return pd.DataFrame(
-            columns=["EPHEMERIS_TIME", "EPHEMERIS_ECEF_X", "EPHEMERIS_ECEF_Y", "EPHEMERIS_ECEF_Z"]
-        )
-
     records = []
-
     for elem in satellite_ancillary_data:
         if elem.tag.endswith("Ephemeris"):
             gps_points_list = elem.find("GPS_Points_List")
-            if gps_points_list is None:
-                continue  # skip if missing
-
             for point in gps_points_list:
                 gps_time_elem = point.find(".//GPS_TIME")
                 position_elem = point.find(".//POSITION_VALUES")
 
-                if gps_time_elem is None or gps_time_elem.text is None:
-                    continue  # skip if missing
-
-                if position_elem is None or position_elem.text is None:
-                    continue  # skip if missing
-
+                # Parse GPS time
                 gps_time = datetime.strptime(gps_time_elem.text, "%Y-%m-%dT%H:%M:%S")
 
-                # Convert GPS to UTC time as there is a few seconds between them
+                # Convert to UTC
                 utc_time = gps_to_utc(gps_time).replace(tzinfo=timezone.utc)
 
-                # Parse positions in ECEF coordinate system
+                # Parse position
                 x, y, z = map(float, position_elem.text.split())
 
-                records.append(
-                    {
-                        "EPHEMERIS_TIME": pd.Timestamp(utc_time).tz_localize(None),
-                        "EPHEMERIS_ECEF_X": x / 1000,
-                        "EPHEMERIS_ECEF_Y": y / 1000,
-                        "EPHEMERIS_ECEF_Z": z / 1000,
-                    }
-                )
+                records.append({
+                    "EPHEMERIS_TIME": utc_time,
+                    "EPHEMERIS_ECEF_X": x,
+                    "EPHEMERIS_ECEF_Y": y,
+                    "EPHEMERIS_ECEF_Z": z
+                })
 
     return pd.DataFrame(records)
-
-
-def parse_sentinel_crs(granule_metadata_path: str) -> pyproj.CRS:
-    """Parse the CRS in the granule metadata."""
-    tree = ET.parse(granule_metadata_path)
-    root = tree.getroot()
-
-    # Get the namespace of the XML file
-    ns = root[0].tag.split("}")[0][1:]
-
-    # Find the CS code in the XML file
-    epsg_elem = root.find(f".//{{{ns}}}Geometric_Info/Tile_Geocoding/HORIZONTAL_CS_CODE")
-    if epsg_elem is None or epsg_elem.text is None:
-        raise ValueError("HORIZONTAL_CS_CODE element not found or empty in metadata")
-
-    epsg_code = epsg_elem.text.strip()
-
-    return pyproj.CRS.from_string(epsg_code)
-
-
-def parse_sensing_time(granule_metadata_path: str) -> pd.Timestamp:
-    """Parse the sensing_time in the granule metadata."""
-    tree = ET.parse(granule_metadata_path)
-    root = tree.getroot()
-
-    # Get the namespace of the XML file
-    ns = root[0].tag.split("}")[0][1:]
-
-    # Find the SENSING_TIME element
-    sensing_elem = root.find(f".//{{{ns}}}General_Info/SENSING_TIME")
-    if sensing_elem is None or sensing_elem.text is None:
-        raise ValueError("SENSING_TIME element not found or empty in metadata")
-
-    sensing_time = sensing_elem.text.strip()
-    return pd.to_datetime(sensing_time)
-
-
-def get_detector_id(
-    detector_band_metadata_path: str, tile_metadata_path: str, x: float, y: float, band: str = "B03"
-) -> int:
-    """
-    Return the detector ID that captured a given pixel in a Sentinel-2 image.
-
-    Parameters
-    ----------
-    detector_band_metadata_path : str
-        Path to the MSK_DETFOO_Bxx.jp2 detector band mask file.
-    tile_metadata_path : str
-        Path to the tile metadata XML file (MTD_TL.xml) containing image geometry.
-    x : float
-        X coordinate (in UTM coordinate system) of the target pixel.
-    y : float
-        Y coordinate (in UTM coordinate system) of the target pixel.
-    band : str, optional
-        Spectral band to use for geometry parsing. Default is "B03".
-
-    Returns
-    -------
-    int : The detector ID (in the range 1 to 12) that captured the pixel.
-
-    Raises
-    ------
-    ValueError
-        If the (x, y) coordinate is outside the image bounds.
-    """
-    detector_mask = parse_high_res_detector_mask(detector_band_metadata_path, scale=10)
-
-    height, width = detector_mask.shape
-
-    x_img, y_img = read_image_coordinates(tile_metadata_path, band)
-    x_min, x_max = float(x_img.min()), float(x_img.max())
-    y_min, y_max = float(y_img.min()), float(y_img.max())
-
-    # Compute resolution
-    pixel_width = (x_max - x_min) / width
-    pixel_height = (y_max - y_min) / height
-
-    # Convert x, y to column, row
-    col = int((x - x_min) / pixel_width)
-    row = int((y_max - y) / pixel_height)  # Note: y axis is top-down in images
-
-    if 0 <= row < height and 0 <= col < width:
-        return detector_mask[row, col]
-
-    raise ValueError("Point is outside the image bounds.")
-
-
-def get_time_delay_detector(
-    datastrip_metadata_path: str, target_detector_id: str, band: str = "B03"
-) -> pd.Timedelta:
-    """
-    Return the time delay for a given detector.
-
-    Detector id's are positioned in alternating viewing angle.
-
-    Even detectors capture earlier, odd detectors later.
-    Check page 41: https://sentiwiki.copernicus.eu/__attachments/1692737/S2-PDGS-CS-DI-PSD%20-%20S2%20Product%20Specification%20Document%202024%20-%2015.0.pdf?inst-v=e48c493c-f3ee-4a19-8673-f60058308b2a.
-
-    This function checks the DATASTRIP xml to find the reference times used
-    for intializing the offset. Currently it calculates the average time for a certain
-    band_id, and then returns the offset between the detector_id time and the average
-    time. (Unsure whether average is actually correct usage)
-
-    Parameters
-    ----------
-    - target_detector_id (str): Detector ID for which the timedelta needs to be calculated
-    - band_id (str): Starts from 0 (e.g. band 2 (blue) = band_id "1")
-
-    Returns
-    -------
-    - timedelta (Datetime Object): time offset for detector. Add to current time.
-    """
-    if len(target_detector_id) == 1:
-        target_detector_id = "0" + target_detector_id
-
-    band_id = str(_band_id(band))
-    detector_times = []
-
-    # Parse XML
-    tree = ET.parse(datastrip_metadata_path)
-    root = tree.getroot()
-
-    ns = root[0].tag.split("}")[0][1:]
-
-    time_information_element = root.find(
-        f".//{{{ns}}}Image_Data_Info/Sensor_Configuration/Time_Stamp"
-    )
-    if time_information_element is None:
-        raise ValueError("Time_Stamp element not found in DATASTRIP metadata")
-
-    for cband in time_information_element:
-        if cband.get("bandId") != band_id:
-            continue
-
-        for detector in cband:
-            detector_id = detector.get("detectorId")
-            gps_time_elem = detector.find("GPS_TIME")
-            if detector_id is None or gps_time_elem is None or gps_time_elem.text is None:
-                continue
-            detector_times.append([detector_id, gps_time_elem.text])
-
-    if not detector_times:
-        raise ValueError(f"No GPS times found for band {band_id}")
-
-    time_difference = _calculate_timedelta(detector_times, target_detector_id)
-    return pd.to_timedelta(time_difference)
+    
 
 
 # -----------------------------------------------------------------------------------
-# Time helper functions
-
+# Helper functions
 
 def gps_to_utc(gps_time: datetime) -> datetime:
     """Convert GPS time (datetime object) to UTC time.
-
+    
     https://gssc.esa.int/navipedia/index.php/Transformations_between_Time_Systems
     """
 
@@ -580,47 +393,9 @@ def gps_to_utc(gps_time: datetime) -> datetime:
     return gps_time + gps_tai_offset - utc_tai_offset
 
 
-def _calculate_average_detector_time(detector_times: list[list[str]]) -> datetime:
-    """Return the average time from a list of times."""
-    # Convert string times to datetime objects
-    times = [datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f") for _, time_str in detector_times]
-
-    # Compute the average time
-    avg_timestamp = sum(t.timestamp() for t in times) / len(times)
-    return datetime.fromtimestamp(avg_timestamp)
-
-
-def _calculate_timedelta(detector_times: list[list[str]], target_detector_id: str) -> timedelta:
-    """Calculate the time difference between a detector and the average time."""
-    avg_time = _calculate_average_detector_time(detector_times)
-
-    # Find the time for the target detector ID
-    target_time = None
-    for detector_id, time_str in detector_times:
-        if detector_id == target_detector_id:
-            target_time = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
-            break
-
-    if target_time is None:
-        raise ValueError(f"Detector ID {target_detector_id} not found")
-
-    # Compute the timedelta
-    return target_time - avg_time
-
-
-# -----------------------------------------------------------------------------------
-# Viewing angle correction helper functions
-
-
-def process_pixel(
-    pixel_val: int,
-    pixel_location: tuple[int, int],
-    image_shape: tuple[int, ...],
-    azimuth_dict: dict[str, np.ndarray],
-) -> float:
-    """Map a pixel value and location to an azimuth value."""
+def process_pixel(pixel_val, pixel_location, image_shape, azimuth_dict):
     # Convert dict keys to integers once
-    available_detectors = sorted(int(k) for k in azimuth_dict)
+    available_detectors = sorted(int(k) for k in azimuth_dict.keys())
     min_det = available_detectors[0]
     max_det = available_detectors[-1]
 
@@ -633,7 +408,7 @@ def process_pixel(
     i, j = pixel_location
     H, W = image_shape
     low_res_height, low_res_width = azi_array.shape
-
+    
     # Map (i,j) from high-res to low-res pixel coordinates
     low_res_y = int(i * low_res_height / H)
     low_res_x = int(j * low_res_width / W)
@@ -643,11 +418,15 @@ def process_pixel(
     low_res_x = min(low_res_x, low_res_width - 1)
 
     # Get azimuth value at mapped pixel
-    return azi_array[low_res_y, low_res_x]
+    azimuth_val = azi_array[low_res_y, low_res_x]
+    
+    return azimuth_val
 
 
-def extrapolate_array(array: np.ndarray) -> np.ndarray:
-    """Extrapolate NaN values in a 2D azimuth array using linear interpolation/extrapolation."""
+def extrapolate_array(array):
+    """
+    Extrapolate NaN values in a 2D azimuth array using linear interpolation/extrapolation.
+    """
     # Get the shape
     h, w = array.shape
 
@@ -664,16 +443,17 @@ def extrapolate_array(array: np.ndarray) -> np.ndarray:
     # Points to interpolate (includes all)
     all_points = np.stack((xx.ravel(), yy.ravel()), axis=-1)
 
+
     if np.unique(known_points[:, 0]).size < 2 or np.unique(known_points[:, 1]).size < 2:
         # not enough variation in x or y — use nearest neighbor directly
-        interpolated = griddata(known_points, known_values, all_points, method="nearest")
+        interpolated = griddata(known_points, known_values, all_points, method='nearest')
     else:
         # Try linear, fallback to nearest
-        interpolated = griddata(known_points, known_values, all_points, method="linear")
+        interpolated = griddata(known_points, known_values, all_points, method='linear')
         nan_mask = np.isnan(interpolated)
         if np.any(nan_mask):
             interpolated[nan_mask] = griddata(
-                known_points, known_values, all_points[nan_mask], method="nearest"
+                known_points, known_values, all_points[nan_mask], method='nearest'
             )
 
     return interpolated.reshape((h, w))
