@@ -12,6 +12,21 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 import numpy.typing as npt
 
+BAND_ID_MAPPING = {
+    "B01": 0,
+    "B02": 1,
+    "B03": 2,
+    "B04": 3,
+    "B05": 4,
+    "B06": 5,
+    "B07": 6,
+    "B08": 7,
+    "B8A": 8,
+    "B09": 9,
+    "B10": 10,
+    "B11": 11,
+    "B12": 12
+}
 
 def parse_viewing_incidence_angle_by_detector(metadata_path, target_detector_id, target_band_id="2"):
     """
@@ -338,15 +353,28 @@ def parse_high_res_viewing_incidence_angles(tile_metadata_path, detector_band_me
         raise RuntimeError(f"Failed to parse high-resolution viewing incidence angles: {e}")
 
 
-def parse_ephemeris_sentinel(datatsrip_metadata_path) -> pd.DataFrame:
-    # Parse XML
+def parse_ephemeris_sentinel(datatsrip_metadata_path: str) -> pd.DataFrame:
+    """Return the ephemeris data from the DATASTRIP xml file
+
+    Parameters
+    ----------
+    datatsrip_metadata_path : str
+        The location of the DATASTRIP xml file
+
+    Returns
+    -------
+    pd.DataFrame
+        A :class:`pandas.DataFrame` containing the ephemeris track with columns:
+        - EPHEMERIS_TIME: Timestamps of the ephemeris data.
+        - EPHEMERIS_ECEF_X: ECEF X coordinates.
+        - EPHEMERIS_ECEF_Y: ECEF Y coordinates.
+        - EPHEMERIS_ECEF_Z: ECEF Z coordinates.
+    """
     tree = ET.parse(datatsrip_metadata_path)
     root = tree.getroot()
 
-    # Get namespace
     ns = root[0].tag.split("}")[0][1:]
 
-    # Find Ephemeris data
     satellite_ancillary_data = root.find(f".//{{{ns}}}Satellite_Ancillary_Data_Info")
 
     records = []
@@ -357,13 +385,12 @@ def parse_ephemeris_sentinel(datatsrip_metadata_path) -> pd.DataFrame:
                 gps_time_elem = point.find(".//GPS_TIME")
                 position_elem = point.find(".//POSITION_VALUES")
 
-                # Parse GPS time
                 gps_time = datetime.strptime(gps_time_elem.text, "%Y-%m-%dT%H:%M:%S")
 
-                # Convert to UTC
+                # Convert GPS to UTC time as there is a few seconds between them
                 utc_time = gps_to_utc(gps_time).replace(tzinfo=timezone.utc)
 
-                # Parse position
+                # Parse positions in ECEF coordinate system
                 x, y, z = map(float, position_elem.text.split())
 
                 records.append({
@@ -376,9 +403,106 @@ def parse_ephemeris_sentinel(datatsrip_metadata_path) -> pd.DataFrame:
     return pd.DataFrame(records)
     
 
+def get_detector_id(    
+    detector_band_metadata_path: str,
+    tile_metadata_path: str,
+    x: float,
+    y: float,
+    band: str = "B03"
+) -> int:
+    """
+    Return the detector ID that captured a given pixel in a Sentinel-2 image.
+
+    Parameters
+    ----------
+    detector_band_metadata_path : str
+        Path to the MSK_DETFOO_Bxx.jp2 detector band mask file.
+    tile_metadata_path : str
+        Path to the tile metadata XML file (MTD_TL.xml) containing image geometry.
+    x : float
+        X coordinate (in UTM coordinate system) of the target pixel.
+    y : float
+        Y coordinate (in UTM coordinate system) of the target pixel.
+    band : str, optional
+        Spectral band to use for geometry parsing. Default is "B03".
+
+    Returns
+    -------
+    int : The detector ID (in the range 1–12) that captured the pixel.
+
+    Raises
+    ------
+    ValueError
+        If the (x, y) coordinate is outside the image bounds.
+    """
+    detector_mask = parse_high_res_detector_mask(detector_band_metadata_path, scale=10)
+
+    height, width = detector_mask.shape
+
+    x_img, y_img = read_image_coordinates(tile_metadata_path, band)
+    x_min, x_max = float(x_img.min()), float(x_img.max())
+    y_min, y_max = float(y_img.min()), float(y_img.max())
+
+    # Compute resolution
+    pixel_width = (x_max - x_min) / width
+    pixel_height = (y_max - y_min) / height
+
+    # Convert x, y to column, row
+    col = int((x - x_min) / pixel_width)
+    row = int((y_max - y) / pixel_height)  # Note: y axis is top-down in images
+
+    if 0 <= row < height and 0 <= col < width:
+        return detector_mask[row, col]
+    else:
+        raise ValueError("Point is outside the image bounds.")
+
+
+def get_time_delay_detector(datastrip_metadata_path, target_detector_id, band="B03") -> timedelta:
+    """
+    Detector id's are positioned in alternating viewing angle. Even detectors capture earlier, odd detectors later.
+    Check page 41: https://sentiwiki.copernicus.eu/__attachments/1692737/S2-PDGS-CS-DI-PSD%20-%20S2%20Product%20Specification%20Document%202024%20-%2015.0.pdf?inst-v=e48c493c-f3ee-4a19-8673-f60058308b2a
+
+    This function checks the DATASTRIP xml to find the reference times used for intializing the offset.
+    Currently it calculates the average time for a certain band_id, and then returns the offset between the 
+    detector_id time and the average time. (Unsure whether average is actually correct usage)
+
+    parameters:
+    - target_detector_id (str): Detector ID for which the timedelta needs to be calculated
+    - band_id (str): Starts from 0 (e.g. band 2 (blue) = band_id "1")
+
+    returns:
+    - timedelta (Datetime Object): time offset for detector. Add to current time.
+    """
+    if len(target_detector_id) == 1:
+        target_detector_id = "0" + target_detector_id
+
+    band_id = str(BAND_ID_MAPPING[band])
+
+    detector_times = []
+
+    # Import and read the XML file
+    tree = ET.parse(datastrip_metadata_path)
+    root = tree.getroot()
+
+    # Get the namespace of the XML file
+    ns = root[0].tag.split("}")[0][1:]
+
+    time_information_element = root.find(f".//{{{ns}}}Image_Data_Info/Sensor_Configuration/Time_Stamp")
+    for band in time_information_element:
+
+        bandId = band.get("bandId")
+        if bandId == band_id:
+
+            for detector in band:
+                detector_id = detector.get('detectorId')
+                gps_time = detector.find('GPS_TIME')
+                detector_times.append([detector_id, gps_time.text])
+
+    time_difference = calculate_timedelta(detector_times, target_detector_id)
+    return time_difference
 
 # -----------------------------------------------------------------------------------
-# Helper functions
+# Time helper functions
 
 def gps_to_utc(gps_time: datetime) -> datetime:
     """Convert GPS time (datetime object) to UTC time.
@@ -392,6 +516,38 @@ def gps_to_utc(gps_time: datetime) -> datetime:
     # Convert GPS time to UTC
     return gps_time + gps_tai_offset - utc_tai_offset
 
+
+def calculate_average_detector_time(detector_times):
+    # Convert string times to datetime objects
+    times = [datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f") for _, time_str in detector_times]
+    
+    # Compute the average time
+    avg_timestamp = sum(t.timestamp() for t in times) / len(times)
+    avg_time = datetime.fromtimestamp(avg_timestamp)
+
+    return avg_time
+
+
+def calculate_timedelta(detector_times, target_detector_id) -> timedelta:
+    avg_time = calculate_average_detector_time(detector_times)
+    
+    # Find the time for the target detector ID
+    target_time = None
+    for detector_id, time_str in detector_times:
+
+        if detector_id == target_detector_id:
+            target_time = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
+            break
+
+    if target_time is None:
+        raise ValueError(f"Detector ID {target_detector_id} not found")
+
+    # Compute the timedelta
+    delta = target_time - avg_time
+    return delta
+
+# -----------------------------------------------------------------------------------
+# Viewing angle correction helper functions
 
 def process_pixel(pixel_val, pixel_location, image_shape, azimuth_dict):
     # Convert dict keys to integers once
