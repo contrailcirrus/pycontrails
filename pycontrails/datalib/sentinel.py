@@ -14,7 +14,7 @@ from pycontrails.core import Flight, cache
 from pycontrails.datalib._leo_utils import search
 from pycontrails.datalib._leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
-from pycontrails.datalib._leo_utils.sentinel_metadata import parse_high_res_viewing_incidence_angles, read_image_coordinates
+from pycontrails.datalib._leo_utils.sentinel_metadata import parse_high_res_viewing_incidence_angles, read_image_coordinates, parse_ephemeris_sentinel
 
 try:
     import gcsfs
