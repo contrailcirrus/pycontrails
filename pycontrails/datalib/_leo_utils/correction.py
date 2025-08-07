@@ -65,49 +65,65 @@ def scan_angle_correction_iterative(
         msg = "ds['y'] must be monotonically decreasing"
         raise ValueError(msg)
     
-    # Initialize projection coordinates
     x = np.atleast_1d(x).astype(np.float64)
     y = np.atleast_1d(y).astype(np.float64)
     z = np.atleast_1d(z).astype(np.float64)
 
-    # initialize projected x and y
-    x_proj, y_proj = x, y
+    x_proj, y_proj = np.copy(x), np.copy(y)
+
+    # Mask inputs outside the dataset extent
+    x_min, x_max = ds["x"].min().item(), ds["x"].max().item()
+    y_min, y_max = ds["y"].min().item(), ds["y"].max().item()
+    out_of_bounds = (x_proj < x_min) | (x_proj > x_max) | (y_proj < y_min) | (y_proj > y_max)
+    x_proj[out_of_bounds] = np.nan
+    y_proj[out_of_bounds] = np.nan
 
     for _ in range(iterations):
-        # Interpolate current angles
-        vza, vaa = interpolate_angles(ds, x_proj, y_proj)
+        # Use only valid points
+        valid = ~np.isnan(x_proj) & ~np.isnan(y_proj)
+        if not np.any(valid):
+            break
 
-        # Mask invalid values
-        invalid = np.isnan(vza) | np.isnan(vaa)
+        # Interpolate angles only for valid points
+        vza, vaa = interpolate_angles(ds, x_proj[valid], y_proj[valid])
+
+        # Flatten and clean up any unexpected shapes
+        vza = np.atleast_1d(vza).astype(np.float64).flatten()
+        vaa = np.atleast_1d(vaa).astype(np.float64).flatten()
+
+        # Skip any interpolated NaNs
+        interp_valid = ~(np.isnan(vza) | np.isnan(vaa))
+
+        # Full index into original arrays
+        valid_indices = np.where(valid)[0]
+        update_indices = valid_indices[interp_valid]
 
         # Convert to radians
-        vza_rad = np.deg2rad(vza)
-        vaa_rad = np.deg2rad(vaa)
+        vza_rad = np.deg2rad(vza[interp_valid])
+        vaa_rad = np.deg2rad(vaa[interp_valid])
 
-        # Projected offset due to parallax
-        offset = z * np.tan(vza_rad)
+        # Apply projection offset
+        offset = z[update_indices] * np.tan(vza_rad)
         dx_offset = offset * np.sin(vaa_rad)
         dy_offset = offset * np.cos(vaa_rad)
 
-        # Apply projection
-        x_proj = x + dx_offset
-        y_proj = y + dy_offset  # y array is 
-
-        # Reapply invalid mask
-        x_proj[invalid] = np.nan
-        y_proj[invalid] = np.nan
+        x_proj[update_indices] = x[update_indices] - dx_offset
+        y_proj[update_indices] = y[update_indices] - dy_offset
 
     return x_proj, y_proj
 
 
 # Interpolation function using xarray
 def interpolate_angles(ds, xi, yi):
-    """Bilinear interpolation for VZA and VAA from ds at points (xi, yi)."""
+    """
+    Bilinear interpolation for VZA and VAA from ds at points (xi, yi).
+        -> method can be switched to linear for better accuracy
+    """
     xi = np.atleast_1d(xi).flatten()
     yi = np.atleast_1d(yi).flatten()
 
-    vza = ds["VZA"].interp(x=("x", xi), y=("y", yi), method="linear").values
-    vaa = ds["VAA"].interp(x=("x", xi), y=("y", yi), method="linear").values
+    vza = ds["VZA"].interp(x=("x", xi), y=("y", yi), method="nearest").values
+    vaa = ds["VAA"].interp(x=("x", xi), y=("y", yi), method="nearest").values
     return vza, vaa
 
 
