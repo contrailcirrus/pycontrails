@@ -11,6 +11,7 @@ import xarray as xr
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 import numpy.typing as npt
+import pyproj
 
 BAND_ID_MAPPING = {
     "B01": 0,
@@ -81,7 +82,6 @@ def parse_viewing_incidence_angle_by_detector(metadata_path, target_detector_id,
                             azimuth_row = list(map(float, values.text.split()))
                             azimuth_2d_array.append(azimuth_row)
                     
-                    # Print the resulting 2D arrays (for debugging)
                     return zenith_2d_array, azimuth_2d_array
 
         else:
@@ -326,9 +326,6 @@ def parse_high_res_viewing_incidence_angles(tile_metadata_path, detector_band_me
         # Save the extent for metadata
         extent = (x_min, x_max, y_min, y_max)
 
-        print(f"high_res_zenith dtype: {high_res_zenith.dtype}")
-        print(f"high_res_azimuth dtype: {high_res_azimuth.dtype}")
-
         # Create xarray.Dataset
         viewing_angles_ds = xr.Dataset(
             data_vars={
@@ -394,14 +391,39 @@ def parse_ephemeris_sentinel(datatsrip_metadata_path: str) -> pd.DataFrame:
                 x, y, z = map(float, position_elem.text.split())
 
                 records.append({
-                    "EPHEMERIS_TIME": utc_time,
-                    "EPHEMERIS_ECEF_X": x,
-                    "EPHEMERIS_ECEF_Y": y,
-                    "EPHEMERIS_ECEF_Z": z
+                    "EPHEMERIS_TIME": pd.Timestamp(utc_time).tz_localize(None),
+                    "EPHEMERIS_ECEF_X": x / 1000,
+                    "EPHEMERIS_ECEF_Y": y / 1000,
+                    "EPHEMERIS_ECEF_Z": z / 1000
                 })
 
     return pd.DataFrame(records)
     
+
+def parse_sentinel_crs(granule_metadata_path: str) -> pyproj.CRS:
+    tree = ET.parse(granule_metadata_path)
+    root = tree.getroot()
+    
+    # Get the namespace of the XML file
+    ns = root[0].tag.split("}")[0][1:]
+
+    # Find the CS code in the xml file
+    epsg_code = root.find(f".//{{{ns}}}Geometric_Info/Tile_Geocoding/HORIZONTAL_CS_CODE").text
+
+    return pyproj.CRS.from_string(epsg_code)
+
+
+def parse_sensing_time(granule_metadata_path: str) -> pd.Timestamp:
+    tree = ET.parse(granule_metadata_path)
+    root = tree.getroot()
+    
+    # Get the namespace of the XML file
+    ns = root[0].tag.split("}")[0][1:]
+
+    # Find the CS code in the xml file
+    sensing_time = root.find(f".//{{{ns}}}General_Info/SENSING_TIME").text
+    return pd.to_datetime(sensing_time)
+
 
 def get_detector_id(    
     detector_band_metadata_path: str,
@@ -457,7 +479,7 @@ def get_detector_id(
         raise ValueError("Point is outside the image bounds.")
 
 
-def get_time_delay_detector(datastrip_metadata_path, target_detector_id, band="B03") -> timedelta:
+def get_time_delay_detector(datastrip_metadata_path, target_detector_id, band="B03") -> pd.Timedelta:
     """
     Detector id's are positioned in alternating viewing angle. Even detectors capture earlier, odd detectors later.
     Check page 41: https://sentiwiki.copernicus.eu/__attachments/1692737/S2-PDGS-CS-DI-PSD%20-%20S2%20Product%20Specification%20Document%202024%20-%2015.0.pdf?inst-v=e48c493c-f3ee-4a19-8673-f60058308b2a
@@ -499,7 +521,7 @@ def get_time_delay_detector(datastrip_metadata_path, target_detector_id, band="B
                 detector_times.append([detector_id, gps_time.text])
 
     time_difference = calculate_timedelta(detector_times, target_detector_id)
-    return time_difference
+    return pd.to_timedelta(time_difference)
 
 # -----------------------------------------------------------------------------------
 # Time helper functions
