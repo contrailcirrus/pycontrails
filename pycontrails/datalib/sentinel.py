@@ -14,7 +14,7 @@ from pycontrails.core import Flight, cache
 from pycontrails.datalib._leo_utils import search
 from pycontrails.datalib._leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
-from pycontrails.datalib._leo_utils.sentinel_metadata import parse_high_res_viewing_incidence_angles, read_image_coordinates, parse_ephemeris_sentinel
+from pycontrails.datalib._leo_utils.sentinel_metadata import parse_high_res_viewing_incidence_angles, read_image_coordinates, parse_ephemeris_sentinel, get_time_delay_detector, get_detector_id, parse_ephemeris_sentinel, parse_sensing_time, parse_sentinel_crs
 
 try:
     import gcsfs
@@ -229,24 +229,44 @@ class Sentinel:
             ds[band] = self._get(band, reflective)
         return ds
     
+    # following function should be shared between Landsat and Sentinel
     def get_viewing_angle_metadata(self, scale=10) -> xr.DataArray:
-        """"""
         granule_meta_path, safe_meta_path = self._get_meta()
         datastrip_path, detector_band_path = self._get_correction_meta()
 
         ds = parse_high_res_viewing_incidence_angles(granule_meta_path, detector_band_path, scale=scale)
         return ds
+    
+    def get_detector_id(self, x, y):
+        granule_sink, _ = self._get_meta()
+        _, detector_band_sink = self._get_correction_meta()
 
+        return get_detector_id(detector_band_sink, granule_sink, x, y)
 
-    def intersect_with_flight_paths(self, flight):
-        """"""
-        pass
+    def get_time_delay_detector(self, detector_id, band="B03"):
+        datastrip_sink, _ = self._get_correction_meta()
+
+        return get_time_delay_detector(datastrip_sink, detector_id, band)
+
+    def parse_ephemeris(self):
+        datastrip_sink, _ = self._get_correction_meta()
+
+        return parse_ephemeris_sentinel(datastrip_sink)
+
+    def get_crs(self):
+        granule_meta_path, _ = self._get_meta()
+        return parse_sentinel_crs(granule_meta_path)
+
+    def get_sensing_time(self):
+        granule_meta_path, _ = self._get_meta()
+        return parse_sensing_time(granule_meta_path)
 
     def _get(self, band: str, processing: str) -> xr.DataArray:
         """Download Sentinel-2 band to the :attr:`cachestore` and return processed data."""
         jp2_path = self._get_jp2(band)
         granule_meta_path, safe_meta_path = self._get_meta()
         return _read(jp2_path, granule_meta_path, safe_meta_path, band, processing)
+
 
     def _get_jp2(self, band: str) -> str:
         """Download Sentinel-2 imagery and return path to cached file."""

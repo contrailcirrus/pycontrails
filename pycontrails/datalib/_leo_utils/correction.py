@@ -8,6 +8,11 @@ import pandas as pd
 import pyproj
 import shapely
 import xarray as xr
+from typing import Sequence, Union
+
+from pycontrails import Flight
+from pycontrails.datalib.sentinel import Sentinel
+from pycontrails.datalib.landsat import Landsat
 
 
 def _ephemeris_ecef_to_utm(ephemeris_df: pd.DataFrame, utm_crs: pyproj.CRS) -> pd.DataFrame:
@@ -290,3 +295,114 @@ def estimate_scan_time(
     ).astype("datetime64[ns]")
 
 
+def geodetic_to_utm(lon, lat, crs):
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+    x_utm, y_utm = transformer.transform(lon, lat)
+    return x_utm, y_utm
+
+
+def colocate_flights(flight: Flight, handler: Union[Sentinel, Landsat], utm_crs: pyproj.CRS, iterations=3, search_window:int=1):
+    """"""
+    # get the average sensing_time for the granule to speed up processing
+    initial_sensing_time = handler.get_sensing_time()
+    initial_sensing_time = initial_sensing_time.tz_localize(None)
+
+    # turn Flight object to dataframe
+    flight_df = flight.dataframe.copy()
+
+    # keep only 30 seconds before and after sensing_time
+    flight_df["time"] = pd.to_datetime(flight_df["time"])
+    flight_df = flight_df[flight_df["time"].between(initial_sensing_time - pd.Timedelta(minutes=search_window),
+                                                     initial_sensing_time + pd.Timedelta(minutes=search_window))]
+    # add the x and y coordinates in the UTM coordinate system
+    flight_df[['x', 'y']] = flight_df.apply(
+        lambda row: pd.Series(geodetic_to_utm(row['longitude'], row['latitude'], utm_crs)), axis=1
+    )
+    
+    # add the x and y coordinates in the UTM coordinate system
+    ds_viewing_angles = handler.get_viewing_angle_metadata()
+    flight_df[['x_proj', 'y_proj']] = flight_df.apply(
+        lambda row: pd.Series(scan_angle_correction_iterative(ds_viewing_angles, row['x'], row['y'], row["altitude"], iterations=3)), axis=1
+    )
+
+    # get the satellite ephemeris data prepared
+    satellite_ephemeris = handler.parse_ephemeris()
+
+    # create the initial guess for the location 
+    x_proj, y_proj = interpolate_columns(flight_df, initial_sensing_time, columns=["x_proj", "y_proj"])
+
+    # Iteratively correct flight location based on satellite position
+    for _ in range(iterations):
+        corrected_sensing_time = estimate_scan_time(satellite_ephemeris, utm_crs, x_proj, y_proj)
+        if corrected_sensing_time is None or len(corrected_sensing_time) == 0:
+                raise ValueError("No valid scan time could be estimated from the UTM coordinates during iteration.")
+        
+        corrected_sensing_time = corrected_sensing_time[0]
+
+        x_proj, y_proj = interpolate_columns(flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"])
+        if x_proj is None or y_proj is None or np.isnan(x_proj) or np.isnan(y_proj):
+            raise ValueError("Interpolation failed after scan time correction iteration.")
+        
+    # corrected_scan_time = pd.Timestamp(corrected_scan_time, tz='UTC')
+    # Optional: correct sensing_time based on the detector it is in
+    try:
+        detector_id = handler.get_detector_id(x_proj, y_proj)
+    except ValueError as e:
+        detector_id = None
+    if detector_id is not None and detector_id != 0:
+        detector_time_offset = handler.get_time_delay_detector(str(detector_id), "B03")
+        corrected_sensing_time += detector_time_offset
+
+        x_proj, y_proj = interpolate_columns(flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"])
+
+    return [x_proj, y_proj], corrected_sensing_time
+
+
+def interpolate_columns(
+    df: pd.DataFrame,
+    timestamp: pd.Timestamp | str,
+    columns: Sequence[str],
+    time_col: str = 'time'
+) -> tuple:
+    """
+    Interpolate multiple columns in a DataFrame at a given timestamp.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing timestamped data.
+    timestamp : pd.Timestamp or str
+        The timestamp at which to interpolate.
+    columns : list of str
+        List of column names to interpolate.
+    time_col : str, default 'timestamp'
+        Name of the timestamp column in df.
+
+    Returns
+    -------
+    tuple
+        Tuple of interpolated values in the same order as `columns`.
+    """
+    df = df.copy()
+    df[time_col] = pd.to_datetime(df[time_col])
+    df = df.sort_values(time_col)
+
+    timestamp = pd.to_datetime(timestamp)
+
+    if timestamp <= df[time_col].iloc[0]:
+        before, after = df.iloc[0], df.iloc[1]
+    elif timestamp >= df[time_col].iloc[-1]:
+        before, after = df.iloc[-2], df.iloc[-1]
+    else:
+        before = df[df[time_col] <= timestamp].tail(1).iloc[0]
+        after = df[df[time_col] >= timestamp].head(1).iloc[0]
+
+    t0 = before[time_col].value
+    t1 = after[time_col].value
+    t = timestamp.value
+
+    ratio = (t - t0) / (t1 - t0) if t1 != t0 else 0
+
+    return tuple(
+        before[col] + ratio * (after[col] - before[col]) for col in columns
+    )
