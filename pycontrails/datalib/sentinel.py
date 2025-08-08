@@ -13,18 +13,17 @@ import xarray as xr
 from pycontrails.core import Flight, cache
 from pycontrails.datalib._leo_utils import search
 from pycontrails.datalib._leo_utils.sentinel_metadata import (
-    _band_id,
-    get_detector_id,
-    get_time_delay_detector,
-    parse_ephemeris_sentinel,
     parse_high_res_viewing_incidence_angles,
+    read_image_coordinates,
+    parse_ephemeris_sentinel,
+    get_time_delay_detector,
+    get_detector_id,
     parse_sensing_time,
     parse_sentinel_crs,
-    read_image_coordinates,
 )
 from pycontrails.datalib._leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
-from pycontrails.datalib._leo_utils.sentinel_metadata import parse_high_res_viewing_incidence_angles, read_image_coordinates, parse_ephemeris_sentinel, get_time_delay_detector, get_detector_id, parse_ephemeris_sentinel, parse_sensing_time, parse_sentinel_crs
+
 
 try:
     import gcsfs
@@ -238,40 +237,44 @@ class Sentinel:
         for band in self.bands:
             ds[band] = self._get(band, reflective)
         return ds
-    
+
     # -----------------------------------------------------------------------------------------
     # the following function should also be in Landsat
     def get_viewing_angle_metadata(self, scale=10) -> xr.DataArray:
+        """Return the dataset with viewing angles."""
         granule_meta_path, _ = self._get_meta()
         _, detector_band_path = self._get_correction_meta()
+        return parse_high_res_viewing_incidence_angles(
+            granule_meta_path, detector_band_path, scale=scale
+        )
 
-        ds = parse_high_res_viewing_incidence_angles(granule_meta_path, detector_band_path, scale=scale)
-        return ds
-    
     def get_detector_id(self, x, y):
+        """Return the detector_id of a pixel in UTM."""
         granule_sink, _ = self._get_meta()
         _, detector_band_sink = self._get_correction_meta()
-
         return get_detector_id(detector_band_sink, granule_sink, x, y)
 
     def get_time_delay_detector(self, detector_id, band="B03"):
+        """Return the time delay of a detector."""
         datastrip_sink, _ = self._get_correction_meta()
-
         return get_time_delay_detector(datastrip_sink, detector_id, band)
 
     def get_ephemeris(self):
+        """Return the satellite ephemeris as dataframe."""
         datastrip_sink, _ = self._get_correction_meta()
 
         return parse_ephemeris_sentinel(datastrip_sink)
 
     def get_crs(self):
+        """Return the CRS of the satellite image."""
         granule_meta_path, _ = self._get_meta()
         return parse_sentinel_crs(granule_meta_path)
 
     def get_sensing_time(self):
+        """Return the sensing_time of the satellite image."""
         granule_meta_path, _ = self._get_meta()
         return parse_sensing_time(granule_meta_path)
-    
+
     # -------------------------------------------------------------------------------------
 
     # -----------------------------------------------------------------------------------------
@@ -318,7 +321,6 @@ class Sentinel:
         jp2_path = self._get_jp2(band)
         granule_meta_path, safe_meta_path = self._get_meta()
         return _read(jp2_path, granule_meta_path, safe_meta_path, band, processing)
-
 
     def _get_jp2(self, band: str) -> str:
         """Download Sentinel-2 imagery and return path to cached file."""
@@ -382,26 +384,29 @@ class Sentinel:
             raise FileNotFoundError(f"No DATASTRIP MTD_MDS.xml file found at pattern: {pattern}")
         if len(matches) > 2:
             raise RuntimeError(f"Multiple DATASTRIP MTD_MDS.xml files found: {matches}")
-        
+
         datastrip_id = matches[0].split("/")[-1].replace("_$folder$", "")
         url = f"{base_url}/DATASTRIP/{datastrip_id}/MTD_DS.xml"
         datastrip_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
         if not self.cachestore.exists(datastrip_sink):
             fs.get(url, datastrip_sink)
 
+        # the detector_mask has a differnet format before 2022.
+        # will implement a better method later on
         try:
             url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.jp2"
             detector_band_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
             if not self.cachestore.exists(detector_band_sink):
                 fs.get(url, detector_band_sink)
 
-        except Exception as e:
+        except Exception:
             url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.gml"
             detector_band_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
             if not self.cachestore.exists(detector_band_sink):
                 fs.get(url, detector_band_sink)
 
         return datastrip_sink, detector_band_sink
+
 
 def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
     """Check that the bands are valid and return as a set."""
@@ -508,7 +513,6 @@ def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float
 
     msg = f"Could not find reflectance offset for band {band} (band ID {band_id})"
     raise ValueError(msg)
-
 
 
 def extract_sentinel_visualization(
