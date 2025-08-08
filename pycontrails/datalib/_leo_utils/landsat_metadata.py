@@ -3,10 +3,11 @@
 This modules requires `GeoPandas <https://geopandas.org/>`_.
 """
 
+import re
+
 import geopandas as gpd
 import pandas as pd
 import shapely
-import re
 
 from pycontrails.core import cache
 
@@ -150,7 +151,6 @@ def open_landsat_metadata(
     gdf = _landsat_metadata_to_geodataframe(df)
     gdf.to_parquet(cachestore.path(cache_key), index=False)
     return gdf
-
 
 
 def parse_ephemeris_landsat(ang_content: str) -> pd.DataFrame:
