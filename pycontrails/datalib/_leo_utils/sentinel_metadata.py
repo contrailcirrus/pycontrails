@@ -87,7 +87,7 @@ def parse_viewing_incidence_angle_by_detector(metadata_path, target_detector_id,
         else:
             return None, None
     else:
-        print("Viewing_Incidence_Angles_Grids element not found.")
+        raise ValueError("Viewing_Incidence_Angles_Grids element not found.")
 
 
 def parse_viewing_incidence_angles(metadata_path, target_band_id="2"):

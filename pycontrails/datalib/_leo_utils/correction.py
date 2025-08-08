@@ -112,6 +112,7 @@ def scan_angle_correction_iterative(
         dx_offset = offset * np.sin(vaa_rad)
         dy_offset = offset * np.cos(vaa_rad)
 
+        # Update the newly predicted x and y locations
         x_proj[update_indices] = x[update_indices] - dx_offset
         y_proj[update_indices] = y[update_indices] - dy_offset
 
@@ -310,23 +311,24 @@ def colocate_flights(flight: Flight, handler: Union[Sentinel, Landsat], utm_crs:
     # turn Flight object to dataframe
     flight_df = flight.dataframe.copy()
 
-    # keep only 30 seconds before and after sensing_time
+    # keep only 'search_window' minutes before and after sensing_time to speed up function
     flight_df["time"] = pd.to_datetime(flight_df["time"])
     flight_df = flight_df[flight_df["time"].between(initial_sensing_time - pd.Timedelta(minutes=search_window),
                                                      initial_sensing_time + pd.Timedelta(minutes=search_window))]
+    
     # add the x and y coordinates in the UTM coordinate system
     flight_df[['x', 'y']] = flight_df.apply(
         lambda row: pd.Series(geodetic_to_utm(row['longitude'], row['latitude'], utm_crs)), axis=1
     )
     
-    # add the x and y coordinates in the UTM coordinate system
+    # project the x and y location to the image level
     ds_viewing_angles = handler.get_viewing_angle_metadata()
     flight_df[['x_proj', 'y_proj']] = flight_df.apply(
         lambda row: pd.Series(scan_angle_correction_iterative(ds_viewing_angles, row['x'], row['y'], row["altitude"], iterations=3)), axis=1
     )
 
     # get the satellite ephemeris data prepared
-    satellite_ephemeris = handler.parse_ephemeris()
+    satellite_ephemeris = handler.get_ephemeris()
 
     # create the initial guess for the location 
     x_proj, y_proj = interpolate_columns(flight_df, initial_sensing_time, columns=["x_proj", "y_proj"])
@@ -343,7 +345,6 @@ def colocate_flights(flight: Flight, handler: Union[Sentinel, Landsat], utm_crs:
         if x_proj is None or y_proj is None or np.isnan(x_proj) or np.isnan(y_proj):
             raise ValueError("Interpolation failed after scan time correction iteration.")
         
-    # corrected_scan_time = pd.Timestamp(corrected_scan_time, tz='UTC')
     # Optional: correct sensing_time based on the detector it is in
     try:
         detector_id = handler.get_detector_id(x_proj, y_proj)

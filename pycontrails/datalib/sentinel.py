@@ -239,10 +239,11 @@ class Sentinel:
             ds[band] = self._get(band, reflective)
         return ds
     
-    # following function should be shared between Landsat and Sentinel
+    # -----------------------------------------------------------------------------------------
+    # the following function should also be in Landsat
     def get_viewing_angle_metadata(self, scale=10) -> xr.DataArray:
-        granule_meta_path, safe_meta_path = self._get_meta()
-        datastrip_path, detector_band_path = self._get_correction_meta()
+        granule_meta_path, _ = self._get_meta()
+        _, detector_band_path = self._get_correction_meta()
 
         ds = parse_high_res_viewing_incidence_angles(granule_meta_path, detector_band_path, scale=scale)
         return ds
@@ -258,7 +259,7 @@ class Sentinel:
 
         return get_time_delay_detector(datastrip_sink, detector_id, band)
 
-    def parse_ephemeris(self):
+    def get_ephemeris(self):
         datastrip_sink, _ = self._get_correction_meta()
 
         return parse_ephemeris_sentinel(datastrip_sink)
@@ -270,6 +271,8 @@ class Sentinel:
     def get_sensing_time(self):
         granule_meta_path, _ = self._get_meta()
         return parse_sensing_time(granule_meta_path)
+    
+    # -------------------------------------------------------------------------------------
 
     # -----------------------------------------------------------------------------------------
     # the following function should also be in Landsat

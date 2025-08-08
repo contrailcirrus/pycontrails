@@ -263,6 +263,25 @@ class Landsat:
         if not self.cachestore.exists(sink):
             fs.get(url, sink)
         return sink
+    
+    # the following functions have to be implemented 
+    def get_viewing_angle_metadata(self):
+        pass
+
+    def get_detector_id(self, x, y):
+        pass
+
+    def get_time_delay_detector(self, detector_id, band):
+        pass
+
+    def get_ephemeris(self):
+        pass
+
+    def get_crs(self): # optional
+        pass
+
+    def get_sensing_time(self): # optiona
+        pass
 
     # the following functions have to be implemented
     def get_viewing_angle_metadata(self) -> xr.Dataset:
