@@ -1,6 +1,7 @@
 """Support for overlaying flight and contrail data on Landsat & Sentinel images."""
 
 import itertools
+from collections.abc import Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -8,11 +9,10 @@ import pandas as pd
 import pyproj
 import shapely
 import xarray as xr
-from typing import Sequence, Union
 
 from pycontrails import Flight
-from pycontrails.datalib.sentinel import Sentinel
 from pycontrails.datalib.landsat import Landsat
+from pycontrails.datalib.sentinel import Sentinel
 
 
 def _ephemeris_ecef_to_utm(ephemeris_df: pd.DataFrame, utm_crs: pyproj.CRS) -> pd.DataFrame:
@@ -47,10 +47,10 @@ def scan_angle_correction_iterative(
         The dataset containing the viewing azimuth angle (VAA)
         and viewing zenith angle (VZA) arrays.
     x : npt.NDArray[np.floating]
-        The x coordinates of the points to correct. Should be in the 
+        The x coordinates of the points to correct. Should be in the
         correct UTM coorinate system
     y : npt.NDArray[np.floating]
-        The y coordinates of the points to correct. Should be in the 
+        The y coordinates of the points to correct. Should be in the
         correct UTM coorinate system.
     z : npt.NDArray[np.floating]
         The z coordinates (altitude in meters) of the points to correct.
@@ -58,7 +58,7 @@ def scan_angle_correction_iterative(
     Returns
     -------
     tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
-        The corrected x and y coordinates as numpy arrays in the UTM 
+        The corrected x and y coordinates as numpy arrays in the UTM
         coordinate system.
     """
     # Confirm that x is monotonically increasing and y is decreasing
@@ -69,7 +69,7 @@ def scan_angle_correction_iterative(
     if not np.all(np.diff(ds["y"]) < 0.0):
         msg = "ds['y'] must be monotonically decreasing"
         raise ValueError(msg)
-    
+
     x = np.atleast_1d(x).astype(np.float64)
     y = np.atleast_1d(y).astype(np.float64)
     z = np.atleast_1d(z).astype(np.float64)
@@ -123,6 +123,7 @@ def scan_angle_correction_iterative(
 def interpolate_angles(ds, xi, yi):
     """
     Bilinear interpolation for VZA and VAA from ds at points (xi, yi).
+
         -> method can be switched to linear for better accuracy
     """
     xi = np.atleast_1d(xi).flatten()
@@ -275,7 +276,7 @@ def estimate_scan_time(
 ) -> npt.NDArray[np.datetime64]:
     """Estimate the scan time for the given x, y pixels.
 
-    Project the x, y coordinates (in UTM coordinate system) onto the 
+    Project the x, y coordinates (in UTM coordinate system) onto the
     ephemeris track and interpolate the time.
     """
     ephemeris_utm = _ephemeris_ecef_to_utm(ephemeris_df, utm_crs)
@@ -296,14 +297,40 @@ def estimate_scan_time(
     ).astype("datetime64[ns]")
 
 
-def geodetic_to_utm(lon, lat, crs):
+def _geodetic_to_utm(lon, lat, crs):
+    """Convert geographic coordinates (longitude, latitude) to UTM coordinates."""
     transformer = pyproj.Transformer.from_crs("EPSG:4326", crs, always_xy=True)
     x_utm, y_utm = transformer.transform(lon, lat)
     return x_utm, y_utm
 
 
-def colocate_flights(flight: Flight, handler: Union[Sentinel, Landsat], utm_crs: pyproj.CRS, iterations=3, search_window:int=1):
-    """"""
+def colocate_flights(
+    flight: Flight,
+    handler: Sentinel | Landsat,
+    utm_crs: pyproj.CRS,
+    iterations=3,
+    search_window: int = 1,
+):
+    """
+    Colocate IAGOS flight track points with satellite image pixels.
+
+    This function projects IAGOS flight positions into the UTM coordinate system,
+    then uses the provided satellite handler (Sentinel or Landsat) to iteratively
+    match the satellite pixels with flight points, refining the match to improve alignment.
+
+    Parameters
+    ----------
+        flight (Flight): The flight object.
+        handler (Sentinel | Landsat): The satellite image handler.
+        utm_crs (pyproj.CRS): UTM coordinate reference system used for projection.
+        iterations (int, optional): Number of iterations to refine the sensing_time correction.
+            Default is 3.
+        search_window (int, optional): Time window. Default is 1 minute.
+
+    Returns
+    -------
+        correct_aircraft_location and correct_sensing_time
+    """
     # get the average sensing_time for the granule to speed up processing
     initial_sensing_time = handler.get_sensing_time()
     initial_sensing_time = initial_sensing_time.tz_localize(None)
@@ -313,57 +340,70 @@ def colocate_flights(flight: Flight, handler: Union[Sentinel, Landsat], utm_crs:
 
     # keep only 'search_window' minutes before and after sensing_time to speed up function
     flight_df["time"] = pd.to_datetime(flight_df["time"])
-    flight_df = flight_df[flight_df["time"].between(initial_sensing_time - pd.Timedelta(minutes=search_window),
-                                                     initial_sensing_time + pd.Timedelta(minutes=search_window))]
-    
+    flight_df = flight_df[
+        flight_df["time"].between(
+            initial_sensing_time - pd.Timedelta(minutes=search_window),
+            initial_sensing_time + pd.Timedelta(minutes=search_window),
+        )
+    ]
     # add the x and y coordinates in the UTM coordinate system
-    flight_df[['x', 'y']] = flight_df.apply(
-        lambda row: pd.Series(geodetic_to_utm(row['longitude'], row['latitude'], utm_crs)), axis=1
+    flight_df[["x", "y"]] = flight_df.apply(
+        lambda row: pd.Series(_geodetic_to_utm(row["longitude"], row["latitude"], utm_crs)), axis=1
     )
-    
+
     # project the x and y location to the image level
     ds_viewing_angles = handler.get_viewing_angle_metadata()
-    flight_df[['x_proj', 'y_proj']] = flight_df.apply(
-        lambda row: pd.Series(scan_angle_correction_iterative(ds_viewing_angles, row['x'], row['y'], row["altitude"], iterations=3)), axis=1
+    flight_df[["x_proj", "y_proj"]] = flight_df.apply(
+        lambda row: pd.Series(
+            scan_angle_correction_iterative(
+                ds_viewing_angles, row["x"], row["y"], row["altitude"], iterations=3
+            )
+        ),
+        axis=1,
     )
 
     # get the satellite ephemeris data prepared
     satellite_ephemeris = handler.get_ephemeris()
 
-    # create the initial guess for the location 
-    x_proj, y_proj = interpolate_columns(flight_df, initial_sensing_time, columns=["x_proj", "y_proj"])
+    # create the initial guess for the location
+    x_proj, y_proj = interpolate_columns(
+        flight_df, initial_sensing_time, columns=["x_proj", "y_proj"]
+    )
 
     # Iteratively correct flight location based on satellite position
     for _ in range(iterations):
         corrected_sensing_time = estimate_scan_time(satellite_ephemeris, utm_crs, x_proj, y_proj)
         if corrected_sensing_time is None or len(corrected_sensing_time) == 0:
-                raise ValueError("No valid scan time could be estimated from the UTM coordinates during iteration.")
-        
+            raise ValueError(
+                "No valid scan time could be estimated from the UTM coordinates during iteration."
+            )
+
         corrected_sensing_time = corrected_sensing_time[0]
 
-        x_proj, y_proj = interpolate_columns(flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"])
+        x_proj, y_proj = interpolate_columns(
+            flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"]
+        )
         if x_proj is None or y_proj is None or np.isnan(x_proj) or np.isnan(y_proj):
             raise ValueError("Interpolation failed after scan time correction iteration.")
-        
+
     # Optional: correct sensing_time based on the detector it is in
     try:
         detector_id = handler.get_detector_id(x_proj, y_proj)
-    except ValueError as e:
+    except ValueError:
         detector_id = None
     if detector_id is not None and detector_id != 0:
         detector_time_offset = handler.get_time_delay_detector(str(detector_id), "B03")
         corrected_sensing_time += detector_time_offset
 
-        x_proj, y_proj = interpolate_columns(flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"])
+        x_proj, y_proj = interpolate_columns(
+            flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"]
+        )
 
     return [x_proj, y_proj], corrected_sensing_time
 
 
 def interpolate_columns(
-    df: pd.DataFrame,
-    timestamp: pd.Timestamp | str,
-    columns: Sequence[str],
-    time_col: str = 'time'
+    df: pd.DataFrame, timestamp: pd.Timestamp | str, columns: Sequence[str], time_col: str = "time"
 ) -> tuple:
     """
     Interpolate multiple columns in a DataFrame at a given timestamp.
@@ -404,6 +444,4 @@ def interpolate_columns(
 
     ratio = (t - t0) / (t1 - t0) if t1 != t0 else 0
 
-    return tuple(
-        before[col] + ratio * (after[col] - before[col]) for col in columns
-    )
+    return tuple(before[col] + ratio * (after[col] - before[col]) for col in columns)
