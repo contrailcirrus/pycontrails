@@ -12,8 +12,18 @@ import xarray as xr
 
 from pycontrails.core import Flight, cache
 from pycontrails.datalib._leo_utils import search
+from pycontrails.datalib._leo_utils.sentinel_metadata import (
+    parse_high_res_viewing_incidence_angles,
+    read_image_coordinates,
+    parse_ephemeris_sentinel,
+    get_time_delay_detector,
+    get_detector_id,
+    parse_sensing_time,
+    parse_sentinel_crs,
+)
 from pycontrails.datalib._leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
+
 
 try:
     import gcsfs
@@ -228,6 +238,45 @@ class Sentinel:
             ds[band] = self._get(band, reflective)
         return ds
 
+    # -----------------------------------------------------------------------------------------
+    # the following function should also be in Landsat
+    def get_viewing_angle_metadata(self, scale=10) -> xr.DataArray:
+        """Return the dataset with viewing angles."""
+        granule_meta_path, _ = self._get_meta()
+        _, detector_band_path = self._get_correction_meta()
+        return parse_high_res_viewing_incidence_angles(
+            granule_meta_path, detector_band_path, scale=scale
+        )
+
+    def get_detector_id(self, x, y):
+        """Return the detector_id of a pixel in UTM."""
+        granule_sink, _ = self._get_meta()
+        _, detector_band_sink = self._get_correction_meta()
+        return get_detector_id(detector_band_sink, granule_sink, x, y)
+
+    def get_time_delay_detector(self, detector_id, band="B03"):
+        """Return the time delay of a detector."""
+        datastrip_sink, _ = self._get_correction_meta()
+        return get_time_delay_detector(datastrip_sink, detector_id, band)
+
+    def get_ephemeris(self):
+        """Return the satellite ephemeris as dataframe."""
+        datastrip_sink, _ = self._get_correction_meta()
+
+        return parse_ephemeris_sentinel(datastrip_sink)
+
+    def get_crs(self):
+        """Return the CRS of the satellite image."""
+        granule_meta_path, _ = self._get_meta()
+        return parse_sentinel_crs(granule_meta_path)
+
+    def get_sensing_time(self):
+        """Return the sensing_time of the satellite image."""
+        granule_meta_path, _ = self._get_meta()
+        return parse_sensing_time(granule_meta_path)
+
+    # -------------------------------------------------------------------------------------
+
     def _get(self, band: str, processing: str) -> xr.DataArray:
         """Download Sentinel-2 band to the :attr:`cachestore` and return processed data."""
         jp2_path = self._get_jp2(band)
@@ -277,6 +326,47 @@ class Sentinel:
             fs.get(url, safe_sink)
 
         return granule_sink, safe_sink
+
+    def _get_correction_meta(self) -> tuple[str, str]:
+        """Download Sentinel-2 metadata files and return path to cached files.
+
+        Note that two XML files must be retrieved: one inside the GRANULE
+        subdirectory, and one at the top level of the SAFE archive.
+        """
+        fs = self.fs
+        base_url = self.base_url
+        granule_id = self.granule_id
+
+        # Resolve the unknown subfolder in DATASTRIP using glob
+        # Probably there is a better method, but this worked for now
+        pattern = f"{base_url}/DATASTRIP/*"
+        matches = fs.glob(pattern)
+        if not matches:
+            raise FileNotFoundError(f"No DATASTRIP MTD_MDS.xml file found at pattern: {pattern}")
+        if len(matches) > 2:
+            raise RuntimeError(f"Multiple DATASTRIP MTD_MDS.xml files found: {matches}")
+
+        datastrip_id = matches[0].split("/")[-1].replace("_$folder$", "")
+        url = f"{base_url}/DATASTRIP/{datastrip_id}/MTD_DS.xml"
+        datastrip_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
+        if not self.cachestore.exists(datastrip_sink):
+            fs.get(url, datastrip_sink)
+
+        # the detector_mask has a differnet format before 2022.
+        # will implement a better method later on
+        try:
+            url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.jp2"
+            detector_band_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
+            if not self.cachestore.exists(detector_band_sink):
+                fs.get(url, detector_band_sink)
+
+        except Exception:
+            url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.gml"
+            detector_band_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
+            if not self.cachestore.exists(detector_band_sink):
+                fs.get(url, detector_band_sink)
+
+        return datastrip_sink, detector_band_sink
 
 
 def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
@@ -328,7 +418,7 @@ def _read(path: str, granule_meta: str, safe_meta: str, band: str, processing: s
     epsg = int(elem.text.split(":")[1])
     crs = pyproj.CRS.from_epsg(epsg)
 
-    x, y = _read_image_coordinates(granule_meta, band)
+    x, y = read_image_coordinates(granule_meta, band)
 
     da = xr.DataArray(
         data=img,
@@ -343,13 +433,6 @@ def _read(path: str, granule_meta: str, safe_meta: str, band: str, processing: s
     da["x"].attrs = {"long_name": "easting", "units": "m"}
     da["y"].attrs = {"long_name": "northing", "units": "m"}
     return da
-
-
-def _band_resolution(band: str) -> int:
-    """Get band resolution in meters."""
-    return (
-        60 if band in ("B01", "B09", "B10") else 10 if band in ("B02", "B03", "B04", "B08") else 20
-    )
 
 
 def _band_id(band: str) -> int:
@@ -391,53 +474,6 @@ def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float
 
     msg = f"Could not find reflectance offset for band {band} (band ID {band_id})"
     raise ValueError(msg)
-
-
-def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarray]:
-    """Read image x and y coordinates."""
-
-    # convenience function that satisfies mypy
-    def _text_from_tag(parent: ElementTree.Element, tag: str) -> str:
-        elem = parent.find(tag)
-        if elem is None or elem.text is None:
-            msg = f"Could not find text in {tag} element"
-            raise ValueError(msg)
-        return elem.text
-
-    resolution = _band_resolution(band)
-
-    # find coordinates of upper left corner and pixel size
-    tree = ElementTree.parse(meta)
-    elems = tree.findall(".//Geoposition")
-    for elem in elems:
-        if int(elem.attrib["resolution"]) == resolution:
-            ulx = float(_text_from_tag(elem, "ULX"))
-            uly = float(_text_from_tag(elem, "ULY"))
-            dx = float(_text_from_tag(elem, "XDIM"))
-            dy = float(_text_from_tag(elem, "YDIM"))
-            break
-    else:
-        msg = f"Could not find image geoposition for resolution of {resolution} m"
-        raise ValueError(msg)
-
-    # find image size
-    elems = tree.findall(".//Size")
-    for elem in elems:
-        if int(elem.attrib["resolution"]) == resolution:
-            nx = int(_text_from_tag(elem, "NCOLS"))
-            ny = int(_text_from_tag(elem, "NROWS"))
-            break
-    else:
-        msg = f"Could not find image size for resolution of {resolution} m"
-        raise ValueError(msg)
-
-    # compute pixel coordinates
-    xlim = (ulx, ulx + (nx - 1) * dx)
-    ylim = (uly, uly + (ny - 1) * dy)  # dy is < 0
-    x = np.linspace(xlim[0], xlim[1], nx)
-    y = np.linspace(ylim[0], ylim[1], ny)
-
-    return x, y
 
 
 def extract_sentinel_visualization(
