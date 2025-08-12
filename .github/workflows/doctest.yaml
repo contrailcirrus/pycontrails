@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -52,6 +52,9 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          # https://github.com/google-github-actions/setup-gcloud?tab=readme-ov-file#user-content-skip_tool_cache
+          skip_tool_cache: true
 
       # put bada files in the default location
       - name: BADA files

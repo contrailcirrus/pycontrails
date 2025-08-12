@@ -27,7 +27,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run OpenSSF Security Scorecard
         uses: ossf/scorecard-action@v2.4.2

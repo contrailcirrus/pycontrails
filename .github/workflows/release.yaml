@@ -20,7 +20,7 @@ jobs:
       - name: OS Dependencies
         run: sudo apt-get install -y curl jq
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check main test status
         run: make main-test-status
@@ -34,7 +34,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -69,7 +69,7 @@ jobs:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
