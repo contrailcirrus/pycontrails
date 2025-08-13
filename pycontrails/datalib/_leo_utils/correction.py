@@ -37,7 +37,7 @@ def scan_angle_correction_iterative(
     x: npt.NDArray[np.floating],
     y: npt.NDArray[np.floating],
     z: npt.NDArray[np.floating],
-    iterations: int = 5,
+    n_iter: int = 5,
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Apply the scan angle correction to the given x, y, z coordinates.
 
@@ -70,9 +70,9 @@ def scan_angle_correction_iterative(
         msg = "ds['y'] must be monotonically decreasing"
         raise ValueError(msg)
 
-    x = np.atleast_1d(x).astype(np.float64)
-    y = np.atleast_1d(y).astype(np.float64)
-    z = np.atleast_1d(z).astype(np.float64)
+    x = np.atleast_1d(x).astype(np.float64, copy=False)
+    y = np.atleast_1d(y).astype(np.float64, copy=False)
+    z = np.atleast_1d(z).astype(np.float64, copy=False)
 
     x_proj, y_proj = np.copy(x), np.copy(y)
 
@@ -83,24 +83,24 @@ def scan_angle_correction_iterative(
     x_proj[out_of_bounds] = np.nan
     y_proj[out_of_bounds] = np.nan
 
-    for _ in range(iterations):
+    for _ in range(n_iter):
         # Use only valid points
-        valid = ~np.isnan(x_proj) & ~np.isnan(y_proj)
+        valid = np.isfinite(x_proj) & np.isfinite(y_proj)
         if not np.any(valid):
             break
 
         # Interpolate angles only for valid points
-        vza, vaa = interpolate_angles(ds, x_proj[valid], y_proj[valid])
+        vza, vaa = _interpolate_angles(ds, x_proj[valid], y_proj[valid])
 
         # Flatten and clean up any unexpected shapes
         vza = np.atleast_1d(vza).astype(np.float64).flatten()
         vaa = np.atleast_1d(vaa).astype(np.float64).flatten()
 
         # Skip any interpolated NaNs
-        interp_valid = ~(np.isnan(vza) | np.isnan(vaa))
+        interp_valid = np.isfinite(vza) & np.isfinite(vaa)
 
         # Full index into original arrays
-        valid_indices = np.where(valid)[0]
+        valid_indices = np.flatnonzero(valid)
         update_indices = valid_indices[interp_valid]
 
         # Convert to radians
@@ -119,19 +119,37 @@ def scan_angle_correction_iterative(
     return x_proj, y_proj
 
 
-# Interpolation function using xarray
-def interpolate_angles(ds, xi, yi):
+def _interpolate_angles(
+    ds: xr.Dataset,
+    xi: npt.NDArray[np.floating],
+    yi: npt.NDArray[np.floating],
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """
-    Bilinear interpolation for VZA and VAA from ds at points (xi, yi).
+    Interpolate view zenith angle (VZA) and view azimuth angle (VAA).
 
-        -> method can be switched to linear for better accuracy
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing at least the variables "VZA" and "VAA",
+        with coordinates `x` and `y` that define the spatial grid.
+    xi : array-like of float
+        X-coordinates of the target points for interpolation.
+        Must be the same length as `yi`.
+    yi : array-like of float
+        Y-coordinates of the target points for interpolation.
+        Must be the same length as `xi`.
+
+    Returns
+    -------
+    vza : np.ndarray
+        Interpolated view zenith angles at the given (xi, yi) points.
+    vaa : np.ndarray
+        Interpolated view azimuth angles at the given (xi, yi) points.
     """
-    xi = np.atleast_1d(xi).flatten()
-    yi = np.atleast_1d(yi).flatten()
-
-    vza = ds["VZA"].interp(x=("x", xi), y=("y", yi), method="nearest").values
-    vaa = ds["VAA"].interp(x=("x", xi), y=("y", yi), method="nearest").values
-    return vza, vaa
+    interped = ds[["VZA", "VAA"]].interp(
+        x=xr.DataArray(xi, dims="points"), y=xr.DataArray(yi, dims="points")
+    )
+    return interped["VZA"].values, interped["VAA"].values
 
 
 def scan_angle_correction_fl(
@@ -308,7 +326,7 @@ def colocate_flights(
     flight: Flight,
     handler: Sentinel | Landsat,
     utm_crs: pyproj.CRS,
-    iterations=3,
+    n_iter=3,
     search_window: int = 1,
 ):
     """
@@ -323,7 +341,7 @@ def colocate_flights(
         flight (Flight): The flight object.
         handler (Sentinel | Landsat): The satellite image handler.
         utm_crs (pyproj.CRS): UTM coordinate reference system used for projection.
-        iterations (int, optional): Number of iterations to refine the sensing_time correction.
+        n_iter (int, optional): Number of iterations to refine the sensing_time correction.
             Default is 3.
         search_window (int, optional): Time window. Default is 1 minute.
 
@@ -347,20 +365,17 @@ def colocate_flights(
         )
     ]
     # add the x and y coordinates in the UTM coordinate system
-    flight_df[["x", "y"]] = flight_df.apply(
-        lambda row: pd.Series(_geodetic_to_utm(row["longitude"], row["latitude"], utm_crs)), axis=1
-    )
+    x, y = _geodetic_to_utm(flight_df["longitude"], flight_df["latitude"], utm_crs)
+    flight_df.loc[:, "x"] = x
+    flight_df.loc[:, "y"] = y
 
     # project the x and y location to the image level
     ds_viewing_angles = handler.get_viewing_angle_metadata()
-    flight_df[["x_proj", "y_proj"]] = flight_df.apply(
-        lambda row: pd.Series(
-            scan_angle_correction_iterative(
-                ds_viewing_angles, row["x"], row["y"], row["altitude"], iterations=3
-            )
-        ),
-        axis=1,
+    x_proj, y_proj = scan_angle_correction_iterative(
+        ds_viewing_angles, flight_df["x"], flight_df["y"], flight_df["altitude"], n_iter=3
     )
+    flight_df.loc[:, "x_proj"] = x_proj
+    flight_df.loc[:, "y_proj"] = y_proj
 
     # get the satellite ephemeris data prepared
     satellite_ephemeris = handler.get_ephemeris()
@@ -371,7 +386,7 @@ def colocate_flights(
     )
 
     # Iteratively correct flight location based on satellite position
-    for _ in range(iterations):
+    for _ in range(n_iter):
         corrected_sensing_time = estimate_scan_time(satellite_ephemeris, utm_crs, x_proj, y_proj)
         if corrected_sensing_time is None or len(corrected_sensing_time) == 0:
             raise ValueError(
@@ -435,8 +450,8 @@ def interpolate_columns(
     elif timestamp >= df[time_col].iloc[-1]:
         before, after = df.iloc[-2], df.iloc[-1]
     else:
-        before = df[df[time_col] <= timestamp].tail(1).iloc[0]
-        after = df[df[time_col] >= timestamp].head(1).iloc[0]
+        before = df[df[time_col] <= timestamp].iloc[-1]
+        after = df[df[time_col] >= timestamp].iloc[0]
 
     t0 = before[time_col].value
     t1 = after[time_col].value

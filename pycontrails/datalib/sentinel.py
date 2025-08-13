@@ -13,17 +13,17 @@ import xarray as xr
 from pycontrails.core import Flight, cache
 from pycontrails.datalib._leo_utils import search
 from pycontrails.datalib._leo_utils.sentinel_metadata import (
-    parse_high_res_viewing_incidence_angles,
-    read_image_coordinates,
-    parse_ephemeris_sentinel,
-    get_time_delay_detector,
+    _band_id,
     get_detector_id,
+    get_time_delay_detector,
+    parse_ephemeris_sentinel,
+    parse_high_res_viewing_incidence_angles,
     parse_sensing_time,
     parse_sentinel_crs,
+    read_image_coordinates,
 )
 from pycontrails.datalib._leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
-
 
 try:
     import gcsfs
@@ -433,15 +433,6 @@ def _read(path: str, granule_meta: str, safe_meta: str, band: str, processing: s
     da["x"].attrs = {"long_name": "easting", "units": "m"}
     da["y"].attrs = {"long_name": "northing", "units": "m"}
     return da
-
-
-def _band_id(band: str) -> int:
-    """Get band ID used in some metadata files."""
-    if band in (f"B{i:2d}" for i in range(1, 9)):
-        return int(band[1:]) - 1
-    if band == "B8A":
-        return 8
-    return int(band[1:])
 
 
 def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float]:
