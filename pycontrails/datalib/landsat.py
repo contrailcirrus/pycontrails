@@ -264,6 +264,31 @@ class Landsat:
             fs.get(url, sink)
         return sink
 
+    # the following functions have to be implemented
+    def get_viewing_angle_metadata(self) -> xr.Dataset:
+        """Return the dataset with viewing angles."""
+        raise NotImplementedError
+
+    def get_detector_id(self, x: int, y: int) -> int:
+        """Return the detector_id of a pixel in UTM."""
+        raise NotImplementedError
+
+    def get_time_delay_detector(self, detector_id: str, band: str) -> pd.Timedelta:
+        """Return the time delay of a detector."""
+        raise NotImplementedError
+
+    def get_ephemeris(self) -> pd.DataFrame:
+        """Return the satellite ephemeris as dataframe."""
+        raise NotImplementedError
+
+    def get_crs(self) -> pyproj.CRS:
+        """Return the CRS of the satellite image."""
+        raise NotImplementedError
+
+    def get_sensing_time(self) -> pd.Timestamp:
+        """Return the sensing_time of the satellite image."""
+        raise NotImplementedError
+
 
 def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
     """Check that the bands are valid and return as a set."""
