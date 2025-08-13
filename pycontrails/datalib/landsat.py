@@ -267,27 +267,27 @@ class Landsat:
     # the following functions have to be implemented
     def get_viewing_angle_metadata(self):
         """Return the dataset with viewing angles."""
-        pass
+        raise NotImplementedError
 
     def get_detector_id(self, x, y):
         """Return the detector_id of a pixel in UTM."""
-        pass
+        raise NotImplementedError
 
     def get_time_delay_detector(self, detector_id, band):
         """Return the time delay of a detector."""
-        pass
+        raise NotImplementedError
 
     def get_ephemeris(self):
         """Return the satellite ephemeris as dataframe."""
-        pass
+        raise NotImplementedError
 
     def get_crs(self):
         """Return the CRS of the satellite image."""
-        pass
+        raise NotImplementedError
 
     def get_sensing_time(self):
         """Return the sensing_time of the satellite image."""
-        pass
+        raise NotImplementedError
 
     # the following functions have to be implemented
     def get_viewing_angle_metadata(self) -> xr.Dataset:
