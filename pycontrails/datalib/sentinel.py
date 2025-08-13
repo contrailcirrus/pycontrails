@@ -240,7 +240,7 @@ class Sentinel:
 
     # -----------------------------------------------------------------------------------------
     # the following function should also be in Landsat
-    def get_viewing_angle_metadata(self, scale=10) -> xr.DataArray:
+    def get_viewing_angle_metadata(self, scale: int = 10) -> xr.Dataset:
         """Return the dataset with viewing angles."""
         granule_meta_path, _ = self._get_meta()
         _, detector_band_path = self._get_correction_meta()
@@ -248,29 +248,29 @@ class Sentinel:
             granule_meta_path, detector_band_path, scale=scale
         )
 
-    def get_detector_id(self, x, y):
+    def get_detector_id(self, x: int, y: int) -> int:
         """Return the detector_id of a pixel in UTM."""
         granule_sink, _ = self._get_meta()
         _, detector_band_sink = self._get_correction_meta()
         return get_detector_id(detector_band_sink, granule_sink, x, y)
 
-    def get_time_delay_detector(self, detector_id, band="B03"):
+    def get_time_delay_detector(self, detector_id: str, band: str = "B03") -> pd.Timedelta:
         """Return the time delay of a detector."""
         datastrip_sink, _ = self._get_correction_meta()
         return get_time_delay_detector(datastrip_sink, detector_id, band)
 
-    def get_ephemeris(self):
+    def get_ephemeris(self) -> pd.DataFrame:
         """Return the satellite ephemeris as dataframe."""
         datastrip_sink, _ = self._get_correction_meta()
 
         return parse_ephemeris_sentinel(datastrip_sink)
 
-    def get_crs(self):
+    def get_crs(self) -> pyproj.CRS:
         """Return the CRS of the satellite image."""
         granule_meta_path, _ = self._get_meta()
         return parse_sentinel_crs(granule_meta_path)
 
-    def get_sensing_time(self):
+    def get_sensing_time(self) -> pd.Timestamp:
         """Return the sensing_time of the satellite image."""
         granule_meta_path, _ = self._get_meta()
         return parse_sensing_time(granule_meta_path)
