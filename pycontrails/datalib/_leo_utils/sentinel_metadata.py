@@ -1,18 +1,17 @@
 """Download and parse Sentinel metadata."""
 
-from datetime import datetime, timedelta, timezone
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyproj
 import rasterio
+import xarray as xr
 from rasterio.enums import Resampling
 from scipy.interpolate import griddata
-import xarray as xr
 from skimage.transform import resize
-
 
 BAND_ID_MAPPING = {
     "B01": 0,
@@ -29,6 +28,15 @@ BAND_ID_MAPPING = {
     "B11": 11,
     "B12": 12,
 }
+
+
+def _band_id(band: str) -> int:
+    """Get band ID used in some metadata files."""
+    if band in (f"B{i:2d}" for i in range(1, 9)):
+        return int(band[1:]) - 1
+    if band == "B8A":
+        return 8
+    return int(band[1:])
 
 
 def parse_viewing_incidence_angle_by_detector(
@@ -506,7 +514,7 @@ def get_time_delay_detector(
     if len(target_detector_id) == 1:
         target_detector_id = "0" + target_detector_id
 
-    band_id = str(BAND_ID_MAPPING[band])
+    band_id = str(_band_id(band))
 
     detector_times = []
 
