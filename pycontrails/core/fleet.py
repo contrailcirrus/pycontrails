@@ -5,12 +5,7 @@ from __future__ import annotations
 import sys
 import warnings
 from collections.abc import Iterable
-from typing import Any, NoReturn
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+from typing import Any, NoReturn, Self
 
 if sys.version_info >= (3, 12):
     from typing import override

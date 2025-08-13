@@ -130,7 +130,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             return super().__call__(xi, method)
 
         out_of_bounds = self._prepare_xi_simple(xi)
-        xi_indices, norm_distances = rgi_cython.find_indices(self.grid, xi.T)
+        xi_indices, norm_distances = self._find_indices(xi.T)
 
         out = self._evaluate_linear(xi_indices, norm_distances)
         return self._set_out_of_bounds(out, out_of_bounds)
@@ -579,7 +579,7 @@ def _linear_interp_with_indices(
     if indices is None:
         assert xi is not None, "xi must be provided if indices is None"
         out_of_bounds = interp._prepare_xi_simple(xi)
-        xi_indices, norm_distances = rgi_cython.find_indices(interp.grid, xi.T)
+        xi_indices, norm_distances = interp._find_indices(xi.T)
         indices = RGIArtifacts(xi_indices, norm_distances, out_of_bounds)
 
     out = interp._evaluate_linear(indices.xi_indices, indices.norm_distances)
