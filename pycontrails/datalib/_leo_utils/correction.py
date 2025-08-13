@@ -315,7 +315,9 @@ def estimate_scan_time(
     ).astype("datetime64[ns]")
 
 
-def _geodetic_to_utm(lon, lat, crs):
+def _geodetic_to_utm(
+    lon: npt.NDArray[np.floating], lat: npt.NDArray[np.floating], crs: pyproj.CRS
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Convert geographic coordinates (longitude, latitude) to UTM coordinates."""
     transformer = pyproj.Transformer.from_crs("EPSG:4326", crs, always_xy=True)
     x_utm, y_utm = transformer.transform(lon, lat)
@@ -326,9 +328,9 @@ def colocate_flights(
     flight: Flight,
     handler: Sentinel | Landsat,
     utm_crs: pyproj.CRS,
-    n_iter=3,
+    n_iter: int = 3,
     search_window: int = 1,
-):
+) -> tuple[list[float], pd.Timestamp]:
     """
     Colocate IAGOS flight track points with satellite image pixels.
 
