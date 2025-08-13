@@ -265,27 +265,27 @@ class Landsat:
         return sink
 
     # the following functions have to be implemented
-    def get_viewing_angle_metadata(self):
+    def get_viewing_angle_metadata(self) -> xr.Dataset:
         """Return the dataset with viewing angles."""
         raise NotImplementedError
 
-    def get_detector_id(self, x, y):
+    def get_detector_id(self, x: int, y: int) -> int:
         """Return the detector_id of a pixel in UTM."""
         raise NotImplementedError
 
-    def get_time_delay_detector(self, detector_id, band):
+    def get_time_delay_detector(self, detector_id: str, band: str) -> pd.Timedelta:
         """Return the time delay of a detector."""
         raise NotImplementedError
 
-    def get_ephemeris(self):
+    def get_ephemeris(self) -> pd.DataFrame:
         """Return the satellite ephemeris as dataframe."""
         raise NotImplementedError
 
-    def get_crs(self):
+    def get_crs(self) -> pyproj.CRS:
         """Return the CRS of the satellite image."""
         raise NotImplementedError
 
-    def get_sensing_time(self):
+    def get_sensing_time(self) -> pd.Timestamp:
         """Return the sensing_time of the satellite image."""
         raise NotImplementedError
 
