@@ -87,6 +87,42 @@ def p_vapor(q: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
     return q * p * (constants.R_v / constants.R_d)
 
 
+def water_vapor_partial_pressure_along_mixing_line(
+    specific_humidity: ArrayScalarLike,
+    air_pressure: ArrayScalarLike,
+    T_plume: ArrayScalarLike,
+    T_ambient: ArrayScalarLike,
+    G: ArrayScalarLike,
+) -> ArrayScalarLike:
+    """
+    Calculate water vapor partial pressure along mixing line.
+
+    Parameters
+    ----------
+    specific_humidity : ArrayScalarLike
+        Specific humidity at each waypoint, [:math:`kg_{H_{2}O} / kg_{air}`]
+    air_pressure : ArrayScalarLike
+        Pressure altitude at each waypoint, [:math:`Pa`]
+    T_plume : ArrayScalarLike
+        Plume temperature evolution along mixing line, [:math:`K`]
+    T_ambient : ArrayScalarLike
+        Ambient temperature for each waypoint, [:math:`K`]
+    G : ArrayScalarLike
+        Slope of the mixing line in a temperature-humidity diagram.
+
+    Returns
+    -------
+    ArrayScalarLike
+        Water vapor partial pressure along mixing line (p_mw), [:math:`Pa`]
+
+    References
+    ----------
+    Eq. (2) of Karcher et al. (2015).
+    """
+    p_wa = p_vapor(specific_humidity, air_pressure)
+    return p_wa + G * (T_plume - T_ambient)
+
+
 # -------------------
 # Saturation Pressure
 # -------------------
@@ -157,7 +193,7 @@ def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
 
     References
     ----------
-    - :cite:`sonntag1994`
+    Display (10) of Murphy and Koop (2005).
     """
     # Buck (Buck Research Manual 1996)
     # 6.1121 * np.exp((18.678 * (T - 273.15) / 234.5) * (T - 273.15) / (257.14 + (T - 273.15)))
@@ -168,18 +204,23 @@ def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
     # Guide to Meteorological Instruments and Methods of Observation (CIMO Guide) (WMO, 2008)
     # 6.112 * np.exp(17.62 * (T - 273.15) / (243.12 + T - 273.15))
 
-    # Sonntag (1994) is used in CoCiP
+    # Sonntag (1994) is used in older versions of CoCiP
+    # 100.0 * np.exp(
+    #     -6096.9385 / T
+    #     + 16.635794
+    #     - 0.02711193 * T
+    #     + 1.673952 * 1e-5 * T**2
+    #     + 2.433502 * np.log(T)
+    # )
 
-    # FIXME: Presently, mypy is not aware that numpy ufuncs will return `xr.DataArray``
-    # when xr.DataArray is passed in. This will get fixed at some point in the future
-    # as `numpy` their typing patterns, after which the "type: ignore" comment can
-    # get ripped out.
-    # We could explicitly check for `xr.DataArray` then use `xr.apply_ufunc`, but
-    # this only renders our code more boilerplate and less performant.
-    # This comment is pasted several places in `pycontrails` -- they should all be
-    # addressed at the same time.
-    return 100.0 * np.exp(  # type: ignore[return-value]
-        -6096.9385 / T + 16.635794 - 0.02711193 * T + 1.673952 * 1e-5 * T**2 + 2.433502 * np.log(T)
+    # Murphy and Koop (2005)
+    return np.exp(  # type: ignore[return-value]
+        54.842763
+        - 6763.22 / T
+        - 4.21 * np.log(T)
+        + 0.000367 * T
+        + np.tanh(0.0415 * (T - 218.8))
+        * (53.878 - 1331.22 / T - 9.44523 * np.log(T) + 0.014025 * T)
     )
 
 

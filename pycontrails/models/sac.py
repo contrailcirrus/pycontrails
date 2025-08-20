@@ -252,8 +252,14 @@ def _e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:
     ArrayScalarLike
         Derivative of :func:`thermo.e_sat_liquid`, [:math:``Pa \ K^{-1}`].
     """
-    d_inside = 6096.9385 / (T**2) - 0.02711193 + 1.673952 * 1e-5 * 2 * T + 2.433502 / T
-    return thermo.e_sat_liquid(T) * d_inside
+    tanh_term = np.tanh(0.0415 * (T - 218.8))
+    return thermo.e_sat_liquid(T) * (  # type: ignore[return-value]
+        6763.22 / T**2
+        - 4.21 / T
+        + 0.000367
+        + 0.0415 * (1 - tanh_term**2) * (53.878 - 1331.22 / T - 9.44523 * np.log(T) + 0.014025 * T)
+        + tanh_term * (1331.22 / T**2 - 9.44523 / T + 0.014025)
+    )
 
 
 def T_sat_liquid_high_accuracy(

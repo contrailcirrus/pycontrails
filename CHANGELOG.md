@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.54.12
+
+### Breaking changes
+
+- Update the formula used to compute the saturation vapor pressure over liquid water from Sonntag (1994) to [Murphy and Koop (2005)](https://doi.org/10.1256/qj.04.94). This improves consistency with current atmospheric physics references. Minor numerical differences are expected in the output of models that use the saturation vapor pressure over liquid water (for example, applications involving the Schmidt-Appleman criterion).
+
 ## 0.54.11
 
 ### Features

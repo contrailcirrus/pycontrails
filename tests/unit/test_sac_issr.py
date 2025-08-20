@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest import mock
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -116,7 +118,7 @@ def test_SAC_met_source(met_issr: MetDataset) -> None:
     # Values are now different because humidity was not scaled
     vals, counts = np.unique(out2.data["sac"], return_counts=True)
     np.testing.assert_array_equal(vals, [0, 1])
-    np.testing.assert_array_equal(counts, [340, 380])
+    np.testing.assert_array_equal(counts, [338, 382])
 
 
 def test_SAC_with_nan(met_issr: MetDataset) -> None:
@@ -473,14 +475,14 @@ def test_PCR_flight(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
     assert np.nansum(out2["pcr"]) == 71
 
 
-@pytest.mark.parametrize("step", [1e-3, 1e-6])
+@pytest.mark.parametrize("step", [1e-3, 1e-4, 1e-5, 1e-6])
 def test_e_sat_liquid_prime(step: float) -> None:
     """Confirm `sac._e_sat_liquid_prime` formula agrees with secant approximation.
 
     This test as well as the `sac._e_sat_liquid_prime` function will need to be
     updated if `thermo.e_sat_liquid` changes.
     """
-    T0 = np.linspace(-60, -20, 200) - constants.absolute_zero
+    T0 = np.linspace(-60.0, -20.0, 200) - constants.absolute_zero
     assert np.all(T0 > 0)
 
     T1 = T0 + step * np.ones_like(T0)
@@ -492,7 +494,7 @@ def test_e_sat_liquid_prime(step: float) -> None:
     tangent_slope = sac._e_sat_liquid_prime(T0)
 
     error = np.abs(secant_slope - tangent_slope)
-    assert np.all(error < step)  # approximation is O(step)
+    assert np.all(error < 2 * step)  # approximation is << step
 
 
 def test_T_critical_sac_implementation() -> None:
@@ -539,26 +541,46 @@ def test_T_sat_liquid() -> None:
 
 def test_T_critical_sac_schumann() -> None:
     """Confirm Schumann's statements from his 1996 paper."""
-    rng = np.random.default_rng(737)
-    size = 10000
-    G = rng.uniform(low=1, high=4, size=size)
 
-    # Intentionally going above 1 for rh here; these supersaturated values
-    # get clipped in sac.T_critical_sac
-    rh = rng.uniform(low=0, high=1.01, size=size)
-    t_LM = sac.T_sat_liquid(G)
-    t_LC = sac.T_critical_sac(t_LM, rh, G)
+    # Schumann used the Sonntag formula for e_sat_liquid
+    def sonntag_e_sat_liq(T):
+        return 100.0 * np.exp(
+            -6096.9385 / T
+            + 16.635794
+            - 0.02711193 * T
+            + 1.673952 * 1e-5 * T**2
+            + 2.433502 * np.log(T)
+        )
 
-    # Critical temperature is always below tangent line temperature value
-    assert np.all(t_LC <= t_LM)
-    # Equality when U >= 1
-    idx = np.nonzero(rh >= 1)
-    np.testing.assert_array_equal(t_LC[idx], t_LM[idx])
+    def e_sat_liquid_prime(T):
+        d_inside = 6096.9385 / (T**2) - 0.02711193 + 1.673952 * 1e-5 * 2 * T + 2.433502 / T
+        return sonntag_e_sat_liq(T) * d_inside
 
-    # For U = 0, equation (11) gives explicit answer
-    t_LC_U0 = sac.T_critical_sac(t_LM, np.zeros_like(rh), G)
-    eqn11 = t_LM - thermo.e_sat_liquid(t_LM) / G
-    np.testing.assert_array_equal(t_LC_U0, eqn11)
+    with (
+        mock.patch("pycontrails.physics.thermo.e_sat_liquid", sonntag_e_sat_liq),
+        mock.patch("pycontrails.models.sac._e_sat_liquid_prime", e_sat_liquid_prime),
+    ):
+        rng = np.random.default_rng(737)
+        size = 10000
+        G = rng.uniform(low=1, high=4, size=size)
+
+        # Intentionally going above 1 for rh here; these supersaturated values
+        # get clipped in sac.T_critical_sac
+        rh = rng.uniform(low=0, high=1.01, size=size)
+        t_LM = sac.T_sat_liquid(G)
+        t_LC = sac.T_critical_sac(t_LM, rh, G)
+
+        # Critical temperature is always below tangent line temperature value
+        assert np.all(t_LC <= t_LM)
+        # Equality when U >= 1
+        idx = np.nonzero(rh >= 1)
+        np.testing.assert_array_equal(t_LC[idx], t_LM[idx])
+
+        # For U = 0, equation (11) gives explicit answer
+        t_LC_U0 = sac.T_critical_sac(t_LM, np.zeros_like(rh), G)
+
+        eqn11 = t_LM - sonntag_e_sat_liq(t_LM) / G
+        np.testing.assert_array_equal(t_LC_U0, eqn11)
 
 
 @pytest.mark.parametrize("in_bounds", [False, True])
