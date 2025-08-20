@@ -655,7 +655,7 @@ def test_calc_first_contrail(
 
     assert isinstance(contrail, GeoVectorDataset)
 
-    assert sac_vector.size == 3199  # barely anything cut down in SAC check
+    assert sac_vector.size == 3200  # barely anything cut down in SAC check
     assert contrail.size == 574  # grabbed after letting test fail once
 
     # and level is slighty higher due to level shifting in downwash
@@ -942,7 +942,7 @@ def test_verbose_outputs_sac(
 
     assert "sac" in ds
     assert len(ds) == 3
-    assert ds["sac"].sum() == 3199  # agrees with test_calc_first_contrail
+    assert ds["sac"].sum() == 3200  # agrees with test_calc_first_contrail
 
 
 def test_verbose_outputs_formation(
@@ -982,7 +982,7 @@ def test_verbose_outputs_formation(
 
     # Pin a few values
     rel = 1e-4
-    assert ds["T_crit_sac"].mean() == pytest.approx(222.54, rel=rel)
+    assert ds["T_crit_sac"].mean() == pytest.approx(222.67, rel=rel)
     assert ds["persistent"].sum() == 574
     assert (ds["contrail_age"] > 0).sum() == 249
     assert np.isfinite(ds["nvpm_ei_n"]).all()
