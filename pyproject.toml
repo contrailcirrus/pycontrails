@@ -213,6 +213,7 @@ filterwarnings = [
     "ignore:.*pkg_resources:DeprecationWarning",
     "ignore:The default level_type will change:DeprecationWarning",
     "ignore:Conversion of an array with ndim > 0 to a scalar:DeprecationWarning:pyproj.transformer",
+    "ignore:numpy.ndarray size changed:RuntimeWarning",
 ]
 testpaths = ["tests/unit"]
 
