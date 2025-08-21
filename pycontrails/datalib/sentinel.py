@@ -63,7 +63,7 @@ ROI_QUERY_FILENAME = _path_to_static / "sentinel_roi_query.sql"
 BQ_TABLE = "bigquery-public-data.cloud_storage_geo_index.sentinel_2_index"
 
 #: Default columns to include in queries
-BQ_DEFAULT_COLUMNS = ["base_url", "granule_id", "sensing_time"]
+BQ_DEFAULT_COLUMNS = ["base_url", "granule_id", "sensing_time", "source_url"]
 
 #: Default spatial extent for queries
 BQ_DEFAULT_EXTENT = search.GLOBAL_EXTENT
@@ -149,8 +149,16 @@ def intersect(
     :func:`search.intersect`
     """
     columns = columns or BQ_DEFAULT_COLUMNS
-    return search.intersect(BQ_TABLE, flight, columns)
+    scenes = search.intersect(BQ_TABLE, flight, columns)
+    
+    # overwrite the base_url with source_url. 
+    # After 2024-03-14 there is a mistake in the Google BigQuery table, 
+    # such that the base_url is written to the source_url column
+    scenes["base_url"] = scenes["base_url"].fillna(scenes["source_url"])
 
+    # Drop the source_url column
+    return scenes.drop(columns=["source_url"])    
+    
 
 class Sentinel:
     """Support for Sentinel-2 data handling.
