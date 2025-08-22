@@ -150,15 +150,15 @@ def intersect(
     """
     columns = columns or BQ_DEFAULT_COLUMNS
     scenes = search.intersect(BQ_TABLE, flight, columns)
-    
-    # overwrite the base_url with source_url. 
-    # After 2024-03-14 there is a mistake in the Google BigQuery table, 
+
+    # overwrite the base_url with source_url.
+    # After 2024-03-14 there is a mistake in the Google BigQuery table,
     # such that the base_url is written to the source_url column
     scenes["base_url"] = scenes["base_url"].fillna(scenes["source_url"])
 
     # Drop the source_url column
-    return scenes.drop(columns=["source_url"])    
-    
+    return scenes.drop(columns=["source_url"])
+
 
 class Sentinel:
     """Support for Sentinel-2 data handling.
@@ -360,19 +360,33 @@ class Sentinel:
         if not self.cachestore.exists(datastrip_sink):
             fs.get(url, datastrip_sink)
 
-        # the detector_mask has a differnet format before 2022.
-        # will implement a better method later on
-        try:
-            url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.jp2"
-            detector_band_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
-            if not self.cachestore.exists(detector_band_sink):
-                fs.get(url, detector_band_sink)
+        # Path to the QI_DATA folder
+        qi_data_url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/"
 
-        except Exception:
-            url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.gml"
-            detector_band_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
+        # List files in QI_DATA (assuming fs can list directories)
+        files = fs.ls(qi_data_url)
+
+        # Filter for the detector mask files
+        mask_files = [f for f in files if "MSK_DETFOO_B03" in f]
+
+        if not mask_files:
+            raise FileNotFoundError(f"No detector mask found in {qi_data_url}")
+
+        # Choose the first available file (could prioritize .jp2 over .gml if needed)
+        mask_file = None
+        for ext in [".jp2", ".gml"]:
+            for f in mask_files:
+                if f.endswith(ext):
+                    mask_file = f
+                    break
+            if mask_file:
+                break
+
+        if mask_file is not None:
+            # Path where the file will be cached
+            detector_band_sink = self.cachestore.path(mask_file.removeprefix(GCP_STRIP_PREFIX))
             if not self.cachestore.exists(detector_band_sink):
-                fs.get(url, detector_band_sink)
+                fs.get(mask_file, detector_band_sink)
 
         return datastrip_sink, detector_band_sink
 
