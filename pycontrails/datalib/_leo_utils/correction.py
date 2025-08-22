@@ -329,7 +329,7 @@ def colocate_flights(
     handler: Sentinel | Landsat,
     utm_crs: pyproj.CRS,
     n_iter: int = 3,
-    search_window: int = 1,
+    search_window: int = 5,
 ) -> tuple[list[float], pd.Timestamp]:
     """
     Colocate IAGOS flight track points with satellite image pixels.
@@ -386,6 +386,8 @@ def colocate_flights(
     x_proj, y_proj = interpolate_columns(
         flight_df, initial_sensing_time, columns=["x_proj", "y_proj"]
     )
+    if np.isnan(x_proj) or np.isnan(y_proj):
+        raise ValueError("Aircraft is outside of the image bounds")
 
     # Iteratively correct flight location based on satellite position
     for _ in range(n_iter):

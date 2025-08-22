@@ -1,8 +1,11 @@
 """Download and parse Sentinel metadata."""
 
+import os
+import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
+import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -10,6 +13,7 @@ import pyproj
 import rasterio
 import xarray as xr
 from rasterio.enums import Resampling
+from rasterio.features import rasterize
 from scipy.interpolate import griddata
 from skimage.transform import resize
 
@@ -140,44 +144,81 @@ def parse_viewing_incidence_angles(
 
 def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDArray[np.integer]:
     """
-    Load in the detector mask.
+    Load in the detector mask from either JP2 or GML file.
 
-    Contains a pixel level mask indicating which detector [1-12] captured the pixel.
+    - JP2: Reads pixel-level mask indicating which detector [1-12] captured each pixel.
+    - GML: Converts detector polygons to raster mask, where each pixel corresponds to a detector ID.
 
     Lower the resolution with 'scale' to speed up processing.
     Scale 1 -> 10m resolution. Scale 10 -> 100m resolution.
 
     Parameters
     ----------
-    - metadata_path (str): Path to the file containing metadata. Usually in the
-      {base_url}/GRANULE/{granule_id}/QI_DATA/MSK_DETFOO_B03.jp2 path.
-    - scale (int): Indicates by which factor to lower the resolution.
+    metadata_path : str
+        Path to metadata file (.jp2 or .gml).
+    scale : int
+        Factor by which to lower the resolution.
 
     Returns
     -------
-    - np.ndarray: 2D array of detector IDs (1 to 12), shape (height, width)
+    np.ndarray
+        2D array of detector IDs (1 to 12), shape (height, width).
     """
-    # Make sure scale is an integer
     scale = int(scale)
 
-    # Load and downsample detector mask
-    with rasterio.open(metadata_path) as src:
-        # image = src.read(1)
-        image = src.read(
-            1,
-            out_shape=(int(src.count), int(src.height // scale), int(src.width // scale)),
-            resampling=Resampling.nearest,
+    file_ext = os.path.splitext(metadata_path)[1].lower()
+
+    if file_ext == ".jp2":
+        # --- Handle JP2 case ---
+        with rasterio.open(metadata_path) as src:
+            return src.read(
+                1,
+                out_shape=(int(src.height // scale), int(src.width // scale)),
+                resampling=Resampling.nearest,
+            )
+
+    elif file_ext == ".gml":
+        # --- Handle GML case ---
+        gdf = gpd.read_file(metadata_path)
+
+        # Extract detector_id from gml_id (assuming format contains "-Bxx-<id>-")
+        def _extract_detector_id(gml_id: str) -> int:
+            match = re.search(r"-B\d+-(\d+)-", gml_id)
+            if match:
+                return int(match.group(1))
+            return 0
+
+        gdf["detector_id"] = gdf["gml_id"].apply(_extract_detector_id)
+
+        # Calculate bounding box and raster size
+        minx, miny, maxx, maxy = gdf.total_bounds
+        resolution = 10 * scale
+
+        transform = rasterio.transform.from_origin(minx, maxy, resolution, resolution)
+
+        # Create an emmpty instance for the full grid
+        full_width = 10980 // scale
+        full_height = 10980 // scale
+        mask_full = np.full((full_height, full_width), 0, dtype="uint8")
+
+        # Rasterize detector polygons
+        local_width = int((maxx - minx) / resolution)
+        local_height = int((maxy - miny) / resolution)
+        local_mask = rasterize(
+            [(geom, det_id) for geom, det_id in zip(gdf.geometry, gdf.detector_id, strict=False)],
+            out_shape=(local_height, local_width),
+            transform=transform,
+            fill=0,
+            dtype="int32",
         )
 
-        # Scale transform for new resolution
-        transform = src.transform * src.transform.scale(
-            (src.width / image.shape[-1]), (src.height / image.shape[-2])
-        )
+        # Insert local raster into top-left corner of full grid
+        mask_full[:local_height, :local_width] = local_mask.astype("uint8")
 
-        profile = src.profile
-        profile.update({"height": image.shape[0], "width": image.shape[1], "transform": transform})
+        return mask_full
 
-    return image
+    else:
+        raise ValueError(f"Unsupported file extension: {file_ext}. Expected .jp2 or .gml.")
 
 
 def _band_resolution(band: str) -> int:
