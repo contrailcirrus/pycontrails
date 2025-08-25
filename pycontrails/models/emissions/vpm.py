@@ -300,7 +300,7 @@ def _t_plume_test_points(
     T_ambient: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
     G: npt.NDArray[np.floating],
-    n_points: int = 100,
+    n_points: int,
 ) -> npt.NDArray[np.float64]:
     """Determine test points for the plume temperature along the mixing line."""
     target_shape = (1,) * T_ambient.ndim + (-1,)
@@ -347,6 +347,7 @@ def droplet_apparent_emission_index(
     vpm_ei_n: npt.NDArray[np.float64],
     G: npt.NDArray[np.float64],
     particles: list[ParticleType] | None = None,
+    n_plume_points: int = 100,
 ) -> npt.NDArray[np.float64]:
     """Calculate droplet apparent ice emissions index from nvPM, vPM and ambient particles.
 
@@ -369,6 +370,10 @@ def droplet_apparent_emission_index(
     particles : list[ParticleType]
         List of particle types to consider. If ``None``, defaults to a list of
         ``ParticleType`` instances representing nvPM, vPM, and ambient particles.
+    n_plume_points : int
+        Number of points to evaluate the plume temperature along the mixing line.
+        Increasing this value can improve accuracy and reduce NaNs near the SAC critical
+        temperature, but will increase computation time. Default is 100.
 
     Returns
     -------
@@ -377,7 +382,12 @@ def droplet_apparent_emission_index(
 
     Notes
     -----
-    TODO: Document broadcasting rules for gridded estimates.
+    All input arrays must be broadcastable to the same shape. For better performance
+    when evaluating multiple points or grids, it is helpful to arrange the arrays so that
+    meteorological variables (``specific_humidity``, ``T_ambient``, ``air_pressure``, ``G``)
+    correspond to dimension 0, while aircraft emissions (``nvpm_ei_n``, ``vpm_ei_n``) correspond
+    to dimension 1. This setup allows the plume temperature calculation to be computed once
+    and reused for multiple emissions values.
     """
     particles = particles or _default_particle_types()
 
@@ -395,7 +405,7 @@ def droplet_apparent_emission_index(
         ) from e
 
     # Determine plume temperature limits
-    T_plume = _t_plume_test_points(specific_humidity, T_ambient, air_pressure, G)
+    T_plume = _t_plume_test_points(specific_humidity, T_ambient, air_pressure, G, n_plume_points)
 
     # Fixed parameters -- these could be made configurable if needed
     tau_m = 10.0e-3
