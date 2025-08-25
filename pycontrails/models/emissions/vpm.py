@@ -57,7 +57,7 @@ class Particle:
     gsd: float
     n_ambient: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.type != ParticleType.AMBIENT and self.n_ambient != 0.0:
             raise ValueError(f"n_ambient must be 0.0 for emitted particle type {self.type.value}")
         if self.type == ParticleType.AMBIENT and self.n_ambient < 0.0:
@@ -299,7 +299,7 @@ def activation_radius(
     kappa_cond = kappa[cond]
     temperature_cond = temperature[cond]
 
-    def func(r):
+    def func(r: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         # radius -> diameter
         return critical_supersaturation(2.0 * r, kappa_cond, temperature_cond) - S_w_cond
 
@@ -326,7 +326,7 @@ def _t_plume_test_points(
 
     # Initially we take a shotgun approach
     # We could use some optimization technique here as well, but it's not obviously worth it
-    T_plume_test = np.arange(190.0, 300.0, step).reshape(target_shape)
+    T_plume_test = np.arange(190.0, 300.0, step, dtype=float).reshape(target_shape)
     p_mw = thermo.water_vapor_partial_pressure_along_mixing_line(
         specific_humidity=specific_humidity[..., np.newaxis],
         air_pressure=air_pressure[..., np.newaxis],
@@ -603,8 +603,8 @@ def water_droplet_activation(
     particles: list[Particle],
     T_plume: npt.NDArray[np.float64],
     T_ambient: npt.NDArray[np.float64],
-    nvpm_ei_n: npt.NDArray[np.float64] | float,
-    vpm_ei_n: npt.NDArray[np.float64] | float,
+    nvpm_ei_n: npt.NDArray[np.float64],
+    vpm_ei_n: npt.NDArray[np.float64],
     S_mw: npt.NDArray[np.float64],
     dilution: npt.NDArray[np.float64],
     rho_air: npt.NDArray[np.float64],
@@ -787,6 +787,9 @@ def water_droplet_activation_across_all_particles(
     n_available_all = np.zeros_like(target)
 
     for particle in particle_droplets:
+        if not particle.particle:
+            raise ValueError("Each DropletActivation must have an associated Particle.")
+
         # Calculate number weighted activation radius
         d_act = 2.0 * particle.r_act
 
