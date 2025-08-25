@@ -218,9 +218,6 @@ def _geometric_bisection(
     f_hi = func(hi)
 
     out_mask = np.sign(f_lo) == np.sign(f_hi)
-    if np.any(out_mask):
-        n_entries = out_mask.sum()
-        warnings.warn(f"{n_entries} intervals do not bracket a root. Return nan at these entries.")
 
     for _ in range(maxiter):
         mid = np.sqrt(lo * hi)
@@ -237,7 +234,7 @@ def _geometric_bisection(
         if np.all(hi / lo - 1.0 < rtol):
             break
 
-    return np.where(out_mask, np.nan, mid)
+    return np.where(out_mask, np.nan, np.sqrt(lo * hi))
 
 
 def activation_radius(
