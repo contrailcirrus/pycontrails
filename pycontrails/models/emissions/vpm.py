@@ -1230,20 +1230,16 @@ def droplet_activation(
 
     # Calculate the droplet activation that is required to quench the plume supersaturation
     # We will be seeking a root of f
+    # It may be better to work in a log-space here (so f = log(n_available_all) - log(n_2_w))
+    # but with high enough T_plume resolution it's not necessary
     f = n_available_all - n_2_w
 
-    # We mask profiles that never attain a positive f value
-    valid = np.any(f > 0.0, axis=-1)
+    # We mask profiles that never change sign
+    # This can occur when the ambient temperature is very close to the SAC T_critical saturation
+    valid = np.any(f < 0.0, axis=1) & np.any(f > 0.0, axis=-1)
     if not valid.all():
         n_failures = np.sum(~valid)
-        warnings.warn(f"{n_failures} profiles never attain a positive values, setting to np.nan")
-
-    # We always expect f to start negative, so raise an error (instead of a warning) if not
-    # This indicates a bug in the code or a numerical instability
-    f_attains_negative = np.any(f < 0.0, axis=-1)
-    if not f_attains_negative.all():
-        msg = "f never attains a negative value, something is wrong"
-        raise RuntimeError(msg)
+        warnings.warn(f"{n_failures} profiles never change signs, setting to np.nan")
 
     # Find the first positive value, then interpolate to estimate the fractional index
     # at which the zero crossing occurs.
@@ -1253,10 +1249,7 @@ def droplet_activation(
     val0 = np.take_along_axis(f, i0, axis=-1)
     dist = val0 / (val0 - val1)
 
-    # Extract properties at the point where the supersaturation is quenched.
-    # NOTE: To calculate `n_activated_w`, use `n_available_all` instead of `n_2_w`
-    # If there is no intersection, then assume all `n_available_all` is activated.
-    # For all scenarios, the `n_2_w` should always be greater than `n_available_all`
+    # Extract properties at the point where the supersaturation is quenched by interpolating
     n_activated_w0 = np.take_along_axis(n_available_all, i0, axis=-1)
     n_activated_w1 = np.take_along_axis(n_available_all, i1, axis=-1)
     n_activated_w = (n_activated_w0 + dist * (n_activated_w1 - n_activated_w0))[..., 0]
