@@ -1,4 +1,4 @@
-"""Support for volatile particle matter (vPM) modeling via the extended K15 model.
+"""Support for volatile particulate matter (vPM) modeling via the extended K15 model.
 
 A preprint is available at https://doi.org/10.5194/egusphere-2025-1717
 """
@@ -80,21 +80,21 @@ class DropletActivation:
     ----------
     particle : Particle | None
         Source particle type, or ``None`` if this is the aggregate result.
-    r_act : npt.NDArray[np.float64]
+    r_act : npt.NDArray[np.floating]
         Activation radius for a given water saturation ratio and temperature, [:math:`m`].
-    phi : npt.NDArray[np.float64]
+    phi : npt.NDArray[np.floating]
         Fraction of particles that activate to form water droplets, between 0 and 1.
-    n_total : npt.NDArray[np.float64]
+    n_total : npt.NDArray[np.floating]
         Total particle number concentration, [:math:`m^{-3}`].
-    n_available : npt.NDArray[np.float64]
+    n_available : npt.NDArray[np.floating]
         Particle number concentration available for activation, [:math:`m^{-3}`].
     """
 
     particle: Particle | None
-    r_act: npt.NDArray[np.float64]
-    phi: npt.NDArray[np.float64]
-    n_total: npt.NDArray[np.float64]
-    n_available: npt.NDArray[np.float64]
+    r_act: npt.NDArray[np.floating]
+    phi: npt.NDArray[np.floating]
+    n_total: npt.NDArray[np.floating]
+    n_available: npt.NDArray[np.floating]
 
 
 def S(
@@ -256,12 +256,12 @@ def _geometric_bisection(
 
 
 def activation_radius(
-    S_w: npt.NDArray[np.float64],
-    kappa: npt.NDArray[np.float64] | float,
-    temperature: npt.NDArray[np.float64],
+    S_w: npt.NDArray[np.floating],
+    kappa: npt.NDArray[np.floating] | float,
+    temperature: npt.NDArray[np.floating],
     rtol: float = 1e-6,
     maxiter: int = 30,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate activation radius for a given supersaturation ratio and temperature.
 
     The activation radius is defined as the droplet radius at which the
@@ -272,11 +272,11 @@ def activation_radius(
 
     Parameters
     ----------
-    S_w : npt.NDArray[np.float64]
+    S_w : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume after droplet condensation, dimensionless.
-    kappa : npt.NDArray[np.float64]
+    kappa : npt.NDArray[np.floating]
         Hygroscopicity parameter, dimensionless. Expected to satisfy ``0 < kappa < 1``.
-    temperature : npt.NDArray[np.float64]
+    temperature : npt.NDArray[np.floating]
         Temperature at which to compute the activation radius, [:math:`K`].
     rtol : float, optional
         Relative tolerance for geometric-bisection root-finding algorithm, by default 1e-6.
@@ -285,7 +285,7 @@ def activation_radius(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         The activation radius, [:math:`m`]. Entries where ``S_w <= 1.0`` return ``nan``. Only
         supersaturation ratios greater than 1.0 are physically meaningful for activation. The
         returned activation radius is the radius at which the droplet would first activate
@@ -319,7 +319,7 @@ def _t_plume_test_points(
     air_pressure: npt.NDArray[np.floating],
     G: npt.NDArray[np.floating],
     n_points: int,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Determine test points for the plume temperature along the mixing line."""
     target_shape = (1,) * T_ambient.ndim + (-1,)
     step = 0.005
@@ -357,33 +357,33 @@ def _t_plume_test_points(
 
 
 def droplet_apparent_emission_index(
-    specific_humidity: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
-    T_exhaust: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    nvpm_ei_n: npt.NDArray[np.float64],
-    vpm_ei_n: npt.NDArray[np.float64],
-    G: npt.NDArray[np.float64],
+    specific_humidity: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
+    T_exhaust: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    nvpm_ei_n: npt.NDArray[np.floating],
+    vpm_ei_n: npt.NDArray[np.floating],
+    G: npt.NDArray[np.floating],
     particles: list[Particle] | None = None,
     n_plume_points: int = 100,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate droplet apparent ice emissions index from nvPM, vPM and ambient particles.
 
     Parameters
     ----------
-    specific_humidity : npt.NDArray[np.float64]
+    specific_humidity : npt.NDArray[np.floating]
         Specific humidity at each waypoint, [:math:`kg_{H_{2}O} / kg_{air}`]
-    T_ambient : npt.NDArray[np.float64]
+    T_ambient : npt.NDArray[np.floating]
         Ambient temperature at each waypoint, [:math:`K`]
-    T_exhaust : npt.NDArray[np.float64]
+    T_exhaust : npt.NDArray[np.floating]
         Aircraft exhaust temperature for each waypoint, [:math:`K`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    nvpm_ei_n : npt.NDArray[np.float64]
+    nvpm_ei_n : npt.NDArray[np.floating]
         nvPM number emissions index, [:math:`kg^{-1}`]
-    vpm_ei_n : npt.NDArray[np.float64]
+    vpm_ei_n : npt.NDArray[np.floating]
         vPM number emissions index, [:math:`kg^{-1}`]
-    G : npt.NDArray[np.float64]
+    G : npt.NDArray[np.floating]
         Slope of the mixing line in a temperature-humidity diagram.
     particles : list[Particle]
         List of particle types to consider. If ``None``, defaults to a list of
@@ -395,7 +395,7 @@ def droplet_apparent_emission_index(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Activated droplet apparent ice emissions index, [:math:`kg^{-1}`]
 
     Notes
@@ -496,21 +496,21 @@ def droplet_apparent_emission_index(
 
 
 def plume_water_saturation_ratio_no_condensation(
-    T_plume: npt.NDArray[np.float64],
-    p_mw: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    T_plume: npt.NDArray[np.floating],
+    p_mw: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate water saturation ratio in the exhaust plume without droplet condensation.
 
     Parameters
     ----------
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`]
-    p_mw : npt.NDArray[np.float64]
+    p_mw : npt.NDArray[np.floating]
         PWater vapour partial pressure along mixing line, [:math:`Pa`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation (``S_mw``).
 
     References
@@ -528,21 +528,21 @@ def plume_water_saturation_ratio_no_condensation(
 
 
 def plume_dilution_factor(
-    T_plume: npt.NDArray[np.float64],
-    T_exhaust: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
+    T_plume: npt.NDArray[np.floating],
+    T_exhaust: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
     tau_m: float,
     beta: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate the plume dilution factor.
 
     Parameters
     ----------
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`].
-    T_exhaust : npt.NDArray[np.float64]
+    T_exhaust : npt.NDArray[np.floating]
         Aircraft exhaust temperature for each waypoint, [:math:`K`].
-    T_ambient : npt.NDArray[np.float64]
+    T_ambient : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`].
     tau_m : float
         Mixing timescale, i.e., the time for an exhaust volume element at the center of the
@@ -552,7 +552,7 @@ def plume_dilution_factor(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Plume dilution factor.
 
     References
@@ -564,21 +564,21 @@ def plume_dilution_factor(
 
 
 def _plume_age_timescale(
-    T_plume: npt.NDArray[np.float64],
-    T_exhaust: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
+    T_plume: npt.NDArray[np.floating],
+    T_exhaust: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
     tau_m: float,
     beta: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate plume age timescale from the change in plume temperature.
 
     Parameters
     ----------
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`].
-    T_exhaust : npt.NDArray[np.float64]
+    T_exhaust : npt.NDArray[np.floating]
         Aircraft exhaust temperature for each waypoint, [:math:`K`].
-    T_ambient : npt.NDArray[np.float64]
+    T_ambient : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`].
     tau_m : float
         Mixing timescale, i.e., the time for an exhaust volume element at the center of the
@@ -588,7 +588,7 @@ def _plume_age_timescale(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Plume age timescale, [:math:`s`].
 
     References
@@ -601,13 +601,13 @@ def _plume_age_timescale(
 
 def water_droplet_activation(
     particles: list[Particle],
-    T_plume: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
-    nvpm_ei_n: npt.NDArray[np.float64],
-    vpm_ei_n: npt.NDArray[np.float64],
-    S_mw: npt.NDArray[np.float64],
-    dilution: npt.NDArray[np.float64],
-    rho_air: npt.NDArray[np.float64],
+    T_plume: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
+    nvpm_ei_n: npt.NDArray[np.floating],
+    vpm_ei_n: npt.NDArray[np.floating],
+    S_mw: npt.NDArray[np.floating],
+    dilution: npt.NDArray[np.floating],
+    rho_air: npt.NDArray[np.floating],
     nu_0: float,
 ) -> list[DropletActivation]:
     """Calculate statistics on the water droplet activation for different particle types.
@@ -616,19 +616,19 @@ def water_droplet_activation(
     ----------
     particles : list[Particle]
         Properties of different particles in the contrail plume.
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`].
-    T_ambient : npt.NDArray[np.float64]
+    T_ambient : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`].
-    nvpm_ei_n : npt.NDArray[np.float64] | float
+    nvpm_ei_n : npt.NDArray[np.floating] | float
         nvPM number emissions index, [:math:`kg^{-1}`].
-    vpm_ei_n : npt.NDArray[np.float64] | float
+    vpm_ei_n : npt.NDArray[np.floating] | float
         vPM number emissions index, [:math:`kg^{-1}`].
-    S_mw : npt.NDArray[np.float64]
+    S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation.
-    dilution : npt.NDArray[np.float64]
+    dilution : npt.NDArray[np.floating]
         Plume dilution factor, see :func:`plume_dilution_factor`.
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         Density of air, [:math:`kg / m^{-3}`].
     nu_0 : float
         Initial mass-based plume mixing factor, i.e., air-to-fuel ratio, set to 60.0.
@@ -669,24 +669,24 @@ def water_droplet_activation(
 
 
 def fraction_of_water_activated_particles(
-    gmd: npt.NDArray[np.float64] | float,
-    gsd: npt.NDArray[np.float64] | float,
-    r_act: npt.NDArray[np.float64] | float,
-) -> npt.NDArray[np.float64]:
+    gmd: npt.NDArray[np.floating] | float,
+    gsd: npt.NDArray[np.floating] | float,
+    r_act: npt.NDArray[np.floating] | float,
+) -> npt.NDArray[np.floating]:
     """Calculate the fraction of particles that activate to form water droplets.
 
     Parameters
     ----------
-    gmd : npt.NDArray[np.float64] | float
+    gmd : npt.NDArray[np.floating] | float
         Geometric mean diameter, [:math:`m`]
-    gsd : npt.NDArray[np.float64] | float
+    gsd : npt.NDArray[np.floating] | float
         Geometric standard deviation
-    r_act : npt.NDArray[np.float64] | float
+    r_act : npt.NDArray[np.floating] | float
         Droplet activation threshold radius for a given supersaturation (s_w), [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Fraction of particles that activate to form water droplets (phi)
 
     Notes
@@ -698,27 +698,27 @@ def fraction_of_water_activated_particles(
 
 
 def entrained_ambient_droplet_number_concentration(
-    n_ambient: npt.NDArray[np.float64] | float,
-    T_plume: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
-    dilution: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    n_ambient: npt.NDArray[np.floating] | float,
+    T_plume: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
+    dilution: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate ambient droplet number concentration entrained in the contrail plume.
 
     Parameters
     ----------
-    n_ambient : npt.NDArray[np.float64] | float
+    n_ambient : npt.NDArray[np.floating] | float
         Ambient particle number concentration, [:math:`m^{-3}`].
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`].
-    T_ambient : npt.NDArray[np.float64]
+    T_ambient : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`].
-    dilution : npt.NDArray[np.float64]
+    dilution : npt.NDArray[np.floating]
         Plume dilution factor.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Ambient droplet number concentration entrained in the contrail plume, [:math:`m^{-3}`].
 
     References
@@ -729,27 +729,27 @@ def entrained_ambient_droplet_number_concentration(
 
 
 def emissions_index_to_number_concentration(
-    number_ei: npt.NDArray[np.float64],
-    rho_air: npt.NDArray[np.float64],
-    dilution: npt.NDArray[np.float64],
+    number_ei: npt.NDArray[np.floating],
+    rho_air: npt.NDArray[np.floating],
+    dilution: npt.NDArray[np.floating],
     nu_0: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Convert particle number emissions index to number concentration.
 
     Parameters
     ----------
-    number_ei : npt.NDArray[np.float64]
+    number_ei : npt.NDArray[np.floating]
         Particle number emissions index, [:math:`kg^{-1}`].
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         Air density at each waypoint, [:math:`kg m^{-3}`].
-    dilution : npt.NDArray[np.float64]
+    dilution : npt.NDArray[np.floating]
         Plume dilution factor.
     nu_0 : float
         Initial mass-based plume mixing factor, i.e., air-to-fuel ratio, set to 60.0.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Particle number concentration entrained in the contrail plume, [:math:`m^{-3}`]
 
     References
@@ -825,12 +825,12 @@ def water_droplet_activation_across_all_particles(
 
 
 def mean_dry_particle_diameter_above_threshold(
-    d_act: npt.NDArray[np.float64],
+    d_act: npt.NDArray[np.floating],
     gmd: float,
     gsd: float,
     n_points: int = 5000,
     alpha: float = 5e-8,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate the mean dry particle diameter above the critical diameter.
 
     This function returns the conditional expectation of the particle diameter
@@ -848,7 +848,7 @@ def mean_dry_particle_diameter_above_threshold(
 
     Parameters
     ----------
-    d_act : npt.NDArray[np.float64]
+    d_act : npt.NDArray[np.floating]
         Activation diameter for the given water saturation ratio and temperature, [:math:`m`].
     gmd : float
         Geometric mean diameter, [:math:`m`].
@@ -861,7 +861,7 @@ def mean_dry_particle_diameter_above_threshold(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Mean dry particle diameter above the critical diameter, [:math:`m`].
 
     """
@@ -897,18 +897,18 @@ def mean_dry_particle_diameter_above_threshold(
 
 
 def droplet_number_concentration_at_saturation(
-    T_plume: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    T_plume: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate water vapour concentration at saturation.
 
     Parameters
     ----------
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Water vapour concentration at water saturated conditions, [:math:`m^{-3}`]
 
     Notes
@@ -920,30 +920,30 @@ def droplet_number_concentration_at_saturation(
 
 
 def particle_growth_coefficients(
-    T_plume: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    S_mw: npt.NDArray[np.float64],
-    n_w_sat: npt.NDArray[np.float64],
+    T_plume: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    S_mw: npt.NDArray[np.floating],
+    n_w_sat: npt.NDArray[np.floating],
     vol_molecule_h2o: float,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Calculate particle growth coefficients, ``b_1`` and ``b_2`` in Karcher et al. (2015).
 
     Parameters
     ----------
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    S_mw : npt.NDArray[np.float64]
+    S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation
-    n_w_sat : npt.NDArray[np.float64]
+    n_w_sat : npt.NDArray[np.floating]
         Droplet number concentration at water saturated conditions, [:math:`m^{-3}`]
     vol_molecule_h2o : float
         Volume of a supercooled water molecule, [:math:`m^{3}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Particle growth coefficient (b_1), [:math:`m s^{-1}`]
 
     References
@@ -968,21 +968,21 @@ def particle_growth_coefficients(
 
 
 def _water_vapor_molecular_diffusion_coefficient(
-    T_plume: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    T_plume: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate water vapor molecular diffusion coefficient.
 
     Parameters
     ----------
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`]
-    air_pressure : npt.NDArray[np.float64]
+    air_pressure : npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Water vapor molecular diffusion coefficient
 
     References
@@ -998,27 +998,27 @@ def _water_vapor_molecular_diffusion_coefficient(
 
 
 def water_supersaturation_production_rate(
-    T_plume: npt.NDArray[np.float64],
-    T_exhaust: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
-    dilution: npt.NDArray[np.float64],
-    S_mw: npt.NDArray[np.float64],
+    T_plume: npt.NDArray[np.floating],
+    T_exhaust: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
+    dilution: npt.NDArray[np.floating],
+    S_mw: npt.NDArray[np.floating],
     tau_m: float,
     beta: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """Calculate water supersaturation production rate.
 
     Parameters
     ----------
-    T_plume : npt.NDArray[np.float64]
+    T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`]
-    T_exhaust : npt.NDArray[np.float64]
+    T_exhaust : npt.NDArray[np.floating]
         Aircraft exhaust temperature for each waypoint, [:math:`K`]
-    T_ambient : npt.NDArray[np.float64]
+    T_ambient : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`]
-    dilution : npt.NDArray[np.float64]
+    dilution : npt.NDArray[np.floating]
         Plume dilution factor, see `plume_dilution_factor`
-    S_mw : npt.NDArray[np.float64]
+    S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation
     tau_m : float
         Mixing timescale, i.e., the time for an exhaust volume element at the center of the
@@ -1028,7 +1028,7 @@ def water_supersaturation_production_rate(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Water supersaturation production rate (P_w = dS_mw/dt), [:math:`s^{-1}`]
     """
     dT_dt = _plume_cooling_rate(T_exhaust, T_ambient, dilution, tau_m, beta)
@@ -1037,22 +1037,22 @@ def water_supersaturation_production_rate(
 
 
 def _plume_cooling_rate(
-    T_exhaust: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
-    dilution: npt.NDArray[np.float64],
+    T_exhaust: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
+    dilution: npt.NDArray[np.floating],
     tau_m: float,
     beta: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """
     Calculate plume cooling rate.
 
     Parameters
     ----------
-    T_exhaust : npt.NDArray[np.float64]
+    T_exhaust : npt.NDArray[np.floating]
         Aircraft exhaust temperature for each waypoint, [:math:`K`]
-    T_ambient : npt.NDArray[np.float64]
+    T_ambient : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`]
-    dilution : npt.NDArray[np.float64]
+    dilution : npt.NDArray[np.floating]
         Plume dilution factor, see `plume_dilution_factor`
     tau_m : float
         Mixing timescale, i.e., the time for an exhaust volume element at the center of the
@@ -1062,7 +1062,7 @@ def _plume_cooling_rate(
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Plume cooling rate (dT_dt), [:math:`K s^{-1}`]
 
     References
@@ -1073,33 +1073,33 @@ def _plume_cooling_rate(
 
 
 def dynamical_regime_parameter(
-    n_available_all: npt.NDArray[np.float64],
-    S_mw: npt.NDArray[np.float64],
-    P_w: npt.NDArray[np.float64],
-    r_act_nw: npt.NDArray[np.float64],
-    b_1: npt.NDArray[np.float64],
-    b_2: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    n_available_all: npt.NDArray[np.floating],
+    S_mw: npt.NDArray[np.floating],
+    P_w: npt.NDArray[np.floating],
+    r_act_nw: npt.NDArray[np.floating],
+    b_1: npt.NDArray[np.floating],
+    b_2: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate dynamical regime parameter.
 
     Parameters
     ----------
-    n_available_all : npt.NDArray[np.float64]
+    n_available_all : npt.NDArray[np.floating]
         Particle number concentration that can be activated across all particles, [:math:`m^{-3}`]
-    S_mw : npt.NDArray[np.float64]
+    S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation
-    P_w : npt.NDArray[np.float64]
+    P_w : npt.NDArray[np.floating]
         Water supersaturation production rate (P_w = dS_mw/dt), [:math:`s^{-1}`]
-    r_act_nw : npt.NDArray[np.float64]
+    r_act_nw : npt.NDArray[np.floating]
         Number-weighted droplet activation radius, [:math:`m`]
-    b_1 : npt.NDArray[np.float64]
+    b_1 : npt.NDArray[np.floating]
         Particle growth coefficient, [:math:`m s^{-1}`]
-    b_2 : npt.NDArray[np.float64]
+    b_2 : npt.NDArray[np.floating]
         Particle growth coefficient, [:math:`m s^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Dynamical regime parameter (kappa_w)
 
     References
@@ -1114,24 +1114,24 @@ def dynamical_regime_parameter(
 
 
 def _droplet_activation_timescale(
-    n_available_all: npt.NDArray[np.float64],
-    S_mw: npt.NDArray[np.float64],
-    P_w: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    n_available_all: npt.NDArray[np.floating],
+    S_mw: npt.NDArray[np.floating],
+    P_w: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """Calculate water droplet activation timescale.
 
     Parameters
     ----------
-    n_available_all : npt.NDArray[np.float64]
+    n_available_all : npt.NDArray[np.floating]
         Particle number concentration that can be activated across all particles, [:math:`m^{-3}`]
-    S_mw : npt.NDArray[np.float64]
+    S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation
-    P_w : npt.NDArray[np.float64]
+    P_w : npt.NDArray[np.floating]
         Water supersaturation production rate (P_w = dS_mw/dt), [:math:`s^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Water droplet activation timescale (tau_act), [:math:`s`]
 
     References
@@ -1143,23 +1143,23 @@ def _droplet_activation_timescale(
 
 
 def _droplet_growth_timescale(
-    r_act_nw: npt.NDArray[np.float64],
-    b_1: npt.NDArray[np.float64],
-    b_2: npt.NDArray[np.float64],
-) -> npt.NDArray[np.float64]:
+    r_act_nw: npt.NDArray[np.floating],
+    b_1: npt.NDArray[np.floating],
+    b_2: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
     """
     Calculate water droplet growth timescale.
 
     Parameters
     ----------
-    r_act_nw : npt.NDArray[np.float64]
+    r_act_nw : npt.NDArray[np.floating]
         Number-weighted droplet activation radius, [:math:`m`]
-    b_1 : npt.NDArray[np.float64]
+    b_1 : npt.NDArray[np.floating]
         Particle growth coefficient, [:math:`m s^{-1}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Water droplet growth timescale (tau_gw), [:math:`s`]
 
     References
@@ -1170,34 +1170,34 @@ def _droplet_growth_timescale(
 
 
 def supersaturation_loss_rate_per_droplet(
-    kappa_w: npt.NDArray[np.float64],
-    r_act_nw: npt.NDArray[np.float64],
-    n_w_sat: npt.NDArray[np.float64],
-    b_1: npt.NDArray[np.float64],
-    b_2: npt.NDArray[np.float64],
+    kappa_w: npt.NDArray[np.floating],
+    r_act_nw: npt.NDArray[np.floating],
+    n_w_sat: npt.NDArray[np.floating],
+    b_1: npt.NDArray[np.floating],
+    b_2: npt.NDArray[np.floating],
     vol_molecule_h2o: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """
     Calculate supersaturation loss rate per droplet.
 
     Parameters
     ----------
-    kappa_w : npt.NDArray[np.float64]
+    kappa_w : npt.NDArray[np.floating]
         Dynamical regime parameter. See `dynamical_regime_parameter`
-    r_act_nw : npt.NDArray[np.float64]
+    r_act_nw : npt.NDArray[np.floating]
         Number-weighted droplet activation radius, [:math:`m`]
-    n_w_sat : npt.NDArray[np.float64]
+    n_w_sat : npt.NDArray[np.floating]
         Droplet number concentration at water saturated conditions, [:math:`m^{-3}`]
-    b_1 : npt.NDArray[np.float64]
+    b_1 : npt.NDArray[np.floating]
         Particle growth coefficient, [:math:`m s^{-1}`]
-    b_2 : npt.NDArray[np.float64]
+    b_2 : npt.NDArray[np.floating]
         Particle growth coefficient, [:math:`m s^{-1}`]
     vol_molecule_h2o : float
         Volume of a supercooled water molecule, [:math:`m^{3}`]
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Supersaturation loss rate per droplet (R_w), [:math:`m^{3} s^{-1}`]
 
     Notes
@@ -1222,34 +1222,34 @@ def supersaturation_loss_rate_per_droplet(
 
 
 def droplet_activation(
-    n_available_all: npt.NDArray[np.float64],
-    P_w: npt.NDArray[np.float64],
-    R_w: npt.NDArray[np.float64],
-    rho_air: npt.NDArray[np.float64],
-    dilution: npt.NDArray[np.float64],
+    n_available_all: npt.NDArray[np.floating],
+    P_w: npt.NDArray[np.floating],
+    R_w: npt.NDArray[np.floating],
+    rho_air: npt.NDArray[np.floating],
+    dilution: npt.NDArray[np.floating],
     nu_0: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """
     Calculate available particles that activate to form water droplets.
 
     Parameters
     ----------
-    n_available_all : npt.NDArray[np.float64]
+    n_available_all : npt.NDArray[np.floating]
         Particle number concentration entrained in the contrail plume, [:math:`m^{-3}`]
-    P_w : npt.NDArray[np.float64]
+    P_w : npt.NDArray[np.floating]
         Water supersaturation production rate (P_w = dS_mw/dt), [:math:`s^{-1}`]
-    R_w : npt.NDArray[np.float64]
+    R_w : npt.NDArray[np.floating]
         Supersaturation loss rate per droplet (R_w), [:math:`m^{3} s^{-1}`]
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         Air density at each waypoint, [:math:`kg m^{-3}`]
-    dilution : npt.NDArray[np.float64]
+    dilution : npt.NDArray[np.floating]
         Plume dilution factor, see `plume_dilution_factor`
     nu_0 : float
         Initial mass-based plume mixing factor, i.e., air-to-fuel ratio, set to 60.0.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Activated droplet apparent emissions index, [:math:`kg^{-1}`]
 
     References
@@ -1302,28 +1302,28 @@ def droplet_activation(
 
 
 def number_concentration_to_emissions_index(
-    n_conc: npt.NDArray[np.float64],
-    rho_air: npt.NDArray[np.float64],
-    dilution: npt.NDArray[np.float64],
+    n_conc: npt.NDArray[np.floating],
+    rho_air: npt.NDArray[np.floating],
+    dilution: npt.NDArray[np.floating],
     nu_0: float,
-) -> npt.NDArray[np.float64]:
+) -> npt.NDArray[np.floating]:
     """
     Convert particle number concentration to apparent emissions index.
 
     Parameters
     ----------
-    n_conc : npt.NDArray[np.float64]
+    n_conc : npt.NDArray[np.floating]
         Particle number concentration entrained in the contrail plume, [:math:`m^{-3}`]
-    rho_air : npt.NDArray[np.float64]
+    rho_air : npt.NDArray[np.floating]
         Air density at each waypoint, [:math:`kg m^{-3}`]
-    dilution : npt.NDArray[np.float64]
+    dilution : npt.NDArray[np.floating]
         Plume dilution factor, see `plume_dilution_factor`
     nu_0 : float
         Initial mass-based plume mixing factor, i.e., air-to-fuel ratio, set to 60.0.
 
     Returns
     -------
-    npt.NDArray[np.float64]
+    npt.NDArray[np.floating]
         Particle apparent number emissions index, [:math:`kg^{-1}`]
     """
     return (n_conc * nu_0) / (rho_air * dilution)
