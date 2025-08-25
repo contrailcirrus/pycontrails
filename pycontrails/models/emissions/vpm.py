@@ -295,16 +295,19 @@ def activation_radius(
     return out
 
 
-def _t_plume_limits(
-    specific_humidity: npt.NDArray[np.float64],
-    T_ambient: npt.NDArray[np.float64],
-    air_pressure: npt.NDArray[np.float64],
-    G: npt.NDArray[np.float64],
-) -> tuple[float, float]:
-    """Find the extremes of T_plume."""
+def _t_plume_test_points(
+    specific_humidity: npt.NDArray[np.floating],
+    T_ambient: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    G: npt.NDArray[np.floating],
+    n_points: int = 100,
+) -> npt.NDArray[np.float64]:
+    """Determine test points for the plume temperature along the mixing line."""
     target_shape = (1,) * T_ambient.ndim + (-1,)
-    step = 0.05
+    step = 0.005
 
+    # Initially we take a shotgun approach
+    # We could use some optimization technique here as well, but it's not obviously worth it
     T_plume_test = np.arange(190.0, 300.0, step).reshape(target_shape)
     p_mw = thermo.water_vapor_partial_pressure_along_mixing_line(
         specific_humidity=specific_humidity[..., np.newaxis],
@@ -315,14 +318,24 @@ def _t_plume_limits(
     )
     S_mw = plume_water_saturation_ratio_no_condensation(T_plume_test, p_mw)
 
+    # Each row of S_mw has a single maximum somewhere above 1
+    # For the lower bound, take this maximum
     i_T_lb = np.nanargmax(S_mw, axis=-1, keepdims=True)
-    T_lb = np.take_along_axis(T_plume_test, i_T_lb, axis=-1).min() - step
+    T_lb = np.take_along_axis(T_plume_test, i_T_lb, axis=-1) - step
 
-    filt = (S_mw > 1.0).any(axis=tuple(range(T_ambient.ndim)), keepdims=True)
-    T_plume = T_plume_test[filt]
-    T_ub = np.nanmax(T_plume) + step
+    # For the upper bound, take the maximum T_plume where S_mw > 1
+    filt = S_mw > 1.0
+    i_T_ub = np.where(filt, np.arange(T_plume_test.shape[-1]), -1).max(axis=-1, keepdims=True)
+    T_ub = np.take_along_axis(T_plume_test, i_T_ub, axis=-1) + step
 
-    return T_lb, T_ub
+    # Now create n_points values from T_ub down to T_lb
+    # We use a quadratic spacing to get higher resolution at lower temperatures
+    # to try to avoid nans in the droplet_activation calculation.
+    # As n_points gets lower, we're more likely to get nans in droplet_activation. As
+    # n_points gets higher, the calculation slows.
+    # (We assume later that T_plume is sorted in descending order, so we slice [::-1])
+    points = np.linspace(0.0, 1.0, n_points, dtype=float) ** 2
+    return (T_lb + (T_ub - T_lb) * points)[..., ::-1]
 
 
 def droplet_apparent_emission_index(
@@ -382,13 +395,7 @@ def droplet_apparent_emission_index(
         ) from e
 
     # Determine plume temperature limits
-    T_plume_0, T_plume_1 = _t_plume_limits(specific_humidity, T_ambient, air_pressure, G)
-    target_shape = (1,) * T_ambient.ndim + (-1,)
-
-    # FIXME
-    # We hard-code the step size to 0.2 K, which was somewhat reasonable at the time.
-    # In droplet_activation, we assume that T_plume is decreasing, hence the [::-1] slice.
-    T_plume = np.arange(T_plume_0, T_plume_1 + 0.2, 0.2, dtype=float)[::-1].reshape(target_shape)
+    T_plume = _t_plume_test_points(specific_humidity, T_ambient, air_pressure, G)
 
     # Fixed parameters -- these could be made configurable if needed
     tau_m = 10.0e-3
