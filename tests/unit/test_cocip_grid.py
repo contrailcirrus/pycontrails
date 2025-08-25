@@ -318,14 +318,24 @@ def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetData
     for var in ["contrail_age", "ef_per_m", "iwc"]:
         assert not np.any(np.isnan(result.data[var]))
 
-    with pytest.raises(NotImplementedError, match="not yet implemented in CocipGrid"):
-        model = CocipGrid(
+    with pytest.raises(NotImplementedError, match="not implemented in CocipGrid"):
+        CocipGrid(
             **instance_params,
             aircraft_performance=PSGrid(),
             filter_sac=False,
             filter_initially_persistent=False,
             verbose_outputs_formation=True,
             unterstrasser_ice_survival_fraction=True,
+        )
+
+    with pytest.raises(NotImplementedError, match="not implemented in CocipGrid"):
+        CocipGrid(
+            **instance_params,
+            aircraft_performance=PSGrid(),
+            filter_sac=False,
+            filter_initially_persistent=False,
+            verbose_outputs_formation=True,
+            particle_nucleation_model=True,
         )
 
 
