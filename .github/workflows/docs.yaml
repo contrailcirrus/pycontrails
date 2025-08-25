@@ -74,7 +74,7 @@ jobs:
           ls -la docs/_build/html
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: 'docs/_build/html/'
 
