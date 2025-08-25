@@ -1,6 +1,10 @@
-"""Support for volatile particle matter (vPM) modeling."""
+"""Support for volatile particle matter (vPM) modeling via the extended K15 model.
+
+A preprint is available at https://doi.org/10.5194/egusphere-2025-1717
+"""
 
 import dataclasses
+import enum
 import warnings
 from collections.abc import Callable
 
@@ -13,14 +17,22 @@ import scipy.stats
 from pycontrails.physics import constants, thermo
 
 
+class ParticleType(enum.StrEnum):
+    """Enumeration of particle types."""
+
+    NVPM = "nvPM"
+    VPM = "vPM"
+    AMBIENT = "ambient"
+
+
 @dataclasses.dataclass(frozen=True)
-class ParticleType:
+class Particle:
     """Representation of a particle with hygroscopic and size distribution properties.
 
     Parameters
     ----------
-    name : str
-        Particle type identifier (e.g., "nvPM", "vPM").
+    type:
+        One of ``ParticleType.NVPM``, ``ParticleType.VPM``, or ``ParticleType.AMBIENT``.
     kappa : float
         Hygroscopicity parameter, dimensionless.
     gmd : float
@@ -39,28 +51,34 @@ class ParticleType:
     The hygroscopicity parameter ``kappa`` follows Petters and Kreidenweis (2007).
     """
 
-    name: str
+    type: ParticleType
     kappa: float
     gmd: float
     gsd: float
     n_ambient: float
 
+    def __post_init__(self):
+        if self.type != ParticleType.AMBIENT and self.n_ambient != 0.0:
+            raise ValueError(f"n_ambient must be 0.0 for emitted particle type {self.type.value}")
+        if self.type == ParticleType.AMBIENT and self.n_ambient < 0.0:
+            raise ValueError("n_ambient must be non-negative for ambient particles")
 
-def _default_particle_types() -> list[ParticleType]:
+
+def _default_particles() -> list[Particle]:
     return [
-        ParticleType(name="nvPM", kappa=0.005, gmd=30.0e-9, gsd=2.0, n_ambient=0.0),
-        ParticleType(name="vPM", kappa=0.3, gmd=2.1e-9, gsd=1.45, n_ambient=0.0),
-        ParticleType(name="ambient", kappa=0.5, gmd=30.0e-9, gsd=2.3, n_ambient=600.0e6),
+        Particle(type=ParticleType.NVPM, kappa=0.005, gmd=30.0e-9, gsd=2.0, n_ambient=0.0),
+        Particle(type=ParticleType.VPM, kappa=0.3, gmd=2.1e-9, gsd=1.45, n_ambient=0.0),
+        Particle(type=ParticleType.AMBIENT, kappa=0.5, gmd=30.0e-9, gsd=2.3, n_ambient=600.0e6),
     ]
 
 
 @dataclasses.dataclass
 class DropletActivation:
-    """Store the computed statistics on the water droplet activation for each particle type.
+    """Store the computed statistics on the water droplet activation for each particle.
 
     Parameters
     ----------
-    particle_type : ParticleType | None
+    particle : Particle | None
         Source particle type, or ``None`` if this is the aggregate result.
     r_act : npt.NDArray[np.float64]
         Activation radius for a given water saturation ratio and temperature, [:math:`m`].
@@ -72,7 +90,7 @@ class DropletActivation:
         Particle number concentration available for activation, [:math:`m^{-3}`].
     """
 
-    particle_type: ParticleType | None
+    particle: Particle | None
     r_act: npt.NDArray[np.float64]
     phi: npt.NDArray[np.float64]
     n_total: npt.NDArray[np.float64]
@@ -239,7 +257,7 @@ def _geometric_bisection(
 
 def activation_radius(
     S_w: npt.NDArray[np.float64],
-    kappa: npt.NDArray[np.float64],
+    kappa: npt.NDArray[np.float64] | float,
     temperature: npt.NDArray[np.float64],
     rtol: float = 1e-6,
     maxiter: int = 30,
@@ -346,7 +364,7 @@ def droplet_apparent_emission_index(
     nvpm_ei_n: npt.NDArray[np.float64],
     vpm_ei_n: npt.NDArray[np.float64],
     G: npt.NDArray[np.float64],
-    particles: list[ParticleType] | None = None,
+    particles: list[Particle] | None = None,
     n_plume_points: int = 100,
 ) -> npt.NDArray[np.float64]:
     """Calculate droplet apparent ice emissions index from nvPM, vPM and ambient particles.
@@ -367,9 +385,9 @@ def droplet_apparent_emission_index(
         vPM number emissions index, [:math:`kg^{-1}`]
     G : npt.NDArray[np.float64]
         Slope of the mixing line in a temperature-humidity diagram.
-    particles : list[ParticleType]
+    particles : list[Particle]
         List of particle types to consider. If ``None``, defaults to a list of
-        ``ParticleType`` instances representing nvPM, vPM, and ambient particles.
+        ``Particle`` instances representing nvPM, vPM, and ambient particles.
     n_plume_points : int
         Number of points to evaluate the plume temperature along the mixing line.
         Increasing this value can improve accuracy and reduce NaNs near the SAC critical
@@ -389,7 +407,7 @@ def droplet_apparent_emission_index(
     to dimension 1. This setup allows the plume temperature calculation to be computed once
     and reused for multiple emissions values.
     """
-    particles = particles or _default_particle_types()
+    particles = particles or _default_particles()
 
     # Confirm all parameters are broadcastable
     specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n, vpm_ei_n = np.atleast_1d(
@@ -442,7 +460,7 @@ def droplet_apparent_emission_index(
         rho_air=rho_air,
         nu_0=nu_0,
     )
-    particle_droplets_all = water_droplet_activation_across_all_particle_types(particle_droplets)
+    particle_droplets_all = water_droplet_activation_across_all_particles(particle_droplets)
     n_w_sat = droplet_number_concentration_at_saturation(T_plume)
     b_1, b_2 = particle_growth_coefficients(
         T_plume=T_plume,
@@ -578,11 +596,11 @@ def _plume_age_timescale(
     Eq. (15) of Karcher et al. (2015).
     """
     ratio = (T_exhaust - T_ambient) / (T_plume - T_ambient)
-    return tau_m * np.power(ratio, 1 / beta, where=ratio >= 0, out=np.full_like(ratio, np.nan))
+    return tau_m * np.power(ratio, 1 / beta, where=ratio >= 0.0, out=np.full_like(ratio, np.nan))
 
 
 def water_droplet_activation(
-    particles: list[ParticleType],
+    particles: list[Particle],
     T_plume: npt.NDArray[np.float64],
     T_ambient: npt.NDArray[np.float64],
     nvpm_ei_n: npt.NDArray[np.float64] | float,
@@ -596,7 +614,7 @@ def water_droplet_activation(
 
     Parameters
     ----------
-    particles : list[ParticleType]
+    particles : list[Particle]
         Properties of different particles in the contrail plume.
     T_plume : npt.NDArray[np.float64]
         Plume temperature evolution along mixing line, [:math:`K`].
@@ -622,24 +640,24 @@ def water_droplet_activation(
     """
     res = []
 
-    for particle_type in particles:
-        r_act_p = activation_radius(S_mw, particle_type.kappa, T_plume)
-        phi_p = fraction_of_water_activated_particles(particle_type.gmd, particle_type.gsd, r_act_p)
+    for particle in particles:
+        r_act_p = activation_radius(S_mw, particle.kappa, T_plume)
+        phi_p = fraction_of_water_activated_particles(particle.gmd, particle.gsd, r_act_p)
 
         # Calculate total number concentration for a given particle type
-        if particle_type.n_ambient > 0.0:
+        if particle.type == ParticleType.AMBIENT:
             n_total_p = entrained_ambient_droplet_number_concentration(
-                particle_type.n_ambient, T_plume, T_ambient, dilution
+                particle.n_ambient, T_plume, T_ambient, dilution
             )
-        elif particle_type.name.lower() == "nvpm":
+        elif particle.type == ParticleType.NVPM:
             n_total_p = emissions_index_to_number_concentration(nvpm_ei_n, rho_air, dilution, nu_0)
-        elif particle_type.name.lower() == "vpm":
+        elif particle.type == ParticleType.VPM:
             n_total_p = emissions_index_to_number_concentration(vpm_ei_n, rho_air, dilution, nu_0)
         else:
             raise ValueError("Particle type unknown")
 
         res_p = DropletActivation(
-            particle_type=particle_type,
+            particle=particle,
             r_act=r_act_p,
             phi=phi_p,
             n_total=n_total_p,
@@ -675,7 +693,7 @@ def fraction_of_water_activated_particles(
     -----
     The cumulative distribution is estimated directly using the SciPy error function.
     """
-    z = (np.log(r_act * 2) - np.log(gmd)) / ((2**0.5) * np.log(gsd))
+    z = (np.log(r_act * 2.0) - np.log(gmd)) / (2.0**0.5 * np.log(gsd))
     return 0.5 - 0.5 * scipy.special.erf(z)
 
 
@@ -741,7 +759,7 @@ def emissions_index_to_number_concentration(
     return number_ei * rho_air * (dilution / nu_0)
 
 
-def water_droplet_activation_across_all_particle_types(
+def water_droplet_activation_across_all_particles(
     particle_droplets: list[DropletActivation],
 ) -> DropletActivation:
     """Calculate the total and weighted water droplet activation outputs across all particle types.
@@ -770,12 +788,12 @@ def water_droplet_activation_across_all_particle_types(
 
     for particle in particle_droplets:
         # Calculate number weighted activation radius
-        d_act = particle.r_act * 2
+        d_act = 2.0 * particle.r_act
 
         d_act_mean = mean_dry_particle_diameter_above_threshold(
             d_act,
-            particle.particle_type.gmd,
-            particle.particle_type.gsd,
+            particle.particle.gmd,
+            particle.particle.gsd,
         )
         r_act_mean = d_act_mean / 2.0
 
@@ -795,7 +813,7 @@ def water_droplet_activation_across_all_particle_types(
     )
 
     return DropletActivation(
-        particle_type=None,
+        particle=None,
         r_act=r_act_nw,
         phi=n_available_all / n_total_all,
         n_total=n_total_all,
@@ -942,6 +960,7 @@ def particle_growth_coefficients(
     # Calculate `b_2`
     d_h2o = _water_vapor_molecular_diffusion_coefficient(T_plume, air_pressure)
     b_2 = v_thermal_h2o / (4.0 * d_h2o)
+
     return b_1, b_2
 
 
@@ -1047,7 +1066,7 @@ def _plume_cooling_rate(
     ----------
     Eq. (14) of Karcher et al. (2015).
     """
-    return -beta * ((T_exhaust - T_ambient) / tau_m) * dilution ** (1.0 + 1 / beta)
+    return -beta * ((T_exhaust - T_ambient) / tau_m) * dilution ** (1.0 + 1.0 / beta)
 
 
 def dynamical_regime_parameter(
