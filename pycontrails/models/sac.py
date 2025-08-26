@@ -17,7 +17,7 @@ from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, thermo
-from pycontrails.utils.types import ArrayLike, ArrayScalarLike, apply_nan_mask_to_arraylike
+from pycontrails.utils.types import ArrayLike, apply_nan_mask_to_arraylike
 
 # -----------------
 # Models as classes
@@ -239,29 +239,6 @@ def T_sat_liquid(G: ArrayLike) -> ArrayLike:
     return -46.46 - constants.absolute_zero + 9.43 * log_ + 0.72 * log_**2  # type: ignore[return-value]
 
 
-def _e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:
-    r"""Calculate derivative of :func:`thermo.e_sat_liquid`.
-
-    Parameters
-    ----------
-    T : ArrayScalarLike
-        Temperature, [:math:`K`].
-
-    Returns
-    -------
-    ArrayScalarLike
-        Derivative of :func:`thermo.e_sat_liquid`, [:math:``Pa \ K^{-1}`].
-    """
-    tanh_term = np.tanh(0.0415 * (T - 218.8))
-    return thermo.e_sat_liquid(T) * (  # type: ignore[return-value]
-        6763.22 / T**2
-        - 4.21 / T
-        + 0.000367
-        + 0.0415 * (1 - tanh_term**2) * (53.878 - 1331.22 / T - 9.44523 * np.log(T) + 0.014025 * T)
-        + tanh_term * (1331.22 / T**2 - 9.44523 / T + 0.014025)
-    )
-
-
 def T_sat_liquid_high_accuracy(
     G: ArrayLike,
     maxiter: int = 5,
@@ -299,7 +276,7 @@ def T_sat_liquid_high_accuracy(
 
     def func(T: ArrayLike) -> ArrayLike:
         """Equation (10) from Schumann 1996."""
-        return _e_sat_liquid_prime(T) - G
+        return thermo.e_sat_liquid_prime(T) - G
 
     return scipy.optimize.newton(func, init_guess, maxiter=maxiter)
 
@@ -447,7 +424,7 @@ def T_critical_sac(
         return T - T_LM_filt + (e_L_of_T_LM_filt - U_filt * thermo.e_sat_liquid(T)) / G_filt
 
     def fprime(T: ArrayLike) -> ArrayLike:
-        return 1.0 - U_filt * _e_sat_liquid_prime(T) / G_filt
+        return 1.0 - U_filt * thermo.e_sat_liquid_prime(T) / G_filt
 
     # This initial guess should be less than T_LM.
     # For relative_humidity away from 1, Newton's method converges quickly, and so

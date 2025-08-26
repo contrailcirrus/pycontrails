@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest import mock
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -477,9 +477,9 @@ def test_PCR_flight(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
 
 @pytest.mark.parametrize("step", [1e-3, 1e-4, 1e-5, 1e-6])
 def test_e_sat_liquid_prime(step: float) -> None:
-    """Confirm `sac._e_sat_liquid_prime` formula agrees with secant approximation.
+    """Confirm `thermo.e_sat_liquid_prime` formula agrees with secant approximation.
 
-    This test as well as the `sac._e_sat_liquid_prime` function will need to be
+    This test as well as the `thermo.e_sat_liquid_prime` function will need to be
     updated if `thermo.e_sat_liquid` changes.
     """
     T0 = np.linspace(-60.0, -20.0, 200) - constants.absolute_zero
@@ -491,7 +491,7 @@ def test_e_sat_liquid_prime(step: float) -> None:
     e_sat1 = thermo.e_sat_liquid(T1)
 
     secant_slope = (e_sat1 - e_sat0) / (T1 - T0)
-    tangent_slope = sac._e_sat_liquid_prime(T0)
+    tangent_slope = thermo.e_sat_liquid_prime(T0)
 
     error = np.abs(secant_slope - tangent_slope)
     assert np.all(error < 2 * step)  # approximation is << step
@@ -542,23 +542,9 @@ def test_T_sat_liquid() -> None:
 def test_T_critical_sac_schumann() -> None:
     """Confirm Schumann's statements from his 1996 paper."""
 
-    # Schumann used the Sonntag formula for e_sat_liquid
-    def sonntag_e_sat_liq(T):
-        return 100.0 * np.exp(
-            -6096.9385 / T
-            + 16.635794
-            - 0.02711193 * T
-            + 1.673952 * 1e-5 * T**2
-            + 2.433502 * np.log(T)
-        )
-
-    def e_sat_liquid_prime(T):
-        d_inside = 6096.9385 / (T**2) - 0.02711193 + 1.673952 * 1e-5 * 2 * T + 2.433502 / T
-        return sonntag_e_sat_liq(T) * d_inside
-
     with (
-        mock.patch("pycontrails.physics.thermo.e_sat_liquid", sonntag_e_sat_liq),
-        mock.patch("pycontrails.models.sac._e_sat_liquid_prime", e_sat_liquid_prime),
+        patch("pycontrails.physics.thermo.e_sat_liquid", thermo.sonntag_e_sat_liquid),
+        patch("pycontrails.physics.thermo.e_sat_liquid_prime", thermo.sonntag_e_sat_liquid_prime),
     ):
         rng = np.random.default_rng(737)
         size = 10000
@@ -579,7 +565,7 @@ def test_T_critical_sac_schumann() -> None:
         # For U = 0, equation (11) gives explicit answer
         t_LC_U0 = sac.T_critical_sac(t_LM, np.zeros_like(rh), G)
 
-        eqn11 = t_LM - sonntag_e_sat_liq(t_LM) / G
+        eqn11 = t_LM - thermo.sonntag_e_sat_liquid(t_LM) / G
         np.testing.assert_array_equal(t_LC_U0, eqn11)
 
 
