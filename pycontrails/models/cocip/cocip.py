@@ -982,8 +982,6 @@ class Cocip(Model):
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
         if self.params["vpm_activation"]:
-            rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
-
             # We can add a Cocip parameter for T_exhaust, vpm_ei_n, and particles
             aei = extended_k15.droplet_apparent_emission_index(
                 specific_humidity=specific_humidity,
