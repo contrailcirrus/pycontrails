@@ -223,11 +223,11 @@ class CocipParams(AdvectionBuffers):
     #:  .. versionadded:: 0.28.9
     radiative_heating_effects: bool = False
 
-    #: Experimental. Apply the extended K15 Particle nucleation model to account for vPM activation
+    #: Experimental. Apply the extended K15 model to account for vPM activation.
     #: See the preprint `<https://doi.org/10.5194/egusphere-2025-1717>`_ for details.
     #:
     #: .. versionadded:: 0.55.0
-    particle_nucleation_model: bool = False
+    vpm_activation: bool = False
 
     #: Experimental. Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
