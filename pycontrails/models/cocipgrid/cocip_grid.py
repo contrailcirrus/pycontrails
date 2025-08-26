@@ -16,7 +16,7 @@ import pycontrails
 from pycontrails.core import models
 from pycontrails.core.met import MetDataset, maybe_downselect_mds
 from pycontrails.core.vector import GeoVectorDataset, VectorDataset
-from pycontrails.models import humidity_scaling, sac
+from pycontrails.models import extended_k15, humidity_scaling, sac
 from pycontrails.models.cocip import cocip, contrail_properties, wake_vortex, wind_shear
 from pycontrails.models.cocipgrid.cocip_grid_params import CocipGridParams
 from pycontrails.models.emissions import Emissions
@@ -127,10 +127,6 @@ class CocipGrid(models.Model):
 
         if self.params["unterstrasser_ice_survival_fraction"]:
             msg = "Parameter 'unterstrasser_ice_survival_fraction' is not implemented in CocipGrid"
-            raise NotImplementedError(msg)
-
-        if self.params["vpm_activation"]:
-            msg = "Parameter 'vpm_activation' is not implemented in CocipGrid"
             raise NotImplementedError(msg)
 
         self._target_dtype = np.result_type(*self.met.data.values())
@@ -1298,6 +1294,8 @@ def find_initial_contrail_regions(
     # which is why we compute it here
     T_crit_sac = sac.T_critical_sac(t_sat_liq[filt], rh[filt], G[filt])
     filtered_vector["T_crit_sac"] = T_crit_sac
+    if params["vpm_activation"]:
+        filtered_vector["G"] = G[filt]  # only used in vpm_activation
     return filtered_vector, pd.Series(data=sac_, index=vector["index"])
 
 
@@ -1488,8 +1486,21 @@ def find_initial_persistent_contrails(
         air_pressure_1=air_pressure_1,
     )
     iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
-    f_activ = contrail_properties.ice_particle_activation_rate(air_temperature, T_crit_sac)
-    aei = nvpm_ei_n * f_activ
+
+    if params["vpm_activation"]:
+        # We can add a Cocip parameter for T_exhaust, vpm_ei_n, and particles
+        aei = extended_k15.droplet_apparent_emission_index(
+            specific_humidity=specific_humidity,
+            T_ambient=air_temperature,
+            T_exhaust=vector.attrs.get("T_exhaust", 600.0),
+            air_pressure=air_pressure,
+            nvpm_ei_n=nvpm_ei_n,
+            vpm_ei_n=vector.attrs.get("vpm_ei_n", 2.0e17),
+            G=vector["G"],
+        )
+    else:
+        f_activ = contrail_properties.ice_particle_activation_rate(air_temperature, T_crit_sac)
+        aei = nvpm_ei_n * f_activ
 
     n_ice_per_m_0 = contrail_properties.initial_ice_particle_number(
         aei=aei,

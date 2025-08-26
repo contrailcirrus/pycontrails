@@ -5,7 +5,7 @@
 ### Features
 
 - Add a new `pycontrails.models.extended_k15` module for modeling volatile particulate matter (vPM) emissions and activation in aircraft plumes. This module implements the extended K15 model introduced by [Ponsonby et al.](https://doi.org/10.5194/egusphere-2025-1717).
-- Introduce basic support for vPM activation within the `Cocip` model. This support is experimental and can be enabled via the `vpm_activation` parameter. Support is not yet available in `CocipGrid` model.
+- Introduce basic support for vPM activation within the `Cocip` and `CocipGrid` models. This support is experimental and can be enabled via the `vpm_activation` parameter.
 
 ### Internals
 

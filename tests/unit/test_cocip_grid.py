@@ -328,15 +328,27 @@ def test_grid_survival_fraction(instance_params: dict[str, Any], source: MetData
             unterstrasser_ice_survival_fraction=True,
         )
 
-    with pytest.raises(NotImplementedError, match="not implemented in CocipGrid"):
-        CocipGrid(
-            **instance_params,
-            aircraft_performance=PSGrid(),
-            filter_sac=False,
-            filter_initially_persistent=False,
-            verbose_outputs_formation=True,
-            particle_nucleation_model=True,
-        )
+
+@pytest.mark.filterwarnings("ignore:.*profiles never attain negative f values")
+@pytest.mark.parametrize("vpm_activation", [True, False])
+def test_cocip_grid_vpm_activation(
+    instance_params: dict[str, Any], source: MetDataset, vpm_activation: bool
+):
+    """Smoke test CocipGrid with and without VPM activation."""
+    model = CocipGrid(
+        **instance_params,
+        aircraft_performance=PSGrid(),
+        vpm_activation=vpm_activation,
+        verbose_outputs_formation=True,
+    )
+    out = model.eval(source)
+
+    # Pin a value
+    mean_ef_per_m = out.data["ef_per_m"].mean().item()
+    if vpm_activation:
+        assert mean_ef_per_m == pytest.approx(2760000, rel=1e-2)
+    else:
+        assert mean_ef_per_m == pytest.approx(2800000, rel=1e-2)
 
 
 @pytest.mark.parametrize(

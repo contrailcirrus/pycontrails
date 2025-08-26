@@ -1268,7 +1268,7 @@ def droplet_activation(
     # is very close to the SAC T_critical saturation unless T_plume is extremely fine.
     # In this case, n_available_all is essentially constant near the zero crossing,
     # and we can just take the last value of n_available_all. In the code below,
-    # we fill any nans in the case that attains_positive is False, but we propogate
+    # we fill any nans in the case that attains_positive is False, but we propagate
     # nans when attains_negative is False.
     attains_positive = np.any(f > 0.0, axis=-1)
     attains_negative = np.any(f < 0.0, axis=-1)
@@ -1289,10 +1289,12 @@ def droplet_activation(
     dist = val0 / (val0 - val1)
 
     # When f never attains a positive value, set i0 and i1 to last negative value
-    last_negative = np.nanargmax(f[~attains_positive], axis=-1, keepdims=True)
-    i0[~attains_positive] = last_negative
-    i1[~attains_positive] = last_negative
-    dist[~attains_positive] = 0.0
+    # If f never attains a negative value, we pass through a nan
+    cond = attains_negative & ~attains_positive
+    last_negative = np.nanargmax(f[cond], axis=-1, keepdims=True)
+    i0[cond] = last_negative
+    i1[cond] = last_negative
+    dist[cond] = 0.0
 
     # Extract properties at the point where the supersaturation is quenched by interpolating
     n_activated_w0 = np.take_along_axis(n_available_all, i0, axis=-1)
@@ -1307,7 +1309,10 @@ def droplet_activation(
     dilution_w1 = np.take_along_axis(dilution, i1, axis=-1)
     dilution_w = (dilution_w0 + dist * (dilution_w1 - dilution_w0))[..., 0]
 
-    return number_concentration_to_emissions_index(n_activated_w, rho_air_w, dilution_w, nu_0=nu_0)
+    out = number_concentration_to_emissions_index(n_activated_w, rho_air_w, dilution_w, nu_0=nu_0)
+    out[~attains_negative] = np.nan
+
+    return out
 
 
 def number_concentration_to_emissions_index(
