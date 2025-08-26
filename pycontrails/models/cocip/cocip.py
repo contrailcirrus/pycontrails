@@ -27,7 +27,7 @@ from pycontrails.core.met_var import MetVariable
 from pycontrails.core.models import Model, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict
 from pycontrails.datalib import ecmwf, gfs
-from pycontrails.models import sac, tau_cirrus
+from pycontrails.models import extended_k15, sac, tau_cirrus
 from pycontrails.models.cocip import (
     contrail_properties,
     radiative_forcing,
@@ -37,7 +37,6 @@ from pycontrails.models.cocip import (
     wind_shear,
 )
 from pycontrails.models.cocip.cocip_params import CocipFlightParams
-from pycontrails.models.emissions import vpm
 from pycontrails.models.emissions.emissions import Emissions
 from pycontrails.physics import constants, geo, thermo, units
 
@@ -986,7 +985,7 @@ class Cocip(Model):
             rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
 
             # We can add a Cocip parameter for T_exhaust, vpm_ei_n, and particles
-            aei = vpm.droplet_apparent_emission_index(
+            aei = extended_k15.droplet_apparent_emission_index(
                 specific_humidity=specific_humidity,
                 T_ambient=air_temperature,
                 T_exhaust=self.source.attrs.get("T_exhaust", 600.0),
