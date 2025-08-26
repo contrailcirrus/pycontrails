@@ -155,6 +155,7 @@ class HRES(ECMWFAPI):
         - "scda" = short cut-off high resolution forecast, atmospheric fields,
           run at hours 06Z and 18Z
         - "enfo" = ensemble forecast, atmospheric fields, run at hours 00Z, 06Z, 12Z, and 18Z
+
         Defaults to "oper" (HRES).
         If the stream is incompatible with a provided forecast_time, a ``ValueError`` is raised.
         See the `ECMWF documentation <https://confluence.ecmwf.int/display/DAC/ECMWF+open+data%3A+real-time+forecasts+from+IFS+and+AIFS>`_
