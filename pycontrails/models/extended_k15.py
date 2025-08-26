@@ -347,13 +347,9 @@ def _t_plume_test_points(
     i_T_ub = np.where(filt, np.arange(T_plume_test.shape[-1]), -1).max(axis=-1, keepdims=True)
     T_ub = np.take_along_axis(T_plume_test, i_T_ub, axis=-1) + step
 
-    # Now create n_points values from T_ub down to T_lb
-    # We use a quadratic spacing to get higher resolution at lower temperatures
-    # to try to avoid nans in the droplet_activation calculation.
-    # As n_points gets lower, we're more likely to get nans in droplet_activation. As
-    # n_points gets higher, the calculation slows.
+    # Now create n_points linearly-spaced values from T_ub down to T_lb
     # (We assume later that T_plume is sorted in descending order, so we slice [::-1])
-    points = np.linspace(0.0, 1.0, n_points, dtype=float) ** 2
+    points = np.linspace(0.0, 1.0, n_points, dtype=float)
     return (T_lb + (T_ub - T_lb) * points)[..., ::-1]
 
 
@@ -366,7 +362,7 @@ def droplet_apparent_emission_index(
     vpm_ei_n: npt.NDArray[np.floating],
     G: npt.NDArray[np.floating],
     particles: list[Particle] | None = None,
-    n_plume_points: int = 100,
+    n_plume_points: int = 50,
 ) -> npt.NDArray[np.floating]:
     """Calculate droplet apparent ice emissions index from nvPM, vPM and ambient particles.
 
@@ -391,8 +387,8 @@ def droplet_apparent_emission_index(
         ``Particle`` instances representing nvPM, vPM, and ambient particles.
     n_plume_points : int
         Number of points to evaluate the plume temperature along the mixing line.
-        Increasing this value can improve accuracy and reduce NaNs near the SAC critical
-        temperature, but will increase computation time. Default is 100.
+        Increasing this value can improve accuracy. Values above 40 are typically
+        sufficient. See the :func:`droplet_activation` for numerical considerations.
 
     Returns
     -------
@@ -1262,17 +1258,27 @@ def droplet_activation(
     n_2_w = P_w / R_w
 
     # Calculate the droplet activation that is required to quench the plume supersaturation
-    # We will be seeking a root of f
-    # It may be better to work in a log-space here (so f = log(n_available_all) - log(n_2_w))
-    # but with high enough T_plume resolution it's not necessary
-    f = n_available_all - n_2_w
+    # We will be seeking a root of f := n_available_all - n_2_w, but it's slightly more
+    # economic to work in the log-space (ie, we can get by with fewer T_plume points).
+    f = np.log(n_available_all) - np.log(n_2_w)
 
-    # We mask profiles that never change sign
-    # This can occur when the ambient temperature is very close to the SAC T_critical saturation
-    valid = np.any(f < 0.0, axis=1) & np.any(f > 0.0, axis=-1)
-    if not valid.all():
-        n_failures = np.sum(~valid)
-        warnings.warn(f"{n_failures} profiles never change signs, setting to np.nan")
+    # For some rows, f never changes sign. This is the case when the T_plume range
+    # does not bracket the zero crossing (for example, if T_plume is too coarse).
+    # It's also common that f never attains a positive value when the ambient temperature
+    # is very close to the SAC T_critical saturation unless T_plume is extremely fine.
+    # In this case, n_available_all is essentially constant near the zero crossing,
+    # and we can just take the last value of n_available_all. In the code below,
+    # we fill any nans in the case that attains_positive is False, but we propogate
+    # nans when attains_negative is False.
+    attains_positive = np.any(f > 0.0, axis=-1)
+    attains_negative = np.any(f < 0.0, axis=-1)
+    if not attains_negative.all():
+        n_failures = np.sum(~attains_negative)
+        warnings.warn(
+            f"{n_failures} profiles never attain negative f values, so a zero crossing "
+            "cannot be found. Increase the range of T_plume by setting a higher "
+            "'n_plume_points' value.",
+        )
 
     # Find the first positive value, then interpolate to estimate the fractional index
     # at which the zero crossing occurs.
@@ -1281,6 +1287,12 @@ def droplet_activation(
     val1 = np.take_along_axis(f, i1, axis=-1)
     val0 = np.take_along_axis(f, i0, axis=-1)
     dist = val0 / (val0 - val1)
+
+    # When f never attains a positive value, set i0 and i1 to last negative value
+    last_negative = np.nanargmax(f[~attains_positive], axis=-1, keepdims=True)
+    i0[~attains_positive] = last_negative
+    i1[~attains_positive] = last_negative
+    dist[~attains_positive] = 0.0
 
     # Extract properties at the point where the supersaturation is quenched by interpolating
     n_activated_w0 = np.take_along_axis(n_available_all, i0, axis=-1)
@@ -1295,11 +1307,7 @@ def droplet_activation(
     dilution_w1 = np.take_along_axis(dilution, i1, axis=-1)
     dilution_w = (dilution_w0 + dist * (dilution_w1 - dilution_w0))[..., 0]
 
-    aei_w = number_concentration_to_emissions_index(n_activated_w, rho_air_w, dilution_w, nu_0=nu_0)
-
-    # If there is no intersection, then set outputs to np.nan
-    aei_w[~valid] = np.nan
-    return aei_w
+    return number_concentration_to_emissions_index(n_activated_w, rho_air_w, dilution_w, nu_0=nu_0)
 
 
 def number_concentration_to_emissions_index(
