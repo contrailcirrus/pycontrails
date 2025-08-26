@@ -68,10 +68,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          # https://github.com/google-github-actions/setup-gcloud?tab=readme-ov-file#user-content-skip_tool_cache
-          skip_tool_cache: true
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Download BADA files
         timeout-minutes: 5  # `gcloud storage cp` occasionally hangs on windows
