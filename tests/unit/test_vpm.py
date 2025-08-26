@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pycontrails.models.emissions import vpm
+from pycontrails.models import extended_k15
 
 
 def test_critical_supersaturation() -> None:
@@ -15,7 +15,7 @@ def test_critical_supersaturation() -> None:
     Dd = 10 ** rng.uniform(-9, -6, n)
     kappa = rng.uniform(0.0, 1.0, n)
     temperature = rng.uniform(200.0, 300.0, n)
-    S_w = vpm.critical_supersaturation(Dd, kappa, temperature)
+    S_w = extended_k15.critical_supersaturation(Dd, kappa, temperature)
 
     assert np.all(np.isfinite(S_w))
     assert np.all(S_w > 1.0)
@@ -31,7 +31,7 @@ def test_activation_radius() -> None:
     temperature = rng.uniform(200.0, 300.0, n)
     S_w = rng.uniform(0.5, 1.5, n)
 
-    r_act = vpm.activation_radius(S_w, kappa, temperature)
+    r_act = extended_k15.activation_radius(S_w, kappa, temperature)
 
     # We get nan values where S_w <= 1.0
     np.testing.assert_array_equal(np.isnan(r_act), S_w <= 1.0)
@@ -46,7 +46,7 @@ def test_activation_radius() -> None:
 
 def test_droplet_apparent_emission_index() -> None:
     """Pin a value for the ``droplet_apparent_emission_index`` function."""
-    aei = vpm.droplet_apparent_emission_index(
+    aei = extended_k15.droplet_apparent_emission_index(
         specific_humidity=0.000012,
         T_ambient=218.0,
         T_exhaust=600.0,
