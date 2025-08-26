@@ -129,8 +129,8 @@ class CocipGrid(models.Model):
             msg = "Parameter 'unterstrasser_ice_survival_fraction' is not implemented in CocipGrid"
             raise NotImplementedError(msg)
 
-        if self.params["particle_nucleation_model"]:
-            msg = "Parameter 'particle_nucleation_model' is not implemented in CocipGrid"
+        if self.params["vpm_activation"]:
+            msg = "Parameter 'vpm_activation' is not implemented in CocipGrid"
             raise NotImplementedError(msg)
 
         self._target_dtype = np.result_type(*self.met.data.values())
