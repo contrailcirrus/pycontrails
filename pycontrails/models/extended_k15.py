@@ -21,7 +21,7 @@ DEFAULT_VPM_EI_N = 2.0e17  # vPM number emissions index, [kg^-1]
 DEFAULT_EXHAUST_T = 600.0  # Exhaust temperature, [K]
 
 
-class ParticleType(enum.StrEnum):
+class ParticleType(enum.Enum):
     """Enumeration of particle types."""
 
     NVPM = "nvPM"
