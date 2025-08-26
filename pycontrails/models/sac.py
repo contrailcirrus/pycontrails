@@ -133,8 +133,8 @@ class SAC(Model):
 
         G = slope_mixing_line(specific_humidity, air_pressure, engine_efficiency, ei_h2o, q_fuel)
         T_sat_liquid_ = T_sat_liquid(G)
-        rh_crit_sac = rh_critical_sac(air_temperature, T_sat_liquid_, G)
-        rh = thermo.rh(specific_humidity, air_temperature, air_pressure)
+        rh_crit_sac = rh_critical_sac(air_temperature, T_sat_liquid_, G)  # type: ignore[type-var]
+        rh = thermo.rh(specific_humidity, air_temperature, air_pressure)  # type: ignore[type-var]
         sac_ = sac(rh, rh_crit_sac)
 
         # Attaching some intermediate artifacts onto the source

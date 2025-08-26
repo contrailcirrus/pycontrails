@@ -7,7 +7,7 @@ import numpy.typing as npt
 import xarray as xr
 
 from pycontrails.physics import constants, units
-from pycontrails.utils.types import ArrayLike
+from pycontrails.utils.types import ArrayLike, ArrayOrFloat
 
 # ------------------
 # Spherical Geometry
@@ -373,8 +373,8 @@ def segment_length(
 def forward_azimuth(
     lons: npt.NDArray[np.floating],
     lats: npt.NDArray[np.floating],
-    az: npt.NDArray[np.floating] | float,
-    dist: npt.NDArray[np.floating] | float,
+    az: ArrayOrFloat,
+    dist: ArrayOrFloat,
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate coordinates along forward azimuth.
 

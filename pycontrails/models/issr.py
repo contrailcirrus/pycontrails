@@ -134,7 +134,7 @@ class ISSR(Model):
         if scale_humidity:
             humidity_scaling.eval(self.source, copy_source=False)
 
-        self.source["issr"] = issr(
+        self.source["issr"] = issr(  # type: ignore[type-var]
             air_temperature=self.source.data["air_temperature"],
             specific_humidity=self.source.data["specific_humidity"],
             air_pressure=self.source.data["air_pressure"],
