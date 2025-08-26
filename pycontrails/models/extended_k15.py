@@ -16,6 +16,11 @@ import scipy.stats
 
 from pycontrails.physics import constants, thermo
 
+# See upcoming Teoh et. al paper "Impact of Volatile Particulate Matter on Global Contrail
+# Radiative Forcing and Mitigation Assessment" for details on these default parameters.
+DEFAULT_VPM_EI_N = 2.0e17  # vPM number emissions index, [kg^-1]
+DEFAULT_EXHAUST_T = 600.0  # Exhaust temperature, [K]
+
 
 class ParticleType(enum.StrEnum):
     """Enumeration of particle types."""
@@ -65,7 +70,11 @@ class Particle:
 
 
 def _default_particles() -> list[Particle]:
-    """See upcoming Teoh paper for details on these default parameters."""
+    """Define particle types representing nvPM, vPM, and ambient particles.
+
+    See upcoming Teoh et. al paper "Impact of Volatile Particulate Matter on Global Contrail
+    Radiative Forcing and Mitigation Assessment" for details on these default parameters.
+    """
     return [
         Particle(type=ParticleType.NVPM, kappa=0.005, gmd=30.0e-9, gsd=2.0, n_ambient=0.0),
         Particle(type=ParticleType.VPM, kappa=0.2, gmd=1.8e-9, gsd=1.5, n_ambient=0.0),
