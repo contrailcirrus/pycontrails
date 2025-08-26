@@ -593,10 +593,10 @@ class GOES:
                 da = da_dict.popitem()[1]
             elif "C02" in da_dict:
                 da2 = da_dict.pop("C02")
-                da1 = xr.concat(da_dict.values(), dim="band_id")
-                da = _concat_c02(da1, da2)
+                da = xr.concat(da_dict.values(), dim="band_id", coords="different", compat="equals")
+                da = _concat_c02(da, da2)
             else:
-                da = xr.concat(da_dict.values(), dim="band_id")
+                da = xr.concat(da_dict.values(), dim="band_id", coords="different", compat="equals")
 
         else:
             ds = _load_via_tempfile(data)
