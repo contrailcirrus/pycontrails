@@ -1492,10 +1492,10 @@ def find_initial_persistent_contrails(
         aei = extended_k15.droplet_apparent_emission_index(
             specific_humidity=specific_humidity,
             T_ambient=air_temperature,
-            T_exhaust=vector.attrs.get("T_exhaust", 600.0),
+            T_exhaust=vector.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
             air_pressure=air_pressure,
             nvpm_ei_n=nvpm_ei_n,
-            vpm_ei_n=vector.attrs.get("vpm_ei_n", 2.0e17),
+            vpm_ei_n=vector.attrs.get("vpm_ei_n", extended_k15.DEFAULT_VPM_EI_N),
             G=vector["G"],
         )
     else:
