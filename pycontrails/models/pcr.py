@@ -90,7 +90,7 @@ class PCR(Model):
         sac_model = sac.SAC(met=None, params=sac_params, copy_source=False)
         sac_model.eval(self.source)
 
-        pcr_ = _pcr_from_issr_and_sac(self.source.data["issr"], self.source.data["sac"])
+        pcr_ = _pcr_from_issr_and_sac(self.source.data["issr"], self.source.data["sac"])  # type: ignore[type-var]
         self.source["pcr"] = pcr_
 
         return self.source

@@ -14,20 +14,13 @@ import pandas as pd
 import xarray as xr
 
 #: Array like (np.ndarray, xr.DataArray)
-ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray, xr.DataArray | np.ndarray)
+ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray)
 
 #: Array or Float (np.ndarray, float)
-ArrayOrFloat = TypeVar("ArrayOrFloat", npt.NDArray[np.floating], float)
+ArrayOrFloat = TypeVar("ArrayOrFloat", np.ndarray, float)
 
 #: Array like input (np.ndarray, xr.DataArray, float)
-ArrayScalarLike = TypeVar(
-    "ArrayScalarLike",
-    np.ndarray,
-    xr.DataArray,
-    float,
-    np.ndarray | float,
-    xr.DataArray | np.ndarray,
-)
+ArrayScalarLike = TypeVar("ArrayScalarLike", np.ndarray, xr.DataArray, float)
 
 #: Datetime like input (datetime, pd.Timestamp, np.datetime64)
 DatetimeLike = TypeVar("DatetimeLike", datetime, pd.Timestamp, np.datetime64, str)
