@@ -178,8 +178,26 @@ def e_sat_ice(T: ArrayScalarLike) -> ArrayScalarLike:
     )
 
 
-def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
-    r"""Calculate saturation pressure of water vapor over liquid water.
+def sonntag_e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
+    """Calculate saturation pressure of water vapor over liquid water using Sonntag (1994).
+
+    Parameters
+    ----------
+    T : ArrayScalarLike
+        Temperature, [:math:`K`]
+
+    Returns
+    -------
+    ArrayScalarLike
+        Saturation pressure of water vapor over liquid water, [:math:`Pa`]
+    """
+    return 100.0 * np.exp(  # type: ignore[return-value]
+        -6096.9385 / T + 16.635794 - 0.02711193 * T + 1.673952 * 1e-5 * T**2 + 2.433502 * np.log(T)
+    )
+
+
+def mk05_e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
+    """Calculate saturation pressure of water vapor over liquid water using Murphy and Koop (2005).
 
     Parameters
     ----------
@@ -191,29 +209,25 @@ def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
     ArrayScalarLike
         Saturation pressure of water vapor over liquid water, [:math:`Pa`]
 
-    References
-    ----------
-    Display (10) of Murphy and Koop (2005).
+    Notes
+    -----
+    Several formulations exist for the saturation vapor pressure over liquid water.
+
+    Buck (Buck Research Manual 1996)..
+
+        6.1121 * np.exp((18.678 * (T - 273.15) / 234.5) * (T - 273.15) / (257.14 + (T - 273.15)))
+
+    Magnus Tetens (Murray, 1967)..
+
+        6.1078 * np.exp(17.269388 * (T - 273.16) / (T - 35.86))
+
+    Guide to Meteorological Instruments and Methods of Observation (CIMO Guide) (WMO, 2008)..
+
+        6.112 * np.exp(17.62 * (T - 273.15) / (243.12 + T - 273.15))
+
+    Sonntag (1994) (see :func:`sonntag_e_sat_liquid`) is used in older versions of CoCiP.
     """
-    # Buck (Buck Research Manual 1996)
-    # 6.1121 * np.exp((18.678 * (T - 273.15) / 234.5) * (T - 273.15) / (257.14 + (T - 273.15)))
 
-    # Magnus Tetens (Murray, 1967)
-    # 6.1078 * np.exp(17.269388 * (T - 273.16) / (T - 35.86))
-
-    # Guide to Meteorological Instruments and Methods of Observation (CIMO Guide) (WMO, 2008)
-    # 6.112 * np.exp(17.62 * (T - 273.15) / (243.12 + T - 273.15))
-
-    # Sonntag (1994) is used in older versions of CoCiP
-    # 100.0 * np.exp(
-    #     -6096.9385 / T
-    #     + 16.635794
-    #     - 0.02711193 * T
-    #     + 1.673952 * 1e-5 * T**2
-    #     + 2.433502 * np.log(T)
-    # )
-
-    # Murphy and Koop (2005)
     return np.exp(  # type: ignore[return-value]
         54.842763
         - 6763.22 / T
@@ -222,6 +236,51 @@ def e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
         + np.tanh(0.0415 * (T - 218.8))
         * (53.878 - 1331.22 / T - 9.44523 * np.log(T) + 0.014025 * T)
     )
+
+
+def sonntag_e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:
+    """Calculate the derivative of :func:`sonntag_e_sat_liquid`.
+
+    Parameters
+    ----------
+    T : ArrayScalarLike
+        Temperature, [:math:`K`].
+
+    Returns
+    -------
+    ArrayScalarLike
+        Derivative of :func:`sonntag_e_sat_liquid`
+    """
+    d_inside = 6096.9385 / (T**2) - 0.02711193 + 1.673952 * 1e-5 * 2 * T + 2.433502 / T
+    return sonntag_e_sat_liquid(T) * d_inside
+
+
+def mk05_e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:
+    """Calculate the derivative of :func:`mk05_e_sat_liquid`.
+
+    Parameters
+    ----------
+    T : ArrayScalarLike
+        Temperature, [:math:`K`].
+
+    Returns
+    -------
+    ArrayScalarLike
+        Derivative of :func:`mk05_e_sat_liquid`
+    """
+    tanh_term = np.tanh(0.0415 * (T - 218.8))
+    return mk05_e_sat_liquid(T) * (  # type: ignore[return-value]
+        6763.22 / T**2
+        - 4.21 / T
+        + 0.000367
+        + 0.0415 * (1 - tanh_term**2) * (53.878 - 1331.22 / T - 9.44523 * np.log(T) + 0.014025 * T)
+        + tanh_term * (1331.22 / T**2 - 9.44523 / T + 0.014025)
+    )
+
+
+# Set aliases. These could be swapped out or made configurable.
+e_sat_liquid = mk05_e_sat_liquid
+e_sat_liquid_prime = mk05_e_sat_liquid_prime
 
 
 @support_arraylike
