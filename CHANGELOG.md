@@ -4,7 +4,7 @@
 
 ### Breaking changes
 
-- Update the formula used to compute the saturation vapor pressure over liquid water from Sonntag (1994) to [Murphy and Koop (2005)](https://doi.org/10.1256/qj.04.94). This improves consistency with current atmospheric physics references. Minor numerical differences are expected in the output of models that use the saturation vapor pressure over liquid water (for example, applications involving the Schmidt-Appleman criterion).
+- Update the formula used to compute the saturation vapor pressure over liquid water from Sonntag (1994) to [Murphy and Koop (2005)](https://doi.org/10.1256/qj.04.94). This improves consistency with [Ponsonby et al.](https://egusphere.copernicus.org/preprints/2025/egusphere-2025-1717/). Minor numerical differences may appear in models that depend on the saturation vapor pressure over liquid water (for example, applications involving the Schmidt-Appleman criterion). Users who wish to supply their own saturation vapor pressure function can monkey-patch `thermo.e_sat_liquid` and `thermo.e_sat_liquid_prime`.
 
 ## 0.54.11
 
