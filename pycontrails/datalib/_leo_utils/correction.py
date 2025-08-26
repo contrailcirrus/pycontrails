@@ -345,7 +345,7 @@ def colocate_flights(
         utm_crs (pyproj.CRS): UTM coordinate reference system used for projection.
         n_iter (int, optional): Number of iterations to refine the sensing_time correction.
             Default is 3.
-        search_window (int, optional): Time window. Default is 1 minute.
+        search_window (int, optional): Time window. Default is 5 minutes.
 
     Returns
     -------

@@ -119,6 +119,7 @@ sat = [
     "db-dtypes>=1.2",
     "gcsfs>=2022.3",
     "geojson>=3.1",
+    "geopandas>=1.1.1",
     "google-cloud-bigquery>=3.23",
     "google-cloud-bigquery-storage>=2.25",
     "pillow>=10.3",

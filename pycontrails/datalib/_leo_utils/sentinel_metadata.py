@@ -177,7 +177,7 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
                 resampling=Resampling.nearest,
             )
 
-    elif file_ext == ".gml":
+    if file_ext == ".gml":
         # --- Handle GML case ---
         gdf = gpd.read_file(metadata_path)
 
@@ -217,8 +217,7 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
 
         return mask_full
 
-    else:
-        raise ValueError(f"Unsupported file extension: {file_ext}. Expected .jp2 or .gml.")
+    raise ValueError(f"Unsupported file extension: {file_ext}. Expected .jp2 or .gml.")
 
 
 def _band_resolution(band: str) -> int:
