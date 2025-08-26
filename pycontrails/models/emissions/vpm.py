@@ -65,9 +65,10 @@ class Particle:
 
 
 def _default_particles() -> list[Particle]:
+    """See upcoming Teoh paper for details on these default parameters."""
     return [
         Particle(type=ParticleType.NVPM, kappa=0.005, gmd=30.0e-9, gsd=2.0, n_ambient=0.0),
-        Particle(type=ParticleType.VPM, kappa=0.3, gmd=2.1e-9, gsd=1.45, n_ambient=0.0),
+        Particle(type=ParticleType.VPM, kappa=0.2, gmd=1.8e-9, gsd=1.5, n_ambient=0.0),
         Particle(type=ParticleType.AMBIENT, kappa=0.5, gmd=30.0e-9, gsd=2.3, n_ambient=600.0e6),
     ]
 
