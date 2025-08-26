@@ -202,29 +202,29 @@ def iwc_post_wake_vortex(
 
 
 def initial_ice_particle_number(
-    nvpm_ei_n: npt.NDArray[np.floating],
+    aei: npt.NDArray[np.floating],
     fuel_dist: npt.NDArray[np.floating],
-    air_temperature: npt.NDArray[np.floating],
-    T_crit_sac: npt.NDArray[np.floating],
     min_ice_particle_number_nvpm_ei_n: float,
 ) -> npt.NDArray[np.floating]:
     """Calculate the initial number of ice particles per distance after the wake vortex phase.
 
-    The initial number of ice particle per distance is calculated from the black
-    carbon number emissions index ``nvpm_ei_n`` and fuel burn per distance ``fuel_dist``.
-    Note that a lower bound for ``nvpm_ei_n`` is set at ``1e13`` :math:`kg^{-1}` to account
+    The initial number of ice particle per distance is calculated from the activated apparent
+    emissions index ``aei`` and fuel burn per distance ``fuel_dist``.
+    Note that a lower bound for ``aei`` is set at ``1e13`` :math:`kg^{-1}` to account
     for the activation of ambient aerosol particles and organic volatile particles.
+
+    .. versionchanged:: 0.55
+
+        The signature of this function has changed. The parameter ``aei`` is now
+        expected to be the previous ``npvm_ei_n`` multiplied by the activation
+        fraction ``f_activation``.
 
     Parameters
     ----------
-    nvpm_ei_n : npt.NDArray[np.floating]
-        black carbon number emissions index, [:math:`kg^{-1}`]
+    aei : npt.NDArray[np.floating]
+        Activated apparent emissions index, [:math:`kg^{-1}`]
     fuel_dist : npt.NDArray[np.floating]
         fuel consumption of the flight segment per distance traveled, [:math:`kg m^{-1}`]
-    air_temperature : npt.NDArray[np.floating]
-        ambient temperature for each waypoint, [:math:`K`]
-    T_crit_sac : npt.NDArray[np.floating]
-        estimated Schmidt-Appleman temperature threshold for contrail formation, [:math:`K`]
     min_ice_particle_number_nvpm_ei_n : float
         lower bound for nvpm_ei_n to account for ambient aerosol particles for
         newer engines [:math:`kg^{-1}`]
@@ -235,9 +235,8 @@ def initial_ice_particle_number(
         The initial number of ice particles per distance before the wake vortex
         phase, [:math:`# m^{-1}`]
     """
-    f_activation = ice_particle_activation_rate(air_temperature, T_crit_sac)
-    nvpm_ei_n_activated = nvpm_ei_n * f_activation
-    return fuel_dist * np.maximum(nvpm_ei_n_activated, min_ice_particle_number_nvpm_ei_n)
+    aei_clipped = np.clip(aei, min=min_ice_particle_number_nvpm_ei_n)  # type: ignore[arg-type,call-overload]
+    return fuel_dist * aei_clipped
 
 
 def ice_particle_activation_rate(

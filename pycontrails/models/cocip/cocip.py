@@ -37,6 +37,7 @@ from pycontrails.models.cocip import (
     wind_shear,
 )
 from pycontrails.models.cocip.cocip_params import CocipFlightParams
+from pycontrails.models.emissions import vpm
 from pycontrails.models.emissions.emissions import Emissions
 from pycontrails.physics import constants, geo, thermo, units
 
@@ -981,6 +982,32 @@ class Cocip(Model):
         )
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
+        if self.params["vpm_activation"]:
+            rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
+
+            # We can add a Cocip parameter for T_exhaust, vpm_ei_n, and particles
+            aei = vpm.droplet_apparent_emission_index(
+                specific_humidity=specific_humidity,
+                T_ambient=air_temperature,
+                T_exhaust=self.source.attrs.get("T_exhaust", 600.0),
+                air_pressure=air_pressure,
+                nvpm_ei_n=nvpm_ei_n,
+                vpm_ei_n=self.source.attrs.get("vpm_ei_n", 2.0e17),
+                G=self._sac_flight["G"],
+            )
+
+        else:
+            f_activation = contrail_properties.ice_particle_activation_rate(
+                air_temperature, T_critical_sac
+            )
+            aei = nvpm_ei_n * f_activation
+
+        n_ice_per_m_0 = contrail_properties.initial_ice_particle_number(
+            aei=aei,
+            fuel_dist=fuel_dist,
+            min_ice_particle_number_nvpm_ei_n=self.params["min_ice_particle_number_nvpm_ei_n"],
+        )
+
         if self.params["unterstrasser_ice_survival_fraction"]:
             wingspan = self._sac_flight.get_data_or_attr("wingspan")
             rhi_0 = thermo.rhi(specific_humidity, air_temperature, air_pressure)
@@ -997,13 +1024,6 @@ class Cocip(Model):
         else:
             f_surv = contrail_properties.ice_particle_survival_fraction(iwc, iwc_1)
 
-        n_ice_per_m_0 = contrail_properties.initial_ice_particle_number(
-            nvpm_ei_n=nvpm_ei_n,
-            fuel_dist=fuel_dist,
-            air_temperature=air_temperature,
-            T_crit_sac=T_critical_sac,
-            min_ice_particle_number_nvpm_ei_n=self.params["min_ice_particle_number_nvpm_ei_n"],
-        )
         n_ice_per_m_1 = n_ice_per_m_0 * f_surv
 
         # Check for persistent initial_contrails
