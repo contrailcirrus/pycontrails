@@ -12,7 +12,6 @@ import numpy as np
 import numpy.typing as npt
 import scipy.optimize
 import scipy.special
-import scipy.stats
 
 from pycontrails.physics import constants, thermo
 
@@ -796,17 +795,7 @@ def water_droplet_activation_across_all_particles(
         if not particle.particle:
             raise ValueError("Each DropletActivation must have an associated Particle.")
 
-        # Calculate number weighted activation radius
-        d_act = 2.0 * particle.r_act
-
-        d_act_mean = mean_dry_particle_diameter_above_threshold(
-            d_act,
-            particle.particle.gmd,
-            particle.particle.gsd,
-        )
-        r_act_mean = d_act_mean / 2.0
-
-        weights_numer += np.nan_to_num(r_act_mean) * particle.n_available
+        weights_numer += np.nan_to_num(particle.r_act) * particle.n_available
         weights_denom += particle.n_available
 
         # Total particles
@@ -828,78 +817,6 @@ def water_droplet_activation_across_all_particles(
         n_total=n_total_all,
         n_available=n_available_all,
     )
-
-
-def mean_dry_particle_diameter_above_threshold(
-    d_act: npt.NDArray[np.floating],
-    gmd: float,
-    gsd: float,
-    n_points: int = 5000,
-    alpha: float = 5e-8,
-) -> npt.NDArray[np.floating]:
-    """Calculate the mean dry particle diameter above the critical diameter.
-
-    This function returns the conditional expectation of the particle diameter
-    assuming a lognormal distribution with geometric mean diameter ``gmd`` and
-    geometric standard deviation ``gsd``, given that the diameter is greater
-    than ``d_act``.
-
-    The implementation uses a vectorized numerical approximation:
-    (1) Define the lower and upper bounds of the lognormal distribution using
-        the ``alpha`` and ``1 - alpha`` quantiles of the distribution,
-    (2) Sample the PDF on a log-spaced grid ``d_search``,
-    (3) For each ``d_act``, sum the PDF and ``d * PDF`` above ``d_act`` using
-        cumulative sums, and
-    (4) Compute the conditional mean as the ratio of these sums.
-
-    Parameters
-    ----------
-    d_act : npt.NDArray[np.floating]
-        Activation diameter for the given water saturation ratio and temperature, [:math:`m`].
-    gmd : float
-        Geometric mean diameter, [:math:`m`].
-    gsd : float
-        Geometric standard deviation.
-    n_points : int, optional
-        Number of points in the PDF grid, by default 5000.
-    alpha : float, optional
-        Tail cutoff for PDF grid, by default ``5e-8``.
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        Mean dry particle diameter above the critical diameter, [:math:`m`].
-
-    """
-    d_act = np.atleast_1d(d_act)
-    result = np.full_like(d_act, np.nan)
-
-    # mask valid entries
-    mask = np.isfinite(d_act)
-    if not np.any(mask):
-        return result  # all NaN
-
-    sigma = np.log(gsd)
-    dist = scipy.stats.lognorm(s=sigma, scale=gmd)
-
-    lb, ub = dist.ppf([alpha, 1.0 - alpha])
-    d_search = np.logspace(np.log10(lb), np.log10(ub), n_points)
-    pdf = dist.pdf(d_search)
-
-    # Precompute tail sums
-    cdf_tail = np.cumsum((pdf * d_search)[::-1])[::-1]
-    pdf_tail = np.cumsum(pdf[::-1])[::-1]
-
-    # flatten only valid entries
-    d_flat = d_act[mask].ravel()
-    idx = np.searchsorted(d_search, d_flat, side="left")
-    idx = np.clip(idx, 0, n_points - 1)
-
-    mean_flat = cdf_tail[idx] / pdf_tail[idx]
-
-    # overwrite valid entries in the result
-    result[mask] = mean_flat.reshape(d_act[mask].shape)
-    return result
 
 
 def droplet_number_concentration_at_saturation(
