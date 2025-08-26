@@ -1909,6 +1909,39 @@ def test_cocip_survival_fraction(fl: Flight, met: MetDataset, rad: MetDataset):
     assert "n_ice_per_m_1" in cocip._sac_flight
 
 
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("vpm_activation", [True, False])
+def test_cocip_vpm_activation(
+    fl: Flight,
+    met: MetDataset,
+    rad: MetDataset,
+    vpm_activation: bool,
+) -> None:
+    """Confirm Cocip runs with the particle nucleation model parameterization turned on."""
+    cocip = Cocip(
+        met=met,
+        rad=rad,
+        dt_integration="5 minutes",
+        max_age="10 minutes",
+        process_emissions=False,
+        humidity_scaling=ConstantHumidityScaling(rhi_adj=0.6),
+        filter_sac=False,
+        vpm_activation=vpm_activation,
+    )
+    cocip.eval(fl)
+
+    # Pin values
+    mean_n_ice_per_m_0 = cocip._sac_flight["n_ice_per_m_0"][:-1].mean()  # final waypoint is nan
+    mean_ef = cocip.source["ef"].mean()
+
+    if vpm_activation:
+        assert mean_n_ice_per_m_0 == pytest.approx(1.44e14, rel=0.01)
+        assert mean_ef == pytest.approx(9.47e9, rel=0.01)
+    else:
+        assert mean_n_ice_per_m_0 == pytest.approx(1.68e14, rel=0.01)
+        assert mean_ef == pytest.approx(9.60e9, rel=0.01)
+
+
 @pytest.mark.parametrize(
     ("mvs", "target"),
     [
