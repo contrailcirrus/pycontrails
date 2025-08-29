@@ -208,17 +208,23 @@
   langid = {english}
 }
 
-@misc{engbergForecastingContrailClimate2024,
-  title = {Forecasting Contrail Climate Forcing for Flight Planning and Air Traffic Management Applications: {{The CocipGrid}} Model in Pycontrails 0.51.0},
+@article{engbergForecastingContrailClimate2025,
+  title = {Forecasting Contrail Climate Forcing for Flight Planning and Air Traffic Management Applications: The {{CocipGrid}} Model in Pycontrails 0.51.0},
   shorttitle = {Forecasting Contrail Climate Forcing for Flight Planning and Air Traffic Management Applications},
-  author = {Engberg, Zebediah and Teoh, Roger and Dean, Thomas and Stettler, Marc E. J. and Shapiro, Marc L.},
-  year = {2024},
-  month = jun,
-  doi = {10.5194/egusphere-2024-1361},
-  url = {https://egusphere.copernicus.org/preprints/2024/egusphere-2024-1361/},
-  urldate = {2024-07-10},
-  abstract = {Abstract. The global annual mean contrail net radiative forcing may exceed that of aviation's cumulative CO2 emissions by at least two-fold. As only around 2--3 \% of all flights are likely responsible for 80 \% of the global annual contrail climate forcing, re-routing these flights could reduce the formation of strongly warming contrails. Here, we develop a contrail forecasting model that produces global predictions of persistent contrail formation and their associated climate forcing. This model builds on the methods of the existing contrail cirrus prediction model (CoCiP) to efficiently evaluate infinitesimal contrail segments initialized at each point in a regular 4D spatiotemporal grid until their end-of-life. Outputs are reported in a concise meteorology data format that integrates with existing flight planning and air traffic management workflows. This ``grid-based'' CoCiP is used to conduct a global contrail simulation for 2019 to compare with previous work and analyze spatial trends related to strongly warming/cooling contrails. We explore two approaches for integrating contrail forecasts into existing flight planning and air traffic management systems: (i) using contrail forcing as an additional cost parameter within a flight trajectory optimizer; or (ii) constructing polygons of airspace volumes with strongly-warming contrails to avoid. We demonstrate a probabilistic formulation of the grid-based model by running a Monte Carlo simulation with ensemble meteorology to mask grid cells with significant uncertainties in the simulated contrail climate forcing. This study establishes a working standard for incorporating contrail mitigation within existing flight planning and management workflows and demonstrates how forecasting uncertainty can be incorporated to minimize unintended consequences associated with increased CO2 emissions of avoidance.},
-  copyright = {https://creativecommons.org/licenses/by/4.0/}
+  author = {Engberg, Zebediah and Teoh, Roger and Abbott, Tristan and Dean, Thomas and Stettler, Marc E. J. and Shapiro, Marc L.},
+  year = {2025},
+  month = jan,
+  journal = {Geoscientific Model Development},
+  volume = {18},
+  number = {2},
+  pages = {253--286},
+  publisher = {Copernicus GmbH},
+  issn = {1991-959X},
+  doi = {10.5194/gmd-18-253-2025},
+  url = {https://gmd.copernicus.org/articles/18/253/2025/},
+  urldate = {2025-01-21},
+  abstract = {The global annual mean contrail climate forcing may exceed that of aviation's cumulative CO2 emissions. As only 2 \%--3 \% of all flights are likely responsible for 80 \% of the global annual contrail energy forcing (EFcontrail), re-routing these flights could reduce the occurrence of strongly warming contrails. Here, we develop a contrail forecasting tool that produces global maps of persistent contrail formation and their EFcontrail formatted to align with standard weather and turbulence forecasts for integration into existing flight planning and air traffic management workflows. This is achieved by extending the existing trajectory-based contrail cirrus prediction model (CoCiP), which simulates contrails formed along flight paths, to a grid-based approach that initializes an infinitesimal contrail segment at each point in a 4D spatiotemporal grid and tracks them until their end of life. Outputs are provided for N aircraft-engine groups, with groupings based on similarities in aircraft mass and engine particle number emissions: N=7 results in a 3 \% mean error between the trajectory- and grid-based CoCiP, while N=3 facilitates operational simplicity but increases the mean error to 13 \%. We use the grid-based CoCiP to simulate contrails globally using 2019 meteorology and compare its forecast patterns with those from previous studies. Two approaches are proposed to apply these forecasts for contrail mitigation: (i) monetizing EFcontrail and including it as an additional cost parameter within a flight trajectory optimizer or (ii) constructing polygons to avoid airspace volumes with strongly warming contrails. We also demonstrate a probabilistic formulation of the grid-based CoCiP by running it with ensemble meteorology and excluding grid cells with significant uncertainties in the simulated EFcontrail. This study establishes a working standard for incorporating contrail mitigation into flight management protocols and demonstrates how forecasting uncertainty can be incorporated to minimize unintended consequences associated with increased CO2 emissions from re-routes.},
+  langid = {english}
 }
 
 @misc{eurocontrolUSERMANUALBASE2010,
@@ -417,19 +423,22 @@
   langid = {english}
 }
 
-@article{lowGroundbasedContrailObservations2024,
-  title = {Ground-Based Contrail Observations: Comparisons with Flight Telemetry and Contrail Model Estimates},
+@article{lowGroundbasedContrailObservations2025,
+  title = {Ground-Based Contrail Observations: Comparisons with Reanalysis Weather Data and Contrail Model Simulations},
   shorttitle = {Ground-Based Contrail Observations},
-  author = {Low, Jade and Teoh, Roger and Ponsonby, Joel and Gryspeerdt, Edward and Shapiro, Marc and Stettler, Marc},
-  year = {2024},
-  month = jun,
-  journal = {EGUsphere},
-  pages = {1--25},
+  author = {Low, Jade and Teoh, Roger and Ponsonby, Joel and Gryspeerdt, Edward and Shapiro, Marc and Stettler, Marc E. J.},
+  year = {2025},
+  month = jan,
+  journal = {Atmospheric Measurement Techniques},
+  volume = {18},
+  number = {1},
+  pages = {37--56},
   publisher = {Copernicus GmbH},
-  doi = {10.5194/egusphere-2024-1458},
-  url = {https://egusphere.copernicus.org/preprints/2024/egusphere-2024-1458/},
-  urldate = {2024-07-09},
-  abstract = {{$<$}p{$><$}strong class="journal-contentHeaderColor"{$>$}Abstract.{$<$}/strong{$>$} Observations of contrail are vital for improving understanding of contrail formation and lifecycle, informing models, and assessing contrail mitigation strategies. Ground-based cameras offer a cost-effective means to observe the formation and evolution of young contrails and can be used to assess the accuracy of existing models. Here, we develop a methodology to track and analyse contrails from ground-based cameras, comparing these observations against simulations from the contrail cirrus prediction model (CoCiP) with actual flight trajectories. The ground-based contrail observations consist of 14 h of video footage recorded on five different days over Central London, capturing a total of 1,619 flight waypoints from 283 unique flights. Our results suggest that the best agreement between the observed and simulated contrail formation occurs at around 35,000\&ndash;40,000 feet and at temperatures at least 10 K below the Schmidt-Appleman Criterion threshold temperature ({$<$}em{$>$}T{$<$}/em{$>$}\textsubscript{SAC}). Conversely, the largest discrepancies occurred when contrails are formed below 30,000 feet and at temperatures within 2.5 K of {$<$}em{$>$}T{$<$}/em{$>$}\textsubscript{SAC}. On average, the simulated contrail width is 17.5 \% smaller than the observed geometric width. This discrepancy could be caused by the underestimation of sub-grid scale wind shear and turbulent mixing in the simulation, and model representation of the contrail cross-sectional shape. Overall, these findings demonstrate the capability of ground-based cameras to inform weather and contrail model development when combined with flight telemetry.{$<$}/p{$>$}},
+  issn = {1867-1381},
+  doi = {10.5194/amt-18-37-2025},
+  url = {https://amt.copernicus.org/articles/18/37/2025/},
+  urldate = {2025-01-07},
+  abstract = {Observations of contrails are vital for improving our understanding of the contrail formation and life cycle, informing models, and assessing mitigation strategies. Here, we developed a methodology that utilises ground-based cameras for tracking and analysing young contrails (\&lt; 35 min) formed under clear-sky conditions, comparing these observations against reanalysis meteorology and simulations from the contrail cirrus prediction model (CoCiP) with actual flight trajectories. Our observations consist of 14 h of video footage recorded over 5 different days in Central London, capturing 1582 flight waypoints from 281 flights. The simulation correctly predicted contrail formation and absence for around 75 \% of these waypoints, with incorrect contrail predictions occurring at warmer temperatures than those with true-positive predictions (7.8 K vs. 12.8 K below the Schmidt--Appleman criterion threshold temperature). When evaluating contrails with observed lifetimes of at least 2 min, the simulation's correct prediction rate for contrail formation increases to over 85 \%. Among all waypoints with contrail observations, 78 \% of short-lived contrails (observed lifetimes \&lt; 2 min) formed under ice-subsaturated conditions, whereas 75 \% of persistent contrails (observed lifetimes \&gt; 10 min) formed under ice-supersaturated conditions. On average, the simulated contrail geometric width was around 100 m smaller than the observed (visible) width over its observed lifetime, with the mean underestimation reaching up to 280 m within the first 5 min. Discrepancies between the observed and simulated contrail formation, lifetime, and width can be associated with uncertainties in reanalysis meteorology due to known model limitations and sub-grid-scale variabilities, contrail model simplifications, uncertainties in aircraft performance estimates, and observational challenges, among other possible factors. Overall, this study demonstrates the potential of ground-based cameras to create essential observational and benchmark datasets for validating and improving existing weather and contrail models.},
   langid = {english}
 }
 

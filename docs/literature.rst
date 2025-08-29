@@ -15,8 +15,8 @@ Publications including ``pycontrails``:
 - :cite:`teohHighresolutionGlobalAviation2024`
 - :cite:`plattEffectUncertaintyHumidity2024`
 - :cite:`teohGlobalAviationContrail2024`
-- :cite:`engbergForecastingContrailClimate2024` (pre-print)
-- :cite:`lowGroundbasedContrailObservations2024` (pre-print)
+- :cite:`engbergForecastingContrailClimate2025`
+- :cite:`lowGroundbasedContrailObservations2025`
 
 If you use ``pycontrails`` in your work, please cite using the Zenodo DOI:
 
