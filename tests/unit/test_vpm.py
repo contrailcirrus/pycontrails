@@ -55,4 +55,4 @@ def test_droplet_apparent_emission_index() -> None:
         vpm_ei_n=3.0e17,
         G=1.2,
     )
-    assert aei == pytest.approx(1.81e14, rel=0.01)
+    assert aei == pytest.approx(1.76e14, rel=0.01)

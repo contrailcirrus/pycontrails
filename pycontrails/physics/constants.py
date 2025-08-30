@@ -51,7 +51,7 @@ M_v: float = 18.0153e-3
 #: Ratio of heat capacities, TODO: which heat capacities?
 gamma: float = 1.4
 
-#:  molar gas constant :math:`[J \ mol^{-1} \ K^{-1}]`
+#: Molar gas constant :math:`[J \ mol^{-1} \ K^{-1}]`
 R: float = 8.314462618
 
 #: Gas constant of dry air :math:`[J \ kg^{-1} \ K^{-1}]`
