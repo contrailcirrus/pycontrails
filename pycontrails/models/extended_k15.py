@@ -180,10 +180,31 @@ def _newton_seed(
     return (1.0 + eps) * Dd
 
 
+def _density_liq_water(T):
+    """Calculate the density of liquid water as a function of temperature.
+
+    The estimate below is equation (A1) in Marcolli 2020
+    https://doi.org/10.5194/acp-20-3209-2020
+    """
+    return (
+        1864.3535
+        - 72.5821489 * T
+        + 2.5194368 * T**2
+        - 0.049000203 * T**3
+        + 5.860253e-4 * T**4
+        - 4.5055151e-6 * T**5
+        + 2.2616353e-8 * T**6
+        - 7.3484974e-11 * T**7
+        + 1.4862784e-13 * T**8
+        - 1.6984748e-16 * T**9
+        + 8.3699379e-20 * T**10
+    )
+
+
 def critical_supersaturation(
     Dd: npt.NDArray[np.floating],
     kappa: npt.NDArray[np.floating],
-    temperature: npt.NDArray[np.floating],
+    T: npt.NDArray[np.floating],
     tol: float = 1e-12,
     maxiter: int = 25,
 ) -> npt.NDArray[np.floating]:
@@ -200,7 +221,7 @@ def critical_supersaturation(
         Dry diameter of the particle, [:math:`m`].
     kappa : npt.NDArray[np.floating]
         Hygroscopicity parameter, dimensionless. Expected to satisfy ``0 < kappa < 1``.
-    temperature : npt.NDArray[np.floating]
+    T : npt.NDArray[np.floating]
         The temperature at which to compute the critical supersaturation, [:math:`K`].
     tol : float, optional
         Convergence tolerance for Newton's method, by default 1e-12.
@@ -213,8 +234,8 @@ def critical_supersaturation(
     npt.NDArray[np.floating]
         The critical supersaturation ratio, dimensionless.
     """
-    sigma = 0.0761 - 1.55e-4 * (temperature + constants.absolute_zero)
-    A = 8.693000644847526e-06 * sigma / temperature
+    sigma = 0.0761 - 1.55e-4 * (T + constants.absolute_zero)
+    A = (4.0 * sigma * constants.M_v) / (constants.R * T * _density_liq_water(T))
 
     x0 = _newton_seed(Dd, kappa)
     D = scipy.optimize.newton(
