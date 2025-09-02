@@ -211,6 +211,15 @@ Emissions
     models.emissions.ffm2
 
 
+VPM Activation
+""""""""""""""
+
+.. autosummary::
+    :toctree: api/
+
+    models.extended_k15
+
+
 Cirrus Optical Depth (:math:`\tau_{cirrus}`)
 """"""""""""""""""""""""""""""""""""""""""""
 
