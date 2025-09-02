@@ -1,5 +1,7 @@
 """Support for volatile particulate matter (vPM) modeling via the extended K15 model.
 
+See the :func:`droplet_apparent_emission_index` function for the main entry point.
+
 A preprint is available :cite:`ponsonbyUpdatedMicrophysicalModel2025`.
 """
 
