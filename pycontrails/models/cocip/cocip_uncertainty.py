@@ -40,9 +40,9 @@ class habit_dirichlet(rv_frozen):
 
         Parameters
         ----------
-        *args
+        *args : Any
             Used to create a number of habit distributions
-        **kwds
+        **kwds : Any
             Passed through to :func:`scipy.stats.dirichlet.rvs()`
 
         Returns
@@ -190,7 +190,7 @@ class CocipUncertaintyParams(CocipParams):
 
         Returns
         -------
-        dict[str, dict[str, Any]]
+        dict[str, rv_frozen]
             Uncertainty parameters and values
         """
         # handle these differently starting in version 0.27.0
@@ -230,7 +230,7 @@ class CocipUncertaintyParams(CocipParams):
 
         Returns
         -------
-        dict[str, float | npt.NDArray[np.floating]]
+        dict[str, np.float64 | npt.NDArray[np.floating]]
             Dictionary of random parameters. Dictionary keys consists of names of parameters in
             `CocipParams` to be overridden by random value.
 

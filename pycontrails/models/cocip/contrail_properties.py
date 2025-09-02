@@ -462,9 +462,9 @@ def _within_range(
     ----------
     val : np.ndarray
         value of selected contrail property
-    max : np.ndarray | float | np.timedelta64 | None, optional
+    max : float | np.timedelta64 | None, optional
         Upper bound. If None, no upper bound is imposed. None by default.
-    min : np.ndarray | float | np.timedelta64 | None, optional
+    min : float | np.timedelta64 | None, optional
         Lower bound. If None, no lower bound is imposed. None by default.
 
     Returns
@@ -585,9 +585,9 @@ def contrail_vertices(
 
     Returns
     -------
-    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating]]
+    tuple
         (lon_1, lat_1, lon_2, lat_2, lon_3, lat_3, lon_4, lat_4) degrees
-    """  # noqa: E501
+    """
     dlon_width = units.m_to_longitude_distance(width * sin_a * 0.5, lat)
     dlat_width = units.m_to_latitude_distance(width * cos_a * 0.5)
 
@@ -888,9 +888,9 @@ def vertical_diffusivity(
         Temperature gradient with respect to altitude (dz), [:math:`K m^{-1}`]
     depth_eff : npt.NDArray[np.floating]
         Effective depth of the contrail plume, [:math:`m`]
-    terminal_fall_speed : npt.NDArray[np.floating]
+    terminal_fall_speed : npt.NDArray[np.floating] | float
         Terminal fall speed of contrail ice particles, [:math:`m s^{-1}`]
-    sedimentation_impact_factor : float
+    sedimentation_impact_factor : npt.NDArray[np.floating] | float
         Enhancement parameter denoted by `f_T` in eq. (35) Schumann (2012).
     eff_heat_rate: npt.NDArray[np.floating] | None
         Effective heating rate, i.e., rate of which the contrail plume
@@ -1506,7 +1506,7 @@ def mean_energy_flux_per_m(
     rad_flux_per_m : npt.NDArray[np.floating]
         Mean radiative flux between time steps for waypoint, [:math:`W m^{-1}`].
         See :func:`mean_radiative_flux_per_m`.
-    dt : npt.NDArray[np.timedelta64]
+    dt : npt.NDArray[np.timedelta64] | np.timedelta64
         timedelta of integration timestep for each waypoint.
 
     Returns

@@ -284,7 +284,7 @@ def z_emit_length_scale_analytical(
 
     Parameters
     ----------
-    rho_emit : npt.NDArray[np.floating] | float
+    rho_emit : npt.NDArray[np.floating]
         Aircraft-emitted water vapour concentration in the plume, [:math:`kg m^{-3}`]
     air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
@@ -317,7 +317,7 @@ def z_emit_length_scale_numerical(
 
     Parameters
     ----------
-    rho_emit : npt.NDArray[np.floating] | float
+    rho_emit : npt.NDArray[np.floating]
         Aircraft-emitted water vapour concentration in the plume, [:math:`kg m^{-3}`]
     air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
@@ -365,7 +365,7 @@ def plume_area(wingspan: npt.NDArray[np.floating] | float) -> npt.NDArray[np.flo
 
     Returns
     -------
-    float
+    npt.NDArray[np.floating] | float
         Area of two wake-vortex plumes, [:math:`m^{2}`]
 
     Notes
@@ -396,7 +396,7 @@ def z_desc_length_scale(
         pressure altitude at each waypoint, [:math:`Pa`]
     true_airspeed : npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    aircraft_mass : npt.NDArray[np.floating] | float
+    aircraft_mass : npt.NDArray[np.floating]
         aircraft mass for each waypoint, [:math:`kg`]
     dT_dz : npt.NDArray[np.floating]
         potential temperature gradient, [:math:`K m^{-1}`]
@@ -436,7 +436,7 @@ def _initial_wake_vortex_circulation(
         pressure altitude at each waypoint, [:math:`Pa`]
     true_airspeed : npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    aircraft_mass : npt.NDArray[np.floating] | float
+    aircraft_mass : npt.NDArray[np.floating]
         aircraft mass for each waypoint, [:math:`kg`]
 
     Returns

@@ -58,7 +58,7 @@ class Cocip(Model):
     rad : MetDataset
         Single level dataset containing top of atmosphere radiation fluxes.
         See *Notes* for variable names by data source.
-    params : dict[str, Any], optional
+    params : dict[str, Any] | None, optional
         Override Cocip model parameters with dictionary.
         See :class:`CocipFlightParams` for model parameters.
     **params_kwargs : Any
@@ -411,7 +411,7 @@ class Cocip(Model):
 
         Returns
         -------
-        Flight | list[Flight] | NoReturn
+        Flight | list[Flight]
             Flight(s) with updated Contrail data. The model parameter "verbose_outputs"
             determines the variables on the return flight object.
 
@@ -489,7 +489,7 @@ class Cocip(Model):
 
         Returns
         -------
-        tuple[MetVariable]
+        tuple[MetVariable, ...]
             List of model-agnostic variants of required variables
         """
         available = set(met_var.MET_VARIABLES)
@@ -501,7 +501,7 @@ class Cocip(Model):
 
         Returns
         -------
-        tuple[MetVariable]
+        tuple[MetVariable, ...]
             List of ECMWF-specific variants of required variables
         """
         available = set(ecmwf.ECMWF_VARIABLES)
@@ -513,7 +513,7 @@ class Cocip(Model):
 
         Returns
         -------
-        tuple[MetVariable]
+        tuple[MetVariable, ...]
             List of GFS-specific variants of required variables
         """
         available = set(gfs.GFS_VARIABLES)
