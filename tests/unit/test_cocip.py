@@ -1917,7 +1917,12 @@ def test_cocip_vpm_activation(
     rad: MetDataset,
     vpm_activation: bool,
 ) -> None:
-    """Confirm Cocip runs with the particle nucleation model parameterization turned on."""
+    """Confirm Cocip runs with the particle nucleation model parameterization turned on.
+
+    This test simulates a lean-burn engine (nvpm_ei_n=1e11 #/kg fuel) to
+    ensure that the VPM activation model has a significant effect on the number
+    of ice crystals formed.
+    """
     cocip = Cocip(
         met=met,
         rad=rad,
@@ -1928,6 +1933,7 @@ def test_cocip_vpm_activation(
         filter_sac=False,
         vpm_activation=vpm_activation,
     )
+    fl["nvpm_ei_n"] = np.full(fl.size, 1e11)  # lean-burn engine
     cocip.eval(fl)
 
     # Pin values
@@ -1935,11 +1941,11 @@ def test_cocip_vpm_activation(
     mean_ef = cocip.source["ef"].mean()
 
     if vpm_activation:
-        assert mean_n_ice_per_m_0 == pytest.approx(1.44e14, rel=0.01)
-        assert mean_ef == pytest.approx(9.36e9, rel=0.01)
+        assert mean_n_ice_per_m_0 == pytest.approx(1764.93e11, rel=0.01)
+        assert mean_ef == pytest.approx(9.65e9, rel=0.01)
     else:
-        assert mean_n_ice_per_m_0 == pytest.approx(1.68e14, rel=0.01)
-        assert mean_ef == pytest.approx(9.60e9, rel=0.01)
+        assert mean_n_ice_per_m_0 == pytest.approx(8.87e11, rel=0.01)
+        assert mean_ef == pytest.approx(4.90e9, rel=0.01)
 
 
 @pytest.mark.parametrize(
