@@ -19,6 +19,7 @@ from pycontrails.physics import constants, thermo
 # Radiative Forcing and Mitigation Assessment" for details on these default parameters.
 DEFAULT_VPM_EI_N = 2.0e17  # vPM number emissions index, [kg^-1]
 DEFAULT_EXHAUST_T = 600.0  # Exhaust temperature, [K]
+EXPERIMENTAL_WARNING = True
 
 
 class ParticleType(enum.Enum):
@@ -62,9 +63,10 @@ class Particle:
     n_ambient: float
 
     def __post_init__(self) -> None:
-        if self.type != ParticleType.AMBIENT and self.n_ambient != 0.0:
-            raise ValueError(f"n_ambient must be 0.0 for emitted particle type {self.type.value}")
-        if self.type == ParticleType.AMBIENT and self.n_ambient < 0.0:
+        ptype = self.type
+        if ptype != ParticleType.AMBIENT and self.n_ambient:
+            raise ValueError(f"n_ambient must be 0 for aircraft-emitted {ptype.value} particles")
+        if ptype == ParticleType.AMBIENT and self.n_ambient < 0.0:
             raise ValueError("n_ambient must be non-negative for ambient particles")
 
 
@@ -116,7 +118,21 @@ def S(
 
     Implements equation (6) in Petters and Kreidenweis (2007).
 
-    The input ``D`` should be greater than ``Dd``.
+    Parameters
+    ----------
+    D : npt.NDArray[np.floating]
+        Droplet diameter, [:math:`m`]. Should be greater than ``Dd``.
+    Dd : npt.NDArray[np.floating]
+        Dry particle diameter, [:math:`m`].
+    kappa : npt.NDArray[np.floating]
+        Hygroscopicity parameter, dimensionless.
+    A : npt.NDArray[np.floating]
+        Kelvin term coefficient, [:math:`m`].
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Supersaturation ratio at diameter ``D``, dimensionless.
     """
     D3 = D * D * D  # D**3, avoid power operation
     Dd3 = Dd * Dd * Dd  # Dd**3, avoid power operation
@@ -167,10 +183,13 @@ def _newton_seed(
     Dd: npt.NDArray[np.floating],
     kappa: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
-    # This is a crude approach, but it probably works well enough for common values of kappa, Dd,
-    # and temperature. The coefficients below were derived from fitting a linear model to
-    # approximate eps (defined by S(D) = (1 + eps) * Dd) as a function of log(kappa) and log(Dd).
-    # (Dd = 1e-9, 1e-8, 1e-7, 1e-6; kappa = 0.005, 0.05, 0.5; temperature ~= 220 K)
+    """Estimate a seed value for Newton's method to find the critical diameter.
+
+    This is a crude approach, but it probably works well enough for common values of kappa, Dd,
+    and temperature. The coefficients below were derived from fitting a linear model to
+    approximate eps (defined by S(D) = (1 + eps) * Dd) as a function of log(kappa) and log(Dd).
+    (Dd = 1e-9, 1e-8, 1e-7, 1e-6; kappa = 0.005, 0.05, 0.5; temperature ~= 220 K)
+    """
     b0 = 12.21
     b_kappa = 0.5883
     b_Dd = 0.6319
@@ -394,7 +413,7 @@ def droplet_apparent_emission_index(
     particles: list[Particle] | None = None,
     n_plume_points: int = 50,
 ) -> npt.NDArray[np.floating]:
-    """Calculate droplet apparent ice emissions index from nvPM, vPM and ambient particles.
+    """Calculate the droplet apparent emissions index from nvPM, vPM and ambient particles.
 
     Parameters
     ----------
@@ -434,6 +453,18 @@ def droplet_apparent_emission_index(
     to dimension 1. This setup allows the plume temperature calculation to be computed once
     and reused for multiple emissions values.
     """
+    if EXPERIMENTAL_WARNING:
+        warnings.warn(
+            """This model is a minimal framework used to approximate the apparent
+            emission index of contrail ice crystals in the jet regime. It does not fully
+            represent the complexity of microphysical plume processes, including the
+            formation and growth of vPM. Instead, vPM properties are prescribed as model
+            inputs, which strongly impact model outputs. Therefore, the model should
+            only be used for research purposes, together with thorough sensitivity
+            analyses or explicit reference to the limitations outlined above.
+            """
+        )
+
     particles = particles or _default_particles()
 
     # Confirm all parameters are broadcastable
