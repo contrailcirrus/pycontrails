@@ -241,7 +241,7 @@ def habit_weight_regime_idx(
 
 def effective_radius_by_habit(
     r_vol_um: npt.NDArray[np.floating], habit_idx: npt.NDArray[np.intp]
-) -> np.ndarray:
+) -> npt.NDArray[np.floating]:
     r"""Calculate the effective radius ``r_eff_um`` via the mean ice particle radius and habit type.
 
     The ``habit_idx`` corresponds to the habit types in ``rf_const.habits``.
@@ -479,7 +479,7 @@ def longwave_radiative_forcing(
     habit_weights_ : npt.NDArray[np.floating]
         Weights to different ice particle habits for each waypoint,
         ``n_waypoints x 8`` (habit) columns, [:math:`[0 - 1]`]
-    r_eff_um : npt.NDArray[np.floating], optional
+    r_eff_um : npt.NDArray[np.floating] | None, optional
         Provide effective radius corresponding to elements in ``r_vol_um``, [:math:`\mu m`].
         Defaults to None, which means the effective radius will be calculated using ``r_vol_um``
         and habit types in :func:`effective_radius_by_habit`.
@@ -583,7 +583,7 @@ def shortwave_radiative_forcing(
     habit_weights_ : npt.NDArray[np.floating]
         Weights to different ice particle habits for each waypoint,
         ``n_waypoints x 8`` (habit) columns, [:math:`[0 - 1]`]
-    r_eff_um : npt.NDArray[np.floating], optional
+    r_eff_um : npt.NDArray[np.floating] | None, optional
         Provide effective radius corresponding to elements in ``r_vol_um``, [:math:`\mu m`].
         Defaults to None, which means the effective radius will be calculated using ``r_vol_um``
         and habit types in :func:`effective_radius_by_habit`.
@@ -923,7 +923,7 @@ def contrail_contrail_overlap_radiative_effects(
     min_altitude_m : float
         Minimum altitude domain in simulation, [:math:`m`]
         See :attr:`CocipParams.min_altitude_m`
-    max_altitude_m
+    max_altitude_m : float
         Maximum altitude domain in simulation, [:math:`m`]
         See :attr:`CocipParams.min_altitude_m`
     dz_overlap_m : float

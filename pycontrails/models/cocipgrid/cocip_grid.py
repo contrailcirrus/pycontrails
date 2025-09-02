@@ -36,13 +36,15 @@ class CocipGrid(models.Model):
 
     Parameters
     ----------
-    met, rad : MetDataset
+    met : MetDataset
         CoCiP-specific met data to interpolate against
-    params : dict[str, Any], optional
+    rad : MetDataset
+        CoCiP-specific radiation data to interpolate against
+    params : dict[str, Any] | None, optional
         Override :class:`CocipGridParams` defaults. Most notably, the model is highly
         dependent on the parameter ``dt_integration``. Memory usage is also affected by
         parameters ``met_slice_dt`` and ``target_split_size``.
-    param_kwargs : Any
+    **params_kwargs : Any
         Override CocipGridParams defaults with arbitrary keyword arguments.
 
     Notes
@@ -764,20 +766,26 @@ class CocipGrid(models.Model):
 
         Parameters
         ----------
-        level : level: npt.NDArray[np.floating] | list[float] | float
+        level : npt.NDArray[np.floating] | list[float] | float
             Pressure levels for gridded cocip.
             To avoid interpolating outside of the passed ``met`` and ``rad`` data, this
             parameter should avoid the extreme values of the ``met`` and `rad` levels.
             If ``met`` is already defined, a good choice for ``level`` is
             ``met.data['level'].values[1: -1]``.
-        time: npt.NDArray[np.datetime64 | list[np.datetime64] | np.datetime64,
+        time : npt.NDArray[np.datetime64] | list[np.datetime64] | np.datetime64
             One or more time values for gridded cocip.
-        longitude, latitude : npt.NDArray[np.floating] | list[float], optional
-            Longitude and latitude arrays, by default None. If not specified, values of
+        longitude : npt.NDArray[np.floating] | list[float] | None, optional
+            Longitude array, by default None. If not specified, values of
             ``lon_step`` and ``lat_step`` are used to define ``longitude`` and ``latitude``.
-        lon_step, lat_step : float, optional
-            Longitude and latitude resolution, by default 1.0.
-            Only used if parameter ``longitude`` (respective ``latitude``) not specified.
+        latitude : npt.NDArray[np.floating] | list[float] | None, optional
+            Latitude array, by default None. If not specified, values of
+            ``lon_step`` and ``lat_step`` are used to define ``longitude`` and ``latitude``.
+        lon_step : float, optional
+            Longitude resolution, by default 1.0.
+            Only used if parameter ``longitude`` not specified.
+        lat_step : float, optional
+            Latitude resolution, by default 1.0.
+            Only used if parameter ``latitude`` not specified.
 
         Returns
         -------
@@ -896,14 +904,16 @@ def run_interpolators(
     ----------
     vector : GeoVectorDataset
         Grid points.
-    met, rad : MetDataset
-        CoCiP met and rad slices. See :class:`CocipGrid`.
+    met : MetDataset
+        CoCiP met slices. See :class:`CocipGrid`.
+    rad : MetDataset | None, optional
+        CoCiP rad slices. If ``keys`` is not None, this parameter must be None.
     dz_m : float | None, optional
         Difference in altitude between top and bottom layer for stratification calculations (m).
         Must be specified if ``keys`` is None.
     humidity_scaling : humidity_scaling.HumidityScaling | None, optional
         Specific humidity scaling scheme. Must be specified if ``keys`` is None.
-    keys : list[str]
+    keys : Sequence[str] | None, optional
         Only run interpolators for select keys from ``met``
     **interp_kwargs : Any
         Interpolation keyword arguments
@@ -1064,8 +1074,10 @@ def _evolve_vector(
     ----------
     vector : GeoVectorDataset
         Contrail points that have been initialized and are ready for evolution.
-    met, rad : MetDataset
-        CoCiP met and rad slices. See :class:`CocipGrid`.
+    met : MetDataset
+        CoCiP met slices. See :class:`CocipGrid`.
+    rad : MetDataset
+        CoCiP rad slices. See :class:`CocipGrid`.
     params : dict[str, Any]
         CoCiP model parameters. See :class:`CocipGrid`.
     t : np.datetime64
@@ -1121,8 +1133,10 @@ def _run_downwash(
     ----------
     vector : GeoVectorDataset
         Grid values
-    met, rad : MetDataset
-        CoCiP met and rad slices. See :class:`CocipGrid`.
+    met : MetDataset
+        CoCiP met slices. See :class:`CocipGrid`.
+    rad : MetDataset
+        CoCiP rad slices. See :class:`CocipGrid`.
     params : dict[str, Any]
         CoCiP model parameters. See :class:`CocipGrid`.
 
@@ -2145,7 +2159,7 @@ def result_to_metdataset(
     result : VectorDataset | None
         Aggregated data arising from contrail evolution. Expected to contain keys:
         ``index``, ``age``, ``ef``.
-    verbose_dict : dict[str, npt.NDArray[np.floating]]:
+    verbose_dict : dict[str, npt.NDArray[np.floating]]
         Verbose outputs to attach to results.
     source : MetDataset
         :attr:`CocipGrid.`source` data on which to attach results.
@@ -2380,11 +2394,11 @@ def _check_coverage(
 
     Parameters
     ----------
-    met_array : np.ndarray
+    met_array : npt.NDArray[_T]
         Coordinate on met data
-    grid_array : np.ndarray
+    grid_array : npt.NDArray[_T]
         Coordinate on grid data
-    coord : {"longitude", "latitude", "level", "time"}
+    coord : str
         Name of coordinate. Only used for warning message.
     name : str
         Name of met dataset. Only used for warning message.

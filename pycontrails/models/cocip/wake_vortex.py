@@ -39,7 +39,7 @@ def max_downward_displacement(
     ds_dz: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
     effective_vertical_resolution: float,
-    wind_shear_enhancement_exponent: float | npt.NDArray[np.floating],
+    wind_shear_enhancement_exponent: npt.NDArray[np.floating] | float,
 ) -> npt.NDArray[np.floating]:
     """
     Calculate the maximum contrail downward displacement after the wake vortex phase.
@@ -117,11 +117,11 @@ def effective_time_scale(
 
     Parameters
     ----------
-    wingspan : npt.NDArray[np.floating]
+    wingspan : npt.NDArray[np.floating] | float
         aircraft wingspan, [:math:`m`]
     true_airspeed : npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m \ s^{-1}`]
-    aircraft_mass : npt.NDArray[np.floating]
+    aircraft_mass : npt.NDArray[np.floating] | float
         aircraft mass for each waypoint, [:math:`kg`]
     rho_air : npt.NDArray[np.floating]
         density of air for each waypoint, [:math:`kg \ m^{-3}`]
@@ -260,7 +260,7 @@ def wake_vortex_separation(
 
     Returns
     -------
-    npt.NDArray[np.floating]
+    npt.NDArray[np.floating] | float
         wake vortex separation, [:math:`m`]
     """
     return (np.pi * wingspan) / 4.0
@@ -320,9 +320,9 @@ def normalized_dissipation_rate(
         aircraft wingspan, [:math:`m`]
     true_airspeed : npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    aircraft_mass : npt.NDArray[np.floating]
+    aircraft_mass : npt.NDArray[np.floating] | float
         aircraft mass for each waypoint, [:math:`kg`]
-    rho_air : npt.NDArray[np.floating]
+    rho_air : npt.NDArray[np.floating] | float
         density of air for each waypoint, [:math:`kg m^{-3}`]
 
     Returns

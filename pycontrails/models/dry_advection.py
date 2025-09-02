@@ -137,14 +137,14 @@ class DryAdvection(models.Model):
 
         Parameters
         ----------
-        source : GeoVectorDataset
+        source : GeoVectorDataset | None
             Arbitrary points to advect. A :class:`Flight` instance is not treated any
             differently than a :class:`GeoVectorDataset`. In particular, the user must
             explicitly set ``flight["azimuth"] = flight.segment_azimuth()`` if they
             want to use wind shear effects for a flight.
             In the current implementation, any existing meteorological variables in the ``source``
             are ignored. The ``source`` will be interpolated against the :attr:`met` dataset.
-        params : Any
+        **params : Any
             Overwrite model parameters defined in ``__init__``.
 
         Returns
