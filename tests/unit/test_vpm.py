@@ -3,7 +3,9 @@
 import numpy as np
 import pytest
 
-from pycontrails.models import extended_k15
+from pycontrails import JetA
+from pycontrails.models import extended_k15, sac
+from pycontrails.models.humidity_scaling import humidity_scaling as hs
 
 
 def test_critical_supersaturation() -> None:
@@ -56,3 +58,64 @@ def test_droplet_apparent_emission_index() -> None:
         G=1.2,
     )
     assert aei == pytest.approx(1.76e14, rel=0.01)
+
+
+@pytest.mark.parametrize(
+    ("nvpm_ei_n", "vpm_ei_n", "expected_aei"),
+    [(1e12, 0.0, 2.3e12), (1e15, 0.0, 7.7e14), (1e12, 1e17, 2.2e15)],
+)
+def test_against_ponsonby_values(nvpm_ei_n: float, vpm_ei_n: float, expected_aei: float) -> None:
+    """Compare pycontrails extended_k15 model against Joel Ponsonby's values.
+
+    See Joel's notebook here:
+        https://github.com/jponvc/extended-K15-model/blob/main/extended-K15-model-notebook.ipynb
+
+    The differences in output are due to:
+    - Different implementations of some of the thermodynamics (pycontrails uses the
+      ``thermo`` package, Joel uses his own functions).
+    - Joel uses interpolation tables to compute r_act, whereas pycontrails
+      computes these directly.
+    - Differences in computing the zero of f (pycontrails uses a linear interpolation, Joel
+      uses the nearest value).
+    """
+    T_a = 215.0  # from Joel
+    p_a = 22919.20735681785  # from Joel
+    q = 1.0 / hs._rhi_over_q(T_a, p_a)  # ie, RHI = 100%
+    G = sac.slope_mixing_line(q, p_a, engine_efficiency=0.3, ei_h2o=JetA.ei_h2o, q_fuel=JetA.q_fuel)
+
+    particles = [  # from Joel
+        extended_k15.Particle(
+            type=extended_k15.ParticleType.NVPM,
+            kappa=5.0e-3,
+            gmd=3.5e-8,
+            gsd=2.0,
+            n_ambient=0.0,
+        ),
+        extended_k15.Particle(
+            type=extended_k15.ParticleType.VPM,
+            kappa=0.5,
+            gmd=2.5e-9,
+            gsd=1.3,
+            n_ambient=0.0,
+        ),
+        extended_k15.Particle(
+            type=extended_k15.ParticleType.AMBIENT,
+            kappa=0.5,
+            gmd=3.0e-8,
+            gsd=2.2,
+            n_ambient=6.0e8,
+        ),
+    ]
+
+    aei = extended_k15.droplet_apparent_emission_index(
+        specific_humidity=q,
+        T_ambient=T_a,
+        T_exhaust=600.0,
+        air_pressure=p_a,
+        nvpm_ei_n=nvpm_ei_n,
+        vpm_ei_n=vpm_ei_n,
+        G=G,
+        particles=particles,
+    )
+
+    assert aei == pytest.approx(expected_aei, rel=0.15)  # 15% tolerance
