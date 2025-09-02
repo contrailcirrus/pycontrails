@@ -23,6 +23,11 @@ BADA4_PATH = BADA_ROOT / "bada4"
 BADA_AVAILABLE = BADA3_PATH.exists() and BADA4_PATH.exists()
 IS_WINDOWS = platform.system() == "Windows"
 
+# Disable the extended_k15 experimental warning in tests
+from pycontrails.models import extended_k15
+
+extended_k15.EXPERIMENTAL_WARNING = False
+
 
 try:
     import open3d  # noqa: F401
