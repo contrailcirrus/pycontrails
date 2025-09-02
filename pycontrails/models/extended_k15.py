@@ -1,6 +1,6 @@
 """Support for volatile particulate matter (vPM) modeling via the extended K15 model.
 
-A preprint is available at https://doi.org/10.5194/egusphere-2025-1717
+A preprint is available :cite:`ponsonbyUpdatedMicrophysicalModel2025`.
 """
 
 import dataclasses
@@ -53,7 +53,7 @@ class Particle:
     Notes
     -----
     The parameters ``gmd`` and ``gsd`` define a lognormal size distribution.
-    The hygroscopicity parameter ``kappa`` follows Petters and Kreidenweis (2007).
+    The hygroscopicity parameter ``kappa`` follows :cite:`pettersSingleParameterRepresentation2007`.
     """
 
     type: ParticleType
@@ -116,7 +116,7 @@ def S(
 ) -> npt.NDArray[np.floating]:
     """Compute the supersaturation ratio at diameter ``D``.
 
-    Implements equation (6) in Petters and Kreidenweis (2007).
+    Implements equation (6) in :cite:`pettersSingleParameterRepresentation2007`.
 
     Parameters
     ----------
@@ -452,6 +452,7 @@ def droplet_apparent_emission_index(
     correspond to dimension 0, while aircraft emissions (``nvpm_ei_n``, ``vpm_ei_n``) correspond
     to dimension 1. This setup allows the plume temperature calculation to be computed once
     and reused for multiple emissions values.
+
     """
     if EXPERIMENTAL_WARNING:
         warnings.warn(
@@ -573,7 +574,7 @@ def plume_water_saturation_ratio_no_condensation(
 
     References
     ----------
-    Page 7894 of Karcher et al. (2015).
+    Page 7894 of :cite:`karcherMicrophysicalPathwayContrail2015`.
 
     Notes
     -----
@@ -615,7 +616,7 @@ def plume_dilution_factor(
 
     References
     ----------
-    Eq. (12) of Karcher et al. (2015).
+    Eq. (12) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     t_plume = _plume_age_timescale(T_plume, T_exhaust, T_ambient, tau_m, beta)
     return np.where(t_plume > tau_m, (tau_m / t_plume) ** beta, 1.0)
@@ -651,7 +652,7 @@ def _plume_age_timescale(
 
     References
     ----------
-    Eq. (15) of Karcher et al. (2015).
+    Eq. (15) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     ratio = (T_exhaust - T_ambient) / (T_plume - T_ambient)
     return tau_m * np.power(ratio, 1 / beta, where=ratio >= 0.0, out=np.full_like(ratio, np.nan))
@@ -781,7 +782,7 @@ def entrained_ambient_droplet_number_concentration(
 
     References
     ----------
-    Eq. (37) of Karcher et al. (2015) without the phi term.
+    Eq. (37) of :cite:`karcherMicrophysicalPathwayContrail2015` without the phi term.
     """
     return n_ambient * (T_ambient / T_plume) * (1.0 - dilution)
 
@@ -812,7 +813,7 @@ def emissions_index_to_number_concentration(
 
     References
     ----------
-    Eq. (37) of Karcher et al. (2015) without the phi term.
+    Eq. (37) of :cite:`karcherMicrophysicalPathwayContrail2015` without the phi term.
     """
     return number_ei * rho_air * (dilution / nu_0)
 
@@ -835,7 +836,7 @@ def water_droplet_activation_across_all_particles(
 
     References
     ----------
-    Eq. (37) and Eq. (43) of Karcher et al. (2015).
+    Eq. (37) and Eq. (43) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     # Initialise variables
     target = particle_droplets[0].n_total
@@ -924,8 +925,8 @@ def particle_growth_coefficients(
 
     References
     ----------
-    - ``b_1`` equation is below Eq. (48) of Karcher et al. (2015).
-    - ``b_2`` equation is below Eq. (34) of Karcher et al. (2015).
+    - ``b_1`` equation is below Eq. (48) of :cite:`karcherMicrophysicalPathwayContrail2015`.
+    - ``b_2`` equation is below Eq. (34) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     r_g = 8.3145  # Global gas constant in m^3 Pa mol^-1 K^-1
     m_w = 18.0e-3  # Molar mass of water in kg mol^-1
@@ -1043,7 +1044,7 @@ def _plume_cooling_rate(
 
     References
     ----------
-    Eq. (14) of Karcher et al. (2015).
+    Eq. (14) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     return -beta * ((T_exhaust - T_ambient) / tau_m) * dilution ** (1.0 + 1.0 / beta)
 
@@ -1080,7 +1081,7 @@ def dynamical_regime_parameter(
 
     References
     ----------
-    Eq. (49) of Karcher et al. (2015).
+    Eq. (49) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     tau_act = _droplet_activation_timescale(n_available_all, S_mw, P_w)
     tau_gw = _droplet_growth_timescale(r_act_nw, b_1, b_2)
@@ -1112,7 +1113,7 @@ def _droplet_activation_timescale(
 
     References
     ----------
-    Eq. (47) of Karcher et al. (2015).
+    Eq. (47) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     dln_nw_ds_w = np.gradient(np.log(n_available_all), axis=-1) / np.gradient(S_mw - 1.0, axis=-1)
     return 1.0 / (P_w * dln_nw_ds_w)
@@ -1142,7 +1143,7 @@ def _droplet_growth_timescale(
 
     References
     ----------
-    Eq. (48) of Karcher et al. (2015).
+    Eq. (48) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     return (1.0 + b_2 * r_act_nw) * (r_act_nw / b_1)
 
@@ -1180,9 +1181,9 @@ def supersaturation_loss_rate_per_droplet(
 
     Notes
     -----
-    Originally calculated using Eq. (50) of Karcher et al. (2015), but has been updated in
-    Ponsonby et al. (2025) and is now calculated using Eq. (6) and Eq. (7) of
-    Karcher & Hendricks (2006) (doi:10.1029/2005JD006219).
+    Originally calculated using Eq. (50) of :cite:`karcherMicrophysicalPathwayContrail2015`,
+    but has been updated in :cite:`ponsonbyUpdatedMicrophysicalModel2025` and is now calculated
+    using Eq. (6) and Eq. (7) of :cite:`karcherPhysicallyBasedParameterization2006`.
     """
     delta = b_2 * r_act_nw
     f_kappa = (3.0 * np.sqrt(kappa_w)) / (
@@ -1232,8 +1233,8 @@ def droplet_activation(
 
     References
     ----------
-    n_2_w -> Eq. (51) of Karcher et al. (2015).
-    f -> Eq. (44) of Karcher et al. (2015).
+    n_2_w -> Eq. (51) of :cite:`karcherMicrophysicalPathwayContrail2015`.
+    f -> Eq. (44) of :cite:`karcherMicrophysicalPathwayContrail2015`.
     """
     # Droplet number concentration required to cause supersaturation relaxation at a given `S_w`
     n_2_w = P_w / R_w
