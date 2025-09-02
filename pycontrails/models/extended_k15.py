@@ -35,7 +35,7 @@ class Particle:
 
     Parameters
     ----------
-    type:
+    type : ParticleType
         One of ``ParticleType.NVPM``, ``ParticleType.VPM``, or ``ParticleType.AMBIENT``.
     kappa : float
         Hygroscopicity parameter, dimensionless.
@@ -304,7 +304,7 @@ def activation_radius(
     ----------
     S_w : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume after droplet condensation, dimensionless.
-    kappa : npt.NDArray[np.floating]
+    kappa : npt.NDArray[np.floating] | float
         Hygroscopicity parameter, dimensionless. Expected to satisfy ``0 < kappa < 1``.
     temperature : npt.NDArray[np.floating]
         Temperature at which to compute the activation radius, [:math:`K`].
@@ -411,7 +411,7 @@ def droplet_apparent_emission_index(
         vPM number emissions index, [:math:`kg^{-1}`]
     G : npt.NDArray[np.floating]
         Slope of the mixing line in a temperature-humidity diagram.
-    particles : list[Particle]
+    particles : list[Particle] | None, optional
         List of particle types to consider. If ``None``, defaults to a list of
         ``Particle`` instances representing nvPM, vPM, and ambient particles.
     n_plume_points : int
@@ -646,9 +646,9 @@ def water_droplet_activation(
         Plume temperature evolution along mixing line, [:math:`K`].
     T_ambient : npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`].
-    nvpm_ei_n : npt.NDArray[np.floating] | float
+    nvpm_ei_n : npt.NDArray[np.floating]
         nvPM number emissions index, [:math:`kg^{-1}`].
-    vpm_ei_n : npt.NDArray[np.floating] | float
+    vpm_ei_n : npt.NDArray[np.floating]
         vPM number emissions index, [:math:`kg^{-1}`].
     S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation.
@@ -792,7 +792,7 @@ def water_droplet_activation_across_all_particles(
 
     Parameters
     ----------
-    particle_droplets : List[DropletActivation]
+    particle_droplets : list[DropletActivation]
         Computed statistics on the water droplet activation for each particle type.
         See :class:`DropletActivation` and :func:`water_droplet_activation`.
 
@@ -887,8 +887,8 @@ def particle_growth_coefficients(
 
     Returns
     -------
-    npt.NDArray[np.floating]
-        Particle growth coefficient (b_1), [:math:`m s^{-1}`]
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
+        Particle growth coefficients ``b_1`` and ``b_2``, [:math:`m s^{-1}`]
 
     References
     ----------
@@ -1099,6 +1099,8 @@ def _droplet_growth_timescale(
     r_act_nw : npt.NDArray[np.floating]
         Number-weighted droplet activation radius, [:math:`m`]
     b_1 : npt.NDArray[np.floating]
+        Particle growth coefficient, [:math:`m s^{-1}`]
+    b_2 : npt.NDArray[np.floating]
         Particle growth coefficient, [:math:`m s^{-1}`]
 
     Returns
