@@ -992,17 +992,17 @@ class Cocip(Model):
                 vpm_ei_n=self.source.attrs.get("vpm_ei_n", extended_k15.DEFAULT_VPM_EI_N),
                 G=self._sac_flight["G"],
             )
+            min_aei = None  # don't clip
 
         else:
             f_activation = contrail_properties.ice_particle_activation_rate(
                 air_temperature, T_critical_sac
             )
             aei = nvpm_ei_n * f_activation
+            min_aei = self.params["min_ice_particle_number_nvpm_ei_n"]
 
         n_ice_per_m_0 = contrail_properties.initial_ice_particle_number(
-            aei=aei,
-            fuel_dist=fuel_dist,
-            min_ice_particle_number_nvpm_ei_n=self.params["min_ice_particle_number_nvpm_ei_n"],
+            aei=aei, fuel_dist=fuel_dist, min_aei=min_aei
         )
 
         if self.params["unterstrasser_ice_survival_fraction"]:

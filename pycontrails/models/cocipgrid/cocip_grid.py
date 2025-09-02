@@ -1498,14 +1498,14 @@ def find_initial_persistent_contrails(
             vpm_ei_n=vector.attrs.get("vpm_ei_n", extended_k15.DEFAULT_VPM_EI_N),
             G=vector["G"],
         )
+        min_aei = None
     else:
         f_activ = contrail_properties.ice_particle_activation_rate(air_temperature, T_crit_sac)
         aei = nvpm_ei_n * f_activ
+        min_aei = params["min_ice_particle_number_nvpm_ei_n"]
 
     n_ice_per_m_0 = contrail_properties.initial_ice_particle_number(
-        aei=aei,
-        fuel_dist=fuel_dist,
-        min_ice_particle_number_nvpm_ei_n=params["min_ice_particle_number_nvpm_ei_n"],
+        aei=aei, fuel_dist=fuel_dist, min_aei=min_aei
     )
 
     f_surv = contrail_properties.ice_particle_survival_fraction(iwc, iwc_1)

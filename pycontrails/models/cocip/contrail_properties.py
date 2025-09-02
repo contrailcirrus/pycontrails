@@ -204,7 +204,7 @@ def iwc_post_wake_vortex(
 def initial_ice_particle_number(
     aei: npt.NDArray[np.floating],
     fuel_dist: npt.NDArray[np.floating],
-    min_ice_particle_number_nvpm_ei_n: float,
+    min_aei: float | None,
 ) -> npt.NDArray[np.floating]:
     """Calculate the initial number of ice particles per distance after the wake vortex phase.
 
@@ -222,12 +222,12 @@ def initial_ice_particle_number(
     Parameters
     ----------
     aei : npt.NDArray[np.floating]
-        Activated apparent emissions index, [:math:`kg^{-1}`]
+        Apparent contrail emissions index, [:math:`kg^{-1}`]
     fuel_dist : npt.NDArray[np.floating]
-        fuel consumption of the flight segment per distance traveled, [:math:`kg m^{-1}`]
-    min_ice_particle_number_nvpm_ei_n : float
-        lower bound for nvpm_ei_n to account for ambient aerosol particles for
-        newer engines [:math:`kg^{-1}`]
+        Fuel consumption of the flight segment per distance traveled, [:math:`kg m^{-1}`]
+    min_aei : float | None
+        Lower bound for ``aei`` to account for ambient aerosol particles for
+        newer engines [:math:`kg^{-1}`]. If None, no clipping is applied.
 
     Returns
     -------
@@ -235,8 +235,9 @@ def initial_ice_particle_number(
         The initial number of ice particles per distance before the wake vortex
         phase, [:math:`# m^{-1}`]
     """
-    aei_clipped = np.clip(aei, min=min_ice_particle_number_nvpm_ei_n)  # type: ignore[arg-type,call-overload]
-    return fuel_dist * aei_clipped
+    if min_aei is not None:
+        aei = np.clip(aei, min=min_aei)  # type: ignore[arg-type,call-overload]
+    return fuel_dist * aei
 
 
 def ice_particle_activation_rate(
