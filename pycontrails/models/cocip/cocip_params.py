@@ -195,8 +195,8 @@ class CocipParams(AdvectionBuffers):
     nvpm_ei_n_enhancement_factor: float = 1.0
 
     #: Lower bound for ``nvpm_ei_n`` to account for ambient aerosol
-    #: particles for newer engines, [:math:`kg^{-1}`]
-    min_ice_particle_number_nvpm_ei_n: float = 1e13
+    #: particles for newer engines, [:math:`kg^{-1}`]. Set to None to disable.
+    min_ice_particle_number_nvpm_ei_n: float | None = 1e13
 
     #: Upper bound for contrail plume depth, constraining it to realistic values.
     #: CoCiP only uses the ambient conditions at the mid-point of the Gaussian plume,
