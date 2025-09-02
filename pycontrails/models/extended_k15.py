@@ -180,7 +180,7 @@ def _newton_seed(
     return (1.0 + eps) * Dd
 
 
-def _density_liq_water(T):
+def _density_liq_water(T: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     """Calculate the density of liquid water as a function of temperature.
 
     The estimate below is equation (A1) in Marcolli 2020
