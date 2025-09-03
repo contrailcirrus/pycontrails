@@ -45,13 +45,13 @@ def scan_angle_correction_iterative(
     ----------
     ds : xr.Dataset
         The dataset containing the viewing azimuth angle (VAA)
-        and viewing zenith angle (VZA) arrays.
+        and viewing zenith angle (VZA) arrays. The units for both are degrees.
     x : npt.NDArray[np.floating]
         The x coordinates of the points to correct. Should be in the
-        correct UTM coorinate system
+        correct UTM coordinate system
     y : npt.NDArray[np.floating]
         The y coordinates of the points to correct. Should be in the
-        correct UTM coorinate system.
+        correct UTM coordinate system.
     z : npt.NDArray[np.floating]
         The z coordinates (altitude in meters) of the points to correct.
 
@@ -59,7 +59,8 @@ def scan_angle_correction_iterative(
     -------
     tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
         The corrected x and y coordinates as numpy arrays in the UTM
-        coordinate system.
+        coordinate system. Points that are not contained in the non-nan
+        region of the image will contain nan values in the output arrays.
     """
     # Confirm that x is monotonically increasing and y is decreasing
     # (This is assumed in the filtering logic below)
@@ -70,16 +71,23 @@ def scan_angle_correction_iterative(
         msg = "ds['y'] must be monotonically decreasing"
         raise ValueError(msg)
 
+    try:
+        ds = ds[["VZA", "VAA"]].load()  # nice to load these once here instead of repeatedly below
+    except KeyError as e:
+        raise KeyError("ds must contain the variables 'VZA' and 'VAA'") from e
+
     x = np.atleast_1d(x).astype(np.float64, copy=False)
     y = np.atleast_1d(y).astype(np.float64, copy=False)
     z = np.atleast_1d(z).astype(np.float64, copy=False)
 
-    x_proj, y_proj = np.copy(x), np.copy(y)
+    x_proj = xr.DataArray(x.copy(), dims="points")  # need to copy because we modify below
+    y_proj = xr.DataArray(y.copy(), dims="points")  # need to copy because we modify below
 
     # Mask inputs outside the dataset extent
     x_min, x_max = ds["x"].min().item(), ds["x"].max().item()
     y_min, y_max = ds["y"].min().item(), ds["y"].max().item()
     out_of_bounds = (x_proj < x_min) | (x_proj > x_max) | (y_proj < y_min) | (y_proj > y_max)
+
     x_proj[out_of_bounds] = np.nan
     y_proj[out_of_bounds] = np.nan
 
@@ -90,39 +98,31 @@ def scan_angle_correction_iterative(
             break
 
         # Interpolate angles only for valid points
+        # Note that we may get nan values back after interpolation
+        # It's arguably better to propagate nans than to keep the original values
+        # because the original values may be in the nan region of the image
         vza, vaa = _interpolate_angles(ds, x_proj[valid], y_proj[valid])
 
-        # Flatten and clean up any unexpected shapes
-        vza = np.atleast_1d(vza).astype(np.float64).flatten()
-        vaa = np.atleast_1d(vaa).astype(np.float64).flatten()
-
-        # Skip any interpolated NaNs
-        interp_valid = np.isfinite(vza) & np.isfinite(vaa)
-
-        # Full index into original arrays
-        valid_indices = np.flatnonzero(valid)
-        update_indices = valid_indices[interp_valid]
-
         # Convert to radians
-        vza_rad = np.deg2rad(vza[interp_valid])
-        vaa_rad = np.deg2rad(vaa[interp_valid])
+        vza_rad = np.deg2rad(vza)
+        vaa_rad = np.deg2rad(vaa)
 
-        # Apply projection offset
-        offset = z[update_indices] * np.tan(vza_rad)
+        # Apply spherical projection offset
+        offset = z[valid] * np.tan(vza_rad)
         dx_offset = offset * np.sin(vaa_rad)
         dy_offset = offset * np.cos(vaa_rad)
 
         # Update the newly predicted x and y locations
-        x_proj[update_indices] = x[update_indices] - dx_offset
-        y_proj[update_indices] = y[update_indices] - dy_offset
+        x_proj[valid] = x[valid] - dx_offset
+        y_proj[valid] = y[valid] - dy_offset
 
-    return x_proj, y_proj
+    return x_proj.values, y_proj.values
 
 
 def _interpolate_angles(
     ds: xr.Dataset,
-    xi: npt.NDArray[np.floating],
-    yi: npt.NDArray[np.floating],
+    xi: xr.DataArray,
+    yi: xr.DataArray,
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """
     Interpolate view zenith angle (VZA) and view azimuth angle (VAA).
@@ -131,13 +131,13 @@ def _interpolate_angles(
     ----------
     ds : xr.Dataset
         Dataset containing at least the variables "VZA" and "VAA",
-        with coordinates `x` and `y` that define the spatial grid.
-    xi : array-like of float
+        with coordinates ``x`` and ``y`` that define the spatial grid.
+    xi : xr.DataArray
         X-coordinates of the target points for interpolation.
-        Must be the same length as `yi`.
-    yi : array-like of float
+        Must be the same length as ``yi``.
+    yi : xr.DataArray
         Y-coordinates of the target points for interpolation.
-        Must be the same length as `xi`.
+        Must be the same length as ``xi``.
 
     Returns
     -------
@@ -146,9 +146,7 @@ def _interpolate_angles(
     vaa : np.ndarray
         Interpolated view azimuth angles at the given (xi, yi) points.
     """
-    interped = ds[["VZA", "VAA"]].interp(
-        x=xr.DataArray(xi, dims="points"), y=xr.DataArray(yi, dims="points")
-    )
+    interped = ds[["VZA", "VAA"]].interp(x=xi, y=yi)
     return interped["VZA"].values, interped["VAA"].values
 
 
