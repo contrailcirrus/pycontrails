@@ -1,6 +1,5 @@
 """Support for overlaying flight and contrail data on Landsat & Sentinel images."""
 
-import itertools
 from collections.abc import Sequence
 
 import numpy as np
@@ -32,7 +31,7 @@ def _ephemeris_ecef_to_utm(ephemeris_df: pd.DataFrame, utm_crs: pyproj.CRS) -> p
     return pd.DataFrame({"x": x, "y": y, "z": h, "t": ecef_t})
 
 
-def scan_angle_correction_iterative(
+def scan_angle_correction(
     ds: xr.Dataset,
     x: npt.NDArray[np.floating],
     y: npt.NDArray[np.floating],
@@ -150,140 +149,6 @@ def _interpolate_angles(
     return interped["VZA"].values, interped["VAA"].values
 
 
-def scan_angle_correction_fl(
-    ds: xr.Dataset,
-    x: npt.NDArray[np.floating],
-    y: npt.NDArray[np.floating],
-    z: npt.NDArray[np.floating],
-) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-    """Apply the scan angle correction to the given x, y, z coordinates.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the viewing azimuth angle (VAA)
-        and viewing zenith angle (VZA) arrays.
-    x : npt.NDArray[np.floating]
-        The x coordinates of the points to correct. Must be in the same
-        coordinate system as the dataset.
-    y : npt.NDArray[np.floating]
-        The y coordinates of the points to correct. Must be in the same
-        coordinate system as the dataset.
-    z : npt.NDArray[np.floating]
-        The z coordinates (altitude) of the points to correct.
-
-    Returns
-    -------
-    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
-        The corrected x and y coordinates as numpy arrays.
-    """
-    # Confirm that x is monotonically increasing and y is decreasing
-    # (This is assumed in the filtering logic below)
-    if not np.all(np.diff(ds["x"]) > 0.0):
-        msg = "ds['x'] must be monotonically increasing"
-        raise ValueError(msg)
-    if not np.all(np.diff(ds["y"]) < 0.0):
-        msg = "ds['y'] must be monotonically decreasing"
-        raise ValueError(msg)
-
-    # Break into overlapping chunks each with core rectangle chunk_size x chunk_size
-    # Use a pixel buffer to avoid translating off the edge
-    chunk_size = 500
-    chunk_buffer = 150  # = 4500m
-
-    x_out = np.full_like(x, fill_value=np.nan)
-    y_out = np.full_like(y, fill_value=np.nan)
-
-    for i, j in itertools.product(
-        range(0, ds["x"].size, chunk_size),
-        range(0, ds["y"].size, chunk_size),
-    ):
-        i0 = max(0, i - chunk_buffer)
-        i1 = min(ds["x"].size, i + chunk_size + chunk_buffer)
-        j0 = max(0, j - chunk_buffer)
-        j1 = min(ds["y"].size, j + chunk_size + chunk_buffer)
-
-        # The _scan_angle_correction_chunk function fails for dask-backed arrays, so load here
-        ds_chunk = ds.isel(x=slice(i0, i1), y=slice(j0, j1))[["VAA", "VZA"]].load()
-
-        if ds_chunk["VAA"].isnull().all():
-            continue
-
-        filt = (
-            (x >= ds["x"][i].item())
-            & (x < ds["x"][min(ds["x"].size - 1, i + chunk_size)].item())
-            & (y <= ds["y"][j].item())
-            & (y > ds["y"][min(ds["y"].size - 1, j + chunk_size)].item())
-        )
-        if not np.any(filt):
-            continue
-
-        x_chunk = x[filt]
-        y_chunk = y[filt]
-        z_chunk = z[filt]
-
-        x_chunk_out, y_chunk_out = _scan_angle_correction_chunk(ds_chunk, x_chunk, y_chunk, z_chunk)
-        x_out[filt] = x_chunk_out
-        y_out[filt] = y_chunk_out
-
-    return x_out, y_out
-
-
-def _scan_angle_correction_chunk(
-    ds: xr.Dataset,
-    x: npt.NDArray[np.floating],
-    y: npt.NDArray[np.floating],
-    z: npt.NDArray[np.floating],
-) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-    zn = ds["VZA"]
-    az = ds["VAA"]
-
-    if zn.isnull().all() or az.isnull().all():
-        return np.full_like(x, fill_value=np.nan), np.full_like(y, fill_value=np.nan)
-
-    zn_rad = np.deg2rad(zn)
-    az_rad = np.deg2rad(az)
-
-    # Lift the whole 2d array to the flight altitude using:
-    # z = r * cos(zn)
-    # x = r * sin(zn) * sin(az)
-    # y = r * sin(zn) * cos(az)
-
-    # Employ lots of xarray broadcasting to do this
-    x_da = xr.DataArray(x, dims=["points"], coords={"points": np.arange(len(x))})
-    y_da = xr.DataArray(y, dims=["points"], coords={"points": np.arange(len(y))})
-    z_da = xr.DataArray(z, dims=["points"], coords={"points": np.arange(len(z))})
-
-    r = z_da / np.cos(zn_rad)
-    x_lift = ds["x"] + r * np.sin(zn_rad) * np.sin(az_rad)
-    y_lift = ds["y"] + r * np.sin(zn_rad) * np.cos(az_rad)
-
-    # Find the closest point in the lifted array to the original point
-    # Do this for each point in the points dimension
-    dist_squared = (x_da - x_lift) ** 2 + (y_da - y_lift) ** 2
-
-    # We take an argmin below, so we need to avoid a numpy All-NaN slice error.
-    # Simply filling with a large finite value (not np.inf) will work because
-    # we check the distance against a threshold later. See comment below for
-    # threshold details.
-    threshold = 15.0**2 + 15.0**2
-    dist_squared = dist_squared.fillna(2.0 * threshold)
-
-    indices = dist_squared.argmin(dim=["x", "y"])
-
-    # After we lift, the distance between the lifted point and the original point
-    # should be small. If it is not, we may have lifted off the edge of the image,
-    # or nan values in the image may have caused the lifted point to be invalid.
-    # So we check that the distance is small enough. Here, ds has 30m pixels, so
-    # valid lifts should be within 15^2 + 15^2 of the original point.
-    valid = dist_squared.isel(indices) <= threshold
-
-    x_out = ds["x"].isel(x=indices["x"]).where(valid).to_numpy()
-    y_out = ds["y"].isel(y=indices["y"]).where(valid).to_numpy()
-
-    return x_out, y_out
-
-
 def estimate_scan_time(
     ephemeris_df: pd.DataFrame,
     utm_crs: pyproj.CRS,
@@ -371,7 +236,7 @@ def colocate_flights(
 
     # project the x and y location to the image level
     ds_viewing_angles = handler.get_viewing_angle_metadata()
-    x_proj, y_proj = scan_angle_correction_iterative(
+    x_proj, y_proj = scan_angle_correction(
         ds_viewing_angles, flight_df["x"], flight_df["y"], flight_df["altitude"], n_iter=3
     )
     flight_df.loc[:, "x_proj"] = x_proj
