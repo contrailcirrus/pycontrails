@@ -111,12 +111,15 @@ def parse_viewing_incidence_angles(
 
     Parameters
     ----------
-    - metadata_path (str): Path to the XML file containing TILE metadata.
-    - target_band_id (str): Starts from 0 (e.g. band 2 (blue) = band_id "1")
+    metadata_path : str
+        Path to the XML file containing TILE metadata.
+    target_band_id : str
+        Starts from 0 (e.g. band 2 (blue) = band_id "1")
 
     Returns
     -------
-    - tuple: Zenith Angles, Azimuth Angles ((23x23) numpy array)
+    tuple[np.ndarray, np.ndarray]
+        Zenith Angles, Azimuth Angles ((23x23) numpy array)
     """
     total_zenith = np.full((23, 23), np.nan, dtype=np.float64)
     total_azimuth = np.full((23, 23), np.nan, dtype=np.float64)
@@ -161,7 +164,7 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
 
     Returns
     -------
-    np.ndarray
+    npt.NDArray[np.integer]
         2D array of detector IDs (1 to 12), shape (height, width).
     """
     scale = int(scale)
@@ -517,7 +520,8 @@ def get_detector_id(
 
     Returns
     -------
-    int : The detector ID (in the range 1 to 12) that captured the pixel. Returns 0 if
+    npt.NDArray[np.integer]
+        The detector ID (in the range 1 to 12) that captured the pixel. Returns 0 if
         the pixel is outside the image bounds or not covered by any detector.
     """
     x, y = np.atleast_1d(x, y)
@@ -564,12 +568,17 @@ def get_time_delay_detector(
 
     Parameters
     ----------
-    - target_detector_id (str): Detector ID for which the timedelta needs to be calculated
-    - band_id (str): Starts from 0 (e.g. band 2 (blue) = band_id "1")
+    datastrip_metadata_path : str
+        The location of the DATASTRIP xml file
+    target_detector_id : str
+        Detector ID for which the timedelta needs to be calculated
+    band : str, optional
+        Spectral band to use for geometry parsing. Default is "B03".
 
     Returns
     -------
-    - timedelta (Datetime Object): time offset for detector. Add to current time.
+    pd.Timedelta
+        Time offset for the given detector ID.
     """
     if len(target_detector_id) == 1:
         target_detector_id = "0" + target_detector_id
