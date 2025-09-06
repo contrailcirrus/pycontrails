@@ -9,10 +9,12 @@ import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import pyproj
 import shapely
 import xarray as xr
 
 from pycontrails.core import cache
+from pycontrails.datalib.leo_utils import correction
 
 
 def _split_antimeridian(polygon: shapely.Polygon) -> shapely.MultiPolygon:
@@ -228,20 +230,23 @@ def parse_ephemeris_landsat(ang_content: str) -> pd.DataFrame:
     return pd.DataFrame(arrays)
 
 
-def get_detector_id(
+def get_time_delay_detector(
     ds: xr.Dataset,
     ephemeris: pd.DataFrame,
+    utm_crs: pyproj.CRS,
     x: npt.NDArray[np.floating],
     y: npt.NDArray[np.floating],
-) -> npt.NDArray[np.integer]:
-    """Return the detector ID that captured the given pixel coordinates.
+) -> npt.NDArray[np.timedelta64]:
+    """Return the detector time delay at the given (x, y) coordinates.
 
     Parameters
     ----------
     ds : xr.Dataset
-        The Landsat dataset containing the VZA and VAA variables.
+        The Landsat dataset containing the VAA variable.
     ephemeris : pd.DataFrame
         The ephemeris DataFrame containing the EPHEMERIS_TIME and ECEF coordinates.
+    utm_crs : pyproj.CRS
+        The UTM coordinate reference system for the Landsat scene.
     x : npt.NDArray[np.floating]
         The x-coordinates of the pixels in the dataset's coordinate system.
     y : npt.NDArray[np.floating]
@@ -249,10 +254,23 @@ def get_detector_id(
 
     Returns
     -------
-    npt.NDArray[np.integer]
-        The detector IDs corresponding to the given (x, y) coordinates. Returns
-        0 for coordinates outside the image bounds.
+    npt.NDArray[np.timedelta64]
+        The time delay for each (x, y) coordinate as a timedelta64 array.
 
     """
     x, y = np.atleast_1d(x, y)
-    # FIXME
+
+    ephemeris_utm = correction.ephemeris_ecef_to_utm(ephemeris, utm_crs)
+    eph_angle_radians = -np.arctan2(ephemeris_utm["y"].diff(), ephemeris_utm["x"].diff())
+    avg_eph_angle = (eph_angle_radians * 180.0 / np.pi).mean()
+
+    vaa = ds["VAA"].interp(x=xr.DataArray(x, dims="points"), y=xr.DataArray(y, dims="points"))
+
+    is_odd = np.isfinite(vaa) & ((vaa > avg_eph_angle) | (vaa < avg_eph_angle - 180.0))
+    is_even = np.isfinite(vaa) & ~is_odd
+
+    out = np.full(x.shape, fill_value=np.timedelta64("NaT", "ns"), dtype="timedelta64[ns]")
+    out[is_even] = np.timedelta64(-2000000000, "ns")  # -2.0 seconds
+    out[is_odd] = np.timedelta64(1500000000, "ns")  # 1.5 seconds
+
+    return out

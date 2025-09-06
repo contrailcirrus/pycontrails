@@ -579,7 +579,7 @@ def to_google_contrails(ds: xr.Dataset) -> tuple[np.ndarray, pyproj.CRS]:
     red = ((signal - lower) / (upper - lower)).clip(0.0, 1.0)
 
     # green: cirrus band transmittance
-    signal = 1 - rc.values
+    signal = 1.0 - rc.values
     lower = 0.8
     upper = 1.0
     green = adapt(((signal - lower) / (upper - lower)).clip(0.0, 1.0))
