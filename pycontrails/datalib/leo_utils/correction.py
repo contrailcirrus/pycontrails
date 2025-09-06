@@ -20,7 +20,7 @@ def _ephemeris_ecef_to_utm(ephemeris_df: pd.DataFrame, utm_crs: pyproj.CRS) -> p
 
     # Create a transformer object to convert from source CRS to target CRS
     # The default order for ECEF is (X, Y, Z) and for UTM is (Easting, Northing, Height)
-    transformer = pyproj.Transformer.from_crs(source_crs, utm_crs, always_xy=False)
+    transformer = pyproj.Transformer.from_crs(source_crs, utm_crs)
 
     ecef_x = ephemeris_df["EPHEMERIS_ECEF_X"].to_numpy()
     ecef_y = ephemeris_df["EPHEMERIS_ECEF_Y"].to_numpy()
@@ -159,9 +159,34 @@ def estimate_scan_time(
 
     Project the x, y coordinates (in UTM coordinate system) onto the
     ephemeris track and interpolate the time.
+
+    Parameters
+    ----------
+    ephemeris_df : pd.DataFrame
+        DataFrame containing the ephemeris data with columns:
+        - 'EPHEMERIS_ECEF_X': ECEF X coordinates (meters)
+        - 'EPHEMERIS_ECEF_Y': ECEF Y coordinates (meters)
+        - 'EPHEMERIS_ECEF_Z': ECEF Z coordinates (meters)
+        - 'EPHEMERIS_TIME': Timestamps (as datetime64[ns])
+    utm_crs : pyproj.CRS
+        The UTM coordinate reference system used for projection.
+    x : npt.NDArray[np.floating]
+        The x coordinates of the points to estimate the scan time for. Should be in the
+        correct UTM coordinate system.
+    y : npt.NDArray[np.floating]
+        The y coordinates of the points to estimate the scan time for. Should be in the
+        correct UTM coordinate system.
+
+    Returns
+    -------
+    npt.NDArray[np.datetime64]
+        The estimated scan times as numpy datetime64[ns] array. Points for which
+        ``x`` or ``y`` are nan will have ``NaT`` as the corresponding output value.
     """
     ephemeris_utm = _ephemeris_ecef_to_utm(ephemeris_df, utm_crs)
-    points = shapely.points(x, y)
+
+    valid = np.isfinite(x) & np.isfinite(y)
+    points = shapely.points(x[valid], y[valid])
 
     line = shapely.LineString(ephemeris_utm[["x", "y"]])
 
@@ -169,13 +194,22 @@ def estimate_scan_time(
     projected = line.interpolate(distance)
     projected_x = shapely.get_coordinates(projected)[:, 0]
 
-    assert ephemeris_utm["t"].dtype == "datetime64[ns]"
-    assert ephemeris_utm["x"].diff().iloc[1:].lt(0).all()
-    return np.interp(
+    if ephemeris_utm["t"].dtype != "datetime64[ns]":
+        # This could be relaxed if needed, but datetime64[ns] is what we expect
+        raise ValueError("ephemeris_utm['t'] must have dtype 'datetime64[ns]'")
+    if not ephemeris_utm["x"].diff().iloc[1:].lt(0).all():
+        # I think this would always be the case for polar-orbiting satellites for both
+        # ascending and descending passes
+        raise ValueError("ephemeris_utm['x'] must be strictly decreasing for np.interp")
+
+    out = np.full(x.shape, np.datetime64("NaT", "ns"))
+    out[valid] = np.interp(
         projected_x,
         ephemeris_utm["x"].iloc[::-1],
         ephemeris_utm["t"].iloc[::-1].astype(int),
     ).astype("datetime64[ns]")
+
+    return out
 
 
 def _geodetic_to_utm(
@@ -183,8 +217,7 @@ def _geodetic_to_utm(
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Convert geographic coordinates (longitude, latitude) to UTM coordinates."""
     transformer = pyproj.Transformer.from_crs("EPSG:4326", crs, always_xy=True)
-    x_utm, y_utm = transformer.transform(lon, lat)
-    return x_utm, y_utm
+    return transformer.transform(lon, lat)
 
 
 def colocate_flights(
