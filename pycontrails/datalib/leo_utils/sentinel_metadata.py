@@ -493,8 +493,12 @@ def parse_sensing_time(granule_metadata_path: str) -> pd.Timestamp:
 
 
 def get_detector_id(
-    detector_band_metadata_path: str, tile_metadata_path: str, x: float, y: float, band: str = "B03"
-) -> int:
+    detector_band_metadata_path: str,
+    tile_metadata_path: str,
+    x: npt.NDArray[np.floating],
+    y: npt.NDArray[np.floating],
+    band: str = "B03",
+) -> npt.NDArray[np.integer]:
     """
     Return the detector ID that captured a given pixel in a Sentinel-2 image.
 
@@ -504,22 +508,20 @@ def get_detector_id(
         Path to the MSK_DETFOO_Bxx.jp2 detector band mask file.
     tile_metadata_path : str
         Path to the tile metadata XML file (MTD_TL.xml) containing image geometry.
-    x : float
+    x : npt.NDArray[np.floating]
         X coordinate (in UTM coordinate system) of the target pixel.
-    y : float
+    y : npt.NDArray[np.floating]
         Y coordinate (in UTM coordinate system) of the target pixel.
     band : str, optional
         Spectral band to use for geometry parsing. Default is "B03".
 
     Returns
     -------
-    int : The detector ID (in the range 1 to 12) that captured the pixel.
-
-    Raises
-    ------
-    ValueError
-        If the (x, y) coordinate is outside the image bounds.
+    int : The detector ID (in the range 1 to 12) that captured the pixel. Returns 0 if
+        the pixel is outside the image bounds or not covered by any detector.
     """
+    x, y = np.atleast_1d(x, y)
+
     detector_mask = parse_high_res_detector_mask(detector_band_metadata_path, scale=10)
 
     height, width = detector_mask.shape
@@ -532,14 +534,16 @@ def get_detector_id(
     pixel_width = (x_max - x_min) / width
     pixel_height = (y_max - y_min) / height
 
+    valid = (x >= x_min) & (x <= x_max) & (y >= y_min) & (y <= y_max)
+
     # Convert x, y to column, row
-    col = int((x - x_min) / pixel_width)
-    row = int((y_max - y) / pixel_height)  # Note: y axis is top-down in images
+    col = ((x[valid] - x_min) // pixel_width).astype(int)
+    row = ((y_max - y[valid]) // pixel_height).astype(int)  # Note: y axis is top-down in images
 
-    if 0 <= row < height and 0 <= col < width:
-        return detector_mask[row, col]
+    out = np.zeros(x.shape, dtype=detector_mask.dtype)
+    out[valid] = detector_mask[row, col]
 
-    raise ValueError("Point is outside the image bounds.")
+    return out
 
 
 def get_time_delay_detector(
