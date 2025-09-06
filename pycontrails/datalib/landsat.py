@@ -9,8 +9,8 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.core import Flight, cache
-from pycontrails.datalib._leo_utils import search
-from pycontrails.datalib._leo_utils.vis import equalize, normalize
+from pycontrails.datalib.leo_utils import search
+from pycontrails.datalib.leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
 
 try:
@@ -72,10 +72,10 @@ def query(
         Start of time period for search
     end_time : np.datetime64
         End of time period for search
-    extent : str, optional
+    extent : str | None, optional
         Spatial region of interest as a GeoJSON string. If not provided, defaults
         to a global extent.
-    columns : list[str], optional.
+    columns : list[str] | None, optional
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
         By default, returns imagery base URL and sensing time.
@@ -112,7 +112,7 @@ def intersect(
     ----------
     flight : Flight
         Flight for intersection
-    columns : list[str], optional.
+    columns : list[str] | None, optional
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
         By default, returns imagery base URL and sensing time.
@@ -144,7 +144,7 @@ class Landsat:
     base_url : str
         Base URL of Landsat scene. To find URLs for Landsat scenes at
         specific locations and times, see :func:`query` and :func:`intersect`.
-    bands : str | set[str] | None
+    bands : str | Iterable[str] | None
         Set of bands to retrieve. The 11 possible bands are represented by
         the string "B1" to "B11". For the Google Landsat contrails color scheme,
         set ``bands=("B9", "B10", "B11")``. For the true color scheme, set
@@ -155,7 +155,7 @@ class Landsat:
         - B8: 15 m
         - B10, B11: 30 m (upsampled from true resolution of 100 m)
 
-    cachestore : cache.CacheStore, optional
+    cachestore : cache.CacheStore | None, optional
         Cache store for Landsat data. If None, a :class:`DiskCacheStore` is used.
 
     See Also
@@ -202,17 +202,19 @@ class Landsat:
 
         Parameters
         ----------
-        reflective : str = {"raw", "radiance", "reflectance"}, optional
+        reflective : str, optional
+            One of {"raw", "radiance", "reflectance"}.
             Whether to return raw values or rescaled radiances or reflectances for reflective bands.
             By default, return reflectances.
-        thermal : str = {"raw", "radiance", "brightness_temperature"}, optional
+        thermal : str, optional
+            One of {"raw", "radiance", "brightness_temperature"}.
             Whether to return raw values or rescaled radiances or brightness temperatures
             for thermal bands. By default, return brightness temperatures.
 
         Returns
         -------
-        xr.DataArray
-            DataArray of Landsat data.
+        xr.Dataset
+            Dataset of Landsat data.
         """
         if reflective not in ["raw", "radiance", "reflectance"]:
             msg = "reflective band processing must be one of ['raw', 'radiance', 'reflectance']"
@@ -263,31 +265,6 @@ class Landsat:
         if not self.cachestore.exists(sink):
             fs.get(url, sink)
         return sink
-
-    # the following functions have to be implemented
-    def get_viewing_angle_metadata(self) -> xr.Dataset:
-        """Return the dataset with viewing angles."""
-        raise NotImplementedError
-
-    def get_detector_id(self, x: int, y: int) -> int:
-        """Return the detector_id of a pixel in UTM."""
-        raise NotImplementedError
-
-    def get_time_delay_detector(self, detector_id: str, band: str) -> pd.Timedelta:
-        """Return the time delay of a detector."""
-        raise NotImplementedError
-
-    def get_ephemeris(self) -> pd.DataFrame:
-        """Return the satellite ephemeris as dataframe."""
-        raise NotImplementedError
-
-    def get_crs(self) -> pyproj.CRS:
-        """Return the CRS of the satellite image."""
-        raise NotImplementedError
-
-    def get_sensing_time(self) -> pd.Timestamp:
-        """Return the sensing_time of the satellite image."""
-        raise NotImplementedError
 
     # the following functions have to be implemented
     def get_viewing_angle_metadata(self) -> xr.Dataset:
@@ -480,7 +457,8 @@ def extract_landsat_visualization(
     ----------
     ds : xr.Dataset
         Dataset of Landsat data as returned by :meth:`Landsat.get`.
-    color_scheme : str = {"true", "google_contrails"}
+    color_scheme : str, optional
+        One of {"true", "google_contrails"}.
         Color scheme to use for visualization. The true color scheme
         requires reflectances for bands B2, B3, and B4; and the
         `Google contrails color scheme <https://research.google/pubs/a-human-labeled-landsat-contrails-dataset>`__
@@ -488,11 +466,11 @@ def extract_landsat_visualization(
 
     Returns
     -------
-    rgb : npt.NDArray[np.float32]
+    rgb : np.ndarray
         3D RGB array of shape ``(height, width, 3)``.
     src_crs : pyproj.CRS
         Imagery projection
-    src_extent : tuple[float,float,float,float]
+    src_extent : tuple[float, float, float, float]
         Imagery extent in projected coordinates
 
     References

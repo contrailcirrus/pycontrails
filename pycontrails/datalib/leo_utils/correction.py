@@ -53,6 +53,8 @@ def scan_angle_correction(
         correct UTM coordinate system.
     z : npt.NDArray[np.floating]
         The z coordinates (altitude in meters) of the points to correct.
+    n_iter : int, optional
+        Number of iterations to perform. Default is 5.
 
     Returns
     -------
@@ -140,9 +142,9 @@ def _interpolate_angles(
 
     Returns
     -------
-    vza : np.ndarray
+    vza : npt.NDArray[np.floating]
         Interpolated view zenith angles at the given (xi, yi) points.
-    vaa : np.ndarray
+    vaa : npt.NDArray[np.floating]
         Interpolated view azimuth angles at the given (xi, yi) points.
     """
     interped = ds[["VZA", "VAA"]].interp(x=xi, y=yi)
@@ -227,8 +229,7 @@ def colocate_flights(
     n_iter: int = 3,
     search_window: int = 5,
 ) -> tuple[list[float], pd.Timestamp]:
-    """
-    Colocate IAGOS flight track points with satellite image pixels.
+    """Colocate IAGOS flight track points with satellite image pixels.
 
     This function projects IAGOS flight positions into the UTM coordinate system,
     then uses the provided satellite handler (Sentinel or Landsat) to iteratively
@@ -236,16 +237,23 @@ def colocate_flights(
 
     Parameters
     ----------
-        flight (Flight): The flight object.
-        handler (Sentinel | Landsat): The satellite image handler.
-        utm_crs (pyproj.CRS): UTM coordinate reference system used for projection.
-        n_iter (int, optional): Number of iterations to refine the sensing_time correction.
-            Default is 3.
-        search_window (int, optional): Time window. Default is 5 minutes.
+    flight : Flight
+        The flight object.
+    handler : Sentinel | Landsat
+        The satellite image handler.
+    utm_crs : pyproj.CRS
+        UTM coordinate reference system used for projection.
+    n_iter : int, optional
+        Number of iterations to refine the sensing_time correction. Default is 3.
+    search_window : int, optional
+        Time window. Default is 5 minutes.
 
     Returns
     -------
-        correct_aircraft_location and correct_sensing_time
+    tuple[list[float], pd.Timestamp]
+        A tuple containing:
+        - A list with the x and y coordinates of the flight in the UTM coordinate system.
+        - The corrected sensing time as a pandas Timestamp.
     """
     # get the average sensing_time for the granule to speed up processing
     initial_sensing_time = handler.get_sensing_time()
@@ -318,7 +326,10 @@ def colocate_flights(
 
 
 def interpolate_columns(
-    df: pd.DataFrame, timestamp: pd.Timestamp | str, columns: Sequence[str], time_col: str = "time"
+    df: pd.DataFrame,
+    timestamp: pd.Timestamp | str,
+    columns: Sequence[str],
+    time_col: str = "time",
 ) -> tuple:
     """
     Interpolate multiple columns in a DataFrame at a given timestamp.
@@ -327,12 +338,12 @@ def interpolate_columns(
     ----------
     df : pd.DataFrame
         DataFrame containing timestamped data.
-    timestamp : pd.Timestamp or str
+    timestamp : pd.Timestamp | str
         The timestamp at which to interpolate.
-    columns : list of str
+    columns : Sequence[str]
         List of column names to interpolate.
-    time_col : str, default 'timestamp'
-        Name of the timestamp column in df.
+    time_col : str, optional
+        Name of the timestamp column in df. Default is 'time'.
 
     Returns
     -------

@@ -6,8 +6,11 @@ This modules requires `GeoPandas <https://geopandas.org/>`_.
 import re
 
 import geopandas as gpd
+import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import shapely
+import xarray as xr
 
 from pycontrails.core import cache
 
@@ -226,30 +229,30 @@ def parse_ephemeris_landsat(ang_content: str) -> pd.DataFrame:
 
 
 def get_detector_id(
-    detector_band_metadata_path: str, tile_metadata_path: str, x: float, y: float, band: str = "B03"
-) -> int:
-    """
-    Return the detector ID that captured a given pixel in a Sentinel-2 image.
+    ds: xr.Dataset,
+    ephemeris: pd.DataFrame,
+    x: npt.NDArray[np.floating],
+    y: npt.NDArray[np.floating],
+) -> npt.NDArray[np.integer]:
+    """Return the detector ID that captured the given pixel coordinates.
 
     Parameters
     ----------
-    detector_band_metadata_path : str
-        Path to the MSK_DETFOO_Bxx.jp2 detector band mask file.
-    tile_metadata_path : str
-        Path to the tile metadata XML file (MTD_TL.xml) containing image geometry.
-    x : float
-        X coordinate (in UTM coordinate system) of the target pixel.
-    y : float
-        Y coordinate (in UTM coordinate system) of the target pixel.
-    band : str, optional
-        Spectral band to use for geometry parsing. Default is "B03".
+    ds : xr.Dataset
+        The Landsat dataset containing the VZA and VAA variables.
+    ephemeris : pd.DataFrame
+        The ephemeris DataFrame containing the EPHEMERIS_TIME and ECEF coordinates.
+    x : npt.NDArray[np.floating]
+        The x-coordinates of the pixels in the dataset's coordinate system.
+    y : npt.NDArray[np.floating]
+        The y-coordinates of the pixels in the dataset's coordinate system.
 
     Returns
     -------
-    int : The detector ID (in the range 1 to 12) that captured the pixel.
+    npt.NDArray[np.integer]
+        The detector IDs corresponding to the given (x, y) coordinates. Returns
+        0 for coordinates outside the image bounds.
 
-    Raises
-    ------
-    ValueError
-        If the (x, y) coordinate is outside the image bounds.
     """
+    x, y = np.atleast_1d(x, y)
+    # FIXME
