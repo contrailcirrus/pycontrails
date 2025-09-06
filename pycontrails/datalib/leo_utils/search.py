@@ -13,7 +13,7 @@ try:
     import geojson
 except ModuleNotFoundError as exc:
     dependencies.raise_module_not_found_error(
-        name="datalib._leo_utils module",
+        name="datalib.leo_utils module",
         package_name="geojson",
         module_not_found_error=exc,
         pycontrails_optional_package="sat",
