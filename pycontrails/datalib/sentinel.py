@@ -7,12 +7,23 @@ from collections.abc import Iterable
 from xml.etree import ElementTree
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
 from pycontrails.core import Flight, cache
-from pycontrails.datalib._leo_utils import search
-from pycontrails.datalib._leo_utils.vis import equalize, normalize
+from pycontrails.datalib.leo_utils import search
+from pycontrails.datalib.leo_utils.sentinel_metadata import (
+    _band_id,
+    get_detector_id,
+    get_time_delay_detector,
+    parse_ephemeris_sentinel,
+    parse_high_res_viewing_incidence_angles,
+    parse_sensing_time,
+    parse_sentinel_crs,
+    read_image_coordinates,
+)
+from pycontrails.datalib.leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
 
 try:
@@ -53,7 +64,7 @@ ROI_QUERY_FILENAME = _path_to_static / "sentinel_roi_query.sql"
 BQ_TABLE = "bigquery-public-data.cloud_storage_geo_index.sentinel_2_index"
 
 #: Default columns to include in queries
-BQ_DEFAULT_COLUMNS = ["base_url", "granule_id", "sensing_time"]
+BQ_DEFAULT_COLUMNS = ["base_url", "granule_id", "sensing_time", "source_url"]
 
 #: Default spatial extent for queries
 BQ_DEFAULT_EXTENT = search.GLOBAL_EXTENT
@@ -84,10 +95,10 @@ def query(
         Start of time period for search
     end_time : np.datetime64
         End of time period for search
-    extent : str, optional
+    extent : str | None, optional
         Spatial region of interest as a GeoJSON string. If not provided, defaults
         to a global extent.
-    columns : list[str], optional
+    columns : list[str] | None, optional
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
         By default, returns imagery base URL, granule ID, and sensing time.
@@ -124,7 +135,7 @@ def intersect(
     ----------
     flight : Flight
         Flight for intersection
-    columns : list[str], optional.
+    columns : list[str] | None, optional
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
         By default, returns imagery base URL, granule ID, and sensing time.
@@ -139,17 +150,19 @@ def intersect(
     :func:`search.intersect`
     """
     columns = columns or BQ_DEFAULT_COLUMNS
-    return search.intersect(BQ_TABLE, flight, columns)
+    scenes = search.intersect(BQ_TABLE, flight, columns)
+
+    # overwrite the base_url with source_url.
+    # After 2024-03-14 there is a mistake in the Google BigQuery table,
+    # such that the base_url is written to the source_url column
+    scenes["base_url"] = scenes["base_url"].fillna(scenes["source_url"])
+
+    # Drop the source_url column
+    return scenes.drop(columns=["source_url"])
 
 
 class Sentinel:
     """Support for Sentinel-2 data handling.
-
-    This class uses the `PROJ <https://proj.org/en/9.4/index.html>`__ coordinate
-    transformation software through the
-    `pyproj <https://pyproj4.github.io/pyproj/stable/index.html>`__ python interface.
-    pyproj is installed as part of the ``sat`` set of optional dependencies
-    (``pip install pycontrails[sat]``), but PROJ must be installed manually.
 
     Parameters
     ----------
@@ -159,7 +172,7 @@ class Sentinel:
     granule_id : str
         Granule ID of Sentinel-2 scene. To find URLs for Sentinel-2 scenes at
         specific locations and times, see :func:`query` and :func:`intersect`.
-    bands : str | set[str] | None
+    bands : str | Iterable[str] | None
         Set of bands to retrieve. The 13 possible bands are represented by
         the string "B01" to "B12" plus "B8A". For the true color scheme, set
         ``bands=("B02", "B03", "B04")``. By default, bands for the true color scheme
@@ -169,7 +182,7 @@ class Sentinel:
         - B05-B07, B8A, B11, B12: 20 m
         - B01, B09, B10: 60 m
 
-    cachestore : cache.CacheStore, optional
+    cachestore : cache.CacheStore | None, optional
         Cache store for Landsat data. If None, a :class:`DiskCacheStore` is used.
 
     See Also
@@ -210,23 +223,77 @@ class Sentinel:
 
         Parameters
         ----------
-        reflective : str = {"raw", "reflectance"}, optional
-            Whether to return raw values or rescaled reflectances for reflective bands.
+        reflective : str, optional
+            Set to "raw" to return raw values or "reflectance" for rescaled reflectances.
             By default, return reflectances.
 
         Returns
         -------
-        xr.DataArray
-            DataArray of Sentinel-2 data.
+        xr.Dataset
+            Dataset of Sentinel-2 data.
         """
-        if reflective not in ["raw", "reflectance"]:
-            msg = "reflective band processing must be one of ['raw', 'radiance', 'reflectance']"
+        available = ("raw", "reflectance")
+        if reflective not in available:
+            msg = f"reflective band processing must be one of {available}"
             raise ValueError(msg)
 
-        ds = xr.Dataset()
-        for band in self.bands:
-            ds[band] = self._get(band, reflective)
-        return ds
+        data = {band: self._get(band, reflective) for band in self.bands}
+        return xr.Dataset(data)
+
+    def get_viewing_angle_metadata(self, scale: int = 10) -> xr.Dataset:
+        """Return the dataset with viewing angles.
+
+        See :func:`parse_high_res_viewing_incidence_angles` for details.
+        """
+        granule_meta_path, _ = self._get_meta()
+        _, detector_band_path = self._get_correction_meta()
+        return parse_high_res_viewing_incidence_angles(
+            granule_meta_path, detector_band_path, scale=scale
+        )
+
+    def get_detector_id(
+        self, x: npt.NDArray[np.floating], y: npt.NDArray[np.floating]
+    ) -> npt.NDArray[np.integer]:
+        """Return the detector_id of the Sentinel-2 detector that imaged the given points.
+
+        Parameters
+        ----------
+        x : npt.NDArray[np.floating]
+            x coordinates of points in the Sentinel-2 image CRS
+        y : npt.NDArray[np.floating]
+            y coordinates of points in the Sentinel-2 image CRS
+
+        Returns
+        -------
+        npt.NDArray[np.integer]
+            Detector IDs for each point. If a point is outside the image, the detector ID is 0.
+        """
+        granule_sink, _ = self._get_meta()
+        _, detector_band_sink = self._get_correction_meta()
+        return get_detector_id(detector_band_sink, granule_sink, x, y)
+
+    def get_time_delay_detector(self, detector_id: str, band: str = "B03") -> pd.Timedelta:
+        """Return the time delay of a detector."""
+        datastrip_sink, _ = self._get_correction_meta()
+        return get_time_delay_detector(datastrip_sink, detector_id, band)
+
+    def get_ephemeris(self) -> pd.DataFrame:
+        """Return the satellite ephemeris as a :class:`pandas.DataFrame`."""
+        datastrip_sink, _ = self._get_correction_meta()
+
+        return parse_ephemeris_sentinel(datastrip_sink)
+
+    def get_crs(self) -> pyproj.CRS:
+        """Return the CRS of the satellite image."""
+        granule_meta_path, _ = self._get_meta()
+        return parse_sentinel_crs(granule_meta_path)
+
+    def get_sensing_time(self) -> pd.Timestamp:
+        """Return the sensing_time of the satellite image."""
+        granule_meta_path, _ = self._get_meta()
+        return parse_sensing_time(granule_meta_path)
+
+    # -------------------------------------------------------------------------------------
 
     def _get(self, band: str, processing: str) -> xr.DataArray:
         """Download Sentinel-2 band to the :attr:`cachestore` and return processed data."""
@@ -278,6 +345,61 @@ class Sentinel:
 
         return granule_sink, safe_sink
 
+    def _get_correction_meta(self) -> tuple[str, str]:
+        """Download Sentinel-2 metadata files and return path to cached files.
+
+        Note that two XML files must be retrieved: one inside the GRANULE
+        subdirectory, and one at the top level of the SAFE archive.
+        """
+        fs = self.fs
+        base_url = self.base_url
+        granule_id = self.granule_id
+
+        # Resolve the unknown subfolder in DATASTRIP using glob
+        # Probably there is a better method, but this worked for now
+        pattern = f"{base_url}/DATASTRIP/*"
+        matches = fs.glob(pattern)
+        if not matches:
+            raise FileNotFoundError(f"No DATASTRIP MTD_MDS.xml file found at pattern: {pattern}")
+        if len(matches) > 2:
+            raise RuntimeError(f"Multiple DATASTRIP MTD_MDS.xml files found: {matches}")
+
+        datastrip_id = matches[0].split("/")[-1].replace("_$folder$", "")
+        url = f"{base_url}/DATASTRIP/{datastrip_id}/MTD_DS.xml"
+        datastrip_sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
+        if not self.cachestore.exists(datastrip_sink):
+            fs.get(url, datastrip_sink)
+
+        # Path to the QI_DATA folder
+        qi_data_url = f"{base_url}/GRANULE/{granule_id}/QI_DATA/"
+
+        # List files in QI_DATA (assuming fs can list directories)
+        files = fs.ls(qi_data_url)
+
+        # Filter for the detector mask files
+        mask_files = [f for f in files if "MSK_DETFOO_B03" in f]
+
+        if not mask_files:
+            raise FileNotFoundError(f"No detector mask found in {qi_data_url}")
+
+        # Choose the first available file (could prioritize .jp2 over .gml if needed)
+        mask_file = None
+        for ext in [".jp2", ".gml"]:
+            for f in mask_files:
+                if f.endswith(ext):
+                    mask_file = f
+                    break
+            if mask_file:
+                break
+
+        if mask_file is not None:
+            # Path where the file will be cached
+            detector_band_sink = self.cachestore.path(mask_file.removeprefix(GCP_STRIP_PREFIX))
+            if not self.cachestore.exists(detector_band_sink):
+                fs.get(mask_file, detector_band_sink)
+
+        return datastrip_sink, detector_band_sink
+
 
 def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
     """Check that the bands are valid and return as a set."""
@@ -328,7 +450,7 @@ def _read(path: str, granule_meta: str, safe_meta: str, band: str, processing: s
     epsg = int(elem.text.split(":")[1])
     crs = pyproj.CRS.from_epsg(epsg)
 
-    x, y = _read_image_coordinates(granule_meta, band)
+    x, y = read_image_coordinates(granule_meta, band)
 
     da = xr.DataArray(
         data=img,
@@ -343,22 +465,6 @@ def _read(path: str, granule_meta: str, safe_meta: str, band: str, processing: s
     da["x"].attrs = {"long_name": "easting", "units": "m"}
     da["y"].attrs = {"long_name": "northing", "units": "m"}
     return da
-
-
-def _band_resolution(band: str) -> int:
-    """Get band resolution in meters."""
-    return (
-        60 if band in ("B01", "B09", "B10") else 10 if band in ("B02", "B03", "B04", "B08") else 20
-    )
-
-
-def _band_id(band: str) -> int:
-    """Get band ID used in some metadata files."""
-    if band in (f"B{i:2d}" for i in range(1, 9)):
-        return int(band[1:]) - 1
-    if band == "B8A":
-        return 8
-    return int(band[1:])
 
 
 def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float]:
@@ -393,63 +499,16 @@ def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float
     raise ValueError(msg)
 
 
-def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarray]:
-    """Read image x and y coordinates."""
-
-    # convenience function that satisfies mypy
-    def _text_from_tag(parent: ElementTree.Element, tag: str) -> str:
-        elem = parent.find(tag)
-        if elem is None or elem.text is None:
-            msg = f"Could not find text in {tag} element"
-            raise ValueError(msg)
-        return elem.text
-
-    resolution = _band_resolution(band)
-
-    # find coordinates of upper left corner and pixel size
-    tree = ElementTree.parse(meta)
-    elems = tree.findall(".//Geoposition")
-    for elem in elems:
-        if int(elem.attrib["resolution"]) == resolution:
-            ulx = float(_text_from_tag(elem, "ULX"))
-            uly = float(_text_from_tag(elem, "ULY"))
-            dx = float(_text_from_tag(elem, "XDIM"))
-            dy = float(_text_from_tag(elem, "YDIM"))
-            break
-    else:
-        msg = f"Could not find image geoposition for resolution of {resolution} m"
-        raise ValueError(msg)
-
-    # find image size
-    elems = tree.findall(".//Size")
-    for elem in elems:
-        if int(elem.attrib["resolution"]) == resolution:
-            nx = int(_text_from_tag(elem, "NCOLS"))
-            ny = int(_text_from_tag(elem, "NROWS"))
-            break
-    else:
-        msg = f"Could not find image size for resolution of {resolution} m"
-        raise ValueError(msg)
-
-    # compute pixel coordinates
-    xlim = (ulx, ulx + (nx - 1) * dx)
-    ylim = (uly, uly + (ny - 1) * dy)  # dy is < 0
-    x = np.linspace(xlim[0], xlim[1], nx)
-    y = np.linspace(ylim[0], ylim[1], ny)
-
-    return x, y
-
-
 def extract_sentinel_visualization(
     ds: xr.Dataset, color_scheme: str = "true"
-) -> tuple[np.ndarray, pyproj.CRS, tuple[float, float, float, float]]:
+) -> tuple[npt.NDArray[np.float32], pyproj.CRS, tuple[float, float, float, float]]:
     """Extract artifacts for visualizing Sentinel data with the given color scheme.
 
     Parameters
     ----------
     ds : xr.Dataset
         Dataset of Sentinel data as returned by :meth:`Sentinel.get`.
-    color_scheme : str = {"true"}
+    color_scheme : str, optional
         Color scheme to use for visualization. The true color scheme
         (the only option currently implemented) requires bands B02, B03, and B04.
 
@@ -459,7 +518,7 @@ def extract_sentinel_visualization(
         3D RGB array of shape ``(height, width, 3)``.
     src_crs : pyproj.CRS
         Imagery projection
-    src_extent : tuple[float,float,float,float]
+    src_extent : tuple[float, float, float, float]
         Imagery extent in projected coordinates
     """
 

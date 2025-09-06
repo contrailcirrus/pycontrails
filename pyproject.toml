@@ -119,6 +119,7 @@ sat = [
     "db-dtypes>=1.2",
     "gcsfs>=2022.3",
     "geojson>=3.1",
+    "geopandas>=1.1.1",
     "google-cloud-bigquery>=3.23",
     "google-cloud-bigquery-storage>=2.25",
     "pillow>=10.3",
@@ -162,7 +163,7 @@ exclude = ["docs*", "tests*"]
 [tool.setuptools.package-data]
 "pycontrails" = ["py.typed"]
 "pycontrails.datalib.ecmwf" = ["static/*.csv"]
-"pycontrails.datalib._leo_utils" = ["static/*.sql"]
+"pycontrails.datalib.leo_utils" = ["static/*.sql"]
 "pycontrails.models.emissions" = ["static/*.csv"]
 "pycontrails.models.humidity_scaling" = ["quantiles/*.pq"]
 "pycontrails.models.apcemm" = ["static/*.yaml"]

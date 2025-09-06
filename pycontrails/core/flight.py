@@ -1391,12 +1391,9 @@ class Flight(GeoVectorDataset):
         KeyError
             ``key`` is provided but :attr:`data` does not contain column ``key``
         """
-        if key is not None and key not in self.dataframe.columns:
-            raise KeyError(f"Column {key} does not exist in data.")
-
         jump_indices = _antimeridian_index(pd.Series(self["longitude"]))
 
-        def _group_to_feature(name: str, group: pd.DataFrame) -> dict[str, str | dict[str, Any]]:
+        def _group_to_feature(name: Any, group: pd.DataFrame) -> dict[str, str | dict[str, Any]]:
             # assigns a different value to each group of consecutive indices
             subgrouping = group.index.to_series().diff().ne(1).cumsum()
 
@@ -1417,13 +1414,20 @@ class Flight(GeoVectorDataset):
             properties.update(self.constants)
             return {"type": "Feature", "geometry": geometry, "properties": properties}
 
+        # Add altitude (needed in _return_linestring) without mutating self
+        df = self.dataframe
+        if "altitude" not in self:
+            df["altitude"] = self.altitude
+
         if key is not None:
-            groups = self.dataframe.groupby(key)
+            if key not in self:
+                raise KeyError(f"Column {key} does not exist in data.")
+            groups = df.groupby(key)
         else:
             # create a single group containing all rows of dataframe
-            groups = self.dataframe.groupby(lambda _: 0)
+            groups = [(None, df)]  # name is ignored in this case
 
-        features = [_group_to_feature(*name_group) for name_group in groups]
+        features = [_group_to_feature(name, group) for name, group in groups]
         return {"type": "FeatureCollection", "features": features}
 
     def to_traffic(self) -> traffic.core.Flight:
