@@ -7,12 +7,13 @@ from collections.abc import Iterable
 from xml.etree import ElementTree
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
 from pycontrails.core import Flight, cache
-from pycontrails.datalib._leo_utils import search
-from pycontrails.datalib._leo_utils.sentinel_metadata import (
+from pycontrails.datalib.leo_utils import search
+from pycontrails.datalib.leo_utils.sentinel_metadata import (
     _band_id,
     get_detector_id,
     get_time_delay_detector,
@@ -22,7 +23,7 @@ from pycontrails.datalib._leo_utils.sentinel_metadata import (
     parse_sentinel_crs,
     read_image_coordinates,
 )
-from pycontrails.datalib._leo_utils.vis import equalize, normalize
+from pycontrails.datalib.leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
 
 try:
@@ -94,10 +95,10 @@ def query(
         Start of time period for search
     end_time : np.datetime64
         End of time period for search
-    extent : str, optional
+    extent : str | None, optional
         Spatial region of interest as a GeoJSON string. If not provided, defaults
         to a global extent.
-    columns : list[str], optional
+    columns : list[str] | None, optional
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
         By default, returns imagery base URL, granule ID, and sensing time.
@@ -134,7 +135,7 @@ def intersect(
     ----------
     flight : Flight
         Flight for intersection
-    columns : list[str], optional.
+    columns : list[str] | None, optional
         Columns to return from Google
         `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
         By default, returns imagery base URL, granule ID, and sensing time.
@@ -163,12 +164,6 @@ def intersect(
 class Sentinel:
     """Support for Sentinel-2 data handling.
 
-    This class uses the `PROJ <https://proj.org/en/9.4/index.html>`__ coordinate
-    transformation software through the
-    `pyproj <https://pyproj4.github.io/pyproj/stable/index.html>`__ python interface.
-    pyproj is installed as part of the ``sat`` set of optional dependencies
-    (``pip install pycontrails[sat]``), but PROJ must be installed manually.
-
     Parameters
     ----------
     base_url : str
@@ -177,7 +172,7 @@ class Sentinel:
     granule_id : str
         Granule ID of Sentinel-2 scene. To find URLs for Sentinel-2 scenes at
         specific locations and times, see :func:`query` and :func:`intersect`.
-    bands : str | set[str] | None
+    bands : str | Iterable[str] | None
         Set of bands to retrieve. The 13 possible bands are represented by
         the string "B01" to "B12" plus "B8A". For the true color scheme, set
         ``bands=("B02", "B03", "B04")``. By default, bands for the true color scheme
@@ -187,7 +182,7 @@ class Sentinel:
         - B05-B07, B8A, B11, B12: 20 m
         - B01, B09, B10: 60 m
 
-    cachestore : cache.CacheStore, optional
+    cachestore : cache.CacheStore | None, optional
         Cache store for Landsat data. If None, a :class:`DiskCacheStore` is used.
 
     See Also
@@ -228,36 +223,51 @@ class Sentinel:
 
         Parameters
         ----------
-        reflective : str = {"raw", "reflectance"}, optional
-            Whether to return raw values or rescaled reflectances for reflective bands.
+        reflective : str, optional
+            Set to "raw" to return raw values or "reflectance" for rescaled reflectances.
             By default, return reflectances.
 
         Returns
         -------
-        xr.DataArray
-            DataArray of Sentinel-2 data.
+        xr.Dataset
+            Dataset of Sentinel-2 data.
         """
-        if reflective not in ["raw", "reflectance"]:
-            msg = "reflective band processing must be one of ['raw', 'radiance', 'reflectance']"
+        available = ("raw", "reflectance")
+        if reflective not in available:
+            msg = f"reflective band processing must be one of {available}"
             raise ValueError(msg)
 
-        ds = xr.Dataset()
-        for band in self.bands:
-            ds[band] = self._get(band, reflective)
-        return ds
+        data = {band: self._get(band, reflective) for band in self.bands}
+        return xr.Dataset(data)
 
-    # -----------------------------------------------------------------------------------------
-    # the following function should also be in Landsat
     def get_viewing_angle_metadata(self, scale: int = 10) -> xr.Dataset:
-        """Return the dataset with viewing angles."""
+        """Return the dataset with viewing angles.
+
+        See :func:`parse_high_res_viewing_incidence_angles` for details.
+        """
         granule_meta_path, _ = self._get_meta()
         _, detector_band_path = self._get_correction_meta()
         return parse_high_res_viewing_incidence_angles(
             granule_meta_path, detector_band_path, scale=scale
         )
 
-    def get_detector_id(self, x: int, y: int) -> int:
-        """Return the detector_id of a pixel in UTM."""
+    def get_detector_id(
+        self, x: npt.NDArray[np.floating], y: npt.NDArray[np.floating]
+    ) -> npt.NDArray[np.integer]:
+        """Return the detector_id of the Sentinel-2 detector that imaged the given points.
+
+        Parameters
+        ----------
+        x : npt.NDArray[np.floating]
+            x coordinates of points in the Sentinel-2 image CRS
+        y : npt.NDArray[np.floating]
+            y coordinates of points in the Sentinel-2 image CRS
+
+        Returns
+        -------
+        npt.NDArray[np.integer]
+            Detector IDs for each point. If a point is outside the image, the detector ID is 0.
+        """
         granule_sink, _ = self._get_meta()
         _, detector_band_sink = self._get_correction_meta()
         return get_detector_id(detector_band_sink, granule_sink, x, y)
@@ -268,46 +278,7 @@ class Sentinel:
         return get_time_delay_detector(datastrip_sink, detector_id, band)
 
     def get_ephemeris(self) -> pd.DataFrame:
-        """Return the satellite ephemeris as dataframe."""
-        datastrip_sink, _ = self._get_correction_meta()
-
-        return parse_ephemeris_sentinel(datastrip_sink)
-
-    def get_crs(self) -> pyproj.CRS:
-        """Return the CRS of the satellite image."""
-        granule_meta_path, _ = self._get_meta()
-        return parse_sentinel_crs(granule_meta_path)
-
-    def get_sensing_time(self) -> pd.Timestamp:
-        """Return the sensing_time of the satellite image."""
-        granule_meta_path, _ = self._get_meta()
-        return parse_sensing_time(granule_meta_path)
-
-    # -------------------------------------------------------------------------------------
-
-    # -----------------------------------------------------------------------------------------
-    # the following function should also be in Landsat
-    def get_viewing_angle_metadata(self, scale: int = 10) -> xr.Dataset:
-        """Return the dataset with viewing angles."""
-        granule_meta_path, _ = self._get_meta()
-        _, detector_band_path = self._get_correction_meta()
-        return parse_high_res_viewing_incidence_angles(
-            granule_meta_path, detector_band_path, scale=scale
-        )
-
-    def get_detector_id(self, x: int, y: int) -> int:
-        """Return the detector_id of a pixel in UTM."""
-        granule_sink, _ = self._get_meta()
-        _, detector_band_sink = self._get_correction_meta()
-        return get_detector_id(detector_band_sink, granule_sink, x, y)
-
-    def get_time_delay_detector(self, detector_id: str, band: str = "B03") -> pd.Timedelta:
-        """Return the time delay of a detector."""
-        datastrip_sink, _ = self._get_correction_meta()
-        return get_time_delay_detector(datastrip_sink, detector_id, band)
-
-    def get_ephemeris(self) -> pd.DataFrame:
-        """Return the satellite ephemeris as dataframe."""
+        """Return the satellite ephemeris as a :class:`pandas.DataFrame`."""
         datastrip_sink, _ = self._get_correction_meta()
 
         return parse_ephemeris_sentinel(datastrip_sink)
@@ -530,14 +501,14 @@ def _read_band_reflectance_rescaling(meta: str, band: str) -> tuple[float, float
 
 def extract_sentinel_visualization(
     ds: xr.Dataset, color_scheme: str = "true"
-) -> tuple[np.ndarray, pyproj.CRS, tuple[float, float, float, float]]:
+) -> tuple[npt.NDArray[np.float32], pyproj.CRS, tuple[float, float, float, float]]:
     """Extract artifacts for visualizing Sentinel data with the given color scheme.
 
     Parameters
     ----------
     ds : xr.Dataset
         Dataset of Sentinel data as returned by :meth:`Sentinel.get`.
-    color_scheme : str = {"true"}
+    color_scheme : str, optional
         Color scheme to use for visualization. The true color scheme
         (the only option currently implemented) requires bands B02, B03, and B04.
 
@@ -547,7 +518,7 @@ def extract_sentinel_visualization(
         3D RGB array of shape ``(height, width, 3)``.
     src_crs : pyproj.CRS
         Imagery projection
-    src_extent : tuple[float,float,float,float]
+    src_extent : tuple[float, float, float, float]
         Imagery extent in projected coordinates
     """
 
