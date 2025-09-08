@@ -5,16 +5,35 @@ This modules requires `GeoPandas <https://geopandas.org/>`_.
 
 import re
 
-import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyproj
-import shapely
 import xarray as xr
 
 from pycontrails.core import cache
 from pycontrails.datalib.leo_utils import correction
+from pycontrails.utils import dependencies
+
+try:
+    import geopandas as gpd
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="landsat_metadata module",
+        package_name="geopandas",
+        module_not_found_error=exc,
+        pycontrails_optional_package="sat",
+    )
+
+try:
+    import shapely
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="landsat_metadata module",
+        package_name="shapely",
+        module_not_found_error=exc,
+        pycontrails_optional_package="sat",
+    )
 
 
 def _split_antimeridian(polygon: shapely.Polygon) -> shapely.MultiPolygon:
