@@ -491,7 +491,7 @@ def test_sentinel_empty_query() -> None:
     extent = geojson.dumps(geojson.Point((0, 0)))
 
     df = sentinel.query(start_time, end_time, extent)
-    assert set(df.columns) == {"base_url", "granule_id", "sensing_time"}
+    assert set(df.columns) == {"base_url", "source_url", "granule_id", "sensing_time"}
     assert len(df) == 0
 
 
@@ -504,7 +504,7 @@ def test_sentinel_query(sentinel_base_url: str, sentinel_granule_id: str) -> Non
     extent = geojson.dumps(geojson.Point((171, 57)))
 
     df = sentinel.query(start_time, end_time, extent)
-    assert set(df.columns) == {"base_url", "granule_id", "sensing_time"}
+    assert set(df.columns) == {"base_url", "source_url", "granule_id", "sensing_time"}
     assert len(df) == 2
     assert df["base_url"][0] == sentinel_base_url
     assert df["granule_id"][0] == sentinel_granule_id
@@ -522,7 +522,7 @@ def test_sentinel_empty_intersection() -> None:
     )
 
     df = sentinel.intersect(flight)
-    assert set(df.columns) == {"base_url", "granule_id", "sensing_time"}
+    assert set(df.columns) == {"base_url", "source_url", "granule_id", "sensing_time"}
     assert len(df) == 0
 
 
@@ -538,7 +538,7 @@ def test_sentinel_intersection(sentinel_base_url: str, sentinel_granule_id: str)
     )
 
     df = sentinel.intersect(flight)
-    assert set(df.columns) == {"base_url", "granule_id", "sensing_time"}
+    assert set(df.columns) == {"base_url", "source_url", "granule_id", "sensing_time"}
     assert len(df) == 2
     assert df["base_url"][0] == sentinel_base_url
     assert df["granule_id"][0] == sentinel_granule_id

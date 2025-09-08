@@ -156,9 +156,7 @@ def intersect(
     # After 2024-03-14 there is a mistake in the Google BigQuery table,
     # such that the base_url is written to the source_url column
     scenes["base_url"] = scenes["base_url"].fillna(scenes["source_url"])
-
-    # Drop the source_url column
-    return scenes.drop(columns=["source_url"])
+    return scenes
 
 
 class Sentinel:
