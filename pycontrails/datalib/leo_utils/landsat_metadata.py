@@ -270,7 +270,9 @@ def get_time_delay_detector(
     is_even = np.isfinite(vaa) & ~is_odd
 
     out = np.full(x.shape, fill_value=np.timedelta64("NaT", "ns"), dtype="timedelta64[ns]")
-    out[is_even] = np.timedelta64(-2000000000, "ns")  # -2.0 seconds
-    out[is_odd] = np.timedelta64(1500000000, "ns")  # 1.5 seconds
+    # We use an offset of +/- 2 seconds as a very rough estimate of the time delay
+    # This may only be accurate up to 1 second, but it's better than nothing
+    out[is_even] = np.timedelta64(-2000000000, "ns")  # -2 seconds
+    out[is_odd] = np.timedelta64(2000000000, "ns")  # 2 seconds
 
     return out
