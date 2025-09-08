@@ -126,6 +126,7 @@ sat = [
     "pyproj>=3.5",
     "rasterio>=1.3",
     "scikit-image>=0.18",
+    "shapely>=2.0",
 ]
 
 # Polyhedra contruction methods

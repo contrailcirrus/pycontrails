@@ -5,14 +5,12 @@ import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
-import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyproj
 import xarray as xr
 from scipy.interpolate import griddata
-from skimage.transform import resize
 
 from pycontrails.utils import dependencies
 
@@ -170,6 +168,7 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
         import rasterio
         import rasterio.enums
         import rasterio.features
+        import rasterio.transform
     except ModuleNotFoundError as exc:
         dependencies.raise_module_not_found_error(
             name="landsat module",
@@ -193,6 +192,15 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
 
     if file_ext == ".gml":
         # --- Handle GML case ---
+        try:
+            import geopandas as gpd
+        except ModuleNotFoundError as exc:
+            dependencies.raise_module_not_found_error(
+                name="landsat module",
+                package_name="geopandas",
+                module_not_found_error=exc,
+                pycontrails_optional_package="sat",
+            )
         gdf = gpd.read_file(metadata_path)
 
         # Extract detector_id from gml_id (assuming format contains "-Bxx-<id>-")
@@ -316,21 +324,50 @@ def parse_high_res_viewing_incidence_angles(
         If required data (zenith or azimuth) cannot be parsed.
     """
     try:
-        # Load the detector mask
-        detector_mask = parse_high_res_detector_mask(detector_band_metadata_path, scale=scale)
-        if detector_mask is None:
-            raise ValueError("Detector mask could not be parsed.")
+        import skimage.transform
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            name="landsat module",
+            package_name="scikit-image",
+            module_not_found_error=exc,
+            pycontrails_optional_package="sat",
+        )
 
-        # Load averaged low-resolution zenith angles
-        low_res_zenith, _ = parse_viewing_incidence_angles(tile_metadata_path)
-        if low_res_zenith is None:
-            raise ValueError("Zenith angles could not be parsed.")
+    # Load the detector mask
+    detector_mask = parse_high_res_detector_mask(detector_band_metadata_path, scale=scale)
+    if detector_mask is None:
+        raise ValueError("Detector mask could not be parsed.")
 
-        low_res_zenith = extrapolate_array(low_res_zenith)
+    # Load averaged low-resolution zenith angles
+    low_res_zenith, _ = parse_viewing_incidence_angles(tile_metadata_path)
+    if low_res_zenith is None:
+        raise ValueError("Zenith angles could not be parsed.")
 
-        # Upsample zenith angles to high resolution
-        high_res_zenith = resize(
-            low_res_zenith,
+    low_res_zenith = extrapolate_array(low_res_zenith)
+
+    # Upsample zenith angles to high resolution
+    high_res_zenith = skimage.transform.resize(
+        low_res_zenith,
+        output_shape=detector_mask.shape,
+        order=1,
+        mode="edge",
+        anti_aliasing=True,
+        preserve_range=True,
+    )
+
+    # Dictionary to store upsampled azimuth data per detector
+    low_res_azimuth_dict = {}
+
+    for detector_id in [str(i) for i in range(1, 13)]:
+        zen, azi = parse_viewing_incidence_angle_by_detector(tile_metadata_path, detector_id, "2")
+        if zen is None or azi is None or zen.size == 0 or azi.size == 0:
+            continue
+
+        azi_array = np.array(azi, dtype=np.float64)
+        azi_extrapolated = extrapolate_array(azi_array)
+
+        azi_extrapolated_highres = skimage.transform.resize(
+            azi_extrapolated,
             output_shape=detector_mask.shape,
             order=1,
             mode="edge",
@@ -338,70 +375,45 @@ def parse_high_res_viewing_incidence_angles(
             preserve_range=True,
         )
 
-        # Dictionary to store upsampled azimuth data per detector
-        low_res_azimuth_dict = {}
+        low_res_azimuth_dict[detector_id] = azi_extrapolated_highres
 
-        for detector_id in [str(i) for i in range(1, 13)]:
-            zen, azi = parse_viewing_incidence_angle_by_detector(
-                tile_metadata_path, detector_id, "2"
-            )
-            if zen is None or azi is None or zen.size == 0 or azi.size == 0:
-                continue
+    if not low_res_azimuth_dict:
+        raise ValueError("No azimuth data could be parsed for any detector.")
 
-            azi_array = np.array(azi, dtype=np.float64)
-            azi_extrapolated = extrapolate_array(azi_array)
-
-            azi_extrapolated_highres = resize(
-                azi_extrapolated,
-                output_shape=detector_mask.shape,
-                order=1,
-                mode="edge",
-                anti_aliasing=True,
-                preserve_range=True,
+    # Initialize high-res azimuth array
+    high_res_azimuth = np.zeros_like(detector_mask, dtype=np.float32)
+    for i in range(detector_mask.shape[0]):
+        for j in range(detector_mask.shape[1]):
+            pixel_val = detector_mask[i, j]
+            high_res_azimuth[i, j] = process_pixel(
+                pixel_val, (i, j), detector_mask.shape, low_res_azimuth_dict
             )
 
-            low_res_azimuth_dict[detector_id] = azi_extrapolated_highres
+    # Get UTM coordinates from the image
+    x_img, y_img = read_image_coordinates(tile_metadata_path, "B03")
+    x_min, x_max = float(x_img.min()), float(x_img.max())
+    y_min, y_max = float(y_img.min()), float(y_img.max())
 
-        if not low_res_azimuth_dict:
-            raise ValueError("No azimuth data could be parsed for any detector.")
+    # Create evenly spaced coordinate arrays that span the UTM extent
+    height, width = high_res_zenith.shape
+    x_coords = np.linspace(x_min, x_max, num=width)
+    y_coords = np.linspace(y_max, y_min, num=height)  # y decreases in image space
 
-        # Initialize high-res azimuth array
-        high_res_azimuth = np.zeros_like(detector_mask, dtype=np.float32)
-        for i in range(detector_mask.shape[0]):
-            for j in range(detector_mask.shape[1]):
-                pixel_val = detector_mask[i, j]
-                high_res_azimuth[i, j] = process_pixel(
-                    pixel_val, (i, j), detector_mask.shape, low_res_azimuth_dict
-                )
+    # Save the extent for metadata
+    extent = (x_min, x_max, y_min, y_max)
 
-        # Get UTM coordinates from the image
-        x_img, y_img = read_image_coordinates(tile_metadata_path, "B03")
-        x_min, x_max = float(x_img.min()), float(x_img.max())
-        y_min, y_max = float(y_img.min()), float(y_img.max())
-
-        # Create evenly spaced coordinate arrays that span the UTM extent
-        height, width = high_res_zenith.shape
-        x_coords = np.linspace(x_min, x_max, num=width)
-        y_coords = np.linspace(y_max, y_min, num=height)  # y decreases in image space
-
-        # Save the extent for metadata
-        extent = (x_min, x_max, y_min, y_max)
-
-        # Create xarray.Dataset
-        return xr.Dataset(
-            data_vars={
-                "VZA": (("y", "x"), high_res_zenith.astype(np.float32)),
-                "VAA": (("y", "x"), high_res_azimuth),
-            },
-            coords={
-                "x": x_coords,
-                "y": y_coords,
-            },
-            attrs={"title": "Sentinel Viewing Incidence Angles", "scale": scale, "extent": extent},
-        )
-
-    except Exception as e:
-        raise RuntimeError(f"Failed to parse high-resolution viewing incidence angles: {e}") from e
+    # Create xarray.Dataset
+    return xr.Dataset(
+        data_vars={
+            "VZA": (("y", "x"), high_res_zenith.astype(np.float32)),
+            "VAA": (("y", "x"), high_res_azimuth),
+        },
+        coords={
+            "x": x_coords,
+            "y": y_coords,
+        },
+        attrs={"title": "Sentinel Viewing Incidence Angles", "scale": scale, "extent": extent},
+    )
 
 
 def parse_ephemeris_sentinel(datatsrip_metadata_path: str) -> pd.DataFrame:
