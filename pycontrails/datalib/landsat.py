@@ -1,4 +1,4 @@
-"""Support for LANDSAT 8-9 imagery retrieval through Google Cloud Platform."""
+"""Support for LANDSAT Collection 1 imagery retrieval through Google Cloud Platform."""
 
 from __future__ import annotations
 
@@ -60,11 +60,15 @@ def query(
     extent: str | None = None,
     columns: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Find Landsat 8 and 9 imagery within spatiotemporal region of interest.
+    """Find Landsat Collection 1 imagery within spatiotemporal region of interest.
 
     This function requires access to the
     `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
     and uses the `BigQuery python library <https://cloud.google.com/python/docs/reference/bigquery/latest/index.html>`__.
+
+    See :func:`pycontrails.datalib.leo_utils.landsat_metadata.open_landsat_metadata`
+    to download and parse the daily bulk Landsat metadata CSV file from USGS. This CSV holds
+    Collection 2 metadata, so includes the most recent scenes from Landsat 8 and 9.
 
     Parameters
     ----------
@@ -77,7 +81,7 @@ def query(
         to a global extent.
     columns : list[str] | None, optional
         Columns to return from Google
-        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
+        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table>`__.
         By default, returns imagery base URL and sensing time.
 
     Returns
@@ -99,7 +103,7 @@ def intersect(
     flight: Flight,
     columns: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Find Landsat 8 and 9 imagery intersecting with flight track.
+    """Find Landsat Collection 1 imagery intersecting with flight track.
 
     This function will return all scenes with a bounding box that includes flight waypoints
     both before and after the sensing time.
@@ -108,13 +112,17 @@ def intersect(
     `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
     and uses the `BigQuery python library <https://cloud.google.com/python/docs/reference/bigquery/latest/index.html>`__.
 
+    See :func:`pycontrails.datalib.leo_utils.landsat_metadata.open_landsat_metadata`
+    to download and parse the daily bulk Landsat metadata CSV file from USGS. This CSV holds
+    Collection 2 metadata, so includes the most recent scenes from Landsat 8 and 9.
+
     Parameters
     ----------
     flight : Flight
         Flight for intersection
     columns : list[str] | None, optional
         Columns to return from Google
-        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
+        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table>`__.
         By default, returns imagery base URL and sensing time.
 
     Returns
@@ -131,13 +139,24 @@ def intersect(
 
 
 class Landsat:
-    """Support for Landsat 8 and 9 data handling.
+    """Support for Landsat Collection 1 data handling.
 
-    This class uses the `PROJ <https://proj.org/en/9.4/index.html>`__ coordinate
-    transformation software through the
-    `pyproj <https://pyproj4.github.io/pyproj/stable/index.html>`__ python interface.
-    pyproj is installed as part of the ``sat`` set of optional dependencies
-    (``pip install pycontrails[sat]``), but PROJ must be installed manually.
+    This interface does not support Landsat Collection 2, which includes all new
+    scenes from Landsat 8 and 9 and benefits from improved calibration and processing
+    algorithms. The USGS stopped updating Collection 1 in 2021, so this interface
+    works only with legacy data. In addition, Collection 1 does not include viewing angle
+    data, preventing scan angle or sensing time corrections.
+
+    To access Landsat Collection 2 data, use one of the following tools:
+
+    - `USGS M2M API <https://m2m.cr.usgs.gov/>`__ (requires registration)
+    - `USGS Earth Explorer <https://earthexplorer.usgs.gov/>`__ (requires registration;
+       includes a web interface)
+    - `Amazon Web Services (AWS) <https://registry.opendata.aws/usgs-landsat/>`__ (requester pays)
+    - `Google Earth Engine <https://developers.google.com/earth-engine/datasets/catalog/landsat>`__
+      (requires registration; stricter usage limits than the other options)
+
+    These services are not yet integrated with pycontrails.
 
     Parameters
     ----------
@@ -265,31 +284,6 @@ class Landsat:
         if not self.cachestore.exists(sink):
             fs.get(url, sink)
         return sink
-
-    # the following functions have to be implemented
-    def get_viewing_angle_metadata(self) -> xr.Dataset:
-        """Return the dataset with viewing angles."""
-        raise NotImplementedError
-
-    def get_detector_id(self, x: int, y: int) -> int:
-        """Return the detector_id of a pixel in UTM."""
-        raise NotImplementedError
-
-    def get_time_delay_detector(self, detector_id: str, band: str) -> pd.Timedelta:
-        """Return the time delay of a detector."""
-        raise NotImplementedError
-
-    def get_ephemeris(self) -> pd.DataFrame:
-        """Return the satellite ephemeris as dataframe."""
-        raise NotImplementedError
-
-    def get_crs(self) -> pyproj.CRS:
-        """Return the CRS of the satellite image."""
-        raise NotImplementedError
-
-    def get_sensing_time(self) -> pd.Timestamp:
-        """Return the sensing_time of the satellite image."""
-        raise NotImplementedError
 
 
 def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
