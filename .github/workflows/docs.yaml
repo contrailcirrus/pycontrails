@@ -41,7 +41,7 @@ jobs:
         id: get_version
         run: echo "version=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip
