@@ -10,12 +10,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyproj
-import rasterio
 import xarray as xr
-from rasterio.enums import Resampling
-from rasterio.features import rasterize
 from scipy.interpolate import griddata
 from skimage.transform import resize
+
+from pycontrails.utils import dependencies
 
 BAND_ID_MAPPING = {
     "B01": 0,
@@ -167,6 +166,18 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
     npt.NDArray[np.integer]
         2D array of detector IDs (1 to 12), shape (height, width).
     """
+    try:
+        import rasterio
+        import rasterio.enums
+        import rasterio.features
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            name="landsat module",
+            package_name="rasterio",
+            module_not_found_error=exc,
+            pycontrails_optional_package="sat",
+        )
+
     scale = int(scale)
 
     file_ext = os.path.splitext(metadata_path)[1].lower()
@@ -177,7 +188,7 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
             return src.read(
                 1,
                 out_shape=(int(src.height // scale), int(src.width // scale)),
-                resampling=Resampling.nearest,
+                resampling=rasterio.enums.Resampling.nearest,
             )
 
     if file_ext == ".gml":
@@ -207,7 +218,7 @@ def parse_high_res_detector_mask(metadata_path: str, scale: int = 10) -> npt.NDA
         # Rasterize detector polygons
         local_width = int((maxx - minx) / resolution)
         local_height = int((maxy - miny) / resolution)
-        local_mask = rasterize(
+        local_mask = rasterio.features.rasterize(
             [(geom, det_id) for geom, det_id in zip(gdf.geometry, gdf.detector_id, strict=False)],
             out_shape=(local_height, local_width),
             transform=transform,
