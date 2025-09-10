@@ -3,6 +3,7 @@
 import os
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -573,9 +574,9 @@ def get_detector_id(
     return out
 
 
-def get_time_delay_detector(
-    datastrip_metadata_path: str, target_detector_id: str, band: str = "B03"
-) -> pd.Timedelta:
+def get_time_delay_detectors(
+    datastrip_metadata_path: str, band: str = "B03"
+) -> dict[int, pd.Timedelta]:
     """
     Return the time delay for a given detector.
 
@@ -593,21 +594,15 @@ def get_time_delay_detector(
     ----------
     datastrip_metadata_path : str
         The location of the DATASTRIP xml file
-    target_detector_id : str
-        Detector ID for which the timedelta needs to be calculated
     band : str, optional
         Spectral band to use for geometry parsing. Default is "B03".
 
     Returns
     -------
-    pd.Timedelta
-        Time offset for the given detector ID.
+    dict[int, pd.Timedelta]
+        Time offset for each detector ID (1 to 12) as a dictionary.
     """
-    if len(target_detector_id) == 1:
-        target_detector_id = "0" + target_detector_id
-
     band_id = str(_band_id(band))
-    detector_times = []
 
     # Parse XML
     tree = ET.parse(datastrip_metadata_path)
@@ -621,22 +616,27 @@ def get_time_delay_detector(
     if time_information_element is None:
         raise ValueError("Time_Stamp element not found in DATASTRIP metadata")
 
-    for cband in time_information_element:
-        if cband.get("bandId") != band_id:
+    cband = next((c for c in time_information_element if c.get("bandId") == band_id), None)
+    if cband is None:
+        raise ValueError(f"Band ID {band_id} not found in Time_Stamp element")
+
+    delays = {}
+    for detector in cband:
+        detector_id = detector.get("detectorId")
+        if detector_id is None:
             continue
 
-        for detector in cband:
-            detector_id = detector.get("detectorId")
-            gps_time_elem = detector.find("GPS_TIME")
-            if detector_id is None or gps_time_elem is None or gps_time_elem.text is None:
-                continue
-            detector_times.append([detector_id, gps_time_elem.text])
+        gps_time_elem = detector.find("GPS_TIME")
+        if gps_time_elem is None or gps_time_elem.text is None:
+            continue
 
-    if not detector_times:
+        # Convert detector_id to int and store the GPS time
+        delays[int(detector_id)] = gps_time_elem.text
+
+    if not delays:
         raise ValueError(f"No GPS times found for band {band_id}")
 
-    time_difference = _calculate_timedelta(detector_times, target_detector_id)
-    return pd.to_timedelta(time_difference)
+    return _calculate_timedeltas(delays)
 
 
 # -----------------------------------------------------------------------------------
@@ -656,32 +656,25 @@ def gps_to_utc(gps_time: datetime) -> datetime:
     return gps_time + gps_tai_offset - utc_tai_offset
 
 
-def _calculate_average_detector_time(detector_times: list[list[str]]) -> datetime:
+def _calculate_average_time(times: Collection[datetime]) -> datetime:
     """Return the average time from a list of times."""
-    # Convert string times to datetime objects
-    times = [datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f") for _, time_str in detector_times]
-
     # Compute the average time
     avg_timestamp = sum(t.timestamp() for t in times) / len(times)
     return datetime.fromtimestamp(avg_timestamp)
 
 
-def _calculate_timedelta(detector_times: list[list[str]], target_detector_id: str) -> timedelta:
+def _calculate_timedeltas(detector_times: dict[int, str]) -> dict[int, pd.Timedelta]:
     """Calculate the time difference between a detector and the average time."""
-    avg_time = _calculate_average_detector_time(detector_times)
+    detector_times_dt = {
+        detector_id: datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
+        for detector_id, time_str in detector_times.items()
+    }
 
-    # Find the time for the target detector ID
-    target_time = None
-    for detector_id, time_str in detector_times:
-        if detector_id == target_detector_id:
-            target_time = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
-            break
-
-    if target_time is None:
-        raise ValueError(f"Detector ID {target_detector_id} not found")
-
-    # Compute the timedelta
-    return target_time - avg_time
+    avg_time = _calculate_average_time(detector_times_dt.values())
+    return {
+        detector_id: pd.Timedelta(det_time - avg_time)
+        for detector_id, det_time in detector_times_dt.items()
+    }
 
 
 # -----------------------------------------------------------------------------------
