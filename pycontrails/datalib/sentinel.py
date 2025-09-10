@@ -16,7 +16,7 @@ from pycontrails.datalib.leo_utils import correction, search
 from pycontrails.datalib.leo_utils.sentinel_metadata import (
     _band_id,
     get_detector_id,
-    get_time_delay_detector,
+    get_time_delay_detectors,
     parse_ephemeris_sentinel,
     parse_high_res_viewing_incidence_angles,
     parse_sensing_time,
@@ -270,10 +270,27 @@ class Sentinel:
         _, detector_band_sink = self._get_correction_meta()
         return get_detector_id(detector_band_sink, granule_sink, x, y)
 
-    def get_time_delay_detector(self, detector_id: str, band: str = "B03") -> pd.Timedelta:
-        """Return the time delay of a detector."""
+    def get_time_delay_detector(
+        self, detector_id: npt.NDArray[np.integer], band: str = "B03"
+    ) -> npt.NDArray[np.timedelta64]:
+        """Return the time delay for the given detector IDs."""
         datastrip_sink, _ = self._get_correction_meta()
-        return get_time_delay_detector(datastrip_sink, detector_id, band)
+        delays = get_time_delay_detectors(datastrip_sink, band)
+
+        # Map the delays to the input array
+        unique_ids, inverse = np.unique(detector_id, return_inverse=True)
+
+        # Get offsets for each unique detector
+        offset_list = []
+        for did in unique_ids:
+            if did == 0:
+                offset_list.append(np.timedelta64("NaT"))
+            else:
+                offset_list.append(delays.get(did, np.timedelta64("NaT")))
+        offset_values = np.array(offset_list, dtype="timedelta64[ns]")
+
+        # Map back to the original array
+        return offset_values[inverse]
 
     def get_ephemeris(self) -> pd.DataFrame:
         """Return the satellite ephemeris as a :class:`pandas.DataFrame`."""
@@ -290,6 +307,73 @@ class Sentinel:
         """Return the sensing_time of the satellite image."""
         granule_meta_path, _ = self._get_meta()
         return parse_sensing_time(granule_meta_path)
+
+    def colocate_flight(
+        self,
+        flight: Flight,
+        band: str = "B03",
+    ) -> tuple[float, float, np.datetime64]:
+        """Colocate a flight track with satellite image pixels.
+
+        This function projects flight positions into the UTM coordinate system,
+        then uses the provided satellite handler (Sentinel or Landsat) to iteratively
+        match the satellite pixels with flight points, refining the match to improve alignment.
+
+        Parameters
+        ----------
+        flight : Flight
+            The flight object.
+        band : str, optional
+            Spectral band to use for geometry parsing. Default is "B03".
+
+        Returns
+        -------
+        tuple[float, float, np.datetime64]
+            A tuple containing the x and y coordinates of the flight position in the
+            satellite image CRS, and the corrected sensing_time of the satellite image.
+        """
+        utm_crs = self.get_crs()
+
+        # Project from WGS84 to the x and y coordinates in the UTM coordinate system
+        x, y = pyproj.Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True).transform(
+            flight["longitude"], flight["latitude"]
+        )
+        z = flight.altitude
+
+        # Apply sensing angle correction
+        ds_angles = self.get_viewing_angle_metadata()
+        x_proj, y_proj = correction.scan_angle_correction(ds_angles, x, y, z, n_iter=3)
+
+        # Get the satellite ephemeris data prepared
+        ephemeris = self.get_ephemeris()
+
+        # Estimate the scan time for each point
+        scan_time_no_offset = correction.estimate_scan_time(ephemeris, utm_crs, x_proj, y_proj)
+
+        detector_id = self.get_detector_id(x_proj, y_proj)
+        offset = self.get_time_delay_detector(detector_id, band=band)
+        scan_time = scan_time_no_offset + offset
+
+        # To finish up, find the point along the project flight track at which the satellite
+        # scan time equals the flight time
+        # It's possible that if the flight has a really fine time resolution, that
+        # the diff_times array will have multiple zeros. This is okay, as np.interp
+        # will just return the first one.
+        valid = np.isfinite(x_proj) & np.isfinite(y_proj) & np.isfinite(scan_time)
+
+        diff_times = flight["time"][valid] - scan_time[valid]
+        if diff_times[0] > np.timedelta64(0) or diff_times[-1] < np.timedelta64(0):
+            msg = "Flight track does not overlap with satellite image in time."
+            raise ValueError(msg)
+
+        index = np.arange(len(diff_times))
+        frac_idx = np.interp(0, diff_times.astype(int), index)
+
+        x1 = np.interp(frac_idx, index, x_proj[valid]).item()
+        y1 = np.interp(frac_idx, index, y_proj[valid]).item()
+        t1 = np.interp(frac_idx, index, scan_time[valid].astype(int)).item()
+
+        return x1, y1, np.datetime64(int(t1), "ns")
 
     # -------------------------------------------------------------------------------------
 
@@ -562,155 +646,3 @@ def to_true_color(ds: xr.Dataset) -> tuple[np.ndarray, pyproj.CRS]:
     )
 
     return img, crs
-
-
-def _interpolate_columns(
-    df: pd.DataFrame,
-    timestamp: pd.Timestamp | str,
-    columns: list[str],
-    time_col: str = "time",
-) -> tuple:
-    """
-    Interpolate multiple columns in a DataFrame at a given timestamp.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing timestamped data.
-    timestamp : pd.Timestamp | str
-        The timestamp at which to interpolate.
-    columns : list[str]
-        List of column names to interpolate.
-    time_col : str, optional
-        Name of the timestamp column in df. Default is 'time'.
-
-    Returns
-    -------
-    tuple
-        Tuple of interpolated values in the same order as `columns`.
-    """
-    df = df.copy()
-    df[time_col] = pd.to_datetime(df[time_col])
-    df = df.sort_values(time_col)
-
-    timestamp = pd.to_datetime(timestamp)
-
-    if timestamp <= df[time_col].iloc[0]:
-        before, after = df.iloc[0], df.iloc[1]
-    elif timestamp >= df[time_col].iloc[-1]:
-        before, after = df.iloc[-2], df.iloc[-1]
-    else:
-        before = df[df[time_col] <= timestamp].iloc[-1]
-        after = df[df[time_col] >= timestamp].iloc[0]
-
-    t0 = before[time_col].value
-    t1 = after[time_col].value
-    t = timestamp.value
-
-    ratio = (t - t0) / (t1 - t0) if t1 != t0 else 0
-
-    return tuple(before[col] + ratio * (after[col] - before[col]) for col in columns)
-
-
-def colocate_flights(
-    flight: Flight,
-    handler: Sentinel,
-    utm_crs: pyproj.CRS,
-    n_iter: int = 3,
-    search_window: int = 5,
-) -> tuple[list[float], pd.Timestamp]:
-    """Colocate IAGOS flight track points with satellite image pixels.
-
-    This function projects IAGOS flight positions into the UTM coordinate system,
-    then uses the provided satellite handler (Sentinel or Landsat) to iteratively
-    match the satellite pixels with flight points, refining the match to improve alignment.
-
-    Parameters
-    ----------
-    flight : Flight
-        The flight object.
-    handler : Sentinel
-        The satellite image handler.
-    utm_crs : pyproj.CRS
-        UTM coordinate reference system used for projection.
-    n_iter : int, optional
-        Number of iterations to refine the sensing_time correction. Default is 3.
-    search_window : int, optional
-        Time window. Default is 5 minutes.
-
-    Returns
-    -------
-    tuple[list[float], pd.Timestamp]
-        A tuple containing:
-        - A list with the x and y coordinates of the flight in the UTM coordinate system.
-        - The corrected sensing time as a pandas Timestamp.
-    """
-    # get the average sensing_time for the granule to speed up processing
-    initial_sensing_time = handler.get_sensing_time()
-    initial_sensing_time = initial_sensing_time.tz_localize(None)
-
-    # turn Flight object to dataframe
-    flight_df = flight.dataframe.copy()
-
-    # keep only 'search_window' minutes before and after sensing_time to speed up function
-    flight_df["time"] = pd.to_datetime(flight_df["time"])
-    flight_df = flight_df[
-        flight_df["time"].between(
-            initial_sensing_time - pd.Timedelta(minutes=search_window),
-            initial_sensing_time + pd.Timedelta(minutes=search_window),
-        )
-    ]
-    # add the x and y coordinates in the UTM coordinate system
-    x, y = pyproj.Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True).transform(
-        flight_df["longitude"], flight_df["latitude"]
-    )
-    z = flight_df["altitude"].to_numpy()
-
-    # project the x and y location to the image level
-    ds_viewing_angles = handler.get_viewing_angle_metadata()
-    x_proj, y_proj = correction.scan_angle_correction(ds_viewing_angles, x, y, z, n_iter=3)
-    flight_df.loc[:, "x_proj"] = x_proj
-    flight_df.loc[:, "y_proj"] = y_proj
-
-    # get the satellite ephemeris data prepared
-    satellite_ephemeris = handler.get_ephemeris()
-
-    # create the initial guess for the location
-    x_proj, y_proj = _interpolate_columns(
-        flight_df, initial_sensing_time, columns=["x_proj", "y_proj"]
-    )
-    if np.isnan(x_proj) or np.isnan(y_proj):
-        raise ValueError("Aircraft is outside of the image bounds")
-
-    # Iteratively correct flight location based on satellite position
-    for _ in range(n_iter):
-        corrected_sensing_time = correction.estimate_scan_time(
-            satellite_ephemeris, utm_crs, x_proj, y_proj
-        )
-        if corrected_sensing_time is None or len(corrected_sensing_time) == 0:
-            raise ValueError(
-                "No valid scan time could be estimated from the UTM coordinates during iteration."
-            )
-
-        corrected_sensing_time = corrected_sensing_time[0]
-
-        x_proj, y_proj = _interpolate_columns(
-            flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"]
-        )
-        if x_proj is None or y_proj is None or np.isnan(x_proj) or np.isnan(y_proj):
-            raise ValueError("Interpolation failed after scan time correction iteration.")
-
-    # Optional: correct sensing_time based on the detector it is in
-    try:
-        detector_id = handler.get_detector_id(x_proj, y_proj)
-    except ValueError:
-        detector_id = None
-    if detector_id is not None and detector_id != 0:
-        detector_time_offset = handler.get_time_delay_detector(str(detector_id), "B03")
-        corrected_sensing_time += detector_time_offset
-
-        x_proj, y_proj = _interpolate_columns(
-            flight_df, corrected_sensing_time, columns=["x_proj", "y_proj"]
-        )
-
-    return [x_proj, y_proj], corrected_sensing_time
