@@ -89,10 +89,10 @@ def test_pl_path_to_met(met_ecmwf_pl_path: str) -> None:
         shapes = shapes + mds.data[coord].shape
     assert shapes == mds.data["t"].values.shape
 
-    with pytest.raises(ValueError, match="Set 'copy=True' when using 'wrap_longitude=True'."):
+    with pytest.raises(ValueError, match=r"Set 'copy=True' when using 'wrap_longitude=True'."):
         MetDataset(ds, wrap_longitude=True, copy=False)
 
-    with pytest.raises(ValueError, match="Coordinate 'latitude' not sorted."):
+    with pytest.raises(ValueError, match=r"Coordinate 'latitude' not sorted."):
         MetDataset(ds, copy=False)
 
     assert not mds.is_zarr
@@ -122,7 +122,7 @@ def test_metdataarray_constructor(
     assert mda2.is_wrapped
     assert mda2.shape[0] == 17
 
-    with pytest.raises(ValueError, match="Set 'copy=True' when using 'wrap_longitude=True'."):
+    with pytest.raises(ValueError, match=r"Set 'copy=True' when using 'wrap_longitude=True'."):
         MetDataArray(mda.data, wrap_longitude=True, copy=False)
 
     # Cannot instantiate MetDataArray without time or level coord
@@ -1358,7 +1358,7 @@ def test_provider_attr_warning(met_ecmwf_sl_path: str, provider: str) -> None:
     ds = xr.open_dataset(met_ecmwf_sl_path)
     mds = MetDataset(ds)
 
-    with pytest.raises(KeyError, match="Specify 'provider' attribute on underlying dataset."):
+    with pytest.raises(KeyError, match=r"Specify 'provider' attribute on underlying dataset."):
         _ = mds.provider_attr
 
     mds.attrs["provider"] = provider
@@ -1401,5 +1401,5 @@ def test_float32_level(met_ecmwf_pl_path: str, copy: bool) -> None:
         assert mds.data["level"].dtype == np.float64
         return
 
-    with pytest.raises(ValueError, match="Level values must have dtype <class 'numpy.float64'>"):
+    with pytest.raises(ValueError, match=r"Level values must have dtype <class 'numpy.float64'>"):
         MetDataset(ds, copy=copy)

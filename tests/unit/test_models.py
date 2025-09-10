@@ -163,7 +163,7 @@ def test_model_type_guards(met_era5_fake: MetDataset, flight_fake: Flight) -> No
     met = model.require_met()
     assert met is model.met
 
-    with pytest.raises(TypeError, match="pycontrails.core.flight.Flight"):
+    with pytest.raises(TypeError, match=r"pycontrails.core.flight.Flight"):
         model.require_source_type(Flight)
 
     model.set_source(flight_fake)
@@ -259,7 +259,7 @@ def test_model_met_grid_eval(met_era5_fake: MetDataset, flight_fake: Flight) -> 
     assert np.all(out.data.values == met_era5_fake.data["air_temperature"].values)
 
     with pytest.raises(
-        TypeError, match="Meteorology is required for this model. Specify with ModelTestGrid"
+        TypeError, match=r"Meteorology is required for this model. Specify with ModelTestGrid"
     ):
         ModelTestGrid()
 

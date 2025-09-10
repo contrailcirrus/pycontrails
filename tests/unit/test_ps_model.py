@@ -574,11 +574,11 @@ def test_ps_grid_raises(met_era5_fake: MetDataset) -> None:
     """Confirm that the PSGrid model raises error if the aircraft_mass model param is not None."""
 
     model = PSGrid(met_era5_fake)
-    with pytest.raises(NotImplementedError, match="The 'aircraft_mass' parameter must be None."):
+    with pytest.raises(NotImplementedError, match=r"The 'aircraft_mass' parameter must be None."):
         model.eval(aircraft_mass=60000)
 
     model = PSGrid(met_era5_fake, aircraft_mass=60000)
-    with pytest.raises(NotImplementedError, match="The 'aircraft_mass' parameter must be None."):
+    with pytest.raises(NotImplementedError, match=r"The 'aircraft_mass' parameter must be None."):
         model.eval()
 
 

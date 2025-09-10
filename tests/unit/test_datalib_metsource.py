@@ -219,7 +219,7 @@ def test_parse_grid() -> None:
     """Test grid parsing."""
 
     # raise value error if not supported
-    with pytest.raises(ValueError, match="Grid input 0.3 must be one of"):
+    with pytest.raises(ValueError, match=r"Grid input 0.3 must be one of"):
         metsource.parse_grid(0.3, supported=[0.25, 0.5])
 
 

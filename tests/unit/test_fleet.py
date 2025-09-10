@@ -144,7 +144,7 @@ def test_duplicate_flight_ids(syn: SyntheticFlight) -> None:
     fls = [syn() for _ in range(222)]
     fls[151].attrs.update(flight_id=333)
     fls[97].attrs.update(flight_id=333)
-    with pytest.raises(ValueError, match="Duplicate 'flight_id' 333 found."):
+    with pytest.raises(ValueError, match=r"Duplicate 'flight_id' 333 found."):
         Fleet.from_seq(fls)
 
 

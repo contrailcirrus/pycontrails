@@ -292,7 +292,7 @@ def test_apcemm_root_directory_param(met_apcemm: MetDataset, apcemm_paths: tuple
 
 def test_apcemm_root_directory_yaml(met_apcemm: MetDataset, apcemm_paths: tuple[str, str]) -> None:
     """Test APCEMM root directory based on input parameters."""
-    apcemm_path, apcemm_root = apcemm_paths
+    apcemm_path, _ = apcemm_paths
     model = APCEMM(
         met=met_apcemm,
         apcemm_path=apcemm_path,

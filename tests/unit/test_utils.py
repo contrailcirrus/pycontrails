@@ -249,7 +249,7 @@ def test_type_guard(met_cocip1: MetDataset) -> None:
     with pytest.raises(TypeError, match="must be of type"):
         type_guard("str", int)
 
-    with pytest.raises(TypeError, match="pycontrails.core.met.MetDataset"):
+    with pytest.raises(TypeError, match=r"pycontrails.core.met.MetDataset"):
         type_guard("str", (MetDataset, float))
 
     # custom error message
