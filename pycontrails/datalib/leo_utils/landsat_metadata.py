@@ -40,7 +40,7 @@ def _split_antimeridian(polygon: shapely.Polygon) -> shapely.MultiPolygon:
     """Split a polygon into two polygons at the antimeridian.
 
     This implementation assumes that the passed polygon is actually situated
-    on the antimeridian and does simultaneously cross the meridian.
+    on the antimeridian and does not simultaneously cross the meridian.
     """
     # Shift the x-coordinates of the polygon to the right
     # The `valid_poly` will not be valid if the polygon spans the meridian
