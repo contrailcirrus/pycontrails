@@ -168,12 +168,12 @@ class DiskCacheStore(CacheStore):
 
     Parameters
     ----------
-    allow_clear : bool, optional
-        Allow this cache to be cleared using :meth:`clear()`. Defaults to False.
-    cache_dir : str | pathlib.Path, optional
+    cache_dir : str | pathlib.Path | None, optional
         Root cache directory.
         By default, looks first for ``PYCONTRAILS_CACHE_DIR`` environment variable,
         then uses the OS specific :func:`platformdirs.user_cache_dir` function.
+    allow_clear : bool, optional
+        Allow this cache to be cleared using :meth:`clear()`. Defaults to False.
 
     Examples
     --------

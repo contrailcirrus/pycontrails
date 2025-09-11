@@ -86,7 +86,7 @@ class VectorDataDict(dict[str, np.ndarray]):
 
     Parameters
     ----------
-    data : dict[str, np.ndarray], optional
+    data : dict[str, np.ndarray] | None, optional
         Dictionary input. A shallow copy is always made.
     """
 
@@ -112,7 +112,7 @@ class VectorDataDict(dict[str, np.ndarray]):
         ----------
         k : str
             Key
-        v : np.ndarray
+        v : npt.ArrayLike
             Values
 
         See Also
@@ -145,12 +145,12 @@ class VectorDataDict(dict[str, np.ndarray]):
         ----------
         k : str
             Key
-        default : npt.ArrayLike, optional
+        default : npt.ArrayLike | None, optional
             Default value for key ``k``
 
         Returns
         -------
-        Any
+        np.ndarray
             Value at ``k``
         """
         ret = self.get(k, None)
@@ -647,13 +647,13 @@ class VectorDataset:  # noqa: PLW1641
             List of :class:`VectorDataset` instances to concatenate.
         infer_attrs : bool, optional
             If True, infer attributes from the first element in the sequence.
-        fill_value : float, optional
+        fill_value : float | None, optional
             Fill value to use when concatenating arrays. By default None, which raises
             an error if incompatible keys are found.
 
         Returns
         -------
-        VectorDataset
+        Self
             Sum of all instances in ``vectors``.
 
         Raises
@@ -997,7 +997,7 @@ class VectorDataset:  # noqa: PLW1641
 
         Parameters
         ----------
-        ignore_keys: str | Iterable[str], optional
+        ignore_keys: str | Iterable[str] | None, optional
             Do not broadcast selected keys.
             Defaults to None.
         overwrite : bool, optional
@@ -1281,9 +1281,9 @@ class VectorDataset:  # noqa: PLW1641
             Passed into :meth:`filter`. Defaults to True. Recommend to keep as True
             based on `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_.
 
-        Returns
-        -------
-        Generator[Self, None, None]
+        Yields
+        ------
+        Self
             Generator of split vectors.
 
         See Also
@@ -1320,27 +1320,27 @@ class GeoVectorDataset(VectorDataset):
         override ``data`` inputs. Expects ``altitude`` in meters and ``time``
         as a DatetimeLike (or array that can processed with :meth:`pd.to_datetime`).
         Additional waypoint-specific data can be included as additional keys/columns.
-    longitude : npt.ArrayLike, optional
+    longitude : npt.ArrayLike | None, optional
         Longitude data.
         Defaults to None.
-    latitude : npt.ArrayLike, optional
+    latitude : npt.ArrayLike | None, optional
         Latitude data.
         Defaults to None.
-    altitude : npt.ArrayLike, optional
+    altitude : npt.ArrayLike | None, optional
         Altitude data, [:math:`m`].
         Defaults to None.
-    altitude_ft : npt.ArrayLike, optional
+    altitude_ft : npt.ArrayLike | None, optional
         Altitude data, [:math:`ft`].
         Defaults to None.
-    level : npt.ArrayLike, optional
+    level : npt.ArrayLike | None, optional
         Level data, [:math:`hPa`].
         Defaults to None.
-    time : npt.ArrayLike, optional
+    time : npt.ArrayLike | None, optional
         Time data.
         Expects an array of DatetimeLike values,
         or array that can processed with :meth:`pd.to_datetime`.
         Defaults to None.
-    attrs : dict[Hashable, Any] | AttrDict, optional
+    attrs : dict[str, Any] | None, optional
         Additional properties as a dictionary.
         Defaults to {}.
     copy : bool, optional
@@ -1606,8 +1606,8 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        pd.DataFrame
-            :class:`pd.DataFrame` with columns `longitude`, `latitude`, `level`, and `time`.
+        dict[str, np.ndarray]
+            A dictionary with fields `longitude`, `latitude`, `level`, and `time`.
         """
         return {
             "longitude": self["longitude"],
@@ -1628,8 +1628,6 @@ class GeoVectorDataset(VectorDataset):
         crs : str
             Target CRS. Passed into to :class:`pyproj.Transformer`. The source CRS
             is assumed to be EPSG:4326.
-        copy : bool, optional
-            Copy data on transformation. Defaults to True.
 
         Returns
         -------
@@ -1675,7 +1673,7 @@ class GeoVectorDataset(VectorDataset):
 
         Parameters
         ----------
-        met : MetDataset | MetDataArray
+        met : met_module.MetDataset | met_module.MetDataArray
             MetDataset or MetDataArray to compare.
 
         Returns
@@ -1719,15 +1717,15 @@ class GeoVectorDataset(VectorDataset):
 
         Parameters
         ----------
-        mda : MetDataArray
+        mda : met_module.MetDataArray
             MetDataArray containing a meteorological variable at spatio-temporal coordinates.
-        longitude : npt.NDArray[np.floating], optional
+        longitude : npt.NDArray[np.floating] | None, optional
             Override existing coordinates for met interpolation
-        latitude : npt.NDArray[np.floating], optional
+        latitude : npt.NDArray[np.floating] | None, optional
             Override existing coordinates for met interpolation
-        level : npt.NDArray[np.floating], optional
+        level : npt.NDArray[np.floating] | None, optional
             Override existing coordinates for met interpolation
-        time : npt.NDArray[np.datetime64], optional
+        time : npt.NDArray[np.datetime64] | None, optional
             Override existing coordinates for met interpolation
         use_indices : bool, optional
             Experimental.
@@ -1870,7 +1868,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        tuple | None
+        interpolation.RGIArtifacts | None
             Previously cached output of
             :meth:`scipy.interpolate.RegularGridInterpolator._find_indices`,
             or None if cached output is not present on instance.
@@ -1950,7 +1948,7 @@ class GeoVectorDataset(VectorDataset):
 
         Parameters
         ----------
-        met : MetDataset | MetDataArray
+        met : met_module.MetDataType
             MetDataset or MetDataArray to downselect.
         longitude_buffer : tuple[float, float], optional
             Extend longitude domain past by ``longitude_buffer[0]`` on the low side
@@ -1975,7 +1973,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        MetDataset | MetDataArray
+        met_module.MetDataType
             Copy of downselected MetDataset or MetDataArray.
         """
         indexes = met.indexes

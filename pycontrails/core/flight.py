@@ -25,7 +25,7 @@ import pandas as pd
 import scipy.signal
 
 from pycontrails.core.fuel import Fuel, JetA
-from pycontrails.core.vector import AttrDict, GeoVectorDataset, VectorDataDict, VectorDataset
+from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorDataset
 from pycontrails.physics import constants, geo, units
 from pycontrails.utils import dependencies
 from pycontrails.utils.types import ArrayOrFloat
@@ -86,31 +86,31 @@ class Flight(GeoVectorDataset):
 
     Parameters
     ----------
-    data : dict[str, np.ndarray] | pd.DataFrame | VectorDataDict | VectorDataset | None
+    data : dict[str, npt.ArrayLike] | pd.DataFrame | VectorDataDict | VectorDataset | None
         Flight trajectory waypoints as data dictionary or :class:`pandas.DataFrame`.
         Must include columns ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``.
         Keyword arguments for ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``
         will override ``data`` inputs. Expects ``altitude`` in meters and ``time`` as a
         DatetimeLike (or array that can processed with :func:`pd.to_datetime`).
         Additional waypoint-specific data can be included as additional keys/columns.
-    longitude : npt.ArrayLike, optional
+    longitude : npt.ArrayLike | None, optional
         Flight trajectory waypoint longitude.
         Defaults to None.
-    latitude : npt.ArrayLike, optional
+    latitude : npt.ArrayLike | None, optional
         Flight trajectory waypoint latitude.
         Defaults to None.
-    altitude : npt.ArrayLike, optional
+    altitude : npt.ArrayLike | None, optional
         Flight trajectory waypoint altitude, [:math:`m`].
         Defaults to None.
-    altitude_ft : npt.ArrayLike, optional
+    altitude_ft : npt.ArrayLike | None, optional
         Flight trajectory waypoint altitude, [:math:`ft`].
-    level : npt.ArrayLike, optional
+    level : npt.ArrayLike | None, optional
         Flight trajectory waypoint pressure level, [:math:`hPa`].
         Defaults to None.
-    time : npt.ArrayLike, optional
+    time : npt.ArrayLike | None, optional
         Flight trajectory waypoint time.
         Defaults to None.
-    attrs : dict[str, Any], optional
+    attrs : dict[str, Any] | None, optional
         Additional flight properties as a dictionary.
         While different models may utilize Flight attributes differently,
         pycontrails applies the following conventions:
@@ -132,7 +132,7 @@ class Flight(GeoVectorDataset):
     copy : bool, optional
         Copy data on Flight creation.
         Defaults to True.
-    fuel : Fuel, optional
+    fuel : Fuel | None, optional
         Fuel used in flight trajectory. Defaults to :class:`JetA`.
     drop_duplicated_times : bool, optional
         Drop duplicate times in flight trajectory. Defaults to False.
@@ -219,7 +219,7 @@ class Flight(GeoVectorDataset):
         altitude_ft: npt.ArrayLike | None = None,
         level: npt.ArrayLike | None = None,
         time: npt.ArrayLike | None = None,
-        attrs: dict[str, Any] | AttrDict | None = None,
+        attrs: dict[str, Any] | None = None,
         copy: bool = True,
         fuel: Fuel | None = None,
         drop_duplicated_times: bool = False,
@@ -422,9 +422,9 @@ class Flight(GeoVectorDataset):
 
         Parameters
         ----------
-        dtype : np.dtype
+        dtype : npt.DTypeLike, optional
             Numpy dtype for time difference.
-            Defaults to ``np.float64``
+            Defaults to ``np.float32``
 
         Returns
         -------
@@ -519,7 +519,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        npt.NDArray[np.floating], npt.NDArray[np.floating]
+        tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
             Returns ``sin(a), cos(a)``, where ``a`` is the angle between the segment and the
             longitudinal axis. The final values are of both arrays are ``np.nan``.
 
@@ -774,7 +774,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        Flight
+        Self
             Filtered Flight instance
 
         Examples
@@ -828,7 +828,7 @@ class Flight(GeoVectorDataset):
         ----------
         freq : str, optional
             Resampling frequency, by default "1min"
-        fill_method : {"geodesic", "linear"}, optional
+        fill_method : str, optional
             Choose between ``"geodesic"`` and ``"linear"``, by default ``"geodesic"``.
             In geodesic mode, large gaps between waypoints are filled with geodesic
             interpolation and small gaps are filled with linear interpolation. In linear
@@ -837,7 +837,7 @@ class Flight(GeoVectorDataset):
             Threshold for geodesic interpolation, [:math:`m`].
             If the distance between consecutive waypoints is under this threshold,
             values are interpolated linearly.
-        nominal_rocd : float | None, optional
+        nominal_rocd : float, optional
             Nominal rate of climb / descent for aircraft type.
             Defaults to :attr:`constants.nominal_rocd`.
         drop : bool, optional
@@ -849,13 +849,13 @@ class Flight(GeoVectorDataset):
             Keep the original index of the :class:`Flight` in addition to the new
             resampled index. Defaults to ``False``.
             .. versionadded:: 0.45.2
-        time : npt.NDArray[np.datetime64], optional
+        time : npt.NDArray[np.datetime64] | None, optional
             Times to resample to. Will override ``freq`` if provided.
             .. versionadded:: 0.54.11
 
         Returns
         -------
-        Flight
+        Self
             Filled Flight
 
         Raises
@@ -995,7 +995,7 @@ class Flight(GeoVectorDataset):
         ----------
         freq : str, optional
             Resampling frequency, by default "1min"
-        fill_method : {"geodesic", "linear"}, optional
+        fill_method : str, optional
             Choose between ``"geodesic"`` and ``"linear"``, by default ``"geodesic"``.
             In geodesic mode, large gaps between waypoints are filled with geodesic
             interpolation and small gaps are filled with linear interpolation. In linear
@@ -1010,7 +1010,7 @@ class Flight(GeoVectorDataset):
         kernel_size : int, optional
             Passed directly to :func:`scipy.signal.medfilt`, by default 11.
             Passed also to :func:`scipy.signal.medfilt`
-        cruise_theshold : float, optional
+        cruise_threshold : float, optional
             Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
         force_filter: bool, optional
             If set to true, meth:`filter_altitude` will always be called. otherwise, it will only
@@ -1027,7 +1027,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        Flight
+        Self
             Filled Flight
         """
         clean_flight: Flight
@@ -1089,12 +1089,12 @@ class Flight(GeoVectorDataset):
         kernel_size : int, optional
             Passed directly to :func:`scipy.signal.medfilt`, by default 11.
             Passed also to :func:`scipy.signal.medfilt`
-        cruise_theshold : float, optional
+        cruise_threshold : float, optional
             Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
 
         Returns
         -------
-        Flight
+        Self
             Filtered Flight
 
         Notes
@@ -1142,8 +1142,8 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        (ArrayOrFloat, ArrayOrFloat, int | npt.NDArray[int])
-            latitude, longitude, and segment index cooresponding to distance.
+        tuple[ArrayOrFloat, ArrayOrFloat, np.intp | npt.NDArray[np.intp]]
+            latitude, longitude, and segment index corresponding to distance.
         """
 
         # Check if flight crosses antimeridian line
@@ -1376,7 +1376,7 @@ class Flight(GeoVectorDataset):
 
         Parameters
         ----------
-        key : str, optional
+        key : str | None, optional
             If provided, name of :attr:`data` column to group by.
         split_antimeridian : bool, optional
             Split linestrings that cross the antimeridian. Defaults to True.
@@ -1582,7 +1582,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        :class:`matplotlib.axes.Axes`
+        matplotlib.axes.Axes
             Plot
         """
         kwargs.setdefault("legend", False)
@@ -1600,7 +1600,7 @@ class Flight(GeoVectorDataset):
 
         Returns
         -------
-        :class:`matplotlib.axes.Axes`
+        matplotlib.axes.Axes
             Plot
         """
         kwargs.setdefault("legend", False)
@@ -1885,8 +1885,8 @@ def filter_altitude(
     time: npt.NDArray[np.datetime64],
     altitude_ft: npt.NDArray[np.floating],
     kernel_size: int = 17,
-    cruise_threshold: float = 120,
-    air_temperature: None | npt.NDArray[np.floating] = None,
+    cruise_threshold: float = 120.0,
+    air_temperature: npt.NDArray[np.floating] | None = None,
 ) -> npt.NDArray[np.floating]:
     """
     Filter noisy altitude on a single flight.
@@ -1904,9 +1904,9 @@ def filter_altitude(
     kernel_size : int, optional
         Passed directly to :func:`scipy.signal.medfilt`, by default 11.
         Passed also to :func:`scipy.signal.medfilt`
-    cruise_theshold : int, optional
+    cruise_threshold : float, optional
         Minimal length of time, in seconds, for a flight to be in cruise to apply median filter
-    air_temperature: None | npt.NDArray[np.floating]
+    air_temperature: npt.NDArray[np.floating] | None, optional
         Air temperature of each flight waypoint, [:math:`K`]
 
     Returns
@@ -2008,7 +2008,7 @@ def segment_duration(
     ----------
     time : npt.NDArray[np.datetime64]
         Waypoint time in ``np.datetime64`` format.
-    dtype : np.dtype
+    dtype : npt.DTypeLike, optional
         Numpy dtype for time difference.
         Defaults to ``np.float32``
 
@@ -2035,7 +2035,7 @@ def segment_phase(
 
     Parameters
     ----------
-    rocd: pt.NDArray[np.float64]
+    rocd: npt.NDArray[np.floating]
         Rate of climb and descent across segment, [:math:`ft min^{-1}`].
         See output from :func:`segment_rocd`.
     altitude_ft: npt.NDArray[np.floating]
@@ -2158,7 +2158,7 @@ def _resample_to_freq_or_time(
     freq : str
         Frequency to resample to. See :func:`pd.DataFrame.resample` for
         valid frequency strings.
-    time : pd.DatetimeIndex | None
+    time : npt.NDArray[np.datetime64] | None
         Times to resample to. Overrides ``freq`` if not ``None``.
 
     Returns

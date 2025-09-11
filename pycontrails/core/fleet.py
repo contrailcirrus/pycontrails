@@ -182,7 +182,7 @@ class Fleet(Flight):
 
         Returns
         -------
-        Fleet
+        Self
             A `Fleet` instance made from concatenating the :class:`Flight`
             instances in ``seq``. The fuel type is taken from the first :class:`Flight`
             in ``seq``.
