@@ -171,7 +171,6 @@ class DryAdvection(models.Model):
 
         interp_kwargs = self.interp_kwargs
 
-        dt_integration = self.params["dt_integration"]
         sedimentation_rate = self.params["sedimentation_rate"]
         dz_m = self.params["dz_m"]
         max_depth = self.params["max_depth"]
@@ -179,6 +178,7 @@ class DryAdvection(models.Model):
         source_time = self.source["time"]
 
         if timesteps is None:
+            dt_integration = self.params["dt_integration"]
             t0 = pd.Timestamp(source_time.min()).floor(pd.Timedelta(dt_integration)).to_numpy()
             t1 = source_time.max()
             timesteps = np.arange(
