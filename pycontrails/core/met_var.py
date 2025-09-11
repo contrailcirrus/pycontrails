@@ -80,7 +80,7 @@ class MetVariable:
 
         Returns
         -------
-        str
+        str | None
             Database link in the ECMWF Parameter Database
         """
         return (

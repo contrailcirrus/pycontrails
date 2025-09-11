@@ -142,7 +142,7 @@ def find_nearest_airport(
 
     Returns
     -------
-    str
+    str | None
         ICAO code of nearest airport.
         Returns None if no airport is found within ``bbox``.
 
