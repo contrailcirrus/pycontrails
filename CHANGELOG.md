@@ -5,7 +5,7 @@
 ### Features
 
 - Improve the accuracy of overlaying flight tracks and contrails on Landsat and Sentinel imagery. This includes:
-  - A new `correction` module to align vectorized aircraft data with satellite imagery using sensing-angle (parallax error), and scan-time corrections. *Naively overlaying ADS-B data results in errors of several kilometers; with this correction, typical errors are reduced to a few hundred meters.*
+  - A new `correction` module to align vectorized aircraft data with satellite imagery using sensing-angle (parallax error) and scan-time corrections. *Naively overlaying ADS-B data results in errors of several kilometers; with this correction, typical errors are reduced to a few hundred meters.*
   - An updated `Sentinel` interface for parsing metadata required for overlay correction (see the new `sentinel_metadata` module for low-level details). This includes a new `colocate_flight` method to overlay flight tracks on Sentinel-2 imagery.
   - A new `landsat_metadata` module for parsing Landsat metadata required for overlay correction (not exposed within the `Landsat` datalib).
   - A new `open_landsat_metadata` function for accessing the [USGS Bulk Metadata service](https://www.usgs.gov/landsat-missions/bulk-metadata-service).
