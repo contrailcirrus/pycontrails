@@ -342,7 +342,7 @@ class Sentinel:
 
         # Apply sensing angle correction
         ds_angles = self.get_viewing_angle_metadata()
-        x_proj, y_proj = correction.scan_angle_correction(ds_angles, x, y, z, n_iter=3)
+        x_proj, y_proj = correction.scan_angle_correction(ds_angles, x, y, z, maxiter=3)
 
         # Get the satellite ephemeris data prepared
         ephemeris = self.get_ephemeris()
