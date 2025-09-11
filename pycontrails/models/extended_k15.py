@@ -410,7 +410,7 @@ def droplet_apparent_emission_index(
     T_exhaust: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
     nvpm_ei_n: npt.NDArray[np.floating],
-    vpm_ei_n: npt.NDArray[np.floating],
+    vpm_ei_n: float,
     G: npt.NDArray[np.floating],
     particles: list[Particle] | None = None,
     n_plume_points: int = 50,
@@ -429,7 +429,7 @@ def droplet_apparent_emission_index(
         Pressure altitude at each waypoint, [:math:`Pa`]
     nvpm_ei_n : npt.NDArray[np.floating]
         nvPM number emissions index, [:math:`kg^{-1}`]
-    vpm_ei_n : npt.NDArray[np.floating]
+    vpm_ei_n : float
         vPM number emissions index, [:math:`kg^{-1}`]
     G : npt.NDArray[np.floating]
         Slope of the mixing line in a temperature-humidity diagram.
@@ -471,8 +471,8 @@ def droplet_apparent_emission_index(
     particles = particles or _default_particles()
 
     # Confirm all parameters are broadcastable
-    specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n, vpm_ei_n = np.atleast_1d(
-        specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n, vpm_ei_n
+    specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n = np.atleast_1d(
+        specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n
     )
     try:
         np.broadcast(specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n, vpm_ei_n)
@@ -665,7 +665,7 @@ def water_droplet_activation(
     T_plume: npt.NDArray[np.floating],
     T_ambient: npt.NDArray[np.floating],
     nvpm_ei_n: npt.NDArray[np.floating],
-    vpm_ei_n: npt.NDArray[np.floating],
+    vpm_ei_n: float,
     S_mw: npt.NDArray[np.floating],
     dilution: npt.NDArray[np.floating],
     rho_air: npt.NDArray[np.floating],
@@ -683,7 +683,7 @@ def water_droplet_activation(
         Ambient temperature for each waypoint, [:math:`K`].
     nvpm_ei_n : npt.NDArray[np.floating]
         nvPM number emissions index, [:math:`kg^{-1}`].
-    vpm_ei_n : npt.NDArray[np.floating]
+    vpm_ei_n : float
         vPM number emissions index, [:math:`kg^{-1}`].
     S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation.
@@ -790,7 +790,7 @@ def entrained_ambient_droplet_number_concentration(
 
 
 def emissions_index_to_number_concentration(
-    number_ei: npt.NDArray[np.floating],
+    number_ei: npt.NDArray[np.floating] | float,
     rho_air: npt.NDArray[np.floating],
     dilution: npt.NDArray[np.floating],
     nu_0: float,
@@ -799,7 +799,7 @@ def emissions_index_to_number_concentration(
 
     Parameters
     ----------
-    number_ei : npt.NDArray[np.floating]
+    number_ei : npt.NDArray[np.floating] | float
         Particle number emissions index, [:math:`kg^{-1}`].
     rho_air : npt.NDArray[np.floating]
         Air density at each waypoint, [:math:`kg m^{-3}`].
