@@ -253,8 +253,7 @@ def estimate_scan_time(
         # This could be relaxed if needed, but datetime64[ns] is what we expect
         raise ValueError("ephemeris_utm['t'] must have dtype 'datetime64[ns]'")
     if not ephemeris_utm["x"].diff().iloc[1:].lt(0).all():
-        # I think this would always be the case for polar-orbiting satellites for both
-        # ascending and descending passes
+        # This should always be the case for sun-synchronous satellites
         raise ValueError("ephemeris_utm['x'] must be strictly decreasing for np.interp")
 
     out = np.full(x.shape, np.datetime64("NaT", "ns"))
