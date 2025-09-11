@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
@@ -444,7 +445,7 @@ def _read_image_coordinates(meta: str, band: str) -> tuple[np.ndarray, np.ndarra
 
 def extract_landsat_visualization(
     ds: xr.Dataset, color_scheme: str = "true"
-) -> tuple[np.ndarray, pyproj.CRS, tuple[float, float, float, float]]:
+) -> tuple[npt.NDArray[np.float32], pyproj.CRS, tuple[float, float, float, float]]:
     """Extract artifacts for visualizing Landsat data with the given color scheme.
 
     Parameters
@@ -460,7 +461,7 @@ def extract_landsat_visualization(
 
     Returns
     -------
-    rgb : np.ndarray
+    rgb : npt.NDArray[np.float32]
         3D RGB array of shape ``(height, width, 3)``.
     src_crs : pyproj.CRS
         Imagery projection
