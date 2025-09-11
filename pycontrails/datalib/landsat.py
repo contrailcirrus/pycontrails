@@ -1,4 +1,4 @@
-"""Support for LANDSAT Collection 1 imagery retrieval through Google Cloud Platform."""
+"""Support for Landsat 8 Collection 1 imagery retrieval through Google Cloud Platform."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ def query(
     extent: str | None = None,
     columns: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Find Landsat Collection 1 imagery within spatiotemporal region of interest.
+    """Find Landsat 8 Collection 1 imagery within spatiotemporal region of interest.
 
     This function requires access to the
     `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
@@ -103,7 +103,7 @@ def intersect(
     flight: Flight,
     columns: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Find Landsat Collection 1 imagery intersecting with flight track.
+    """Find Landsat 8 Collection 1 imagery intersecting with flight track.
 
     This function will return all scenes with a bounding box that includes flight waypoints
     both before and after the sensing time.
@@ -139,7 +139,7 @@ def intersect(
 
 
 class Landsat:
-    """Support for Landsat Collection 1 data handling.
+    """Support for Landsat 8 Collection 1 data handling.
 
     This interface does not support Landsat Collection 2, which includes all new
     scenes from Landsat 8 and 9 and benefits from improved calibration and processing
