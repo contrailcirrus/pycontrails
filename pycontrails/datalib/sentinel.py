@@ -592,7 +592,7 @@ def extract_sentinel_visualization(
         Dataset of Sentinel data as returned by :meth:`Sentinel.get`.
     color_scheme : str, optional
         Color scheme to use for visualization. The true color scheme
-        (the only option currently implemented) requires bands B02, B03, and B04.
+        (`"true"`, the only option currently implemented) requires bands B02, B03, and B04.
 
     Returns
     -------
