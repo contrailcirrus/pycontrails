@@ -1,5 +1,7 @@
 """Support for overlaying flight and contrail data on Landsat & Sentinel images."""
 
+from typing import Literal, overload
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -47,13 +49,45 @@ def ephemeris_ecef_to_utm(ephemeris_df: pd.DataFrame, utm_crs: pyproj.CRS) -> pd
     return pd.DataFrame({"x": x, "y": y, "z": h, "t": ecef_t})
 
 
+@overload
 def scan_angle_correction(
     ds: xr.Dataset,
     x: npt.NDArray[np.floating],
     y: npt.NDArray[np.floating],
     z: npt.NDArray[np.floating],
-    n_iter: int = 5,
-) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    *,
+    maxiter: int = ...,
+    tol: float = ...,
+    full_output: Literal[False] = ...,
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]: ...
+
+
+@overload
+def scan_angle_correction(
+    ds: xr.Dataset,
+    x: npt.NDArray[np.floating],
+    y: npt.NDArray[np.floating],
+    z: npt.NDArray[np.floating],
+    *,
+    maxiter: int = ...,
+    tol: float = ...,
+    full_output: Literal[True],
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.bool_]]: ...
+
+
+def scan_angle_correction(
+    ds: xr.Dataset,
+    x: npt.NDArray[np.floating],
+    y: npt.NDArray[np.floating],
+    z: npt.NDArray[np.floating],
+    *,
+    maxiter: int = 5,
+    tol: float = 10.0,
+    full_output: bool = False,
+) -> (
+    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
+    | tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.bool_]]
+):
     """Apply the scan angle correction to the given x, y, z coordinates.
 
     Parameters
@@ -69,8 +103,13 @@ def scan_angle_correction(
         correct UTM coordinate system.
     z : npt.NDArray[np.floating]
         The z coordinates (altitude in meters) of the points to correct.
-    n_iter : int, optional
-        Number of iterations to perform. Default is 5.
+    maxiter : int, optional
+        Maximum number of iterations to perform. Default is 5.
+    tol : float, optional
+        Tolerance for convergence in meters. Default is 10.0.
+    full_output : bool, optional
+        If True, return an additional boolean array indicating which points
+        successfully converged. Default is False.
 
     Returns
     -------
@@ -100,39 +139,37 @@ def scan_angle_correction(
     x_proj = xr.DataArray(x.copy(), dims="points")  # need to copy because we modify below
     y_proj = xr.DataArray(y.copy(), dims="points")  # need to copy because we modify below
 
-    # Mask inputs outside the dataset extent
-    x_min, x_max = ds["x"].min().item(), ds["x"].max().item()
-    y_min, y_max = ds["y"].min().item(), ds["y"].max().item()
-    out_of_bounds = (x_proj < x_min) | (x_proj > x_max) | (y_proj < y_min) | (y_proj > y_max)
+    offset0 = np.zeros_like(x)
 
-    x_proj[out_of_bounds] = np.nan
-    y_proj[out_of_bounds] = np.nan
-
-    for _ in range(n_iter):
-        # Use only valid points
-        valid = np.isfinite(x_proj) & np.isfinite(y_proj)
-        if not np.any(valid):
-            break
-
-        # Interpolate angles only for valid points
-        # Note that we may get nan values back after interpolation
+    for _ in range(maxiter):
+        # Note that we often get nan values back after interpolation
         # It's arguably better to propagate nans than to keep the original values
         # because the original values may be in the nan region of the image
-        vza, vaa = _interpolate_angles(ds, x_proj[valid], y_proj[valid])
+        # (or outside the image entirely)
+        vza, vaa = _interpolate_angles(ds, x_proj, y_proj)
 
         # Convert to radians
         vza_rad = np.deg2rad(vza)
         vaa_rad = np.deg2rad(vaa)
 
         # Apply spherical projection offset
-        offset = z[valid] * np.tan(vza_rad)
+        offset = z * np.tan(vza_rad)
         dx_offset = offset * np.sin(vaa_rad)
         dy_offset = offset * np.cos(vaa_rad)
 
         # Update the newly predicted x and y locations
-        x_proj[valid] = x[valid] - dx_offset
-        y_proj[valid] = y[valid] - dy_offset
+        x_proj[:] = x - dx_offset
+        y_proj[:] = y - dy_offset
 
+        error = np.abs(offset - offset0)
+        converged = error < tol
+        if np.all(converged | np.isnan(error)):
+            break
+
+        offset0 = offset
+
+    if full_output:
+        return x_proj.values, y_proj.values, converged
     return x_proj.values, y_proj.values
 
 
