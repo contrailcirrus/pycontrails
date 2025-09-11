@@ -165,7 +165,10 @@ def open_landsat_metadata(
         Processed Landsat metadata. The ``geometry`` column contains polygons
         representing the footprints of the Landsat scenes.
     """
-    cachestore = cachestore or cache.DiskCacheStore()
+   if cachestore is None:
+      cache_root = cache._get_user_cache_dir()
+      cache_dir = f"{cache_root}/landsat_metadata"
+      cachestore = cache.DiskCacheStore(cache_dir=cache_dir)
 
     cache_key = "LANDSAT_OT_C2_L1.pq"
     if cachestore.exists(cache_key) and not update_cache:
