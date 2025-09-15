@@ -315,9 +315,12 @@ class Sentinel:
     ) -> tuple[float, float, np.datetime64]:
         """Colocate a flight track with satellite image pixels.
 
-        This function projects flight positions into the UTM coordinate system,
-        then uses the provided satellite handler (Sentinel or Landsat) to iteratively
-        match the satellite pixels with flight points, refining the match to improve alignment.
+        This function first projects flight waypoints into the UTM coordinate system
+        of the satellite image, then applies a viewing angle correction to estimate
+        the actual ground position imaged by the satellite. Next, the scan time for
+        each point is estimated based on the satellite meta data. Finally, the
+        point along the flight track is found where the flight time matches the
+        satellite scan time.
 
         Parameters
         ----------
@@ -335,9 +338,8 @@ class Sentinel:
         utm_crs = self.get_crs()
 
         # Project from WGS84 to the x and y coordinates in the UTM coordinate system
-        x, y = pyproj.Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True).transform(
-            flight["longitude"], flight["latitude"]
-        )
+        transformer = pyproj.Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
+        x, y = transformer.transform(flight["longitude"], flight["latitude"])
         z = flight.altitude
 
         # Apply sensing angle correction
