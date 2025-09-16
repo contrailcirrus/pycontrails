@@ -26,14 +26,10 @@ from typing import (
     Any,
     Generic,
     Literal,
+    Self,
     TypeVar,
     overload,
 )
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 if sys.version_info >= (3, 12):
     from typing import override
