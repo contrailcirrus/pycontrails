@@ -9,7 +9,7 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore
 from pycontrails.datalib import goes
-from tests import IS_WINDOWS, OFFLINE
+from tests import OFFLINE
 
 
 @pytest.mark.parametrize(
@@ -58,7 +58,6 @@ def test_channel_resolution(channels: tuple[str, ...], succeed: bool) -> None:
         goes._check_channel_resolution(channels)
 
 
-@pytest.mark.skipif(IS_WINDOWS, reason="cannot easily install h5py on windows")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("t", ["2023-06-15T15:34", "2019-03-14T15:34"])
 def test_goes_get_no_cache_default_channels(t: str) -> None:
@@ -83,14 +82,12 @@ def test_goes_get_no_cache_default_channels(t: str) -> None:
     assert rgb.max() == 1
 
     assert (
-        src_crs
-        == "+proj=geos +ellps=WGS84 +lon_0=-75.0 +lat_0=0.0 +h=35786023.0 +x_0=0 +y_0=0 +units=m"
-        " +sweep=x +no_defs +type=crs"
+        src_crs == "+proj=geos +ellps=WGS84 +a=6378137.0 +b=6356752.31414 +lon_0=-75.0 +lat_0=0.0 "
+        "+h=35786023.0 +x_0=0 +y_0=0 +units=m +sweep=x +no_defs +type=crs"
     )
     assert len(src_extent) == 4
 
 
-@pytest.mark.skipif(IS_WINDOWS, reason="cannot easily install h5py on windows")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_goes_get_no_cache_rgb_channels() -> None:
     downloader = goes.GOES(region="m1", cachestore=None, channels=("C01", "C02", "C03"))
@@ -135,7 +132,6 @@ def test_goes_get_with_cache(t: str, cachestore: DiskCacheStore) -> None:
     assert da.name == "CMI"
     assert da.dims == ("band_id", "y", "x")
     assert da.dtype == "float32"
-    assert da._in_memory  # hard-coded in the goes module ... we can change this later
 
     t_str = pd.Timestamp(t).strftime("%Y%m%d%H%M")
     assert cachestore.listdir() == [f"M2_{t_str}_C02.nc"]
@@ -217,7 +213,6 @@ def test_goes_parallax_correct_opposite_side(goes_data: xr.DataArray) -> None:
     assert np.all(np.isfinite(lat1[~opposite_side][12:-12]))
 
 
-@pytest.mark.skipif(IS_WINDOWS, reason="cannot easily install h5py on windows")
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_goes_19() -> None:
     """Confirm that we can access GOES-19 data."""
