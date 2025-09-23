@@ -19,6 +19,7 @@ import enum
 import os
 import tempfile
 from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -26,18 +27,15 @@ import pandas as pd
 import xarray as xr
 
 from pycontrails.core import cache
-from pycontrails.core.met import XArrayType
+from pycontrails.datalib import geo_utils
+from pycontrails.datalib.geo_utils import (
+    parallax_correct,  # noqa: F401, keep for backwards compatibility
+    to_ash,  # keep for backwards compatibility
+)
 from pycontrails.utils import dependencies
 
-try:
-    import cartopy.crs as ccrs
-except ModuleNotFoundError as exc:
-    dependencies.raise_module_not_found_error(
-        name="goes module",
-        package_name="cartopy",
-        module_not_found_error=exc,
-        pycontrails_optional_package="sat",
-    )
+if TYPE_CHECKING:
+    import cartopy.crs
 
 try:
     import gcsfs
@@ -145,12 +143,10 @@ def _parse_channels(channels: str | Iterable[str] | None) -> set[str]:
 
 def _check_channel_resolution(channels: Iterable[str]) -> None:
     """Confirm request channels have a common horizontal resolution."""
-    assert channels, "channels must be non-empty"
-
     # https://www.goes-r.gov/spacesegment/abi.html
-    resolutions = {
+    res = {
         "C01": 1.0,
-        "C02": 1.0,  # XXX: this actually has a resolution of 0.5 km, but we treat it as 1 km
+        "C02": 1.0,  # XXX: this actually has a resolution of 0.5 km, but we coarsen it to 1 km
         "C03": 1.0,
         "C04": 2.0,
         "C05": 1.0,
@@ -167,18 +163,15 @@ def _check_channel_resolution(channels: Iterable[str]) -> None:
         "C16": 2.0,
     }
 
-    resolutions = {c: resolutions[c] for c in channels}
-    c0, res0 = resolutions.popitem()
-
-    try:
-        c1, res1 = next((c, res) for c, res in resolutions.items() if res != res0)
-    except StopIteration:
-        # All resolutions are the same
-        return
-    raise ValueError(
-        "Channels must have a common horizontal resolution. "
-        f"Channel {c0} has resolution {res0} km and channel {c1} has resolution {res1} km."
-    )
+    found_res = {c: res[c] for c in channels}
+    unique_res = set(found_res.values())
+    if len(unique_res) > 1:
+        c0, r0 = found_res.popitem()
+        c1, r1 = next((c, r) for c, r in found_res.items() if r != r0)
+        raise ValueError(
+            "Channels must have a common horizontal resolution. "
+            f"Channel {c0} has resolution {r0} km and channel {c1} has resolution {r1} km."
+        )
 
 
 def _parse_region(region: GOESRegion | str) -> GOESRegion:
@@ -218,7 +211,7 @@ def gcs_goes_path(
         ISO 8601 formatted string.
     region : GOESRegion
         GOES Region of interest.
-    channels : str | Iterable[str]
+    channels : str | Iterable[str] | None, optional
         Set of channels or bands for CMIP data. The 16 possible channels are
         represented by the strings "C01" to "C16". For the SEVIRI ash color scheme,
         set ``channels=("C11", "C14", "C15")``. For the true color scheme,
@@ -312,7 +305,7 @@ def gcs_goes_path(
     rpath = f"{path_prefix}{name_prefix}C??{name_suffix}"
 
     fs = fs or gcsfs.GCSFileSystem(token="anon")
-    rpaths: list[str] = fs.glob(rpath)
+    rpaths = fs.glob(rpath)
 
     out = [r for r in rpaths if _extract_channel_from_rpath(r) in channels]
     if not out:
@@ -329,11 +322,13 @@ def _extract_channel_from_rpath(rpath: str) -> str:
 
 
 class GOES:
-    """Support for GOES-16 data handling.
+    """Support for GOES-16 data access via GCP.
+
+    This interface requires the ``gcsfs`` package.
 
     Parameters
     ----------
-    region : GOESRegion | str = {"F", "C", "M1", "M2"}
+    region : GOESRegion | str, optional
         GOES Region of interest. Uses the following conventions.
 
         - F: Full Disk
@@ -341,7 +336,9 @@ class GOES:
         - M1: Mesoscale 1
         - M2: Mesoscale 2
 
-    channels : str | set[str] | None
+        By default, Full Disk (F) is used.
+
+    channels : str | Iterable[str] | None
         Set of channels or bands for CMIP data. The 16 possible channels are
         represented by the strings "C01" to "C16". For the SEVIRI ash color scheme,
         set ``channels=("C11", "C14", "C15")``. For the true color scheme,
@@ -356,11 +353,11 @@ class GOES:
         - C05: 1.0 km
         - C06 - C16: 2.0 km
 
-    cachestore : cache.CacheStore | None
+    cachestore : cache.CacheStore | None, optional
         Cache store for GOES data. If None, data is downloaded directly into
         memory. By default, a :class:`cache.DiskCacheStore` is used.
-    goes_bucket : str | None = None
-        GCP bucket for GOES data. If None, the bucket is automatically
+    goes_bucket : str | None, optional
+        GCP bucket for GOES data. If None, the default option, the bucket is automatically
         set to ``GOES_16_BUCKET`` if the requested time is before
         ``GOES_16_19_SWITCH_DATE`` and ``GOES_19_BUCKET`` otherwise.
         The satellite number used for filename construction is derived from the
@@ -435,6 +432,7 @@ class GOES:
         self,
         region: GOESRegion | str = GOESRegion.F,
         channels: str | Iterable[str] | None = None,
+        *,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
         goes_bucket: str | None = None,
     ) -> None:
@@ -454,7 +452,7 @@ class GOES:
     def __repr__(self) -> str:
         """Return string representation."""
         return (
-            f"GOES(region={self.region}, channels={sorted(self.channels)}, "
+            f"GOES(region='{self.region.name}', channels={sorted(self.channels)}, "
             f"goes_bucket={self.goes_bucket})"
         )
 
@@ -485,7 +483,8 @@ class GOES:
 
         Returns dictionary of the form ``{channel: local_path}``.
         """
-        assert self.cachestore, "cachestore must be set"
+        if not self.cachestore:
+            raise ValueError("cachestore must be set to use _lpaths")
 
         t_str = time.strftime("%Y%m%d%H%M")
 
@@ -519,23 +518,19 @@ class GOES:
             - x: GOES x-coordinate
             - y: GOES y-coordinate
         """
-        if not isinstance(time, datetime.datetime):
-            time = pd.Timestamp(time).to_pydatetime()
+        t = pd.Timestamp(time).to_pydatetime()
 
         if self.cachestore is not None:
-            return self._get_with_cache(time)  # type: ignore[arg-type]
-        return self._get_without_cache(time)  # type: ignore[arg-type]
+            return self._get_with_cache(t)
+        return self._get_without_cache(t)
 
     def _get_with_cache(self, time: datetime.datetime) -> xr.DataArray:
         """Download the GOES data to the :attr:`cachestore` at the given time."""
-        assert self.cachestore, "cachestore must be set"
+        if self.cachestore is None:
+            raise ValueError("cachestore must be set to use _get_with_cache")
 
         lpaths = self._lpaths(time)
-
-        channels_needed = set()
-        for c, lpath in lpaths.items():
-            if not self.cachestore.exists(lpath):
-                channels_needed.add(c)
+        channels_needed = {c for c, lpath in lpaths.items() if not self.cachestore.exists(lpath)}
 
         if channels_needed:
             rpaths = self.gcs_goes_path(time, channels_needed)
@@ -552,19 +547,19 @@ class GOES:
             "compat": "override",
             "coords": "minimal",
         }
-        if len(lpaths) == 1:
-            ds = xr.open_dataset(lpaths.popitem()[1])
-            ds["CMI"] = ds["CMI"].expand_dims(band=ds["band_id"].values)
-        elif "C02" in lpaths:
+        if len(lpaths) > 1 and "C02" in lpaths:  # xr.open_mfdataset fails after pop if only 1 file
             lpath02 = lpaths.pop("C02")
-            ds1 = xr.open_mfdataset(lpaths.values(), **kwargs)  # type: ignore[arg-type]
-            ds2 = xr.open_dataset(lpath02)
-            ds = _concat_c02(ds1, ds2)
+            ds = xr.open_mfdataset(lpaths.values(), **kwargs).swap_dims(band="band_id")  # type: ignore[arg-type]
+            da1 = ds.reset_coords()["CMI"]
+            da2 = xr.open_dataset(lpath02).reset_coords()["CMI"].expand_dims(band_id=[2])
+            da = (
+                geo_utils._coarsen_then_concat(da1, da2)
+                .sortby("band_id")
+                .assign_coords(t=ds["t"].values)
+            )
         else:
-            ds = xr.open_mfdataset(lpaths.values(), **kwargs)  # type: ignore[arg-type]
-
-        da = ds["CMI"]
-        da = da.swap_dims({"band": "band_id"}).sortby("band_id")
+            ds = xr.open_mfdataset(lpaths.values(), **kwargs).swap_dims(band="band_id")  # type: ignore[arg-type]
+            da = ds["CMI"].sortby("band_id")
 
         # Attach some useful attrs -- only using goes_imager_projection currently
         da.attrs["goes_imager_projection"] = ds.goes_imager_projection.attrs
@@ -579,29 +574,21 @@ class GOES:
         # Load into memory
         data = self.fs.cat(rpaths)
 
-        if isinstance(data, dict):
-            da_dict = {}
-            for rpath, init_bytes in data.items():
-                channel = _extract_channel_from_rpath(rpath)
-                ds = _load_via_tempfile(init_bytes)
+        da_dict = {}
+        for rpath, init_bytes in data.items():
+            channel = _extract_channel_from_rpath(rpath)
+            ds = _load_via_tempfile(init_bytes)
 
-                da = ds["CMI"]
-                da = da.expand_dims(band_id=ds["band_id"].values)
-                da_dict[channel] = da
-
-            if len(da_dict) == 1:  # This might be redundant with the branch below
-                da = da_dict.popitem()[1]
-            elif "C02" in da_dict:
-                da2 = da_dict.pop("C02")
-                da = xr.concat(da_dict.values(), dim="band_id", coords="different", compat="equals")
-                da = _concat_c02(da, da2)
-            else:
-                da = xr.concat(da_dict.values(), dim="band_id", coords="different", compat="equals")
-
-        else:
-            ds = _load_via_tempfile(data)
             da = ds["CMI"]
             da = da.expand_dims(band_id=ds["band_id"].values)
+            da_dict[channel] = da
+
+        if len(da_dict) > 1 and "C02" in da_dict:  # xr.concat fails after pop if only 1 file
+            da2 = da_dict.pop("C02")
+            da1 = xr.concat(da_dict.values(), dim="band_id", coords="different", compat="equals")
+            da = geo_utils._coarsen_then_concat(da1, da2)
+        else:
+            da = xr.concat(da_dict.values(), dim="band_id", coords="different", compat="equals")
 
         da = da.sortby("band_id")
 
@@ -622,30 +609,35 @@ def _load_via_tempfile(data: bytes) -> xr.Dataset:
         os.remove(tmp.name)
 
 
-def _concat_c02(ds1: XArrayType, ds2: XArrayType) -> XArrayType:
-    """Concatenate two datasets with C01 and C02 data."""
-    # Average the C02 data to the C01 resolution
-    ds2 = ds2.coarsen(x=2, y=2, boundary="exact").mean()  # type: ignore[attr-defined]
+def _cartopy_crs(proj_info: dict[str, Any]) -> cartopy.crs.Geostationary:
+    try:
+        from cartopy import crs as ccrs
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            name="GOES visualization",
+            package_name="cartopy",
+            module_not_found_error=exc,
+            pycontrails_optional_package="sat",
+        )
 
-    # Gut check
-    np.testing.assert_allclose(ds1["x"], ds2["x"], rtol=0.0005)
-    np.testing.assert_allclose(ds1["y"], ds2["y"], rtol=0.0005)
+    globe = ccrs.Globe(
+        semimajor_axis=proj_info["semi_major_axis"],
+        semiminor_axis=proj_info["semi_minor_axis"],
+    )
+    return ccrs.Geostationary(
+        central_longitude=proj_info["longitude_of_projection_origin"],
+        satellite_height=proj_info["perspective_point_height"],
+        sweep_axis=proj_info["sweep_angle_axis"],
+        globe=globe,
+    )
 
-    # Assign the C01 data to the C02 data
-    ds2["x"] = ds1["x"]
-    ds2["y"] = ds1["y"]
 
-    # Finally, combine the datasets
-    dim = "band_id" if "band_id" in ds1.dims else "band"
-    return xr.concat([ds1, ds2], dim=dim)
-
-
-def extract_goes_visualization(
+def extract_visualization(
     da: xr.DataArray,
     color_scheme: str = "ash",
     ash_convention: str = "SEVIRI",
     gamma: float = 2.2,
-) -> tuple[npt.NDArray[np.float32], ccrs.Geostationary, tuple[float, float, float, float]]:
+) -> tuple[npt.NDArray[np.float32], cartopy.crs.Geostationary, tuple[float, float, float, float]]:
     """Extract artifacts for visualizing GOES data with the given color scheme.
 
     Parameters
@@ -653,26 +645,31 @@ def extract_goes_visualization(
     da : xr.DataArray
         DataArray of GOES data as returned by :meth:`GOES.get`. Must have the channels
         required by :func:`to_ash`.
-    color_scheme : str = {"ash", "true"}
-        Color scheme to use for visualization.
-    ash_convention : str = {"SEVIRI", "standard"}
-        Passed into :func:`to_ash`. Only used if ``color_scheme="ash"``.
-    gamma : float = 2.2
-        Passed into :func:`to_true_color`. Only used if ``color_scheme="true"``.
+    color_scheme : str
+        Color scheme to use for visualization. Must be one of {"true", "ash"}.
+        If "true", the ``da`` must contain channels C01, C02, and C03.
+        If "ash", the ``da`` must contain channels C11, C14, and C15 (SEVIRI convention)
+        or channels C11, C13, C14, and C15 (standard convention).
+    ash_convention : str
+        Passed into :func:`to_ash`. Only used if ``color_scheme="ash"``. Must be one
+        of {"SEVIRI", "standard"}. By default, "SEVIRI" is used.
+    gamma : float
+        Passed into :func:`to_true_color`. Only used if ``color_scheme="true"``. By
+        default, 2.2 is used.
 
     Returns
     -------
     rgb : npt.NDArray[np.float32]
         3D RGB array of shape ``(height, width, 3)``. Any nan values are replaced with 0.
-    src_crs : ccrs.Geostationary
+    src_crs : cartopy.crs.Geostationary
         The Geostationary projection built from the GOES metadata.
     src_extent : tuple[float, float, float, float]
         Extent of GOES data in the Geostationary projection
     """
     proj_info = da.attrs["goes_imager_projection"]
     h = proj_info["perspective_point_height"]
-    lon0 = proj_info["longitude_of_projection_origin"]
-    src_crs = ccrs.Geostationary(central_longitude=lon0, satellite_height=h, sweep_axis="x")
+
+    src_crs = _cartopy_crs(proj_info)
 
     if color_scheme == "true":
         rgb = to_true_color(da, gamma)
@@ -692,6 +689,9 @@ def extract_goes_visualization(
     return rgb, src_crs, src_extent
 
 
+extract_goes_visualization = extract_visualization  # keep for backwards compatibility
+
+
 def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float32]:
     """Compute 3d RGB array for the true color scheme.
 
@@ -699,7 +699,7 @@ def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float3
     ----------
     da : xr.DataArray
         DataArray of GOES data with channels C01, C02, C03.
-    gamma : float = 2.2
+    gamma : float, optional
         Gamma correction for the RGB channels.
 
     Returns
@@ -716,248 +716,19 @@ def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float3
         raise ValueError(msg)
 
     red = da.sel(band_id=2).values
-    green = da.sel(band_id=3).values
+    veggie = da.sel(band_id=3).values
     blue = da.sel(band_id=1).values
 
-    red = _clip_and_scale(red, 0.0, 1.0)
-    green = _clip_and_scale(green, 0.0, 1.0)
-    blue = _clip_and_scale(blue, 0.0, 1.0)
+    red = geo_utils._clip_and_scale(red, 0.0, 1.0)
+    veggie = geo_utils._clip_and_scale(veggie, 0.0, 1.0)
+    blue = geo_utils._clip_and_scale(blue, 0.0, 1.0)
 
     red = red ** (1 / gamma)
-    green = green ** (1 / gamma)
+    veggie = veggie ** (1 / gamma)
     blue = blue ** (1 / gamma)
 
-    # Calculate "true" green channel
-    green = 0.45 * red + 0.1 * green + 0.45 * blue
-    green = _clip_and_scale(green, 0.0, 1.0)
+    # Calculate synthetic green channel
+    green = 0.45 * red + 0.1 * veggie + 0.45 * blue
+    green = geo_utils._clip_and_scale(green, 0.0, 1.0)
 
     return np.dstack([red, green, blue])
-
-
-def to_ash(da: xr.DataArray, convention: str = "SEVIRI") -> npt.NDArray[np.float32]:
-    """Compute 3d RGB array for the ASH color scheme.
-
-    Parameters
-    ----------
-    da : xr.DataArray
-        DataArray of GOES data with appropriate channels.
-    convention : str = {"SEVIRI", "standard"}
-        Convention for color space.
-
-        - SEVIRI convention requires channels C11, C14, C15.
-          Used in :cite:`kulikSatellitebasedDetectionContrails2019`.
-        - Standard convention requires channels C11, C13, C14, C15
-
-    Returns
-    -------
-    npt.NDArray[np.float32]
-        3d RGB array with ASH color scheme according to convention.
-
-    References
-    ----------
-    - `Ash RGB quick guide (the color space and color interpretations) <https://rammb.cira.colostate.edu/training/visit/quick_guides/GOES_Ash_RGB.pdf>`_
-    - :cite:`SEVIRIRGBCal`
-    - :cite:`kulikSatellitebasedDetectionContrails2019`
-
-    Examples
-    --------
-    >>> goes = GOES(region="M2", channels=("C11", "C14", "C15"))
-    >>> da = goes.get("2022-10-03 04:34:00")
-    >>> rgb = to_ash(da)
-    >>> rgb.shape
-    (500, 500, 3)
-
-    >>> rgb[0, 0, :]
-    array([0.0127004 , 0.22793579, 0.3930847 ], dtype=float32)
-    """
-    if convention == "standard":
-        if not np.all(np.isin([11, 13, 14, 15], da["band_id"])):
-            msg = "DataArray must contain bands 11, 13, 14, and 15 for standard ash"
-            raise ValueError(msg)
-        c11 = da.sel(band_id=11).values  # 8.44
-        c13 = da.sel(band_id=13).values  # 10.33
-        c14 = da.sel(band_id=14).values  # 11.19
-        c15 = da.sel(band_id=15).values  # 12.27
-
-        red = c15 - c13
-        green = c14 - c11
-        blue = c13
-
-    elif convention in ("SEVIRI", "MIT"):  # retain MIT for backwards compatibility
-        if not np.all(np.isin([11, 14, 15], da["band_id"])):
-            msg = "DataArray must contain bands 11, 14, and 15 for SEVIRI ash"
-            raise ValueError(msg)
-        c11 = da.sel(band_id=11).values  # 8.44
-        c14 = da.sel(band_id=14).values  # 11.19
-        c15 = da.sel(band_id=15).values  # 12.27
-
-        red = c15 - c14
-        green = c14 - c11
-        blue = c14
-
-    else:
-        raise ValueError("Convention must be either 'SEVIRI' or 'standard'")
-
-    # See colostate pdf for slightly wider values
-    red = _clip_and_scale(red, -4.0, 2.0)
-    green = _clip_and_scale(green, -4.0, 5.0)
-    blue = _clip_and_scale(blue, 243.0, 303.0)
-    return np.dstack([red, green, blue])
-
-
-def _clip_and_scale(
-    arr: npt.NDArray[np.floating], low: float, high: float
-) -> npt.NDArray[np.floating]:
-    """Clip array and rescale to the interval [0, 1].
-
-    Array is first clipped to the interval [low, high] and then linearly rescaled
-    to the interval [0, 1] so that::
-
-        low -> 0
-        high -> 1
-
-    Parameters
-    ----------
-    arr : npt.NDArray[np.floating]
-        Array to clip and scale.
-    low : float
-        Lower clipping bound.
-    high : float
-        Upper clipping bound.
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        Clipped and scaled array.
-    """
-    return (arr.clip(low, high) - low) / (high - low)
-
-
-def parallax_correct(
-    longitude: npt.NDArray[np.floating],
-    latitude: npt.NDArray[np.floating],
-    altitude: npt.NDArray[np.floating],
-    goes_da: xr.DataArray,
-) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-    r"""Apply parallax correction to WGS84 geodetic coordinates based on satellite perspective.
-
-    This function considers the ray from the satellite to the points of interest and finds
-    the intersection of this ray with the WGS84 ellipsoid. The intersection point is then
-    returned as the corrected longitude and latitude coordinates.
-
-    ::
-
-       @ satellite
-        \
-         \
-          \
-           \
-            \
-             * aircraft
-              \
-               \
-                x parallax corrected aircraft
-        -------------------------  surface
-
-    If the point of interest is not visible from the satellite (ie, on the opposite side of the
-    earth), the function returns nan for the corrected coordinates.
-
-    This function requires the :mod:`pyproj` package to be installed.
-
-    Parameters
-    ----------
-    longitude : npt.NDArray[np.floating]
-        A 1D array of longitudes in degrees.
-    latitude : npt.NDArray[np.floating]
-        A 1D array of latitudes in degrees.
-    altitude : npt.NDArray[np.floating]
-        A 1D array of altitudes in meters.
-    goes_da : xr.DataArray
-        DataArray containing the GOES projection information. Only the ``goes_imager_projection``
-        field of the :attr:`xr.DataArray.attrs` is used.
-
-    Returns
-    -------
-    tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]
-        A tuple containing the corrected longitude and latitude coordinates.
-
-    """
-    goes_imager_projection = goes_da.attrs["goes_imager_projection"]
-    sat_lon = goes_imager_projection["longitude_of_projection_origin"]
-    sat_lat = goes_imager_projection["latitude_of_projection_origin"]
-    sat_alt = goes_imager_projection["perspective_point_height"]
-
-    try:
-        import pyproj
-    except ModuleNotFoundError as exc:
-        dependencies.raise_module_not_found_error(
-            name="parallax_correct function",
-            package_name="pyproj",
-            module_not_found_error=exc,
-            pycontrails_optional_package="pyproj",
-        )
-
-    # Convert from WGS84 to ECEF coordinates
-    ecef_crs = pyproj.CRS("EPSG:4978")
-    transformer = pyproj.Transformer.from_crs("WGS84", ecef_crs, always_xy=True)
-
-    p0 = np.array(transformer.transform([sat_lon], [sat_lat], [sat_alt]))
-    p1 = np.array(transformer.transform(longitude, latitude, altitude))
-
-    # Major and minor axes of the ellipsoid
-    a = ecef_crs.ellipsoid.semi_major_metre  # type: ignore[union-attr]
-    b = ecef_crs.ellipsoid.semi_minor_metre  # type: ignore[union-attr]
-    intersection = _intersection_with_ellipsoid(p0, p1, a, b)
-
-    # Convert back to WGS84 coordinates
-    inv_transformer = pyproj.Transformer.from_crs(ecef_crs, "WGS84", always_xy=True)
-    return inv_transformer.transform(*intersection)[:2]  # final coord is (close to) 0
-
-
-def _intersection_with_ellipsoid(
-    p0: npt.NDArray[np.floating],
-    p1: npt.NDArray[np.floating],
-    a: float,
-    b: float,
-) -> npt.NDArray[np.floating]:
-    """Find the intersection of a line with the surface of an ellipsoid."""
-    # Calculate the direction vector
-    px, py, pz = p0
-    v = p1 - p0
-    vx, vy, vz = v
-
-    # The line between p0 and p1 in parametric form is p(t) = p0 + t * v
-    # We need to find t such that p(t) lies on the ellipsoid
-    # x^2 / a^2 + y^2 / a^2 + z^2 / b^2 = 1
-    # (px + t * vx)^2 / a^2 + (py + t * vy)^2 / a^2 + (pz + t * vz)^2 / b^2 = 1
-    # Rearranging gives a quadratic in t
-
-    # Calculate the coefficients of this quadratic equation
-    A = vx**2 / a**2 + vy**2 / a**2 + vz**2 / b**2
-    B = 2 * (px * vx / a**2 + py * vy / a**2 + pz * vz / b**2)
-    C = px**2 / a**2 + py**2 / a**2 + pz**2 / b**2 - 1.0
-
-    # Calculate the discriminant
-    D = B**2 - 4 * A * C
-    sqrtD = np.sqrt(D, where=D >= 0, out=np.full_like(D, np.nan))
-
-    # Calculate the two possible solutions for t
-    t0 = (-B + sqrtD) / (2.0 * A)
-    t1 = (-B - sqrtD) / (2.0 * A)
-
-    # Calculate the intersection points
-    intersection0 = p0 + t0 * v
-    intersection1 = p0 + t1 * v
-
-    # Pick the intersection point that is closer to the aircraft (p1)
-    d0 = np.linalg.norm(intersection0 - p1, axis=0)
-    d1 = np.linalg.norm(intersection1 - p1, axis=0)
-    out = np.where(d0 < d1, intersection0, intersection1)
-
-    # Fill the points in which the aircraft is not visible by the satellite with nan
-    # This occurs when the earth is between the satellite and the aircraft
-    # In other words, we can check for t0 < 1 (or t1 < 1)
-    opposite_side = t0 < 1.0
-    out[:, opposite_side] = np.nan
-
-    return out
