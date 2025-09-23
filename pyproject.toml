@@ -125,6 +125,7 @@ sat = [
     "pillow>=10.3",
     "pyproj>=3.5",
     "rasterio>=1.3",
+    "s3fs>=2022.3",
     "scikit-image>=0.18",
     "shapely>=2.0",
 ]
