@@ -357,6 +357,8 @@ def _parse_s3_raw_data(raw_data: list[bytes]) -> xr.DataArray:
 class Himawari:
     """Support for Himawari-8/9 satellite data accessed via AWS S3.
 
+    This interface requires the ``s3fs`` package.
+
     Parameters
     ----------
     region : HimawariRegion | str, optional
