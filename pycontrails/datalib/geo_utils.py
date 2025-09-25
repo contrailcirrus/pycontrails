@@ -165,6 +165,7 @@ def to_ash(da: xr.DataArray, convention: str = "SEVIRI") -> npt.NDArray[np.float
 
     Examples
     --------
+    >>> from pycontrails.datalib.goes import GOES
     >>> goes = GOES(region="M2", channels=("C11", "C14", "C15"))
     >>> da = goes.get("2022-10-03 04:34:00")
     >>> rgb = to_ash(da)
