@@ -6,9 +6,15 @@ Observations
 
 .. toctree::
    :maxdepth: 1
-   :caption: Notebooks
+   :caption: Geostationary Satellites
 
    notebooks/GOES
+   notebooks/Himawari
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Low Earth Orbit Satellites
+
    notebooks/Landsat
    notebooks/Sentinel
 
