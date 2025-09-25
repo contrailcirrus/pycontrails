@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.57.0
+
+### Features
+
+- Add new `Himawari` interface for downloading, processing, and visualizing [Himawari-8 and Himawari-9](https://www.jma.go.jp/jma/jma-eng/satellite/introduction.html) imagery. See the [Himawari notebook](https://py.contrails.org/notebooks/Himawari.html) for usage examples.
+
+### Internals
+
+- Add a new `pycontrails.datalib.geo_utils` module with tools for working with geostationary satellite imagery. This module currently includes functions previously defined in the `goes` module, but are also applicable to Himawari imagery.
+- Rename `goes.extract_goes_visualization` -> `goes.extract_visualization` for consistency with the new `himawari` module. The old name is still available as an alias.
+- Localize the `cartopy` import to the `extract_visualization` function within the `goes` module. This allows the user to download `GOES` imagery without having `cartopy` installed.
+- Tweak some of the internal logic in `GOES.get` to slightly improve performance and readability, and to avoid loading unnecessary cached data into memory.
+
 ## 0.56.0
 
 ### Features
