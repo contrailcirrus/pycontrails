@@ -12,6 +12,7 @@
 - Rename `goes.extract_goes_visualization` -> `goes.extract_visualization` for consistency with the new `himawari` module. The old name is still available as an alias.
 - Localize the `cartopy` import to the `extract_visualization` function within the `goes` module. This allows the user to download `GOES` imagery without having `cartopy` installed.
 - Tweak some of the internal logic in `GOES.get` to slightly improve performance and readability, and to avoid loading unnecessary cached data into memory.
+- Replace `boto3` with `s3fs` in the `gfs` module.
 
 ## 0.56.0
 
