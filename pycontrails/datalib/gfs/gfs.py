@@ -15,14 +15,15 @@ import logging
 import pathlib
 import sys
 import warnings
-from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 if sys.version_info >= (3, 12):
     from typing import override
 else:
     from typing_extensions import override
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -41,9 +42,8 @@ from pycontrails.datalib.gfs.variables import (
 from pycontrails.utils import dependencies, temp
 from pycontrails.utils.types import DatetimeLike
 
-# optional imports
 if TYPE_CHECKING:
-    import botocore
+    import s3fs
 
 logger = logging.getLogger(__name__)
 
@@ -125,10 +125,10 @@ class GFSForecast(metsource.MetDataSource):
     - `GFS Documentation <https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs/documentation.php>`_
     """
 
-    __slots__ = ("cache_download", "cachestore", "client", "forecast_time", "grid", "show_progress")
+    __slots__ = ("cache_download", "cachestore", "forecast_time", "fs", "grid", "show_progress")
 
-    #: S3 client for accessing GFS bucket
-    client: botocore.client.S3
+    #: s3fs filesystem for anonymous access to GFS bucket
+    fs: s3fs.S3FileSystem | None
 
     #: Lat / Lon grid spacing. One of [0.25, 0.5, 1]
     grid: float
@@ -153,26 +153,6 @@ class GFSForecast(metsource.MetDataSource):
         show_progress: bool = False,
         cache_download: bool = False,
     ) -> None:
-        try:
-            import boto3
-        except ModuleNotFoundError as e:
-            dependencies.raise_module_not_found_error(
-                name="GFSForecast class",
-                package_name="boto3",
-                module_not_found_error=e,
-                pycontrails_optional_package="gfs",
-            )
-
-        try:
-            import botocore
-        except ModuleNotFoundError as e:
-            dependencies.raise_module_not_found_error(
-                name="GFSForecast class",
-                package_name="botocore",
-                module_not_found_error=e,
-                pycontrails_optional_package="gfs",
-            )
-
         # inputs
         self.paths = paths
         if cachestore is self.__marker:
@@ -196,13 +176,10 @@ class GFSForecast(metsource.MetDataSource):
         self.variables = metsource.parse_variables(variables, self.supported_variables)
         self.grid = metsource.parse_grid(grid, (0.25, 0.5, 1))
 
-        # note GFS allows unsigned requests (no credentials)
-        # https://stackoverflow.com/questions/34865927/can-i-use-boto3-anonymously/34866092#34866092
-        self.client = boto3.client(
-            "s3", config=botocore.client.Config(signature_version=botocore.UNSIGNED)
-        )
+        # s3 filesystem (created on first download)
+        self.fs = None
 
-        # set specific forecast time is requested
+        # set specific forecast time if requested, otherwise compute from timesteps
         if forecast_time is not None:
             forecast_time_pd = pd.to_datetime(forecast_time)
             if forecast_time_pd.hour % 6:
@@ -492,10 +469,35 @@ class GFSForecast(metsource.MetDataSource):
             ds.to_netcdf(cache_path)
 
     def _make_download(self, aws_key: str, target: str, filename: str) -> None:
+        """Download a single GRIB file using s3fs.
+
+        Parameters
+        ----------
+        aws_key : str
+            Key under GFS bucket forecast path.
+        target : str
+            Local filename to write.
+        filename : str
+            Original filename (used for progress label).
+        """
+        # Lazily import s3fs and create filesystem if needed
+        if self.fs is None:
+            try:
+                import s3fs
+            except ModuleNotFoundError as exc:
+                dependencies.raise_module_not_found_error(
+                    name="GFSForecast class",
+                    package_name="s3fs",
+                    module_not_found_error=exc,
+                    pycontrails_optional_package="gfs",
+                )
+            self.fs = s3fs.S3FileSystem(anon=True)
+
+        s3_path = f"s3://{GFS_FORECAST_BUCKET}/{aws_key}"
         if self.show_progress:
-            _download_with_progress(self.client, GFS_FORECAST_BUCKET, aws_key, target, filename)
+            _download_with_progress(self.fs, s3_path, target, filename)
         else:
-            self.client.download_file(Bucket=GFS_FORECAST_BUCKET, Key=aws_key, Filename=target)
+            self.fs.get(s3_path, target)
 
     def _open_gfs_dataset(self, filepath: str | pathlib.Path, t: datetime) -> xr.Dataset:
         """Open GFS grib file for one forecast timestep.
@@ -615,30 +617,20 @@ class GFSForecast(metsource.MetDataSource):
         return met.MetDataset(ds, **kwargs)
 
 
-def _download_with_progress(
-    client: botocore.client.S3, bucket: str, key: str, filename: str, label: str
-) -> None:
-    """Download with `tqdm` progress bar.
+def _download_with_progress(fs: s3fs.S3FileSystem, s3_path: str, target: str, label: str) -> None:
+    """Download with tqdm progress bar using s3fs.
 
     Parameters
     ----------
-    client : botocore.client.S3
-        S3 Client
-    bucket : str
-        AWS Bucket
-    key : str
-        Key within bucket to download
-    filename : str
-        Local filename to download to
+    fs : s3fs.S3FileSystem
+        Filesystem instance.
+    s3_path : str
+        Full s3 path (s3://bucket/key).
+    target : str
+        Local file path to write.
     label : str
-        Progress label
-
-    Raises
-    ------
-    ModuleNotFoundError
-        Raises if tqdm can't be found
+        Progress bar label.
     """
-
     try:
         from tqdm import tqdm
     except ModuleNotFoundError as e:
@@ -649,14 +641,18 @@ def _download_with_progress(
             pycontrails_optional_package="gfs",
         )
 
-    meta = client.head_object(Bucket=bucket, Key=key)
-    filesize = meta["ContentLength"]
+    # get object size via simple info call
+    info = fs.info(s3_path)
+    filesize = info.get("Size") or info.get("size")
 
-    def hook(t: Any) -> Callable:
-        def inner(bytes_amount: Any) -> None:
-            t.update(bytes_amount)
-
-        return inner
-
-    with tqdm(total=filesize, unit="B", unit_scale=True, desc=label) as t:
-        client.download_file(Bucket=bucket, Key=key, Filename=filename, Callback=hook(t))
+    with (
+        fs.open(s3_path, "rb") as fsrc,
+        open(target, "wb") as fdst,
+        tqdm(total=filesize, unit="B", unit_scale=True, desc=label) as t,
+    ):
+        # stream in chunks
+        chunk = fsrc.read(1024 * 1024)
+        while chunk:
+            fdst.write(chunk)
+            t.update(len(chunk))
+            chunk = fsrc.read(1024 * 1024)
