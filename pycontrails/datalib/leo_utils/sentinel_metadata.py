@@ -1,10 +1,10 @@
 """Download and parse Sentinel metadata."""
 
+import datetime
 import os
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import numpy.typing as npt
@@ -464,10 +464,10 @@ def parse_ephemeris_sentinel(datatsrip_metadata_path: str) -> pd.DataFrame:
                 if position_elem is None or position_elem.text is None:
                     continue  # skip if missing
 
-                gps_time = datetime.strptime(gps_time_elem.text, "%Y-%m-%dT%H:%M:%S")
+                gps_time = datetime.datetime.strptime(gps_time_elem.text, "%Y-%m-%dT%H:%M:%S")
 
                 # Convert GPS to UTC time as there is a few seconds between them
-                utc_time = gps_to_utc(gps_time).replace(tzinfo=timezone.utc)
+                utc_time = gps_to_utc(gps_time).replace(tzinfo=datetime.UTC)
 
                 # Parse positions in ECEF coordinate system
                 x, y, z = map(float, position_elem.text.split())
@@ -643,30 +643,30 @@ def get_time_delay_detectors(
 # Time helper functions
 
 
-def gps_to_utc(gps_time: datetime) -> datetime:
+def gps_to_utc(gps_time: datetime.datetime) -> datetime.datetime:
     """Convert GPS time (datetime object) to UTC time.
 
     https://gssc.esa.int/navipedia/index.php/Transformations_between_Time_Systems
     """
 
-    gps_tai_offset = timedelta(seconds=19)
-    utc_tai_offset = timedelta(seconds=37)
+    gps_tai_offset = datetime.timedelta(seconds=19)
+    utc_tai_offset = datetime.timedelta(seconds=37)
 
     # Convert GPS time to UTC
     return gps_time + gps_tai_offset - utc_tai_offset
 
 
-def _calculate_average_time(times: Collection[datetime]) -> datetime:
+def _calculate_average_time(times: Collection[datetime.datetime]) -> datetime.datetime:
     """Return the average time from a list of times."""
     # Compute the average time
     avg_timestamp = sum(t.timestamp() for t in times) / len(times)
-    return datetime.fromtimestamp(avg_timestamp)
+    return datetime.datetime.fromtimestamp(avg_timestamp)
 
 
 def _calculate_timedeltas(detector_times: dict[int, str]) -> dict[int, pd.Timedelta]:
     """Calculate the time difference between a detector and the average time."""
     detector_times_dt = {
-        detector_id: datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
+        detector_id: datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f")
         for detector_id, time_str in detector_times.items()
     }
 
