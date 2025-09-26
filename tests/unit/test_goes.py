@@ -72,6 +72,8 @@ def test_goes_get_no_cache_default_channels(t: str) -> None:
     assert da.dtype == "float32"
     assert da["band_id"].values.tolist() == [11, 14, 15]
     assert da.mean().item() == pytest.approx(275, abs=15)
+    assert da.notnull().all()
+    assert "t" in da.coords
 
     # Ensure we can construct the visualization
     rgb, src_crs, src_extent = goes.extract_goes_visualization(da)
