@@ -517,9 +517,7 @@ class Himawari:
             "dim": "band_id",
             "coords": "minimal",
             "compat": "override",
-            "data_vars": None,
         }
-
         if len(da_dict) == 1 or "B03" not in da_dict:
             return xr.concat(da_dict.values(), **kwargs).sortby("band_id")  # type: ignore[call-overload]
         da03 = da_dict.pop("B03")
