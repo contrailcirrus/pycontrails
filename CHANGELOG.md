@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 0.58.0
 
 - Build wheels for python 3.14. These are not yet tested in the CI (not all dependencies support python 3.14 yet).
 
