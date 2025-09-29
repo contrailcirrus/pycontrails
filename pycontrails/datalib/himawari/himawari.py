@@ -527,7 +527,15 @@ class Himawari:
 
 def _cartopy_crs(proj4_string: str) -> cartopy.crs.Geostationary:
     try:
-        import pyproj  # pyproj is a dependency of cartopy
+        import pyproj
+    except ModuleNotFoundError as exc:
+        dependencies.raise_module_not_found_error(
+            name="Himawari visualization",
+            package_name="pyproj",
+            module_not_found_error=exc,
+            pycontrails_optional_package="sat",
+        )
+    try:
         from cartopy import crs as ccrs
     except ModuleNotFoundError as exc:
         dependencies.raise_module_not_found_error(
