@@ -36,7 +36,7 @@ def test_parse_region(region: str, succeed: bool) -> None:
 
 
 @pytest.mark.parametrize(
-    ("channels", "succeed"),
+    ("bands", "succeed"),
     [
         (("C01",), True),
         (("C11",), True),
@@ -47,20 +47,20 @@ def test_parse_region(region: str, succeed: bool) -> None:
         (("C11", "C13", "C14", "C15"), True),
     ],
 )
-def test_channel_resolution(channels: tuple[str, ...], succeed: bool) -> None:
-    """Test the '_check_channel_resolution' function."""
+def test_band_resolution(bands: tuple[str, ...], succeed: bool) -> None:
+    """Test the '_check_band_resolution' function."""
 
     if succeed:
-        assert goes._check_channel_resolution(channels) is None
+        assert goes._check_band_resolution(bands) is None
         return
 
-    with pytest.raises(ValueError, match="Channels must have a common horizontal resolution"):
-        goes._check_channel_resolution(channels)
+    with pytest.raises(ValueError, match="Bands must have a common horizontal resolution"):
+        goes._check_band_resolution(bands)
 
 
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("t", ["2023-06-15T15:34", "2019-03-14T15:34"])
-def test_goes_get_no_cache_default_channels(t: str) -> None:
+def test_goes_get_no_cache_default_bands(t: str) -> None:
     downloader = goes.GOES(region="m1", cachestore=None)
     assert downloader.cachestore is None
 
@@ -91,8 +91,8 @@ def test_goes_get_no_cache_default_channels(t: str) -> None:
 
 
 @pytest.mark.skipif(OFFLINE, reason="offline")
-def test_goes_get_no_cache_rgb_channels() -> None:
-    downloader = goes.GOES(region="m1", cachestore=None, channels=("C01", "C02", "C03"))
+def test_goes_get_no_cache_rgb_bands() -> None:
+    downloader = goes.GOES(region="m1", cachestore=None, bands=("C01", "C02", "C03"))
     assert downloader.cachestore is None
 
     da = downloader.get("2023-09-15T15:34")
@@ -123,7 +123,7 @@ def cachestore() -> Generator[DiskCacheStore, None, None]:
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("t", ["2023-06-15T15:34", "2021-01-15T00", "2019-03-14T15:34"])
 def test_goes_get_with_cache(t: str, cachestore: DiskCacheStore) -> None:
-    downloader = goes.GOES(region="m2", cachestore=cachestore, channels="C02")
+    downloader = goes.GOES(region="m2", cachestore=cachestore, bands="C02")
     assert downloader.cachestore is not None
     assert downloader.cachestore is cachestore
     assert cachestore.listdir() == []
@@ -142,7 +142,7 @@ def test_goes_get_with_cache(t: str, cachestore: DiskCacheStore) -> None:
 @pytest.fixture(scope="module")
 def goes_data() -> xr.DataArray:
     """A fixture that returns a sample GOES data array for parallax correction tests."""
-    downloader = goes.GOES(region="m1", cachestore=None, channels=("C01", "C02", "C03"))
+    downloader = goes.GOES(region="m1", cachestore=None, bands=("C01", "C02", "C03"))
     return downloader.get("2023-09-15T15:34")
 
 
@@ -218,7 +218,7 @@ def test_goes_parallax_correct_opposite_side(goes_data: xr.DataArray) -> None:
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_goes_19() -> None:
     """Confirm that we can access GOES-19 data."""
-    downloader = goes.GOES(region="m1", cachestore=None, channels="C02")
+    downloader = goes.GOES(region="m1", cachestore=None, bands="C02")
     assert downloader.cachestore is None
 
     da = downloader.get("2025-04-15T15:34")

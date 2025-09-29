@@ -6,6 +6,11 @@
 
 - Add new `Himawari` interface for downloading, processing, and visualizing [Himawari-8 and Himawari-9](https://www.jma.go.jp/jma/jma-eng/satellite/introduction.html) imagery. See the [Himawari notebook](https://py.contrails.org/notebooks/Himawari.html) for usage examples.
 
+### Breaking changes
+
+- Deprecate the `channels` parameter in `GOES.__init__` in favor of `bands`, aligning with the new `Himawari` interface. The `channels` parameter is still available as an alias for `bands`, but will be removed in a future release.
+- Deprecate the `goes_bucket` parameter in `GOES.__init__` in favor of `bucket`, aligning with the new `Himawari` interface. The `goes_bucket` parameter is still available as an alias for `bucket`, but will be removed in a future release.
+
 ### Internals
 
 - Add a new `pycontrails.datalib.geo_utils` module with tools for working with geostationary satellite imagery. This module currently includes functions previously defined in the `goes` module, but are also applicable to Himawari imagery.
