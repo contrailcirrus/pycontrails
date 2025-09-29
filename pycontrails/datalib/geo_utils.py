@@ -144,13 +144,13 @@ def to_ash(da: xr.DataArray, convention: str = "SEVIRI") -> npt.NDArray[np.float
     Parameters
     ----------
     da : xr.DataArray
-        DataArray of GOES data with appropriate channels.
+        DataArray of GOES data with appropriate bands.
     convention : str, optional
         Convention for color space.
 
-        - SEVIRI convention requires channels C11, C14, C15.
+        - SEVIRI convention requires bands C11, C14, C15.
           Used in :cite:`kulikSatellitebasedDetectionContrails2019`.
-        - Standard convention requires channels C11, C13, C14, C15
+        - Standard convention requires bands C11, C13, C14, C15
 
     Returns
     -------
@@ -166,7 +166,7 @@ def to_ash(da: xr.DataArray, convention: str = "SEVIRI") -> npt.NDArray[np.float
     Examples
     --------
     >>> from pycontrails.datalib.goes import GOES
-    >>> goes = GOES(region="M2", channels=("C11", "C14", "C15"))
+    >>> goes = GOES(region="M2", bands=("C11", "C14", "C15"))
     >>> da = goes.get("2022-10-03 04:34:00")
     >>> rgb = to_ash(da)
     >>> rgb.shape

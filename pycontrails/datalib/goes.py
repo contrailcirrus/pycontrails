@@ -18,6 +18,7 @@ import datetime
 import enum
 import os
 import tempfile
+import warnings
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
@@ -48,9 +49,9 @@ except ModuleNotFoundError as exc:
     )
 
 
-#: Default channels to use if none are specified. These are the channels
+#: Default bands to use if none are specified. These are the bands
 #: required by the SEVIRI (MIT) ash color scheme.
-DEFAULT_CHANNELS = "C11", "C14", "C15"
+DEFAULT_BANDS = "C11", "C14", "C15"
 
 #: The time at which the GOES scan mode changed from mode 3 to mode 6. This
 #: is used to determine the scan time resolution.
@@ -126,23 +127,23 @@ def _check_time_resolution(t: datetime.datetime, region: GOESRegion) -> datetime
     return t
 
 
-def _parse_channels(channels: str | Iterable[str] | None) -> set[str]:
-    """Check that the channels are valid and return as a set."""
-    if channels is None:
-        return set(DEFAULT_CHANNELS)
+def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
+    """Check that the bands are valid and return as a set."""
+    if bands is None:
+        return set(DEFAULT_BANDS)
 
-    if isinstance(channels, str):
-        channels = (channels,)
+    if isinstance(bands, str):
+        bands = (bands,)
 
     available = {f"C{i:02d}" for i in range(1, 17)}
-    channels = {c.upper() for c in channels}
-    if not channels.issubset(available):
-        raise ValueError(f"Channels must be in {sorted(available)}")
-    return channels
+    bands = {c.upper() for c in bands}
+    if not bands.issubset(available):
+        raise ValueError(f"Bands must be in {sorted(available)}")
+    return bands
 
 
-def _check_channel_resolution(channels: Iterable[str]) -> None:
-    """Confirm request channels have a common horizontal resolution."""
+def _check_band_resolution(bands: Iterable[str]) -> None:
+    """Confirm request bands have a common horizontal resolution."""
     # https://www.goes-r.gov/spacesegment/abi.html
     res = {
         "C01": 1.0,
@@ -163,14 +164,14 @@ def _check_channel_resolution(channels: Iterable[str]) -> None:
         "C16": 2.0,
     }
 
-    found_res = {c: res[c] for c in channels}
+    found_res = {b: res[b] for b in bands}
     unique_res = set(found_res.values())
     if len(unique_res) > 1:
-        c0, r0 = found_res.popitem()
-        c1, r1 = next((c, r) for c, r in found_res.items() if r != r0)
+        b0, r0 = found_res.popitem()
+        b1, r1 = next((b, r) for b, r in found_res.items() if r != r0)
         raise ValueError(
-            "Channels must have a common horizontal resolution. "
-            f"Channel {c0} has resolution {r0} km and channel {c1} has resolution {r1} km."
+            "Bands must have a common horizontal resolution. "
+            f"Band {b0} has resolution {r0} km and band {b1} has resolution {r1} km."
         )
 
 
@@ -195,11 +196,11 @@ def _parse_region(region: GOESRegion | str) -> GOESRegion:
 def gcs_goes_path(
     time: datetime.datetime,
     region: GOESRegion,
-    channels: str | Iterable[str] | None = None,
+    bands: str | Iterable[str] | None = None,
     bucket: str | None = None,
     fs: gcsfs.GCSFileSystem | None = None,
 ) -> list[str]:
-    """Return GCS paths to GOES data at the given time for the given region and channels.
+    """Return GCS paths to GOES data at the given time for the given region and bands.
 
     Presently only supported for GOES data whose scan time minute coincides with
     the minute of the time parameter.
@@ -211,11 +212,11 @@ def gcs_goes_path(
         ISO 8601 formatted string.
     region : GOESRegion
         GOES Region of interest.
-    channels : str | Iterable[str] | None, optional
-        Set of channels or bands for CMIP data. The 16 possible channels are
+    bands : str | Iterable[str] | None, optional
+        Set of bands or bands for CMIP data. The 16 possible bands are
         represented by the strings "C01" to "C16". For the SEVIRI ash color scheme,
-        set ``channels=("C11", "C14", "C15")``. For the true color scheme,
-        set ``channels=("C01", "C02", "C03")``. By default, the channels
+        set ``bands=("C11", "C14", "C15")``. For the true color scheme,
+        set ``bands=("C01", "C02", "C03")``. By default, the bands
         required by the SEVIRI ash color scheme are used.
     bucket : str | None
         GCS bucket for GOES data. If None, the bucket is automatically
@@ -234,25 +235,25 @@ def gcs_goes_path(
     >>> from pprint import pprint
     >>> t = datetime.datetime(2023, 4, 3, 2, 10)
 
-    >>> paths = gcs_goes_path(t, GOESRegion.F, channels=("C11", "C12", "C13"))
+    >>> paths = gcs_goes_path(t, GOESRegion.F, bands=("C11", "C12", "C13"))
     >>> pprint(paths)
     ['gcp-public-data-goes-16/ABI-L2-CMIPF/2023/093/02/OR_ABI-L2-CMIPF-M6C11_G16_s20230930210203_e20230930219511_c20230930219586.nc',
      'gcp-public-data-goes-16/ABI-L2-CMIPF/2023/093/02/OR_ABI-L2-CMIPF-M6C12_G16_s20230930210203_e20230930219516_c20230930219596.nc',
      'gcp-public-data-goes-16/ABI-L2-CMIPF/2023/093/02/OR_ABI-L2-CMIPF-M6C13_G16_s20230930210203_e20230930219523_c20230930219586.nc']
 
-    >>> paths = gcs_goes_path(t, GOESRegion.C, channels=("C11", "C12", "C13"))
+    >>> paths = gcs_goes_path(t, GOESRegion.C, bands=("C11", "C12", "C13"))
     >>> pprint(paths)
     ['gcp-public-data-goes-16/ABI-L2-CMIPC/2023/093/02/OR_ABI-L2-CMIPC-M6C11_G16_s20230930211170_e20230930213543_c20230930214055.nc',
      'gcp-public-data-goes-16/ABI-L2-CMIPC/2023/093/02/OR_ABI-L2-CMIPC-M6C12_G16_s20230930211170_e20230930213551_c20230930214045.nc',
      'gcp-public-data-goes-16/ABI-L2-CMIPC/2023/093/02/OR_ABI-L2-CMIPC-M6C13_G16_s20230930211170_e20230930213557_c20230930214065.nc']
 
     >>> t = datetime.datetime(2023, 4, 3, 2, 11)
-    >>> paths = gcs_goes_path(t, GOESRegion.M1, channels="C01")
+    >>> paths = gcs_goes_path(t, GOESRegion.M1, bands="C01")
     >>> pprint(paths)
     ['gcp-public-data-goes-16/ABI-L2-CMIPM/2023/093/02/OR_ABI-L2-CMIPM1-M6C01_G16_s20230930211249_e20230930211309_c20230930211386.nc']
 
     >>> t = datetime.datetime(2025, 5, 4, 3, 2)
-    >>> paths = gcs_goes_path(t, GOESRegion.M2, channels="C01")
+    >>> paths = gcs_goes_path(t, GOESRegion.M2, bands="C01")
     >>> pprint(paths)
     ['gcp-public-data-goes-19/ABI-L2-CMIPM/2025/124/03/OR_ABI-L2-CMIPM2-M6C01_G19_s20251240302557_e20251240303014_c20251240303092.nc']
 
@@ -298,22 +299,22 @@ def gcs_goes_path(
         raise ValueError(msg) from exc
     name_suffix = f"_G{satellite_number}_s{time_str}*"
 
-    channels = _parse_channels(channels)
+    bands = _parse_bands(bands)
 
     # It's faster to run a single glob with C?? then running a glob for
-    # each channel. The downside is that we have to filter the results.
+    # each band. The downside is that we have to filter the results.
     rpath = f"{path_prefix}{name_prefix}C??{name_suffix}"
 
     fs = fs or gcsfs.GCSFileSystem(token="anon")
     rpaths = fs.glob(rpath)
 
-    out = [r for r in rpaths if _extract_channel_from_rpath(r) in channels]
+    out = [r for r in rpaths if _extract_band_from_rpath(r) in bands]
     if not out:
-        raise RuntimeError(f"No data found for {time} in {region} for channels {channels}")
+        raise RuntimeError(f"No data found for {time} in {region} for bands {bands}")
     return out
 
 
-def _extract_channel_from_rpath(rpath: str) -> str:
+def _extract_band_from_rpath(rpath: str) -> str:
     # Split at the separator between product name and mode
     # This works for both M3 and M6
     sep = "-M"
@@ -338,12 +339,12 @@ class GOES:
 
         By default, Full Disk (F) is used.
 
-    channels : str | Iterable[str] | None
-        Set of channels or bands for CMIP data. The 16 possible channels are
+    bands : str | Iterable[str] | None
+        Set of bands or bands for CMIP data. The 16 possible bands are
         represented by the strings "C01" to "C16". For the SEVIRI ash color scheme,
-        set ``channels=("C11", "C14", "C15")``. For the true color scheme,
-        set ``channels=("C01", "C02", "C03")``. By default, the channels
-        required by the SEVIRI ash color scheme are used. The channels must have
+        set ``bands=("C11", "C14", "C15")``. For the true color scheme,
+        set ``bands=("C01", "C02", "C03")``. By default, the bands
+        required by the SEVIRI ash color scheme are used. The bands must have
         a common horizontal resolution. The resolutions are:
 
         - C01: 1.0 km
@@ -356,7 +357,7 @@ class GOES:
     cachestore : cache.CacheStore | None, optional
         Cache store for GOES data. If None, data is downloaded directly into
         memory. By default, a :class:`cache.DiskCacheStore` is used.
-    goes_bucket : str | None, optional
+    bucket : str | None, optional
         GCP bucket for GOES data. If None, the default option, the bucket is automatically
         set to ``GOES_16_BUCKET`` if the requested time is before
         ``GOES_16_19_SWITCH_DATE`` and ``GOES_19_BUCKET`` otherwise.
@@ -370,7 +371,7 @@ class GOES:
 
     Examples
     --------
-    >>> goes = GOES(region="M1", channels=("C11", "C14"))
+    >>> goes = GOES(region="M1", bands=("C11", "C14"))
     >>> da = goes.get("2021-04-03 02:10:00")
     >>> da.shape
     (2, 500, 500)
@@ -394,7 +395,7 @@ class GOES:
     >>> assert goes.cachestore.listdir()
 
     >>> # Download GOES data directly into memory by setting cachestore=None
-    >>> goes = GOES(region="M2", channels=("C11", "C12", "C13"), cachestore=None)
+    >>> goes = GOES(region="M2", bands=("C11", "C12", "C13"), cachestore=None)
     >>> da = goes.get("2021-04-03 02:10:00")
 
     >>> da.shape
@@ -431,16 +432,39 @@ class GOES:
     def __init__(
         self,
         region: GOESRegion | str = GOESRegion.F,
-        channels: str | Iterable[str] | None = None,
+        bands: str | Iterable[str] | None = None,
         *,
+        channels: str | Iterable[str] | None = None,  # deprecated alias for bands
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
-        goes_bucket: str | None = None,
+        bucket: str | None = None,
+        goes_bucket: str | None = None,  # deprecated alias for bucket
     ) -> None:
-        self.region = _parse_region(region)
-        self.channels = _parse_channels(channels)
-        _check_channel_resolution(self.channels)
+        if channels is not None:
+            if bands is not None:
+                raise ValueError("Only one of channels or bands should be specified")
+            warnings.warn(
+                "The 'channels' parameter is deprecated and will be removed in a future release. "
+                "Use 'bands' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            bands = channels
+        if goes_bucket is not None:
+            if bucket is not None:
+                raise ValueError("Only one of goes_bucket or bucket should be specified")
+            warnings.warn(
+                "The 'goes_bucket' parameter is deprecated and will be removed in a future release."
+                "Use 'bucket' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            bucket = goes_bucket
 
-        self.goes_bucket = goes_bucket
+        self.region = _parse_region(region)
+        self.bands = _parse_bands(bands)
+        _check_band_resolution(self.bands)
+
+        self.bucket = bucket
         self.fs = gcsfs.GCSFileSystem(token="anon")
 
         if cachestore is self.__marker:
@@ -452,11 +476,10 @@ class GOES:
     def __repr__(self) -> str:
         """Return string representation."""
         return (
-            f"GOES(region='{self.region.name}', channels={sorted(self.channels)}, "
-            f"goes_bucket={self.goes_bucket})"
+            f"GOES(region='{self.region.name}', bands={sorted(self.bands)}, bucket={self.bucket})"
         )
 
-    def gcs_goes_path(self, time: datetime.datetime, channels: set[str] | None = None) -> list[str]:
+    def gcs_goes_path(self, time: datetime.datetime, bands: set[str] | None = None) -> list[str]:
         """Return GCS paths to GOES data at given time.
 
         Presently only supported for GOES data whose scan time minute coincides with
@@ -466,8 +489,8 @@ class GOES:
         ----------
         time : datetime.datetime
             Time of GOES data.
-        channels : set[str] | None
-            Set of channels or bands for CMIP data. If None, the :attr:`channels`
+        bands : set[str] | None
+            Set of bands or bands for CMIP data. If None, the :attr:`bands`
             attribute is used.
 
         Returns
@@ -475,13 +498,13 @@ class GOES:
         list[str]
             List of GCS paths to GOES data.
         """
-        channels = channels or self.channels
-        return gcs_goes_path(time, self.region, channels, bucket=self.goes_bucket, fs=self.fs)
+        bands = bands or self.bands
+        return gcs_goes_path(time, self.region, bands, bucket=self.bucket, fs=self.fs)
 
     def _lpaths(self, time: datetime.datetime) -> dict[str, str]:
         """Construct names for local netcdf files using the :attr:`cachestore`.
 
-        Returns dictionary of the form ``{channel: local_path}``.
+        Returns dictionary of the form ``{band: local_path}``.
         """
         if not self.cachestore:
             raise ValueError("cachestore must be set to use _lpaths")
@@ -489,14 +512,14 @@ class GOES:
         t_str = time.strftime("%Y%m%d%H%M")
 
         out = {}
-        for c in self.channels:
-            if self.goes_bucket:
-                name = f"{self.goes_bucket}_{self.region.name}_{t_str}_{c}.nc"
+        for band in self.bands:
+            if self.bucket:
+                name = f"{self.bucket}_{self.region.name}_{t_str}_{band}.nc"
             else:
-                name = f"{self.region.name}_{t_str}_{c}.nc"
+                name = f"{self.region.name}_{t_str}_{band}.nc"
 
             lpath = self.cachestore.path(name)
-            out[c] = lpath
+            out[band] = lpath
 
         return out
 
@@ -530,13 +553,13 @@ class GOES:
             raise ValueError("cachestore must be set to use _get_with_cache")
 
         lpaths = self._lpaths(time)
-        channels_needed = {c for c, lpath in lpaths.items() if not self.cachestore.exists(lpath)}
+        bands_needed = {c for c, lpath in lpaths.items() if not self.cachestore.exists(lpath)}
 
-        if channels_needed:
-            rpaths = self.gcs_goes_path(time, channels_needed)
+        if bands_needed:
+            rpaths = self.gcs_goes_path(time, bands_needed)
             for rpath in rpaths:
-                channel = _extract_channel_from_rpath(rpath)
-                lpath = lpaths[channel]
+                band = _extract_band_from_rpath(rpath)
+                lpath = lpaths[band]
                 self.fs.get(rpath, lpath)
 
         # Deal with the different spatial resolutions
@@ -576,12 +599,12 @@ class GOES:
 
         da_dict = {}
         for rpath, init_bytes in data.items():
-            channel = _extract_channel_from_rpath(rpath)
+            band = _extract_band_from_rpath(rpath)
             ds = _load_via_tempfile(init_bytes)
 
             da = ds["CMI"]
             da = da.expand_dims(band_id=ds["band_id"].values)
-            da_dict[channel] = da
+            da_dict[band] = da
 
         if len(da_dict) > 1 and "C02" in da_dict:  # xr.concat fails after pop if only 1 file
             da2 = da_dict.pop("C02")
@@ -643,13 +666,13 @@ def extract_visualization(
     Parameters
     ----------
     da : xr.DataArray
-        DataArray of GOES data as returned by :meth:`GOES.get`. Must have the channels
+        DataArray of GOES data as returned by :meth:`GOES.get`. Must have the bands
         required by :func:`to_ash`.
     color_scheme : str
         Color scheme to use for visualization. Must be one of {"true", "ash"}.
-        If "true", the ``da`` must contain channels C01, C02, and C03.
-        If "ash", the ``da`` must contain channels C11, C14, and C15 (SEVIRI convention)
-        or channels C11, C13, C14, and C15 (standard convention).
+        If "true", the ``da`` must contain bands C01, C02, and C03.
+        If "ash", the ``da`` must contain bands C11, C14, and C15 (SEVIRI convention)
+        or bands C11, C13, C14, and C15 (standard convention).
     ash_convention : str
         Passed into :func:`to_ash`. Only used if ``color_scheme="ash"``. Must be one
         of {"SEVIRI", "standard"}. By default, "SEVIRI" is used.
@@ -698,9 +721,9 @@ def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float3
     Parameters
     ----------
     da : xr.DataArray
-        DataArray of GOES data with channels C01, C02, C03.
+        DataArray of GOES data with bands C01, C02, C03.
     gamma : float, optional
-        Gamma correction for the RGB channels.
+        Gamma correction for the RGB bands.
 
     Returns
     -------
@@ -727,7 +750,7 @@ def to_true_color(da: xr.DataArray, gamma: float = 2.2) -> npt.NDArray[np.float3
     veggie = veggie ** (1 / gamma)
     blue = blue ** (1 / gamma)
 
-    # Calculate synthetic green channel
+    # Calculate synthetic green band
     green = 0.45 * red + 0.1 * veggie + 0.45 * blue
     green = geo_utils._clip_and_scale(green, 0.0, 1.0)
 
