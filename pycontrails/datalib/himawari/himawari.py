@@ -197,7 +197,7 @@ def _radiance_to_reflectance(
 ) -> npt.NDArray[np.float32]:
     """Convert radiance to reflectance."""
     coeff = calib_info["coeff_c_prime"]
-    return np.clip(radiance * coeff, 0.0, 1.0)
+    return radiance * coeff
 
 
 def _load_raw_counts(content: bytes, metadata: dict[str, Any]) -> npt.NDArray[np.uint16]:

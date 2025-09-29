@@ -70,18 +70,48 @@ def test_himawari_get_no_cache_default_bands(t: str) -> None:
     assert da.dims == ("band_id", "y", "x")
     assert da.dtype == "float32"
     assert da["band_id"].values.tolist() == [11, 14, 15]
-    assert da.mean().item() == pytest.approx(275, abs=15)
+    assert da.mean().item() == pytest.approx(280.0, abs=5.0)  # this value works for both times
     assert da.notnull().all()  # no null values for Target region
     assert "t" in da.coords
     assert (
         da.attrs["crs"] == "+proj=geos +h=35785863.0 +a=6378137.0 +b=6356752.3 "
         "+lon_0=140.7 +sweep=x +units=m +no_defs"
     )
+    assert da.attrs["standard_name"] == "toa_brightness_temperature"
+    assert da.attrs["units"] == "K"
 
     # Ensure we can construct the visualization
     rgb, _, _ = himawari.extract_visualization(da)
     assert isinstance(rgb, np.ndarray)
     assert rgb.shape == (500, 500, 3)
     assert np.all(np.isfinite(rgb))
-    assert rgb.min() == 0
+    assert rgb.min() == 0.0
     assert rgb.max() > 0.9
+
+
+@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.parametrize("t", ["2024-06-15T02:17:30"])
+def test_himawari_b03(t: str) -> None:
+    """Test the ``Himawari.get`` method with default bands and no cache over the Target region.
+
+    This test mirrors the GOES test_goes_get_no_cache_default_channels test.
+    """
+    downloader = himawari.Himawari(region="J", bands=("B02", "B03"), cachestore=None)
+    assert downloader.cachestore is None
+
+    da = downloader.get(t)
+    assert isinstance(da, xr.DataArray)
+    assert da.shape == (2, 2400, 3000)  # 0.5 km resolution
+    assert da.name == "CMI"
+    assert da.dims == ("band_id", "y", "x")
+    assert da.dtype == "float32"
+    assert da["band_id"].values.tolist() == [2, 3]
+    assert da.mean().item() == pytest.approx(0.3, abs=0.5)
+    assert da.isnull().any()  # some null values for Japan region
+    assert "t" in da.coords
+    assert (
+        da.attrs["crs"] == "+proj=geos +h=35785863.0 +a=6378137.0 +b=6356752.3 "
+        "+lon_0=140.7 +sweep=x +units=m +no_defs"
+    )
+    assert da.attrs["standard_name"] == "toa_reflectance"
+    assert da.attrs["units"] == ""
