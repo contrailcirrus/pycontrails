@@ -83,13 +83,15 @@ ARCO ERA5
     datalib.ecmwf.arco_era5
 
 
-GOES
-""""
+Geostationary Satellites
+""""""""""""""""""""""""
 
 .. autosummary::
     :toctree: api/
 
     datalib.goes
+    datalib.himawari
+    datalib.geo_utils
 
 
 Low Earth Orbit Satellites
