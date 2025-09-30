@@ -24,12 +24,12 @@ DEFAULT_EXHAUST_T = 600.0  # Exhaust temperature, [K]
 EXPERIMENTAL_WARNING = True
 
 
-class ParticleType(enum.Enum):
+class ParticleType(enum.StrEnum):
     """Enumeration of particle types."""
 
-    NVPM = "nvPM"
-    VPM = "vPM"
-    AMBIENT = "ambient"
+    NVPM = enum.auto()
+    VPM = enum.auto()
+    AMBIENT = enum.auto()
 
 
 @dataclasses.dataclass(frozen=True)
