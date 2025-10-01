@@ -207,14 +207,22 @@ class MetBase(ABC, Generic[XArrayType]):
         Raises
         ------
         ValueError
-            If one of the coordinates is not sorted.
+            If one of the coordinates is not sorted or contains duplicate values.
         """
         indexes = self.indexes
-        if not np.all(np.diff(indexes["time"]) > np.timedelta64(0, "ns")):
-            raise ValueError("Coordinate 'time' not sorted. Instantiate with 'copy=True'.")
-        for coord in self.dim_order[:3]:  # exclude time, the 4th dimension
-            if not np.all(np.diff(indexes[coord]) > 0.0):
-                raise ValueError(f"Coordinate '{coord}' not sorted. Instantiate with 'copy=True'.")
+        for coord in self.dim_order:
+            arr = indexes[coord]
+            d = np.diff(arr)
+            zero = np.zeros((), dtype=d.dtype)  # ensure same dtype
+
+            if np.any(d <= zero):
+                if np.any(d == zero):
+                    msg = f"Coordinate '{coord}' contains duplicate values."
+                else:
+                    msg = f"Coordinate '{coord}' not sorted."
+
+                msg += " Instantiate with 'copy=True'."
+                raise ValueError(msg)
 
     def _validate_transpose(self) -> None:
         """Check that data is transposed according to :attr:`dim_order`."""
@@ -267,6 +275,10 @@ class MetBase(ABC, Generic[XArrayType]):
             Auxiliary coordinates (altitude and air_pressure) are now cast to the same
             dtype as the underlying grid data.
 
+        .. versionchanged:: 0.58.0
+
+            Duplicate dimension values are dropped, keeping the first occurrence.
+
 
         Parameters
         ----------
@@ -292,6 +304,18 @@ class MetBase(ABC, Generic[XArrayType]):
 
         # sortby to ensure each coordinate has ascending order
         self.data = self.data.sortby(list(self.dim_order), ascending=True)
+
+        # Drop any duplicated dimension values
+        indexes = self.indexes
+        for coord in self.dim_order:
+            arr = indexes[coord]
+            d = np.diff(arr)
+            zero = np.zeros((), dtype=d.dtype)  # ensure same dtype
+
+            if np.any(d == zero):
+                # Remove duplicates
+                filt = np.r_[True, d > zero]  # prepend True keeps the first occurrence
+                self.data = self.data.isel({coord: filt})
 
         if not self.is_wrapped:
             # Ensure longitude is contained in interval [-180, 180)

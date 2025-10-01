@@ -2,12 +2,18 @@
 
 ## 0.58.0
 
+### Features
+
 - Build wheels for python 3.14. These are not yet tested in the CI (not all dependencies support python 3.14 yet).
 
 ### Breaking changes
 
 - Drop support for python 3.10 per [NEP 29](https://numpy.org/neps/nep-0029-deprecation_policy.html).
 - Require scipy >= 1.12 to better support the `PycontrailsRegularGridInterpolator` interface.
+
+### Fixes
+
+- When instantiated with `copy=True`, `MetDataset` and `MetDataArray` now remove duplicate dimension values, preserving only the first occurrence of each. Previously, duplicates were silently retained (such duplicates are not expected with typical gridded weather data). With `copy=False`, a `ValueError` is raised if duplicate dimension values are present.
 
 ## 0.57.0
 

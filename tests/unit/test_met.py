@@ -1403,3 +1403,23 @@ def test_float32_level(met_ecmwf_pl_path: str, copy: bool) -> None:
 
     with pytest.raises(ValueError, match=r"Level values must have dtype <class 'numpy.float64'>"):
         MetDataset(ds, copy=copy)
+
+
+@pytest.mark.parametrize("coord", ["longitude", "latitude", "level", "time"])
+@pytest.mark.parametrize("copy", [True, False])
+def test_met_with_duplicated(met_ecmwf_pl_path: str, coord: str, copy: bool) -> None:
+    """Test MetDataset with duplicated coordinates."""
+    ds = MetDataset(xr.open_dataset(met_ecmwf_pl_path)).data
+
+    # duplicate the first value of the specified coordinate
+    ds[coord].values[1] = ds[coord].values[0]
+    assert not ds[coord].to_index().is_unique
+
+    if not copy:
+        with pytest.raises(ValueError, match=f"Coordinate '{coord}' contains duplicate values"):
+            MetDataset(ds, copy=False)
+        return
+
+    mds = MetDataset(ds, copy=True)
+    assert mds.data[coord].to_index().is_unique
+    assert mds.data[coord].size == ds[coord].size - 1

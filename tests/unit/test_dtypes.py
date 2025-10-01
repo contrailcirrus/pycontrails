@@ -31,12 +31,12 @@ def met(met_ecmwf_pl_path: str) -> MetDataset:
     # shift time and concatenate to create a new dataset
     ds2 = ds1.copy()
     ds2["time"] = ds2["time"] + np.timedelta64(1, "h")
-    ds = xr.concat([ds1, ds2], dim="time")
+    ds = xr.concat([ds1, ds2], dim="time")  # this introduces a duplicate time
     for v in ds.data_vars:
         assert ds[v].dtype == "float32"
 
     met = MetDataset(ds)
-    assert met.shape == (15, 8, 3, 4)
+    assert met.shape == (15, 8, 3, 3)  # duplicate time gets dropped
     return met
 
 
