@@ -14,6 +14,7 @@
 ### Fixes
 
 - When instantiated with `copy=True`, `MetDataset` and `MetDataArray` now remove duplicate dimension values, preserving only the first occurrence of each. Previously, duplicates were silently retained (such duplicates are not expected with typical gridded weather data). With `copy=False`, a `ValueError` is raised if duplicate dimension values are present.
+- Update `PycontrailsRegularGridInterpolator` for improved compatibility with `scipy.interpolate.RegularGridInterpolator`. All methods now delegate to SciPy’s implementation, except for `method="linear"`, which retains a fast-path optimized in `PycontrailsRegularGridInterpolator`.
 
 ## 0.57.0
 

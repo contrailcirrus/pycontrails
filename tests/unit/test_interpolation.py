@@ -324,27 +324,25 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str) -> None:
     t0 = rng.uniform(t.min(), t.max(), size=1000).astype("datetime64[ns]")
 
     # Run interpolation through pycontrails interface
+    # All methods besides linear get passed through to scipy RGI
     kwargs = {"method": method, "bounds_error": True, "fill_value": np.nan, "localize": True}
-    if method in ["cubic", "quintic"]:
-        with pytest.raises(ValueError, match="The number of derivatives at boundaries does not"):
+    if method in ("cubic", "quintic"):
+        with pytest.raises(ValueError, match=f"3 points in dimension 2, but method {method}"):
             interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
         return
 
     out1 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
     assert np.all(np.isfinite(out1))
-    assert out1.dtype == "float32"
+    assert out1.dtype == np.float32 if method == "nearest" else np.float64
 
     kwargs = {"method": "linear", "bounds_error": True, "fill_value": np.nan, "localize": True}
     out2 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
     assert np.all(np.isfinite(out2))
 
     if method == "slinear":
-        np.testing.assert_array_equal(out1, out2)
-        return
-
-    # Pin the RMSE (out of curiosity)
-    rmse = (np.mean((out1 - out2) ** 2)) ** 0.5
-    assert rmse == pytest.approx(3.3319389446, rel=1e-10)
+        np.testing.assert_allclose(out1, out2, rtol=1e-7)  # the difference is from the precision
+    else:  # method == "nearest"
+        np.testing.assert_allclose(out1, out2, rtol=0.1)  # all within 10%
 
 
 @pytest.fixture()

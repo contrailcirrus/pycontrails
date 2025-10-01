@@ -26,20 +26,26 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     This class is a thin wrapper around the
     :class:`scipy.interpolate.RegularGridInterpolator` in order to make typical
-    ``pycontrails`` use-cases more efficient.
+    ``pycontrails`` linear interpolation use-cases more performant:
 
-    #. Avoid ``RegularGridInterpolator`` constructor validation. In :func:`interp`,
-    parameters are carefully crafted to fit into the intended form, thereby making
-    validation unnecessary.
+    #. Avoid ``RegularGridInterpolator`` constructor validation when `method="linear"`.
+       In :func:`interp`, parameters are carefully crafted to fit into the intended form,
+       thereby making validation unnecessary.
     #. Override the :meth:`_evaluate_linear` method with a faster implementation. See
-    the :meth:`_evaluate_linear` docstring for more information.
+       the :meth:`_evaluate_linear` docstring for more information.
 
-    This class should not be used directly. Instead, use the :func:`interp` function.
+    **This class should not be used directly. Instead, use the ``interp`` function.**
 
     .. versionchanged:: 0.40.0
 
         The :meth:`_evaluate_linear` method now uses a Cython implementation. The dtype
         of the output is now consistent with the dtype of the underlying :attr:`values`
+
+    .. versionchanged:: 0.58.0
+
+        Any ``method`` other than ``"linear"`` now uses the
+        :class:`scipy.interpolate.RegularGridInterpolator` implementation. This
+        allows for greater flexibility in the ``method`` parameter.
 
     Parameters
     ----------
@@ -47,36 +53,47 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         Coordinates of the grid points.
     values : npt.NDArray[np.floating]
         Grid values. The shape of this array must be compatible with the
-        coordinates. An error is raised if the dtype is not ``np.float32``
-        or ``np.float64``.
+        coordinates.
     method : str
         Passed into :class:`scipy.interpolate.RegularGridInterpolator`
     bounds_error : bool
         Passed into :class:`scipy.interpolate.RegularGridInterpolator`
     fill_value : float | np.float64 | None
         Passed into :class:`scipy.interpolate.RegularGridInterpolator`
+
+    See Also
+    --------
+    scipy.interpolate.RegularGridInterpolator
+    interp
     """
 
     def __init__(
         self,
         points: tuple[npt.NDArray[np.floating], ...],
         values: npt.NDArray[np.floating],
+        *,
         method: str,
         bounds_error: bool,
         fill_value: float | np.float64 | None,
     ) -> None:
-        if values.dtype not in (np.float32, np.float64):
-            msg = f"values must be a float array, not {values.dtype}"
-            raise ValueError(msg)
+        if method != "linear" or values.dtype not in (np.float32, np.float64):
+            # Slow path: use parent class
+            super().__init__(
+                points,
+                values,
+                method=method,
+                bounds_error=bounds_error,
+                fill_value=fill_value,
+            )
+            return
 
+        # Fast path: no validation
         self.grid = points
         self.values = values
-        # TODO: consider supporting updated tensor-product spline methods
-        # see https://github.com/scipy/scipy/releases/tag/v1.13.0
-        self.method = _pick_method(scipy.__version__, method)
+        self.method = method
         self.bounds_error = bounds_error
         self.fill_value = fill_value
-        self._spline = None
+        self._spline = None  # XXX: setting private attribute on RGI
 
     def _prepare_xi_simple(self, xi: npt.NDArray[np.floating]) -> npt.NDArray[np.bool_]:
         """Run looser version of :meth:`_prepare_xi`.
@@ -103,7 +120,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
             return np.zeros(xi.shape[0], dtype=bool)
 
-        return self._find_out_of_bounds(xi.T)
+        return self._find_out_of_bounds(xi.T)  # XXX: calling private method on RGI
 
     def __call__(
         self, xi: npt.NDArray[np.floating], method: str | None = None
@@ -130,7 +147,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             return super().__call__(xi, method)
 
         out_of_bounds = self._prepare_xi_simple(xi)
-        xi_indices, norm_distances = self._find_indices(xi.T)
+        xi_indices, norm_distances = self._find_indices(xi.T)  # XXX: calling private method on RGI
 
         out = self._evaluate_linear(xi_indices, norm_distances)
         return self._set_out_of_bounds(out, out_of_bounds)
@@ -221,45 +238,6 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         msg = f"Invalid number of dimensions: {ndim}"
         raise ValueError(msg)
-
-
-def _pick_method(scipy_version: str, method: str) -> str:
-    """Select an interpolation method.
-
-    For scipy versions 1.13.0 and later, fall back on legacy implementations
-    of tensor-product spline methods. The default implementations in 1.13.0
-    and later are incompatible with this class.
-
-    Parameters
-    ----------
-    scipy_version : str
-        scipy version (major.minor.patch)
-
-    method : str
-        Interpolation method. Passed into :class:`scipy.interpolate.RegularGridInterpolator`
-        as-is unless ``scipy_version`` is 1.13.0 or later and ``method`` is ``"slinear"``,
-        ``"cubic"``, or ``"quintic"``. In this case, ``"_legacy"`` is appended to ``method``.
-
-    Returns
-    -------
-    str
-        Interpolation method adjusted for compatibility with this class.
-    """
-    if method == "linear":
-        return method
-
-    try:
-        version = scipy_version.split(".")
-        major = int(version[0])
-        minor = int(version[1])
-    except (IndexError, ValueError) as exc:
-        msg = f"Failed to parse major and minor version from {scipy_version}"
-        raise ValueError(msg) from exc
-
-    reimplemented_methods = ["slinear", "cubic", "quintic"]
-    if major > 1 or ((major == 1 and minor >= 13) and method in reimplemented_methods):
-        return method + "_legacy"
-    return method
 
 
 def _floatize_time(
@@ -431,7 +409,7 @@ def interp(
         Include ``indices`` and ``return_indices`` experimental parameters.
         Currently, nan values in ``longitude``, ``latitude``, ``level``, or ``time``
         are always propagated through to the output, regardless of ``bounds_error``.
-        In other words, a ValueError for an out of bounds coordinate is only raised
+        In other words, a ``ValueError`` for an out of bounds coordinate is only raised
         if a non-nan value is out of bounds.
 
     .. versionchanged:: 0.40.0
@@ -480,9 +458,9 @@ def interp(
 
     See Also
     --------
-    - :meth:`MetDataArray.interpolate`
-    - :func:`scipy.interpolate.interpn`
-    - :class:`scipy.interpolate.RegularGridInterpolator`
+    pycontrails.MetDataArray.interpolate
+    scipy.interpolate.interpn
+    scipy.interpolate.RegularGridInterpolator
     """
     if localize:
         coords = {"longitude": longitude, "latitude": latitude, "level": level, "time": time}
@@ -606,7 +584,7 @@ class EmissionsProfileInterpolator:
 
     This class simply wraps :func:`numpy.interp` with fixed values for the
     ``xp`` and ``fp`` arguments. Unlike :class:`xarray.DataArray` interpolation,
-    the `numpy.interp` automatically clips values outside the range of the
+    the :func:`numpy.interp` automatically clips values outside the range of the
     ``xp`` array.
 
     Parameters
