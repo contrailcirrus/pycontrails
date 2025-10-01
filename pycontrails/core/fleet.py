@@ -117,7 +117,7 @@ class Fleet(Flight):
         # Set default fl_attrs if not provided
         fl_attrs = fl_attrs or {}
         for flight_id in groups.index:
-            fl_attrs.setdefault(flight_id, {})  # type: ignore[call-overload]
+            fl_attrs.setdefault(flight_id, {})
 
         extra = fl_attrs.keys() - groups.index
         if extra:

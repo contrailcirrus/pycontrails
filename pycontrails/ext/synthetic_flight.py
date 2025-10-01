@@ -305,8 +305,8 @@ class SyntheticFlight:
             *src,
             az,
             npts,
-            m_per_timestep,  # type: ignore
-            return_back_azimuth=False,  # type: ignore
+            m_per_timestep,
+            return_back_azimuth=False,
         )
         longitude = np.asarray(result.lons)
         latitude = np.asarray(result.lats)

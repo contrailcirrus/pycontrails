@@ -1083,7 +1083,7 @@ class MetDataset(MetBase):
             out[key] = da.values.ravel()  # type: ignore[index]
 
         if transfer_attrs:
-            out.attrs.update(self.attrs)  # type: ignore[arg-type]
+            out.attrs.update(self.attrs)
 
         return out
 
@@ -1296,7 +1296,7 @@ class MetDataset(MetBase):
         coords: dict[str, np.ndarray] = {}
         for key, val in input_data.items():
             dtype = "datetime64[ns]" if key == "time" else COORD_DTYPE
-            arr: np.ndarray = np.asarray(val, dtype=dtype)  # type: ignore[call-overload]
+            arr: np.ndarray = np.asarray(val, dtype=dtype)
 
             if arr.ndim == 0:
                 arr = arr.reshape(1)
@@ -1885,7 +1885,7 @@ class MetDataArray(MetBase):
         if not self.binary:
             raise NotImplementedError("proportion method is only implemented for binary fields")
 
-        return self.data.sum().values.item() / self.data.count().values.item()  # type: ignore[operator]
+        return self.data.sum().values.item() / self.data.count().values.item()
 
     def find_edges(self) -> Self:
         """Find edges of regions.
@@ -2594,9 +2594,9 @@ def _extract_2d_arr_and_altitude(
     except KeyError:
         altitude = None
     else:
-        altitude = round(altitude)  # type: ignore[call-overload]
+        altitude = round(altitude)
 
-    return arr, altitude  # type: ignore[return-value]
+    return arr, altitude
 
 
 def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:

@@ -2228,7 +2228,7 @@ def compare_cocip_with_goes(
     fig = plt.figure(figsize=(1.2 * x_dim, y_dim))
     pc = ccrs.PlateCarree()
     ax = fig.add_subplot(projection=pc, extent=bbox)
-    ax.coastlines()  # type: ignore[attr-defined]
+    ax.coastlines()
     ax.imshow(rgb, extent=extent, transform=transform)
 
     ax.set_xticks([spatial_bbox[0], spatial_bbox[2]], crs=ccrs.PlateCarree())

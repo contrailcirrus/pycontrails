@@ -708,7 +708,7 @@ class HRES(ECMWFAPI):
 
         # set forecast time if it's not defined (this occurs when only the paths param is provided)
         if not hasattr(self, "forecast_time"):
-            self.forecast_time = ds["time"].values.astype("datetime64[s]").tolist()  # type: ignore[assignment]
+            self.forecast_time = ds["time"].values.astype("datetime64[s]").tolist()
 
         # check that forecast_time is correct if defined
         # note the "time" coordinate here is the HRES forecast_time
@@ -723,7 +723,7 @@ class HRES(ECMWFAPI):
         # set timesteps if not defined
         # note that "time" is now the actual timestep coordinates
         if not self.timesteps:
-            self.timesteps = ds["time"].values.astype("datetime64[s]").tolist()  # type: ignore[assignment]
+            self.timesteps = ds["time"].values.astype("datetime64[s]").tolist()
 
         self.cache_dataset(ds)
 

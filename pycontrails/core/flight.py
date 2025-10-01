@@ -2133,7 +2133,7 @@ def segment_rocd(
     T_correction[:-1] = (air_temperature[:-1] + air_temperature[1:]) / (T_isa[:-1] + T_isa[1:])
     T_correction[-1] = np.nan
 
-    return T_correction * out  # type: ignore[return-value]
+    return T_correction * out
 
 
 def _resample_to_freq_or_time(

@@ -238,7 +238,7 @@ def _contours_to_polygons(
                 latitude=latitude,
                 precision=precision,
                 buffer=buffer,
-                i=child_i,  # type: ignore[arg-type]
+                i=child_i,
             )
 
             candidate = shapely.Polygon(polygon.exterior, [h.exterior for h in holes])
@@ -354,11 +354,11 @@ def find_multipolygon(
         return shapely.MultiPolygon()
 
     assert len(hierarchy) == 1
-    hierarchy = hierarchy[0]  # type: ignore[index]
+    hierarchy = hierarchy[0]
 
     polygons = _contours_to_polygons(
         contours,  # type: ignore[arg-type]
-        hierarchy,  # type: ignore[arg-type]
+        hierarchy,
         min_area,
         convex_hull,
         epsilon,

@@ -269,7 +269,7 @@ def mk05_e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:
         Derivative of :func:`mk05_e_sat_liquid`
     """
     tanh_term = np.tanh(0.0415 * (T - 218.8))
-    return mk05_e_sat_liquid(T) * (  # type: ignore[return-value]
+    return mk05_e_sat_liquid(T) * (
         6763.22 / T**2
         - 4.21 / T
         + 0.000367

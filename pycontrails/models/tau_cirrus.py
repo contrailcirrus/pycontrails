@@ -91,7 +91,7 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
     # dask.array.gradient expects at least 2 elements in each chunk
     level_axis = geopotential_height.get_axis_num("level")
     if geopotential_height.chunks:
-        level_chunks = geopotential_height.chunks[level_axis]  # type: ignore[call-overload, index]
+        level_chunks = geopotential_height.chunks[level_axis]
         if any(chunk < 2 for chunk in level_chunks):
             geopotential_height = geopotential_height.chunk(level=-1)
 

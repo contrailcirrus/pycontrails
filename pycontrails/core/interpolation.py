@@ -64,7 +64,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         method: str,
         bounds_error: bool,
         fill_value: float | np.float64 | None,
-    ):
+    ) -> None:
         if values.dtype not in (np.float32, np.float64):
             msg = f"values must be a float array, not {values.dtype}"
             raise ValueError(msg)

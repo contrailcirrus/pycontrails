@@ -595,7 +595,7 @@ class GFSForecast(metsource.MetDataSource):
         else:
             # set timesteps from dataset "time" coordinates
             # np.datetime64 doesn't covert to list[datetime] unless its unit is us
-            self.timesteps = ds["time"].values.astype("datetime64[us]").tolist()  # type: ignore[assignment]
+            self.timesteps = ds["time"].values.astype("datetime64[us]").tolist()
 
         # if "level" is not in dims and
         # length of the requested pressure levels is 1

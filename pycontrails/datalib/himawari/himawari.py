@@ -160,7 +160,10 @@ def _extract_band_from_rpath(rpath: str) -> str:
     return f"B{suffix[:2]}"  # B??
 
 
-def _mask_invalid(data: npt.NDArray[np.uint16], calib_info: dict) -> npt.NDArray[np.float32]:
+def _mask_invalid(
+    data: npt.NDArray[np.uint16],
+    calib_info: dict[str, Any],
+) -> npt.NDArray[np.float32]:
     """Mask invalid data."""
     error_pixel = calib_info["count_error_pixels"]
     outside_pixel = calib_info["count_outside_scan_area"]
@@ -218,7 +221,9 @@ def _counts_to_radiance(
     return counts * gain + const
 
 
-def _load_image_data(content: bytes, metadata: dict) -> npt.NDArray[np.float32]:
+def _load_image_data(
+    content: bytes, metadata: dict[str, dict[str, Any]]
+) -> npt.NDArray[np.float32]:
     counts = _load_raw_counts(content, metadata)
 
     calib_info = metadata["calibration_information"]
@@ -230,7 +235,10 @@ def _load_image_data(content: bytes, metadata: dict) -> npt.NDArray[np.float32]:
     return _radiance_to_brightness_temperature(radiance, calib_info)
 
 
-def _ahi_fixed_grid(proj_info: dict, arr: np.ndarray) -> tuple[xr.DataArray, xr.DataArray]:
+def _ahi_fixed_grid(
+    proj_info: dict[str, Any],
+    arr: np.ndarray,
+) -> tuple[xr.DataArray, xr.DataArray]:
     n_lines, n_columns = arr.shape
 
     i = np.arange(n_columns, dtype=np.float32)
@@ -277,7 +285,11 @@ def _himawari_proj4_string(proj_info: dict[str, Any]) -> str:
     return f"+proj=geos +h={h} +a={a} +b={b} +lon_0={lon} +sweep=x +units=m +no_defs"
 
 
-def _earth_disk_mask(proj_info: dict, x: xr.DataArray, y: xr.DataArray) -> npt.NDArray[np.bool_]:
+def _earth_disk_mask(
+    proj_info: dict[str, Any],
+    x: xr.DataArray,
+    y: xr.DataArray,
+) -> npt.NDArray[np.bool_]:
     """Return a boolean mask where True indicates pixels over the Earth disk."""
     a = proj_info["equatorial_radius"] * 1000.0  # km -> m
     b = proj_info["polar_radius"] * 1000.0  # km -> m
@@ -301,7 +313,7 @@ def _earth_disk_mask(proj_info: dict, x: xr.DataArray, y: xr.DataArray) -> npt.N
     return discriminant >= 0.0
 
 
-def _parse_start_time(metadata: dict) -> datetime.datetime:
+def _parse_start_time(metadata: dict[str, dict[str, Any]]) -> datetime.datetime:
     """Parse the start time from the metadata."""
     mjd_value = metadata["basic_information"]["obs_start_time"]
     mjd_epoch = datetime.datetime(1858, 11, 17)

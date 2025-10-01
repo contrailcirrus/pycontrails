@@ -639,9 +639,9 @@ def ps_nominal_optimize_mach(
         if sin_a is None or cos_a is None:
             msg = "Segment angles must be provide if wind data is specified"
             raise ValueError(msg)
-        headwind = -(northward_wind * cos_a + eastward_wind * sin_a)  # type: ignore[misc]
+        headwind = -(northward_wind * cos_a + eastward_wind * sin_a)
     else:
-        headwind = 0.0  # type: ignore
+        headwind = 0.0
 
     min_mach = ps_operational_limits.minimum_mach_num(
         air_pressure=level * 100.0,

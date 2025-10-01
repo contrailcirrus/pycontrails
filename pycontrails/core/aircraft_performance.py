@@ -550,7 +550,7 @@ class AircraftPerformance(Model):
             if self.met is None:
                 cond = np.isnan(u) & np.isnan(v)
             else:
-                met_level_max = self.met.data["level"][-1].item()  # type: ignore[union-attr]
+                met_level_max = self.met.data["level"][-1].item()
                 cond = self.source.level > met_level_max
 
             # We DON'T overwrite the original u and v arrays already attached to the source

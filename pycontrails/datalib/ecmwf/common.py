@@ -61,14 +61,14 @@ class ECMWFAPI(metsource.MetDataSource):
 
         # downselect times
         if not self.timesteps:
-            self.timesteps = ds["time"].values.astype("datetime64[ns]").tolist()  # type: ignore[assignment]
+            self.timesteps = ds["time"].values.astype("datetime64[ns]").tolist()
         else:
             try:
                 ds = ds.sel(time=self.timesteps)
             except KeyError as exc:
                 # this snippet shows the missing times for convenience
                 np_timesteps = {np.datetime64(t, "ns") for t in self.timesteps}
-                missing_times = sorted(np_timesteps.difference(ds["time"].values))  # type: ignore[type-var]
+                missing_times = sorted(np_timesteps.difference(ds["time"].values))
                 msg = f"Input dataset is missing time coordinates {[str(t) for t in missing_times]}"
                 raise KeyError(msg) from exc
 

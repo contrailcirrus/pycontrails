@@ -114,7 +114,7 @@ class CocipGrid(models.Model):
         rad: MetDataset,
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(met, params=params, **params_kwargs)
 
         compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
@@ -386,7 +386,7 @@ class CocipGrid(models.Model):
             "dt_integration": dt_integration_str,
             "aircraft_type": self.get_source_param("aircraft_type"),
             "pycontrails_version": pycontrails.__version__,
-            **self.source.attrs,  # type: ignore[dict-item]
+            **self.source.attrs,
         }
         if ap_model := self.params["aircraft_performance"]:
             attrs["ap_model"] = type(ap_model).__name__
@@ -2210,7 +2210,7 @@ def result_to_metdataset(
     # Update source
     for k, v in data_vars.items():  # type: ignore[assignment]
         source[k] = v
-    source.attrs.update(attrs)  # type: ignore[arg-type]
+    source.attrs.update(attrs)
 
     # Return reference to source
     return source

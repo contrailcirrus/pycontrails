@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from typing import Any
 
 
-def chunk_list(lst: list, n: int) -> Iterator[list[Any]]:
+def chunk_list(lst: list[Any], n: int) -> Iterator[list[Any]]:
     """Yield successive n-sized chunks from list."""
 
     for i in range(0, len(lst), n):

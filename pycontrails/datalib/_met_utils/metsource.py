@@ -175,16 +175,13 @@ def parse_pressure_levels(
 
     out = arr.tolist()
     if supported is None:
-        return out  # type: ignore[return-value]
+        return out
 
-    if missing := set(out).difference(supported):  # type: ignore[arg-type]
-        msg = (
-            f"Pressure levels {sorted(missing)} are not supported. "  # type: ignore[type-var]
-            f"Supported levels: {supported}"
-        )
+    if missing := set(out).difference(supported):
+        msg = f"Pressure levels {sorted(missing)} are not supported. Supported levels: {supported}"
         raise ValueError(msg)
 
-    return out  # type: ignore[return-value]
+    return out
 
 
 def parse_variables(variables: VariableInput, supported: list[MetVariable]) -> list[MetVariable]:

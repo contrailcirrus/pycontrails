@@ -30,7 +30,7 @@ class habit_dirichlet(rv_frozen):
     - Table 2 in :cite:`schumannEffectiveRadiusIce2011`
     """
 
-    def __init__(self, C: float = 96.0):
+    def __init__(self, C: float = 96.0) -> None:
         self.C = C
 
     def rvs(self, *args: Any, **kwds: Any) -> npt.NDArray[np.float32]:

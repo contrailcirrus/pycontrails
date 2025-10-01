@@ -310,7 +310,7 @@ class VectorDataset:  # noqa: PLW1641
         # Set attributes: always shallow copy
         # -----------------------------------
 
-        self.attrs = AttrDict(attrs or {})  # type: ignore[arg-type]
+        self.attrs = AttrDict(attrs or {})
         self.attrs.update(attrs_kwargs)
 
     @classmethod
@@ -1384,7 +1384,7 @@ class GeoVectorDataset(VectorDataset):
         ):
             keys = *self.required_keys, "altitude"
             self.data = VectorDataDict(_empty_vector_dict(keys))
-            self.attrs = AttrDict(attrs or {})  # type: ignore[arg-type]
+            self.attrs = AttrDict(attrs or {})
             self.attrs.update(attrs_kwargs)
             return
 

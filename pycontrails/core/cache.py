@@ -189,7 +189,7 @@ class DiskCacheStore(CacheStore):
         self,
         cache_dir: str | pathlib.Path | None = None,
         allow_clear: bool = False,
-    ):
+    ) -> None:
         if cache_dir is None:
             # Avoid unnecessary import of platformdirs (called in _get_user_cache_dir)
             cache_dir = os.getenv("PYCONTRAILS_CACHE_DIR") or _get_user_cache_dir()
@@ -461,7 +461,7 @@ class GCPCacheStore(CacheStore):
         timeout: int = 300,
         show_progress: bool = False,
         chunk_size: int = 64 * 262144,
-    ):
+    ) -> None:
         try:
             from google.cloud import storage
         except ModuleNotFoundError as e:

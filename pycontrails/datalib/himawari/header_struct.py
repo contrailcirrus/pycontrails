@@ -205,7 +205,7 @@ HEADER_STRUCT_SCHEMA: dict[int, _HeaderBlock] = {
 }
 
 
-def parse_himawari_header(content: bytes) -> dict:
+def parse_himawari_header(content: bytes) -> dict[str, dict[str, Any]]:
     """Parse the Himawari header data.
 
     Skips variable-length fields and spares.

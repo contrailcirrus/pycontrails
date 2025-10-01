@@ -181,9 +181,9 @@ local_scheme = "no-local-version"
 [tool.mypy]
 ignore_missing_imports = true
 disallow_untyped_defs = true
-# disallow_any_generics = true  # TOOD: support this in the future
+# disallow_any_generics = true  # TODO: support this in the future
 warn_redundant_casts = true
-warn_unused_ignores = false
+warn_unused_ignores = true
 warn_no_return = false
 show_error_codes = true
 
@@ -238,8 +238,23 @@ ignore-path = [
 line-length = 100
 
 [tool.ruff.lint]
-select = ["B", "D", "E", "F", "I", "NPY", "PL", "PT", "RET", "RUF", "SIM", "UP"]
+select = [
+    "ANN",
+    "B",
+    "D",
+    "E",
+    "F",
+    "I",
+    "NPY",
+    "PL",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "UP",
+]
 ignore = [
+    "ANN401",
     "B028",
     "E402",
     "D105",
@@ -255,8 +270,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "docs/conf.py" = ["E501"]
-"docs/**/*.ipynb" = ["D103", "E501"]
-"tests/*" = ["D"]
+"docs/**/*.ipynb" = ["ANN", "D103", "E501"]
+"tests/*" = ["ANN", "D"]
 
 # https://docs.astral.sh/ruff/settings/#pydocstyle
 [tool.ruff.lint.pydocstyle]

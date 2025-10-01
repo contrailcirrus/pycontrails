@@ -590,7 +590,7 @@ def _evolve_one_step(
         vector,
         dz_m=dz_m,
         dt=dt,  # type: ignore[arg-type]
-        max_depth=max_depth,  # type: ignore[arg-type]
+        max_depth=max_depth,
         verbose_outputs=verbose_outputs,
     )
     out["azimuth"] = azimuth_2
