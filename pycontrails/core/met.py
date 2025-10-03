@@ -354,8 +354,7 @@ class MetBase(ABC, Generic[XArrayType]):
     def hash(self) -> str:
         """Generate a unique hash for this met instance.
 
-        Note this is not as robust as it could be since `repr`
-        cuts off.
+        Note this is not as robust as it could be since :func:`repr` cuts off.
 
         Returns
         -------
@@ -686,7 +685,7 @@ class MetBase(ABC, Generic[XArrayType]):
 class MetDataset(MetBase):
     """Meteorological dataset with multiple variables.
 
-    Composition around xr.Dataset to enforce certain
+    Composition around :class:`xarray.Dataset` to enforce certain
     variables and dimensions for internal usage
 
     Parameters
@@ -698,17 +697,17 @@ class MetDataset(MetBase):
         Defaults to None.
     wrap_longitude : bool, optional
         Wrap data along the longitude dimension. If True, duplicate and shift longitude
-        values (ie, -180 -> 180) to ensure that the longitude dimension covers the entire
+        values (ie, ``-180 -> 180``) to ensure that the longitude dimension covers the entire
         interval ``[-180, 180]``. Defaults to False.
     copy : bool, optional
         Copy data on construction. Defaults to True.
     attrs : dict[str, Any], optional
-        Attributes to add to :attr:`data.attrs`. Defaults to None.
-        Generally, pycontrails :class:`Models` may use the following attributes:
+        Attributes to add to :attr:`data.attrs`. Defaults to None. Generally, pycontrails
+        :class:`pycontrails.core.models.Models` may use the following attributes:
 
-        - ``provider``: Name of the data provider (e.g. "ECMWF").
-        - ``dataset``: Name of the dataset (e.g. "ERA5").
-        - ``product``: Name of the product type (e.g. "reanalysis").
+        - ``provider``: Name of the data provider (e.g. ``"ECMWF"``).
+        - ``dataset``: Name of the dataset (e.g. ``"ERA5"``).
+        - ``product``: Name of the product type (e.g. ``"reanalysis"``).
 
     **attrs_kwargs : Any
         Keyword arguments to add to :attr:`data.attrs`. Defaults to None.
@@ -812,7 +811,7 @@ class MetDataset(MetBase):
         return MetDataArray._from_fastpath(da)
 
     def get(self, key: str, default_value: Any = None) -> Any:
-        """Shortcut to :meth:`data.get(k, v)` method.
+        """Shortcut to :meth:`xarray.Dataset.get` method.
 
         Parameters
         ----------
@@ -889,7 +888,7 @@ class MetDataset(MetBase):
 
         See Also
         --------
-        - :meth:`xarray.Dataset.update`
+        xarray.Dataset.update
         """
         other = other or {}
         other.update(kwargs)
@@ -957,8 +956,8 @@ class MetDataset(MetBase):
         Returns
         -------
         list[str]
-            List of met keys verified in MetDataset.
-            Returns an empty list if any MetVariable is missing.
+            List of met keys verified in :class:`MetDataset`.
+            Returns an empty list if any :class:`MetVariable` is missing.
 
         Raises
         ------
@@ -1141,12 +1140,12 @@ class MetDataset(MetBase):
 
     @property
     def provider_attr(self) -> str:
-        """Look up the 'provider' attribute with a custom error message.
+        """Look up the ``"provider"`` attribute with a custom error message.
 
         Returns
         -------
         str
-            Provider of the data. If not one of 'ECMWF' or 'NCEP',
+            Provider of the data. If not one of ``"ECMWF"`` or ``"NCEP"``,
             a warning is issued.
         """
         supported = ("ECMWF", "NCEP")
@@ -1155,13 +1154,13 @@ class MetDataset(MetBase):
 
     @property
     def dataset_attr(self) -> str:
-        """Look up the 'dataset' attribute with a custom error message.
+        """Look up the ``"dataset"`` attribute with a custom error message.
 
         Returns
         -------
         str
-            Dataset of the data. If not one of 'ERA5', 'HRES', 'IFS',
-            or 'GFS', a warning is issued.
+            Dataset of the data. If not one of ``"ERA5"``, ``"HRES"``, ``"IFS"``,
+            or ``"GFS"``, a warning is issued.
         """
         supported = ("ERA5", "HRES", "IFS", "GFS")
         examples = {
@@ -1173,13 +1172,13 @@ class MetDataset(MetBase):
 
     @property
     def product_attr(self) -> str:
-        """Look up the 'product' attribute with a custom error message.
+        """Look up the ``"product"`` attribute with a custom error message.
 
         Returns
         -------
         str
-            Product of the data. If not one of 'forecast', 'ensemble', or 'reanalysis',
-            a warning is issued.
+            Product of the data. If not one of ``"forecast"``, ``"ensemble"``,
+            or ``"reanalysis"``, a warning is issued.
 
         """
         supported = ("reanalysis", "forecast", "ensemble")
@@ -1208,6 +1207,7 @@ class MetDataset(MetBase):
 
             By default, this method returns a new :class:`MetDataset` instead
             of renaming in place. To retain the old behavior, set ``inplace=True``.
+            The ``inplace`` behavior is deprecated and will be removed in a future release.
 
         Parameters
         ----------
@@ -1224,6 +1224,11 @@ class MetDataset(MetBase):
         data_renamed = standardize_variables(self.data, variables)
 
         if inplace:
+            warnings.warn(
+                "The inplace behavior is deprecated and will be removed in a future release. ",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             self.data = data_renamed
             return None
 

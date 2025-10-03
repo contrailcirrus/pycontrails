@@ -26,15 +26,15 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     This class is a thin wrapper around the
     :class:`scipy.interpolate.RegularGridInterpolator` in order to make typical
-    ``pycontrails`` linear interpolation use-cases more performant:
+    pycontrails linear interpolation use-cases more performant:
 
-    #. Avoid ``RegularGridInterpolator`` constructor validation when `method="linear"`.
+    #. Avoid ``RegularGridInterpolator`` constructor validation when ``method="linear"``.
        In :func:`interp`, parameters are carefully crafted to fit into the intended form,
        thereby making validation unnecessary.
     #. Override the :meth:`_evaluate_linear` method with a faster implementation. See
        the :meth:`_evaluate_linear` docstring for more information.
 
-    **This class should not be used directly. Instead, use the ``interp`` function.**
+    **This class should not be used directly. Instead, use the** :func:`interp` **function.**
 
     .. versionchanged:: 0.40.0
 
@@ -428,8 +428,8 @@ def interp(
         In particular, the dimensions of ``da`` must be ``longitude``, ``latitude``,
         ``level``, and ``time``. The three spatial dimensions must be monotonically
         increasing with ``float64`` dtype. The ``time`` dimension must be
-        monotonically increasing with ``datetime64`` dtype.
-        Assumed to be cheap to load into memory (:attr:`xr.DataArray.values` is
+        monotonically increasing with :class:`numpy.datetime64` dtype.
+        Assumed to be cheap to load into memory (:attr:`xarray.DataArray.values` is
         used without hesitation).
     method : str
         Passed into :class:`scipy.interpolate.RegularGridInterpolator`.
@@ -442,7 +442,7 @@ def interp(
         ``coords``.
     indices : tuple | None, optional
         Experimental. Provide intermediate artifacts computed by
-        :meth:``scipy.interpolate.RegularGridInterpolator._find_indices`
+        :meth:`scipy.interpolate.RegularGridInterpolator._find_indices`
         to avoid redundant computation. If known and provided, this can speed
         up interpolation by avoiding an unnecessary call to ``_find_indices``.
         By default, None. Must be used precisely.
