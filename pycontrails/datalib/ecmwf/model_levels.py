@@ -139,9 +139,9 @@ def model_level_pressure(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.Da
             [564.02437124, 560.81744834, 557.61052544, 554.40360254],
             [551.19667964, 547.98975674, 544.78283384, 541.57591094]]])
     Coordinates:
+      * model_level  (model_level) int64 16B 80 100
       * longitude    (longitude) float64 32B -180.0 -60.0 60.0 180.0
       * latitude     (latitude) float64 32B -90.0 -30.0 30.0 90.0
-      * model_level  (model_level) int64 16B 80 100
 
     See Also
     --------
