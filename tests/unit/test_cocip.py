@@ -777,16 +777,17 @@ def test_flight_overrides_emissions(
     assert out4.attrs["wingspan"] == fl4.attrs["wingspan"]
 
 
-@pytest.mark.filterwarnings("ignore:distutils Version classes are deprecated")
 def test_flight_output(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
     """Check `Cocip` outputs against data in static directory."""
     cocip = Cocip(
         met,
         rad=rad,
         process_emissions=False,
-        humidity_scaling=ExponentialBoostHumidityScaling(),
+        humidity_scaling=ConstantHumidityScaling(rhi_adj=0.8),  # crank up so we get some ef
     )
     out = cocip.eval(source=fl)
+    assert out["ef"].sum() > 0
+    assert out["cocip"].sum() > 0
 
     assert isinstance(out, Flight)
     assert out is not fl
@@ -796,37 +797,22 @@ def test_flight_output(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
     assert np.all(out.level == out.level)
 
     assert "rf_net_mean" in cocip.source
-    assert "ef" in cocip.source
-    assert "cocip" in cocip.source
 
     assert out.attrs["flight_id"] == fl.attrs["flight_id"]
 
-    # make sure we can output flight dataframe
-    # this only works with fastparquet because `age` which is not handled by pyarrow correctly
-    out.dataframe.to_parquet(".test.pq", engine="fastparquet")
-    assert pathlib.Path(".test.pq").exists()
+    # Ensure we can save flight dataframe as parquet
+    try:
+        out.dataframe.to_parquet(".test.pq")
+        assert pathlib.Path(".test.pq").exists()
 
-    # note that fastparquet truncastes to [us],
-    # so when we read this back in the last 3 digits are off
-    # pyarrow doesn't support timedelta64 past "us", but pandas won't
-    # allow casting to "us" in a dataframe - bit of a mess
-    df = pd.read_parquet(".test.pq", engine="fastparquet")
-    np.testing.assert_allclose(df["contrail_age"].values, out.dataframe["contrail_age"].values)
+        df = pd.read_parquet(".test.pq")
 
-    # clean up
-    pathlib.Path(".test.pq").unlink()
+        # timedelta columns have been problematic in the past
+        np.testing.assert_allclose(df["contrail_age"], out.dataframe["contrail_age"])
 
-    # make sure we can output flight dataframe using pyarrow with age in seconds
-    out.update(contrail_age=out["contrail_age"] / np.timedelta64(1, "s"))
-    out.update(time=out["time"].astype("datetime64[us]"))
-    out.dataframe.to_parquet(".test2.pq", engine="pyarrow")
-    assert pathlib.Path(".test2.pq").exists()
-
-    df = pd.read_parquet(".test2.pq", engine="pyarrow")
-    np.testing.assert_allclose(df["contrail_age"].values, out.dataframe["contrail_age"].values)
-
-    # clean up
-    pathlib.Path(".test2.pq").unlink()
+    finally:
+        # clean up
+        pathlib.Path(".test.pq").unlink()
 
 
 def test_eval_no_ef(cocip_no_ef: Cocip) -> None:

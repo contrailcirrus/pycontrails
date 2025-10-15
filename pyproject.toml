@@ -55,7 +55,6 @@ complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
-    "fastparquet>=0.8",
     "ipdb>=0.13",
     "memory_profiler",
     "mypy>=1.8",
