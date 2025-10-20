@@ -432,6 +432,8 @@ class GOES:
 
     """
 
+    __slots__ = ("bands", "bucket", "cachestore", "fs", "region")
+
     __marker = object()
 
     def __init__(
