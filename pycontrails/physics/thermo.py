@@ -84,7 +84,7 @@ def p_vapor(q: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
     ArrayScalarTypeVar
         Vapor pressure, [:math:`Pa`]
     """
-    return q * p * (constants.R_v / constants.R_d)
+    return q * p / constants.epsilon
 
 
 def water_vapor_partial_pressure_along_mixing_line(
@@ -399,7 +399,7 @@ def rh(q: ArrayScalarLike, T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScala
     ArrayScalarLike
         Relative Humidity, :math:`[0 - 1]`
     """
-    return (q * p * (constants.R_v / constants.R_d)) / e_sat_liquid(T)
+    return (q * p) / (constants.epsilon * e_sat_liquid(T))
 
 
 def rhi(q: ArrayScalarLike, T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
@@ -419,7 +419,7 @@ def rhi(q: ArrayScalarLike, T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScal
     ArrayScalarLike
         Relative Humidity over ice, :math:`[0 - 1]`
     """
-    return (q * p * (constants.R_v / constants.R_d)) / e_sat_ice(T)
+    return (q * p) / (constants.epsilon * e_sat_ice(T))
 
 
 # --------------
