@@ -2,6 +2,10 @@
 
 ## 0.59.0 (unreleased)
 
+### Features
+
+- Add lightweight `GRUAN` datalib for accessing GRUAN radiosonde data via FTP. See the [GRUAN notebook](https://py.contrails.org/notebooks/GRUAN.html) for usage examples.
+
 ### Breaking changes
 
 - Updated error handling in `goes.gcs_goes_path` to raise a `FileNotFoundError` if any of the requested bands are not available. Previous versions raised a `RuntimeError` only in cases where no requested bands were available.
