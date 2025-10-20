@@ -18,3 +18,8 @@ Observations
    notebooks/Landsat
    notebooks/Sentinel
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Radiosondes
+
+   notebooks/GRUAN
