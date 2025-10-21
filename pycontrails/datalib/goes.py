@@ -308,9 +308,14 @@ def gcs_goes_path(
     fs = fs or gcsfs.GCSFileSystem(token="anon")
     rpaths = fs.glob(rpath)
 
-    out = [r for r in rpaths if _extract_band_from_rpath(r) in bands]
-    if not out:
-        raise RuntimeError(f"No data found for {time} in {region} for bands {bands}")
+    out = []
+    for r in rpaths:
+        if (band := _extract_band_from_rpath(r)) in bands:
+            out.append(r)
+            bands.remove(band)
+
+    if bands:
+        raise FileNotFoundError(f"No data found for {time} in {region} for bands {bands}")
     return out
 
 

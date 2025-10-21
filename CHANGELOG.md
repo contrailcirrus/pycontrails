@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.59.0 (unreleased)
+
+### Breaking changes
+
+- Updated error handling in `goes.gcs_goes_path` to raise a `FileNotFoundError` if any of the requested bands are not available. Previous versions raised a `RuntimeError` only in cases where no requested bands were available.
+
 ## 0.58.0
 
 ### Features

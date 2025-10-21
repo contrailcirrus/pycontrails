@@ -1,5 +1,6 @@
 """Test the goes module."""
 
+import datetime
 from collections.abc import Generator
 
 import numpy as np
@@ -229,3 +230,25 @@ def test_goes_19() -> None:
     assert da.dims == ("band_id", "y", "x")
     assert da.dtype == "float32"
     assert da["band_id"].values.tolist() == [2]
+
+
+def test_gcs_goes_path_errors() -> None:
+    """Test errors during GCS path lookup."""
+
+    # all bands present
+    time = datetime.datetime(2025, 10, 20, 16, 0)
+    region = goes.GOESRegion.F
+    bands = ["C11", "C14", "C15"]
+    paths = goes.gcs_goes_path(time, region, bands)
+    assert len(paths) == len(bands)
+
+    # some bands missing
+    # assumes that data gap in band 11 at 2025/10/20 16:10 is permanent
+    time = datetime.datetime(2025, 10, 20, 16, 10)
+    with pytest.raises(FileNotFoundError, match="No data found"):
+        goes.gcs_goes_path(time, region, bands)
+
+    # all bands missing
+    time = datetime.datetime(1900, 1, 1, 0, 0)
+    with pytest.raises(FileNotFoundError, match="No data found"):
+        goes.gcs_goes_path(time, region, bands)
