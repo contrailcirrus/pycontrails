@@ -253,9 +253,9 @@ class GRUAN:
         path = f"{self.base_path_site}/{t.year}/{filename}"
 
         ftp = self.connect()
-        with tempfile.TemporaryFile() as tmp:
+        with tempfile.NamedTemporaryFile() as tmp:
             ftp.retrbinary(f"RETR {path}", tmp.write)
-            return xr.load_dataset(tmp)
+            return xr.load_dataset(tmp.name)
 
     def _get_with_cache(self, filename: str) -> xr.Dataset:
         if self.cachestore is None:
