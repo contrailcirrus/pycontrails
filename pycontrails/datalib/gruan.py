@@ -3,6 +3,7 @@
 import datetime
 import ftplib
 import functools
+import os
 import tempfile
 
 import xarray as xr
@@ -253,9 +254,13 @@ class GRUAN:
         path = f"{self.base_path_site}/{t.year}/{filename}"
 
         ftp = self.connect()
-        with tempfile.NamedTemporaryFile() as tmp:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
             ftp.retrbinary(f"RETR {path}", tmp.write)
+
+        try:
             return xr.load_dataset(tmp.name)
+        finally:
+            os.remove(tmp.name)
 
     def _get_with_cache(self, filename: str) -> xr.Dataset:
         if self.cachestore is None:
