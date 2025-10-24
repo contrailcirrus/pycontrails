@@ -12,6 +12,12 @@ from pycontrails.datalib.gruan import GRUAN, extract_gruan_time
 from tests import OFFLINE
 
 
+def test_available_sites_live() -> None:
+    """Test live retrieval of available sites."""
+    products_sites = GRUAN.available_sites()
+    assert products_sites == GRUAN.AVAILABLE
+
+
 @pytest.fixture(scope="module")
 def gruan() -> GRUAN:
     """Create a GRUAN instance for testing.
@@ -120,3 +126,15 @@ def test_paths(gruan: GRUAN) -> None:
     """Test base path properties formatting."""
     assert gruan.base_path_product.endswith("/RS92-GDP/version-002")
     assert gruan.base_path_site.endswith("/RS92-GDP/version-002/LIN")
+
+
+def test_gruan_unknown_product() -> None:
+    """Test GRUAN with unknown product."""
+    with pytest.raises(ValueError, match="Unknown GRUAN product"):
+        GRUAN(product="UNKNOWN", site="LIN")
+
+
+def test_gruan_unknown_site() -> None:
+    """Test GRUAN with unknown site."""
+    with pytest.raises(ValueError, match="Unknown GRUAN site"):
+        GRUAN(product="RS92-GDP.2", site="XXX")

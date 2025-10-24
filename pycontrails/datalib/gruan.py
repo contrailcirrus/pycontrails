@@ -5,6 +5,7 @@ import ftplib
 import functools
 import os
 import tempfile
+from concurrent import futures
 
 import xarray as xr
 
@@ -12,6 +13,9 @@ from pycontrails.core import cache
 
 #: GRUAN FTP server address
 FTP_SERVER = "ftp.ncdc.noaa.gov"
+
+#: Base path for GRUAN data on the FTP server
+FTP_BASE_PATH = "/pub/data/gruan/processing/level2"
 
 #: All available GRUAN products and sites on the FTP server as of 2025-10
 #: This is simply the hardcoded output of :func:`available_sites` at that time to
@@ -76,6 +80,22 @@ def extract_gruan_time(filename: str) -> tuple[datetime.datetime, int]:
     return time, revision
 
 
+def _fetch_product_tree(prod: str) -> dict[str, list[str]]:
+    result = {}
+    with ftplib.FTP(FTP_SERVER) as ftp:
+        ftp.login()
+        prod_path = f"{FTP_BASE_PATH}/{prod}"
+        versions = [v.split("/")[-1] for v in ftp.nlst(prod_path)]
+
+        for v in versions:
+            version_path = f"{prod_path}/{v}"
+            sites = [s.split("/")[-1] for s in ftp.nlst(version_path)]
+
+            key = f"{prod}.{int(v.split('-')[-1])}"
+            result[key] = sites
+    return result
+
+
 @functools.cache
 def available_sites() -> dict[str, list[str]]:
     """Get a list of available GRUAN sites for each supported product.
@@ -88,29 +108,18 @@ def available_sites() -> dict[str, list[str]]:
     dict[str, list[str]]
         Mapping of product names to lists of available site identifiers.
     """
-
-    base_path = "/pub/data/gruan/processing/level2"
-
-    out = {}
-
     with ftplib.FTP(FTP_SERVER) as ftp:
         ftp.login()
+        files = [p.split("/")[-1] for p in ftp.nlst(FTP_BASE_PATH)]
+        products = [p for p in files if "." not in p]  # crude filter to exclude non-directories
 
-        ftp.cwd(base_path)
-        names = ftp.nlst()
-        for name in names:
-            try:
-                ftp.cwd(f"{base_path}/{name}")
-            except ftplib.error_perm:
-                continue  # skip non-directories
-
-            versions = ftp.nlst()
-            for version in versions:
-                ftp.cwd(f"{base_path}/{name}/{version}")
-                sites = ftp.nlst()
-
-                key = f"{name}.{int(version.split('-')[-1])}"
-                out[key] = sites
+    # Compute each product tree in separate thread to speed up retrieval
+    # The FTP server only allows up to 5 connections from the same client
+    out = {}
+    with futures.ThreadPoolExecutor(max_workers=min(len(products), 5)) as tpe:
+        result = tpe.map(_fetch_product_tree, products)
+        for r in result:
+            out.update(r)
 
     return out
 
