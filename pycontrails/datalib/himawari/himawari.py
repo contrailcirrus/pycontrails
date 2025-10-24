@@ -372,6 +372,8 @@ class Himawari:
     This interface requires the ``s3fs`` package to download data from the
     `AWS Public Dataset <https://registry.opendata.aws/himawari/>`_.
 
+    .. versionadded:: 0.57.0
+
     Parameters
     ----------
     region : HimawariRegion | str, optional

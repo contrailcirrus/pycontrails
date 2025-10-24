@@ -13,7 +13,10 @@ from tests import OFFLINE
 
 
 def test_available_sites_live() -> None:
-    """Test live retrieval of available sites."""
+    """Test live retrieval of available sites.
+
+    If this test fails, the cached AVAILABLE dict in gruan.py may need updating.
+    """
     products_sites = GRUAN.available_sites()
     assert products_sites == GRUAN.AVAILABLE
 
