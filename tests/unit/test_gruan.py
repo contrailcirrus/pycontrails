@@ -67,6 +67,7 @@ def test_years(gruan: GRUAN) -> None:
     assert years == list(range(2005, 2022))
 
 
+@pytest.mark.skipif(OFFLINE, reason="offline")
 def test_list_files_and_extract_time(gruan: GRUAN) -> None:
     """Test listing files for a given year."""
     files = gruan.list_files(2020)
