@@ -41,8 +41,8 @@ def test_gruan_repr(gruan: GRUAN) -> None:
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_ftp_reuse(gruan: GRUAN) -> None:
     """Test that FTP connection is reused."""
-    ftp1 = gruan.connect()
-    ftp2 = gruan.connect()
+    ftp1 = gruan._connect()
+    ftp2 = gruan._connect()
     assert ftp1 is ftp2
     assert ftp1.pwd() == "/"
 
@@ -52,7 +52,7 @@ def test_available_products_live(gruan: GRUAN) -> None:
     """Test live retrieval of available products."""
     base_path = "/pub/data/gruan/processing/level2"
 
-    ftp = gruan.connect()
+    ftp = gruan._connect()
     ftp.cwd(base_path)
     products = ftp.nlst()
     expected = {"RS41-EDT", "RS-11G-GDP", "RS92-GDP", "RS92-PROFILE-BETA"}

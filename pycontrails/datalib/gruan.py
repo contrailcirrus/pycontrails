@@ -47,15 +47,26 @@ AVAILABLE_PRODUCTS_TO_SITES = {
 
 
 def extract_gruan_time(filename: str) -> tuple[datetime.datetime, int]:
-    """Extract launch time and revision number from a GRUAN filename."""
+    """Extract launch time and revision number from a GRUAN filename.
+
+    Parameters
+    ----------
+    filename : str
+        GRUAN filename, e.g. "LIN-RS-01_2_RS92-GDP_002_20210125T132400_1-000-001.nc"
+
+    Returns
+    -------
+    tuple[datetime.datetime, int]
+        Launch time as a datetime object and revision number as an integer.
+    """
     parts = filename.split("_")
     if len(parts) != 6:
         raise ValueError(f"Unexpected filename format: {filename}")
     time_part = parts[4]
     try:
-       time = datetime.datetime.strptime(time_part, "%Y%m%dT%H%M%S")
-    except:
-       raise ValueError(f"Unexpected time segment: {time_part}")
+        time = datetime.datetime.strptime(time_part, "%Y%m%dT%H%M%S")
+    except ValueError as e:
+        raise ValueError(f"Unexpected time segment: {time_part}") from e
 
     revision_part = parts[5].removesuffix(".nc")
     if not revision_part[-3:].isdigit():
@@ -67,7 +78,16 @@ def extract_gruan_time(filename: str) -> tuple[datetime.datetime, int]:
 
 @functools.cache
 def available_sites() -> dict[str, list[str]]:
-    """Get a list of available GRUAN sites for each supported product."""
+    """Get a list of available GRUAN sites for each supported product.
+
+    The :attr:`GRUAN.AVAILABLE` is a hardcoded snapshot of this data. The data returned
+    by this function does not change frequently, so it is cached for efficiency.
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Mapping of product names to lists of available site identifiers.
+    """
 
     base_path = "/pub/data/gruan/processing/level2"
 
@@ -115,7 +135,7 @@ class GRUAN:
         - ``RS-11G-GDP.1``
     site : str
         GRUAN station identifier. See :attr:`AVAILABLE` for available sites for each product.
-    cachestore : CacheStore, optional
+    cachestore : cache.CacheStore | None, optional
         Cache store to use for downloaded files. If not provided, a disk cache store
         will be created in the user cache directory under ``gruan/``. Set to ``None``
         to disable caching.
@@ -196,7 +216,7 @@ class GRUAN:
     def __repr__(self) -> str:
         return f"GRUAN(product='{self.product}', site='{self.site}')"
 
-    def connect(self) -> ftplib.FTP:
+    def _connect(self) -> ftplib.FTP:
         """Connect to the GRUAN FTP server."""
         if self._ftp is None or self._ftp.sock is None:
             self._ftp = ftplib.FTP(FTP_SERVER)
@@ -208,7 +228,7 @@ class GRUAN:
         except (*ftplib.all_errors, ConnectionError):  # type: ignore[misc]
             # If we encounter any error, reset the connection and retry
             self._ftp = None
-            return self.connect()
+            return self._connect()
         return self._ftp
 
     @property
@@ -224,7 +244,7 @@ class GRUAN:
 
     def years(self) -> list[int]:
         """Get a list of available years for the selected product and site."""
-        ftp = self.connect()
+        ftp = self._connect()
         ftp.cwd(self.base_path_site)
         years = ftp.nlst()
         return [int(year) for year in years]
@@ -233,7 +253,7 @@ class GRUAN:
         """List available files for a given year."""
         path = f"{self.base_path_site}/{year}"
 
-        ftp = self.connect()
+        ftp = self._connect()
         try:
             ftp.cwd(path)
         except ftplib.error_perm as e:
@@ -245,7 +265,19 @@ class GRUAN:
         return ftp.nlst()
 
     def get(self, filename: str) -> xr.Dataset:
-        """Download a GRUAN dataset by filename."""
+        """Download a GRUAN dataset by filename.
+
+        Parameters
+        ----------
+        filename : str
+            GRUAN filename to download, e.g. "LIN-RS-01_2_RS92-GDP_002_20210125T132400_1-000-001.nc"
+
+        Returns
+        -------
+        xr.Dataset
+            The GRUAN dataset retrieved from the FTP server. If caching is enabled,
+            the file is downloaded to the cache store and loaded from there on subsequent calls.
+        """
         if self.cachestore is None:
             return self._get_no_cache(filename)
         return self._get_with_cache(filename)
@@ -254,7 +286,7 @@ class GRUAN:
         t, _ = extract_gruan_time(filename)
         path = f"{self.base_path_site}/{t.year}/{filename}"
 
-        ftp = self.connect()
+        ftp = self._connect()
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             ftp.retrbinary(f"RETR {path}", tmp.write)
 
@@ -274,7 +306,7 @@ class GRUAN:
         t, _ = extract_gruan_time(filename)
         path = f"{self.base_path_site}/{t.year}/{filename}"
 
-        ftp = self.connect()
+        ftp = self._connect()
         with open(lpath, "wb") as f:
             ftp.retrbinary(f"RETR {path}", f.write)
 
