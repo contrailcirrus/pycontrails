@@ -52,9 +52,10 @@ def extract_gruan_time(filename: str) -> tuple[datetime.datetime, int]:
     if len(parts) != 6:
         raise ValueError(f"Unexpected filename format: {filename}")
     time_part = parts[4]
-    if len(time_part) != 15 or time_part[8] != "T":
-        raise ValueError(f"Unexpected time segment: {time_part}")
-    time = datetime.datetime.strptime(time_part, "%Y%m%dT%H%M%S")
+    try:
+       time = datetime.datetime.strptime(time_part, "%Y%m%dT%H%M%S")
+    except:
+       raise ValueError(f"Unexpected time segment: {time_part}")
 
     revision_part = parts[5].removesuffix(".nc")
     if not revision_part[-3:].isdigit():
