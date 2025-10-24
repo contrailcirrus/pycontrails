@@ -131,6 +131,8 @@ class GRUAN:
     high-quality measurements of atmospheric variables from ground to stratosphere
     through a global network of radiosonde stations.
 
+    .. versionadded:: 0.59.0
+
     Parameters
     ----------
     product : str
