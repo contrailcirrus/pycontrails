@@ -10,6 +10,10 @@
 
 - Updated error handling in `goes.gcs_goes_path` to raise a `FileNotFoundError` if any of the requested bands are not available. Previous versions raised a `RuntimeError` only in cases where no requested bands were available.
 
+### Fixes
+
+- Ensure call to `np.clip` in `contrail_properties.initial_ice_particle_number` is backwards compatible with numpy < 2.1.
+
 ## 0.58.0
 
 ### Features

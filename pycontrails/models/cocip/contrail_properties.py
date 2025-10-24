@@ -236,7 +236,7 @@ def initial_ice_particle_number(
         phase, [:math:`# m^{-1}`]
     """
     if min_aei is not None:
-        aei = np.clip(aei, min=min_aei)  # type: ignore[call-overload]
+        aei = np.clip(aei, min_aei, None)
     return fuel_dist * aei
 
 
