@@ -287,10 +287,13 @@ class GRUAN:
         path = f"{self.base_path_site}/{t.year}/{filename}"
 
         ftp = self._connect()
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            ftp.retrbinary(f"RETR {path}", tmp.write)
 
         try:
+            # On windows, NamedTemporaryFile cannot be reopened while still open.
+            # After python 3.11 support is dropped, we can use delete_on_close=False
+            # in NamedTemporaryFile to streamline this.
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                ftp.retrbinary(f"RETR {path}", tmp.write)
             return xr.load_dataset(tmp.name)
         finally:
             os.remove(tmp.name)
