@@ -116,7 +116,7 @@ def available_sites() -> dict[str, list[str]]:
 
 
 class GRUAN:
-    """Access `GRUAN <https://www.gruan.org/>`_ data over FTP.
+    """Access `GRUAN <https://www.gruan.org/>`_ data over anonymous FTP.
 
     GRUAN is the Global Climate Observing System Reference Upper-Air Network. It provides
     high-quality measurements of atmospheric variables from ground to stratosphere
