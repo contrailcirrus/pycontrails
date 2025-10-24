@@ -258,10 +258,26 @@ class GRUAN:
         ftp = self._connect()
         ftp.cwd(self.base_path_site)
         years = ftp.nlst()
-        return [int(year) for year in years]
+        return sorted(int(year) for year in years)
 
-    def list_files(self, year: int) -> list[str]:
-        """List available files for a given year."""
+    def list_files(self, year: int | None = None) -> list[str]:
+        """List available files for a given year.
+
+        Parameters
+        ----------
+        year : int | None, optional
+            Year to list files for. If ``None``, list files for all available years. The later
+            may be time-consuming.
+
+        Returns
+        -------
+        list[str]
+            List of available GRUAN filenames for the specified year.
+        """
+        if year is None:
+            years = self.years()
+            return sorted(file for y in years for file in self.list_files(y))
+
         path = f"{self.base_path_site}/{year}"
 
         ftp = self._connect()
@@ -273,7 +289,7 @@ class GRUAN:
                 msg = f"No data available for year {year}. Available years are: {available}"
                 raise ValueError(msg) from e
             raise
-        return ftp.nlst()
+        return sorted(ftp.nlst())
 
     def get(self, filename: str) -> xr.Dataset:
         """Download a GRUAN dataset by filename.
