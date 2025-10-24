@@ -60,6 +60,7 @@ def test_available_products_live(gruan: GRUAN) -> None:
     assert {p for p in products if "." not in p} == expected
 
 
+@pytest.mark.skipif(OFFLINE, reason="offline")
 def test_years(gruan: GRUAN) -> None:
     """Test available years retrieval."""
     years = gruan.years()
