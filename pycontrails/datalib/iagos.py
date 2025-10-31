@@ -197,7 +197,8 @@ class IAGOS:
             cachestore = cache.DiskCacheStore()
         self.cachestore = cachestore
 
-        if time and len(time) != 2:
+        if time and (isinstance(time, str) or len(time) != 2):
+            msg = "If provided, time must be a list of length 2."
             msg = "If provided, time must be a tuple of length 2."
             raise ValueError(msg)
         self.timespan = metsource.parse_timesteps(time, freq=None)

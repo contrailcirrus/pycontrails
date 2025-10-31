@@ -10,6 +10,7 @@ from concurrent import futures
 import xarray as xr
 
 from pycontrails.core import cache
+from pycontrails.datalib._met_utils import metsource
 
 #: GRUAN FTP server address
 FTP_SERVER = "ftp.ncdc.noaa.gov"
@@ -189,7 +190,7 @@ class GRUAN:
     available_sites = staticmethod(available_sites)
     AVAILABLE = AVAILABLE_PRODUCTS_TO_SITES
 
-    __slots__ = ("_ftp", "cachestore", "product", "site")
+    __slots__ = ("_ftp", "cachestore", "product", "site", "timespan")
 
     __marker = object()
 
@@ -197,6 +198,7 @@ class GRUAN:
         self,
         product: str,
         site: str,
+        time: metsource.TimeInput | None = None,
         cachestore: cache.CacheStore | None = __marker,  # type: ignore[assignment]
     ) -> None:
         known = AVAILABLE_PRODUCTS_TO_SITES
@@ -216,6 +218,11 @@ class GRUAN:
                 )
         self.site = site
 
+        if time and (isinstance(time, str) or len(time) != 2):
+            msg = "If provided, time must be a list of length 2."
+            raise ValueError(msg)
+        self.timespan = metsource.parse_timesteps(time, freq=None)
+
         if cachestore is self.__marker:
             cache_root = cache._get_user_cache_dir()
             cache_dir = f"{cache_root}/gruan"
@@ -225,7 +232,11 @@ class GRUAN:
         self._ftp: ftplib.FTP | None = None
 
     def __repr__(self) -> str:
-        return f"GRUAN(product='{self.product}', site='{self.site}')"
+        _repr = f"GRUAN(product='{self.product}', site='{self.site}'"
+        if self.timespan:
+            _repr += f", time={[t.isoformat() for t in self.timespan]}"
+        _repr += ")"
+        return _repr
 
     def _connect(self) -> ftplib.FTP:
         """Connect to the GRUAN FTP server."""
@@ -266,17 +277,32 @@ class GRUAN:
         Parameters
         ----------
         year : int | None, optional
-            Year to list files for. If ``None``, list files for all available years. The later
-            may be time-consuming.
+            Year to list files for. If provided, lists all files available for the year.
+            If ``None``, list files for the requested time period, if one is provided,
+            or for all available years. The later may be time-consuming.
 
         Returns
         -------
         list[str]
-            List of available GRUAN filenames for the specified year.
+            List of available GRUAN filenames.
         """
         if year is None:
             years = self.years()
-            return sorted(file for y in years for file in self.list_files(y))
+
+            if not self.timespan:
+                return sorted(file for y in years for file in self.list_files(y))
+
+            def _in_range(file: str) -> bool:
+                date = extract_gruan_time(file)[0]
+                return date >= self.timespan[0] and date <= self.timespan[1]
+
+            return sorted(
+                file
+                for y in years
+                if y >= self.timespan[0].year and y <= self.timespan[1].year
+                for file in self.list_files(y)
+                if _in_range(file)
+            )
 
         path = f"{self.base_path_site}/{year}"
 
