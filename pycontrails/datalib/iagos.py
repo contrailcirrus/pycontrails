@@ -12,18 +12,19 @@ from pycontrails.core import Flight, MetVariable, cache, met_var
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.utils.types import DatetimeLike
 
-Altitude = MetVariable(
+GeometricAltitude = MetVariable(
     short_name="z",
     standard_name="gps_altitude",
     units="m",
     description="Altitude above the geoid, as measured by GPS.",
 )
 
+
 WaterVaporMoleFraction = MetVariable(
-    short_name="etav",
+    short_name="xv",
     standard_name="mole_fraction_of_water_vapor_in_air",
     units="ppm",
-    description="The number of molecules of water per molecule of air.",
+    description="The number of moles of water vapor per mole of air.",
 )
 
 
@@ -32,7 +33,7 @@ WaterVaporMoleFraction = MetVariable(
 #: by validity flags.
 AIRCRAFT_VARIABLES = [
     met_var.AirPressure,
-    Altitude,
+    GeometricAltitude,
     met_var.EastwardWind,
     met_var.NorthwardWind,
     met_var.AirTemperature,
@@ -41,7 +42,8 @@ AIRCRAFT_VARIABLES = [
 
 #: Variables measured by IAGOS instruments.
 #: These variables are not measured on all IAGOS flights.
-#: When present, they are accompanied by validity and processing flags.
+#: When present, they are accompanied by validity and processing flags
+#: and standard errors.
 IAGOS_VARIABLES = [WaterVaporMoleFraction]
 
 
@@ -54,8 +56,59 @@ def extract_flight_id(filename: str) -> str:
     return match.group(1) + match.group(2)
 
 
+def validate_paths(paths: list[str | pathlib.Path] | None) -> list[str] | None:
+    """Validate provided IAGOS paths.
+
+    Parameters
+    ----------
+    paths : list[str | pathlib.Path]
+        List of paths to local IAGOS data files.
+
+    Returns
+    -------
+    list[str] | None
+        Validated paths, or None if :param:`paths` is None.
+        If a ``list[str]`` is returned, it is guaranteed to contain
+        paths with filenames that can be parsed into a list of unique
+        IAGOS flight ids. Input paths that include filenames that cannot
+        be parsed into IAGOS flight ids are ignored, and a warning is raised
+        if any are encountered. An error is raised if the same IAGOS flight
+        id is parsed from more than one file.
+
+    Raises
+    ------
+    ValueError
+        If multiple paths contain the same IAGOS flight id.
+
+    """
+    if paths is None:
+        return None
+
+    flight_ids = []
+    validated = []
+    for path in paths:
+        try:
+            flight_id = extract_flight_id(os.path.basename(path))
+        except ValueError:
+            msg = f"Could not parse IAGOS flight id from {path}. This file will be ignored."
+            warnings.warn(msg)
+            continue
+        flight_ids.append(flight_id)
+        validated.append(str(path))
+
+    duplicates = sorted([f for f in set(flight_ids) if flight_ids.count(f) > 1])
+    if duplicates:
+        msg = (
+            f"IAGOS flight ids {duplicates} appear more than once in `paths`. "
+            f"Deduplicate files included in `paths` before using."
+        )
+        raise ValueError(msg)
+
+    return validated
+
+
 class IAGOS:
-    """EXPERIMENTAL: class for processing raw IAGOS L2 data.
+    """EXPERIMENTAL: class for processing L2 IAGOS data.
 
     Parameters
     ----------
@@ -75,6 +128,23 @@ class IAGOS:
 
     Notes
     -----
+    To inspect raw IAGOS data files without additional processing:
+
+        1. Instantiate ``IAGOS(time, variables)`` or ``IAGOS(time, variables, paths)``
+        2. Call ``list_files()`` to get a list of available files
+        3. Call ``get(filename)`` to open a file as an ``xarray.Dataset``
+
+    If a set of local ``paths`` is provided during instantiation, ``list_files()``
+    will return the files in ``paths`` without additional filtering. If local ``paths``
+    are not provided, ``list_files()`` will filter for files that overlap with the
+    requested ``time`` and include the requested ``variables`` when calling the IAGOS
+    API.
+
+    To open processed IAGOS files as a list of ``Flight``:
+
+        1. Instantiate ``IAGOS(time, variables)`` or ``IAGOS(time, variables, paths)``
+        2. Call ``load_flights()``
+
     IAGOS files are expected to be named as follows::
 
         IAGOS_timeseries_{YYYYmmdd}{XXXXXXXX}_L2_{V.V.V}.nc4
@@ -132,8 +202,7 @@ class IAGOS:
             raise ValueError(msg)
         self.timespan = metsource.parse_timesteps(time, freq=None)
         self.variables = metsource.parse_variables(variables or [], self.supported_variables)
-
-        self.paths = [str(p) for p in paths] if paths else None
+        self.paths = validate_paths(paths)
 
     def __repr__(self) -> str:
         _repr = f"{self.__class__.__name__}"
@@ -189,14 +258,6 @@ class IAGOS:
             the expected format.
         """
         if self.paths:
-            flight_ids = [extract_flight_id(os.path.basename(p)) for p in self.paths]
-            duplicates = [f for f in set(flight_ids) if flight_ids.count(f) > 1]
-            if duplicates:
-                msg = (
-                    f"IAGOS flight ids {duplicates} appear more than once in `paths`. "
-                    f"Deduplicate files included in `paths` before using."
-                )
-                raise ValueError(msg)
             return sorted([os.path.basename(p) for p in self.paths])
 
         msg = (
