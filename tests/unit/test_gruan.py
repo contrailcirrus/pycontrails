@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import datetime
 
 import pytest
 import xarray as xr
@@ -30,6 +31,17 @@ def gruan() -> GRUAN:
     return GRUAN(product="RS92-GDP.2", site="LIN", cachestore=None)
 
 
+@pytest.fixture(scope="module")
+def gruan_with_time() -> GRUAN:
+    """Create a GRUAN instance with a restricted time period for testing.
+
+    The module scope aims to avoid reconnecting to FTP server for each test.
+    """
+    return GRUAN(
+        product="RS92-GDP.2", site="LIN", time=("2019-09-01", "2020-09-01"), cachestore=None
+    )
+
+
 @pytest.fixture()
 def cachestore() -> Generator[DiskCacheStore]:
     cache = DiskCacheStore("test_gruan", allow_clear=True)
@@ -45,6 +57,15 @@ def test_gruan_repr(gruan: GRUAN) -> None:
     """Test GRUAN __repr__."""
     repr_str = repr(gruan)
     assert repr_str == "GRUAN(product='RS92-GDP.2', site='LIN')"
+
+
+def test_gruan_repr_with_time(gruan_with_time: GRUAN) -> None:
+    """Test GRUAN __repr__ with time range."""
+    repr_str = repr(gruan_with_time)
+    assert repr_str == (
+        "GRUAN(product='RS92-GDP.2', site='LIN', "
+        "time=['2019-09-01T00:00:00', '2020-09-01T00:00:00'])"
+    )
 
 
 @pytest.mark.skipif(OFFLINE, reason="offline")
@@ -88,6 +109,21 @@ def test_list_files_and_extract_time(gruan: GRUAN) -> None:
     for file in files:
         t, version = extract_gruan_time(file)
         assert t.year == 2020
+        assert version == 1
+
+
+@pytest.mark.skipif(OFFLINE, reason="offline")
+def test_list_files_and_extract_time_with_time(gruan_with_time: GRUAN) -> None:
+    """Test listing files with a time range."""
+    files = gruan_with_time.list_files()
+    assert isinstance(files, list)
+    assert all(isinstance(f, str) for f in files)
+    assert len(files) == 12  # 8 files for LIN in time range
+
+    for file in files:
+        t, version = extract_gruan_time(file)
+        assert t >= datetime(2019, 9, 1)
+        assert t <= datetime(2020, 9, 1)
         assert version == 1
 
 
@@ -141,3 +177,13 @@ def test_gruan_unknown_site() -> None:
     """Test GRUAN with unknown site."""
     with pytest.raises(ValueError, match="Unknown GRUAN site"):
         GRUAN(product="RS92-GDP.2", site="XXX")
+
+
+def test_gruan_invalid_time() -> None:
+    """Test GRUAN with invalid time ranges."""
+    with pytest.raises(ValueError, match="If provided, time"):
+        GRUAN(product="RS92-GDP.2", site="LIN", time="XY")
+    with pytest.raises(ValueError, match="If provided, time"):
+        GRUAN(product="RS92-GDP.2", site="LIN", time=("FOO",))
+    with pytest.raises(ValueError, match="Failed to parse"):
+        GRUAN(product="RS92-GDP.2", site="LIN", time=("FOO", "BAR"))
