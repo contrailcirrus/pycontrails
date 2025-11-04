@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Corrected conditional logic in `thermo._e_sat_piecewise` to prevent `thermo.q_sat` from returning `np.nan` for temperatures below freezing (0°C).
+
 ## 0.59.0
 
 ### Features
