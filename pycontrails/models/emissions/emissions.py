@@ -22,13 +22,13 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.models.emissions import black_carbon, ffm2, nvpm_meem2
+from pycontrails.models.emissions import black_carbon, ffm2
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, jet, units
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
-EDB_ENGINE_PATH = _path_to_static / "edb-gaseous-v29b-engines.csv"
-EDB_NVPM_PATH = _path_to_static / "edb-nvpm-v29b-engines.csv"
+EDB_ENGINE_PATH = _path_to_static / "edb-gaseous-v31-engines.csv"
+EDB_NVPM_PATH = _path_to_static / "edb-nvpm-v31-engines.csv"
 ENGINE_UID_PATH = _path_to_static / "default-engine-uids.csv"
 
 
