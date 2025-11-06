@@ -22,7 +22,7 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.models.emissions import black_carbon, ffm2
+from pycontrails.models.emissions import black_carbon, ffm2, nvpm_meem2
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, jet, units
 
@@ -1182,6 +1182,43 @@ class EDBnvpm:
             temp_min=self.temp_min,
             temp_max=self.temp_max,
             fuel_heat=self.fuel_heat,
+            ff_7=self.ff_7,
+            ff_30=self.ff_30,
+            ff_85=self.ff_85,
+            ff_100=self.ff_100,
+            nvpm_ei_m_7=self.nvpm_ei_m_7,
+            nvpm_ei_m_30=self.nvpm_ei_m_30,
+            nvpm_ei_m_85=self.nvpm_ei_m_85,
+            nvpm_ei_m_100=self.nvpm_ei_m_100,
+            nvpm_ei_n_7=self.nvpm_ei_n_7,
+            nvpm_ei_n_30=self.nvpm_ei_n_30,
+            nvpm_ei_n_85=self.nvpm_ei_n_85,
+            nvpm_ei_n_100=self.nvpm_ei_n_100,
+        )[1]
+
+    @property
+    # TODO: These should be moved away from emissions.py
+    def nvpm_ei_m_meem(self) -> EmissionsProfileInterpolator:
+        """Get the nvPM emissions index mass profile."""
+        return nvpm_meem2.nvpm_emissions_index_profile_meem(
+            ff_7=self.ff_7,
+            ff_30=self.ff_30,
+            ff_85=self.ff_85,
+            ff_100=self.ff_100,
+            nvpm_ei_m_7=self.nvpm_ei_m_7,
+            nvpm_ei_m_30=self.nvpm_ei_m_30,
+            nvpm_ei_m_85=self.nvpm_ei_m_85,
+            nvpm_ei_m_100=self.nvpm_ei_m_100,
+            nvpm_ei_n_7=self.nvpm_ei_n_7,
+            nvpm_ei_n_30=self.nvpm_ei_n_30,
+            nvpm_ei_n_85=self.nvpm_ei_n_85,
+            nvpm_ei_n_100=self.nvpm_ei_n_100,
+        )[0]
+
+    @property
+    def nvpm_ei_n_meem(self) -> EmissionsProfileInterpolator:
+        """Get the nvPM emissions index number profile."""
+        return nvpm_meem2.nvpm_emissions_index_profile_meem(
             ff_7=self.ff_7,
             ff_30=self.ff_30,
             ff_85=self.ff_85,
