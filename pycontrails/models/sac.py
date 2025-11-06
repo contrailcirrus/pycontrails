@@ -6,6 +6,7 @@ import dataclasses
 from typing import Any, overload
 
 import numpy as np
+import numpy.typing as npt
 import scipy.optimize
 
 import pycontrails
@@ -120,16 +121,28 @@ class SAC(Model):
         air_pressure = self.source.data["air_pressure"]
         engine_efficiency = self.get_source_param("engine_efficiency")
 
-        # Flight class has fuel attribute, use this instead of params
-        if isinstance(self.source, Flight):
-            fuel = self.source.fuel
+        # If ei_h2o and q_fuel are in the source, use them. This keeps a backdoor open to run
+        # Cocip on a fuel-varying Fleet or arbitrary VectorDataset objects.
+        ei_h2o: npt.NDArray[np.floating] | float
+        q_fuel: npt.NDArray[np.floating] | float
+        if "ei_h2o" in self.source:
+            if "q_fuel" not in self.source:
+                raise ValueError("ei_h2o provided on source, but q_fuel is missing")
+            # This might fail for MetDataset source -- haven't tried it.
+            ei_h2o = self.source["ei_h2o"]  # type: ignore[assignment]
+            q_fuel = self.source["q_fuel"]  # type: ignore[assignment]
+        # Flight source always has fuel attribute
+        elif isinstance(self.source, Flight):
+            assert isinstance(self.source.fuel, Fuel), "The fuel attribute must be of type Fuel"
+            ei_h2o = self.source.fuel.ei_h2o
+            q_fuel = self.source.fuel.q_fuel
+        # Grab from self.source.attrs or use default param
         else:
             # NOTE: Not setting fuel on MetDataset source
             fuel = self.get_source_param("fuel", set_attr=False)
-        assert isinstance(fuel, Fuel), "The fuel attribute must be of type Fuel"
-
-        ei_h2o = fuel.ei_h2o
-        q_fuel = fuel.q_fuel
+            assert isinstance(fuel, Fuel), "The fuel attribute must be of type Fuel"
+            ei_h2o = fuel.ei_h2o
+            q_fuel = fuel.q_fuel
 
         G = slope_mixing_line(specific_humidity, air_pressure, engine_efficiency, ei_h2o, q_fuel)
         T_sat_liquid_ = T_sat_liquid(G)
@@ -165,8 +178,8 @@ def slope_mixing_line(
     specific_humidity: ArrayLike,
     air_pressure: ArrayLike,
     engine_efficiency: float | ArrayLike,
-    ei_h2o: float,
-    q_fuel: float,
+    ei_h2o: npt.NDArray[np.floating] | float,
+    q_fuel: npt.NDArray[np.floating] | float,
 ) -> ArrayLike:
     r"""Calculate the slope of the mixing line in a temperature-humidity diagram.
 
@@ -180,9 +193,9 @@ def slope_mixing_line(
         A sequence or array of atmospheric pressure values, [:math:`Pa`].
     engine_efficiency: float | ArrayLike
         Engine efficiency, [:math:`0 - 1`]
-    ei_h2o : float
+    ei_h2o : npt.NDArray[np.floating] | float
         Emission index of water vapor, [:math:`kg \ kg^{-1}`]
-    q_fuel : float
+    q_fuel : npt.NDArray[np.floating] | float
         Specific combustion heat of fuel combustion, [:math:`J \ kg^{-1} \ K^{-1}`]
 
     Returns
@@ -191,7 +204,7 @@ def slope_mixing_line(
         Slope of the mixing line in a temperature-humidity diagram, [:math:`Pa \ K^{-1}`]
     """
     c_pm = thermo.c_pm(specific_humidity)  # Often taken as 1004 (= constants.c_pd)
-    return (ei_h2o * c_pm * air_pressure) / (constants.epsilon * q_fuel * (1.0 - engine_efficiency))
+    return (ei_h2o * c_pm * air_pressure) / (constants.epsilon * q_fuel * (1.0 - engine_efficiency))  # type: ignore[return-value]
 
 
 def T_sat_liquid(G: ArrayLike) -> ArrayLike:
