@@ -6,6 +6,10 @@
 
 - Corrected conditional logic in `thermo._e_sat_piecewise` to prevent `thermo.q_sat` from returning `np.nan` for temperatures below freezing (0°C).
 
+### Internals
+
+- Open the backdoor to running `Cocip` with a fuel-varying `Fleet`. This is not officially supported and requires some undocumented monkey-patching.
+
 ## 0.59.0
 
 ### Features
