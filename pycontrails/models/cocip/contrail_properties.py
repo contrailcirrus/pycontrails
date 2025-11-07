@@ -25,7 +25,7 @@ def initial_iwc(
     fuel_dist: npt.NDArray[np.floating],
     width: npt.NDArray[np.floating],
     depth: npt.NDArray[np.floating],
-    ei_h2o: float,
+    ei_h2o: npt.NDArray[np.floating] | float,
 ) -> npt.NDArray[np.floating]:
     r"""
     Estimate the initial contrail ice water content (iwc) before the wake vortex phase.
@@ -47,7 +47,7 @@ def initial_iwc(
         initial contrail width, [:math:`m`]
     depth : npt.NDArray[np.floating]
         initial contrail depth, [:math:`m`]
-    ei_h2o : float
+    ei_h2o : npt.NDArray[np.floating] | float
         water vapor emissions index of fuel, [:math:`kg_{H_{2}O} \ kg_{fuel}^{-1}`]
 
     Returns
@@ -68,7 +68,7 @@ def q_exhaust(
     fuel_dist: npt.NDArray[np.floating],
     width: npt.NDArray[np.floating],
     depth: npt.NDArray[np.floating],
-    ei_h2o: float,
+    ei_h2o: npt.NDArray[np.floating] | float,
 ) -> npt.NDArray[np.floating]:
     r"""
     Calculate the specific humidity released by water vapor from aircraft emissions.
@@ -85,7 +85,7 @@ def q_exhaust(
         initial contrail width, [:math:`m`]
     depth : npt.NDArray[np.floating]
         initial contrail depth, [:math:`m`]
-    ei_h2o : float
+    ei_h2o : npt.NDArray[np.floating] | float
         water vapor emissions index of fuel, [:math:`kg_{H_{2}O} \ kg_{fuel}^{-1}`]
 
     Returns

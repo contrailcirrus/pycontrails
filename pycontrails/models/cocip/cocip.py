@@ -931,7 +931,12 @@ class Cocip(Model):
         fuel_dist = fuel_flow / true_airspeed
 
         nvpm_ei_n = self._sac_flight.get_data_or_attr("nvpm_ei_n")
-        ei_h2o = self._sac_flight.fuel.ei_h2o
+
+        ei_h2o: npt.NDArray[np.floating] | float
+        if "ei_h2o" in self._sac_flight:  # keep backdoor open to fuel-varying fleet
+            ei_h2o = self._sac_flight["ei_h2o"]
+        else:
+            ei_h2o = self._sac_flight.fuel.ei_h2o
 
         # get initial contrail parameters from wake vortex simulation
         width = self._sac_flight["width"]
