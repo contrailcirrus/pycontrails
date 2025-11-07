@@ -743,4 +743,6 @@ class MetDataSource(abc.ABC):
         xr_kwargs.setdefault("engine", NETCDF_ENGINE)
         xr_kwargs.setdefault("chunks", DEFAULT_CHUNKS)
         xr_kwargs.setdefault("parallel", OPEN_IN_PARALLEL)
+        xr_kwargs.setdefault("join", "outer")
+        xr_kwargs.setdefault("compat", "no_conflicts")
         return xr.open_mfdataset(disk_paths, **xr_kwargs)
