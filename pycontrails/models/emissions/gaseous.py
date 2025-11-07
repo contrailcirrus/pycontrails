@@ -10,8 +10,8 @@ References
 
 from __future__ import annotations
 
+import dataclasses
 import functools
-
 import numpy as np
 import numpy.typing as npt
 
@@ -19,8 +19,176 @@ from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.physics import jet, units
 
 
+# ------------------------------------------------------
+# Data structure for ICAO EDB: Gaseous (NOx, CO, and HC)
+# ------------------------------------------------------
+
+@dataclasses.dataclass(frozen=True)
+class EDBGaseous:
+    """Gaseous emissions data.
+
+    -------------------------------------
+    ENGINE IDENTIFICATION AND TYPE:
+    -------------------------------------
+    manufacturer: str
+        engine manufacturer
+    engine_name: str
+        name of engine
+    combustor: str
+        description of engine combustor
+
+    -------------------------------------
+    ENGINE CHARACTERISTICS:
+    -------------------------------------
+    bypass_ratio: float
+        engine bypass ratio
+    pressure_ratio: float
+        engine pressure ratio
+    rated_thrust: float
+        rated thrust of engine, [:math:`kN`]
+
+    -------------------------------------
+    FUEL CONSUMPTION:
+    -------------------------------------
+    ff_7: float
+        fuel mass flow rate at 7% thrust setting, [:math:`kg s^{-1}`]
+    ff_30: float
+        fuel mass flow rate at 30% thrust setting, [:math:`kg s^{-1}`]
+    ff_85: float
+        fuel mass flow rate at 85% thrust setting, [:math:`kg s^{-1}`]
+    ff_100: float
+        fuel mass flow rate at 100% thrust setting, [:math:`kg s^{-1}`]
+
+    -------------------------------------
+    EMISSIONS:
+    -------------------------------------
+    ei_nox_7: float
+        NOx emissions index at 7% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+    ei_nox_30: float
+        NOx emissions index at 30% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+    ei_nox_85: float
+        NOx emissions index at 85% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+    ei_nox_100: float
+        NOx emissions index at 100% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+
+    ei_co_7: float
+        CO emissions index at 7% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+    ei_co_30: float
+        CO emissions index at 30% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+    ei_co_85: float
+        CO emissions index at 85% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+    ei_co_100: float
+        CO emissions index at 100% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+
+    ei_hc_7: float
+        HC emissions index at 7% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+    ei_hc_30: float
+        HC emissions index at 30% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+    ei_hc_85: float
+        HC emissions index at 85% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+    ei_hc_100: float
+        HC emissions index at 100% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+
+    sn_7: float
+        smoke number at 7% thrust setting
+    sn_30: float
+        smoke number at 30% thrust setting
+    sn_85: float
+        smoke number at 85% thrust setting
+    sn_100: float
+        smoke number at 100% thrust setting
+    sn_max: float
+        maximum smoke number value across the range of thrust setting
+    """
+
+    # Engine identification and type
+    manufacturer: str
+    engine_name: str
+    combustor: str
+
+    # Engine characteristics
+    bypass_ratio: float
+    pressure_ratio: float
+    rated_thrust: float
+
+    # Fuel consumption
+    ff_7: float
+    ff_30: float
+    ff_85: float
+    ff_100: float
+
+    # Emissions
+    ei_nox_7: float
+    ei_nox_30: float
+    ei_nox_85: float
+    ei_nox_100: float
+
+    ei_co_7: float
+    ei_co_30: float
+    ei_co_85: float
+    ei_co_100: float
+
+    ei_hc_7: float
+    ei_hc_30: float
+    ei_hc_85: float
+    ei_hc_100: float
+
+    sn_7: float
+    sn_30: float
+    sn_85: float
+    sn_100: float
+    sn_max: float
+
+    @property
+    def log_ei_nox_profile(self) -> EmissionsProfileInterpolator:
+        """Get the logarithmic emissions index profile for NOx emissions."""
+        return nitrogen_oxide_emissions_index_profile_ffm2(
+            ff_idle=self.ff_7,
+            ff_approach=self.ff_30,
+            ff_climb=self.ff_85,
+            ff_take_off=self.ff_100,
+            ei_nox_idle=self.ei_nox_7,
+            ei_nox_approach=self.ei_nox_30,
+            ei_nox_climb=self.ei_nox_85,
+            ei_nox_take_off=self.ei_nox_100,
+        )
+
+    @property
+    def log_ei_co_profile(self) -> EmissionsProfileInterpolator:
+        """Get the logarithmic emissions index profile for CO emissions."""
+        return co_hc_emissions_index_profile_ffm2(
+            ff_idle=self.ff_7,
+            ff_approach=self.ff_30,
+            ff_climb=self.ff_85,
+            ff_take_off=self.ff_100,
+            ei_idle=self.ei_co_7,
+            ei_approach=self.ei_co_30,
+            ei_climb=self.ei_co_85,
+            ei_take_off=self.ei_co_100,
+        )
+
+    @property
+    def log_ei_hc_profile(self) -> EmissionsProfileInterpolator:
+        """Get the logarithmic emissions index profile for HC emissions."""
+        return co_hc_emissions_index_profile_ffm2(
+            ff_idle=self.ff_7,
+            ff_approach=self.ff_30,
+            ff_climb=self.ff_85,
+            ff_take_off=self.ff_100,
+            ei_idle=self.ei_hc_7,
+            ei_approach=self.ei_hc_30,
+            ei_climb=self.ei_hc_85,
+            ei_take_off=self.ei_hc_100,
+        )
+
+
+# -------------------------------------------------------
+#  Fuel Flow Method 2 (FFM2) from DuBois & Paynter (2006)
+# -------------------------------------------------------
+
+
 @functools.cache
-def nitrogen_oxide_emissions_index_profile(
+def nitrogen_oxide_emissions_index_profile_ffm2(
     ff_idle: float,
     ff_approach: float,
     ff_climb: float,
@@ -75,7 +243,7 @@ def nitrogen_oxide_emissions_index_profile(
 
 
 @functools.cache
-def co_hc_emissions_index_profile(
+def co_hc_emissions_index_profile_ffm2(
     ff_idle: float,
     ff_approach: float,
     ff_climb: float,
@@ -170,7 +338,7 @@ def co_hc_emissions_index_profile(
     return EmissionsProfileInterpolator(xp=np.log(ff_profile), fp=np.log(ei_profile))
 
 
-def estimate_nox(
+def estimate_nox_ffm2(
     log_ei_nox_profile: EmissionsProfileInterpolator,
     fuel_flow_per_engine: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
@@ -213,7 +381,7 @@ def estimate_nox(
     return ei_cruise * q_correction
 
 
-def estimate_ei(
+def estimate_ei_co_hc_ffm2(
     log_ei_profile: EmissionsProfileInterpolator,
     fuel_flow_per_engine: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
