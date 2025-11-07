@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
-from pycontrails.physics import constants, jet, units
+from pycontrails.physics import constants, jet, units, constants
 from pycontrails.utils.types import ArrayScalarLike
 
 
@@ -586,7 +586,132 @@ def estimate_nvpm_meem(
     return nvpm_ei_m, nvpm_ei_n
 
 
-# TODO: Add SCOPE11 here
+# ---------------------------------------------------------------------------
+# nvPM emissions: Smoke Correlation for Particle Emissions - CAEP11 (SCOPE11)
+# ---------------------------------------------------------------------------
+
+# TODO: Main function converts SN to mass and number (Generate this similar to nvPM emissions profile from MEEM and T4/T2)
+
+
+# TODO: Check units
+def estimate_nvpm_number_ei_scope11(
+    nvpm_ei_m_e: npt.NDArray[np.floating],
+    sn: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+    afr: npt.NDArray[np.floating],
+    bypass_ratio: float,
+    pressure_ratio: float,
+    q_fuel: float,
+    comp_efficiency: float = 0.9,
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    c_bc_i = nvpm_mass_concentration_instrument_sampling_point(sn)
+    k_slm = nvpm_mass_system_loss_correction_factor(c_bc_i, bypass_ratio)
+    c_bc_e = nvpm_mass_concentration_engine_exit(c_bc_i, k_slm)
+    c_bc_c = nvpm_mass_concentration_combustor_exit(
+        c_bc_e,
+        air_temperature,
+        air_pressure,
+        thrust_setting,
+        afr,
+        bypass_ratio,
+        pressure_ratio,
+        q_fuel,
+        comp_efficiency,
+    )
+
+    nvpm_gmd = geometric_mean_diameter_scope11(c_bc_c)
+    return nvpm_ei_m_e / ((np.pi / 6) * 1000.0 * (nvpm_gmd ** 3) * np.exp(4.5 * (np.log(1.8) ** 2)))
+
+
+def estimate_nvpm_mass_ei_scope11(
+    sn: npt.NDArray[np.floating],
+    afr: npt.NDArray[np.floating],
+    bypass_ratio: float,
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    c_bc_i = nvpm_mass_concentration_instrument_sampling_point(sn)
+    q_mixed = exhaust_gas_volume_per_kg_fuel(afr, bypass_ratio=bypass_ratio)
+    nvpm_ei_m_i = convert_nvpm_mass_concentration_to_ei(c_bc_i, q_mixed)
+    k_slm = nvpm_mass_system_loss_correction_factor(c_bc_i, bypass_ratio)
+    return nvpm_ei_m_i * k_slm
+
+
+def nvpm_mass_concentration_instrument_sampling_point(
+    sn: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    return (648.4 * np.exp(0.0766 * sn)) / (1 + np.exp(-1.098 * (sn - 3.064)))
+
+
+def nvpm_mass_system_loss_correction_factor(
+    c_bc_i: npt.NDArray[np.floating],
+    bypass_ratio: float
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    numer = 3.219 * c_bc_i * (1 + bypass_ratio) + 312.5
+    denom = c_bc_i * (1 + bypass_ratio) + 42.6
+    return np.log(numer / denom)
+
+
+def nvpm_mass_concentration_engine_exit(
+    c_bc_i: npt.NDArray[np.floating],
+    k_slm: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    return c_bc_i * k_slm
+
+
+def geometric_mean_diameter_scope11(
+    c_bc_c: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    return 5.08 * c_bc_c ** 0.185
+
+
+def nvpm_mass_concentration_combustor_exit(
+    c_bc_e: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+    afr: npt.NDArray[np.floating],
+    bypass_ratio: float,
+    pressure_ratio: float,
+    q_fuel: float,
+    comp_efficiency: float = 0.9,
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    rho_air_4 = air_density_combustor_exit(
+        air_temperature,
+        air_pressure,
+        thrust_setting,
+        afr,
+        q_fuel,
+        pressure_ratio,
+        comp_efficiency
+    )
+    return c_bc_e * (1 + bypass_ratio) * (rho_air_4 / constants.rho_msl)
+
+
+def air_density_combustor_exit(
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+    afr: npt.NDArray[np.floating],
+    q_fuel: float,
+    pressure_ratio: float,
+    comp_efficiency: float = 0.9,
+) -> npt.NDArray[np.floating]:
+    # TODO: Documentation
+    p_combustor_inlet = jet.combustor_inlet_pressure(pressure_ratio, air_pressure, thrust_setting)
+    T_combustor_inlet = jet.combustor_inlet_temperature(
+        comp_efficiency, air_temperature, air_pressure, p_combustor_inlet
+    )
+    T_turbine_inlet = jet.turbine_inlet_temperature(afr, T_combustor_inlet, q_fuel)
+    return p_combustor_inlet / (constants.R_d * T_turbine_inlet)
+
 
 # ---------------------------------------------------------
 # nvPM Mass Emissions Index: Formation and Oxidation Method
@@ -661,7 +786,7 @@ def mass_emissions_index_fox(
         afr_ref=afr_ref,
     )
     q_exhaust_cru = exhaust_gas_volume_per_kg_fuel(afr_cru)
-    return bc_mass_emissions_index(c_bc_cru, q_exhaust_cru)
+    return convert_nvpm_mass_concentration_to_ei(c_bc_cru, q_exhaust_cru)
 
 
 def flame_temperature(t_3: ArrayScalarLike) -> ArrayScalarLike:
@@ -834,7 +959,7 @@ def mass_emissions_index_imfox(
         fuel_flow_per_engine, afr_cru, t_4_cru, fuel_hydrogen=fuel_hydrogen
     )
     q_exhaust_cru = exhaust_gas_volume_per_kg_fuel(afr_cru)
-    return bc_mass_emissions_index(c_bc_cru, q_exhaust_cru)
+    return convert_nvpm_mass_concentration_to_ei(c_bc_cru, q_exhaust_cru)
 
 
 def air_to_fuel_ratio_imfox(thrust_setting: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
@@ -921,7 +1046,10 @@ def bc_mass_concentration_imfox(
 # ---------------------------------------------------------
 
 
-def exhaust_gas_volume_per_kg_fuel(afr: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+def exhaust_gas_volume_per_kg_fuel(
+    afr: npt.NDArray[np.floating], *,
+    bypass_ratio: float = 0.0,
+) -> npt.NDArray[np.floating]:
     """
     Calculate the volume of exhaust gas per mass of fuel burnt.
 
@@ -929,6 +1057,8 @@ def exhaust_gas_volume_per_kg_fuel(afr: npt.NDArray[np.floating]) -> npt.NDArray
     ----------
     afr: npt.NDArray[np.floating]
         Air-to-fuel ratio
+    bypass_ratio: float
+        Engine bypass ratio
 
     Returns
     -------
@@ -938,27 +1068,29 @@ def exhaust_gas_volume_per_kg_fuel(afr: npt.NDArray[np.floating]) -> npt.NDArray
     References
     ----------
     - :cite:`stettlerGlobalCivilAviation2013`
+    # TODO: Cite Agarwal et al. (2019) SCOPE11
     """
-    return 0.776 * afr + 0.877
+    return 0.776 * afr * (1 + bypass_ratio) + 0.877
 
 
-def bc_mass_emissions_index(
-    c_bc: npt.NDArray[np.floating], q_exhaust: npt.NDArray[np.floating]
+def convert_nvpm_mass_concentration_to_ei(
+    c_bc: npt.NDArray[np.floating],
+    q_exhaust: npt.NDArray[np.floating]
 ) -> npt.NDArray[np.floating]:
     """
-    Calculate the black carbon mass emissions index.
+    Convert the nvPM mass concentration to an emissions index.
 
     Parameters
     ----------
     c_bc: npt.NDArray[np.floating]
-        Black carbon mass concentration, [:math:`mg m^{-3}`]
+        nvPM mass concentration, [:math:`mg m^{-3}`]
     q_exhaust: npt.NDArray[np.floating]
         Volume of exhaust gas per mass of fuel burnt, [:math:`m^{3}/kg_{fuel}`]
 
     Returns
     -------
     npt.NDArray[np.floating]
-        Black carbon mass emissions index, [:math:`mg/kg_{fuel}`]
+        nvPM mass emissions index, [:math:`mg/kg_{fuel}`]
 
     References
     ----------
