@@ -405,6 +405,7 @@ class Emissions(Model):
             nvpm_data = self._nvpm_emission_indices_edb(edb_nvpm, fuel)
         elif edb_gaseous is not None:
             # TODO: This should be replaced with SCOPE11
+            # TODO: Step 0 (SCOPE11 implementation)
             nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
         else:
             if engine_uid is not None:
@@ -515,11 +516,11 @@ class Emissions(Model):
 
         # Adjust nvPM mass EI
         if edb_nvpm.nvpm_ei_m_use_max:
-            k_mass = nvpm.nvpm_mass_ei_fuel_adjustment_meem(
+            k_mass = nvpm.nvpm_mass_fuel_composition_correction(
                 fuel.hydrogen_content, thrust_setting_5
             )
         else:
-            k_mass = nvpm.nvpm_mass_ei_fuel_adjustment_meem(
+            k_mass = nvpm.nvpm_mass_fuel_composition_correction(
                 fuel.hydrogen_content, thrust_setting_4
             )
 
@@ -530,11 +531,11 @@ class Emissions(Model):
 
         # Adjust nvPM number EI
         if edb_nvpm.nvpm_ei_n_use_max:
-            k_num = nvpm.nvpm_number_ei_fuel_adjustment_meem(
+            k_num = nvpm.nvpm_number_fuel_composition_correction(
                 fuel.hydrogen_content, thrust_setting_5
             )
         else:
-            k_num = nvpm.nvpm_number_ei_fuel_adjustment_meem(
+            k_num = nvpm.nvpm_number_fuel_composition_correction(
                 fuel.hydrogen_content, thrust_setting_4
             )
 
