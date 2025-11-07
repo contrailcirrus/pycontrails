@@ -77,7 +77,7 @@ class EDBnvpm:
     nvpm_ei_n_100: float
 
     @property
-    def nvpm_ei_m(self) -> EmissionsProfileInterpolator:
+    def nvpm_ei_m_t4_t2(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index mass profile."""
         return nvpm_emissions_profiles_t4_t2(
             pressure_ratio=self.pressure_ratio,
@@ -100,7 +100,7 @@ class EDBnvpm:
         )[0]
 
     @property
-    def nvpm_ei_n(self) -> EmissionsProfileInterpolator:
+    def nvpm_ei_n_t4_t2(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index number profile."""
         return nvpm_emissions_profiles_t4_t2(
             pressure_ratio=self.pressure_ratio,
@@ -123,7 +123,6 @@ class EDBnvpm:
         )[1]
 
     @property
-    # TODO: These should be moved away from emissions.py
     def nvpm_ei_m_meem(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index mass profile."""
         return nvpm_emissions_profiles_meem(
@@ -287,8 +286,6 @@ def estimate_nvpm_t4_t2(
         EDB nvPM data
     true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
-    fuel_flow_per_engine: npt.NDArray[np.floating]
-        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
     air_temperature: npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
     air_pressure: npt.NDArray[np.floating]
@@ -317,9 +314,9 @@ def estimate_nvpm_t4_t2(
     )
 
     # Interpolate nvPM EI_m and EI_n
-    nvpm_ei_m = edb_nvpm.nvpm_ei_m.interp(t4_t2)
+    nvpm_ei_m = edb_nvpm.nvpm_ei_m_t4_t2.interp(t4_t2)
     nvpm_ei_m = nvpm_ei_m * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
-    nvpm_ei_n = edb_nvpm.nvpm_ei_n.interp(t4_t2)
+    nvpm_ei_n = edb_nvpm.nvpm_ei_n_t4_t2.interp(t4_t2)
     return nvpm_ei_m, nvpm_ei_n
 
 
@@ -341,7 +338,7 @@ def nvpm_emissions_profiles_meem(
     nvpm_ei_m_30: float,
     nvpm_ei_m_85: float,
     nvpm_ei_m_100: float,
-    fuel_hydrogen_content: float = 13.8,
+    hydrogen_content: float = 13.8,
 ) -> tuple[EmissionsProfileInterpolator, EmissionsProfileInterpolator]:
     """
     Create the nvPM number emissions index (EI) profile for the given engine type.
@@ -372,6 +369,8 @@ def nvpm_emissions_profiles_meem(
         ICAO EDB nvPM mass emissions index at climb out (85% power), [:math:`kg/kg_{fuel}`]
     nvpm_ei_m_100: float
         ICAO EDB nvPM mass emissions index at take-off (100% power), [:math:`kg/kg_{fuel}`]
+    hydrogen_content: float
+        The percentage of hydrogen mass content in the fuel.
 
     Returns
     -------
@@ -387,16 +386,16 @@ def nvpm_emissions_profiles_meem(
     nvpm_ei_n = np.array([nvpm_ei_n_7, nvpm_ei_n_30, nvpm_ei_n_85, nvpm_ei_n_100], dtype=float)
 
     # TODO: SAF adjustments
-    if not (13.4 <= fuel_hydrogen_content <= 15.4):
+    if not (13.4 <= hydrogen_content <= 15.4):
         warnings.warn(
-            f"Fuel hydrogen content {fuel_hydrogen_content} % is outside the valid range" 
+            f"Fuel hydrogen content {hydrogen_content} % is outside the valid range" 
             "(13.4 - 15.4 %), and may lead to inaccuracies."
         )
 
     # Adjust nvPM emissions index due to fuel hydrogen content differences
     thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
-    k_mass = _nvpm_mass_ei_fuel_adjustment_meem(fuel_hydrogen_content, thrust_setting)
-    k_num = _nvpm_number_ei_fuel_adjustment_meem(fuel_hydrogen_content, thrust_setting)
+    k_mass = _nvpm_mass_ei_fuel_adjustment_meem(hydrogen_content, thrust_setting)
+    k_num = _nvpm_number_ei_fuel_adjustment_meem(hydrogen_content, thrust_setting)
     nvpm_ei_m *= k_mass
     nvpm_ei_n *= k_num
 
