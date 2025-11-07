@@ -5,6 +5,7 @@ Functions without a subscript "_" can be used independently outside .eval()
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import functools
 import pathlib
@@ -17,6 +18,7 @@ import pandas as pd
 
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, SAFBlend
+from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
@@ -337,7 +339,7 @@ class Emissions(Model):
 
         if edb_nvpm is not None:
             # TODO: Zeb, how do you let the user choose between t4_t2 and MEEM?
-            nvpm_data = self._nvpm_emission_indices_edb(edb_nvpm, fuel)
+            nvpm_data = self._nvpm_emission_indices_t4_t2(edb_nvpm, fuel)
         elif edb_gaseous is not None:
             nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
         else:
@@ -367,7 +369,71 @@ class Emissions(Model):
         self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
 
-    def _nvpm_emission_indices_edb(
+    def _nvpm_emission_indices_meem(self, engine_uid: str | None) -> None:
+        """Calculate emission indices for nvPM mass and number.
+
+        This method attaches the following variables to the underlying :attr:`source`.
+            - nvpm_ei_m
+            - nvpm_ei_n
+
+        In addition, ``nvpm_data_source`` is attached to the ``source.attrs``.
+
+        Parameters
+        ----------
+        engine_uid : str
+            Engine unique identification number from the ICAO EDB
+        """
+        # TODO: Update documentation
+        if "nvpm_ei_n" in self.source and "nvpm_ei_m" in self.source:
+            return  # early exit if values already exist
+
+        if isinstance(self.source, Flight):
+            fuel = self.source.fuel
+        else:
+            try:
+                fuel = self.source.attrs["fuel"]
+            except KeyError as exc:
+                raise KeyError(
+                    "If running 'Emissions' with a 'GeoVectorDataset' as source, "
+                    "the fuel type must be provided in the attributes. "
+                ) from exc
+
+        edb_nvpm = self.edb_engine_nvpm.get(engine_uid) if engine_uid else None
+        edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
+
+        if edb_nvpm is not None:
+            nvpm_data = self._nvpm_emission_indices_edb(edb_nvpm, fuel)
+        elif edb_gaseous is not None:
+            # TODO: This should be replaced with SCOPE11
+            nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
+        else:
+            if engine_uid is not None:
+                warnings.warn(
+                    f"Cannot find 'engine_uid' {engine_uid} in EDB. "
+                    "A constant emissions will be used."
+                )
+            nvpm_data = self._nvpm_emission_indices_constant()
+
+        nvpm_data_source, nvpm_ei_m, nvpm_ei_n = nvpm_data
+
+        # Adjust nvPM emission indices if SAF is used.
+        if isinstance(fuel, SAFBlend) and fuel.pct_blend:
+            thrust_setting = self.source["thrust_setting"]
+            pct_eim_reduction = nvpm.nvpm_mass_ei_pct_reduction_due_to_saf(
+                fuel.hydrogen_content, thrust_setting
+            )
+            pct_ein_reduction = nvpm.nvpm_number_ei_pct_reduction_due_to_saf(
+                fuel.hydrogen_content, thrust_setting
+            )
+
+            nvpm_ei_m *= 1.0 + pct_eim_reduction / 100.0
+            nvpm_ei_n *= 1.0 + pct_ein_reduction / 100.0
+
+        self.source.attrs["nvpm_data_source"] = nvpm_data_source
+        self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
+        self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
+
+    def _nvpm_emission_indices_t4_t2(
         self, edb_nvpm: nvpm.EDBnvpm, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Calculate emission indices for nvPM mass and number.
@@ -394,11 +460,92 @@ class Emissions(Model):
         ----------
         - :cite:`teohTargetedUseSustainable2022`
         """
-        nvpm_data_source = "ICAO EDB"
+        nvpm_data_source = "ICAO EDB (T4/T2)"
 
         # Emissions indices
         return nvpm_data_source, *nvpm.estimate_nvpm_t4_t2(
             edb_nvpm,
+            true_airspeed=self.source.get_data_or_attr("true_airspeed"),
+            air_temperature=self.source["air_temperature"],
+            air_pressure=self.source.air_pressure,
+            thrust_setting=self.source["thrust_setting"],
+            q_fuel=fuel.q_fuel,
+        )
+
+    def _nvpm_emission_indices_meem(
+        self, edb_nvpm: nvpm.EDBnvpm, fuel: Fuel
+    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+        """Calculate emission indices for nvPM mass and number.
+
+        This method uses data from the ICAO EDB along with the T4/T2 methodology.
+
+        Parameters
+        ----------
+        edb_nvpm : EDBnvpm
+            EDB nvPM data.
+        fuel : Fuel
+            Fuel type.
+
+        Returns
+        -------
+        nvpm_data_source : str
+            Source of nvpm data.
+        nvpm_ei_m : npt.NDArray[np.floating]
+            Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
+        nvpm_ei_n : npt.NDArray[np.floating]
+            Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
+
+        References
+        ----------
+        - :cite:`teohTargetedUseSustainable2022`
+        """
+        nvpm_data_source = "ICAO EDB (MEEM2)"
+
+        # Adjust nvPM emissions index due to fuel hydrogen content differences
+        if not (13.4 <= fuel.hydrogen_content <= 15.4):
+            warnings.warn(
+                f"Fuel hydrogen content {fuel.hydrogen_content} % is outside the valid range"
+                "(13.4 - 15.4 %), and may lead to inaccuracies."
+            )
+
+        # TODO: Big hack! Zeb, is there a better way to do this?
+        edb_nvpm_fuel = copy.deepcopy(edb_nvpm)
+        thrust_setting_4 = np.array([0.07, 0.30, 0.85, 1.00])
+        thrust_setting_5 = np.array([0.07, 0.30, 0.575, 0.85, 1.00])
+
+        # Adjust nvPM mass EI
+        if edb_nvpm.nvpm_ei_m_use_max:
+            k_mass = nvpm.nvpm_mass_ei_fuel_adjustment_meem(
+                fuel.hydrogen_content, thrust_setting_5
+            )
+        else:
+            k_mass = nvpm.nvpm_mass_ei_fuel_adjustment_meem(
+                fuel.hydrogen_content, thrust_setting_4
+            )
+
+        edb_nvpm_fuel.nvpm_ei_m_meem = EmissionsProfileInterpolator(
+            xp=np.copy(edb_nvpm.nvpm_ei_m_meem.xp),
+            fp=np.copy(edb_nvpm.nvpm_ei_m_meem.fp) * k_mass
+        )
+
+        # Adjust nvPM number EI
+        if edb_nvpm.nvpm_ei_n_use_max:
+            k_num = nvpm.nvpm_number_ei_fuel_adjustment_meem(
+                fuel.hydrogen_content, thrust_setting_5
+            )
+        else:
+            k_num = nvpm.nvpm_number_ei_fuel_adjustment_meem(
+                fuel.hydrogen_content, thrust_setting_4
+            )
+
+        edb_nvpm_fuel.nvpm_ei_n_meem = EmissionsProfileInterpolator(
+            xp=np.copy(edb_nvpm.nvpm_ei_n_meem.xp),
+            fp=np.copy(edb_nvpm.nvpm_ei_n_meem.fp) * k_num
+        )
+
+        # Emissions indices
+        return nvpm_data_source, *nvpm.estimate_nvpm_meem(
+            edb_nvpm_fuel,
             true_airspeed=self.source.get_data_or_attr("true_airspeed"),
             air_temperature=self.source["air_temperature"],
             air_pressure=self.source.air_pressure,
@@ -937,18 +1084,35 @@ def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
         "Ambient Temp Min (K)": "temp_min",
         "Ambient Temp Max (K)": "temp_max",
         "Fuel Heat of Combustion (MJ/kg)": "fuel_heat",
+
+        # Fuel mass flow rate
         "Fuel Flow Idle (kg/sec)": "ff_7",
         "Fuel Flow App (kg/sec)": "ff_30",
         "Fuel Flow C/O (kg/sec)": "ff_85",
         "Fuel Flow T/O (kg/sec)": "ff_100",
+
+        # System loss corrected nvPM mass EI
         "nvPM EImass_SL Idle (mg/kg)": "nvpm_ei_m_7",
         "nvPM EImass_SL App (mg/kg)": "nvpm_ei_m_30",
         "nvPM EImass_SL C/O (mg/kg)": "nvpm_ei_m_85",
         "nvPM EImass_SL T/O (mg/kg)": "nvpm_ei_m_100",
+
+        # System loss corrected nvPM number EI
         "nvPM EInum_SL Idle (#/kg)": "nvpm_ei_n_7",
         "nvPM EInum_SL App (#/kg)": "nvpm_ei_n_30",
         "nvPM EInum_SL C/O (#/kg)": "nvpm_ei_n_85",
         "nvPM EInum_SL T/O (#/kg)": "nvpm_ei_n_100",
+
+        # Variables required to use fifth nvPM data point for MEEM2
+        "max_nvpm_ei_m_between_30_85": "nvpm_ei_m_use_max",
+        "nvPM EImass App (mg/kg)": "nvpm_ei_m_no_sl_30",
+        "nvPM EImass C/O (mg/kg)": "nvpm_ei_m_no_sl_85",
+        "nvPM EImass Max (mg/kg)": "nvpm_ei_m_no_sl_max",
+
+        "max_nvpm_ei_n_between_30_85": "nvpm_ei_n_use_max",
+        "nvPM EInum App (#/kg)": "nvpm_ei_n_no_sl_30",
+        "nvPM EInum C/O (#/kg)": "nvpm_ei_n_no_sl_85",
+        "nvPM EInum Max (#/kg)": "nvpm_ei_n_no_sl_max",
     }
 
     df = pd.read_csv(EDB_NVPM_PATH)
