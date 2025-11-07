@@ -164,7 +164,7 @@ class HRESModelLevel(ECMWFAPI):
         if model_levels is None:
             model_levels = list(range(1, 138))
         elif min(model_levels) < 1 or max(model_levels) > 137:
-            msg = "Requested model_levels must be between 1 and 137, inclusive."
+            msg = "Retrieval model_levels must be between 1 and 137, inclusive."
             raise ValueError(msg)
         self.model_levels = model_levels
 
