@@ -65,7 +65,7 @@ class EDBnvpm:
     ff_85: float
     ff_100: float
 
-    # Emissions
+    # Emissions (System loss corrected)
     nvpm_ei_m_7: float
     nvpm_ei_m_30: float
     nvpm_ei_m_85: float
@@ -76,10 +76,21 @@ class EDBnvpm:
     nvpm_ei_n_85: float
     nvpm_ei_n_100: float
 
+    # Fifth data point for MEEM2
+    nvpm_ei_m_use_max: bool
+    nvpm_ei_m_no_sl_30: float
+    nvpm_ei_m_no_sl_85: float
+    nvpm_ei_m_no_sl_max: float
+
+    nvpm_ei_n_use_max: bool
+    nvpm_ei_n_no_sl_30: float
+    nvpm_ei_n_no_sl_85: float
+    nvpm_ei_n_no_sl_max: float
+
     @property
     def nvpm_ei_m_t4_t2(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index mass profile."""
-        return nvpm_emissions_profiles_t4_t2(
+        return nvpm_emission_profiles_t4_t2(
             pressure_ratio=self.pressure_ratio,
             combustor=self.combustor,
             temp_min=self.temp_min,
@@ -102,7 +113,7 @@ class EDBnvpm:
     @property
     def nvpm_ei_n_t4_t2(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index number profile."""
-        return nvpm_emissions_profiles_t4_t2(
+        return nvpm_emission_profiles_t4_t2(
             pressure_ratio=self.pressure_ratio,
             combustor=self.combustor,
             temp_min=self.temp_min,
@@ -125,7 +136,7 @@ class EDBnvpm:
     @property
     def nvpm_ei_m_meem(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index mass profile."""
-        return nvpm_emissions_profiles_meem(
+        return nvpm_mass_emission_profiles_meem(
             ff_7=self.ff_7,
             ff_30=self.ff_30,
             ff_85=self.ff_85,
@@ -134,30 +145,29 @@ class EDBnvpm:
             nvpm_ei_m_30=self.nvpm_ei_m_30,
             nvpm_ei_m_85=self.nvpm_ei_m_85,
             nvpm_ei_m_100=self.nvpm_ei_m_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[0]
+            fifth_data_point_mass=self.nvpm_ei_m_use_max,
+            nvpm_ei_m_30_no_sl=self.nvpm_ei_m_no_sl_30,
+            nvpm_ei_m_85_no_sl=self.nvpm_ei_m_no_sl_85,
+            nvpm_ei_m_max_no_sl=self.nvpm_ei_m_no_sl_max,
+        )
 
     @property
     def nvpm_ei_n_meem(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index number profile."""
-        return nvpm_emissions_profiles_meem(
+        return nvpm_number_emission_profiles_meem(
             ff_7=self.ff_7,
             ff_30=self.ff_30,
             ff_85=self.ff_85,
             ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
             nvpm_ei_n_7=self.nvpm_ei_n_7,
             nvpm_ei_n_30=self.nvpm_ei_n_30,
             nvpm_ei_n_85=self.nvpm_ei_n_85,
             nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[1]
-
+            fifth_data_point_number=self.nvpm_ei_n_use_max,
+            nvpm_ei_n_30_no_sl=self.nvpm_ei_n_no_sl_30,
+            nvpm_ei_n_85_no_sl=self.nvpm_ei_n_no_sl_85,
+            nvpm_ei_n_max_no_sl=self.nvpm_ei_n_no_sl_max,
+        )
 
 # ---------------------------------
 # nvPM emissions: T4/T2 methodology
@@ -165,7 +175,7 @@ class EDBnvpm:
 
 
 @functools.cache
-def nvpm_emissions_profiles_t4_t2(
+def nvpm_emission_profiles_t4_t2(
     pressure_ratio: float,
     combustor: str,
     temp_min: float,
@@ -325,7 +335,83 @@ def estimate_nvpm_t4_t2(
 # ---------------------
 
 @functools.cache
-def nvpm_emissions_profiles_meem(
+def nvpm_mass_emission_profiles_meem(
+    ff_7: float,
+    ff_30: float,
+    ff_85: float,
+    ff_100: float,
+    nvpm_ei_m_7: float,
+    nvpm_ei_m_30: float,
+    nvpm_ei_m_85: float,
+    nvpm_ei_m_100: float,
+    fifth_data_point_mass: bool,
+    nvpm_ei_m_30_no_sl: float,
+    nvpm_ei_m_85_no_sl: float,
+    nvpm_ei_m_max_no_sl: float,
+) -> EmissionsProfileInterpolator:
+    """
+    Create the nvPM mass emissions index (EI) profile for the given engine type using MEEM2.
+
+    Parameters
+    ----------
+    ff_7: float
+        ICAO EDB fuel mass flow rate at idle conditions (7% power), [:math:`kg s^{-1}`]
+    ff_30: float
+        ICAO EDB fuel mass flow rate at approach (30% power), [:math:`kg s^{-1}`]
+    ff_85: float
+        ICAO EDB fuel mass flow rate at climb out (85% power), [:math:`kg s^{-1}`]
+    ff_100: float
+        ICAO EDB fuel mass flow rate at take-off (100% power), [:math:`kg s^{-1}`]
+    nvpm_ei_m_7: float
+        ICAO EDB loss-corrected nvPM mass EI at idle (7% power), [:math:`kg/kg_{fuel}`]
+    nvpm_ei_m_30: float
+        ICAO EDB loss-corrected nvPM mass EI at approach (30% power), [:math:`kg/kg_{fuel}`]
+    nvpm_ei_m_85: float
+        ICAO EDB loss-corrected nvPM mass EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
+    nvpm_ei_m_100: float
+        ICAO EDB loss-corrected nvPM mass EI at take-off (100% power), [:math:`kg/kg_{fuel}`]
+    fifth_data_point_mass : bool,
+        Does the maximum nvPM EI mass occur between 30% and 85% of fuel flow?
+    nvpm_ei_m_30_no_sl : float,
+        ICAO EDB nvPM mass EI at approach (30% power), [:math:`kg/kg_{fuel}`]
+    nvpm_ei_m_85_no_sl : float,
+        ICAO EDB nvPM mass EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
+    nvpm_ei_m_max_no_sl : float,
+        ICAO EDB maximum nvPM mass EI, [:math:`kg/kg_{fuel}`]
+
+    Returns
+    -------
+    EmissionsProfileInterpolator
+        nvPM mass emissions index versus the fuel mass flow rate for a given engine type
+    """
+    # TODO: How to deal with lean-burn combustors?
+    fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
+
+    # Adjustment of EEDB fuel flows for installation effects
+    installation_correction_factor = np.array([1.100, 1.020, 1.013, 1.010])
+    fuel_flow *= installation_correction_factor
+
+    # nvPM mass emissions profile
+    nvpm_ei_m = np.array([nvpm_ei_m_7, nvpm_ei_m_30, nvpm_ei_m_85, nvpm_ei_m_100], dtype=float)
+
+    # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
+    if fifth_data_point_mass:
+        # Calculate fuel flow (5th point)
+        ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
+        fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
+
+        # Calculate nvPM number emissions index (5th point)
+        k_loss_correction = 0.5 * (
+            (nvpm_ei_m_30 / nvpm_ei_m_30_no_sl) + (nvpm_ei_m_85 / nvpm_ei_m_85_no_sl)
+        )
+        nvpm_ei_m_fifth = nvpm_ei_m_max_no_sl * k_loss_correction
+        nvpm_ei_m = np.insert(nvpm_ei_m, 2, nvpm_ei_m_fifth)
+
+    return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_m)
+
+
+@functools.cache
+def nvpm_number_emission_profiles_meem(
     ff_7: float,
     ff_30: float,
     ff_85: float,
@@ -334,14 +420,13 @@ def nvpm_emissions_profiles_meem(
     nvpm_ei_n_30: float,
     nvpm_ei_n_85: float,
     nvpm_ei_n_100: float,
-    nvpm_ei_m_7: float,
-    nvpm_ei_m_30: float,
-    nvpm_ei_m_85: float,
-    nvpm_ei_m_100: float,
-    hydrogen_content: float = 13.8,
-) -> tuple[EmissionsProfileInterpolator, EmissionsProfileInterpolator]:
+    fifth_data_point_number: bool,
+    nvpm_ei_n_30_no_sl: float,
+    nvpm_ei_n_85_no_sl: float,
+    nvpm_ei_n_max_no_sl: float,
+) -> EmissionsProfileInterpolator:
     """
-    Create the nvPM number emissions index (EI) profile for the given engine type.
+    Create the nvPM number emissions index (EI) profile for the given engine type using MEEM2.
 
     Parameters
     ----------
@@ -354,57 +439,54 @@ def nvpm_emissions_profiles_meem(
     ff_100: float
         ICAO EDB fuel mass flow rate at take-off (100% power), [:math:`kg s^{-1}`]
     nvpm_ei_n_7: float
-        ICAO EDB nvPM number emissions index at idle conditions (7% power), [:math:`kg_{fuel}^{-1}`]
+        ICAO EDB loss-corrected nvPM number EI at idle (7% power), [:math:`kg/kg_{fuel}`]
     nvpm_ei_n_30: float
-        ICAO EDB nvPM number emissions index at approach (30% power), [:math:`kg_{fuel}^{-1}`]
+        ICAO EDB loss-corrected nvPM number EI at approach (30% power), [:math:`kg/kg_{fuel}`]
     nvpm_ei_n_85: float
-        ICAO EDB nvPM number emissions index at climb out (85% power), [:math:`kg_{fuel}^{-1}`]
+        ICAO EDB loss-corrected nvPM number EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
     nvpm_ei_n_100: float
-        ICAO EDB nvPM number emissions index at take-off (100% power), [:math:`kg_{fuel}^{-1}`]
-    nvpm_ei_m_7: float
-        ICAO EDB nvPM mass emissions index at idle conditions (7% power), [:math:`kg/kg_{fuel}`]
-    nvpm_ei_m_30: float
-        ICAO EDB nvPM mass emissions index at approach (30% power), [:math:`kg/kg_{fuel}`]
-    nvpm_ei_m_85: float
-        ICAO EDB nvPM mass emissions index at climb out (85% power), [:math:`kg/kg_{fuel}`]
-    nvpm_ei_m_100: float
-        ICAO EDB nvPM mass emissions index at take-off (100% power), [:math:`kg/kg_{fuel}`]
-    hydrogen_content: float
-        The percentage of hydrogen mass content in the fuel.
+        ICAO EDB loss-corrected nvPM number EI at take-off (100% power), [:math:`kg/kg_{fuel}`]
+    fifth_data_point_number : bool,
+        Does the maximum nvPM EI number occur between 30% and 85% of fuel flow?
+    nvpm_ei_n_30_no_sl : float,
+        ICAO EDB nvPM number EI at approach (30% power), [:math:`kg/kg_{fuel}`]
+    nvpm_ei_n_85_no_sl : float,
+        ICAO EDB nvPM number EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
+    nvpm_ei_n_max_no_sl : float,
+        ICAO EDB maximum nvPM number EI, [:math:`kg/kg_{fuel}`]
 
     Returns
     -------
-    tuple[EmissionsProfileInterpolator, EmissionsProfileInterpolator]
-        nvPM mass and number emissions index versus the fuel mass flow rate for a given engine type
+    EmissionsProfileInterpolator
+        nvPM number emissions index versus the fuel mass flow rate for a given engine type
     """
+    # TODO: How to deal with lean-burn combustors?
     fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
+
+    # Adjustment of EEDB fuel flows for installation effects
     installation_correction_factor = np.array([1.100, 1.020, 1.013, 1.010])
     fuel_flow *= installation_correction_factor
 
-    # Extract nvPM emissions arrays
-    nvpm_ei_m = np.array([nvpm_ei_m_7, nvpm_ei_m_30, nvpm_ei_m_85, nvpm_ei_m_100], dtype=float)
+    # nvPM number emissions profile
     nvpm_ei_n = np.array([nvpm_ei_n_7, nvpm_ei_n_30, nvpm_ei_n_85, nvpm_ei_n_100], dtype=float)
 
-    # TODO: SAF adjustments
-    if not (13.4 <= hydrogen_content <= 15.4):
-        warnings.warn(
-            f"Fuel hydrogen content {hydrogen_content} % is outside the valid range" 
-            "(13.4 - 15.4 %), and may lead to inaccuracies."
+    # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
+    if fifth_data_point_number:
+        # Calculate fuel flow (5th point)
+        ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
+        fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
+
+        # Calculate nvPM number emissions index (5th point)
+        k_loss_correction = 0.5 * (
+            (nvpm_ei_n_30 / nvpm_ei_n_30_no_sl) + (nvpm_ei_n_85 / nvpm_ei_n_85_no_sl)
         )
+        nvpm_ei_n_fifth = nvpm_ei_n_max_no_sl * k_loss_correction
+        nvpm_ei_n = np.insert(nvpm_ei_n, 2, nvpm_ei_n_fifth)
 
-    # Adjust nvPM emissions index due to fuel hydrogen content differences
-    thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
-    k_mass = _nvpm_mass_ei_fuel_adjustment_meem(hydrogen_content, thrust_setting)
-    k_num = _nvpm_number_ei_fuel_adjustment_meem(hydrogen_content, thrust_setting)
-    nvpm_ei_m *= k_mass
-    nvpm_ei_n *= k_num
-
-    nvpm_ei_m_interp = EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_m)
-    nvpm_ei_n_interp = EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_n)
-    return nvpm_ei_m_interp, nvpm_ei_n_interp
+    return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_n)
 
 
-def _nvpm_mass_ei_fuel_adjustment_meem(
+def nvpm_mass_ei_fuel_adjustment_meem(
     hydrogen_content: float | npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
@@ -414,7 +496,7 @@ def _nvpm_mass_ei_fuel_adjustment_meem(
     )
 
 
-def _nvpm_number_ei_fuel_adjustment_meem(
+def nvpm_number_ei_fuel_adjustment_meem(
     hydrogen_content: float | npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
