@@ -308,9 +308,9 @@ def estimate_nvpm_t4_t2(
     Returns
     -------
     nvpm_ei_m : npt.NDArray[np.floating]
-        Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
+        nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
     nvpm_ei_n : npt.NDArray[np.floating]
-        Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
+        nvPM number emissions index, [:math:`kg_{fuel}^{-1}`]
     """
     # Non-dimensionalized thrust setting
     t4_t2 = jet.thrust_setting_nd(
@@ -486,21 +486,49 @@ def nvpm_number_emission_profiles_meem(
     return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_n)
 
 
-def nvpm_mass_ei_fuel_adjustment_meem(
+def nvpm_mass_fuel_composition_correction(
     hydrogen_content: float | npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation (Unit test?)
+    r"""
+    Calculate fuel composition correction factor for nvPM mass emissions index.
+
+    Parameters
+    ----------
+    hydrogen_content: float
+        The percentage of hydrogen mass content in the fuel.
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM mass fuel composition correction factor
+    """
     return np.exp(
         (1.08 * thrust_setting - 1.31) * (hydrogen_content - 13.8)
     )
 
 
-def nvpm_number_ei_fuel_adjustment_meem(
+def nvpm_number_fuel_composition_correction(
     hydrogen_content: float | npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation (Unit test?)
+    r"""
+    Calculate fuel composition correction factor for nvPM number emissions index.
+
+    Parameters
+    ----------
+    hydrogen_content: float
+        The percentage of hydrogen mass content in the fuel.
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM number fuel composition correction factor
+    """
     return np.exp(
         (0.99 * thrust_setting - 1.05) * (hydrogen_content - 13.8)
     )
@@ -513,11 +541,32 @@ def estimate_nvpm_meem(
     air_pressure: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-    # TODO: Documentation
-    # TODO: Step 0 (SCOPE11 implementation)
-    # TODO: Step 1 (Add fifth point and lean-burn)
+    r"""Calculate nvPM mass and number emissions index using the MEEM2 methodology.
 
-    # Temporary notes: STEP 2
+    Interpolate the non-volatile particulate matter (nvPM) mass and number emissions index from
+    the emissions profile of a given engine type that is provided by the ICAO EDB.
+
+    Parameters
+    ----------
+    edb_nvpm : EDBnvpm
+        EDB nvPM data
+    fuel_flow_per_engine: npt.NDArray[np.floating]
+        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
+    true_airspeed: npt.NDArray[np.floating]
+        true airspeed for each waypoint, [:math:`m s^{-1}`]
+    air_pressure: npt.NDArray[np.floating]
+        pressure altitude at each waypoint, [:math:`Pa`]
+    air_temperature: npt.NDArray[np.floating]
+        ambient temperature for each waypoint, [:math:`K`]
+
+    Returns
+    -------
+    nvpm_ei_m : npt.NDArray[np.floating]
+        nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
+    nvpm_ei_n : npt.NDArray[np.floating]
+        nvPM number emissions index, [:math:`kg_{fuel}^{-1}`]
+    """
+    # Fuel flow correction from altitude to ground
     mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)
     theta_amb = jet.temperature_ratio(air_temperature)
     delta_amb = jet.pressure_ratio(air_pressure)
@@ -526,17 +575,15 @@ def estimate_nvpm_meem(
     )
     fuel_flow_per_engine.clip(edb_nvpm.ff_7, edb_nvpm.ff_100, out=fuel_flow_per_engine)  # clip in place
 
-    # TODO: Step 3.1 (Interpolation)
-    # Interpolate nvPM EI_m and EI_n (Ground)
+    # Interpolate nvPM EI_m and EI_n for ground conditions
     nvpm_ei_m_sl = edb_nvpm.nvpm_ei_m_meem.interp(fuel_flow_per_engine)
     nvpm_ei_m_sl = nvpm_ei_m_sl * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
     nvpm_ei_n_sl = edb_nvpm.nvpm_ei_n_meem.interp(fuel_flow_per_engine)
 
-    # TODO: Step 4 (Ground to flight transportation - Mass and number)
+    # Convert nvPM EI_m and EI_n from ground to cruise conditions
     nvpm_ei_m = nvpm_ei_m_sl * ((delta_amb ** 1.377) / (theta_amb ** 4.455)) * (1.1 ** 2.5)
     nvpm_ei_n = (nvpm_ei_m / nvpm_ei_m_sl) * nvpm_ei_n_sl
     return nvpm_ei_m, nvpm_ei_n
-
 
 
 # TODO: Add SCOPE11 here
