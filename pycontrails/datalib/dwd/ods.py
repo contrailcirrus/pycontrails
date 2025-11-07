@@ -1,0 +1,215 @@
+"""DWD Open Data Server utilities."""
+
+from __future__ import annotations
+
+import bz2
+import warnings
+from datetime import datetime, timedelta
+from html.parser import HTMLParser
+
+import requests
+
+
+class OpenDataServerParser(HTMLParser):
+    """Parser for DWD Open Data Server pages.
+
+    This parser builds a list of links on each page,
+    ignoring links to parent directories.
+    """
+
+    __slots__ = ("children",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.children: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str]]) -> None:
+        """Record link targets, excluding parent directory."""
+        if tag != "a":
+            return
+        for name, value in attrs:
+            if name == "href" and value != "../":
+                self.children.append(value.rstrip("/"))
+                return
+
+
+def root(domain: str) -> str:
+    """Get Open Data Server root for ICON grib files on specified domain."""
+    root = "opendata.dwd.de"
+
+    if domain.lower() == "global":
+        return f"{root}/weather/nwp/icon/grib"
+    if domain.lower() == "europe":
+        return f"{root}/weather/nwp/icon-eu/grib"
+    if domain.lower() == "germany":
+        return f"{root}/weather/nwp/icon-d2/grib"
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
+
+
+def prefix(domain: str) -> str:
+    """Get Open Data Server filename prefix for ICON grid files on specified domain."""
+    if domain.lower() == "global":
+        return "icon_global_icosahedral"
+    if domain.lower() == "europe":
+        return "icon-eu_europe_regular-lat-lon"
+    if domain.lower() == "germany":
+        return "icon-d2_germany_regular-lat-lon"
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
+
+
+def ls(url: str) -> list[str]:
+    """List contents of directory."""
+    parser = OpenDataServerParser()
+    response = requests.get(f"https://{url}")
+    response.raise_for_status()
+    parser.feed(response.text)
+    parser.close()
+    return [f"{url}/{child}" for child in parser.children]
+
+
+def list_forecasts(domain: str) -> list[datetime]:
+    """List available forecast cycles.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain. Must be one of "global", "europe", or "germany".
+
+    Returns
+    -------
+    list[datetime]
+        Start time of available forecast cycles
+    """
+    cycles = ls(root(domain))
+
+    start_times = []
+    for cycle in cycles:
+        try:
+            sample_grib = ls(f"{cycle}/t")[0]
+        except Exception as e:
+            msg = "Could not find temperature GRIB file to read forecast start time."
+            raise FileNotFoundError(msg) from e
+
+        try:
+            start_str = sample_grib.split("_")[-4]
+            start = datetime.strptime(start_str, "%Y%m%d%H")
+        except ValueError as e:
+            msg = f"Could not parse date from GRIB file at {sample_grib}"
+            raise ValueError(msg) from e
+        start_times.append(start)
+
+    return sorted(start_times)
+
+
+def list_timesteps(domain: str, forecast: datetime) -> list[datetime]:
+    """List forecast timesteps available for a given forecast cycle.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain. Must be one of "global", "europe", or "germany".
+
+    forecast : datetime
+        Start time of forecast cycle.
+
+    Returns
+    -------
+    list[datetime]
+        Times of available forecast steps. If no data is available
+        for the specified forecast cycle a warning is issued and
+        an empty list is returned.
+
+    """
+    available = list_forecasts(domain)
+    if forecast not in available:
+        msg = (
+            f"No data available for forecast cycle starting at {forecast}. "
+            "Use `list_forecasts` to list available forecast cycles."
+        )
+        warnings.warn(msg)
+        return []
+
+    try:
+        gribs = ls(f"{root(domain)}/{forecast.hour:02d}/t")
+    except Exception as e:
+        msg = "Could not find temperature GRIB files to read forecast start time."
+        raise ValueError(msg) from e
+
+    steps = set()
+    for grib in gribs:
+        try:
+            step_str = grib.split("_")[-3]
+            steps.add(int(step_str))
+        except ValueError as e:
+            msg = f"Could not parse step from GRIB file at {grib}"
+            raise ValueError(msg) from e
+
+    return [forecast + timedelta(hours=step) for step in sorted(steps)]
+
+
+def global_latitude_rpath(forecast_time: datetime) -> str:
+    """Get path to remote latitude file for global icosahedral grid."""
+    domain = "global"
+    return (
+        f"{root(domain)}/{forecast_time.hour:02d}/clat/"
+        f"{prefix(domain)}_time-invariant_{forecast_time.strftime('%Y%m%d%H')}"
+        "_CLAT.grib2.bz2"
+    )
+
+
+def global_longitude_rpath(forecast_time: datetime) -> str:
+    """Get path to remote longitude file for global icosahedral grid."""
+    domain = "global"
+    return (
+        f"{root(domain)}/{forecast_time.hour:02d}/clon/"
+        f"{prefix(domain)}_time-invariant_{forecast_time.strftime('%Y%m%d%H')}"
+        "_CLON.grib2.bz2"
+    )
+
+
+def rpath(domain: str, forecast_time: datetime, variable: str, step: int, level: int | None) -> str:
+    """Get path to remote file."""
+    if domain not in ("global", "europe", "germany"):
+        msg = f"Unknown domain {domain}."
+        raise ValueError(msg)
+
+    level_type = "model" if level is not None else "single"
+    step_level_str = _step_level_str(domain, step, level)
+
+    return (
+        f"{root(domain)}/{forecast_time.hour:02d}/{variable}/"
+        f"{prefix(domain)}_{level_type}-level_{forecast_time.strftime('%Y%m%d%H')}"
+        f"_{step_level_str}_{variable if domain == 'germany' else variable.upper()}.grib2.bz2"
+    )
+
+
+def get(rpath: str, lpath: str) -> None:
+    """Get file from Open Data Server."""
+    try:
+        response = requests.get(f"https://{rpath}")
+        response.raise_for_status()
+        content = response.content
+    except requests.exceptions.RequestException as e:
+        msg = f"Error while downloading file at {rpath}"
+        raise RuntimeError(msg) from e
+
+    if rpath.endswith(".bz2"):
+        try:
+            content = bz2.decompress(content)
+        except Exception as e:
+            msg = f"Error decompressing bzip2 file downloaded from {rpath}."
+            raise RuntimeError(msg) from e
+
+    with open(lpath, "wb") as f:
+        f.write(content)
+
+
+def _step_level_str(domain: str, step: int, level: int | None) -> str:
+    """Return portion of filename identifying step and level."""
+    step_str = f"{step:03d}"
+    level_str = f"_{level}" if level is not None else ("_2d" if domain == "germany" else "")
+    return step_str + level_str

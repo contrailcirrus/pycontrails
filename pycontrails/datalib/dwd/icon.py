@@ -1,0 +1,755 @@
+"""ICON data access.
+
+This module supports
+
+- Listing available ICON forecast cycles on the `DWD Open Data Server <https://opendata.dwd.de>_`.
+- Retrieving ICON forecasts from the `DWD Open Data Server <https://opendata.dwd.de>_`.
+- Interpolating forecasts onto pressure levels and a regular latitude/longitude grid.
+- Local caching of processed forecasts as netCDF files.
+- Opening processed and cached files as a :class:`pycontrails.MetDataset`.
+
+Note that the DWD Open Data Server does not provide a long-term archive of forecasts.
+Forecasts are typically available for the last 24 hours of forecast cycles only.
+"""
+
+from __future__ import annotations
+
+import concurrent.futures
+import contextlib
+import functools
+import hashlib
+import itertools
+import logging
+import math
+import sys
+import threading
+import warnings
+from datetime import datetime, timedelta
+from typing import Any
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+LOG = logging.getLogger(__name__)
+
+import dask.array
+import numpy as np
+import numpy.typing as npt
+import pandas as pd
+import xarray as xr
+from scipy.spatial import KDTree
+
+import pycontrails
+from pycontrails.core import MetDataset, MetVariable, cache, met_var
+from pycontrails.datalib import met_utils
+from pycontrails.datalib._met_utils import metsource
+from pycontrails.datalib.dwd import ods
+from pycontrails.physics import units
+from pycontrails.utils import temp
+from pycontrails.utils.types import DatetimeLike
+
+MODEL_LEVEL_VARIABLES = [
+    met_var.AirTemperature,
+    met_var.SpecificHumidity,
+    met_var.NorthwardWind,
+    met_var.EastwardWind,
+    met_var.GeometricVerticalVelocity,
+    met_var.MassFractionOfCloudIceInAir,
+]
+
+
+SINGLE_LEVEL_VARIABLES: list[MetVariable] = [
+    met_var.TOAOutgoingLongwaveFlux,
+    met_var.TOANetDownwardShortwaveFlux,
+]
+
+
+def flight_level_pressure(fl_min: int = 200, fl_max: int = 500) -> list[int]:
+    """Get pressure at flight levels.
+
+    Parameters
+    ----------
+    fl_min : int, optional
+        Minimum flight level (default FL200)
+
+    fl_max: int, optional
+        Maximum flight level (default FL500)
+
+    Returns
+    -------
+    list[int]
+        Pressure, rounded to the nearest hPa, at each flight level
+        between the minimum and maximum.
+
+    """
+    start = 1000 * math.ceil(fl_min / 10)
+    stop = 1000 * math.floor(fl_max / 10)
+    altitude_ft = range(start, stop + 1000, 1000)
+    return [round(units.ft_to_pl(ft)) for ft in altitude_ft]
+
+
+def forecast_frequency(domain: str) -> timedelta:
+    """Get forecast cycle frequency."""
+    if domain.lower() == "global":
+        return timedelta(hours=6)
+    if domain.lower() in ("europe", "germany"):
+        return timedelta(hours=3)
+
+    msg = f"Unknown domain {domain}"
+    raise ValueError(msg)
+
+
+def latest_forecast(domain: str, time: datetime) -> datetime:
+    """Get most recent forecast that contains the provided time."""
+    freq = pd.Timedelta(forecast_frequency(domain))
+    return pd.Timestamp(time).floor(freq).to_pydatetime()
+
+
+def last_timestep(domain: str, forecast_time: datetime) -> datetime:
+    """Get time of last forecast step.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain
+
+    forecast_time : datetime
+        Forecast initialization time
+
+    Returns
+    -------
+    datetime
+        Time of last forecast step available on the specified domain.
+
+    """
+    if domain == "global":
+        if forecast_time.hour not in range(0, 24, 6):
+            msg = f"Invalid forecast time {forecast_time} for global domain."
+            raise ValueError(msg)
+        if forecast_time.hour in (0, 12):
+            return forecast_time + timedelta(hours=180)
+        return forecast_time + timedelta(hours=120)
+
+    if domain == "europe":
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for europe domain."
+            raise ValueError(msg)
+        if forecast_time.hour % 6 == 0:
+            return forecast_time + timedelta(hours=120)
+        return forecast_time + timedelta(hours=30)
+
+    if domain == "germany":
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for germany domain."
+            raise ValueError(msg)
+        return forecast_time + timedelta(hours=48)
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
+
+
+def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
+    """Get time of last forecast step with hourly frequency.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain
+
+    forecast_time : datetime
+        Forecast initialization time
+
+    Returns
+    -------
+    datetime
+        Time of last forecast step available on the specified domain.
+
+    """
+    if domain == "global":
+        if forecast_time.hour not in range(0, 24, 6):
+            msg = f"Invalid forecast time {forecast_time} for global domain."
+            raise ValueError(msg)
+        return forecast_time + timedelta(hours=78)
+
+    if domain == "europe":
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for europe domain."
+            raise ValueError(msg)
+        return forecast_time + timedelta(hours=78)
+
+    if domain == "germany":
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for germany domain."
+            raise ValueError(msg)
+        return forecast_time + timedelta(hours=48)
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
+
+
+def bottom_level(domain: str) -> int:
+    """Get index of lowest model level."""
+    if domain.lower() == "global":
+        return 120
+    if domain.lower() == "europe":
+        return 74
+    if domain.lower() == "germany":
+        return 65
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
+
+
+class ICON(metsource.MetDataSource):
+    """Class to support ICON data access via the `DWD Open Data Server <https://opendata.dwd.de>_`.
+
+    No credentials are required for ICON data access.
+
+    Parameters
+    ----------
+    time : metsource.TimeInput
+        The time range for data retrieval, either a single datetime or (start, end) datetime range.
+        Input must be datetime-like or tuple of datetime-like
+        (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
+        specifying the (start, end) of the date range, inclusive.
+
+    variables : metsource.VariableInput
+        Variable name (e.g., "t", "air_temperature", ["air_temperature, specific_humidity"])
+
+    pressure_levels : metsource.PressureLevelInput | None, optional
+        Pressure levels for data, in hPa (mbar).
+        To download single-level parameters, set to -1.
+        Defaults to pressure levels that match standard flight levels between FL200 and FL500.
+
+    domain : str, optional
+        Forecast domain. Must be one of 'global' (global domain with ~13 km resolution, default),
+        'europe' (European domain nested inside the global domain with ~7 km resolution),
+        or 'germany' (regional domain centered on Germany at ~2.2 km resolution).
+
+    timestep_freq : str, optional
+        Manually set the timestep interval within the bounds defined by :attr:`time`.
+        Supports any string that can be passed to ``pandas.date_range(freq=...)``.
+        By default, this is set to the highest frequency that can supported the requested
+        time range on the requested domain.
+
+    grid : float | None, optional
+        Latitude/longitude grid resolution. Used only when :param:`domain` is 'global',
+        in which case data must be remapped from ICON's native icosahedral grid. Fields
+        from the European nest and the regional Germany forecast are provided on regular
+        latitude-longitude grids, so no interpolation is required and this parameter is
+        ignored. If no value is provided when :param:`domain` is 'global', data will
+        be interpolated to a 0.25 degree grid, which provides spatial resolution comparable
+        to ICON's native grid at midlatitude. A warning is issued if a value is provided
+        when :param:`domain` is set to 'europe' or 'germany'.
+
+    forecast_time : DatetimeLike | None, optional
+        Specify forecast by initialization time.
+        By default, set to the most recent forecast that includes the requested time range.
+        This is the most recent multiple of 3 hours (00z, 03z, 06z, etc) when :param:`domain`
+        is 'europe' or 'germany' and the most recent multiple of 6 hours (00z, 06z, etc)
+        when :param:`domain` is 'global'.
+
+    model_levels : list[int] | None, optional
+        Specify ICON model levels to include in MARS requests.
+        By default, this is set to include all model levels.
+
+    cachestore : cache.CacheStore, optional
+        Cache data store for staging processed netCDF files.
+        Defaults to :class:`pycontrails.core.cache.DiskCacheStore`.
+        If None, cache is turned off.
+
+    cache_download : bool, optional
+        If True, cache downloaded GRIB files rather than storing them in a temporary file.
+        By default, False.
+
+    download_workers : int | None
+        Set the number of thread used to download GRIB files. If None (the default),
+        the number of threads is chosen automatically by
+        :class:`concurrent.futures.ThreadPoolExecutor`.
+
+    """
+
+    __marker = object()
+
+    __slots__ = (
+        "__dict__",
+        "cache_download",
+        "cachestore",
+        "domain",
+        "download_workers",
+        "forecast_time",
+        "model_levels",
+    )
+
+    #: ICON forecast domain
+    domain: str
+
+    #: Forecast cycle start time
+    forecast_time: datetime
+
+    #: Model levels included when downloading raw data files
+    model_levels: list[int]
+
+    #: Whether to save raw data files to :attr:`cachestore` for reuse
+    cache_download: bool
+
+    #: Number of threads used to download raw data files
+    download_workers: int | None
+
+    def __init__(
+        self,
+        time: metsource.TimeInput,
+        variables: metsource.VariableInput,
+        pressure_levels: metsource.PressureLevelInput | None = None,
+        domain: str = "global",
+        timestep_freq: str | None = None,
+        grid: float | None = None,
+        forecast_time: DatetimeLike | None = None,
+        model_levels: list[int] | None = None,
+        cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
+        cache_download: bool = False,
+        download_workers: int | None = None,
+    ) -> None:
+        # Parse and set instance attributes
+
+        if pressure_levels is None:
+            pressure_levels = flight_level_pressure(200, 500)
+        self.pressure_levels = metsource.parse_pressure_levels(pressure_levels)
+
+        self.variables = metsource.parse_variables(variables, self.supported_variables)
+
+        self.paths = None
+
+        supported = "global", "europe", "germany"
+        if domain not in supported:
+            msg = f"Unknown domain {domain}. Supported domains are {', '.join(supported)}."
+            raise ValueError(msg)
+        self.domain = domain
+
+        if grid is not None and domain != "global":
+            msg = (
+                "ICON-EU Europe and ICON-D2 Germany forecasts are provided at fixed resolution. "
+                f"Ignoring grid={grid}. Set grid=None to silence this warning."
+            )
+            warnings.warn(msg)
+        self.grid = grid or 0.25 if domain == "global" else None
+
+        max_level = bottom_level(domain)
+        if model_levels is None:
+            model_levels = list(range(1, max_level + 1))
+        elif min(model_levels) < 1 or max(model_levels) > max_level:
+            msg = (
+                f"Requested model_levels must be between 1 and {max_level}, inclusize, "
+                f"when using domain='{domain}'."
+            )
+            raise ValueError(msg)
+        self.model_levels = model_levels
+
+        forecast_hours = metsource.parse_timesteps(time, freq="1h")
+        if forecast_time is None:
+            self.forecast_time = latest_forecast(self.domain, forecast_hours[0])
+        else:
+            try:
+                self.forecast_time = pd.to_datetime(forecast_time).to_pydatetime()
+            except ValueError as e:
+                msg = (
+                    f"Failed to parse forecast time {forecast_time}. "
+                    "Value must be compatible with 'pd.to_datetime'."
+                )
+                raise ValueError(msg) from e
+
+        last_hour = forecast_hours[-1]
+        if last_hour > (end := last_timestep(self.domain, self.forecast_time)):
+            msg = f"Requested times extend to {last_hour}, beyond end of forecast at {end}."
+            raise ValueError(msg)
+
+        datasource_timestep_freq = (
+            "1h" if last_hour <= last_hourly_timestep(self.domain, self.forecast_time) else "3h"
+        )
+        if timestep_freq is None:
+            timestep_freq = datasource_timestep_freq
+        if not metsource.validate_timestep_freq(timestep_freq, datasource_timestep_freq):
+            msg = (
+                f"Forecast out to time {last_hour} "
+                f"has timestep frequency of {datasource_timestep_freq} "
+                f"and cannot supported requested timestep frequency of {timestep_freq}."
+            )
+            raise ValueError(msg)
+
+        self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
+
+        self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
+        self.cache_download = cache_download
+        self.download_workers = download_workers
+
+    def __repr__(self) -> str:
+        base = super().__repr__()
+        return "\n\t".join(
+            [
+                base,
+                f"Domain: {self.domain}",
+                f"Forecast time: {self.forecast_time.strftime('%Y-%m-%d %HZ')}",
+                f"Steps: {self.steps}",
+            ]
+        )
+
+    @property
+    def pressure_level_variables(self) -> list[MetVariable]:
+        """Available pressure-level variables.
+
+        All pressure-level variables are retrieved on model levels
+        and interpolated to pressure levels.
+
+        Returns
+        -------
+        list[MetVariable]
+            List of MetVariable available in datasource
+        """
+        return MODEL_LEVEL_VARIABLES
+
+    @property
+    def single_level_variables(self) -> list[MetVariable]:
+        """Available single-level variables.
+
+        Returns
+        -------
+        list[MetVariable]
+            List of MetVariable available in datasource
+        """
+        return SINGLE_LEVEL_VARIABLES
+
+    def get_forecast_step(self, time: datetime) -> int:
+        """Convert time to forecast steps.
+
+        Parameters
+        ----------
+        times : datetime
+            Time to convert to forecast steps
+
+        Returns
+        -------
+        int
+            Forecast step at given time
+        """
+        step = (time - self.forecast_time) / timedelta(hours=1)
+        if not step.is_integer():
+            msg = (
+                f"Time-to-step conversion returned fractional forecast step {step} "
+                f"for timestep {time.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            raise ValueError(msg)
+        return int(step)
+
+    @property
+    def steps(self) -> list[int]:
+        """Forecast steps corresponding to input :attr:`time`.
+
+        Returns
+        -------
+        list[int]
+            List of forecast steps relative to :attr:`forecast_time`
+        """
+        return [self.get_forecast_step(t) for t in self.timesteps]
+
+    @override
+    def download_dataset(self, times: list[datetime]) -> None:
+        for time in times:
+            LOG.debug(
+                f"Downloading ICON {self.domain} data for time {time} "
+                f"from forecast {self.forecast_time} "
+            )
+            self._download_convert_cache_handler(time)
+
+    @override
+    def create_cachepath(self, t: datetime) -> str:
+        if self.cachestore is None:
+            msg = "Cachestore is required to create cache path"
+            raise ValueError(msg)
+
+        string = (
+            f"{self.domain}-"
+            f"{self.grid or 'default-lat-lon'}-"
+            f"{t:%Y%m%d%H}-"
+            f"{self.forecast_time:%Y%m%d%H}-"
+            f"{'.'.join(str(p) for p in self.pressure_levels)}-"
+            f"{'.'.join(sorted(self.variable_shortnames))}-"
+        )
+
+        name = hashlib.md5(string.encode()).hexdigest()
+        cache_path = f"icon-{name}.nc"
+
+        return self.cachestore.path(cache_path)
+
+    @override
+    def cache_dataset(self, dataset: xr.Dataset) -> None:
+        if self.cachestore is None:
+            return
+
+        for t, ds in dataset.groupby("time", squeeze=False):
+            cache_path = self.create_cachepath(pd.Timestamp(t).to_pydatetime())
+            ds.to_netcdf(cache_path, mode="w")
+
+    @override
+    def open_metdataset(
+        self,
+        dataset: xr.Dataset | None = None,
+        xr_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> MetDataset:
+        if dataset:
+            msg = "Parameter 'dataset' is not supported for ICON data"
+            raise ValueError(msg)
+
+        if self.cachestore is None:
+            msg = "Cachestore is required to download data"
+            raise ValueError(msg)
+
+        xr_kwargs = xr_kwargs or {}
+        self.download(**xr_kwargs)
+
+        disk_cachepaths = [self.cachestore.get(f) for f in self._cachepaths]
+        ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
+
+        mds = MetDataset(ds, **kwargs)
+        self.set_metadata(mds)
+        return mds
+
+    @override
+    def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
+        if self.domain.lower() == "global":
+            dataset = "ICON"
+        elif self.domain.lower() == "europe":
+            dataset = "ICON-EU"
+        elif self.domain.lower() == "germany":
+            dataset = "ICON-D2"
+        else:
+            msg = f"Unknown domain {self.domain}."
+            raise ValueError(msg)
+
+        ds.attrs.update(provider="DWD", dataset=dataset, product="forecast")
+
+    def _rpaths(self, time: datetime) -> list[str]:
+        """Get list of remote and local paths for download."""
+        step = self.get_forecast_step(time)
+
+        variables = [_ods_name(v.short_name) for v in self.variables]
+        if not self.is_single_level:
+            variables += "p"
+
+        levels = [None] if self.is_single_level else sorted(self.model_levels)
+
+        return [
+            ods.rpath(self.domain, self.forecast_time, var, step, level)
+            for var, level in itertools.product(variables, levels)
+        ]
+
+    @functools.cached_property
+    def _global_kdtree(self) -> KDTree:
+        """Get KDtree for looking up nearest neighbors on global icosahedral grid."""
+        use_cache = self.cachestore is not None and self.cache_download
+
+        stack = contextlib.ExitStack()
+        rpath = ods.global_longitude_rpath(self.forecast_time)
+        fname = rpath.removesuffix(".bz2").split("/")[-1]
+        lpath = self.cachestore.path(fname) if use_cache else stack.enter_context(temp.temp_file())  # type:ignore
+        with stack:
+            if not (use_cache and self.cachestore.exists(lpath)):  # type:ignore
+                ods.get(rpath, lpath)
+            ds = xr.open_dataset(lpath, engine="cfgrib", backend_kwargs={"indexpath": ""})
+            lon = ds["tlon"].values
+
+        rpath = ods.global_latitude_rpath(self.forecast_time)
+        fname = rpath.removesuffix(".bz2").split("/")[-1]
+        lpath = self.cachestore.path(fname) if use_cache else stack.enter_context(temp.temp_file())  # type:ignore
+        with stack:
+            if not (use_cache and self.cachestore.exists(lpath)):  # type:ignore
+                ods.get(rpath, lpath)
+            ds = xr.open_dataset(lpath, engine="cfgrib", backend_kwargs={"indexpath": ""})
+            lat = ds["tlat"].values
+
+        x, y, z = _ll_to_cartesian(lon, lat)
+        return KDTree(data=np.stack((x, y, z), axis=-1))
+
+    def _download_convert_cache_handler(self, time: datetime) -> None:
+        """Download, convert, and cache ICON model level data."""
+        if self.cachestore is None:
+            msg = "Cachestore is required to download and cache data"
+            raise ValueError(msg)
+
+        stack = contextlib.ExitStack()
+        rpaths = self._rpaths(time)
+        lpaths = []
+        for rpath in rpaths:
+            if not self.cache_download:
+                lpaths.append(stack.enter_context(temp.temp_file()))
+            else:
+                fname = rpath.removesuffix(".bz2").split("/")[-1]
+                lpaths.append(self.cachestore.path(fname))
+
+        with stack:
+            threads = []
+            for rpath, lpath in zip(rpaths, lpaths, strict=True):
+                if self.cache_download and self.cachestore.exists(lpath):
+                    continue
+                threads.append(threading.Thread(target=ods.get, args=(rpath, lpath)))
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.download_workers) as pool:
+                for thread in threads:
+                    pool.submit(thread.run)
+
+            ds = xr.open_mfdataset(
+                lpaths,
+                combine="by_coords",
+                compat="equals",
+                preprocess=_preprocess_grib,
+                engine="cfgrib",
+                backend_kwargs={"indexpath": ""},
+            )
+
+            if self.domain == "global":
+                if self.grid is None:
+                    msg = "Grid resolution must be set before remapping."
+                    raise ValueError(msg)
+                ds = _global_icosahedral_to_regular_lat_lon(ds, self._global_kdtree, self.grid)
+
+            if not self.is_single_level:
+                ds = _ml_to_pl(ds, target_pl=self.pressure_levels)
+
+            ds.attrs["pycontrails_version"] = pycontrails.__version__
+            self.cache_dataset(ds)
+
+
+def _ods_name(short_name: str) -> str:
+    """Get name of required variable from DWD Open Data Server."""
+    if short_name == "wz":
+        return "w"
+    if short_name == "q":
+        return "qv"
+    if short_name == "cli":
+        return "qi"
+    if short_name == "rlut":
+        return "athb_t"
+    if short_name == "rst":
+        return "asob_t"
+    return short_name
+
+
+def _preprocess_grib(ds: xr.Dataset) -> xr.Dataset:
+    """Ensure consistent coordinates in GRIB messages before merging."""
+
+    # some variables have different names for the model level coordinate
+    if "generalVertical" in ds.coords:
+        ds = ds.rename(generalVertical="model_level")
+    if "generalVerticalLayer" in ds.coords:
+        ds = ds.rename(generalVerticalLayer="model_level")
+    if "model_level" in ds.coords:
+        ds = ds.expand_dims("model_level")
+
+    ds = ds.drop(["step", "time"]).rename(valid_time="time").expand_dims("time")
+    return ds.reset_coords(drop=True)
+
+
+def _ll_to_cartesian(
+    longitude: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating]
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    """Convert from longitude/latitude to cartesian coordinates in unit cube."""
+    phi = np.deg2rad(latitude)
+    theta = np.deg2rad(longitude)
+    x = np.cos(phi) * np.cos(theta)
+    y = np.cos(phi) * np.sin(theta)
+    z = np.sin(phi)
+    return x, y, z
+
+
+def _remap_on_chunk(
+    ds_chunk: xr.Dataset,
+    idx: npt.NDArray[np.integer],
+    target_lon: npt.NDArray[np.floating],
+    target_lat: npt.NDArray[np.floating],
+) -> xr.Dataset:
+    """Remap using nearest-neighbor interpolation with precomputed indices."""
+    if any(da_chunk.dims[-1] != "values" for da_chunk in ds_chunk.values()):
+        msg = "The last dimension of all variables in the dataset must be 'values'"
+        raise ValueError(msg)
+
+    remapped_dict = {}
+
+    for name, da in ds_chunk.items():
+        remapped = da.values[..., idx]
+
+        coords = {k: da.coords[k] for k in da.dims[:-1]}
+        coords["latitude"] = target_lat
+        coords["longitude"] = target_lon
+
+        remapped_dict[name] = xr.DataArray(
+            remapped, dims=tuple(coords), coords=coords, attrs=da.attrs
+        )
+
+    return xr.Dataset(remapped_dict)
+
+
+def _build_remap_template(
+    ds: xr.Dataset, target_lon: npt.NDArray[np.floating], target_lat: npt.NDArray[np.floating]
+) -> xr.Dataset:
+    """Build template dataset for output from horizontal remapping."""
+    coords = {k: ds.coords[k] for k in ds.dims if k != "values"} | {
+        "latitude": target_lat,
+        "longitude": target_lon,
+    }
+
+    dims = tuple(coords)
+    shape = tuple(len(v) for v in coords.values())
+
+    vars = {k: (dims, dask.array.empty(shape=shape, dtype=da.dtype)) for k, da in ds.items()}
+
+    chunks = {k: v for k, v in ds.chunks.items() if k != "values"}
+    chunks["latitude"] = (target_lat.size,)
+    chunks["longitude"] = (target_lon.size,)
+
+    return xr.Dataset(data_vars=vars, coords=coords, attrs=ds.attrs).chunk(chunks)
+
+
+def _global_icosahedral_to_regular_lat_lon(
+    ds: xr.Dataset, kdtree: KDTree, resolution: float
+) -> xr.Dataset:
+    """Regrid from ICON's global icosahedral grid to a regular latitude-longitude grid."""
+
+    # If any variables don't have a "values" dimension,
+    # issue a warning and drop them
+    for name, da in ds.items():
+        if "values" not in da.dims:
+            msg = (
+                f"Variable '{name}' does not have a 'values' dimension. "
+                f"This variable will be dropped before regridding."
+            )
+            warnings.warn(msg)
+            ds = ds.drop_vars([name])
+
+    # Check that "values" dimension is not chunked
+    if ds.chunks and len(ds.chunks["values"]) > 1:
+        msg = "The 'values' dimension must not be split across chunks."
+        raise ValueError(msg)
+
+    # Check that length of "values" dimension is compatible with kdtree
+    if ds.sizes["values"] != kdtree.n:
+        msg = "Size of 'values' dimension is incompatible with size of kdtree."
+        raise ValueError(msg)
+
+    nlat = int(90 / resolution)
+    nlon = int(180 / resolution)
+    target_lat = resolution * np.arange(-nlat, nlat + 1)
+    target_lon = resolution * np.arange(-nlon, nlon + 1)
+    template = _build_remap_template(ds, target_lon, target_lat)
+
+    grid_lat, grid_lon = np.meshgrid(target_lat, target_lon, indexing="ij")
+    x, y, z = _ll_to_cartesian(grid_lon, grid_lat)
+    _, idx = kdtree.query(np.stack((x, y, z), axis=-1))
+
+    return xr.map_blocks(_remap_on_chunk, ds, (idx, target_lon, target_lat), template=template)
+
+
+def _ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike) -> xr.Dataset:
+    """Interpolate from model levels to pressure levels."""
+    ds = ds.rename(pres="pressure_level").chunk(model_level=-1)
+    return met_utils.ml_to_pl(ds, target_pl)

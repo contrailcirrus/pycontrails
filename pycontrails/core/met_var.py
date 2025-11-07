@@ -282,6 +282,21 @@ VerticalVelocity = MetVariable(
     ),
 )
 
+GeometricVerticalVelocity = MetVariable(
+    short_name="wz",
+    standard_name="upward_air_velocity",
+    long_name="Vertical Velocity (w)",
+    units="m s**-1",
+    level_type="isobaricInhPa",
+    description=(
+        'A velocity is a vector quantity. "Upward" indicates a vector component '
+        "which is positive when directed upward (negative downward). Upward air "
+        "velocity is the vertical component of the 3D air velocity vector. The "
+        "standard name downward_air_velocity may be used for a vector component "
+        "with the opposite sign convention."
+    ),
+)
+
 MassFractionOfCloudLiquidWaterInAir = MetVariable(
     short_name="clw",
     standard_name="mass_fraction_of_cloud_liquid_water_in_air",
