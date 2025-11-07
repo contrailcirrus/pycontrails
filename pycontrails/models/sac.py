@@ -131,13 +131,12 @@ class SAC(Model):
             # This might fail for MetDataset source -- haven't tried it.
             ei_h2o = self.source["ei_h2o"]  # type: ignore[assignment]
             q_fuel = self.source["q_fuel"]  # type: ignore[assignment]
-        # Flight source always has fuel attribute
-        elif isinstance(self.source, Flight):
-            assert isinstance(self.source.fuel, Fuel), "The fuel attribute must be of type Fuel"
+
+        elif isinstance(self.source, Flight):  # Flight source always has fuel (happy path)
             ei_h2o = self.source.fuel.ei_h2o
             q_fuel = self.source.fuel.q_fuel
-        # Grab from self.source.attrs or use default param
-        else:
+
+        else:  # Grab from self.source.attrs or use default param
             # NOTE: Not setting fuel on MetDataset source
             fuel = self.get_source_param("fuel", set_attr=False)
             assert isinstance(fuel, Fuel), "The fuel attribute must be of type Fuel"
