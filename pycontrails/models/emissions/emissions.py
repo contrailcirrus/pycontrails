@@ -17,14 +17,13 @@ import pandas as pd
 
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, SAFBlend
-from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.emissions import nvpm, gaseous
 from pycontrails.models.humidity_scaling import HumidityScaling
-from pycontrails.physics import constants, jet, units
+from pycontrails.physics import jet, units
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
 EDB_ENGINE_PATH = _path_to_static / "edb-gaseous-v31-engines.csv"
@@ -88,8 +87,8 @@ class Emissions(Model):
     ) -> None:
         super().__init__(met, params, **params_kwargs)
 
-        self.edb_engine_gaseous = load_engine_params_from_edb()
-        self.edb_engine_nvpm = load_engine_nvpm_profile_from_edb()
+        self.edb_engine_gaseous = load_edb_gaseous_database()
+        self.edb_engine_nvpm = load_edb_nvpm_database()
         self.default_engines = load_default_aircraft_engine_mapping()
 
     @overload
@@ -228,7 +227,7 @@ class Emissions(Model):
         else:
             self._gaseous_emissions_ffm2(edb_gaseous)
 
-    def _gaseous_emissions_ffm2(self, edb_gaseous: EDBGaseous) -> None:
+    def _gaseous_emissions_ffm2(self, edb_gaseous: gaseous.EDBGaseous) -> None:
         """Calculate gaseous emissions using the FFM2 methodology.
 
         This method attaches the following variables to the underlying :attr:`flight`:
@@ -337,6 +336,7 @@ class Emissions(Model):
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
 
         if edb_nvpm is not None:
+            # TODO: Zeb, how do you let the user choose between t4_t2 and MEEM?
             nvpm_data = self._nvpm_emission_indices_edb(edb_nvpm, fuel)
         elif edb_gaseous is not None:
             nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
@@ -353,10 +353,10 @@ class Emissions(Model):
         # Adjust nvPM emission indices if SAF is used.
         if isinstance(fuel, SAFBlend) and fuel.pct_blend:
             thrust_setting = self.source["thrust_setting"]
-            pct_eim_reduction = black_carbon.nvpm_mass_ei_pct_reduction_due_to_saf(
+            pct_eim_reduction = nvpm.nvpm_mass_ei_pct_reduction_due_to_saf(
                 fuel.hydrogen_content, thrust_setting
             )
-            pct_ein_reduction = black_carbon.nvpm_number_ei_pct_reduction_due_to_saf(
+            pct_ein_reduction = nvpm.nvpm_number_ei_pct_reduction_due_to_saf(
                 fuel.hydrogen_content, thrust_setting
             )
 
@@ -368,7 +368,7 @@ class Emissions(Model):
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
 
     def _nvpm_emission_indices_edb(
-        self, edb_nvpm: EDBnvpm, fuel: Fuel
+        self, edb_nvpm: nvpm.EDBnvpm, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Calculate emission indices for nvPM mass and number.
 
@@ -397,7 +397,7 @@ class Emissions(Model):
         nvpm_data_source = "ICAO EDB"
 
         # Emissions indices
-        return nvpm_data_source, *get_nvpm_emissions_index_edb(
+        return nvpm_data_source, *nvpm.estimate_nvpm_t4_t2(
             edb_nvpm,
             true_airspeed=self.source.get_data_or_attr("true_airspeed"),
             air_temperature=self.source["air_temperature"],
@@ -407,7 +407,7 @@ class Emissions(Model):
         )
 
     def _nvpm_emission_indices_sac(
-        self, edb_gaseous: EDBGaseous, fuel: Fuel
+        self, edb_gaseous: gaseous.EDBGaseous, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """Calculate EIs for nvPM mass and number assuming the profile of single annular combustors.
 
@@ -462,7 +462,7 @@ class Emissions(Model):
             thrust_setting=thrust_setting,
             q_fuel=fuel.q_fuel,
         )
-        nvpm_ei_n = black_carbon.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
+        nvpm_ei_n = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
 
     def _nvpm_emission_indices_constant(
@@ -604,7 +604,7 @@ class Emissions(Model):
 
 
 def nitrogen_oxide_emissions_index_ffm2(
-    edb_gaseous: EDBGaseous,
+    edb_gaseous: gaseous.EDBGaseous,
     fuel_flow_per_engine: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
@@ -634,7 +634,7 @@ def nitrogen_oxide_emissions_index_ffm2(
     npt.NDArray[np.floating]
         Nitrogen oxide emissions index for each waypoint, [:math:`kg_{NO_{X}}/kg_{fuel}`]
     """
-    res_nox = ffm2.estimate_nox(
+    res_nox = gaseous.estimate_nox_ffm2(
         edb_gaseous.log_ei_nox_profile,
         fuel_flow_per_engine,
         true_airspeed,
@@ -646,7 +646,7 @@ def nitrogen_oxide_emissions_index_ffm2(
 
 
 def carbon_monoxide_emissions_index_ffm2(
-    edb_gaseous: EDBGaseous,
+    edb_gaseous: gaseous.EDBGaseous,
     fuel_flow_per_engine: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
@@ -673,7 +673,7 @@ def carbon_monoxide_emissions_index_ffm2(
     npt.NDArray[np.floating]
         Carbon monoxide emissions index for each waypoint, [:math:`kg_{CO}/kg_{fuel}`]
     """
-    res_co = ffm2.estimate_ei(
+    res_co = gaseous.estimate_ei_co_hc_ffm2(
         edb_gaseous.log_ei_co_profile,
         fuel_flow_per_engine,
         true_airspeed,
@@ -684,7 +684,7 @@ def carbon_monoxide_emissions_index_ffm2(
 
 
 def hydrocarbon_emissions_index_ffm2(
-    edb_gaseous: EDBGaseous,
+    edb_gaseous: gaseous.EDBGaseous,
     fuel_flow_per_engine: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
@@ -711,7 +711,7 @@ def hydrocarbon_emissions_index_ffm2(
     npt.NDArray[np.floating]
         Hydrocarbon emissions index for each waypoint, [:math:`kg_{HC}/kg_{fuel}`]
     """
-    res_hc = ffm2.estimate_ei(
+    res_hc = gaseous.estimate_ei_co_hc_ffm2(
         edb_gaseous.log_ei_hc_profile,
         fuel_flow_per_engine,
         true_airspeed,
@@ -721,66 +721,8 @@ def hydrocarbon_emissions_index_ffm2(
     return res_hc * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
 
 
-def get_nvpm_emissions_index_edb(
-    edb_nvpm: EDBnvpm,
-    true_airspeed: npt.NDArray[np.floating],
-    air_temperature: npt.NDArray[np.floating],
-    air_pressure: npt.NDArray[np.floating],
-    thrust_setting: npt.NDArray[np.floating],
-    q_fuel: float,
-) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-    r"""Calculate nvPM mass emissions index (nvpm_ei_m) and number emissions index (nvpm_ei_n).
-
-    Interpolate the non-volatile particulate matter (nvPM) mass and number emissions index from
-    the emissions profile of a given engine type that is provided by the ICAO EDB.
-
-    The non-dimensional thrust setting (t4_t2) is clipped to the minimum and maximum t4_t2 values
-    that is estimated from the four ICAO EDB datapoints to prevent extrapolating the nvPM values.
-
-    Parameters
-    ----------
-    edb_nvpm : EDBnvpm
-        EDB nvPM data
-    true_airspeed: npt.NDArray[np.floating]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
-    fuel_flow_per_engine: npt.NDArray[np.floating]
-        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    air_temperature: npt.NDArray[np.floating]
-        ambient temperature for each waypoint, [:math:`K`]
-    air_pressure: npt.NDArray[np.floating]
-        pressure altitude at each waypoint, [:math:`Pa`]
-    thrust_setting : npt.NDArray[np.floating]
-        thrust setting
-    q_fuel : float
-        Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
-
-    Returns
-    -------
-    nvpm_ei_m : npt.NDArray[np.floating]
-        Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
-    nvpm_ei_n : npt.NDArray[np.floating]
-        Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
-    """
-    # Non-dimensionalized thrust setting
-    t4_t2 = jet.thrust_setting_nd(
-        true_airspeed,
-        thrust_setting,
-        air_temperature,
-        air_pressure,
-        edb_nvpm.pressure_ratio,
-        q_fuel,
-        cruise=True,
-    )
-
-    # Interpolate nvPM EI_m and EI_n
-    nvpm_ei_m = edb_nvpm.nvpm_ei_m.interp(t4_t2)
-    nvpm_ei_m = nvpm_ei_m * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
-    nvpm_ei_n = edb_nvpm.nvpm_ei_n.interp(t4_t2)
-    return nvpm_ei_m, nvpm_ei_n
-
-
 def nvpm_mass_emissions_index_sac(
-    edb_gaseous: EDBGaseous,
+    edb_gaseous: gaseous.EDBGaseous,
     air_pressure: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
@@ -817,7 +759,7 @@ def nvpm_mass_emissions_index_sac(
     npt.NDArray[np.floating]
         nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
     """
-    nvpm_ei_m_fox = black_carbon.mass_emissions_index_fox(
+    nvpm_ei_m_fox = nvpm.mass_emissions_index_fox(
         air_pressure,
         air_temperature,
         true_airspeed,
@@ -825,7 +767,7 @@ def nvpm_mass_emissions_index_sac(
         thrust_setting,
         edb_gaseous.pressure_ratio,
     )
-    nvpm_ei_m_imfox = black_carbon.mass_emissions_index_imfox(
+    nvpm_ei_m_imfox = nvpm.mass_emissions_index_imfox(
         fuel_flow_per_engine, thrust_setting, hydrogen_content
     )
     nvpm_ei_m = 0.5 * (0.8 * nvpm_ei_m_fox + 1.5 * nvpm_ei_m_imfox)
@@ -833,7 +775,7 @@ def nvpm_mass_emissions_index_sac(
 
 
 def nvpm_geometric_mean_diameter_sac(
-    edb_gaseous: EDBGaseous,
+    edb_gaseous: gaseous.EDBGaseous,
     air_pressure: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
@@ -863,7 +805,7 @@ def nvpm_geometric_mean_diameter_sac(
     npt.NDArray[np.floating]
         nvPM geometric mean diameter, [:math:`m`]
     """
-    nvpm_gmd = black_carbon.geometric_mean_diameter_sac(
+    nvpm_gmd = nvpm.geometric_mean_diameter_sac(
         air_pressure,
         air_temperature,
         true_airspeed,
@@ -876,7 +818,7 @@ def nvpm_geometric_mean_diameter_sac(
 
 
 def get_thrust_setting(
-    edb_gaseous: EDBGaseous,
+    edb_gaseous: gaseous.EDBGaseous,
     fuel_flow_per_engine: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
@@ -920,322 +862,12 @@ def get_thrust_setting(
     return thrust_setting
 
 
-def _row_to_edb_gaseous(tup: Any) -> tuple[str, EDBGaseous]:
-    return tup.engine_uid, EDBGaseous(
-        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(EDBGaseous)}
-    )
-
-
-@dataclasses.dataclass(frozen=True)
-class EDBGaseous:
-    """Gaseous emissions data.
-
-    -------------------------------------
-    ENGINE IDENTIFICATION AND TYPE:
-    -------------------------------------
-    manufacturer: str
-        engine manufacturer
-    engine_name: str
-        name of engine
-    combustor: str
-        description of engine combustor
-
-    -------------------------------------
-    ENGINE CHARACTERISTICS:
-    -------------------------------------
-    bypass_ratio: float
-        engine bypass ratio
-    pressure_ratio: float
-        engine pressure ratio
-    rated_thrust: float
-        rated thrust of engine, [:math:`kN`]
-
-    -------------------------------------
-    FUEL CONSUMPTION:
-    -------------------------------------
-    ff_7: float
-        fuel mass flow rate at 7% thrust setting, [:math:`kg s^{-1}`]
-    ff_30: float
-        fuel mass flow rate at 30% thrust setting, [:math:`kg s^{-1}`]
-    ff_85: float
-        fuel mass flow rate at 85% thrust setting, [:math:`kg s^{-1}`]
-    ff_100: float
-        fuel mass flow rate at 100% thrust setting, [:math:`kg s^{-1}`]
-
-    -------------------------------------
-    EMISSIONS:
-    -------------------------------------
-    ei_nox_7: float
-        NOx emissions index at 7% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
-    ei_nox_30: float
-        NOx emissions index at 30% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
-    ei_nox_85: float
-        NOx emissions index at 85% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
-    ei_nox_100: float
-        NOx emissions index at 100% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
-
-    ei_co_7: float
-        CO emissions index at 7% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
-    ei_co_30: float
-        CO emissions index at 30% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
-    ei_co_85: float
-        CO emissions index at 85% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
-    ei_co_100: float
-        CO emissions index at 100% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
-
-    ei_hc_7: float
-        HC emissions index at 7% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
-    ei_hc_30: float
-        HC emissions index at 30% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
-    ei_hc_85: float
-        HC emissions index at 85% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
-    ei_hc_100: float
-        HC emissions index at 100% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
-
-    sn_7: float
-        smoke number at 7% thrust setting
-    sn_30: float
-        smoke number at 30% thrust setting
-    sn_85: float
-        smoke number at 85% thrust setting
-    sn_100: float
-        smoke number at 100% thrust setting
-    sn_max: float
-        maximum smoke number value across the range of thrust setting
-    """
-
-    # Engine identification and type
-    manufacturer: str
-    engine_name: str
-    combustor: str
-
-    # Engine characteristics
-    bypass_ratio: float
-    pressure_ratio: float
-    rated_thrust: float
-
-    # Fuel consumption
-    ff_7: float
-    ff_30: float
-    ff_85: float
-    ff_100: float
-
-    # Emissions
-    ei_nox_7: float
-    ei_nox_30: float
-    ei_nox_85: float
-    ei_nox_100: float
-
-    ei_co_7: float
-    ei_co_30: float
-    ei_co_85: float
-    ei_co_100: float
-
-    ei_hc_7: float
-    ei_hc_30: float
-    ei_hc_85: float
-    ei_hc_100: float
-
-    sn_7: float
-    sn_30: float
-    sn_85: float
-    sn_100: float
-    sn_max: float
-
-    @property
-    def log_ei_nox_profile(self) -> EmissionsProfileInterpolator:
-        """Get the logarithmic emissions index profile for NOx emissions."""
-        return ffm2.nitrogen_oxide_emissions_index_profile(
-            ff_idle=self.ff_7,
-            ff_approach=self.ff_30,
-            ff_climb=self.ff_85,
-            ff_take_off=self.ff_100,
-            ei_nox_idle=self.ei_nox_7,
-            ei_nox_approach=self.ei_nox_30,
-            ei_nox_climb=self.ei_nox_85,
-            ei_nox_take_off=self.ei_nox_100,
-        )
-
-    @property
-    def log_ei_co_profile(self) -> EmissionsProfileInterpolator:
-        """Get the logarithmic emissions index profile for CO emissions."""
-        return ffm2.co_hc_emissions_index_profile(
-            ff_idle=self.ff_7,
-            ff_approach=self.ff_30,
-            ff_climb=self.ff_85,
-            ff_take_off=self.ff_100,
-            ei_idle=self.ei_co_7,
-            ei_approach=self.ei_co_30,
-            ei_climb=self.ei_co_85,
-            ei_take_off=self.ei_co_100,
-        )
-
-    @property
-    def log_ei_hc_profile(self) -> EmissionsProfileInterpolator:
-        """Get the logarithmic emissions index profile for HC emissions."""
-        return ffm2.co_hc_emissions_index_profile(
-            ff_idle=self.ff_7,
-            ff_approach=self.ff_30,
-            ff_climb=self.ff_85,
-            ff_take_off=self.ff_100,
-            ei_idle=self.ei_hc_7,
-            ei_approach=self.ei_hc_30,
-            ei_climb=self.ei_hc_85,
-            ei_take_off=self.ei_hc_100,
-        )
-
-
-def _row_to_edb_nvpm(tup: Any) -> tuple[str, EDBnvpm]:
-    return tup.engine_uid, EDBnvpm(
-        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(EDBnvpm)}
-    )
-
-
-@dataclasses.dataclass
-class EDBnvpm:
-    """A data class for EDB nvPM data.
-
-    -------------------------------------
-    ENGINE IDENTIFICATION AND TYPE:
-    -------------------------------------
-    manufacturer: str
-        engine manufacturer
-    engine_name: str
-        name of engine
-    combustor: str
-        description of engine combustor
-
-    -------------------------------------
-    ENGINE CHARACTERISTICS:
-    -------------------------------------
-    pressure_ratio: float
-        engine pressure ratio
-
-    -------------------------------------
-    nvPM EMISSIONS:
-    -------------------------------------
-    nvpm_ei_m: EmissionsProfileInterpolator
-         non-volatile PM mass emissions index profile (mg/kg) vs.
-         non-dimensionalized thrust setting (t4_t2)
-    nvpm_ei_n: EmissionsProfileInterpolator
-        non-volatile PM number emissions index profile (1/kg) vs.
-        non-dimensionalized thrust setting (t4_t2)
-    """
-
-    # Engine identification and type
-    manufacturer: str
-    engine_name: str
-    combustor: str
-
-    # Engine characteristics
-    pressure_ratio: float
-    temp_min: float
-    temp_max: float
-    fuel_heat: float
-
-    # Fuel consumption
-    ff_7: float
-    ff_30: float
-    ff_85: float
-    ff_100: float
-
-    # Emissions
-    nvpm_ei_m_7: float
-    nvpm_ei_m_30: float
-    nvpm_ei_m_85: float
-    nvpm_ei_m_100: float
-
-    nvpm_ei_n_7: float
-    nvpm_ei_n_30: float
-    nvpm_ei_n_85: float
-    nvpm_ei_n_100: float
-
-    @property
-    def nvpm_ei_m(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index mass profile."""
-        return nvpm.nvpm_emissions_profiles_t4_t2(
-            pressure_ratio=self.pressure_ratio,
-            combustor=self.combustor,
-            temp_min=self.temp_min,
-            temp_max=self.temp_max,
-            fuel_heat=self.fuel_heat,
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[0]
-
-    @property
-    def nvpm_ei_n(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index number profile."""
-        return nvpm.nvpm_emissions_profiles_t4_t2(
-            pressure_ratio=self.pressure_ratio,
-            combustor=self.combustor,
-            temp_min=self.temp_min,
-            temp_max=self.temp_max,
-            fuel_heat=self.fuel_heat,
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[1]
-
-    @property
-    # TODO: These should be moved away from emissions.py
-    def nvpm_ei_m_meem(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index mass profile."""
-        return nvpm_meem2.nvpm_emissions_index_profile_meem(
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[0]
-
-    @property
-    def nvpm_ei_n_meem(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index number profile."""
-        return nvpm_meem2.nvpm_emissions_index_profile_meem(
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[1]
-
+# ---------------------------------------------------
+# Functions to load ICAO EDB gaseous and nvPM dataset
+# ---------------------------------------------------
 
 @functools.cache
-def load_engine_params_from_edb() -> dict[str, EDBGaseous]:
+def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
     """Read EDB file into a dictionary of the form ``{engine_uid: gaseous_data}``.
 
     Returns
@@ -1281,8 +913,14 @@ def load_engine_params_from_edb() -> dict[str, EDBGaseous]:
     return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
 
+def _row_to_edb_gaseous(tup: Any) -> tuple[str, gaseous.EDBGaseous]:
+    return tup.engine_uid, gaseous.EDBGaseous(
+        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(gaseous.EDBGaseous)}
+    )
+
+
 @functools.cache
-def load_engine_nvpm_profile_from_edb() -> dict[str, EDBnvpm]:
+def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
     """Read EDB file into a dictionary of the form ``{engine_uid: npvm_data}``.
 
     Returns
@@ -1317,6 +955,12 @@ def load_engine_nvpm_profile_from_edb() -> dict[str, EDBnvpm]:
     df = df.rename(columns=columns)
 
     return dict(_row_to_edb_nvpm(tup) for tup in df.itertuples(index=False))
+
+
+def _row_to_edb_nvpm(tup: Any) -> tuple[str, nvpm.EDBnvpm]:
+    return tup.engine_uid, nvpm.EDBnvpm(
+        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(nvpm.EDBnvpm)}
+    )
 
 
 @functools.cache

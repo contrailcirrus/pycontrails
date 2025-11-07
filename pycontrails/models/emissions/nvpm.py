@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import warnings
 import numpy as np
@@ -10,6 +11,153 @@ import numpy.typing as npt
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.physics import constants, jet, units
 from pycontrails.utils.types import ArrayScalarLike
+
+
+# ---------------------------------
+# Data structure for ICAO EDB: nvPM
+# ---------------------------------
+
+@dataclasses.dataclass
+class EDBnvpm:
+    """A data class for EDB nvPM data.
+
+    -------------------------------------
+    ENGINE IDENTIFICATION AND TYPE:
+    -------------------------------------
+    manufacturer: str
+        engine manufacturer
+    engine_name: str
+        name of engine
+    combustor: str
+        description of engine combustor
+
+    -------------------------------------
+    ENGINE CHARACTERISTICS:
+    -------------------------------------
+    pressure_ratio: float
+        engine pressure ratio
+
+    -------------------------------------
+    nvPM EMISSIONS:
+    -------------------------------------
+    nvpm_ei_m: EmissionsProfileInterpolator
+         non-volatile PM mass emissions index profile (mg/kg) vs.
+         non-dimensionalized thrust setting (t4_t2)
+    nvpm_ei_n: EmissionsProfileInterpolator
+        non-volatile PM number emissions index profile (1/kg) vs.
+        non-dimensionalized thrust setting (t4_t2)
+    """
+
+    # Engine identification and type
+    manufacturer: str
+    engine_name: str
+    combustor: str
+
+    # Engine characteristics
+    pressure_ratio: float
+    temp_min: float
+    temp_max: float
+    fuel_heat: float
+
+    # Fuel consumption
+    ff_7: float
+    ff_30: float
+    ff_85: float
+    ff_100: float
+
+    # Emissions
+    nvpm_ei_m_7: float
+    nvpm_ei_m_30: float
+    nvpm_ei_m_85: float
+    nvpm_ei_m_100: float
+
+    nvpm_ei_n_7: float
+    nvpm_ei_n_30: float
+    nvpm_ei_n_85: float
+    nvpm_ei_n_100: float
+
+    @property
+    def nvpm_ei_m(self) -> EmissionsProfileInterpolator:
+        """Get the nvPM emissions index mass profile."""
+        return nvpm_emissions_profiles_t4_t2(
+            pressure_ratio=self.pressure_ratio,
+            combustor=self.combustor,
+            temp_min=self.temp_min,
+            temp_max=self.temp_max,
+            fuel_heat=self.fuel_heat,
+            ff_7=self.ff_7,
+            ff_30=self.ff_30,
+            ff_85=self.ff_85,
+            ff_100=self.ff_100,
+            nvpm_ei_m_7=self.nvpm_ei_m_7,
+            nvpm_ei_m_30=self.nvpm_ei_m_30,
+            nvpm_ei_m_85=self.nvpm_ei_m_85,
+            nvpm_ei_m_100=self.nvpm_ei_m_100,
+            nvpm_ei_n_7=self.nvpm_ei_n_7,
+            nvpm_ei_n_30=self.nvpm_ei_n_30,
+            nvpm_ei_n_85=self.nvpm_ei_n_85,
+            nvpm_ei_n_100=self.nvpm_ei_n_100,
+        )[0]
+
+    @property
+    def nvpm_ei_n(self) -> EmissionsProfileInterpolator:
+        """Get the nvPM emissions index number profile."""
+        return nvpm_emissions_profiles_t4_t2(
+            pressure_ratio=self.pressure_ratio,
+            combustor=self.combustor,
+            temp_min=self.temp_min,
+            temp_max=self.temp_max,
+            fuel_heat=self.fuel_heat,
+            ff_7=self.ff_7,
+            ff_30=self.ff_30,
+            ff_85=self.ff_85,
+            ff_100=self.ff_100,
+            nvpm_ei_m_7=self.nvpm_ei_m_7,
+            nvpm_ei_m_30=self.nvpm_ei_m_30,
+            nvpm_ei_m_85=self.nvpm_ei_m_85,
+            nvpm_ei_m_100=self.nvpm_ei_m_100,
+            nvpm_ei_n_7=self.nvpm_ei_n_7,
+            nvpm_ei_n_30=self.nvpm_ei_n_30,
+            nvpm_ei_n_85=self.nvpm_ei_n_85,
+            nvpm_ei_n_100=self.nvpm_ei_n_100,
+        )[1]
+
+    @property
+    # TODO: These should be moved away from emissions.py
+    def nvpm_ei_m_meem(self) -> EmissionsProfileInterpolator:
+        """Get the nvPM emissions index mass profile."""
+        return nvpm_emissions_profiles_meem(
+            ff_7=self.ff_7,
+            ff_30=self.ff_30,
+            ff_85=self.ff_85,
+            ff_100=self.ff_100,
+            nvpm_ei_m_7=self.nvpm_ei_m_7,
+            nvpm_ei_m_30=self.nvpm_ei_m_30,
+            nvpm_ei_m_85=self.nvpm_ei_m_85,
+            nvpm_ei_m_100=self.nvpm_ei_m_100,
+            nvpm_ei_n_7=self.nvpm_ei_n_7,
+            nvpm_ei_n_30=self.nvpm_ei_n_30,
+            nvpm_ei_n_85=self.nvpm_ei_n_85,
+            nvpm_ei_n_100=self.nvpm_ei_n_100,
+        )[0]
+
+    @property
+    def nvpm_ei_n_meem(self) -> EmissionsProfileInterpolator:
+        """Get the nvPM emissions index number profile."""
+        return nvpm_emissions_profiles_meem(
+            ff_7=self.ff_7,
+            ff_30=self.ff_30,
+            ff_85=self.ff_85,
+            ff_100=self.ff_100,
+            nvpm_ei_m_7=self.nvpm_ei_m_7,
+            nvpm_ei_m_30=self.nvpm_ei_m_30,
+            nvpm_ei_m_85=self.nvpm_ei_m_85,
+            nvpm_ei_m_100=self.nvpm_ei_m_100,
+            nvpm_ei_n_7=self.nvpm_ei_n_7,
+            nvpm_ei_n_30=self.nvpm_ei_n_30,
+            nvpm_ei_n_85=self.nvpm_ei_n_85,
+            nvpm_ei_n_100=self.nvpm_ei_n_100,
+        )[1]
 
 
 # ---------------------------------
@@ -51,7 +199,7 @@ def nvpm_emissions_profiles_t4_t2(
     temp_max : float
         Maximum temperature, provided by the ICAO EDB column `Ambient Temp Max (K)`, [:math:`K`]
     q_fuel : float
-        Lower calorific value (LCV) of fuel, :math:`[MJ \ kg_{fuel}^{-1}]`
+        Lower calorific value (LCV) of fuel, :math:`[MJ kg_{fuel}^{-1}]`
     ff_7: float
         ICAO EDB fuel mass flow rate at idle conditions (7% power), [:math:`kg s^{-1}`]
     ff_30: float
@@ -115,6 +263,64 @@ def nvpm_emissions_profiles_t4_t2(
     nvpm_ei_m_interp = EmissionsProfileInterpolator(t4_t2, nvpm_ei_m)
     nvpm_ei_n_interp = EmissionsProfileInterpolator(t4_t2, nvpm_ei_n)
     return nvpm_ei_m_interp, nvpm_ei_n_interp
+
+
+def estimate_nvpm_t4_t2(
+    edb_nvpm: EDBnvpm,
+    true_airspeed: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating],
+    air_pressure: npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+    q_fuel: float,
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    r"""Calculate nvPM mass and number emissions index using the T4/T2 methodology.
+
+    Interpolate the non-volatile particulate matter (nvPM) mass and number emissions index from
+    the emissions profile of a given engine type that is provided by the ICAO EDB.
+
+    The non-dimensional thrust setting (t4_t2) is clipped to the minimum and maximum t4_t2 values
+    that is estimated from the four ICAO EDB datapoints to prevent extrapolating the nvPM values.
+
+    Parameters
+    ----------
+    edb_nvpm : EDBnvpm
+        EDB nvPM data
+    true_airspeed: npt.NDArray[np.floating]
+        true airspeed for each waypoint, [:math:`m s^{-1}`]
+    fuel_flow_per_engine: npt.NDArray[np.floating]
+        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
+    air_temperature: npt.NDArray[np.floating]
+        ambient temperature for each waypoint, [:math:`K`]
+    air_pressure: npt.NDArray[np.floating]
+        pressure altitude at each waypoint, [:math:`Pa`]
+    thrust_setting : npt.NDArray[np.floating]
+        thrust setting
+    q_fuel : float
+        Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
+
+    Returns
+    -------
+    nvpm_ei_m : npt.NDArray[np.floating]
+        Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
+    nvpm_ei_n : npt.NDArray[np.floating]
+        Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
+    """
+    # Non-dimensionalized thrust setting
+    t4_t2 = jet.thrust_setting_nd(
+        true_airspeed,
+        thrust_setting,
+        air_temperature,
+        air_pressure,
+        edb_nvpm.pressure_ratio,
+        q_fuel,
+        cruise=True,
+    )
+
+    # Interpolate nvPM EI_m and EI_n
+    nvpm_ei_m = edb_nvpm.nvpm_ei_m.interp(t4_t2)
+    nvpm_ei_m = nvpm_ei_m * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
+    nvpm_ei_n = edb_nvpm.nvpm_ei_n.interp(t4_t2)
+    return nvpm_ei_m, nvpm_ei_n
 
 
 # ---------------------
