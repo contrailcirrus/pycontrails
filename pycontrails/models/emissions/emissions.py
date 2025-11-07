@@ -22,7 +22,7 @@ from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.models.emissions import black_carbon, ffm2
+from pycontrails.models.emissions import nvpm, gaseous
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, jet, units
 
@@ -1153,7 +1153,7 @@ class EDBnvpm:
     @property
     def nvpm_ei_m(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index mass profile."""
-        return _nvpm_emissions_profiles(
+        return nvpm.nvpm_emissions_profiles_t4_t2(
             pressure_ratio=self.pressure_ratio,
             combustor=self.combustor,
             temp_min=self.temp_min,
@@ -1176,7 +1176,7 @@ class EDBnvpm:
     @property
     def nvpm_ei_n(self) -> EmissionsProfileInterpolator:
         """Get the nvPM emissions index number profile."""
-        return _nvpm_emissions_profiles(
+        return nvpm.nvpm_emissions_profiles_t4_t2(
             pressure_ratio=self.pressure_ratio,
             combustor=self.combustor,
             temp_min=self.temp_min,
@@ -1232,61 +1232,6 @@ class EDBnvpm:
             nvpm_ei_n_85=self.nvpm_ei_n_85,
             nvpm_ei_n_100=self.nvpm_ei_n_100,
         )[1]
-
-
-@functools.cache
-def _nvpm_emissions_profiles(
-    pressure_ratio: float,
-    combustor: str,
-    temp_min: float,
-    temp_max: float,
-    fuel_heat: float,
-    ff_7: float,
-    ff_30: float,
-    ff_85: float,
-    ff_100: float,
-    nvpm_ei_m_7: float,
-    nvpm_ei_m_30: float,
-    nvpm_ei_m_85: float,
-    nvpm_ei_m_100: float,
-    nvpm_ei_n_7: float,
-    nvpm_ei_n_30: float,
-    nvpm_ei_n_85: float,
-    nvpm_ei_n_100: float,
-) -> tuple[EmissionsProfileInterpolator, EmissionsProfileInterpolator]:
-    # Extract fuel flow
-    fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100])
-    fuel_flow_max = fuel_flow[-1]
-
-    # Extract nvPM emissions arrays
-    nvpm_ei_m = np.array([nvpm_ei_m_7, nvpm_ei_m_30, nvpm_ei_m_85, nvpm_ei_m_100])
-    nvpm_ei_n = np.array([nvpm_ei_n_7, nvpm_ei_n_30, nvpm_ei_n_85, nvpm_ei_n_100])
-
-    is_staged_combustor = combustor in ("DAC", "TAPS", "TAPS II")
-    if is_staged_combustor:
-        # In this case, all of our interpolators will have size 5
-        fuel_flow = np.insert(fuel_flow, 2, (fuel_flow[1] * 1.001))
-        nvpm_ei_n_lean_burn = np.mean(nvpm_ei_n[2:])
-        nvpm_ei_n = np.r_[nvpm_ei_n[:2], [nvpm_ei_n_lean_burn] * 3]
-        nvpm_ei_m_lean_burn = np.mean(nvpm_ei_m[2:])
-        nvpm_ei_m = np.r_[nvpm_ei_m[:2], [nvpm_ei_m_lean_burn] * 3]
-
-    thrust_setting = fuel_flow / fuel_flow_max
-    avg_temp = (temp_min + temp_max) / 2.0
-
-    t4_t2 = jet.thrust_setting_nd(
-        true_airspeed=0.0,
-        thrust_setting=thrust_setting,
-        T=avg_temp,
-        p=constants.p_surface,
-        pressure_ratio=pressure_ratio,
-        q_fuel=fuel_heat * 1e6,
-        cruise=False,
-    )
-
-    nvpm_ei_m_interp = EmissionsProfileInterpolator(t4_t2, nvpm_ei_m)
-    nvpm_ei_n_interp = EmissionsProfileInterpolator(t4_t2, nvpm_ei_n)
-    return nvpm_ei_m_interp, nvpm_ei_n_interp
 
 
 @functools.cache
