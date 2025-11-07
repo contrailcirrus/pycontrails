@@ -9,6 +9,7 @@
 ### Internals
 
 - Open the backdoor to running `Cocip` with a fuel-varying `Fleet`. This is not officially supported and requires some undocumented monkey-patching.
+- Specify `join="outer"` and `compat="no_conflicts"` when opening multiple netCDF files in `metsource.open_mfdataset` to avoid xarray `FutureWarning`.
 
 ## 0.59.0
 
