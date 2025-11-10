@@ -470,6 +470,65 @@ class Emissions(Model):
             q_fuel=fuel.q_fuel,
         )
 
+    def _nvpm_emission_indices_sac(
+        self, edb_gaseous: gaseous.EDBGaseous, fuel: Fuel
+    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+        """Calculate EIs for nvPM mass and number assuming the profile of single annular combustors.
+
+        nvPM EI_m is calculated using the FOX and ImFOX methods, while the nvPM EI_n
+        is calculated using the Fractal Aggregates (FA) model.
+
+        Parameters
+        ----------
+        edb_gaseous : EDBGaseous
+            EDB gaseous data
+        fuel : Fuel
+            Fuel type.
+
+        Returns
+        -------
+        nvpm_data_source : str
+            Source of nvpm data.
+        nvpm_ei_m : npt.NDArray[np.floating]
+            Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
+        nvpm_ei_n : npt.NDArray[np.floating]
+            Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
+
+        References
+        ----------
+        - :cite:`stettlerGlobalCivilAviation2013`
+        - :cite:`abrahamsonPredictiveModelDevelopment2016`
+        - :cite:`teohTargetedUseSustainable2022`
+        """
+        nvpm_data_source = "FA Model"
+
+        # calculate properties
+        thrust_setting = self.source["thrust_setting"]
+        fuel_flow_per_engine = self.source.get_data_or_attr("fuel_flow_per_engine")
+        true_airspeed = self.source.get_data_or_attr("true_airspeed")
+        air_temperature = self.source["air_temperature"]
+
+        # Emissions indices
+        nvpm_ei_m = nvpm_mass_emissions_index_sac(
+            edb_gaseous,
+            air_pressure=self.source.air_pressure,
+            true_airspeed=true_airspeed,
+            air_temperature=air_temperature,
+            thrust_setting=thrust_setting,
+            fuel_flow_per_engine=fuel_flow_per_engine,
+            hydrogen_content=fuel.hydrogen_content,
+        )
+        nvpm_gmd = nvpm_geometric_mean_diameter_sac(
+            edb_gaseous,
+            air_pressure=self.source.air_pressure,
+            true_airspeed=true_airspeed,
+            air_temperature=air_temperature,
+            thrust_setting=thrust_setting,
+            q_fuel=fuel.q_fuel,
+        )
+        nvpm_ei_n = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
+        return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
+    
     def _nvpm_emission_indices_meem(
         self, edb_nvpm: nvpm.EDBnvpm, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
@@ -631,65 +690,6 @@ class Emissions(Model):
             ff_7=edb_gaseous.ff_7,
             ff_100=edb_gaseous.ff_100,
         )
-
-    def _nvpm_emission_indices_sac(
-        self, edb_gaseous: gaseous.EDBGaseous, fuel: Fuel
-    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-        """Calculate EIs for nvPM mass and number assuming the profile of single annular combustors.
-
-        nvPM EI_m is calculated using the FOX and ImFOX methods, while the nvPM EI_n
-        is calculated using the Fractal Aggregates (FA) model.
-
-        Parameters
-        ----------
-        edb_gaseous : EDBGaseous
-            EDB gaseous data
-        fuel : Fuel
-            Fuel type.
-
-        Returns
-        -------
-        nvpm_data_source : str
-            Source of nvpm data.
-        nvpm_ei_m : npt.NDArray[np.floating]
-            Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
-        nvpm_ei_n : npt.NDArray[np.floating]
-            Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
-
-        References
-        ----------
-        - :cite:`stettlerGlobalCivilAviation2013`
-        - :cite:`abrahamsonPredictiveModelDevelopment2016`
-        - :cite:`teohTargetedUseSustainable2022`
-        """
-        nvpm_data_source = "FA Model"
-
-        # calculate properties
-        thrust_setting = self.source["thrust_setting"]
-        fuel_flow_per_engine = self.source.get_data_or_attr("fuel_flow_per_engine")
-        true_airspeed = self.source.get_data_or_attr("true_airspeed")
-        air_temperature = self.source["air_temperature"]
-
-        # Emissions indices
-        nvpm_ei_m = nvpm_mass_emissions_index_sac(
-            edb_gaseous,
-            air_pressure=self.source.air_pressure,
-            true_airspeed=true_airspeed,
-            air_temperature=air_temperature,
-            thrust_setting=thrust_setting,
-            fuel_flow_per_engine=fuel_flow_per_engine,
-            hydrogen_content=fuel.hydrogen_content,
-        )
-        nvpm_gmd = nvpm_geometric_mean_diameter_sac(
-            edb_gaseous,
-            air_pressure=self.source.air_pressure,
-            true_airspeed=true_airspeed,
-            air_temperature=air_temperature,
-            thrust_setting=thrust_setting,
-            q_fuel=fuel.q_fuel,
-        )
-        nvpm_ei_n = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
-        return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
 
     def _nvpm_emission_indices_constant(
         self,
