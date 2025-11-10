@@ -300,6 +300,7 @@ def estimate_nvpm_t4_t2(
 # ---------------------
 
 def nvpm_mass_emission_profiles_meem(
+    combustor: str,
     hydrogen_content: float,
     ff_7: float,
     ff_30: float,
@@ -319,6 +320,8 @@ def nvpm_mass_emission_profiles_meem(
 
     Parameters
     ----------
+    combustor : str
+        Engine combustor type provided by the ICAO EDB column `Combustor Description`.
     hydrogen_content : float
         The percentage of hydrogen mass content in the fuel.
     ff_7: float
@@ -356,7 +359,6 @@ def nvpm_mass_emission_profiles_meem(
     # TODO: Add to bibliography
     - (Ahrens et al., 2025) https://doi.org/10.4271/2025-01-6000
     """
-    # TODO: How to deal with lean-burn combustors?
     fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
     thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
 
@@ -367,8 +369,17 @@ def nvpm_mass_emission_profiles_meem(
     # nvPM mass emissions profile
     nvpm_ei_m = np.array([nvpm_ei_m_7, nvpm_ei_m_30, nvpm_ei_m_85, nvpm_ei_m_100], dtype=float)
 
+    # Deal with lean-burn combustors the same way as T4/T2 methodology
+    # Temporary solution as no details are provided in paper. Awaiting authors recommendation.
+    is_staged_combustor = combustor in ("DAC", "TAPS", "TAPS II")
+    if is_staged_combustor:
+        fuel_flow = np.insert(fuel_flow, 2, (fuel_flow[1] * 1.001))
+        thrust_setting = np.insert(thrust_setting, 2, (thrust_setting[1] * 1.001))
+        nvpm_ei_m_lean_burn = np.mean(nvpm_ei_m[2:])
+        nvpm_ei_m = np.r_[nvpm_ei_m[:2], [nvpm_ei_m_lean_burn] * 3]
+
     # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
-    if fifth_data_point_mass:
+    elif fifth_data_point_mass:
         # Calculate fuel flow (5th point)
         ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
         fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
@@ -393,6 +404,7 @@ def nvpm_mass_emission_profiles_meem(
 
 
 def nvpm_number_emission_profiles_meem(
+    combustor: str,
     hydrogen_content: float,
     ff_7: float,
     ff_30: float,
@@ -412,6 +424,8 @@ def nvpm_number_emission_profiles_meem(
 
     Parameters
     ----------
+    combustor : str
+        Engine combustor type provided by the ICAO EDB column `Combustor Description`.
     hydrogen_content : float
         The percentage of hydrogen mass content in the fuel.
     ff_7: float
@@ -449,7 +463,6 @@ def nvpm_number_emission_profiles_meem(
     # TODO: Add to bibliography
     - (Ahrens et al., 2025) https://doi.org/10.4271/2025-01-6000
     """
-    # TODO: How to deal with lean-burn combustors?
     fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
     thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
 
@@ -460,8 +473,17 @@ def nvpm_number_emission_profiles_meem(
     # nvPM number emissions profile
     nvpm_ei_n = np.array([nvpm_ei_n_7, nvpm_ei_n_30, nvpm_ei_n_85, nvpm_ei_n_100], dtype=float)
 
+    # Deal with lean-burn combustors the same way as T4/T2 methodology
+    # Temporary solution as no details are provided in paper. Awaiting authors recommendation.
+    is_staged_combustor = combustor in ("DAC", "TAPS", "TAPS II")
+    if is_staged_combustor:
+        fuel_flow = np.insert(fuel_flow, 2, (fuel_flow[1] * 1.001))
+        thrust_setting = np.insert(thrust_setting, 2, (thrust_setting[1] * 1.001))
+        nvpm_ei_m_lean_burn = np.mean(nvpm_ei_n[2:])
+        nvpm_ei_m = np.r_[nvpm_ei_n[:2], [nvpm_ei_m_lean_burn] * 3]
+
     # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
-    if fifth_data_point_number:
+    elif fifth_data_point_number:
         # Calculate fuel flow (5th point)
         ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
         fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
