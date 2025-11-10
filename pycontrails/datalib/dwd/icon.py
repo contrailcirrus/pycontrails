@@ -24,6 +24,7 @@ import math
 import sys
 import threading
 import warnings
+from collections.abc import Hashable
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -41,7 +42,7 @@ import xarray as xr
 from scipy.spatial import KDTree
 
 import pycontrails
-from pycontrails.core import MetDataset, MetVariable, cache, met_var
+from pycontrails.core import MetDataset, MetVariable, cache, met, met_var
 from pycontrails.datalib import met_utils
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.dwd import ods
@@ -63,6 +64,28 @@ SINGLE_LEVEL_VARIABLES: list[MetVariable] = [
     met_var.TOAOutgoingLongwaveFlux,
     met_var.TOANetDownwardShortwaveFlux,
 ]
+
+_met_var_to_ods_mapping = {
+    met_var.AirTemperature: "t",
+    met_var.SpecificHumidity: "qv",
+    met_var.NorthwardWind: "u",
+    met_var.EastwardWind: "v",
+    met_var.GeometricVerticalVelocity: "w",
+    met_var.MassFractionOfCloudIceInAir: "qi",
+    met_var.TOAOutgoingLongwaveFlux: "athb_t",
+    met_var.TOANetDownwardShortwaveFlux: "asob_t",
+}
+
+_icon_to_met_var: dict[Hashable, MetVariable] = {
+    "t": met_var.AirTemperature,
+    "qv": met_var.SpecificHumidity,
+    "u": met_var.NorthwardWind,
+    "v": met_var.EastwardWind,
+    "wz": met_var.GeometricVerticalVelocity,
+    "QI": met_var.MassFractionOfCloudIceInAir,
+    "avg_tnlwrf": met_var.TOAOutgoingLongwaveFlux,
+    "avg_tnswrf": met_var.TOANetDownwardShortwaveFlux,
+}
 
 
 def flight_level_pressure(fl_min: int = 200, fl_max: int = 500) -> list[int]:
@@ -477,7 +500,8 @@ class ICON(metsource.MetDataSource):
         )
 
         name = hashlib.md5(string.encode()).hexdigest()
-        cache_path = f"icon-{name}.nc"
+        ltype = "sl" if self.is_single_level else "pl"
+        cache_path = f"icon-{ltype}-{name}.nc"
 
         return self.cachestore.path(cache_path)
 
@@ -511,7 +535,7 @@ class ICON(metsource.MetDataSource):
         disk_cachepaths = [self.cachestore.get(f) for f in self._cachepaths]
         ds = self.open_dataset(disk_cachepaths, **xr_kwargs)
 
-        mds = MetDataset(ds, **kwargs)
+        mds = self._process_dataset(ds, **kwargs)
         self.set_metadata(mds)
         return mds
 
@@ -529,11 +553,38 @@ class ICON(metsource.MetDataSource):
 
         ds.attrs.update(provider="DWD", dataset=dataset, product="forecast")
 
+    def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> MetDataset:
+        """Process the :class:`xr.Dataset` opened from cached files.
+
+        Parameters
+        ----------
+        ds : xr.Dataset
+            Dataset loaded from netcdf cache files.
+        **kwargs : Any
+            Keyword arguments passed through directly into :class:`MetDataset` constructor.
+
+        Returns
+        -------
+        MetDataset
+
+        """
+        # radiative fluxes are averaged over hour ending at time coordinate
+        if self.is_single_level:
+            shift_radiation_time = np.timedelta64(30, "m")
+            ds = ds.assign_coords(time=ds["time"] - shift_radiation_time)
+            ds = ds.sel(time=slice(self.forecast_time, None))
+            ds["time"].attrs["shift_radiative_time"] = str(shift_radiation_time)
+
+        ds = met.standardize_variables(ds, self.variables)
+
+        kwargs.setdefault("cachestore", self.cachestore)
+        return MetDataset(ds, **kwargs)
+
     def _rpaths(self, time: datetime) -> list[str]:
         """Get list of remote and local paths for download."""
         step = self.get_forecast_step(time)
 
-        variables = [_ods_name(v.short_name) for v in self.variables]
+        variables = [_met_var_to_ods_mapping[v] for v in self.variables]
         if not self.is_single_level:
             variables += "p"
 
@@ -607,32 +658,21 @@ class ICON(metsource.MetDataSource):
                 backend_kwargs={"indexpath": ""},
             )
 
+            ds = _rename(ds)
+
             if self.domain == "global":
                 if self.grid is None:
                     msg = "Grid resolution must be set before remapping."
                     raise ValueError(msg)
                 ds = _global_icosahedral_to_regular_lat_lon(ds, self._global_kdtree, self.grid)
 
-            if not self.is_single_level:
+            if self.is_single_level:
+                ds = ds.expand_dims(level=self.pressure_levels)
+            else:
                 ds = _ml_to_pl(ds, target_pl=self.pressure_levels)
 
             ds.attrs["pycontrails_version"] = pycontrails.__version__
             self.cache_dataset(ds)
-
-
-def _ods_name(short_name: str) -> str:
-    """Get name of required variable from DWD Open Data Server."""
-    if short_name == "wz":
-        return "w"
-    if short_name == "q":
-        return "qv"
-    if short_name == "cli":
-        return "qi"
-    if short_name == "rlut":
-        return "athb_t"
-    if short_name == "rst":
-        return "asob_t"
-    return short_name
 
 
 def _preprocess_grib(ds: xr.Dataset) -> xr.Dataset:
@@ -650,10 +690,20 @@ def _preprocess_grib(ds: xr.Dataset) -> xr.Dataset:
     return ds.reset_coords(drop=True)
 
 
+def _rename(ds: xr.Dataset) -> xr.Dataset:
+    """Update variable names to standard short names."""
+
+    name_dict = {
+        var: _icon_to_met_var[var].short_name for var in ds.data_vars if var in _icon_to_met_var
+    }
+    return ds.rename(name_dict)
+
+
 def _ll_to_cartesian(
     longitude: npt.NDArray[np.floating], latitude: npt.NDArray[np.floating]
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Convert from longitude/latitude to cartesian coordinates in unit cube."""
+
     phi = np.deg2rad(latitude)
     theta = np.deg2rad(longitude)
     x = np.cos(phi) * np.cos(theta)
@@ -669,6 +719,7 @@ def _remap_on_chunk(
     target_lat: npt.NDArray[np.floating],
 ) -> xr.Dataset:
     """Remap using nearest-neighbor interpolation with precomputed indices."""
+
     if any(da_chunk.dims[-1] != "values" for da_chunk in ds_chunk.values()):
         msg = "The last dimension of all variables in the dataset must be 'values'"
         raise ValueError(msg)
@@ -693,6 +744,7 @@ def _build_remap_template(
     ds: xr.Dataset, target_lon: npt.NDArray[np.floating], target_lat: npt.NDArray[np.floating]
 ) -> xr.Dataset:
     """Build template dataset for output from horizontal remapping."""
+
     coords = {k: ds.coords[k] for k in ds.dims if k != "values"} | {
         "latitude": target_lat,
         "longitude": target_lon,
@@ -751,5 +803,6 @@ def _global_icosahedral_to_regular_lat_lon(
 
 def _ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike) -> xr.Dataset:
     """Interpolate from model levels to pressure levels."""
+
     ds = ds.rename(pres="pressure_level").chunk(model_level=-1)
     return met_utils.ml_to_pl(ds, target_pl)
