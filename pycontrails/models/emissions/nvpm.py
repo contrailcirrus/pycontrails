@@ -542,10 +542,10 @@ def estimate_nvpm_meem(
     ----------
     nvpm_ei_m_profile : EmissionsProfileInterpolator
         MEEM2-derived nvPM mass emissions index versus the fuel flow for the selected engine
-        (See :func:`nvpm_mass_emission_profiles_meem`)
+        See :func:`nvpm_mass_emission_profiles_meem`.
     nvpm_ei_n_profile : EmissionsProfileInterpolator
         MEEM2-derived nvPM number emissions index versus the fuel flow for the engine
-        (See :func:`nvpm_number_emission_profiles_meem`)
+        See :func:`nvpm_number_emission_profiles_meem`.
     fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
     true_airspeed: npt.NDArray[np.floating]
@@ -597,9 +597,9 @@ def estimate_nvpm_meem(
 # TODO: Finally, update emissions.py to reflect the different options available
 # TODO: Check naming of other functions in this script
 # TODO: Main function converts SN to mass and number (Generate this similar to nvPM emissions profile from MEEM and T4/T2)
+# TODO: Deal with lean-burn?
 
 
-# TODO: Check units
 def estimate_nvpm_number_ei_scope11(
     nvpm_ei_m_e: npt.NDArray[np.floating],
     sn: npt.NDArray[np.floating],
@@ -607,12 +607,44 @@ def estimate_nvpm_number_ei_scope11(
     air_pressure: npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
     afr: npt.NDArray[np.floating],
+    q_fuel: float,
     bypass_ratio: float,
     pressure_ratio: float,
-    q_fuel: float,
     comp_efficiency: float = 0.9,
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
+    """
+    Estimate nvPM number emissions index at the four ICAO certification test points using SCOPE11.
+
+    Parameters
+    ----------
+    nvpm_ei_m_e : npt.NDArray[np.floating]
+        nvPM mass emissions index at the engine exit, [:math:`\mu g \ kg_{fuel}^{-1}`]
+        See :func:`estimate_nvpm_mass_ei_scope11`
+    sn : npt.NDArray[np.floating]
+        Smoke number, unitless
+    air_temperature: npt.NDArray[np.floating]
+        Ambient temperature for each waypoint, [:math:`K`]
+    air_pressure: npt.NDArray[np.floating]
+        Pressure altitude at each waypoint, [:math:`Pa`]
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+    afr : npt.NDArray[np.floating]
+        Air-to-fuel ratio, unitless
+        (106 at idle, 83 at approach, 51 at climb-out, and 45 at take-off)
+    q_fuel : float
+        Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
+    bypass_ratio : float
+        Engine bypass ratio from the ICAO EDB
+    pressure_ratio : float
+        Engine pressure ratio from the ICAO EDB
+    comp_efficiency : float
+        Engine compressor efficiency, assumed to be 0.9
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM number emissions index, [:math:`kg_{fuel}^{-1}`]
+    """
     c_bc_i = nvpm_mass_concentration_instrument_sampling_point(sn)
     k_slm = nvpm_mass_system_loss_correction_factor(c_bc_i, bypass_ratio)
     c_bc_e = nvpm_mass_concentration_engine_exit(c_bc_i, k_slm)
@@ -622,13 +654,13 @@ def estimate_nvpm_number_ei_scope11(
         air_pressure,
         thrust_setting,
         afr,
+        q_fuel,
         bypass_ratio,
         pressure_ratio,
-        q_fuel,
         comp_efficiency,
     )
-
-    nvpm_gmd = geometric_mean_diameter_scope11(c_bc_c)
+    nvpm_gmd = geometric_mean_diameter_scope11(c_bc_c) * 1e-9  # nm to m
+    nvpm_ei_m_e *= 1e-6  # micro-g to kg
     return nvpm_ei_m_e / ((np.pi / 6) * 1000.0 * (nvpm_gmd ** 3) * np.exp(4.5 * (np.log(1.8) ** 2)))
 
 
@@ -637,7 +669,29 @@ def estimate_nvpm_mass_ei_scope11(
     afr: npt.NDArray[np.floating],
     bypass_ratio: float,
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
+    """
+    Estimate nvPM mass emissions index at the four ICAO certification test points using SCOPE11.
+
+    Parameters
+    ----------
+    sn : npt.NDArray[np.floating]
+        Smoke number, unitless
+    afr : npt.NDArray[np.floating]
+        Air-to-fuel ratio, unitless
+        (106 at idle, 83 at approach, 51 at climb-out, and 45 at take-off)
+    bypass_ratio : float
+        Engine bypass ratio from the ICAO EDB
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM mass emissions index at the engine exit, [:math:`\mu g \ kg_{fuel}^{-1}`]
+
+    References
+    ----------
+    # TODO: Add to bibliography
+    - (Agarwal et al., 2019) https://doi.org/10.1021/acs.est.8b04060
+    """
     c_bc_i = nvpm_mass_concentration_instrument_sampling_point(sn)
     q_mixed = exhaust_gas_volume_per_kg_fuel(afr, bypass_ratio=bypass_ratio)
     nvpm_ei_m_i = convert_nvpm_mass_concentration_to_ei(c_bc_i, q_mixed)
@@ -648,7 +702,19 @@ def estimate_nvpm_mass_ei_scope11(
 def nvpm_mass_concentration_instrument_sampling_point(
     sn: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
+    r"""
+    Estimate nvPM mass concentration at the instrument sampling point.
+
+    Parameters
+    ----------
+    sn : npt.NDArray[np.floating]
+        Smoke number, unitless
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}]
+    """
     return (648.4 * np.exp(0.0766 * sn)) / (1 + np.exp(-1.098 * (sn - 3.064)))
 
 
@@ -656,7 +722,22 @@ def nvpm_mass_system_loss_correction_factor(
     c_bc_i: npt.NDArray[np.floating],
     bypass_ratio: float
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
+    r"""
+    Estimate nvPM mass concentration/EI system loss correction factors.
+
+    Parameters
+    ----------
+    c_bc_i : npt.NDArray[np.floating]
+        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}]
+        See :func:`nvpm_mass_concentration_instrument_sampling_point`
+    bypass_ratio : float
+        Engine bypass ratio from the ICAO EDB
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM mass concentration/EI system loss correction factor.
+    """
     numer = 3.219 * c_bc_i * (1 + bypass_ratio) + 312.5
     denom = c_bc_i * (1 + bypass_ratio) + 42.6
     return np.log(numer / denom)
@@ -666,15 +747,24 @@ def nvpm_mass_concentration_engine_exit(
     c_bc_i: npt.NDArray[np.floating],
     k_slm: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
+    r"""
+    Estimate nvPM mass concentration at the engine exit.
+
+    Parameters
+    ----------
+    c_bc_i : npt.NDArray[np.floating]
+        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}]
+        See :func:`nvpm_mass_concentration_instrument_sampling_point`
+    k_slm : npt.NDArray[np.floating]
+        nvPM mass concentration/EI system loss correction factor
+        See :func:`nvpm_mass_system_loss_correction_factor`
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM mass concentration at the engine exit, [:math:`\mu g m^{-3}]
+    """
     return c_bc_i * k_slm
-
-
-def geometric_mean_diameter_scope11(
-    c_bc_c: npt.NDArray[np.floating]
-) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
-    return 5.08 * c_bc_c ** 0.185
 
 
 def nvpm_mass_concentration_combustor_exit(
@@ -683,12 +773,41 @@ def nvpm_mass_concentration_combustor_exit(
     air_pressure: npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
     afr: npt.NDArray[np.floating],
+    q_fuel: float,
     bypass_ratio: float,
     pressure_ratio: float,
-    q_fuel: float,
     comp_efficiency: float = 0.9,
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
+    r"""
+    Estimate nvPM mass concentration at the combustor exit.
+
+    Parameters
+    ----------
+    c_bc_e : npt.NDArray[np.floating]
+        nvPM mass concentration at the engine exit plane, [:math:`\mu g m^{-3}]
+        See :func:`nvpm_mass_concentration_engine_exit`
+    air_temperature: npt.NDArray[np.floating]
+        Ambient temperature for each waypoint, [:math:`K`]
+    air_pressure: npt.NDArray[np.floating]
+        Pressure altitude at each waypoint, [:math:`Pa`]
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+    afr : npt.NDArray[np.floating]
+        Air-to-fuel ratio, unitless
+    q_fuel : float
+        Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
+    bypass_ratio : float
+        Engine bypass ratio from the ICAO EDB
+    pressure_ratio : float
+        Engine pressure ratio from the ICAO EDB
+    comp_efficiency : float
+        Engine compressor efficiency, assumed to be 0.9
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM mass concentration at the combustor exit, [:math:`\mu g m^{-3}]
+    """
     rho_air_4 = air_density_combustor_exit(
         air_temperature,
         air_pressure,
@@ -701,6 +820,26 @@ def nvpm_mass_concentration_combustor_exit(
     return c_bc_e * (1 + bypass_ratio) * (rho_air_4 / constants.rho_msl)
 
 
+def geometric_mean_diameter_scope11(
+    c_bc_c: npt.NDArray[np.floating]
+) -> npt.NDArray[np.floating]:
+    r"""
+    Estimate nvPM geometric mean diameter for SCOPE11 applications.
+
+    Parameters
+    ----------
+    c_bc_c : npt.NDArray[np.floating]
+        nvPM mass concentration at the combustor exit, [:math:`\mu g m^{-3}]
+        See :func:`nvpm_mass_concentration_combustor_exit`
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM geometric mean diameter, [:math:`nm`]
+    """
+    return 5.08 * c_bc_c ** 0.185
+
+
 def air_density_combustor_exit(
     air_temperature: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
@@ -710,7 +849,31 @@ def air_density_combustor_exit(
     pressure_ratio: float,
     comp_efficiency: float = 0.9,
 ) -> npt.NDArray[np.floating]:
-    # TODO: Documentation
+    r"""
+    Estimate air density at the combustor exit.
+
+    Parameters
+    ----------
+    air_temperature : npt.NDArray[np.floating]
+        Ambient temperature for each waypoint, [:math:`K`]
+    air_pressure : npt.NDArray[np.floating]
+        Pressure altitude at each waypoint, [:math:`Pa`]
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+    afr : npt.NDArray[np.floating]
+        Air-to-fuel ratio, unitless
+    q_fuel : float
+        Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
+    pressure_ratio : float
+        Engine pressure ratio from the ICAO EDB
+    comp_efficiency : float
+        Engine compressor efficiency, assumed to be 0.9
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Air density at the combustor exit, [:math:`kg \ m^{3}`]
+    """
     p_combustor_inlet = jet.combustor_inlet_pressure(pressure_ratio, air_pressure, thrust_setting)
     T_combustor_inlet = jet.combustor_inlet_temperature(
         comp_efficiency, air_temperature, air_pressure, p_combustor_inlet
