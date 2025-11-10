@@ -562,6 +562,7 @@ class Emissions(Model):
 
         # Get MEEM nvPM emissions profile
         nvpm_ei_m_profile = nvpm.nvpm_mass_emission_profiles_meem(
+            combustor=edb_nvpm.combustor,
             hydrogen_content=fuel.hydrogen_content,
             ff_7=edb_nvpm.ff_7,
             ff_30=edb_nvpm.ff_30,
@@ -578,6 +579,7 @@ class Emissions(Model):
         )
 
         nvpm_ei_n_profile = nvpm.nvpm_number_emission_profiles_meem(
+            combustor=edb_nvpm.combustor,
             hydrogen_content=fuel.hydrogen_content,
             ff_7=edb_nvpm.ff_7,
             ff_30=edb_nvpm.ff_30,
@@ -663,6 +665,7 @@ class Emissions(Model):
         )
 
         nvpm_ei_m_profile = nvpm.nvpm_mass_emission_profiles_meem(
+            combustor=edb_gaseous.combustor,
             hydrogen_content=fuel.hydrogen_content,
             ff_7=edb_gaseous.ff_7,
             ff_30=edb_gaseous.ff_30,
@@ -675,6 +678,7 @@ class Emissions(Model):
         )
 
         nvpm_ei_n_profile = nvpm.nvpm_number_emission_profiles_meem(
+            combustor=edb_gaseous.combustor,
             hydrogen_content=fuel.hydrogen_content,
             ff_7=edb_gaseous.ff_7,
             ff_30=edb_gaseous.ff_30,
