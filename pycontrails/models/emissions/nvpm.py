@@ -133,41 +133,6 @@ class EDBnvpm:
             nvpm_ei_n_100=self.nvpm_ei_n_100,
         )[1]
 
-    @property
-    def nvpm_ei_m_meem(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index mass profile."""
-        return nvpm_mass_emission_profiles_meem(
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
-            fifth_data_point_mass=self.nvpm_ei_m_use_max,
-            nvpm_ei_m_30_no_sl=self.nvpm_ei_m_no_sl_30,
-            nvpm_ei_m_85_no_sl=self.nvpm_ei_m_no_sl_85,
-            nvpm_ei_m_max_no_sl=self.nvpm_ei_m_no_sl_max,
-        )
-
-    @property
-    def nvpm_ei_n_meem(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index number profile."""
-        return nvpm_number_emission_profiles_meem(
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-            fifth_data_point_number=self.nvpm_ei_n_use_max,
-            nvpm_ei_n_30_no_sl=self.nvpm_ei_n_no_sl_30,
-            nvpm_ei_n_85_no_sl=self.nvpm_ei_n_no_sl_85,
-            nvpm_ei_n_max_no_sl=self.nvpm_ei_n_no_sl_max,
-        )
 
 # ---------------------------------
 # nvPM emissions: T4/T2 methodology
@@ -334,7 +299,6 @@ def estimate_nvpm_t4_t2(
 # nvPM emissions: MEEM2
 # ---------------------
 
-@functools.cache
 def nvpm_mass_emission_profiles_meem(
     ff_7: float,
     ff_30: float,
@@ -348,6 +312,7 @@ def nvpm_mass_emission_profiles_meem(
     nvpm_ei_m_30_no_sl: float,
     nvpm_ei_m_85_no_sl: float,
     nvpm_ei_m_max_no_sl: float,
+    hydrogen_content: float,
 ) -> EmissionsProfileInterpolator:
     """
     Create the nvPM mass emissions index (EI) profile for the given engine type using MEEM2.
@@ -378,6 +343,8 @@ def nvpm_mass_emission_profiles_meem(
         ICAO EDB nvPM mass EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
     nvpm_ei_m_max_no_sl : float,
         ICAO EDB maximum nvPM mass EI, [:math:`kg/kg_{fuel}`]
+    hydrogen_content : float
+        The percentage of hydrogen mass content in the fuel.
 
     Returns
     -------
@@ -386,6 +353,7 @@ def nvpm_mass_emission_profiles_meem(
     """
     # TODO: How to deal with lean-burn combustors?
     fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
+    thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
 
     # Adjustment of EEDB fuel flows for installation effects
     installation_correction_factor = np.array([1.100, 1.020, 1.013, 1.010])
@@ -399,6 +367,7 @@ def nvpm_mass_emission_profiles_meem(
         # Calculate fuel flow (5th point)
         ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
         fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
+        thrust_setting = np.insert(thrust_setting, 2, 0.575)
 
         # Calculate nvPM number emissions index (5th point)
         k_loss_correction = 0.5 * (
@@ -407,10 +376,17 @@ def nvpm_mass_emission_profiles_meem(
         nvpm_ei_m_fifth = nvpm_ei_m_max_no_sl * k_loss_correction
         nvpm_ei_m = np.insert(nvpm_ei_m, 2, nvpm_ei_m_fifth)
 
-    return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_m)
+    # Adjust nvPM emissions index due to fuel hydrogen content differences
+    if not (13.4 <= hydrogen_content <= 15.4):
+        warnings.warn(
+            f"Fuel hydrogen content {hydrogen_content} % is outside the valid range"
+            "(13.4 - 15.4 %), and may lead to inaccuracies."
+        )
+
+    k_mass = nvpm_mass_fuel_composition_correction(hydrogen_content, thrust_setting)
+    return EmissionsProfileInterpolator(xp=fuel_flow, fp=(nvpm_ei_m * k_mass))
 
 
-@functools.cache
 def nvpm_number_emission_profiles_meem(
     ff_7: float,
     ff_30: float,
@@ -424,6 +400,7 @@ def nvpm_number_emission_profiles_meem(
     nvpm_ei_n_30_no_sl: float,
     nvpm_ei_n_85_no_sl: float,
     nvpm_ei_n_max_no_sl: float,
+    hydrogen_content: float,
 ) -> EmissionsProfileInterpolator:
     """
     Create the nvPM number emissions index (EI) profile for the given engine type using MEEM2.
@@ -454,6 +431,8 @@ def nvpm_number_emission_profiles_meem(
         ICAO EDB nvPM number EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
     nvpm_ei_n_max_no_sl : float,
         ICAO EDB maximum nvPM number EI, [:math:`kg/kg_{fuel}`]
+    hydrogen_content : float
+        The percentage of hydrogen mass content in the fuel.
 
     Returns
     -------
@@ -462,6 +441,7 @@ def nvpm_number_emission_profiles_meem(
     """
     # TODO: How to deal with lean-burn combustors?
     fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
+    thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
 
     # Adjustment of EEDB fuel flows for installation effects
     installation_correction_factor = np.array([1.100, 1.020, 1.013, 1.010])
@@ -475,6 +455,7 @@ def nvpm_number_emission_profiles_meem(
         # Calculate fuel flow (5th point)
         ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
         fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
+        thrust_setting = np.insert(thrust_setting, 2, 0.575)
 
         # Calculate nvPM number emissions index (5th point)
         k_loss_correction = 0.5 * (
@@ -483,7 +464,15 @@ def nvpm_number_emission_profiles_meem(
         nvpm_ei_n_fifth = nvpm_ei_n_max_no_sl * k_loss_correction
         nvpm_ei_n = np.insert(nvpm_ei_n, 2, nvpm_ei_n_fifth)
 
-    return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_n)
+    # Adjust nvPM emissions index due to fuel hydrogen content differences
+    if not (13.4 <= hydrogen_content <= 15.4):
+        warnings.warn(
+            f"Fuel hydrogen content {hydrogen_content} % is outside the valid range"
+            "(13.4 - 15.4 %), and may lead to inaccuracies."
+        )
+
+    k_num = nvpm_number_fuel_composition_correction(hydrogen_content, thrust_setting)
+    return EmissionsProfileInterpolator(xp=fuel_flow, fp=(nvpm_ei_n * k_num))
 
 
 def nvpm_mass_fuel_composition_correction(
@@ -535,11 +524,14 @@ def nvpm_number_fuel_composition_correction(
 
 
 def estimate_nvpm_meem(
-    edb_nvpm: EDBnvpm,
+    nvpm_ei_m_profile: EmissionsProfileInterpolator,
+    nvpm_ei_n_profile: EmissionsProfileInterpolator,
     fuel_flow_per_engine: npt.NDArray[np.floating],
     true_airspeed: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
+    ff_7: float,
+    ff_100: float,
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate nvPM mass and number emissions index using the MEEM2 methodology.
 
@@ -548,8 +540,12 @@ def estimate_nvpm_meem(
 
     Parameters
     ----------
-    edb_nvpm : EDBnvpm
-        EDB nvPM data
+    nvpm_ei_m_profile : EmissionsProfileInterpolator
+        MEEM2-derived nvPM mass emissions index versus the fuel flow for the selected engine
+        (See :func:`nvpm_mass_emission_profiles_meem`)
+    nvpm_ei_n_profile : EmissionsProfileInterpolator
+        MEEM2-derived nvPM number emissions index versus the fuel flow for the engine
+        (See :func:`nvpm_number_emission_profiles_meem`)
     fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
     true_airspeed: npt.NDArray[np.floating]
@@ -558,6 +554,10 @@ def estimate_nvpm_meem(
         pressure altitude at each waypoint, [:math:`Pa`]
     air_temperature: npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
+    ff_7: float
+        ICAO EDB fuel flow at idle (7% power) for the selected engine, [:math:`kg s^{-1}`]
+    ff_100: float
+        ICAO EDB fuel flow at take-off (100% power) for the selected engine, [:math:`kg s^{-1}`]
 
     Returns
     -------
@@ -573,12 +573,14 @@ def estimate_nvpm_meem(
     fuel_flow_per_engine = jet.equivalent_fuel_flow_rate_at_sea_level(
         fuel_flow_per_engine, theta_amb, delta_amb, mach_num
     )
-    fuel_flow_per_engine.clip(edb_nvpm.ff_7, edb_nvpm.ff_100, out=fuel_flow_per_engine)  # clip in place
+    fuel_flow_per_engine.clip(ff_7, ff_100, out=fuel_flow_per_engine)  # clip in place
 
-    # Interpolate nvPM EI_m and EI_n for ground conditions
-    nvpm_ei_m_sl = edb_nvpm.nvpm_ei_m_meem.interp(fuel_flow_per_engine)
+    # Interpolate nvPM EI_m for ground conditions
+    nvpm_ei_m_sl = nvpm_ei_m_profile.interp(fuel_flow_per_engine)
     nvpm_ei_m_sl = nvpm_ei_m_sl * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
-    nvpm_ei_n_sl = edb_nvpm.nvpm_ei_n_meem.interp(fuel_flow_per_engine)
+
+    # Interpolate nvPM EI_n for ground conditions
+    nvpm_ei_n_sl = nvpm_ei_n_profile.interp(fuel_flow_per_engine)
 
     # Convert nvPM EI_m and EI_n from ground to cruise conditions
     nvpm_ei_m = nvpm_ei_m_sl * ((delta_amb ** 1.377) / (theta_amb ** 4.455)) * (1.1 ** 2.5)
@@ -590,6 +592,10 @@ def estimate_nvpm_meem(
 # nvPM emissions: Smoke Correlation for Particle Emissions - CAEP11 (SCOPE11)
 # ---------------------------------------------------------------------------
 
+# TODO: Monday - Connect function while initialising EDBnvpm
+# TODO: Then test these functions
+# TODO: Finally, update emissions.py to reflect the different options available
+# TODO: Check naming of other functions in this script
 # TODO: Main function converts SN to mass and number (Generate this similar to nvPM emissions profile from MEEM and T4/T2)
 
 
