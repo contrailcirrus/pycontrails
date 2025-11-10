@@ -529,7 +529,7 @@ class Emissions(Model):
             thrust_setting=thrust_setting,
             q_fuel=fuel.q_fuel,
         )
-        nvpm_ei_n = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
+        nvpm_ei_n = nvpm.nvpm_number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
 
     def _nvpm_emission_indices_meem(
@@ -643,7 +643,7 @@ class Emissions(Model):
         afr = np.array([106.0, 83.0, 51.0, 45.0])   # Agarwal et al. (2019)
         thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
 
-        nvpm_ei_m_scope = nvpm.estimate_nvpm_mass_ei_scope11(
+        nvpm_ei_m_scope = nvpm.mass_ei_scope11(
             sn=smoke_number,
             afr=afr,
             bypass_ratio=edb_gaseous.bypass_ratio
@@ -652,7 +652,7 @@ class Emissions(Model):
         average_temp = 0.5 * (edb_gaseous.temp_min + edb_gaseous.temp_max)
         average_pressure = 0.5 * (edb_gaseous.pressure_min + edb_gaseous.pressure_max)
 
-        nvpm_ei_n_scope = nvpm.estimate_nvpm_number_ei_scope11(
+        nvpm_ei_n_scope = nvpm.number_ei_scope11(
             nvpm_ei_m_e=nvpm_ei_m_scope,
             sn=smoke_number,
             air_temperature=average_temp,
