@@ -502,56 +502,49 @@ class Emissions(Model):
         """
         nvpm_data_source = "ICAO EDB (MEEM2)"
 
-        # Adjust nvPM emissions index due to fuel hydrogen content differences
-        if not (13.4 <= fuel.hydrogen_content <= 15.4):
-            warnings.warn(
-                f"Fuel hydrogen content {fuel.hydrogen_content} % is outside the valid range"
-                "(13.4 - 15.4 %), and may lead to inaccuracies."
-            )
-
-        # TODO: Big hack! Zeb, is there a better way to do this?
-        edb_nvpm_fuel = copy.deepcopy(edb_nvpm)
-        thrust_setting_4 = np.array([0.07, 0.30, 0.85, 1.00])
-        thrust_setting_5 = np.array([0.07, 0.30, 0.575, 0.85, 1.00])
-
-        # Adjust nvPM mass EI
-        if edb_nvpm.nvpm_ei_m_use_max:
-            k_mass = nvpm.nvpm_mass_fuel_composition_correction(
-                fuel.hydrogen_content, thrust_setting_5
-            )
-        else:
-            k_mass = nvpm.nvpm_mass_fuel_composition_correction(
-                fuel.hydrogen_content, thrust_setting_4
-            )
-
-        edb_nvpm_fuel.nvpm_ei_m_meem = EmissionsProfileInterpolator(
-            xp=np.copy(edb_nvpm.nvpm_ei_m_meem.xp),
-            fp=np.copy(edb_nvpm.nvpm_ei_m_meem.fp) * k_mass
+        # Get MEEM nvPM emissions profile
+        nvpm_ei_m_profile = nvpm.nvpm_mass_emission_profiles_meem(
+            ff_7=edb_nvpm.ff_7,
+            ff_30=edb_nvpm.ff_30,
+            ff_85=edb_nvpm.ff_85,
+            ff_100=edb_nvpm.ff_100,
+            nvpm_ei_m_7=edb_nvpm.nvpm_ei_m_7,
+            nvpm_ei_m_30=edb_nvpm.nvpm_ei_m_30,
+            nvpm_ei_m_85=edb_nvpm.nvpm_ei_m_85,
+            nvpm_ei_m_100=edb_nvpm.nvpm_ei_m_100,
+            fifth_data_point_mass=edb_nvpm.nvpm_ei_m_use_max,
+            nvpm_ei_m_30_no_sl=edb_nvpm.nvpm_ei_m_no_sl_30,
+            nvpm_ei_m_85_no_sl=edb_nvpm.nvpm_ei_m_no_sl_85,
+            nvpm_ei_m_max_no_sl=edb_nvpm.nvpm_ei_m_no_sl_max,
+            hydrogen_content=fuel.hydrogen_content,
         )
 
-        # Adjust nvPM number EI
-        if edb_nvpm.nvpm_ei_n_use_max:
-            k_num = nvpm.nvpm_number_fuel_composition_correction(
-                fuel.hydrogen_content, thrust_setting_5
-            )
-        else:
-            k_num = nvpm.nvpm_number_fuel_composition_correction(
-                fuel.hydrogen_content, thrust_setting_4
-            )
-
-        edb_nvpm_fuel.nvpm_ei_n_meem = EmissionsProfileInterpolator(
-            xp=np.copy(edb_nvpm.nvpm_ei_n_meem.xp),
-            fp=np.copy(edb_nvpm.nvpm_ei_n_meem.fp) * k_num
+        nvpm_ei_n_profile = nvpm.nvpm_number_emission_profiles_meem(
+            ff_7=edb_nvpm.ff_7,
+            ff_30=edb_nvpm.ff_30,
+            ff_85=edb_nvpm.ff_85,
+            ff_100=edb_nvpm.ff_100,
+            nvpm_ei_n_7=edb_nvpm.nvpm_ei_n_7,
+            nvpm_ei_n_30=edb_nvpm.nvpm_ei_n_30,
+            nvpm_ei_n_85=edb_nvpm.nvpm_ei_n_85,
+            nvpm_ei_n_100=edb_nvpm.nvpm_ei_n_100,
+            fifth_data_point_number=edb_nvpm.nvpm_ei_n_use_max,
+            nvpm_ei_n_30_no_sl=edb_nvpm.nvpm_ei_n_no_sl_30,
+            nvpm_ei_n_85_no_sl=edb_nvpm.nvpm_ei_n_no_sl_85,
+            nvpm_ei_n_max_no_sl=edb_nvpm.nvpm_ei_n_no_sl_max,
+            hydrogen_content=fuel.hydrogen_content,
         )
 
         # Emissions indices
         return nvpm_data_source, *nvpm.estimate_nvpm_meem(
-            edb_nvpm_fuel,
+            nvpm_ei_m_profile=nvpm_ei_m_profile,
+            nvpm_ei_n_profile=nvpm_ei_n_profile,
+            fuel_flow_per_engine=self.source.get_data_or_attr("fuel_flow_per_engine"),
             true_airspeed=self.source.get_data_or_attr("true_airspeed"),
-            air_temperature=self.source["air_temperature"],
             air_pressure=self.source.air_pressure,
-            thrust_setting=self.source["thrust_setting"],
-            q_fuel=fuel.q_fuel,
+            air_temperature=self.source["air_temperature"],
+            ff_7=edb_nvpm.ff_7,
+            ff_100=edb_nvpm.ff_100,
         )
 
     def _nvpm_emission_indices_sac(
