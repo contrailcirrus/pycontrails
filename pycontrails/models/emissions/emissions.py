@@ -204,7 +204,9 @@ class Emissions(Model):
                 )
 
         self._gaseous_emission_indices(engine_uid)
-        self._nvpm_emission_indices(engine_uid)
+        # TODO: Zeb, how do you let the user choose between GAIA and MEEM?
+        self._nvpm_emission_indices_gaia(engine_uid)
+        #self._nvpm_emission_indices_meem_scope11(engine_uid)
         self._total_pollutant_emissions()
         return self.source
 
@@ -306,8 +308,9 @@ class Emissions(Model):
         self.source["co_ei"] = co_ei * 1e-3  # g-CO/kg-fuel to kg-CO/kg-fuel
         self.source["hc_ei"] = hc_ei * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
 
-    def _nvpm_emission_indices(self, engine_uid: str | None) -> None:
-        """Calculate emission indices for nvPM mass and number.
+    def _nvpm_emission_indices_gaia(self, engine_uid: str | None) -> None:
+        """Calculate nvPM mass and number emission indices using methodologies listed in the
+        global aviation emissions inventory based on ADS-B (GAIA).
 
         This method attaches the following variables to the underlying :attr:`source`.
             - nvpm_ei_m
@@ -319,6 +322,11 @@ class Emissions(Model):
         ----------
         engine_uid : str
             Engine unique identification number from the ICAO EDB
+
+        References
+        ----------
+        # TODO: Add to bibliography
+        - (Teoh et al., 2024) https://doi.org/10.5194/acp-24-725-2024
         """
         if "nvpm_ei_n" in self.source and "nvpm_ei_m" in self.source:
             return  # early exit if values already exist
@@ -338,7 +346,6 @@ class Emissions(Model):
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
 
         if edb_nvpm is not None:
-            # TODO: Zeb, how do you let the user choose between t4_t2 and MEEM?
             nvpm_data = self._nvpm_emission_indices_t4_t2(edb_nvpm, fuel)
         elif edb_gaseous is not None:
             nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
@@ -369,8 +376,8 @@ class Emissions(Model):
         self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
 
-    def _nvpm_emission_indices_meem(self, engine_uid: str | None) -> None:
-        """Calculate emission indices for nvPM mass and number.
+    def _nvpm_emission_indices_meem_scope11(self, engine_uid: str | None) -> None:
+        """Calculate nvPM mass and number emission indices using MEEM2 and SCOPE11 methodologies.
 
         This method attaches the following variables to the underlying :attr:`source`.
             - nvpm_ei_m
@@ -382,8 +389,13 @@ class Emissions(Model):
         ----------
         engine_uid : str
             Engine unique identification number from the ICAO EDB
+
+        References
+        ----------
+        # TODO: Add to bibliography
+        - (Ahrens et al., 2025) https://doi.org/10.4271/2025-01-6000
+        - (Agarwal et al., 2019) https://doi.org/10.1021/acs.est.8b04060
         """
-        # TODO: Update documentation
         if "nvpm_ei_n" in self.source and "nvpm_ei_m" in self.source:
             return  # early exit if values already exist
 
@@ -402,11 +414,9 @@ class Emissions(Model):
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
 
         if edb_nvpm is not None:
-            nvpm_data = self._nvpm_emission_indices_edb(edb_nvpm, fuel)
+            nvpm_data = self._nvpm_emission_indices_meem(edb_nvpm, fuel)
         elif edb_gaseous is not None:
-            # TODO: This should be replaced with SCOPE11
-            # TODO: Step 0 (SCOPE11 implementation)
-            nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
+            nvpm_data = self._nvpm_emission_indices_scope11(edb_gaseous, fuel)
         else:
             if engine_uid is not None:
                 warnings.warn(
@@ -416,19 +426,6 @@ class Emissions(Model):
             nvpm_data = self._nvpm_emission_indices_constant()
 
         nvpm_data_source, nvpm_ei_m, nvpm_ei_n = nvpm_data
-
-        # Adjust nvPM emission indices if SAF is used.
-        if isinstance(fuel, SAFBlend) and fuel.pct_blend:
-            thrust_setting = self.source["thrust_setting"]
-            pct_eim_reduction = nvpm.nvpm_mass_ei_pct_reduction_due_to_saf(
-                fuel.hydrogen_content, thrust_setting
-            )
-            pct_ein_reduction = nvpm.nvpm_number_ei_pct_reduction_due_to_saf(
-                fuel.hydrogen_content, thrust_setting
-            )
-
-            nvpm_ei_m *= 1.0 + pct_eim_reduction / 100.0
-            nvpm_ei_n *= 1.0 + pct_ein_reduction / 100.0
 
         self.source.attrs["nvpm_data_source"] = nvpm_data_source
         self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
@@ -476,9 +473,7 @@ class Emissions(Model):
     def _nvpm_emission_indices_meem(
         self, edb_nvpm: nvpm.EDBnvpm, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-        """Calculate emission indices for nvPM mass and number.
-
-        This method uses data from the ICAO EDB along with the T4/T2 methodology.
+        """Calculate emission indices for nvPM mass and number using the MEEM2 methodology.
 
         Parameters
         ----------
@@ -492,18 +487,20 @@ class Emissions(Model):
         nvpm_data_source : str
             Source of nvpm data.
         nvpm_ei_m : npt.NDArray[np.floating]
-            Non-volatile particulate matter (nvPM) mass emissions index, [:math:`kg/kg_{fuel}`]
+            nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
         nvpm_ei_n : npt.NDArray[np.floating]
-            Black carbon number emissions index, [:math:`kg_{fuel}^{-1}`]
+            nvPM number emissions index, [:math:`kg_{fuel}^{-1}`]
 
         References
         ----------
-        - :cite:`teohTargetedUseSustainable2022`
+        # TODO: Add to bibliography
+        - (Ahrens et al., 2025) https://doi.org/10.4271/2025-01-6000
         """
         nvpm_data_source = "ICAO EDB (MEEM2)"
 
         # Get MEEM nvPM emissions profile
         nvpm_ei_m_profile = nvpm.nvpm_mass_emission_profiles_meem(
+            hydrogen_content=fuel.hydrogen_content,
             ff_7=edb_nvpm.ff_7,
             ff_30=edb_nvpm.ff_30,
             ff_85=edb_nvpm.ff_85,
@@ -516,10 +513,10 @@ class Emissions(Model):
             nvpm_ei_m_30_no_sl=edb_nvpm.nvpm_ei_m_no_sl_30,
             nvpm_ei_m_85_no_sl=edb_nvpm.nvpm_ei_m_no_sl_85,
             nvpm_ei_m_max_no_sl=edb_nvpm.nvpm_ei_m_no_sl_max,
-            hydrogen_content=fuel.hydrogen_content,
         )
 
         nvpm_ei_n_profile = nvpm.nvpm_number_emission_profiles_meem(
+            hydrogen_content=fuel.hydrogen_content,
             ff_7=edb_nvpm.ff_7,
             ff_30=edb_nvpm.ff_30,
             ff_85=edb_nvpm.ff_85,
@@ -532,7 +529,6 @@ class Emissions(Model):
             nvpm_ei_n_30_no_sl=edb_nvpm.nvpm_ei_n_no_sl_30,
             nvpm_ei_n_85_no_sl=edb_nvpm.nvpm_ei_n_no_sl_85,
             nvpm_ei_n_max_no_sl=edb_nvpm.nvpm_ei_n_no_sl_max,
-            hydrogen_content=fuel.hydrogen_content,
         )
 
         # Emissions indices
@@ -545,6 +541,95 @@ class Emissions(Model):
             air_temperature=self.source["air_temperature"],
             ff_7=edb_nvpm.ff_7,
             ff_100=edb_nvpm.ff_100,
+        )
+
+    def _nvpm_emission_indices_scope11(
+        self, edb_gaseous: gaseous.EDBGaseous, fuel: Fuel
+    ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+        """
+        Calculate emission indices for nvPM mass and number using the SCOPE11 and MEEM2 methodology.
+
+        Parameters
+        ----------
+        edb_gaseous : EDBGaseous
+            EDB gaseous data
+        fuel : Fuel
+            Fuel type.
+
+        Returns
+        -------
+        nvpm_data_source : str
+            Source of nvpm data.
+        nvpm_ei_m : npt.NDArray[np.floating]
+            nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
+        nvpm_ei_n : npt.NDArray[np.floating]
+            nvPM number emissions index, [:math:`kg_{fuel}^{-1}`]
+
+        References
+        ----------
+        # TODO: Add to bibliography
+        - (Agarwal et al., 2019) https://doi.org/10.1021/acs.est.8b04060
+        """
+        nvpm_data_source = "ICAO EDB (SCOPE11-MEEM2)"
+
+        # Use SCOPE11 to derive nvPM emissions profile
+        smoke_number = np.array(
+            [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100, ]
+        )
+        afr = np.array([106.0, 83.0, 51.0, 45.0])   # Agarwal et al. (2019)
+        thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
+
+        nvpm_ei_m_scope = nvpm.estimate_nvpm_mass_ei_scope11(
+            sn=smoke_number,
+            afr=afr,
+            bypass_ratio=edb_gaseous.bypass_ratio
+        )
+
+        nvpm_ei_n_scope = nvpm.estimate_nvpm_number_ei_scope11(
+            nvpm_ei_m_e=nvpm_ei_m_scope,
+            sn=smoke_number,
+            air_temperature=self.source["air_temperature"],
+            air_pressure=self.source.air_pressure,
+            thrust_setting=thrust_setting,
+            afr=afr,
+            q_fuel=fuel.q_fuel,
+            bypass_ratio=edb_gaseous.bypass_ratio,
+            pressure_ratio=edb_gaseous.pressure_ratio,
+        )
+
+        nvpm_ei_m_profile = nvpm.nvpm_mass_emission_profiles_meem(
+            hydrogen_content=fuel.hydrogen_content,
+            ff_7=edb_gaseous.ff_7,
+            ff_30=edb_gaseous.ff_30,
+            ff_85=edb_gaseous.ff_85,
+            ff_100=edb_gaseous.ff_100,
+            nvpm_ei_m_7=nvpm_ei_m_scope[0],
+            nvpm_ei_m_30=nvpm_ei_m_scope[1],
+            nvpm_ei_m_85=nvpm_ei_m_scope[2],
+            nvpm_ei_m_100=nvpm_ei_m_scope[3],
+        )
+
+        nvpm_ei_n_profile = nvpm.nvpm_number_emission_profiles_meem(
+            hydrogen_content=fuel.hydrogen_content,
+            ff_7=edb_gaseous.ff_7,
+            ff_30=edb_gaseous.ff_30,
+            ff_85=edb_gaseous.ff_85,
+            ff_100=edb_gaseous.ff_100,
+            nvpm_ei_n_7=nvpm_ei_n_scope[0],
+            nvpm_ei_n_30=nvpm_ei_n_scope[1],
+            nvpm_ei_n_85=nvpm_ei_n_scope[2],
+            nvpm_ei_n_100=nvpm_ei_n_scope[3],
+        )
+
+        return nvpm_data_source, *nvpm.estimate_nvpm_meem(
+            nvpm_ei_m_profile=nvpm_ei_m_profile,
+            nvpm_ei_n_profile=nvpm_ei_n_profile,
+            fuel_flow_per_engine=self.source.get_data_or_attr("fuel_flow_per_engine"),
+            true_airspeed=self.source.get_data_or_attr("true_airspeed"),
+            air_pressure=self.source.air_pressure,
+            air_temperature=self.source["air_temperature"],
+            ff_7=edb_gaseous.ff_7,
+            ff_100=edb_gaseous.ff_100,
         )
 
     def _nvpm_emission_indices_sac(

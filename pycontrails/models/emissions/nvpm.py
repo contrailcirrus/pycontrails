@@ -300,6 +300,7 @@ def estimate_nvpm_t4_t2(
 # ---------------------
 
 def nvpm_mass_emission_profiles_meem(
+    hydrogen_content: float,
     ff_7: float,
     ff_30: float,
     ff_85: float,
@@ -308,17 +309,18 @@ def nvpm_mass_emission_profiles_meem(
     nvpm_ei_m_30: float,
     nvpm_ei_m_85: float,
     nvpm_ei_m_100: float,
-    fifth_data_point_mass: bool,
-    nvpm_ei_m_30_no_sl: float,
-    nvpm_ei_m_85_no_sl: float,
-    nvpm_ei_m_max_no_sl: float,
-    hydrogen_content: float,
+    fifth_data_point_mass: bool = False,
+    nvpm_ei_m_30_no_sl: float | None = None,
+    nvpm_ei_m_85_no_sl: float | None = None,
+    nvpm_ei_m_max_no_sl: float | None = None,
 ) -> EmissionsProfileInterpolator:
     """
     Create the nvPM mass emissions index (EI) profile for the given engine type using MEEM2.
 
     Parameters
     ----------
+    hydrogen_content : float
+        The percentage of hydrogen mass content in the fuel.
     ff_7: float
         ICAO EDB fuel mass flow rate at idle conditions (7% power), [:math:`kg s^{-1}`]
     ff_30: float
@@ -337,19 +339,22 @@ def nvpm_mass_emission_profiles_meem(
         ICAO EDB loss-corrected nvPM mass EI at take-off (100% power), [:math:`kg/kg_{fuel}`]
     fifth_data_point_mass : bool,
         Does the maximum nvPM EI mass occur between 30% and 85% of fuel flow?
-    nvpm_ei_m_30_no_sl : float,
+    nvpm_ei_m_30_no_sl : float | None,
         ICAO EDB nvPM mass EI at approach (30% power), [:math:`kg/kg_{fuel}`]
-    nvpm_ei_m_85_no_sl : float,
+    nvpm_ei_m_85_no_sl : float | None,
         ICAO EDB nvPM mass EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
-    nvpm_ei_m_max_no_sl : float,
+    nvpm_ei_m_max_no_sl : float | None,
         ICAO EDB maximum nvPM mass EI, [:math:`kg/kg_{fuel}`]
-    hydrogen_content : float
-        The percentage of hydrogen mass content in the fuel.
 
     Returns
     -------
     EmissionsProfileInterpolator
         nvPM mass emissions index versus the fuel mass flow rate for a given engine type
+
+    References
+    ----------
+    # TODO: Add to bibliography
+    - (Ahrens et al., 2025) https://doi.org/10.4271/2025-01-6000
     """
     # TODO: How to deal with lean-burn combustors?
     fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
@@ -388,6 +393,7 @@ def nvpm_mass_emission_profiles_meem(
 
 
 def nvpm_number_emission_profiles_meem(
+    hydrogen_content: float,
     ff_7: float,
     ff_30: float,
     ff_85: float,
@@ -396,17 +402,18 @@ def nvpm_number_emission_profiles_meem(
     nvpm_ei_n_30: float,
     nvpm_ei_n_85: float,
     nvpm_ei_n_100: float,
-    fifth_data_point_number: bool,
-    nvpm_ei_n_30_no_sl: float,
-    nvpm_ei_n_85_no_sl: float,
-    nvpm_ei_n_max_no_sl: float,
-    hydrogen_content: float,
+    fifth_data_point_number: bool = False,
+    nvpm_ei_n_30_no_sl: float | None = None,
+    nvpm_ei_n_85_no_sl: float | None = None,
+    nvpm_ei_n_max_no_sl: float | None = None,
 ) -> EmissionsProfileInterpolator:
     """
     Create the nvPM number emissions index (EI) profile for the given engine type using MEEM2.
 
     Parameters
     ----------
+    hydrogen_content : float
+        The percentage of hydrogen mass content in the fuel.
     ff_7: float
         ICAO EDB fuel mass flow rate at idle conditions (7% power), [:math:`kg s^{-1}`]
     ff_30: float
@@ -425,19 +432,22 @@ def nvpm_number_emission_profiles_meem(
         ICAO EDB loss-corrected nvPM number EI at take-off (100% power), [:math:`kg/kg_{fuel}`]
     fifth_data_point_number : bool,
         Does the maximum nvPM EI number occur between 30% and 85% of fuel flow?
-    nvpm_ei_n_30_no_sl : float,
+    nvpm_ei_n_30_no_sl : float | None,
         ICAO EDB nvPM number EI at approach (30% power), [:math:`kg/kg_{fuel}`]
-    nvpm_ei_n_85_no_sl : float,
+    nvpm_ei_n_85_no_sl : float | None,
         ICAO EDB nvPM number EI at climb out (85% power), [:math:`kg/kg_{fuel}`]
-    nvpm_ei_n_max_no_sl : float,
+    nvpm_ei_n_max_no_sl : float | None,
         ICAO EDB maximum nvPM number EI, [:math:`kg/kg_{fuel}`]
-    hydrogen_content : float
-        The percentage of hydrogen mass content in the fuel.
 
     Returns
     -------
     EmissionsProfileInterpolator
         nvPM number emissions index versus the fuel mass flow rate for a given engine type
+
+    References
+    ----------
+    # TODO: Add to bibliography
+    - (Ahrens et al., 2025) https://doi.org/10.4271/2025-01-6000
     """
     # TODO: How to deal with lean-burn combustors?
     fuel_flow = np.array([ff_7, ff_30, ff_85, ff_100], dtype=float)
@@ -565,6 +575,11 @@ def estimate_nvpm_meem(
         nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
     nvpm_ei_n : npt.NDArray[np.floating]
         nvPM number emissions index, [:math:`kg_{fuel}^{-1}`]
+
+    References
+    ----------
+    # TODO: Add to bibliography
+    - (Ahrens et al., 2025) https://doi.org/10.4271/2025-01-6000
     """
     # Fuel flow correction from altitude to ground
     mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)
@@ -592,11 +607,9 @@ def estimate_nvpm_meem(
 # nvPM emissions: Smoke Correlation for Particle Emissions - CAEP11 (SCOPE11)
 # ---------------------------------------------------------------------------
 
-# TODO: Monday - Connect function while initialising EDBnvpm
-# TODO: Then test these functions
-# TODO: Finally, update emissions.py to reflect the different options available
+# TODO:  test these functions
+# TODO: update emissions.py to reflect the different options available
 # TODO: Check naming of other functions in this script
-# TODO: Main function converts SN to mass and number (Generate this similar to nvPM emissions profile from MEEM and T4/T2)
 # TODO: Deal with lean-burn?
 
 
