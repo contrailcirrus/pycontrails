@@ -110,6 +110,10 @@ class EDBGaseous:
     bypass_ratio: float
     pressure_ratio: float
     rated_thrust: float
+    temp_min: float
+    temp_max: float
+    pressure_min: float
+    pressure_max: float
 
     # Fuel consumption
     ff_7: float

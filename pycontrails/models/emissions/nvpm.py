@@ -607,8 +607,6 @@ def estimate_nvpm_meem(
 # nvPM emissions: Smoke Correlation for Particle Emissions - CAEP11 (SCOPE11)
 # ---------------------------------------------------------------------------
 
-# TODO:  test these functions
-# TODO: update emissions.py to reflect the different options available
 # TODO: Check naming of other functions in this script
 # TODO: Deal with lean-burn?
 
@@ -616,8 +614,8 @@ def estimate_nvpm_meem(
 def estimate_nvpm_number_ei_scope11(
     nvpm_ei_m_e: npt.NDArray[np.floating],
     sn: npt.NDArray[np.floating],
-    air_temperature: npt.NDArray[np.floating],
-    air_pressure: npt.NDArray[np.floating],
+    air_temperature: npt.NDArray[np.floating] | float,
+    air_pressure: npt.NDArray[np.floating] | float,
     thrust_setting: npt.NDArray[np.floating],
     afr: npt.NDArray[np.floating],
     q_fuel: float,
@@ -631,7 +629,7 @@ def estimate_nvpm_number_ei_scope11(
     Parameters
     ----------
     nvpm_ei_m_e : npt.NDArray[np.floating]
-        nvPM mass emissions index at the engine exit, [:math:`\mu g \ kg_{fuel}^{-1}`]
+        nvPM mass emissions index at the engine exit, [:math:`kg \ kg_{fuel}^{-1}`]
         See :func:`estimate_nvpm_mass_ei_scope11`
     sn : npt.NDArray[np.floating]
         Smoke number, unitless
@@ -673,7 +671,6 @@ def estimate_nvpm_number_ei_scope11(
         comp_efficiency,
     )
     nvpm_gmd = geometric_mean_diameter_scope11(c_bc_c) * 1e-9  # nm to m
-    nvpm_ei_m_e *= 1e-6  # micro-g to kg
     return nvpm_ei_m_e / ((np.pi / 6) * 1000.0 * (nvpm_gmd ** 3) * np.exp(4.5 * (np.log(1.8) ** 2)))
 
 
@@ -698,7 +695,7 @@ def estimate_nvpm_mass_ei_scope11(
     Returns
     -------
     npt.NDArray[np.floating]
-        nvPM mass emissions index at the engine exit, [:math:`\mu g \ kg_{fuel}^{-1}`]
+        nvPM mass emissions index at the engine exit, [:math:`kg \ kg_{fuel}^{-1}`]
 
     References
     ----------
@@ -709,7 +706,7 @@ def estimate_nvpm_mass_ei_scope11(
     q_mixed = exhaust_gas_volume_per_kg_fuel(afr, bypass_ratio=bypass_ratio)
     nvpm_ei_m_i = convert_nvpm_mass_concentration_to_ei(c_bc_i, q_mixed)
     k_slm = nvpm_mass_system_loss_correction_factor(c_bc_i, bypass_ratio)
-    return nvpm_ei_m_i * k_slm
+    return nvpm_ei_m_i * k_slm * 1e-9  # Convert from micro-g to kg
 
 
 def nvpm_mass_concentration_instrument_sampling_point(
@@ -1250,7 +1247,8 @@ def exhaust_gas_volume_per_kg_fuel(
     References
     ----------
     - :cite:`stettlerGlobalCivilAviation2013`
-    # TODO: Cite Agarwal et al. (2019) SCOPE11
+    # TODO: Add to bibliography
+    - (Agarwal et al., 2019) https://doi.org/10.1021/acs.est.8b04060
     """
     return 0.776 * afr * (1 + bypass_ratio) + 0.877
 

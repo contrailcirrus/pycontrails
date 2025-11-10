@@ -205,8 +205,8 @@ class Emissions(Model):
 
         self._gaseous_emission_indices(engine_uid)
         # TODO: Zeb, how do you let the user choose between GAIA and MEEM?
-        self._nvpm_emission_indices_gaia(engine_uid)
-        #self._nvpm_emission_indices_meem_scope11(engine_uid)
+        #self._nvpm_emission_indices_gaia(engine_uid)
+        self._nvpm_emission_indices_meem_scope11(engine_uid)
         self._total_pollutant_emissions()
         return self.source
 
@@ -412,10 +412,13 @@ class Emissions(Model):
 
         edb_nvpm = self.edb_engine_nvpm.get(engine_uid) if engine_uid else None
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
+        has_sn_data = edb_gaseous and ~np.isnan(
+            np.array([edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100])
+        ).all()
 
         if edb_nvpm is not None:
             nvpm_data = self._nvpm_emission_indices_meem(edb_nvpm, fuel)
-        elif edb_gaseous is not None:
+        elif edb_gaseous is not None and has_sn_data:
             nvpm_data = self._nvpm_emission_indices_scope11(edb_gaseous, fuel)
         else:
             if engine_uid is not None:
@@ -528,7 +531,7 @@ class Emissions(Model):
         )
         nvpm_ei_n = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
-    
+
     def _nvpm_emission_indices_meem(
         self, edb_nvpm: nvpm.EDBnvpm, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
@@ -644,11 +647,14 @@ class Emissions(Model):
             bypass_ratio=edb_gaseous.bypass_ratio
         )
 
+        average_temp = 0.5 * (edb_gaseous.temp_min + edb_gaseous.temp_max)
+        average_pressure = 0.5 * (edb_gaseous.pressure_min + edb_gaseous.pressure_max)
+
         nvpm_ei_n_scope = nvpm.estimate_nvpm_number_ei_scope11(
             nvpm_ei_m_e=nvpm_ei_m_scope,
             sn=smoke_number,
-            air_temperature=self.source["air_temperature"],
-            air_pressure=self.source.air_pressure,
+            air_temperature=average_temp,
+            air_pressure=average_pressure,
             thrust_setting=thrust_setting,
             afr=afr,
             q_fuel=fuel.q_fuel,
@@ -1131,11 +1137,17 @@ def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
         "SN C/O": "sn_85",
         "SN T/O": "sn_100",
         "SN Max": "sn_max",
+        "SN T/O": "sn_100",
+        "Ambient Temp Min (K)": "temp_min",
+        "Ambient Temp Max (K)": "temp_max",
+        "Ambient Baro Min (kPa)": "pressure_min",
+        "Ambient Baro Max (kPa)": "pressure_max",
     }
 
     df = pd.read_csv(EDB_ENGINE_PATH)
     df = df.rename(columns=columns)
-
+    # Convert ambient pressure from kPa to Pa
+    df[["pressure_min", "pressure_max"]] = df[["pressure_min", "pressure_max"]] * 1000
     return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
 
@@ -1196,7 +1208,7 @@ def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
 
     df = pd.read_csv(EDB_NVPM_PATH)
     df = df.rename(columns=columns)
-
+    df = df.astype({"nvpm_ei_m_use_max": bool, "nvpm_ei_n_use_max": bool})
     return dict(_row_to_edb_nvpm(tup) for tup in df.itertuples(index=False))
 
 
