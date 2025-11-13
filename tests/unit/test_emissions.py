@@ -8,8 +8,7 @@ import pytest
 from pycontrails import Flight
 from pycontrails.core.fuel import JetA
 from pycontrails.core.models import Model
-from pycontrails.models.emissions import Emissions, ffm2
-from pycontrails.models.emissions import black_carbon as nvpm
+from pycontrails.models.emissions import Emissions, gaseous, nvpm
 from pycontrails.models.emissions import emissions as emissions_mod
 from pycontrails.physics import jet, units
 from pycontrails.physics.jet import thrust_setting_nd
@@ -38,8 +37,8 @@ def test_emissions_class_variables():
     assert emissions2.edb_engine_nvpm is emissions2.edb_engine_nvpm
 
     # Update if emissions data changes
-    assert len(emissions1.edb_engine_gaseous) == 595
-    assert len(emissions1.edb_engine_nvpm) == 214
+    assert len(emissions1.edb_engine_gaseous) == 858
+    assert len(emissions1.edb_engine_nvpm) == 243
 
     # Check that the gaseous engine UIDs are a superset of the nvPM engine UIDs in the EDB.
     # This logic is used in cocip_grid.calc_emissions
@@ -240,7 +239,7 @@ def test_specific_humidity_correction_factor_display_45():
     p = units.m_to_pl(0) * 100
     rh = 0.6
 
-    omega = ffm2._estimate_specific_humidity(T, p, rh)
+    omega = gaseous._estimate_specific_humidity(T, p, rh)
 
     # value 0.00634 is taken from paragraph following (45)
     assert omega == pytest.approx(0.00634, abs=1e-5)
@@ -260,14 +259,14 @@ def test_example_page_11():
     ei_sl_nox = 19.43
     ei_sl_co = 0.24
 
-    omega = ffm2._estimate_specific_humidity(T, p, rh)
+    omega = gaseous._estimate_specific_humidity(T, p, rh)
     # The value 0.00053 is taken from page 11 seems to be wrong ...
     # It should actually be 0.000053
     assert omega == pytest.approx(0.000053, abs=1e-5)
 
-    q_factor = ffm2._get_humidity_correction_factor(omega)
-    nox = ffm2.ei_at_cruise(ei_sl_nox, theta_amb, delta_amb, "NOX") * q_factor
-    co = ffm2.ei_at_cruise(ei_sl_co, theta_amb, delta_amb, "CO")
+    q_factor = gaseous._get_humidity_correction_factor(omega)
+    nox = gaseous.ei_at_cruise(ei_sl_nox, theta_amb, delta_amb, "NOX") * q_factor
+    co = gaseous.ei_at_cruise(ei_sl_co, theta_amb, delta_amb, "CO")
 
     assert nox == pytest.approx(15.19, abs=1e-2)
     assert co == pytest.approx(0.50, abs=1e-2)
@@ -386,15 +385,15 @@ def test_stage_combustors_data_length(engine_uid: str):
     edb_nvpm = emissions.edb_engine_nvpm[engine_uid]
 
     # Multistage combuster engines have 5 datapoints in the interpolation set
-    assert len(edb_nvpm.nvpm_ei_m.fp) == 5
-    assert len(edb_nvpm.nvpm_ei_m.xp) == 5
-    assert len(edb_nvpm.nvpm_ei_n.fp) == 5
-    assert len(edb_nvpm.nvpm_ei_n.xp) == 5
+    assert len(edb_nvpm.nvpm_ei_m_t4_t2.fp) == 5
+    assert len(edb_nvpm.nvpm_ei_m_t4_t2.xp) == 5
+    assert len(edb_nvpm.nvpm_ei_n_t4_t2.fp) == 5
+    assert len(edb_nvpm.nvpm_ei_n_t4_t2.xp) == 5
 
     # But the final three y values are all equal
-    assert np.all(edb_nvpm.nvpm_ei_m.fp[2:] == edb_nvpm.nvpm_ei_m.fp[2])
-    assert np.all(edb_nvpm.nvpm_ei_n.fp[2:] == edb_nvpm.nvpm_ei_n.fp[2])
+    assert np.all(edb_nvpm.nvpm_ei_m_t4_t2.fp[2:] == edb_nvpm.nvpm_ei_m_t4_t2.fp[2])
+    assert np.all(edb_nvpm.nvpm_ei_n_t4_t2.fp[2:] == edb_nvpm.nvpm_ei_n_t4_t2.fp[2])
 
     # The final x values are increasing
-    assert np.all(np.diff(edb_nvpm.nvpm_ei_m.xp) > 0)
-    assert np.all(np.diff(edb_nvpm.nvpm_ei_n.xp) > 0)
+    assert np.all(np.diff(edb_nvpm.nvpm_ei_m_t4_t2.xp) > 0)
+    assert np.all(np.diff(edb_nvpm.nvpm_ei_n_t4_t2.xp) > 0)
