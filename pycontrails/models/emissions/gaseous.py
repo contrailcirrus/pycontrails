@@ -12,16 +12,17 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+
 import numpy as np
 import numpy.typing as npt
 
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.physics import jet, units
 
-
 # ------------------------------------------------------
 # Data structure for ICAO EDB: Gaseous (NOx, CO, and HC)
 # ------------------------------------------------------
+
 
 @dataclasses.dataclass(frozen=True)
 class EDBGaseous:

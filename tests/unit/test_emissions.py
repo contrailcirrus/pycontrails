@@ -8,8 +8,7 @@ import pytest
 from pycontrails import Flight
 from pycontrails.core.fuel import JetA
 from pycontrails.core.models import Model
-from pycontrails.models.emissions import Emissions, gaseous
-from pycontrails.models.emissions import nvpm
+from pycontrails.models.emissions import Emissions, gaseous, nvpm
 from pycontrails.models.emissions import emissions as emissions_mod
 from pycontrails.physics import jet, units
 from pycontrails.physics.jet import thrust_setting_nd
