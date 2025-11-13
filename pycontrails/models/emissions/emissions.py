@@ -531,7 +531,7 @@ class Emissions(Model):
             thrust_setting=thrust_setting,
             q_fuel=fuel.q_fuel,
         )
-        nvpm_ei_n = nvpm.nvpm_number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
+        nvpm_ei_n = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
 
     def _nvpm_emission_indices_meem(
@@ -611,7 +611,7 @@ class Emissions(Model):
 
     def _nvpm_emission_indices_scope11(
         self, edb_gaseous: gaseous.EDBGaseous, fuel: Fuel
-    ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """
         Calculate emission indices for nvPM mass and number using the SCOPE11 and MEEM2 methodology.
 
