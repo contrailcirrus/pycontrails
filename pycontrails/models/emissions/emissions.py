@@ -5,7 +5,6 @@ Functions without a subscript "_" can be used independently outside .eval()
 
 from __future__ import annotations
 
-import copy
 import dataclasses
 import functools
 import pathlib
@@ -18,12 +17,11 @@ import pandas as pd
 
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, SAFBlend
-from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
-from pycontrails.models.emissions import nvpm, gaseous
+from pycontrails.models.emissions import gaseous, nvpm
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import jet, units
 
@@ -205,7 +203,7 @@ class Emissions(Model):
 
         self._gaseous_emission_indices(engine_uid)
         # TODO: Zeb, how do you let the user choose between GAIA and MEEM?
-        #self._nvpm_emission_indices_gaia(engine_uid)
+        # self._nvpm_emission_indices_gaia(engine_uid)
         self._nvpm_emission_indices_meem_scope11(engine_uid)
         self._total_pollutant_emissions()
         return self.source
@@ -309,8 +307,7 @@ class Emissions(Model):
         self.source["hc_ei"] = hc_ei * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
 
     def _nvpm_emission_indices_gaia(self, engine_uid: str | None) -> None:
-        """Calculate nvPM mass and number emission indices using methodologies listed in the
-        global aviation emissions inventory based on ADS-B (GAIA).
+        """Calculate nvPM mass and number emission indices using GAIA methodologies.
 
         This method attaches the following variables to the underlying :attr:`source`.
             - nvpm_ei_m
@@ -412,9 +409,14 @@ class Emissions(Model):
 
         edb_nvpm = self.edb_engine_nvpm.get(engine_uid) if engine_uid else None
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
-        has_sn_data = edb_gaseous and ~np.isnan(
-            np.array([edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100])
-        ).all()
+        has_sn_data = (
+            edb_gaseous
+            and ~np.isnan(
+                np.array(
+                    [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100]
+                )
+            ).all()
+        )
 
         if edb_nvpm is not None:
             nvpm_data = self._nvpm_emission_indices_meem(edb_nvpm, fuel)
@@ -638,15 +640,18 @@ class Emissions(Model):
 
         # Use SCOPE11 to derive nvPM emissions profile
         smoke_number = np.array(
-            [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100, ]
+            [
+                edb_gaseous.sn_7,
+                edb_gaseous.sn_30,
+                edb_gaseous.sn_85,
+                edb_gaseous.sn_100,
+            ]
         )
-        afr = np.array([106.0, 83.0, 51.0, 45.0])   # Agarwal et al. (2019)
+        afr = np.array([106.0, 83.0, 51.0, 45.0])  # Agarwal et al. (2019)
         thrust_setting = np.array([0.07, 0.30, 0.85, 1.00])
 
         nvpm_ei_m_scope = nvpm.mass_ei_scope11(
-            sn=smoke_number,
-            afr=afr,
-            bypass_ratio=edb_gaseous.bypass_ratio
+            sn=smoke_number, afr=afr, bypass_ratio=edb_gaseous.bypass_ratio
         )
 
         average_temp = 0.5 * (edb_gaseous.temp_min + edb_gaseous.temp_max)
@@ -1102,6 +1107,7 @@ def get_thrust_setting(
 # Functions to load ICAO EDB gaseous and nvPM dataset
 # ---------------------------------------------------
 
+
 @functools.cache
 def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
     """Read EDB file into a dictionary of the form ``{engine_uid: gaseous_data}``.
@@ -1141,7 +1147,6 @@ def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
         "SN C/O": "sn_85",
         "SN T/O": "sn_100",
         "SN Max": "sn_max",
-        "SN T/O": "sn_100",
         "Ambient Temp Min (K)": "temp_min",
         "Ambient Temp Max (K)": "temp_max",
         "Ambient Baro Min (kPa)": "pressure_min",
@@ -1179,31 +1184,26 @@ def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
         "Ambient Temp Min (K)": "temp_min",
         "Ambient Temp Max (K)": "temp_max",
         "Fuel Heat of Combustion (MJ/kg)": "fuel_heat",
-
         # Fuel mass flow rate
         "Fuel Flow Idle (kg/sec)": "ff_7",
         "Fuel Flow App (kg/sec)": "ff_30",
         "Fuel Flow C/O (kg/sec)": "ff_85",
         "Fuel Flow T/O (kg/sec)": "ff_100",
-
         # System loss corrected nvPM mass EI
         "nvPM EImass_SL Idle (mg/kg)": "nvpm_ei_m_7",
         "nvPM EImass_SL App (mg/kg)": "nvpm_ei_m_30",
         "nvPM EImass_SL C/O (mg/kg)": "nvpm_ei_m_85",
         "nvPM EImass_SL T/O (mg/kg)": "nvpm_ei_m_100",
-
         # System loss corrected nvPM number EI
         "nvPM EInum_SL Idle (#/kg)": "nvpm_ei_n_7",
         "nvPM EInum_SL App (#/kg)": "nvpm_ei_n_30",
         "nvPM EInum_SL C/O (#/kg)": "nvpm_ei_n_85",
         "nvPM EInum_SL T/O (#/kg)": "nvpm_ei_n_100",
-
         # Variables required to use fifth nvPM data point for MEEM2
         "max_nvpm_ei_m_between_30_85": "nvpm_ei_m_use_max",
         "nvPM EImass App (mg/kg)": "nvpm_ei_m_no_sl_30",
         "nvPM EImass C/O (mg/kg)": "nvpm_ei_m_no_sl_85",
         "nvPM EImass Max (mg/kg)": "nvpm_ei_m_no_sl_max",
-
         "max_nvpm_ei_n_between_30_85": "nvpm_ei_n_use_max",
         "nvPM EInum App (#/kg)": "nvpm_ei_n_no_sl_30",
         "nvPM EInum C/O (#/kg)": "nvpm_ei_n_no_sl_85",

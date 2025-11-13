@@ -1,7 +1,8 @@
-"""
-Models related to estimating the non-volatile particulate matter (nvPM) mass and number emissions
-index. Here, the terms "non-volatile particulate matter" (nvPM) and "black carbon" (BC) are assumed
-with the same definition and used interchangably.
+"""Support for nvPM emissions modeling.
+
+This module includes models related to estimating the non-volatile particulate matter (nvPM) mass
+and number emissions index. Here, the terms "non-volatile particulate matter" (nvPM) and
+"black carbon" (BC) are assumed with the same definition and used interchangeably.
 """
 
 from __future__ import annotations
@@ -9,17 +10,18 @@ from __future__ import annotations
 import dataclasses
 import functools
 import warnings
+
 import numpy as np
 import numpy.typing as npt
 
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
-from pycontrails.physics import jet, units, constants
+from pycontrails.physics import constants, jet, units
 from pycontrails.utils.types import ArrayScalarLike
-
 
 # ---------------------------------
 # Data structure for ICAO EDB: nvPM
 # ---------------------------------
+
 
 @dataclasses.dataclass
 class EDBnvpm:
@@ -303,6 +305,7 @@ def estimate_nvpm_t4_t2(
 # nvPM emissions: MEEM2
 # ---------------------
 
+
 def nvpm_mass_emission_profiles_meem(
     combustor: str,
     hydrogen_content: float,
@@ -483,8 +486,6 @@ def nvpm_number_emission_profiles_meem(
     if is_staged_combustor:
         fuel_flow = np.insert(fuel_flow, 2, (fuel_flow[1] * 1.001))
         thrust_setting = np.insert(thrust_setting, 2, (thrust_setting[1] * 1.001))
-        nvpm_ei_m_lean_burn = np.mean(nvpm_ei_n[2:])
-        nvpm_ei_m = np.r_[nvpm_ei_n[:2], [nvpm_ei_m_lean_burn] * 3]
 
     # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
     elif fifth_data_point_number:
@@ -530,9 +531,7 @@ def mass_fuel_composition_correction_meem(
     npt.NDArray[np.floating]
         nvPM mass fuel composition correction factor
     """
-    return np.exp(
-        (1.08 * thrust_setting - 1.31) * (hydrogen_content - 13.8)
-    )
+    return np.exp((1.08 * thrust_setting - 1.31) * (hydrogen_content - 13.8))
 
 
 def number_fuel_composition_correction_meem(
@@ -554,9 +553,7 @@ def number_fuel_composition_correction_meem(
     npt.NDArray[np.floating]
         nvPM number fuel composition correction factor
     """
-    return np.exp(
-        (0.99 * thrust_setting - 1.05) * (hydrogen_content - 13.8)
-    )
+    return np.exp((0.99 * thrust_setting - 1.05) * (hydrogen_content - 13.8))
 
 
 def estimate_nvpm_meem(
@@ -624,7 +621,7 @@ def estimate_nvpm_meem(
     nvpm_ei_n_sl = nvpm_ei_n_profile.interp(fuel_flow_per_engine)
 
     # Convert nvPM EI_m and EI_n from ground to cruise conditions
-    nvpm_ei_m = nvpm_ei_m_sl * ((delta_amb ** 1.377) / (theta_amb ** 4.455)) * (1.1 ** 2.5)
+    nvpm_ei_m = nvpm_ei_m_sl * ((delta_amb**1.377) / (theta_amb**4.455)) * (1.1**2.5)
     nvpm_ei_n = (nvpm_ei_m / nvpm_ei_m_sl) * nvpm_ei_n_sl
     return nvpm_ei_m, nvpm_ei_n
 
@@ -646,7 +643,7 @@ def number_ei_scope11(
     pressure_ratio: float,
     comp_efficiency: float = 0.9,
 ) -> npt.NDArray[np.floating]:
-    """
+    r"""
     Estimate nvPM number emissions index at the four ICAO certification test points using SCOPE11.
 
     Parameters
@@ -694,7 +691,7 @@ def number_ei_scope11(
         comp_efficiency,
     )
     nvpm_gmd = geometric_mean_diameter_scope11(c_bc_c) * 1e-9  # nm to m
-    return nvpm_ei_m_e / ((np.pi / 6) * 1000.0 * (nvpm_gmd ** 3) * np.exp(4.5 * (np.log(1.8) ** 2)))
+    return nvpm_ei_m_e / ((np.pi / 6) * 1000.0 * (nvpm_gmd**3) * np.exp(4.5 * (np.log(1.8) ** 2)))
 
 
 def mass_ei_scope11(
@@ -702,7 +699,7 @@ def mass_ei_scope11(
     afr: npt.NDArray[np.floating],
     bypass_ratio: float,
 ) -> npt.NDArray[np.floating]:
-    """
+    r"""
     Estimate nvPM mass emissions index at the four ICAO certification test points using SCOPE11.
 
     Parameters
@@ -752,8 +749,7 @@ def mass_concentration_instrument_sampling_point(
 
 
 def mass_system_loss_correction_factor(
-    c_bc_i: npt.NDArray[np.floating],
-    bypass_ratio: float
+    c_bc_i: npt.NDArray[np.floating], bypass_ratio: float
 ) -> npt.NDArray[np.floating]:
     r"""
     Estimate nvPM mass concentration/EI system loss correction factors.
@@ -842,20 +838,12 @@ def mass_concentration_combustor_exit(
         nvPM mass concentration at the combustor exit, [:math:`\mu g m^{-3}]
     """
     rho_air_4 = air_density_combustor_exit(
-        air_temperature,
-        air_pressure,
-        thrust_setting,
-        afr,
-        q_fuel,
-        pressure_ratio,
-        comp_efficiency
+        air_temperature, air_pressure, thrust_setting, afr, q_fuel, pressure_ratio, comp_efficiency
     )
     return c_bc_e * (1 + bypass_ratio) * (rho_air_4 / constants.rho_msl)
 
 
-def geometric_mean_diameter_scope11(
-    c_bc_c: npt.NDArray[np.floating]
-) -> npt.NDArray[np.floating]:
+def geometric_mean_diameter_scope11(c_bc_c: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     r"""
     Estimate nvPM geometric mean diameter for SCOPE11 applications.
 
@@ -870,7 +858,7 @@ def geometric_mean_diameter_scope11(
     npt.NDArray[np.floating]
         nvPM geometric mean diameter, [:math:`nm`]
     """
-    return 5.08 * c_bc_c ** 0.185
+    return 5.08 * c_bc_c**0.185
 
 
 def air_density_combustor_exit(
@@ -1460,7 +1448,8 @@ def _template_saf_reduction(
 
 
 def exhaust_gas_volume_per_kg_fuel(
-    afr: npt.NDArray[np.floating], *,
+    afr: npt.NDArray[np.floating],
+    *,
     bypass_ratio: float = 0.0,
 ) -> npt.NDArray[np.floating]:
     """
@@ -1488,8 +1477,7 @@ def exhaust_gas_volume_per_kg_fuel(
 
 
 def convert_nvpm_mass_concentration_to_ei(
-    c_bc: npt.NDArray[np.floating],
-    q_exhaust: npt.NDArray[np.floating]
+    c_bc: npt.NDArray[np.floating], q_exhaust: npt.NDArray[np.floating]
 ) -> npt.NDArray[np.floating]:
     """
     Convert the nvPM mass concentration to an emissions index.
