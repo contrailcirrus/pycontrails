@@ -2,9 +2,19 @@
 
 ## Unreleased
 
+### Features
+
+- Update the [ICAO EDB](https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank) static files used in pycontrails emissions modeling from v29b to v31. With this update, pycontrails now supports emissions modeling for 858 engines (up from 595 engines in v29b).
+- Add MEEM2 and SCOPE11 as alternative models to simulate nvPM emissions.
+
 ### Fixes
 
 - Corrected conditional logic in `thermo._e_sat_piecewise` to prevent `thermo.q_sat` from returning `np.nan` for temperatures below freezing (0°C).
+
+### Internals
+
+- Include additional fields in the ICAO EDB static files. For example, MEEM2 utilizes a fifth data point (maximum nvPM EI) to construct the nvPM emissions profile.
+- Major re-structuring and clean-up of the emissions module to improve intuitiveness and standardize terminology.
 
 ## 0.59.0
 
