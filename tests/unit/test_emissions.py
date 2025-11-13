@@ -37,8 +37,8 @@ def test_emissions_class_variables():
     assert emissions2.edb_engine_nvpm is emissions2.edb_engine_nvpm
 
     # Update if emissions data changes
-    assert len(emissions1.edb_engine_gaseous) == 595
-    assert len(emissions1.edb_engine_nvpm) == 214
+    assert len(emissions1.edb_engine_gaseous) == 858
+    assert len(emissions1.edb_engine_nvpm) == 243
 
     # Check that the gaseous engine UIDs are a superset of the nvPM engine UIDs in the EDB.
     # This logic is used in cocip_grid.calc_emissions
@@ -385,15 +385,15 @@ def test_stage_combustors_data_length(engine_uid: str):
     edb_nvpm = emissions.edb_engine_nvpm[engine_uid]
 
     # Multistage combuster engines have 5 datapoints in the interpolation set
-    assert len(edb_nvpm.nvpm_ei_m.fp) == 5
-    assert len(edb_nvpm.nvpm_ei_m.xp) == 5
-    assert len(edb_nvpm.nvpm_ei_n.fp) == 5
-    assert len(edb_nvpm.nvpm_ei_n.xp) == 5
+    assert len(edb_nvpm.nvpm_ei_m_t4_t2.fp) == 5
+    assert len(edb_nvpm.nvpm_ei_m_t4_t2.xp) == 5
+    assert len(edb_nvpm.nvpm_ei_n_t4_t2.fp) == 5
+    assert len(edb_nvpm.nvpm_ei_n_t4_t2.xp) == 5
 
     # But the final three y values are all equal
-    assert np.all(edb_nvpm.nvpm_ei_m.fp[2:] == edb_nvpm.nvpm_ei_m.fp[2])
-    assert np.all(edb_nvpm.nvpm_ei_n.fp[2:] == edb_nvpm.nvpm_ei_n.fp[2])
+    assert np.all(edb_nvpm.nvpm_ei_m_t4_t2.fp[2:] == edb_nvpm.nvpm_ei_m_t4_t2.fp[2])
+    assert np.all(edb_nvpm.nvpm_ei_n_t4_t2.fp[2:] == edb_nvpm.nvpm_ei_n_t4_t2.fp[2])
 
     # The final x values are increasing
-    assert np.all(np.diff(edb_nvpm.nvpm_ei_m.xp) > 0)
-    assert np.all(np.diff(edb_nvpm.nvpm_ei_n.xp) > 0)
+    assert np.all(np.diff(edb_nvpm.nvpm_ei_m_t4_t2.xp) > 0)
+    assert np.all(np.diff(edb_nvpm.nvpm_ei_n_t4_t2.xp) > 0)
