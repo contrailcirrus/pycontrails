@@ -387,6 +387,12 @@ def nvpm_mass_emission_profiles_meem(
 
     # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
     elif fifth_data_point_mass:
+        if nvpm_ei_m_30_no_sl is None or nvpm_ei_m_85_no_sl is None or nvpm_ei_m_max_no_sl is None:
+            raise ValueError(
+                "nvpm_ei_m_30_no_sl, nvpm_ei_m_85_no_sl, and nvpm_ei_m_max_no_sl "
+                "must be provided when fifth_data_point_mass is True."
+            )
+
         # Calculate fuel flow (5th point)
         ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
         fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
@@ -489,6 +495,12 @@ def nvpm_number_emission_profiles_meem(
 
     # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
     elif fifth_data_point_number:
+        if nvpm_ei_n_30_no_sl is None or nvpm_ei_n_85_no_sl is None or nvpm_ei_n_max_no_sl is None:
+            raise ValueError(
+                "nvpm_ei_n_30_no_sl, nvpm_ei_n_85_no_sl, and nvpm_ei_n_max_no_sl "
+                "must be provided when fifth_data_point_number is True."
+            )
+
         # Calculate fuel flow (5th point)
         ff_fifth = 0.5 * (fuel_flow[1] + fuel_flow[2])
         fuel_flow = np.insert(fuel_flow, 2, ff_fifth)
@@ -681,8 +693,8 @@ def number_ei_scope11(
     c_bc_e = mass_concentration_engine_exit(c_bc_i, k_slm)
     c_bc_c = mass_concentration_combustor_exit(
         c_bc_e,
-        air_temperature,
-        air_pressure,
+        air_temperature,  # type: ignore[arg-type]
+        air_pressure,  # type: ignore[arg-type]
         thrust_setting,
         afr,
         q_fuel,
