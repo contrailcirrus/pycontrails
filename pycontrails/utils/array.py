@@ -10,6 +10,8 @@ def searchsorted2d(
 ) -> npt.NDArray[np.int64]:
     """Return the indices where elements in ``v`` would be inserted in ``a`` along its second axis.
 
+    An index of 0 is returned for any rows of ``a`` that contain nan values.
+
     Implementation based on a `StackOverflow answer <https://stackoverflow.com/a/40588862>`_.
 
     Parameters
@@ -48,6 +50,21 @@ def searchsorted2d(
 
     m, n = a.shape
 
+    # Record rows that contain nan values,
+    # then convert nan values to numbers without
+    # increasing range.
+    #
+    # The value chosen to replace nans doesn't matter,
+    # since indices are set to 0 for rows that contain
+    # any nans before returning.
+    #
+    # Ideally we'd like to find a non-nan value using
+    # a function that runs (best case) in O(1) rather
+    # than O(n) time... but I think this is probably
+    # faster than manually looping over a.
+    na_mask = np.isnan(a).any(axis=1, keepdims=True)
+    a = np.nan_to_num(a, nan=np.nanmax(a))
+
     offset_scalar = max(np.ptp(a).item(), np.ptp(v).item()) + 1.0
 
     # IMPORTANT: Keep the dtype as float64 to avoid round-off error
@@ -59,5 +76,6 @@ def searchsorted2d(
     a_scaled = a + offset  # float32 + float64 = float64
     v_scaled = v + offset  # float32 + float64 = float64
 
+    # Return 0 for rows that contain any nan values.
     idx_scaled = np.searchsorted(a_scaled.reshape(-1), v_scaled.reshape(-1)).reshape(v_scaled.shape)
-    return idx_scaled - n * steps.astype(np.int64)
+    return np.where(na_mask, 0, idx_scaled - n * steps.astype(np.int64))

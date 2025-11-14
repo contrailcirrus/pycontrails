@@ -125,7 +125,7 @@ def ml_to_pl(
     ----------
     ds : xr.Dataset
         Dataset with model-level meteorology data. Must include a "model_level" dimension
-        which is not split across chunks and a "pressure_level_ variable.
+        which is not split across chunks and a "pressure_level_ variable with pressure in hPa.
         Can include any number of other variables.
         Any `non-dimension coordinates <https://docs.xarray.dev/en/latest/user-guide/terminology.html#term-Non-dimension-coordinate>`_
         will be dropped.
