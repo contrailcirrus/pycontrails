@@ -78,7 +78,7 @@ _met_var_to_ods_mapping = {
 
 _icon_to_met_var: dict[Hashable, MetVariable] = {
     "t": met_var.AirTemperature,
-    "qv": met_var.SpecificHumidity,
+    "q": met_var.SpecificHumidity,
     "u": met_var.NorthwardWind,
     "v": met_var.EastwardWind,
     "wz": met_var.GeometricVerticalVelocity,
@@ -199,7 +199,9 @@ def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
         if forecast_time.hour not in range(0, 24, 3):
             msg = f"Invalid forecast time {forecast_time} for europe domain."
             raise ValueError(msg)
-        return forecast_time + timedelta(hours=78)
+        if forecast_time.hour % 6 == 0:
+            return forecast_time + timedelta(hours=78)
+        return forecast_time + timedelta(hours=30)
 
     if domain == "germany":
         if forecast_time.hour not in range(0, 24, 3):
@@ -286,10 +288,8 @@ class ICON(metsource.MetDataSource):
         If True, cache downloaded GRIB files rather than storing them in a temporary file.
         By default, False.
 
-    download_workers : int | None
-        Set the number of thread used to download GRIB files. If None (the default),
-        the number of threads is chosen automatically by
-        :class:`concurrent.futures.ThreadPoolExecutor`.
+    download_threads : int, optional
+        Limit the number of threads used to download data.
 
     """
 
@@ -300,7 +300,7 @@ class ICON(metsource.MetDataSource):
         "cache_download",
         "cachestore",
         "domain",
-        "download_workers",
+        "download_threads",
         "forecast_time",
         "model_levels",
     )
@@ -317,8 +317,8 @@ class ICON(metsource.MetDataSource):
     #: Whether to save raw data files to :attr:`cachestore` for reuse
     cache_download: bool
 
-    #: Number of threads used to download raw data files
-    download_workers: int | None
+    #: Number of threads used to download data
+    download_threads: int | None
 
     def __init__(
         self,
@@ -332,7 +332,7 @@ class ICON(metsource.MetDataSource):
         model_levels: list[int] | None = None,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
         cache_download: bool = False,
-        download_workers: int | None = None,
+        download_threads: int | None = None,
     ) -> None:
         # Parse and set instance attributes
 
@@ -404,7 +404,7 @@ class ICON(metsource.MetDataSource):
 
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.cache_download = cache_download
-        self.download_workers = download_workers
+        self.download_threads = download_threads
 
     def __repr__(self) -> str:
         base = super().__repr__()
@@ -475,12 +475,31 @@ class ICON(metsource.MetDataSource):
         """
         return [self.get_forecast_step(t) for t in self.timesteps]
 
+    @property
+    def dataset(self) -> str:
+        """MetDataset 'dataset' attribute.
+
+        Returns
+        -------
+        str
+            One of "ICON", "ICON-EU", or "ICON_D2"
+        """
+        if self.domain.lower() == "global":
+            return "ICON"
+        if self.domain.lower() == "europe":
+            return "ICON-EU"
+        if self.domain.lower() == "germany":
+            return "ICON-D2"
+
+        msg = f"Unknown domain {self.domain}."
+        raise ValueError(msg)
+
     @override
     def download_dataset(self, times: list[datetime]) -> None:
         for time in times:
             LOG.debug(
                 f"Downloading ICON {self.domain} data for time {time} "
-                f"from forecast {self.forecast_time} "
+                f"from {self.forecast_time} forecast."
             )
             self._download_convert_cache_handler(time)
 
@@ -491,7 +510,6 @@ class ICON(metsource.MetDataSource):
             raise ValueError(msg)
 
         string = (
-            f"{self.domain}-"
             f"{self.grid or 'default-lat-lon'}-"
             f"{t:%Y%m%d%H}-"
             f"{self.forecast_time:%Y%m%d%H}-"
@@ -501,7 +519,7 @@ class ICON(metsource.MetDataSource):
 
         name = hashlib.md5(string.encode()).hexdigest()
         ltype = "sl" if self.is_single_level else "pl"
-        cache_path = f"icon-{ltype}-{name}.nc"
+        cache_path = f"{self.dataset.lower()}-{ltype}-{name}.nc"
 
         return self.cachestore.path(cache_path)
 
@@ -541,17 +559,7 @@ class ICON(metsource.MetDataSource):
 
     @override
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
-        if self.domain.lower() == "global":
-            dataset = "ICON"
-        elif self.domain.lower() == "europe":
-            dataset = "ICON-EU"
-        elif self.domain.lower() == "germany":
-            dataset = "ICON-D2"
-        else:
-            msg = f"Unknown domain {self.domain}."
-            raise ValueError(msg)
-
-        ds.attrs.update(provider="DWD", dataset=dataset, product="forecast")
+        ds.attrs.update(provider="DWD", dataset=self.dataset, product="forecast")
 
     def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> MetDataset:
         """Process the :class:`xr.Dataset` opened from cached files.
@@ -570,10 +578,14 @@ class ICON(metsource.MetDataSource):
         """
         # radiative fluxes are averaged over hour ending at time coordinate
         if self.is_single_level:
-            shift_radiation_time = np.timedelta64(30, "m")
-            ds = ds.assign_coords(time=ds["time"] - shift_radiation_time)
+            shift_radiation_time = -np.timedelta64(30, "m")
+            ds = ds.assign_coords(time=ds["time"] + shift_radiation_time)
             ds = ds.sel(time=slice(self.forecast_time, None))
-            ds["time"].attrs["shift_radiative_time"] = str(shift_radiation_time)
+            ds["time"].attrs["shift_radiation_time"] = str(shift_radiation_time)
+
+        # change sign convention for toa lw flux to positive upward
+        if "rlut" in ds:
+            ds["rlut"] = -ds["rlut"]
 
         ds = met.standardize_variables(ds, self.variables)
 
@@ -581,7 +593,7 @@ class ICON(metsource.MetDataSource):
         return MetDataset(ds, **kwargs)
 
     def _rpaths(self, time: datetime) -> list[str]:
-        """Get list of remote and local paths for download."""
+        """Get list of remote paths for download."""
         step = self.get_forecast_step(time)
 
         variables = [_met_var_to_ods_mapping[v] for v in self.variables]
@@ -645,9 +657,12 @@ class ICON(metsource.MetDataSource):
                     continue
                 threads.append(threading.Thread(target=ods.get, args=(rpath, lpath)))
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.download_workers) as pool:
-                for thread in threads:
-                    pool.submit(thread.run)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.download_threads) as pool:
+                futures = [pool.submit(thread.run) for thread in threads]
+                for future in concurrent.futures.as_completed(futures):
+                    error = future.exception()
+                    if error:
+                        raise error
 
             ds = xr.open_mfdataset(
                 lpaths,
@@ -657,6 +672,8 @@ class ICON(metsource.MetDataSource):
                 engine="cfgrib",
                 backend_kwargs={"indexpath": ""},
             )
+
+            breakpoint()
 
             ds = _rename(ds)
 
@@ -804,5 +821,6 @@ def _global_icosahedral_to_regular_lat_lon(
 def _ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike) -> xr.Dataset:
     """Interpolate from model levels to pressure levels."""
 
-    ds = ds.rename(pres="pressure_level").chunk(model_level=-1)
+    ds["pressure_level"] = ds["pres"] / 100.0  # Pa -> hPa
+    ds = ds.drop_vars("pres").chunk(model_level=-1)
     return met_utils.ml_to_pl(ds, target_pl)
