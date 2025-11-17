@@ -7,7 +7,7 @@ import hashlib
 import logging
 import pathlib
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, TypeAlias
 
 import numpy as np
@@ -38,7 +38,7 @@ DEFAULT_CHUNKS: dict[str, int] = {"time": 1}
 OPEN_IN_PARALLEL: bool = False
 
 
-def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[datetime]:
+def parse_timesteps(time: TimeInput | None, freq: str | timedelta | None = "1h") -> list[datetime]:
     """Parse time input into set of time steps.
 
     If input time is length 2, this creates a range of equally spaced time
@@ -51,7 +51,7 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[dat
         Either a single datetime-like or tuple of datetime-like with the first value
         the start of the date range and second value the end of the time range.
         Input values can be any type compatible with :meth:`pandas.to_datetime`.
-    freq : str | None, optional
+    freq : str | timedelta | None, optional
         Timestep interval in range.
         See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         for a list of frequency aliases.
@@ -105,7 +105,7 @@ def parse_timesteps(time: TimeInput | None, freq: str | None = "1h") -> list[dat
     return daterange.to_pydatetime().tolist()
 
 
-def validate_timestep_freq(freq: str, datasource_freq: str) -> bool:
+def validate_timestep_freq(freq: str | timedelta, datasource_freq: str | timedelta) -> bool:
     """Check that input timestep frequency is compatible with the data source timestep frequency.
 
     A data source timestep frequency of 1 hour allows input timestep frequencies of
@@ -113,9 +113,9 @@ def validate_timestep_freq(freq: str, datasource_freq: str) -> bool:
 
     Parameters
     ----------
-    freq : str
+    freq : str | timedelta
         Input timestep frequency
-    datasource_freq : str
+    datasource_freq : str | timedelta
         Datasource timestep frequency
 
     Returns

@@ -10,67 +10,6 @@ from html.parser import HTMLParser
 import requests
 
 
-class OpenDataServerParser(HTMLParser):
-    """Parser for DWD Open Data Server pages.
-
-    This parser builds a list of links on each page,
-    ignoring links to parent directories.
-    """
-
-    __slots__ = ("children",)
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.children: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str]]) -> None:
-        """Record link targets, excluding parent directory."""
-        if tag != "a":
-            return
-        for name, value in attrs:
-            if name == "href" and value != "../":
-                self.children.append(value.rstrip("/"))
-                return
-
-
-def root(domain: str) -> str:
-    """Get Open Data Server root for ICON grib files on specified domain."""
-    root = "opendata.dwd.de"
-
-    if domain.lower() == "global":
-        return f"{root}/weather/nwp/icon/grib"
-    if domain.lower() == "europe":
-        return f"{root}/weather/nwp/icon-eu/grib"
-    if domain.lower() == "germany":
-        return f"{root}/weather/nwp/icon-d2/grib"
-
-    msg = f"Unknown domain {domain}."
-    raise ValueError(msg)
-
-
-def prefix(domain: str) -> str:
-    """Get Open Data Server filename prefix for ICON grid files on specified domain."""
-    if domain.lower() == "global":
-        return "icon_global_icosahedral"
-    if domain.lower() == "europe":
-        return "icon-eu_europe_regular-lat-lon"
-    if domain.lower() == "germany":
-        return "icon-d2_germany_regular-lat-lon"
-
-    msg = f"Unknown domain {domain}."
-    raise ValueError(msg)
-
-
-def ls(url: str) -> list[str]:
-    """List contents of directory."""
-    parser = OpenDataServerParser()
-    response = requests.get(f"https://{url}")
-    response.raise_for_status()
-    parser.feed(response.text)
-    parser.close()
-    return [f"{url}/{child}" for child in parser.children]
-
-
 def list_forecasts(domain: str) -> list[datetime]:
     """List available forecast cycles.
 
@@ -84,12 +23,12 @@ def list_forecasts(domain: str) -> list[datetime]:
     list[datetime]
         Start time of available forecast cycles
     """
-    cycles = ls(root(domain))
+    cycles = _ls(_root(domain))
 
     start_times = []
     for cycle in cycles:
         try:
-            sample_grib = ls(f"{cycle}/t")[0]
+            sample_grib = _ls(f"{cycle}/t")[0]
         except Exception as e:
             msg = "Could not find temperature GRIB file to read forecast start time."
             raise FileNotFoundError(msg) from e
@@ -134,7 +73,7 @@ def list_timesteps(domain: str, forecast: datetime) -> list[datetime]:
         return []
 
     try:
-        gribs = ls(f"{root(domain)}/{forecast.hour:02d}/t")
+        gribs = _ls(f"{_root(domain)}/{forecast.hour:02d}/t")
     except Exception as e:
         msg = "Could not find temperature GRIB files to read forecast start time."
         raise ValueError(msg) from e
@@ -151,28 +90,75 @@ def list_timesteps(domain: str, forecast: datetime) -> list[datetime]:
     return [forecast + timedelta(hours=step) for step in sorted(steps)]
 
 
-def global_latitude_rpath(forecast_time: datetime) -> str:
-    """Get path to remote latitude file for global icosahedral grid."""
+def global_latitude_rpath(forecast: datetime) -> str:
+    """Get path to remote latitude file for global icosahedral grid.
+
+    Parameters
+    ----------
+    forecast : datetime
+        Start time of forecast cycle.
+
+    Returns
+    -------
+    str
+        URL of grib file with cell-center latitudes
+
+    """
     domain = "global"
     return (
-        f"{root(domain)}/{forecast_time.hour:02d}/clat/"
-        f"{prefix(domain)}_time-invariant_{forecast_time.strftime('%Y%m%d%H')}"
+        f"{_root(domain)}/{forecast.hour:02d}/clat/"
+        f"{_prefix(domain)}_time-invariant_{forecast.strftime('%Y%m%d%H')}"
         "_CLAT.grib2.bz2"
     )
 
 
-def global_longitude_rpath(forecast_time: datetime) -> str:
-    """Get path to remote longitude file for global icosahedral grid."""
+def global_longitude_rpath(forecast: datetime) -> str:
+    """Get path to remote longitude file for global icosahedral grid.
+
+    Parameters
+    ----------
+    forecast : datetime
+        Start time of forecast cycle.
+
+    Returns
+    -------
+    str
+        URL of grib file with cell-center longitudes
+
+    """
     domain = "global"
     return (
-        f"{root(domain)}/{forecast_time.hour:02d}/clon/"
-        f"{prefix(domain)}_time-invariant_{forecast_time.strftime('%Y%m%d%H')}"
+        f"{_root(domain)}/{forecast.hour:02d}/clon/"
+        f"{_prefix(domain)}_time-invariant_{forecast.strftime('%Y%m%d%H')}"
         "_CLON.grib2.bz2"
     )
 
 
 def rpath(domain: str, forecast_time: datetime, variable: str, step: int, level: int | None) -> str:
-    """Get path to remote file."""
+    """Get URL remote data file.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain. Must be one of "global", "europe", or "germany".
+
+    forecast : datetime
+        Start time of forecast cycle.
+
+    variable : str
+        Open Data Server variable name.
+
+    step : int
+        Forecast step.
+
+    level : int | None
+        Model level for 3d variables or ``None`` for 2d variables
+
+    Returns
+    -------
+        URL of remote data file.
+
+    """
     if domain not in ("global", "europe", "germany"):
         msg = f"Unknown domain {domain}."
         raise ValueError(msg)
@@ -181,14 +167,26 @@ def rpath(domain: str, forecast_time: datetime, variable: str, step: int, level:
     step_level_str = _step_level_str(domain, step, level)
 
     return (
-        f"{root(domain)}/{forecast_time.hour:02d}/{variable}/"
-        f"{prefix(domain)}_{level_type}-level_{forecast_time.strftime('%Y%m%d%H')}"
+        f"{_root(domain)}/{forecast_time.hour:02d}/{variable}/"
+        f"{_prefix(domain)}_{level_type}-level_{forecast_time.strftime('%Y%m%d%H')}"
         f"_{step_level_str}_{variable if domain == 'germany' else variable.upper()}.grib2.bz2"
     )
 
 
 def get(rpath: str, lpath: str) -> None:
-    """Get file from Open Data Server."""
+    """Get data file from Open Data Server.
+
+    bzip2 files (.bz2 extension) will be decompressed before saving.
+
+    Parameters
+    ----------
+    rpath : str
+        URL of remote file on Open Data Server
+
+    lpath : str
+        Local path where file contents will be saved
+
+    """
     try:
         response = requests.get(f"https://{rpath}")
         response.raise_for_status()
@@ -206,6 +204,67 @@ def get(rpath: str, lpath: str) -> None:
 
     with open(lpath, "wb") as f:
         f.write(content)
+
+
+class _OpenDataServerParser(HTMLParser):
+    """Parser for DWD Open Data Server pages.
+
+    This parser builds a list of links on each page,
+    ignoring links to parent directories.
+    """
+
+    __slots__ = ("children",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.children: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str]]) -> None:
+        """Record link targets, excluding parent directory."""
+        if tag != "a":
+            return
+        for name, value in attrs:
+            if name == "href" and value != "../":
+                self.children.append(value.rstrip("/"))
+                return
+
+
+def _ls(url: str) -> list[str]:
+    """List URL of each item in directory."""
+    parser = _OpenDataServerParser()
+    response = requests.get(f"https://{url}")
+    response.raise_for_status()
+    parser.feed(response.text)
+    parser.close()
+    return [f"{url}/{child}" for child in parser.children]
+
+
+def _root(domain: str) -> str:
+    """Get Open Data Server root for ICON grib files on specified domain."""
+    root = "opendata.dwd.de"
+
+    if domain.lower() == "global":
+        return f"{root}/weather/nwp/icon/grib"
+    if domain.lower() == "europe":
+        return f"{root}/weather/nwp/icon-eu/grib"
+    if domain.lower() == "germany":
+        return f"{root}/weather/nwp/icon-d2/grib"
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
+
+
+def _prefix(domain: str) -> str:
+    """Get Open Data Server filename prefix for ICON grid files on specified domain."""
+    if domain.lower() == "global":
+        return "icon_global_icosahedral"
+    if domain.lower() == "europe":
+        return "icon-eu_europe_regular-lat-lon"
+    if domain.lower() == "germany":
+        return "icon-d2_germany_regular-lat-lon"
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
 
 
 def _step_level_str(domain: str, step: int, level: int | None) -> str:
