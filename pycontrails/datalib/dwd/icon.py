@@ -23,7 +23,7 @@ import math
 import sys
 import threading
 import warnings
-from collections.abc import Hashable
+from collections.abc import Hashable, Iterator
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -792,7 +792,12 @@ class ICON(metsource.MetDataSource):
                 fname = rpath.removesuffix(".bz2").split("/")[-1]
                 lpaths.append(self.cachestore.path(fname))
 
-        with stack:
+        # ecCodes will complain about missing latitude/longitude coordinates
+        # when opening grib messages on the unstructured global grid.
+        # This complaint comes from `logging.warning`, not `warnings.warn`,
+        # so we use a custom content manager to temporarily add a filter
+        # to the logger that issues the warning.
+        with stack, _eccodes_warning_filter():
             threads = []
             for rpath, lpath in zip(rpaths, lpaths, strict=True):
                 if self.cache_download and self.cachestore.exists(lpath):
@@ -812,10 +817,9 @@ class ICON(metsource.MetDataSource):
                 compat="equals",
                 preprocess=_preprocess_grib,
                 engine="cfgrib",
+                # Prevent cfgrib from creating index files
                 backend_kwargs={"indexpath": ""},
             )
-
-            breakpoint()
 
             ds = _rename(ds)
 
@@ -966,3 +970,23 @@ def _ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike) -> xr.Dataset:
     ds["pressure_level"] = ds["pres"] / 100.0  # Pa -> hPa
     ds = ds.drop_vars("pres").chunk(model_level=-1)
     return met_utils.ml_to_pl(ds, target_pl)
+
+
+class _ECCodesWarningFilter(logging.Filter):
+    """Filter for logging.warnings produced by ecCodes."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = "ecCodes provides no latitudes/longitudes for gridType='unstructured_grid'"
+        return record.levelname != "WARNING" or record.getMessage() != msg
+
+
+@contextlib.contextmanager
+def _eccodes_warning_filter() -> Iterator[None]:
+    """Silence ecCodes warnings."""
+    logger = logging.getLogger("cfgrib.dataset")
+    filter = _ECCodesWarningFilter()
+    logger.addFilter(filter)
+    try:
+        yield
+    finally:
+        logger.removeFilter(filter)
