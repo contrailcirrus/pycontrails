@@ -1160,9 +1160,9 @@ class MetDataset(MetBase):
         -------
         str
             Dataset of the data. If not one of ``"ERA5"``, ``"HRES"``, ``"IFS"``,
-            ``"GFS"``, or ``"ICON"``, a warning is issued.
+            ``"GFS"``, ``"ICON"``, ``"ICON-EU"``, or ``"ICON-D2"``, a warning is issued.
         """
-        supported = ("ERA5", "HRES", "IFS", "GFS", "ICON")
+        supported = ("ERA5", "HRES", "IFS", "GFS", "ICON", "ICON-EU", "ICON-D2")
         examples = {
             "ERA5": "ECMWF ERA5 reanalysis data",
             "HRES": "ECMWF HRES forecast data",

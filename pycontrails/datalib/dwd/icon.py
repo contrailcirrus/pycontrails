@@ -135,6 +135,29 @@ def forecast_frequency(domain: str) -> timedelta:
     raise ValueError(msg)
 
 
+def valid_forecast_hours(domain: str) -> list[int]:
+    """Get valid forecast initialization hours.
+
+    Parameters
+    ----------
+    domain : str
+         ICON domain
+
+    Returns
+    -------
+    list[int]
+        List of valid forecast hours as integers
+
+    """
+    if domain.lower() == "global":
+        return list(range(0, 24, 6))
+    if domain.lower() in ("europe", "germany"):
+        return list(range(0, 24, 3))
+
+    msg = f"Unknown domain {domain}"
+    raise ValueError(msg)
+
+
 def latest_forecast(domain: str, time: datetime) -> datetime:
     """Get most recent forecast initialized before the specified time.
 
@@ -216,24 +239,19 @@ def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
         Time of last hourly forecast step available on the specified domain.
 
     """
+    if forecast_time.hour not in valid_forecast_hours(domain):
+        msg = f"Invalid forecast time {forecast_time} for {domain} global."
+        raise ValueError(msg)
+
     if domain == "global":
-        if forecast_time.hour not in range(0, 24, 6):
-            msg = f"Invalid forecast time {forecast_time} for global domain."
-            raise ValueError(msg)
         return forecast_time + timedelta(hours=78)
 
     if domain == "europe":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for europe domain."
-            raise ValueError(msg)
         if forecast_time.hour % 6 == 0:
             return forecast_time + timedelta(hours=78)
         return forecast_time + timedelta(hours=30)
 
     if domain == "germany":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for germany domain."
-            raise ValueError(msg)
         return forecast_time + timedelta(hours=48)
 
     msg = f"Unknown domain {domain}."
@@ -259,24 +277,19 @@ def extended_forecast_timestep(domain: str, forecast_time: datetime) -> timedelt
         data is available for the entire forecast duration.
 
     """
+    if forecast_time.hour not in valid_forecast_hours(domain):
+        msg = f"Invalid forecast time {forecast_time} for {domain} global."
+        raise ValueError(msg)
+
     if domain == "global":
-        if forecast_time.hour not in range(0, 24, 6):
-            msg = f"Invalid forecast time {forecast_time} for global domain."
-            raise ValueError(msg)
         return timedelta(hours=3)
 
     if domain == "europe":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for europe domain."
-            raise ValueError(msg)
         if forecast_time.hour % 6 == 0:
             return timedelta(hours=3)
         return timedelta(hours=6)
 
     if domain == "germany":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for germany domain."
-            raise ValueError(msg)
         return timedelta(hours=1)
 
     msg = f"Unknown domain {domain}."
@@ -518,6 +531,13 @@ class ICON(metsource.MetDataSource):
                     "Value must be compatible with 'pd.to_datetime'."
                 )
                 raise ValueError(msg) from e
+            valid_hours = valid_forecast_hours(self.domain)
+            if (hour := self.forecast_time.hour) not in valid_hours:
+                msg = (
+                    f"Forecast hour must be one of {[f'{h:02d}' for h in valid_hours]} "
+                    f"but is {hour:02d}."
+                )
+                raise ValueError(msg)
 
         last_hour = forecast_hours[-1]
         if last_hour > (end := last_timestep(self.domain, self.forecast_time)):
@@ -540,6 +560,9 @@ class ICON(metsource.MetDataSource):
             raise ValueError(msg)
 
         self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
+        if self.timesteps[0] < self.forecast_time:
+            msg = f"Selected forecast time {self.forecast_time} is after first timestep."
+            raise ValueError(msg)
 
         self.progress = progress
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
@@ -703,6 +726,41 @@ class ICON(metsource.MetDataSource):
     def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
         ds.attrs.update(provider="DWD", dataset=self.dataset, product="forecast")
 
+    def rpaths(self, time: datetime) -> list[str]:
+        """Get list of remote paths for download.
+
+        Note that this function returns remote paths required to
+        process a single forecast time step, not all forecast time
+        steps.
+
+        Parameters
+        ----------
+        time : datetime
+            Forecast timestep
+
+        Returns
+        -------
+        list[str]
+            Open Data Server URLs for all required variables
+            at the specified timestep. This includes URLS for
+            air pressure when processing model-level variables,
+            since the pressure field is required for conversion
+            from model to pressure levels.
+
+        """
+        step = self.get_forecast_step(time)
+
+        variables = [_met_var_to_ods_mapping[v] for v in self.variables]
+        if not self.is_single_level:
+            variables += "p"
+
+        levels = [None] if self.is_single_level else sorted(self.model_levels)
+
+        return [
+            ods.rpath(self.domain, self.forecast_time, var, step, level)
+            for var, level in itertools.product(variables, levels)
+        ]
+
     def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> MetDataset:
         """Process the :class:`xr.Dataset` opened from cached files.
 
@@ -733,21 +791,6 @@ class ICON(metsource.MetDataSource):
 
         kwargs.setdefault("cachestore", self.cachestore)
         return MetDataset(ds, **kwargs)
-
-    def _rpaths(self, time: datetime) -> list[str]:
-        """Get list of remote paths for download."""
-        step = self.get_forecast_step(time)
-
-        variables = [_met_var_to_ods_mapping[v] for v in self.variables]
-        if not self.is_single_level:
-            variables += "p"
-
-        levels = [None] if self.is_single_level else sorted(self.model_levels)
-
-        return [
-            ods.rpath(self.domain, self.forecast_time, var, step, level)
-            for var, level in itertools.product(variables, levels)
-        ]
 
     @functools.cached_property
     def _global_kdtree(self) -> KDTree:
@@ -783,7 +826,7 @@ class ICON(metsource.MetDataSource):
             raise ValueError(msg)
 
         stack = contextlib.ExitStack()
-        rpaths = self._rpaths(time)
+        rpaths = self.rpaths(time)
         lpaths = []
         for rpath in rpaths:
             if not self.cache_download:
