@@ -2,7 +2,6 @@
 
 This module supports
 
-- Listing available ICON forecast cycles on the `DWD Open Data Server <https://opendata.dwd.de>_`.
 - Retrieving ICON forecasts from the `DWD Open Data Server <https://opendata.dwd.de>_`.
 - Interpolating forecasts onto pressure levels and a regular latitude/longitude grid.
 - Local caching of processed forecasts as netCDF files.
@@ -40,6 +39,7 @@ import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 from scipy.spatial import KDTree
+from tqdm.auto import tqdm
 
 import pycontrails
 from pycontrails.core import MetDataset, MetVariable, cache, met, met_var
@@ -113,7 +113,19 @@ def flight_level_pressure(fl_min: int = 200, fl_max: int = 500) -> list[int]:
 
 
 def forecast_frequency(domain: str) -> timedelta:
-    """Get forecast cycle frequency."""
+    """Get forecast cycle frequency.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain
+
+    Returns
+    -------
+    timedelta
+        Forecast cycle frequency (6h for global forecasts, 3h for others).
+
+    """
     if domain.lower() == "global":
         return timedelta(hours=6)
     if domain.lower() in ("europe", "germany"):
@@ -124,7 +136,22 @@ def forecast_frequency(domain: str) -> timedelta:
 
 
 def latest_forecast(domain: str, time: datetime) -> datetime:
-    """Get most recent forecast that contains the provided time."""
+    """Get most recent forecast initialized before the specified time.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain
+
+    time : datetime
+        Specified time
+
+    Returns
+    -------
+    datetime
+        Start time of most recent forecast initialized before :param:`time`.
+
+    """
     freq = pd.Timedelta(forecast_frequency(domain))
     return pd.Timestamp(time).floor(freq).to_pydatetime()
 
@@ -160,7 +187,7 @@ def last_timestep(domain: str, forecast_time: datetime) -> datetime:
             raise ValueError(msg)
         if forecast_time.hour % 6 == 0:
             return forecast_time + timedelta(hours=120)
-        return forecast_time + timedelta(hours=30)
+        return forecast_time + timedelta(hours=48)
 
     if domain == "germany":
         if forecast_time.hour not in range(0, 24, 3):
@@ -186,7 +213,7 @@ def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
     Returns
     -------
     datetime
-        Time of last forecast step available on the specified domain.
+        Time of last hourly forecast step available on the specified domain.
 
     """
     if domain == "global":
@@ -213,8 +240,63 @@ def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
     raise ValueError(msg)
 
 
-def bottom_level(domain: str) -> int:
-    """Get index of lowest model level."""
+def extended_forecast_timestep(domain: str, forecast_time: datetime) -> timedelta:
+    """Get timestep for portions of forecasts after end of hourly data.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain
+
+    forecast_time : datetime
+        Forecast initialization time
+
+    Returns
+    -------
+    timedelta
+        Timestep for portions of forecast after which hourly data is
+        not longer available. Returns ``timedelta(hours=1)`` if hourly
+        data is available for the entire forecast duration.
+
+    """
+    if domain == "global":
+        if forecast_time.hour not in range(0, 24, 6):
+            msg = f"Invalid forecast time {forecast_time} for global domain."
+            raise ValueError(msg)
+        return timedelta(hours=3)
+
+    if domain == "europe":
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for europe domain."
+            raise ValueError(msg)
+        if forecast_time.hour % 6 == 0:
+            return timedelta(hours=3)
+        return timedelta(hours=6)
+
+    if domain == "germany":
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for germany domain."
+            raise ValueError(msg)
+        return timedelta(hours=1)
+
+    msg = f"Unknown domain {domain}."
+    raise ValueError(msg)
+
+
+def num_model_levels(domain: str) -> int:
+    """Get number of model levels used by ICON.
+
+    Parameters
+    ----------
+    domain : str
+        ICON domain
+
+    Returns
+    -------
+    int
+        Number of model levels used by ICON.
+
+    """
     if domain.lower() == "global":
         return 120
     if domain.lower() == "europe":
@@ -230,6 +312,52 @@ class ICON(metsource.MetDataSource):
     """Class to support ICON data access via the `DWD Open Data Server <https://opendata.dwd.de>_`.
 
     No credentials are required for ICON data access.
+
+    The current operational version of ICON uses a single-moment microphysics scheme that
+    `underestimates humidity in ice-supersaturated regions <https://doi.org/10.5194/egusphere-2025-3312>_`.
+    Documentation for this datalib will be updated when the double-moment microphysics scheme
+    currently under development becomes operational.
+
+    The DWD provides ICON forecasts on
+    `three domain <https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html>_`:
+    a global domain (~13 km resolution), a higher-resolution Europe domain (~7 km), and a
+    high-resolution Germany domain (~2 km). Global forecasts are initialized every 6 hours and
+    Europe and Germany forecasts are initialized every 3 hours.
+
+    The forecast horizon depends on the domain and forecast initialization time:
+
+    .. list-table:: ICON forecast horizon
+        :header-rows: 1
+
+        * - Forecast
+          - Global (00, 12)
+          - Global (06, 18)
+          - Europe (00, 06, 12, 18)
+          - Europe (03, 09, 15, 21)
+          - Germany (all forecasts)
+        * - Horizon (hourly forecast)
+          - +78h
+          - +78h
+          - +78h
+          - +30h
+          - +48h
+        * - Horizon (extended forecast)
+          - +180h
+          - +120h
+          - +120h
+          - +48h
+          - N/A
+        * - Extended forecast timestep
+          - 3h
+          - 3h
+          - 3h
+          - 6h
+          - N/A
+
+    This datalib currently supports only those variables required to run :class:`Cocip`
+    and :class:`CocipGrid`. Please
+    `contact the pycontrails developers <https://github.com/contrailcirrus/pycontrails/issues/new?template=feature_request.md>_`
+    to request support for additional variables.
 
     Parameters
     ----------
@@ -252,9 +380,9 @@ class ICON(metsource.MetDataSource):
         'europe' (European domain nested inside the global domain with ~7 km resolution),
         or 'germany' (regional domain centered on Germany at ~2.2 km resolution).
 
-    timestep_freq : str, optional
+    timestep_freq : str | timedelta | None, optional
         Manually set the timestep interval within the bounds defined by :attr:`time`.
-        Supports any string that can be passed to ``pandas.date_range(freq=...)``.
+        Supports any value that can be passed to ``pandas.date_range(freq=...)``.
         By default, this is set to the highest frequency that can supported the requested
         time range on the requested domain.
 
@@ -278,6 +406,10 @@ class ICON(metsource.MetDataSource):
     model_levels : list[int] | None, optional
         Specify ICON model levels to include in MARS requests.
         By default, this is set to include all model levels.
+
+    progress: bool, optional
+        Show progress while downloading and processing ICON data.
+        Disabled by default.
 
     cachestore : cache.CacheStore, optional
         Cache data store for staging processed netCDF files.
@@ -303,6 +435,7 @@ class ICON(metsource.MetDataSource):
         "download_threads",
         "forecast_time",
         "model_levels",
+        "progress",
     )
 
     #: ICON forecast domain
@@ -313,6 +446,9 @@ class ICON(metsource.MetDataSource):
 
     #: Model levels included when downloading raw data files
     model_levels: list[int]
+
+    #: Whether to show progress bar while downloading and processing data
+    progress: bool
 
     #: Whether to save raw data files to :attr:`cachestore` for reuse
     cache_download: bool
@@ -326,10 +462,11 @@ class ICON(metsource.MetDataSource):
         variables: metsource.VariableInput,
         pressure_levels: metsource.PressureLevelInput | None = None,
         domain: str = "global",
-        timestep_freq: str | None = None,
+        timestep_freq: str | timedelta | None = None,
         grid: float | None = None,
         forecast_time: DatetimeLike | None = None,
         model_levels: list[int] | None = None,
+        progress: bool = False,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
         cache_download: bool = False,
         download_threads: int | None = None,
@@ -358,7 +495,7 @@ class ICON(metsource.MetDataSource):
             warnings.warn(msg)
         self.grid = grid or 0.25 if domain == "global" else None
 
-        max_level = bottom_level(domain)
+        max_level = num_model_levels(domain)
         if model_levels is None:
             model_levels = list(range(1, max_level + 1))
         elif min(model_levels) < 1 or max(model_levels) > max_level:
@@ -388,7 +525,9 @@ class ICON(metsource.MetDataSource):
             raise ValueError(msg)
 
         datasource_timestep_freq = (
-            "1h" if last_hour <= last_hourly_timestep(self.domain, self.forecast_time) else "3h"
+            "1h"
+            if last_hour <= last_hourly_timestep(self.domain, self.forecast_time)
+            else extended_forecast_timestep(self.domain, self.forecast_time)
         )
         if timestep_freq is None:
             timestep_freq = datasource_timestep_freq
@@ -402,6 +541,7 @@ class ICON(metsource.MetDataSource):
 
         self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
 
+        self.progress = progress
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.cache_download = cache_download
         self.download_threads = download_threads
@@ -496,6 +636,8 @@ class ICON(metsource.MetDataSource):
 
     @override
     def download_dataset(self, times: list[datetime]) -> None:
+        if self.progress:
+            times = tqdm(times)
         for time in times:
             LOG.debug(
                 f"Downloading ICON {self.domain} data for time {time} "
