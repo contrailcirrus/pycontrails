@@ -219,12 +219,12 @@ class _OpenDataServerParser(HTMLParser):
         super().__init__()
         self.children: list[str] = []
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         """Record link targets, excluding parent directory."""
         if tag != "a":
             return
         for name, value in attrs:
-            if name == "href" and value != "../":
+            if name == "href" and value is not None and value != "../":
                 self.children.append(value.rstrip("/"))
                 return
 
