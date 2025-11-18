@@ -124,7 +124,7 @@ def test_ml_to_pl_nan_in_data(ds_ml: xr.Dataset) -> None:
 
 
 def test_ml_to_pl_nan_in_pressure(ds_ml: xr.Dataset) -> None:
-    """Test bahavior with nans in pressure data."""
+    """Test behavior with nans in pressure data."""
 
     ds_ml["pressure_level"].loc[dict(x=0, y=0, model_level=3)] = np.nan
     ds_pl = met_utils.ml_to_pl(ds_ml, [150, 250, 350, 450])
@@ -134,12 +134,13 @@ def test_ml_to_pl_nan_in_pressure(ds_ml: xr.Dataset) -> None:
 
 
 def test_ml_to_pl_nan_in_target_pl(ds_ml: xr.Dataset) -> None:
-    """Test bahavior with nans in target pressure levels."""
+    """Test behavior with nans in target pressure levels."""
 
-    ds_pl = met_utils.ml_to_pl(ds_ml, [150, 250, np.nan, 450])
+    with pytest.raises(ValueError, match="Target pressure levels must not"):
+        _ = met_utils.ml_to_pl(ds_ml, np.nan)
 
-    assert np.isnan(ds_pl.isel(level=2)).all()
-    assert np.isnan(ds_pl.isel(level=[0, 1, 3])).sum() == 0
+    with pytest.raises(ValueError, match="Target pressure levels must not"):
+        _ = met_utils.ml_to_pl(ds_ml, [150, 250, np.nan, 450])
 
 
 def test_ml_to_pl_no_pressure(ds_ml: xr.Dataset) -> None:

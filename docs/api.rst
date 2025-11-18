@@ -83,6 +83,17 @@ ARCO ERA5
     datalib.ecmwf.arco_era5
 
 
+DWD
+"""
+
+.. autosummary::
+    :toctree: api/
+
+    datalib.dwd.ICON
+    datalib.dwd.icon
+    datalib.dwd.ods
+
+
 Geostationary Satellites
 """"""""""""""""""""""""
 
@@ -303,6 +314,7 @@ Utilities
     utils.iteration
     utils.temp
     utils.json
+    utils.array
     .. utils.synthetic_flight
 
 
