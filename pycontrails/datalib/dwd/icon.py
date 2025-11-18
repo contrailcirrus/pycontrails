@@ -2,13 +2,11 @@
 
 This module supports
 
-- Retrieving ICON forecasts from the `DWD Open Data Server <https://opendata.dwd.de>_`.
+- Retrieving ICON forecasts from the `DWD Open Data Server <https://opendata.dwd.de>`_.
 - Interpolating forecasts onto pressure levels and a regular latitude/longitude grid.
 - Local caching of processed forecasts as netCDF files.
 - Opening processed and cached files as a :class:`pycontrails.MetDataset`.
 
-Note that the DWD Open Data Server does not provide a long-term archive of forecasts.
-Forecasts are typically available for the last 24 hours of forecast cycles only.
 """
 
 from __future__ import annotations
@@ -172,14 +170,14 @@ def latest_forecast(domain: str, time: datetime) -> datetime:
     Returns
     -------
     datetime
-        Start time of most recent forecast initialized before :param:`time`.
+        Start time of most recent forecast initialized before `time`.
 
     """
     freq = pd.Timedelta(forecast_frequency(domain))
     return pd.Timestamp(time).floor(freq).to_pydatetime()
 
 
-def last_timestep(domain: str, forecast_time: datetime) -> datetime:
+def last_step(domain: str, forecast_time: datetime) -> datetime:
     """Get time of last forecast step.
 
     Parameters
@@ -217,7 +215,7 @@ def last_timestep(domain: str, forecast_time: datetime) -> datetime:
     raise ValueError(msg)
 
 
-def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
+def last_hourly_step(domain: str, forecast_time: datetime) -> datetime:
     """Get time of last forecast step with hourly frequency.
 
     Parameters
@@ -268,28 +266,23 @@ def extended_forecast_timestep(domain: str, forecast_time: datetime) -> str:
     -------
     str
         Timestep for portions of forecast after which hourly data is
-        not longer available. Returns ``"1h"`` if hourly
+        no longer available. Returns ``"1h"`` if hourly
         data is available for the entire forecast duration.
 
     """
+    if forecast_time.hour not in valid_forecast_hours(domain):
+        msg = f"Invalid forecast time {forecast_time} for {domain} domain."
+        raise ValueError(msg)
+
     if domain == "global":
-        if forecast_time.hour not in range(0, 24, 6):
-            msg = f"Invalid forecast time {forecast_time} for global domain."
-            raise ValueError(msg)
         return "3h"
 
     if domain == "europe":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for europe domain."
-            raise ValueError(msg)
         if forecast_time.hour % 6 == 0:
             return "3h"
         return "6h"
 
     if domain == "germany":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for germany domain."
-            raise ValueError(msg)
         return "1h"
 
     msg = f"Unknown domain {domain}."
@@ -322,20 +315,26 @@ def num_model_levels(domain: str) -> int:
 
 
 class ICON(metsource.MetDataSource):
-    """Class to support ICON data access via the `DWD Open Data Server <https://opendata.dwd.de>_`.
+    """Class to support ICON data access, download, and organization.
 
-    No credentials are required for ICON data access.
+    Access is credential-free via the `DWD Open Data Server <https://opendata.dwd.de>`_.
 
     The current operational version of ICON uses a single-moment microphysics scheme that
-    `underestimates humidity in ice-supersaturated regions <https://doi.org/10.5194/egusphere-2025-3312>_`.
+    `underestimates humidity in ice-supersaturated regions <https://doi.org/10.5194/egusphere-2025-3312>`_.
     Documentation for this datalib will be updated when the double-moment microphysics scheme
     currently under development becomes operational.
 
     The DWD provides ICON forecasts on
-    `three domain <https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html>_`:
+    `three domains <https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html>`_:
     a global domain (~13 km resolution), a higher-resolution Europe domain (~7 km), and a
     high-resolution Germany domain (~2 km). Global forecasts are initialized every 6 hours and
-    Europe and Germany forecasts are initialized every 3 hours.
+    Europe and Germany forecasts are initialized every 3 hours. The Open Data Server *does not
+    provide a long-term forecast archive*. Data for each forecast cycle is typically available
+    for about 24 hours.
+
+    Global ICON forecasts are provided on an icosahedral grid and must be interpolated to a
+    latitude-longitude grid. *This datalib currently supports nearest-neighbor interpolation only.*
+    Additional interpolation methods may be added in future releases.
 
     The forecast horizon depends on the domain and forecast initialization time:
 
@@ -369,29 +368,28 @@ class ICON(metsource.MetDataSource):
 
     This datalib currently supports only those variables required to run :class:`Cocip`
     and :class:`CocipGrid`. Please
-    `contact the pycontrails developers <https://github.com/contrailcirrus/pycontrails/issues/new?template=feature_request.md>_`
+    `contact the pycontrails developers <https://github.com/contrailcirrus/pycontrails/issues/new?template=feature_request.md>`_
     to request support for additional variables.
 
     Parameters
     ----------
     time : metsource.TimeInput
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
-        Input must be datetime-like or tuple of datetime-like
-        (:py:class:`datetime.datetime`, :class:`pandas.Timestamp`, :class:`numpy.datetime64`)
-        specifying the (start, end) of the date range, inclusive.
+        Input must be datetime-like or tuple of datetime-like specifying the (start, end)
+        of the date range, inclusive.
 
     variables : metsource.VariableInput
         Variable name (e.g., "t", "air_temperature", ["air_temperature, specific_humidity"])
 
     pressure_levels : metsource.PressureLevelInput | None, optional
-        Pressure levels for data, in hPa (mbar).
+        Pressure levels for processed data, in hPa (mbar).
         To download single-level parameters, set to -1.
         Defaults to pressure levels that match standard flight levels between FL200 and FL500.
 
     domain : str, optional
         Forecast domain. Must be one of 'global' (global domain with ~13 km resolution, default),
         'europe' (European domain nested inside the global domain with ~7 km resolution),
-        or 'germany' (regional domain centered on Germany at ~2.2 km resolution).
+        or 'germany' (regional domain centered on Germany with ~2.2 km resolution).
 
     timestep_freq : str | timedelta | None, optional
         Manually set the timestep interval within the bounds defined by :attr:`time`.
@@ -400,24 +398,24 @@ class ICON(metsource.MetDataSource):
         time range on the requested domain.
 
     grid : float | None, optional
-        Latitude/longitude grid resolution. Used only when :param:`domain` is 'global',
+        Latitude/longitude grid resolution. Used only when `domain` is 'global',
         in which case data must be remapped from ICON's native icosahedral grid. Fields
         from the European nest and the regional Germany forecast are provided on regular
         latitude-longitude grids, so no interpolation is required and this parameter is
-        ignored. If no value is provided when :param:`domain` is 'global', data will
+        ignored. If no value is provided when `domain` is 'global', data will
         be interpolated to a 0.25 degree grid, which provides spatial resolution comparable
         to ICON's native grid at midlatitude. A warning is issued if a value is provided
-        when :param:`domain` is set to 'europe' or 'germany'.
+        when `domain` is set to 'europe' or 'germany'.
 
     forecast_time : DatetimeLike | None, optional
         Specify forecast by initialization time.
         By default, set to the most recent forecast that includes the requested time range.
-        This is the most recent multiple of 3 hours (00z, 03z, 06z, etc) when :param:`domain`
+        This is the most recent multiple of 3 hours (00z, 03z, 06z, etc) when `domain`
         is 'europe' or 'germany' and the most recent multiple of 6 hours (00z, 06z, etc)
-        when :param:`domain` is 'global'.
+        when `domain` is 'global'.
 
     model_levels : list[int] | None, optional
-        Specify ICON model levels to include in MARS requests.
+        Specify ICON model levels to include in downloads from the Open Data Server.
         By default, this is set to include all model levels.
 
     progress: bool, optional
@@ -435,6 +433,12 @@ class ICON(metsource.MetDataSource):
 
     download_threads : int, optional
         Limit the number of threads used to download data.
+
+
+    See Also
+    --------
+    :func:`pycontrails.datalib.dwd.ods.list_forecasts`: list available forecast cycles
+    :func:`pycontrails.datalib.dwd.ods.list_timesteps`: list available forecast timesteps
 
     """
 
@@ -540,13 +544,13 @@ class ICON(metsource.MetDataSource):
                 raise ValueError(msg)
 
         last_hour = forecast_hours[-1]
-        if last_hour > (end := last_timestep(self.domain, self.forecast_time)):
+        if last_hour > (end := last_step(self.domain, self.forecast_time)):
             msg = f"Requested times extend to {last_hour}, beyond end of forecast at {end}."
             raise ValueError(msg)
 
         datasource_timestep_freq = (
             "1h"
-            if last_hour <= last_hourly_timestep(self.domain, self.forecast_time)
+            if last_hour <= last_hourly_step(self.domain, self.forecast_time)
             else extended_forecast_timestep(self.domain, self.forecast_time)
         )
         if timestep_freq is None:
@@ -647,7 +651,7 @@ class ICON(metsource.MetDataSource):
         Returns
         -------
         str
-            One of "ICON", "ICON-EU", or "ICON_D2"
+            One of "ICON", "ICON-EU", or "ICON-D2"
         """
         if self.domain.lower() == "global":
             return "ICON"
@@ -732,8 +736,7 @@ class ICON(metsource.MetDataSource):
         """Get list of remote paths for download.
 
         Note that this function returns remote paths required to
-        process a single forecast time step, not all forecast time
-        steps.
+        process a single forecast time step only.
 
         Parameters
         ----------

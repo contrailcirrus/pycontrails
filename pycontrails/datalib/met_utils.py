@@ -143,6 +143,10 @@ def ml_to_pl(
         will be as well. Call ``.compute()`` to compute the result eagerly.
 
     """
+    if np.isnan(target_pl).any():
+        msg = "Target pressure levels must not contain NaN values."
+        raise ValueError(msg)
+
     if "pressure_level" not in ds:
         msg = "The dataset must contain a 'pressure_level' variable"
         raise ValueError(msg)

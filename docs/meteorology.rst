@@ -12,3 +12,4 @@ Meteorology
    notebooks/ECMWF
    notebooks/GFS
    notebooks/ARCO-ERA5
+   notebooks/ICON

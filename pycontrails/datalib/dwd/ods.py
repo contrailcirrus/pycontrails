@@ -156,6 +156,7 @@ def rpath(domain: str, forecast_time: datetime, variable: str, step: int, level:
 
     Returns
     -------
+    str
         URL of remote data file.
 
     """
