@@ -130,7 +130,8 @@ def ml_to_pl(
         Any `non-dimension coordinates <https://docs.xarray.dev/en/latest/user-guide/terminology.html#term-Non-dimension-coordinate>`_
         will be dropped.
     target_pl : npt.ArrayLike
-        Target pressure levels, [:math:`hPa`].
+        Target pressure levels, [:math:`hPa`]. Will be promoted to a 1D array if a scalar
+        is provided and flattened to 1D if multidimensional array is provided.
 
     Returns
     -------
@@ -140,6 +141,7 @@ def ml_to_pl(
         is replaced with "level". The shape of the "level" dimension is
         the length of ``target_pl``. If ``ds`` is dask-backed, the output
         will be as well. Call ``.compute()`` to compute the result eagerly.
+
     """
     if "pressure_level" not in ds:
         msg = "The dataset must contain a 'pressure_level' variable"
@@ -155,6 +157,10 @@ def ml_to_pl(
             warnings.warn(msg)
             ds = ds.drop_vars([name])
 
+    if not ds.data_vars:
+        msg = "Dataset has no variables with a 'model_level' dimension"
+        raise ValueError(msg)
+
     # IMPORTANT: model_level must be the last dimension for _interp_on_chunk
     ds = ds.transpose(..., "model_level")
 
@@ -164,6 +170,7 @@ def ml_to_pl(
         raise ValueError(msg)
 
     target_pl = np.asarray(target_pl, dtype=ds["pressure_level"].dtype)
+    target_pl = np.atleast_1d(target_pl).ravel()
     template = _build_template(ds, target_pl)
 
     return xr.map_blocks(_interp_on_chunk, ds, (target_pl,), template=template)
