@@ -196,26 +196,21 @@ def last_timestep(domain: str, forecast_time: datetime) -> datetime:
         Time of last forecast step available on the specified domain.
 
     """
+    if forecast_time.hour not in valid_forecast_hours(domain):
+        msg = f"Invalid forecast time {forecast_time} for {domain} domain."
+        raise ValueError(msg)
+
     if domain == "global":
-        if forecast_time.hour not in range(0, 24, 6):
-            msg = f"Invalid forecast time {forecast_time} for global domain."
-            raise ValueError(msg)
-        if forecast_time.hour in (0, 12):
+        if forecast_time.hour % 12 == 0:
             return forecast_time + timedelta(hours=180)
         return forecast_time + timedelta(hours=120)
 
     if domain == "europe":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for europe domain."
-            raise ValueError(msg)
         if forecast_time.hour % 6 == 0:
             return forecast_time + timedelta(hours=120)
         return forecast_time + timedelta(hours=48)
 
     if domain == "germany":
-        if forecast_time.hour not in range(0, 24, 3):
-            msg = f"Invalid forecast time {forecast_time} for germany domain."
-            raise ValueError(msg)
         return forecast_time + timedelta(hours=48)
 
     msg = f"Unknown domain {domain}."
@@ -240,7 +235,7 @@ def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
 
     """
     if forecast_time.hour not in valid_forecast_hours(domain):
-        msg = f"Invalid forecast time {forecast_time} for {domain} global."
+        msg = f"Invalid forecast time {forecast_time} for {domain} domain."
         raise ValueError(msg)
 
     if domain == "global":
@@ -258,7 +253,7 @@ def last_hourly_timestep(domain: str, forecast_time: datetime) -> datetime:
     raise ValueError(msg)
 
 
-def extended_forecast_timestep(domain: str, forecast_time: datetime) -> timedelta:
+def extended_forecast_timestep(domain: str, forecast_time: datetime) -> str:
     """Get timestep for portions of forecasts after end of hourly data.
 
     Parameters
@@ -271,26 +266,31 @@ def extended_forecast_timestep(domain: str, forecast_time: datetime) -> timedelt
 
     Returns
     -------
-    timedelta
+    str
         Timestep for portions of forecast after which hourly data is
-        not longer available. Returns ``timedelta(hours=1)`` if hourly
+        not longer available. Returns ``"1h"`` if hourly
         data is available for the entire forecast duration.
 
     """
-    if forecast_time.hour not in valid_forecast_hours(domain):
-        msg = f"Invalid forecast time {forecast_time} for {domain} global."
-        raise ValueError(msg)
-
     if domain == "global":
-        return timedelta(hours=3)
+        if forecast_time.hour not in range(0, 24, 6):
+            msg = f"Invalid forecast time {forecast_time} for global domain."
+            raise ValueError(msg)
+        return "3h"
 
     if domain == "europe":
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for europe domain."
+            raise ValueError(msg)
         if forecast_time.hour % 6 == 0:
-            return timedelta(hours=3)
-        return timedelta(hours=6)
+            return "3h"
+        return "6h"
 
     if domain == "germany":
-        return timedelta(hours=1)
+        if forecast_time.hour not in range(0, 24, 3):
+            msg = f"Invalid forecast time {forecast_time} for germany domain."
+            raise ValueError(msg)
+        return "1h"
 
     msg = f"Unknown domain {domain}."
     raise ValueError(msg)
@@ -555,13 +555,15 @@ class ICON(metsource.MetDataSource):
             msg = (
                 f"Forecast out to time {last_hour} "
                 f"has timestep frequency of {datasource_timestep_freq} "
-                f"and cannot supported requested timestep frequency of {timestep_freq}."
+                f"and cannot support requested timestep frequency of {timestep_freq}."
             )
             raise ValueError(msg)
 
-        self.timesteps = metsource.parse_timesteps(time, freq=timestep_freq)
-        if self.timesteps[0] < self.forecast_time:
-            msg = f"Selected forecast time {self.forecast_time} is after first timestep."
+        self.timesteps = metsource.parse_timesteps(
+            time, freq=timestep_freq, shift=timedelta(hours=self.forecast_time.hour)
+        )
+        if (start := self.timesteps[0]) < self.forecast_time:
+            msg = f"Selected forecast time {self.forecast_time} is after first timestep at {start}."
             raise ValueError(msg)
 
         self.progress = progress
@@ -704,7 +706,7 @@ class ICON(metsource.MetDataSource):
         xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> MetDataset:
-        if dataset:
+        if dataset is not None:
             msg = "Parameter 'dataset' is not supported for ICON data"
             raise ValueError(msg)
 
