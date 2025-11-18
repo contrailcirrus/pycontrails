@@ -5,11 +5,13 @@
 ### Fixes
 
 - Corrected conditional logic in `thermo._e_sat_piecewise` to prevent `thermo.q_sat` from returning `np.nan` for temperatures below freezing (0°C).
+- Updated doctests for compatibility with `float32` ERA5 variables.
 
 ### Internals
 
 - Open the backdoor to running `Cocip` with a fuel-varying `Fleet`. This is not officially supported and requires some undocumented monkey-patching.
 - Specify `join="outer"` and `compat="no_conflicts"` when opening multiple netCDF files in `metsource.open_mfdataset` to avoid xarray `FutureWarning`.
+- Updated cached doctest data in `gs://contrails-301217-unit-test/doc-test-cache` with current output from the `ERA5` datalib. This data now contains `float32` rather than `float64` variables. Old doctest data is archived in `gs://contrails-301217-unit-test/doc-test-cache-v0.59.0`.
 
 ## 0.59.0
 
