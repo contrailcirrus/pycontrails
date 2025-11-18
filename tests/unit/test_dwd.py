@@ -96,7 +96,7 @@ def test_time_input_wrong_length() -> None:
 
 
 def test_time_input_two_times_nominal() -> None:
-    """Test TimeInput parsing for ICONs with 1 hour default timestep."""
+    """Test TimeInput parsing with 1 hour default timestep."""
 
     # accept pair (start, end)
     dl = ICON(
@@ -121,6 +121,35 @@ def test_time_input_two_times_nominal() -> None:
         datetime(2019, 5, 31, 1),
         datetime(2019, 5, 31, 2),
         datetime(2019, 5, 31, 3),
+    ]
+
+
+def test_time_input_specified_freq() -> None:
+    """Test TimeInput parsing with specified frequency."""
+
+    dl = ICON(
+        time=(datetime(2019, 5, 31, 0), datetime(2019, 6, 1, 0)),
+        variables=["t", "q"],
+        pressure_levels=[200],
+        timestep_freq="12h",
+    )
+    assert dl.timesteps == [
+        datetime(2019, 5, 31, 0),
+        datetime(2019, 5, 31, 12),
+        datetime(2019, 6, 1, 0),
+    ]
+
+    # non-zero shift modulo 12h frequency
+    dl = ICON(
+        time=(datetime(2019, 5, 31, 6), datetime(2019, 6, 1, 6)),
+        variables=["t", "q"],
+        pressure_levels=[200],
+        timestep_freq="12h",
+    )
+    assert dl.timesteps == [
+        datetime(2019, 5, 31, 6),
+        datetime(2019, 5, 31, 18),
+        datetime(2019, 6, 1, 6),
     ]
 
 
@@ -251,7 +280,7 @@ def test_retrieved_levels(datalib: AnyICONDatalibClass, nlev: int) -> None:
         )
 
     dl = datalib(time=datetime(2000, 1, 1), variables=["t", "q"])
-    assert dl.model_levels == list(range(1, nlev))
+    assert dl.model_levels == list(range(1, nlev + 1))
 
     dl = datalib(time=datetime(2000, 1, 1), variables=["t", "q"], model_levels=[3, 4, 5])
     assert dl.model_levels == [3, 4, 5]
@@ -260,7 +289,7 @@ def test_retrieved_levels(datalib: AnyICONDatalibClass, nlev: int) -> None:
 def test_pressure_levels() -> None:
     """Test pressure level inputs."""
     dl = ICON(time=datetime(2000, 1, 1), variables=["t", "q"])
-    assert dl.pressure_levels == flight_level_pressure(200, 500)
+    assert dl.pressure_levels == list(reversed(flight_level_pressure(200, 500)))
 
     dl = ICON(time=datetime(2000, 1, 1), variables=["t", "q"], pressure_levels=[200, 300])
     assert dl.pressure_levels == [200, 300]
@@ -275,10 +304,10 @@ def test_pressure_levels() -> None:
     assert dl.pressure_levels == [-1]
 
 
-def test_open_metdataset_errors() -> None:
+def test_open_metdataset_errors(met_ecmwf_pl_path: str) -> None:
     """Test open_metdataset error handing."""
     dl = ICON(time=(datetime(2000, 1, 1), datetime(2000, 1, 2)), variables=["t", "q"])
-    ds = xr.Dataset()
+    ds = xr.open_dataset(met_ecmwf_pl_path)
     with pytest.raises(ValueError, match="Parameter 'dataset' is not supported"):
         dl.open_metdataset(dataset=ds)
 
@@ -312,7 +341,7 @@ def test_grid(
 ) -> None:
     """Test horizontal resolution."""
     if warn:
-        with pytest.warns(UserWarning, match="ICON-EU Europe and ICON-D2 Germany are"):
+        with pytest.warns(UserWarning, match="ICON-EU Europe and ICON-D2 Germany"):
             dl = datalib(
                 time=datetime(2000, 1, 1),
                 variables=["t", "q"],
@@ -341,8 +370,6 @@ def test_grid(
         (ICONGlobal, datetime(2000, 1, 1, 6), timedelta(hours=78)),
         (ICONEurope, datetime(2000, 1, 1), timedelta(hours=78)),
         (ICONEurope, datetime(2000, 1, 1, 3), timedelta(hours=30)),
-        (ICONGermany, datetime(2000, 1, 1), timedelta(hours=48)),
-        (ICONGermany, datetime(2000, 1, 1, 6), timedelta(hours=48)),
     ],
 )
 def test_hourly_forecast_timestep_freq(
@@ -367,6 +394,8 @@ def test_hourly_forecast_timestep_freq(
         (ICONGlobal, datetime(2000, 1, 1, 6), timedelta(hours=120), timedelta(hours=3)),
         (ICONEurope, datetime(2000, 1, 1), timedelta(hours=120), timedelta(hours=3)),
         (ICONEurope, datetime(2000, 1, 1, 3), timedelta(hours=48), timedelta(hours=6)),
+        (ICONGermany, datetime(2000, 1, 1), timedelta(hours=48), timedelta(hours=1)),
+        (ICONGermany, datetime(2000, 1, 1, 6), timedelta(hours=48), timedelta(hours=1)),
     ],
 )
 def test_extended_forecast_timestep_freq(
