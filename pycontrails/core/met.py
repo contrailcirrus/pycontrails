@@ -739,9 +739,9 @@ class MetDataset(MetBase):
 
     >>> # Check out a few values
     >>> da[5:8, 5:8, 1, 1].values
-    array([[224.08959005, 224.41374427, 224.75945349],
-           [224.09456429, 224.42037658, 224.76525676],
-           [224.10036756, 224.42617985, 224.77106004]])
+    array([[224.08936, 224.41357, 224.75928],
+           [224.09424, 224.42041, 224.76514],
+           [224.1001 , 224.42627, 224.771  ]], dtype=float32)
 
     >>> # Mean temperature over entire array
     >>> da.mean().load().item()
@@ -1658,15 +1658,15 @@ class MetDataArray(MetBase):
 
         >>> # Interpolation at a grid point agrees with value
         >>> mda.interpolate(1, 2, 300, np.datetime64('2022-03-01T14:00'))
-        array([241.91972984])
+        array([241.91965], dtype=float32)
 
         >>> da = mda.data
         >>> da.sel(longitude=1, latitude=2, level=300, time=np.datetime64('2022-03-01T14')).item()
-        241.9197298421629
+        241.91964721679688
 
         >>> # Interpolation off grid
         >>> mda.interpolate(1.1, 2.1, 290, np.datetime64('2022-03-01 13:10'))
-        array([239.83793798])
+        array([239.83798], dtype=float32)
 
         >>> # Interpolate along path
         >>> longitude = np.linspace(1, 2, 10)
@@ -1674,15 +1674,14 @@ class MetDataArray(MetBase):
         >>> level = np.linspace(200, 300, 10)
         >>> time = pd.date_range("2022-03-01T14", periods=10, freq="5min")
         >>> mda.interpolate(longitude, latitude, level, time)
-        array([220.44347694, 223.08900738, 225.74338924, 228.41642088,
-               231.10858599, 233.54857391, 235.71504913, 237.86478872,
-               239.99274623, 242.10792167])
+        array([220.44347, 223.08897, 225.74326, 228.41641, 231.1086 , 233.54855,
+               235.715  , 237.86479, 239.9927 , 242.10797], dtype=float32)
 
         >>> # Can easily switch to alternative low-memory implementation
         >>> mda.interpolate(longitude, latitude, level, time, lowmem=True)
-        array([220.44347694, 223.08900738, 225.74338924, 228.41642088,
-               231.10858599, 233.54857391, 235.71504913, 237.86478872,
-               239.99274623, 242.10792167])
+        array([220.44347, 223.08897, 225.74326, 228.41641, 231.1086 , 233.54855,
+               235.715  , 237.86479, 239.9927 , 242.10797], dtype=float32)
+
         """
         if lowmem:
             return self._interp_lowmem(
