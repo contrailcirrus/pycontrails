@@ -58,6 +58,9 @@ def searchsorted2d(
     if v.ndim != 1:
         msg = "The parameter 'v' must be a 1D array"
         raise ValueError(msg)
+    if np.isnan(v).any():
+        msg = "The parameter 'v' must not contain NaNs"
+        raise ValueError(msg)
 
     m, n = a.shape
 
