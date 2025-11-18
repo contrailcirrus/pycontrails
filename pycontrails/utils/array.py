@@ -40,6 +40,17 @@ def searchsorted2d(
     array([[1, 1, 2, 4, 4],
            [0, 1, 3, 3, 4],
            [0, 3, 3, 3, 3]])
+
+    >>> a = np.array([
+    ...  [ 1.,  8., np.nan, 12.],
+    ...  [ 5.,  8.,     9., 14.],
+    ...  [ 4.,  5.,     6., 17.],
+    ...  ])
+    >>> v = np.array([3., 7., 10., 13., 15.])
+    >>> searchsorted2d(a, v)
+    array([[0, 0, 0, 0, 0],
+           [0, 1, 3, 3, 4],
+           [0, 3, 3, 3, 3]])
     """
     if a.ndim != 2:
         msg = "The parameter 'a' must be a 2D array"
