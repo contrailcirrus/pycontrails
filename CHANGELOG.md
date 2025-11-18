@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.60.0
+
+### Features
+
+- Add a datalib to support ICON forecast access via the [DWD Open Data Server](https://opendata.dwd.de/). See the [ICON notebook](https://py.contrails.org/notebooks/ICON.html) for usage examples.
+
+### Internals
+
+- Add `"DWD"` as a recognized meteorology provider and `"ICON"`, `"ICON-EU"`, and `"ICON-D2"` as recognized meteorology datasets in `met.py`.
+- Add geometric vertical velocity as a new generic `MetVariable`.
+- Modify `metsource.parse_timesteps` to accept a new optional `shift` argument. This argument can be used to make `metsource.parse_timesteps` return times that are not even multiples of `freq` (e.g., six-hourly timesteps starting at 3Z). The behavior of `metsource.parse_timesteps` is unchanged if this argument is omitted.
+- Extract some utilities for ECMWF model-to-pressure-level conversion to a more flexible (less ECMWF-specific) `met_utils.ml_to_pl` function and a new `utils.arrays` module. The updated utilities include some minor behavioral changes to improve handling of nan values.
+- Add utilities for running coroutines sychronously.
+
 ## 0.59.1
 
 ### Features
@@ -9,14 +23,14 @@
 
 ### Fixes
 
-- Corrected conditional logic in `thermo._e_sat_piecewise` to prevent `thermo.q_sat` from returning `np.nan` for temperatures below freezing (0°C).
-- Updated doctests for compatibility with `float32` ERA5 variables.
+- Correct conditional logic in `thermo._e_sat_piecewise` to prevent `thermo.q_sat` from returning `np.nan` for temperatures below freezing (0°C).
+- Update doctests for compatibility with `float32` ERA5 variables.
 
 ### Internals
 
 - Open the backdoor to running `Cocip` with a fuel-varying `Fleet`. This is not officially supported and requires some undocumented monkey-patching.
 - Specify `join="outer"` and `compat="no_conflicts"` when opening multiple netCDF files in `metsource.open_mfdataset` to avoid xarray `FutureWarning`.
-- Updated cached doctest data in `gs://contrails-301217-unit-test/doc-test-cache` with current output from the `ERA5` datalib. This data now contains `float32` rather than `float64` variables. Old doctest data is archived in `gs://contrails-301217-unit-test/doc-test-cache-v0.59.0`.
+- Update cached doctest data in `gs://contrails-301217-unit-test/doc-test-cache` with current output from the `ERA5` datalib. This data now contains `float32` rather than `float64` variables. Old doctest data is archived in `gs://contrails-301217-unit-test/doc-test-cache-v0.59.0`.
 - Include additional fields in the ICAO EDB static files. For example, MEEM2 utilizes a fifth data point (maximum nvPM EI) to construct the nvPM emissions profile.
 - Major re-structuring and clean-up of the emissions module to improve intuitiveness and standardize terminology.
 
