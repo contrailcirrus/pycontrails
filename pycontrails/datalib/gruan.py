@@ -292,14 +292,17 @@ class GRUAN:
             if not self.timespan:
                 return sorted(file for y in years for file in self.list_files(y))
 
+
+            t0, t1 = self.timespan
+
             def _in_range(file: str) -> bool:
                 date = extract_gruan_time(file)[0]
-                return date >= self.timespan[0] and date <= self.timespan[1]
+                return date >= t0 and date <= t1
 
             return sorted(
                 file
                 for y in years
-                if y >= self.timespan[0].year and y <= self.timespan[1].year
+                if y >= t0.year and y <= t1.year
                 for file in self.list_files(y)
                 if _in_range(file)
             )
