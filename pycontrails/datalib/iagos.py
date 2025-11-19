@@ -12,28 +12,12 @@ from pycontrails.core import Flight, MetVariable, cache, met_var
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.utils.types import DatetimeLike
 
-GeometricAltitude = MetVariable(
-    short_name="z",
-    standard_name="gps_altitude",
-    units="m",
-    description="Altitude above the geoid, as measured by GPS.",
-)
-
-
-WaterVaporMoleFraction = MetVariable(
-    short_name="xv",
-    standard_name="mole_fraction_of_water_vapor_in_air",
-    units="ppm",
-    description="The number of moles of water vapor per mole of air.",
-)
-
-
 #: Variables measured by aircraft directly.
 #: These variables are measured on all IAGOS flights and are accompanied
 #: by validity flags.
 AIRCRAFT_VARIABLES = [
     met_var.AirPressure,
-    GeometricAltitude,
+    met_var.Altitude,
     met_var.EastwardWind,
     met_var.NorthwardWind,
     met_var.AirTemperature,
@@ -44,7 +28,32 @@ AIRCRAFT_VARIABLES = [
 #: These variables are not measured on all IAGOS flights.
 #: When present, they are accompanied by validity and processing flags
 #: and standard errors.
-IAGOS_VARIABLES = [WaterVaporMoleFraction]
+IAGOS_VARIABLES = [
+    met_var.MoleFractionOfWaterVaporInAir,
+]
+
+
+# Mapping from met variable to standard_name in IAGOS data files
+_met_var_to_iagos_standard_name_mapping = {
+    met_var.AirPressure: "air_pressure",
+    met_var.Altitude: "gps_altitude",
+    met_var.EastwardWind: "eastward_wind",
+    met_var.NorthwardWind: "northward_wind",
+    met_var.AirTemperature: "air_temperature",
+    met_var.MoleFractionOfWaterVaporInAir: "mole_fraction_of_water_vapor_in_air",
+}
+
+
+# Mapping from met variable to name in IAGOS data files
+# and scale factor for converting to met variable's units.
+_met_var_to_iagos_units_mapping = {
+    met_var.AirPressure: ("Pa", 1.0),
+    met_var.Altitude: ("m", 1.0),
+    met_var.EastwardWind: ("m s-1", 1.0),
+    met_var.NorthwardWind: ("m s-1", 1.0),
+    met_var.AirPressure: ("K", 1.0),
+    met_var.MoleFractionOfWaterVaporInAir: ("ppm", 1e-6),
+}
 
 
 def extract_flight_id(filename: str) -> str:
@@ -336,23 +345,27 @@ class IAGOS:
             if not ((t >= np.datetime64(start)) & (t <= np.datetime64(end))).any():
                 return False
 
+        # get mapping from dataset standard_names to variable names.
+        # this is used repeatedly to find dataset keys corresponding
+        # to requested variables.
         present = {
             v.attrs["standard_name"]: k
             for k, v in ds.variables.items()
             if "standard_name" in v.attrs
         }
+
         for variable in self.variables:
             # check if dataset includes variable
-            if variable.standard_name not in present:
+            standard_name = _met_var_to_iagos_standard_name_mapping[variable]
+            if standard_name not in present:
                 return False
+            key = present[standard_name]
 
-            # once presence of variable is established, check units and
-            # presence of flags and errors.
+            # check units and presence of validity flag.
             # raise an error if expected variables are not found.
-            key = present[variable.standard_name]
-            # IAGOS units don't include "**"
-            if variable.units and ds[key].attrs["units"] != variable.units.replace("*", ""):
-                msg = f"IAGOS variable {key} does not have expected units"
+            units, _ = _met_var_to_iagos_units_mapping[variable]
+            if ds[key].attrs.get("units", None) != units:
+                msg = f"IAGOS variable {key} does not have expected units {units}"
                 warnings.warn(msg)
                 return False
             flag = f"{key}_validity_flag"
@@ -361,19 +374,25 @@ class IAGOS:
                 warnings.warn(msg)
                 return False
 
+            # only variables measured by the iagos instrument (as opposed
+            # to by the aircraft directly) are required to have standard
+            # errors and processing flags.
             if variable not in IAGOS_VARIABLES:
                 continue
 
+            # check presence of and units on standard error
             error = f"{key}_error"
             if error not in ds:
                 msg = f"IAGOS variable {key} does not have a standard error"
                 warnings.warn(msg)
                 return False
             # IAGOS units don't include "**"
-            if variable.units and ds[error].attrs["units"] != variable.units.replace("*", ""):
+            if ds[error].attrs.get("units", None) != units:
                 msg = f"IAGOS variable {key} standard error does not have expected units"
                 warnings.warn(msg)
                 return False
+
+            # check presence of processing flag
             flag = f"{key}_process_flag"
             if flag not in ds:
                 msg = f"IAGOS variable {key} does not have a processing flag"
@@ -416,14 +435,18 @@ class IAGOS:
             for k, v in ds.variables.items()
             if "standard_name" in v.attrs
         }
+
         for variable in self.variables:
             name = variable.standard_name
-            key = present[name]
-            flight[name] = ds[key]
+            standard_name = _met_var_to_iagos_standard_name_mapping[variable]
+            key = present[standard_name]
+            _, scale = _met_var_to_iagos_units_mapping[variable]
+
+            flight[name] = scale * ds[key]
             flight[f"{name}_validity_flag"] = ds[f"{key}_validity_flag"]
             if variable not in IAGOS_VARIABLES:
                 continue
-            flight[f"{name}_standard_error"] = ds[f"{key}_error"]
+            flight[f"{name}_standard_error"] = scale * ds[f"{key}_error"]
             flight[f"{name}_process_flag"] = ds[f"{key}_process_flag"]
 
         return flight
