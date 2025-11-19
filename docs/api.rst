@@ -220,8 +220,8 @@ Emissions
     :toctree: api/
 
     models.emissions.Emissions
-    models.emissions.black_carbon
-    models.emissions.ffm2
+    models.emissions.nvpm
+    models.emissions.gaseous
 
 
 VPM Activation
