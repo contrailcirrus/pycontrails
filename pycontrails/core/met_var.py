@@ -311,6 +311,13 @@ CloudAreaFractionInAtmosphereLayer = MetVariable(
     description=("The fraction of the horizontal area of a grid cell that contains cloud."),
 )
 
+MoleFractionOfWaterVaporInAir = MetVariable(
+    short_name="x",
+    standard_name="mole_fraction_of_water_vapor_in_air",
+    units="mol mol**-1",
+    level_type="isobaricInhPa",
+    description=("The number of moles of water vapor per mole of air."),
+)
 
 # ----
 # Single level variables
