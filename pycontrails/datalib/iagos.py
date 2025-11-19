@@ -663,7 +663,7 @@ class IAGOS:
 
             if response.status_code == 401:  # could be using expired token
                 self._refresh_token()
-                session.headers.update({f"authorizationbearer {self.token}"})
+                session.headers.update({"authorization": f"bearer {self.token}"})
                 response = session.get(url, params=params)
 
             try:
