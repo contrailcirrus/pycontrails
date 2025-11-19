@@ -179,7 +179,7 @@ def nvpm_emission_profiles_t4_t2(
     temp_max : float
         Maximum temperature, provided by the ICAO EDB column `Ambient Temp Max (K)`, [:math:`K`]
     q_fuel : float
-        Lower calorific value (LCV) of fuel, :math:`[MJ kg_{fuel}^{-1}]`
+        Lower calorific value (LCV) of fuel, :math:`[J kg_{fuel}^{-1}]`
     ff_7: float
         ICAO EDB fuel mass flow rate at idle conditions (7% power), [:math:`kg s^{-1}`]
     ff_30: float
@@ -236,7 +236,7 @@ def nvpm_emission_profiles_t4_t2(
         T=avg_temp,
         p=constants.p_surface,
         pressure_ratio=pressure_ratio,
-        q_fuel=q_fuel * 1e6,
+        q_fuel=q_fuel,
         cruise=False,
     )
 

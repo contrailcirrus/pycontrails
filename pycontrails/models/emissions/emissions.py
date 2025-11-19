@@ -203,8 +203,8 @@ class Emissions(Model):
 
         self._gaseous_emission_indices(engine_uid)
         # TODO: Zeb, how do you let the user choose between GAIA and MEEM?
-        # self._nvpm_emission_indices_gaia(engine_uid)
-        self._nvpm_emission_indices_meem_scope11(engine_uid)
+        self._nvpm_emission_indices_gaia(engine_uid)
+        # self._nvpm_emission_indices_meem_scope11(engine_uid)
         self._total_pollutant_emissions()
         return self.source
 
