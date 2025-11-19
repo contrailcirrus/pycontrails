@@ -76,8 +76,8 @@ class Emissions(Model):
 
     See Also
     --------
-    :mod:`pycontrails.models.emissions.black_carbon`
-    :mod:`pycontrails.models.emissions.ffm2`
+    :mod:`pycontrails.models.emissions.nvpm`
+    :mod:`pycontrails.models.emissions.gaseous`
     """
 
     name = "emissions"
