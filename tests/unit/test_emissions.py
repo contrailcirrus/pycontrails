@@ -9,7 +9,6 @@ from pycontrails import Flight
 from pycontrails.core.fuel import JetA
 from pycontrails.core.models import Model
 from pycontrails.models.emissions import Emissions, gaseous, nvpm
-from pycontrails.models.emissions import emissions as emissions_mod
 from pycontrails.physics import jet, units
 from pycontrails.physics.jet import thrust_setting_nd
 
@@ -177,32 +176,41 @@ def test_emissions_index_ffm2():
     edb_gaseous = emissions.edb_engine_gaseous[engine_uid]
 
     # Nitrogen oxide
-    nox_ei = emissions_mod.nitrogen_oxide_emissions_index_ffm2(
-        edb_gaseous,
-        fuel_flow_per_engine_cruise,
-        true_airspeed,
-        air_pressure,
-        air_temperature,
+    nox_ei = (
+        gaseous.estimate_nox_ffm2(
+            edb_gaseous.log_ei_nox_profile,
+            fuel_flow_per_engine_cruise,
+            true_airspeed,
+            air_pressure,
+            air_temperature,
+        )
+        * 1e-3
     )
     np.testing.assert_almost_equal(nox_ei, np.array([0.019298]), decimal=6)
 
     # Carbon monoxide (descent conditions with very low power)
-    co_ei = emissions_mod.carbon_monoxide_emissions_index_ffm2(
-        edb_gaseous,
-        fuel_flow_per_engine_descent,
-        true_airspeed,
-        air_pressure,
-        air_temperature,
+    co_ei = (
+        gaseous.estimate_ei_co_hc_ffm2(
+            edb_gaseous.log_ei_co_profile,
+            fuel_flow_per_engine_descent,
+            true_airspeed,
+            air_pressure,
+            air_temperature,
+        )
+        * 1e-3
     )
     np.testing.assert_almost_equal(co_ei, np.array([0.028461]), decimal=6)
 
     # Hydrocarbons (descent conditions with very low power)
-    hc_ei = emissions_mod.hydrocarbon_emissions_index_ffm2(
-        edb_gaseous,
-        fuel_flow_per_engine_descent,
-        true_airspeed,
-        air_pressure,
-        air_temperature,
+    hc_ei = (
+        gaseous.estimate_ei_co_hc_ffm2(
+            edb_gaseous.log_ei_hc_profile,
+            fuel_flow_per_engine_descent,
+            true_airspeed,
+            air_pressure,
+            air_temperature,
+        )
+        * 1e-3
     )
     np.testing.assert_almost_equal(hc_ei, np.array([0.000077817]), decimal=6)
 
@@ -221,12 +229,15 @@ def test_E45x_hydrocarbon_emissions_index() -> None:
     edb_gaseous = emissions.edb_engine_gaseous[engine_uid]
 
     # Hydrocarbons (descent conditions with very low power)
-    hc_ei = emissions_mod.hydrocarbon_emissions_index_ffm2(
-        edb_gaseous,
-        fuel_flow_per_engine_descent,
-        true_airspeed,
-        air_pressure,
-        air_temperature,
+    hc_ei = (
+        gaseous.estimate_ei_co_hc_ffm2(
+            edb_gaseous.log_ei_hc_profile,
+            fuel_flow_per_engine_descent,
+            true_airspeed,
+            air_pressure,
+            air_temperature,
+        )
+        * 1e-3
     )
     np.testing.assert_almost_equal(hc_ei, np.array([0.0097947]), decimal=6)
 
