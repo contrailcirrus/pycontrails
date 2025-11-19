@@ -1,16 +1,41 @@
-"""IAGOS utilties."""
+"""Support for accessing `IAGOS <https://iagos.aeris-data.fr>`_ data."""
 
+import functools
 import os
 import pathlib
 import re
+import tempfile
 import warnings
+from datetime import datetime
 
 import numpy as np
 import xarray as xr
 
 from pycontrails.core import Flight, MetVariable, cache, met_var
 from pycontrails.datalib._met_utils import metsource
+from pycontrails.utils import dependencies
 from pycontrails.utils.types import DatetimeLike
+
+try:
+    import keycloak
+except ModuleNotFoundError as e:
+    dependencies.raise_module_not_found_error(
+        name="datalib.iagos module",
+        package_name="python-keycloak",
+        module_not_found_error=e,
+        pycontrails_optional_package="iagos",
+    )
+
+try:
+    import requests
+except ModuleNotFoundError as e:
+    dependencies.raise_module_not_found_error(
+        name="datalib.iagos module",
+        package_name="requests",
+        module_not_found_error=e,
+        pycontrails_optional_package="iagos",
+    )
+
 
 #: Variables measured by aircraft directly.
 #: These variables are measured on all IAGOS flights and are accompanied
@@ -55,17 +80,28 @@ _met_var_to_iagos_units_mapping = {
     met_var.MoleFractionOfWaterVaporInAir: ("ppm", 1e-6),
 }
 
+# Mapping from met variable to parameter name in IAGOS API.
+_met_var_to_iagos_parameter_mapping = {met_var.MoleFractionOfWaterVaporInAir: "H2O"}
 
-def extract_flight_id(filename: str) -> str:
-    """Extract IAGOS flight id."""
+
+def match_flight_id(filename: str) -> str | None:
+    """Get IAGOS flight id matches."""
     match = re.fullmatch(r"IAGOS_timeseries_(\d{8})(\d{8})_L2_(\d.\d.\d).nc4", filename)
     if match is None:
-        msg = f"Name of IAGOS file {filename} does not match expected format."
-        raise ValueError(msg)
+        return None
     return match.group(1) + match.group(2)
 
 
-def validate_paths(paths: list[str | pathlib.Path] | None) -> list[str] | None:
+def extract_flight_id(filename: str) -> str:
+    """Extract IAGOS flight id."""
+    flight_id = match_flight_id(filename)
+    if flight_id is None:
+        msg = f"Could not extract IAGOS flight ID from {filename}"
+        raise ValueError(msg)
+    return flight_id
+
+
+def validate_paths(paths: list[str | pathlib.Path] | None) -> dict[str, str] | None:
     """Validate provided IAGOS paths.
 
     Parameters
@@ -75,13 +111,10 @@ def validate_paths(paths: list[str | pathlib.Path] | None) -> list[str] | None:
 
     Returns
     -------
-    list[str] | None
-        Validated paths, or None if :param:`paths` is None.
-        If a ``list[str]`` is returned, it is guaranteed to contain
-        paths with filenames that can be parsed into a list of unique
-        IAGOS flight ids. Input paths that include filenames that cannot
-        be parsed into IAGOS flight ids are ignored, and a warning is raised
-        if any are encountered. An error is raised if the same IAGOS flight
+    dict[str, str] | None
+        Mapping from IAGOS flight ids to validated paths, or None if :param:`paths` is None.
+        Input paths that include filenames that cannot be parsed into IAGOS flight ids are ignored,
+        and a warning is raised if any are encountered. An error is raised if the same IAGOS flight
         id is parsed from more than one file.
 
     Raises
@@ -114,11 +147,19 @@ def validate_paths(paths: list[str | pathlib.Path] | None) -> list[str] | None:
         )
         raise ValueError(msg)
 
-    return validated
+    return dict(zip(flight_ids, validated, strict=True))
 
 
 class IAGOS:
-    """EXPERIMENTAL: class for processing L2 IAGOS data.
+    """Class for downloading and processing L2 `IAGOS <https://iagos.aeris-data.fr>`_ data.
+
+    IAGOS data access is free but requires
+    `registering <https://iagos.aeris-data.fr/registration>_` with the IAGOS database
+    and complying with the `IAGOS data policy <https://iagos.aeris-data.fr/data-policy>`_.
+
+    We recommend authenticating using AERIS rather than ORCID or eduGAIN during registration,
+    as an AERIS username and password are required to retrieve files from the IAGOS database
+    using this datalib.
 
     Parameters
     ----------
@@ -126,12 +167,23 @@ class IAGOS:
         Time range for data retrieval. If provided, input must be a tuple of two
         datetime-likes. If not provided, data will be retrieved for all available times.
     variables: metsource.VariableInput, optional
-        Names of required variables. If not provided, data will be retrieved without
-        filtering by included variables.
+        Names of required variables. If provided, this datalib will return data for flights
+        that measure any (not necessarily all) of the specified variables. If not provided,
+        data will be returned for flights that include any of the variables supported by this
+        datalib.
     paths : list[str | pathlib.Path] | None, optional
         Paths to IAGOS NetCDF files to load manually.
         Can include glob patterns to load specific files.
         Defaults to None, which looks for files in the :attr:`cachestore` or IAGOS database.
+    url : str, optional
+        Override the default
+        `IAGOS API <https://services.iagos-data.fr/prod/swagger-ui/index.html>`_ url.
+    user : str | None, optional
+        AERIS username for IAGOS database authentication. Required to retrieve files from
+        the IAGOS database.
+    password : str | None, optional
+        AERIS password for IAGOS database authentication. Required to retrieve files from
+        the IAGOS database.
     cachestore: cache.CacheStore | None, optional
         Cache data store for retrieved IAGOS data files. Defaults of :class:`cache.DiskCacheStore`.
         If set to None, retrieved files are loaded directly into memory without caching.
@@ -141,11 +193,11 @@ class IAGOS:
     To inspect raw IAGOS data files without additional processing:
 
         1. Instantiate ``IAGOS(time, variables)`` or ``IAGOS(time, variables, paths)``
-        2. Call ``list_files()`` to get a list of available files
-        3. Call ``get(filename)`` to open a file as an ``xarray.Dataset``
+        2. Call ``list_flight_ids()`` to get a list of available flights
+        3. Call ``get(flight_id)`` to open a file as an ``xarray.Dataset``
 
     If a set of local ``paths`` is provided during instantiation, ``list_files()``
-    will return the files in ``paths`` without additional filtering. If local ``paths``
+    will flight ids based on ``paths`` without additional filtering. If local ``paths``
     are not provided, ``list_files()`` will filter for files that overlap with the
     requested ``time`` and include the requested ``variables`` when calling the IAGOS
     API.
@@ -194,26 +246,71 @@ class IAGOS:
     """
 
     __marker = object()
-    __slots__ = "cachestore", "paths", "timespan", "variables"
+
+    __slots__ = (
+        "__dict__",
+        "cachestore",
+        "password",
+        "paths",
+        "timespan",
+        "token",
+        "url",
+        "user",
+        "variables",
+    )
+
+    #: IAGOS data timespan as a length-2 list
+    timespan: list[datetime]
+
+    #: IAGOS variables
+    variables: list[MetVariable]
+
+    #: Paths to local IAGOS data files
+    paths: dict[str, str] | None
+
+    #: Cachestore for retrieved IAGOS files
+    cachestore: cache.CacheStore | None
+
+    #: IAGOS API url
+    url: str
+
+    #: AERIS username
+    user: str | None
+
+    #: AERIS password
+    password: str | None
+
+    #: AERIS authentication token
+    token: str | None
 
     def __init__(
         self,
         time: tuple[str | DatetimeLike, str | DatetimeLike] | None = None,
         variables: metsource.VariableInput | None = None,
         paths: list[str | pathlib.Path] | None = None,
+        url: str = "https://services.iagos-data.fr/prod/v2.0",
+        user: str | None = None,
+        password: str | None = None,
         cachestore: cache.CacheStore | None = __marker,  # type:ignore
     ) -> None:
         if cachestore is self.__marker:
-            cachestore = cache.DiskCacheStore()
+            cache_root = cache._get_user_cache_dir()
+            cache_dir = f"{cache_root}/iagos"
+            cachestore = cache.DiskCacheStore(cache_dir=cache_dir)
         self.cachestore = cachestore
 
         if time and (isinstance(time, str) or len(time) != 2):
-            msg = "If provided, time must be a list of length 2."
             msg = "If provided, time must be a tuple of length 2."
             raise ValueError(msg)
+
         self.timespan = metsource.parse_timesteps(time, freq=None)
         self.variables = metsource.parse_variables(variables or [], self.supported_variables)
         self.paths = validate_paths(paths)
+
+        self.url = url
+        self.user = user
+        self.password = password
+        self.token = None
 
     def __repr__(self) -> str:
         _repr = f"{self.__class__.__name__}"
@@ -224,6 +321,28 @@ class IAGOS:
         if self.paths:
             _repr += f"\n\tPaths: {len(self.paths)} files"
         return _repr
+
+    @property
+    def aircraft_variables(self) -> list[MetVariable]:
+        """Return a list of variables measured directly by aircraft.
+
+        Returns
+        -------
+        list[MetVariable]
+            Subset of :attr:`variables` measured by aircraft.
+        """
+        return [v for v in self.variables if v in AIRCRAFT_VARIABLES]
+
+    @property
+    def iagos_variables(self) -> list[MetVariable]:
+        """Return a list of variables measured by IAGOS instruments.
+
+        Returns
+        -------
+        list[MetVariable]
+            Subset of :attr:`variables` measured by IAGOS instruments.
+        """
+        return [v for v in self.variables if v in IAGOS_VARIABLES]
 
     @property
     def variable_shortnames(self) -> list[str]:
@@ -249,57 +368,42 @@ class IAGOS:
         """
         return AIRCRAFT_VARIABLES + IAGOS_VARIABLES
 
-    def list_files(self) -> list[str]:
-        """List available files.
+    def list_flight_ids(self) -> list[str]:
+        """List available flight_ids.
 
         Returns
         -------
         list[str]
-            List of available IAGOS files. Will return the files in :attr:`paths` if defined,
-            or a list of filenames available in the IAGOS database otherwise.
-
-        Raises
-        ------
-        ValueError
-            If :attr:`paths` is defined and includes multiple filenames with the same
-            flight id.
-
-        IAGOSProcessingError
-            If :attr:`paths` is defined and includes a filename that does not match
-            the expected format.
+            List of available IAGOS flight ids. Will return flight ids extracted from
+            the files in :attr:`paths` if defined, or a list of flights available in
+            the IAGOS database otherwise.
         """
         if self.paths:
-            return sorted([os.path.basename(p) for p in self.paths])
+            return list(self.paths.keys())
 
-        msg = (
-            "File retrieval from the IAGOS database has not been implemented. "
-            "To use this datalib, provide paths to local IAGOS files using the `paths` parameter."
-        )
-        raise NotImplementedError(msg)
+        url, params, headers = self._build_list_request()
+        response = self._retry_once(url, params, headers)
 
-    def get(self, filename: str) -> xr.Dataset:
+        return [flight["name"] for flight in response.json()]
+
+    def get(self, flight_id: str) -> xr.Dataset:
         """Open a single IAGOS file.
 
         Parameters
         ----------
-        filename : str
-            IAGOS filename to open. Will look for a matching file in :attr:`paths` if defined,
+        flight_id : str
+            IAGOS flight to open. Will look for a matching file in :attr:`paths` if defined,
             and the :attr:`cachestore` or IAGOS database otherwise.
         """
         if self.paths:
-            try:
-                return xr.open_dataset(
-                    next(p for p in self.paths if os.path.basename(p) == filename)
-                )
-            except StopIteration as e:
-                msg = f"IAGOS filename {filename} not found in `paths`."
-                raise ValueError(msg) from e
+            if flight_id not in self.paths:
+                msg = f"IAGOS flight id {flight_id} not found in `paths`."
+                raise ValueError(msg)
+            return xr.open_dataset(self.paths[flight_id])
 
-        msg = (
-            "File retrieval from the IAGOS database has not been implemented. "
-            "To use this datalib, provide paths to local IAGOS files using the `paths` parameter."
-        )
-        raise NotImplementedError(msg)
+        if self.cachestore is None:
+            return self._get_no_cache(flight_id)
+        return self._get_with_cache(flight_id)
 
     def load_flights(self) -> list[Flight]:
         """Process IAGOS data and return as a list of flights.
@@ -311,17 +415,47 @@ class IAGOS:
         """
         flights = []
 
-        for filename in self.list_files():
-            ds = self.get(filename)
+        for flight_id in self.list_flight_ids():
+            ds = self.get(flight_id)
             if not self._includes_time_and_variables(ds):
                 continue
 
             flight = self._create_flight(ds)
-            flight_id = extract_flight_id(filename)
             flight.attrs["flight_id"] = flight_id
             flights.append(flight)
 
         return flights
+
+    def _get_with_cache(self, flight_id: str) -> xr.Dataset:
+        """Get data using cachestore."""
+        if not self.cachestore:
+            raise ValueError("Cachestore not configured")
+
+        lpath = self.cachestore.path(f"{flight_id}.nc")
+        if self.cachestore.exists(lpath):
+            return xr.open_dataset(lpath)
+
+        url, params, headers = self._build_download_request(flight_id)
+        response = self._retry_once(url, params, headers)
+
+        with open(lpath, "wb") as f:
+            f.write(response.content)
+        return xr.open_dataset(lpath)
+
+    def _get_no_cache(self, flight_id: str) -> xr.Dataset:
+        """Get data without using cachestore."""
+        url, params, headers = self._build_download_request(flight_id)
+        response = self._retry_once(url, params, headers)
+
+        try:
+            # On windows, NamedTemporaryFile cannot be reopened while still open.
+            # After python 3.11 support is dropped, we can use delete_on_close=False
+            # in NamedTemporaryFile to streamline this.
+            with tempfile.NamedTemporaryFile(mode="wb", delete=False) as tmp:
+                tmp.write(response.content)
+            return xr.load_dataset(tmp.name)
+        finally:
+            os.remove(tmp.name)
 
     def _includes_time_and_variables(self, ds: xr.Dataset) -> bool:
         """Check if IAGOS file includes requested time and variables.
@@ -457,3 +591,85 @@ class IAGOS:
             flight[f"{name}_process_flag"] = ds[f"{key}_process_flag"]
 
         return flight
+
+    @functools.cached_property
+    def _auth_client(self) -> keycloak.KeycloakOpenID:
+        """Get auth token generation client."""
+
+        return keycloak.KeycloakOpenID(
+            server_url="https://sso.aeris-data.fr/auth/",
+            client_id="aeris-public",
+            realm_name="aeris",
+            verify=True,
+        )
+
+    def _refresh_token(self) -> None:
+        """Refresh authentication token."""
+        if not self.user or not self.password:
+            msg = "Must provide 'user' and 'password' to download data from IAGOS API."
+            raise ValueError(msg)
+
+        try:
+            token = self._auth_client.token(self.user, self.password)
+            self.token = token["access_token"]
+        except Exception as e:
+            msg = "Failed to refresh authentication token. Check username and password."
+            raise RuntimeError(msg) from e
+
+    def _build_list_request(self) -> tuple[str, dict[str, str], dict[str, str]]:
+        """Return components of request to list available files."""
+        url = f"{self.url}/flights"
+
+        t0, t1 = self.timespan
+        variables = self.variables or self.iagos_variables
+        parameters = [_met_var_to_iagos_parameter_mapping[v] for v in variables]
+
+        params = {
+            "from": t0.strftime("%Y-%m-%d"),
+            "to": t1.strftime("%Y-%m-%d"),
+            "bbox": "-180,-90,180,90",
+            "mission": "IAGOS-CORE,IAGOS-MOZAIC,IAGOS-CARIBIC",
+            "level": "2",
+            "parameters": ",".join(parameters),
+        }
+
+        if not self.token:
+            self._refresh_token()
+
+        headers = {"accept": "application/json", "authorization": f"bearer {self.token}"}
+
+        return url, params, headers
+
+    def _build_download_request(self, flight_id: str) -> tuple[str, dict[str, str], dict[str, str]]:
+        """Return components of request to download a files."""
+        url = f"{self.url}/downloads/{flight_id}"
+
+        params = {"level": "2", "format": "netcdf", "type": "timeseries"}
+
+        if not self.token:
+            self._refresh_token()
+
+        headers = {"accept": "application/octet-stream", "authorization": f"bearer {self.token}"}
+
+        return url, params, headers
+
+    def _retry_once(
+        self, url: str, params: dict[str, str], headers: dict[str, str]
+    ) -> requests.Response:
+        """Submit request, re-trying once if authentication fails."""
+        with requests.Session() as session:
+            session.headers.update(headers)
+            response = session.get(url, params=params)
+
+            if response.status_code == 401:  # could be using expired token
+                self._refresh_token()
+                session.headers.update({f"authorizationbearer {self.token}"})
+                response = session.get(url, params=params)
+
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                msg = "Error listing available IAGOS flight ids."
+                raise RuntimeError(msg) from e
+
+            return response

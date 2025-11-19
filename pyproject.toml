@@ -51,7 +51,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
+complete = ["pycontrails[ecmwf,gcp,gfs,iagos,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -67,6 +67,7 @@ dev = [
     "pytest-cov>=2.11",
     "requests>=2.25",
     "ruff>=0.9.0",
+    "types-requests>=2.25"
 ]
 
 # Documentation / Sphinx dependencies
@@ -106,6 +107,12 @@ gfs = [
     "netcdf4>=1.6.1",
     "platformdirs>=3.0",
     "tqdm>=4.61",
+]
+
+# IAGOS datalib
+iagos = [
+   "python-keycloak>=5.8",
+   "requests>=2.25"
 ]
 
 # Jupyter notebook and lab interface

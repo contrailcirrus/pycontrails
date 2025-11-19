@@ -292,7 +292,6 @@ class GRUAN:
             if not self.timespan:
                 return sorted(file for y in years for file in self.list_files(y))
 
-
             t0, t1 = self.timespan
 
             def _in_range(file: str) -> bool:
