@@ -17,9 +17,6 @@
 - Open the backdoor to running `Cocip` with a fuel-varying `Fleet`. This is not officially supported and requires some undocumented monkey-patching.
 - Specify `join="outer"` and `compat="no_conflicts"` when opening multiple netCDF files in `metsource.open_mfdataset` to avoid xarray `FutureWarning`.
 - Updated cached doctest data in `gs://contrails-301217-unit-test/doc-test-cache` with current output from the `ERA5` datalib. This data now contains `float32` rather than `float64` variables. Old doctest data is archived in `gs://contrails-301217-unit-test/doc-test-cache-v0.59.0`.
-
-### Internals
-
 - Include additional fields in the ICAO EDB static files. For example, MEEM2 utilizes a fifth data point (maximum nvPM EI) to construct the nvPM emissions profile.
 - Major re-structuring and clean-up of the emissions module to improve intuitiveness and standardize terminology.
 
