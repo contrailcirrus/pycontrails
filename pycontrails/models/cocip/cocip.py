@@ -717,7 +717,7 @@ class Cocip(Model):
         # has all of the required met variables attached. Therefore, we don't need to worry about
         # being consistent with passing in Cocip's interp_kwargs and humidity_scaling into
         # the sub-models.
-        emissions = Emissions()
+        emissions_model = self.params["emissions"] or Emissions()
         ap_model = self.params["aircraft_performance"]
 
         # Run against a list of flights (Fleet)
@@ -729,7 +729,7 @@ class Cocip(Model):
 
             # In Fleet-mode, always call emissions
             logger.debug("Separately running emissions on each flight in fleet")
-            fls = [_eval_emissions(emissions, fl) for fl in fls]
+            fls = [_eval_emissions(emissions_model, fl) for fl in fls]
 
             # Broadcast numeric AP and emissions variables back to Fleet.data
             for fl in fls:
@@ -744,7 +744,7 @@ class Cocip(Model):
         # Single flight
         else:
             self.source = _eval_aircraft_performance(ap_model, self.source)
-            self.source = _eval_emissions(emissions, self.source)
+            self.source = _eval_emissions(emissions_model, self.source)
 
         # Scale nvPM with parameter (fleet / flight)
         factor = self.params["nvpm_ei_n_enhancement_factor"]

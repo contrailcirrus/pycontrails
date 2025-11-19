@@ -12,6 +12,7 @@ import numpy.typing as npt
 
 from pycontrails.core.aircraft_performance import AircraftPerformance
 from pycontrails.core.models import AdvectionBuffers
+from pycontrails.models.emissions import Emissions
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.humidity_scaling import HumidityScaling
 
@@ -295,6 +296,10 @@ class CocipParams(AdvectionBuffers):
 
     #: Maximum contrail ice particle number per volume of air to prevent unrealistic values.
     max_n_ice_per_m3: float = 1e20
+
+    #: Use a custom :class:`Emissions` model to calculate aircraft emissions.
+    #: By default, a new :class:`Emissions` model is created during CoCiP evaluation.
+    emissions: Emissions | None = None
 
 
 @dataclasses.dataclass
