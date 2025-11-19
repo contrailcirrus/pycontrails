@@ -444,8 +444,14 @@ class IAGOS:
 
             flight[name] = scale * ds[key]
             flight[f"{name}_validity_flag"] = ds[f"{key}_validity_flag"]
+
+            # should only look for standard errors and processing flags
+            # for variables measured by the IAGOS instrument.
+            # we already have everything for variables measured by the
+            # aircraft directly.
             if variable not in IAGOS_VARIABLES:
                 continue
+
             flight[f"{name}_standard_error"] = scale * ds[f"{key}_error"]
             flight[f"{name}_process_flag"] = ds[f"{key}_process_flag"]
 
