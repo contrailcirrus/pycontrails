@@ -46,6 +46,14 @@ class EmissionsParams(ModelParams):
     #: 2019 - 2021 Spire data.
     use_default_engine_uid: bool = True
 
+    #: EXPERIMENTAL
+    #: If True, use the alternative MEEM2/SCOPE11 method for nvPM EI calculations.
+    #: https://doi.org/10.4271/2025-01-6000
+    #: https://doi.org/10.1021/acs.est.8b04060
+    #: If False (default), the nvPM methodology from GAIA (T4/T2 methodology,
+    #: FOX, and ImFOX methods) will be used.
+    use_meem: bool = False
+
 
 class Emissions(Model):
     """Emissions handling using ICAO Emissions Databank (EDB) and black carbon correlations.
@@ -202,9 +210,11 @@ class Emissions(Model):
                 )
 
         self._gaseous_emission_indices(engine_uid)
-        # TODO: Zeb, how do you let the user choose between GAIA and MEEM?
-        self._nvpm_emission_indices_gaia(engine_uid)
-        # self._nvpm_emission_indices_meem_scope11(engine_uid)
+        if self.params["use_meem"]:
+            self._nvpm_emission_indices_meem_scope11(engine_uid)
+        else:
+            self._nvpm_emission_indices_gaia(engine_uid)
+
         self._total_pollutant_emissions()
         return self.source
 
