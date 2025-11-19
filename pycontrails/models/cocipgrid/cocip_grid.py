@@ -1855,7 +1855,7 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
         vector.attrs.setdefault("nvpm_ei_n", factor * default_nvpm_ei_n)
         return
 
-    emissions = Emissions()
+    emissions = params["emissions"] or Emissions()
     emissions.eval(vector, copy_source=False)
     vector.update(nvpm_ei_n=factor * vector["nvpm_ei_n"])
 
