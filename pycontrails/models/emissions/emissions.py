@@ -250,29 +250,38 @@ class Emissions(Model):
         air_temperature = self.source["air_temperature"]
 
         # Emissions indices
-        self.source["nox_ei"] = nitrogen_oxide_emissions_index_ffm2(
-            edb_gaseous,
-            fuel_flow_per_engine,
-            true_airspeed,
-            self.source.air_pressure,
-            air_temperature,
-            self.source["specific_humidity"],
+        self.source["nox_ei"] = (
+            gaseous.estimate_nox_ffm2(
+                edb_gaseous.log_ei_nox_profile,
+                fuel_flow_per_engine,
+                true_airspeed,
+                self.source.air_pressure,
+                air_temperature,
+                self.source["specific_humidity"],
+            )
+            * 1e-3  # g-NOx/kg-fuel to kg-NOx/kg-fuel
         )
 
-        self.source["co_ei"] = carbon_monoxide_emissions_index_ffm2(
-            edb_gaseous,
-            fuel_flow_per_engine,
-            true_airspeed,
-            self.source.air_pressure,
-            air_temperature,
+        self.source["co_ei"] = (
+            gaseous.estimate_ei_co_hc_ffm2(
+                edb_gaseous.log_ei_co_profile,
+                fuel_flow_per_engine,
+                true_airspeed,
+                self.source.air_pressure,
+                air_temperature,
+            )
+            * 1e-3  # g-CO/kg-fuel to kg-CO/kg-fuel
         )
 
-        self.source["hc_ei"] = hydrocarbon_emissions_index_ffm2(
-            edb_gaseous,
-            fuel_flow_per_engine,
-            true_airspeed,
-            self.source.air_pressure,
-            air_temperature,
+        self.source["hc_ei"] = (
+            gaseous.estimate_ei_co_hc_ffm2(
+                edb_gaseous.log_ei_hc_profile,
+                fuel_flow_per_engine,
+                true_airspeed,
+                self.source.air_pressure,
+                air_temperature,
+            )
+            * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
         )
 
     def _gaseous_emissions_constant(self) -> None:
@@ -770,196 +779,6 @@ class Emissions(Model):
         self.source.attrs["total_hc"] = np.nansum(self.source["hc"])
         self.source.attrs["total_nvpm_mass"] = np.nansum(self.source["nvpm_mass"])
         self.source.attrs["total_nvpm_number"] = np.nansum(self.source["nvpm_number"])
-
-    def _check_edb_gaseous_availability(
-        self,
-        engine_uid: str,
-        raise_error: bool = True,
-    ) -> bool:
-        """
-        Check if the provided engine is available in the gaseous ICAO EDB.
-
-        Setting ``raise_error`` to True allows functions in this class to be
-        used independently outside of :meth:`eval`.
-
-        Parameters
-        ----------
-        engine_uid: str
-            Engine unique identification number from the ICAO EDB
-        raise_error: bool
-            Raise a KeyError if engine type is not available.
-
-        Returns
-        -------
-        bool
-            True if engine type is available in the gaseous ICAO EDB.
-
-        Raises
-        ------
-        KeyError
-            If engine type is not available in the gaseous ICAO EDB.
-        """
-        if engine_uid not in self.edb_engine_gaseous:
-            if raise_error:
-                raise KeyError(
-                    f"Engine ({engine_uid}) is not available in the ICAO EDB gaseous database"
-                )
-            return False
-        return True
-
-    def _check_edb_nvpm_availability(
-        self,
-        engine_uid: str,
-        raise_error: bool = True,
-    ) -> bool:
-        """
-        Check if the provided engine is available in the nvPM ICAO EDB.
-
-        Setting ``raise_error`` to True allows functions in this class to be
-        used independently outside of :meth:`eval`.
-
-        Parameters
-        ----------
-        engine_uid: str
-            Engine unique identification number from the ICAO EDB
-        raise_error: bool
-            Raise a KeyError if engine type is not available.
-
-        Returns
-        -------
-        bool
-            True if engine type is available in the nvPM ICAO EDB.
-
-        Raises
-        ------
-        KeyError
-            If engine type is not available in the nvPM ICAO EDB.
-        """
-        if engine_uid not in self.edb_engine_nvpm:
-            if raise_error:
-                raise KeyError(
-                    f"Engine ({engine_uid}) is not available in the ICAO EDB nvPM database"
-                )
-            return False
-        return True
-
-
-def nitrogen_oxide_emissions_index_ffm2(
-    edb_gaseous: gaseous.EDBGaseous,
-    fuel_flow_per_engine: npt.NDArray[np.floating],
-    true_airspeed: npt.NDArray[np.floating],
-    air_pressure: npt.NDArray[np.floating],
-    air_temperature: npt.NDArray[np.floating],
-    specific_humidity: None | npt.NDArray[np.floating] = None,
-) -> npt.NDArray[np.floating]:
-    """
-    Estimate the nitrogen oxide (NOx) emissions index (EI) using the Fuel Flow Method 2 (FFM2).
-
-    Parameters
-    ----------
-    edb_gaseous : EDBGaseous
-        EDB gaseous data
-    fuel_flow_per_engine: npt.NDArray[np.floating]
-        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.floating]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.floating]
-        pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.floating]
-        ambient temperature for each waypoint, [:math:`K`]
-    specific_humidity: npt.NDArray[np.floating]
-        specific humidity for each waypoint, [:math:`kg_{H_{2}O}/kg_{air}`]
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        Nitrogen oxide emissions index for each waypoint, [:math:`kg_{NO_{X}}/kg_{fuel}`]
-    """
-    res_nox = gaseous.estimate_nox_ffm2(
-        edb_gaseous.log_ei_nox_profile,
-        fuel_flow_per_engine,
-        true_airspeed,
-        air_pressure,
-        air_temperature,
-        specific_humidity,
-    )
-    return res_nox * 1e-3  # g-NOx/kg-fuel to kg-NOx/kg-fuel
-
-
-def carbon_monoxide_emissions_index_ffm2(
-    edb_gaseous: gaseous.EDBGaseous,
-    fuel_flow_per_engine: npt.NDArray[np.floating],
-    true_airspeed: npt.NDArray[np.floating],
-    air_pressure: npt.NDArray[np.floating],
-    air_temperature: npt.NDArray[np.floating],
-) -> npt.NDArray[np.floating]:
-    """
-    Estimate the carbon monoxide (CO) emissions index (EI) using the Fuel Flow Method 2 (FFM2).
-
-    Parameters
-    ----------
-    edb_gaseous : EDBGaseous
-        EDB gaseous data
-    fuel_flow_per_engine: npt.NDArray[np.floating]
-        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.floating]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.floating]
-        pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.floating]
-        ambient temperature for each waypoint, [:math:`K`]
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        Carbon monoxide emissions index for each waypoint, [:math:`kg_{CO}/kg_{fuel}`]
-    """
-    res_co = gaseous.estimate_ei_co_hc_ffm2(
-        edb_gaseous.log_ei_co_profile,
-        fuel_flow_per_engine,
-        true_airspeed,
-        air_pressure,
-        air_temperature,
-    )
-    return res_co * 1e-3  # g-CO/kg-fuel to kg-CO/kg-fuel
-
-
-def hydrocarbon_emissions_index_ffm2(
-    edb_gaseous: gaseous.EDBGaseous,
-    fuel_flow_per_engine: npt.NDArray[np.floating],
-    true_airspeed: npt.NDArray[np.floating],
-    air_pressure: npt.NDArray[np.floating],
-    air_temperature: npt.NDArray[np.floating],
-) -> npt.NDArray[np.floating]:
-    """
-    Estimate the hydrocarbon (HC) emissions index (EI) using the Fuel Flow Method 2 (FFM2).
-
-    Parameters
-    ----------
-    edb_gaseous : EDBGaseous
-        EDB gaseous data
-    fuel_flow_per_engine: npt.NDArray[np.floating]
-        fuel mass flow rate per engine, [:math:`kg s^{-1}`]
-    true_airspeed: npt.NDArray[np.floating]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_pressure : npt.NDArray[np.floating]
-        pressure altitude at each waypoint, [:math:`Pa`]
-    air_temperature : npt.NDArray[np.floating]
-        ambient temperature for each waypoint, [:math:`K`]
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        Hydrocarbon emissions index for each waypoint, [:math:`kg_{HC}/kg_{fuel}`]
-    """
-    res_hc = gaseous.estimate_ei_co_hc_ffm2(
-        edb_gaseous.log_ei_hc_profile,
-        fuel_flow_per_engine,
-        true_airspeed,
-        air_pressure,
-        air_temperature,
-    )
-    return res_hc * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
 
 
 def nvpm_mass_emissions_index_sac(
