@@ -764,8 +764,6 @@ class Emissions(Model):
         dt_sec = self.source.segment_duration(self.source.altitude_ft.dtype)
         fuel_burn = jet.fuel_burn(self.source.get_data_or_attr("fuel_flow"), dt_sec)
 
-        # TODO: these currently overwrite values and will throw warnings
-
         # Total emissions for each waypoint
         self.source["co2"] = fuel_burn * self.source.fuel.ei_co2
         self.source["h2o"] = fuel_burn * self.source.fuel.ei_h2o
