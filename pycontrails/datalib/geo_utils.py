@@ -80,8 +80,8 @@ def parallax_correct(
     p1 = np.array(transformer.transform(longitude, latitude, altitude))
 
     # Major and minor axes of the ellipsoid
-    a = ecef_crs.ellipsoid.semi_major_metre
-    b = ecef_crs.ellipsoid.semi_minor_metre
+    a = ecef_crs.ellipsoid.semi_major_metre  # type: ignore[union-attr]
+    b = ecef_crs.ellipsoid.semi_minor_metre  # type: ignore[union-attr]
     intersection = _intersection_with_ellipsoid(p0, p1, a, b)
 
     # Convert back to WGS84 coordinates
