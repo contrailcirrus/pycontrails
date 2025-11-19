@@ -105,8 +105,9 @@ def validate_paths(paths: list[str | pathlib.Path] | None) -> list[str] | None:
         flight_ids.append(flight_id)
         validated.append(str(path))
 
-    duplicates = sorted([f for f in set(flight_ids) if flight_ids.count(f) > 1])
-    if duplicates:
+    unique_ids = set(flight_ids)
+    if len(unique_ids) != len(flight_ids):
+        duplicates = sorted([f for f in unique_ids if flight_ids.count(f) > 1])
         msg = (
             f"IAGOS flight ids {duplicates} appear more than once in `paths`. "
             f"Deduplicate files included in `paths` before using."
