@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from html.parser import HTMLParser
 
 import aiohttp
+import aiohttp.web
 
 from pycontrails.utils import coroutines
 
@@ -200,7 +201,7 @@ def get(rpath: str, lpath: str) -> None:
         Local path where file contents will be saved
 
     """
-    return coroutines.run(_get_async(lpath, rpath))
+    return coroutines.run(_get_async(rpath, lpath))
 
 
 async def _get_async(rpath: str, lpath: str) -> None:
