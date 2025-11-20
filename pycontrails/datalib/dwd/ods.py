@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import bz2
 import warnings
+from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
 from html.parser import HTMLParser
 
-import requests
+import aiohttp
+
+from pycontrails.utils import concurrent
 
 
 def list_forecasts(domain: str) -> list[datetime]:
@@ -23,25 +26,26 @@ def list_forecasts(domain: str) -> list[datetime]:
     list[datetime]
         Start time of available forecast cycles
     """
-    cycles = _ls(_root(domain))
-
     start_times = []
-    for cycle in cycles:
+
+    for cycle in _ls(_root(domain)):
         try:
-            sample_grib = _ls(f"{cycle}/t")[0]
-        except Exception as e:
-            msg = "Could not find temperature GRIB file to read forecast start time."
+            sample_grib = _first(f"{cycle}/athb_t")
+        except StopAsyncIteration as e:
+            msg = "Could not find surface pressure GRIB file to read forecast start time."
             raise FileNotFoundError(msg) from e
 
         try:
-            start_str = sample_grib.split("_")[-4]
+            idx = -5 if domain == "germany" else -4
+            start_str = sample_grib.split("_")[idx]
             start = datetime.strptime(start_str, "%Y%m%d%H")
         except ValueError as e:
             msg = f"Could not parse date from GRIB file at {sample_grib}"
             raise ValueError(msg) from e
+
         start_times.append(start)
 
-    return sorted(start_times)
+    return start_times
 
 
 def list_forecast_steps(domain: str, forecast: datetime) -> list[datetime]:
@@ -73,15 +77,16 @@ def list_forecast_steps(domain: str, forecast: datetime) -> list[datetime]:
         return []
 
     try:
-        gribs = _ls(f"{_root(domain)}/{forecast.hour:02d}/t")
+        gribs = _ls(f"{_root(domain)}/{forecast.hour:02d}/athb_t")
     except Exception as e:
-        msg = "Could not find temperature GRIB files to read forecast start time."
+        msg = "Could not find surface pressure GRIB files to read forecast start time."
         raise ValueError(msg) from e
 
     steps = set()
     for grib in gribs:
         try:
-            step_str = grib.split("_")[-3]
+            idx = -4 if domain == "germany" else -3
+            step_str = grib.split("_")[idx]
             steps.add(int(step_str))
         except ValueError as e:
             msg = f"Could not parse step from GRIB file at {grib}"
@@ -188,11 +193,18 @@ def get(rpath: str, lpath: str) -> None:
         Local path where file contents will be saved
 
     """
+    return concurrent.run(_get_async(lpath, rpath))
+
+
+async def _get_async(rpath: str, lpath: str) -> None:
+    """Async helper function for get."""
     try:
-        response = requests.get(f"https://{rpath}")
-        response.raise_for_status()
-        content = response.content
-    except requests.exceptions.RequestException as e:
+        async with (
+            aiohttp.ClientSession(raise_for_status=True) as session,
+            session.get(f"https://{rpath}") as response,
+        ):
+            content = await response.read()
+    except aiohttp.web.HTTPException as e:
         msg = f"Error while downloading file at {rpath}"
         raise RuntimeError(msg) from e
 
@@ -232,12 +244,40 @@ class _OpenDataServerParser(HTMLParser):
 
 def _ls(url: str) -> list[str]:
     """List URL of each item in directory."""
+    # This uses an async helper function to avoid an additional
+    # dependency on a synchronous http request library. The helper
+    # only issues a single get request, so there's no significant
+    # performance benefit from concurrency.
+    return concurrent.materialize(_ls_async(url))
+
+
+def _first(url: str) -> str:
+    """Get URL of first item in directory."""
+    # This uses an async helper function to avoid an additional
+    # dependency on a synchronous http request library. The helper
+    # only issues a single get request, so there's no significant
+    # performance benefit from concurrency.
+    return concurrent.take(_ls_async(url))
+
+
+async def _ls_async(url: str) -> AsyncGenerator[str, None]:
+    """Async helper function for _ls."""
+    try:
+        async with (
+            aiohttp.ClientSession(raise_for_status=True) as session,
+            session.get(f"https://{url}") as response,
+        ):
+            text = await response.text()
+    except aiohttp.web.HTTPError as e:
+        msg = f"Error listing contents of {url}."
+        raise RuntimeError(msg) from e
+
     parser = _OpenDataServerParser()
-    response = requests.get(f"https://{url}")
-    response.raise_for_status()
-    parser.feed(response.text)
+    parser.feed(text)
     parser.close()
-    return [f"{url}/{child}" for child in parser.children]
+
+    for child in parser.children:
+        yield f"{url}/{child}"
 
 
 def _root(domain: str) -> str:
