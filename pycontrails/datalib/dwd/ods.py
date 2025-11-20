@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import bz2
 import warnings
 from collections.abc import AsyncGenerator
@@ -26,13 +27,19 @@ def list_forecasts(domain: str) -> list[datetime]:
     list[datetime]
         Start time of available forecast cycles
     """
+    return concurrent.run(_list_forecasts_async(domain))
+
+
+async def _list_forecasts_async(domain: str) -> list[datetime]:
+    """Async helper function for _list_forecasts."""
     start_times = []
 
-    for cycle in _ls(_root(domain)):
+    tasks = [anext(_ls_async(f"{cycle}/athb_t")) for cycle in _ls(_root(domain))]
+    for task in asyncio.as_completed(tasks):
         try:
-            sample_grib = _first(f"{cycle}/athb_t")
+            sample_grib = await task
         except StopAsyncIteration as e:
-            msg = "Could not find surface pressure GRIB file to read forecast start time."
+            msg = "Could not find OLR GRIB file to read forecast start time."
             raise FileNotFoundError(msg) from e
 
         try:
@@ -45,7 +52,7 @@ def list_forecasts(domain: str) -> list[datetime]:
 
         start_times.append(start)
 
-    return start_times
+    return sorted(start_times)
 
 
 def list_forecast_steps(domain: str, forecast: datetime) -> list[datetime]:
