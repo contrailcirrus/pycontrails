@@ -44,8 +44,8 @@ def list_forecasts(domain: str) -> list[datetime]:
     return sorted(start_times)
 
 
-def list_timesteps(domain: str, forecast: datetime) -> list[datetime]:
-    """List forecast timesteps available for a given forecast cycle.
+def list_forecast_steps(domain: str, forecast: datetime) -> list[datetime]:
+    """List forecast steps available for a given forecast cycle.
 
     Parameters
     ----------

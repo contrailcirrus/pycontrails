@@ -438,7 +438,7 @@ class ICON(metsource.MetDataSource):
     See Also
     --------
     :func:`pycontrails.datalib.dwd.ods.list_forecasts`: list available forecast cycles
-    :func:`pycontrails.datalib.dwd.ods.list_timesteps`: list available forecast timesteps
+    :func:`pycontrails.datalib.dwd.ods.list_forecast_steps`: list available forecast steps
 
     """
 
