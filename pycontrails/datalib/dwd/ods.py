@@ -11,7 +11,7 @@ from html.parser import HTMLParser
 
 import aiohttp
 
-from pycontrails.utils import concurrent
+from pycontrails.utils import coroutines
 
 
 def list_forecasts(domain: str) -> list[datetime]:
@@ -27,7 +27,7 @@ def list_forecasts(domain: str) -> list[datetime]:
     list[datetime]
         Start time of available forecast cycles
     """
-    return concurrent.run(_list_forecasts_async(domain))
+    return coroutines.run(_list_forecasts_async(domain))
 
 
 async def _list_forecasts_async(domain: str) -> list[datetime]:
@@ -200,7 +200,7 @@ def get(rpath: str, lpath: str) -> None:
         Local path where file contents will be saved
 
     """
-    return concurrent.run(_get_async(lpath, rpath))
+    return coroutines.run(_get_async(lpath, rpath))
 
 
 async def _get_async(rpath: str, lpath: str) -> None:
@@ -255,16 +255,7 @@ def _ls(url: str) -> list[str]:
     # dependency on a synchronous http request library. The helper
     # only issues a single get request, so there's no significant
     # performance benefit from concurrency.
-    return concurrent.materialize(_ls_async(url))
-
-
-def _first(url: str) -> str:
-    """Get URL of first item in directory."""
-    # This uses an async helper function to avoid an additional
-    # dependency on a synchronous http request library. The helper
-    # only issues a single get request, so there's no significant
-    # performance benefit from concurrency.
-    return concurrent.take(_ls_async(url))
+    return coroutines.materialize(_ls_async(url))
 
 
 async def _ls_async(url: str) -> AsyncGenerator[str, None]:

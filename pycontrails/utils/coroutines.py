@@ -1,4 +1,4 @@
-"""Concurrency utilities."""
+"""Multitasking utilities."""
 
 import asyncio
 from collections.abc import AsyncGenerator, Coroutine
@@ -37,30 +37,6 @@ def run(coro: Coroutine[Any, Any, T]) -> T:
             return future.result()
 
     return asyncio.run(coro)
-
-
-def take(agen: AsyncGenerator[T, None]) -> T:
-    """Take the next item synchronously from an async generator.
-
-    Parameters
-    ----------
-    agen : AsyncGenerator[T, None]
-        Async generator object, typically created by calling
-        an async function that yields rather than returning.
-
-    Returns
-    -------
-    T
-        Next value yielded by the generator.
-    """
-
-    async def _take_async(agen: AsyncGenerator[T, None]) -> T:
-        try:
-            return await anext(agen)
-        except StopAsyncIteration as e:
-            raise StopIteration from e
-
-    return run(_take_async(agen))
 
 
 def materialize(agen: AsyncGenerator[T, None]) -> list[T]:
