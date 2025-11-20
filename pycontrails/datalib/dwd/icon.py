@@ -11,7 +11,6 @@ This module supports
 
 from __future__ import annotations
 
-import concurrent.futures
 import contextlib
 import functools
 import hashlib
@@ -19,7 +18,6 @@ import itertools
 import logging
 import math
 import sys
-import threading
 import warnings
 from collections.abc import Hashable, Iterator
 from datetime import datetime, timedelta
@@ -45,7 +43,7 @@ from pycontrails.datalib import met_utils
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.dwd import ods
 from pycontrails.physics import units
-from pycontrails.utils import temp
+from pycontrails.utils import coroutines, temp
 from pycontrails.utils.types import DatetimeLike
 
 MODEL_LEVEL_VARIABLES = [
@@ -846,18 +844,12 @@ class ICON(metsource.MetDataSource):
         # so we use a custom content manager to temporarily add a filter
         # to the logger that issues the warning.
         with stack, _eccodes_warning_filter():
-            threads = []
+            tasks = []
             for rpath, lpath in zip(rpaths, lpaths, strict=True):
                 if self.cache_download and self.cachestore.exists(lpath):
                     continue
-                threads.append(threading.Thread(target=ods.get, args=(rpath, lpath)))
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.download_threads) as pool:
-                futures = [pool.submit(thread.run) for thread in threads]
-                for future in concurrent.futures.as_completed(futures):
-                    error = future.exception()
-                    if error:
-                        raise error
+                tasks.append(ods._get_async(rpath, lpath))
+            coroutines.run_all(tasks)
 
             ds = xr.open_mfdataset(
                 lpaths,
