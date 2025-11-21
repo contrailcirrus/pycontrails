@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import bz2
 import warnings
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
@@ -212,16 +211,9 @@ async def _get_async(rpath: str, lpath: str) -> None:
             session.get(f"https://{rpath}") as response,
         ):
             content = await response.read()
-    except aiohttp.web.HTTPException as e:
+    except aiohttp.ClientError as e:
         msg = f"Error while downloading file at {rpath}"
         raise RuntimeError(msg) from e
-
-    if rpath.endswith(".bz2"):
-        try:
-            content = bz2.decompress(content)
-        except Exception as e:
-            msg = f"Error decompressing bzip2 file downloaded from {rpath}."
-            raise RuntimeError(msg) from e
 
     with open(lpath, "wb") as f:
         f.write(content)
@@ -267,7 +259,7 @@ async def _ls_async(url: str) -> AsyncGenerator[str, None]:
             session.get(f"https://{url}") as response,
         ):
             text = await response.text()
-    except aiohttp.web.HTTPError as e:
+    except aiohttp.ClientError as e:
         msg = f"Error listing contents of {url}."
         raise RuntimeError(msg) from e
 
