@@ -51,7 +51,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = ["pycontrails[ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
+complete = ["pycontrails[dwd,ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -65,7 +65,6 @@ dev = [
     "pyarrow>=5.0",
     "pytest>=8.2",
     "pytest-cov>=2.11",
-    "requests>=2.25",
     "ruff>=0.9.0",
 ]
 
@@ -83,6 +82,16 @@ docs = [
     "sphinxcontrib-bibtex>=2.2",
     "sphinx_copybutton>=0.5",
     "sphinxext.opengraph>=0.8",
+]
+
+# DWD datalib interfaces
+dwd = [
+    "aiohttp>=3.13",
+    "cfgrib>=0.9",
+    "eccodes>=2.38",
+    "netcdf4>=1.6.1",
+    "platformdirs>=3.0",
+    "tqdm>=4.61",
 ]
 
 # ECMWF datalib interfaces
@@ -215,6 +224,9 @@ filterwarnings = [
     "ignore:The default level_type will change:DeprecationWarning",
     "ignore:Conversion of an array with ndim > 0 to a scalar:DeprecationWarning:pyproj.transformer",
     "ignore:numpy.ndarray size changed:RuntimeWarning",
+]
+markers = [
+    "unreliable: mark a test as unreliable, often due to interaction with an external service",
 ]
 testpaths = ["tests/unit"]
 

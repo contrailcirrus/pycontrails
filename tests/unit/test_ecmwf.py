@@ -106,7 +106,7 @@ def test_time_input_two_times_nominal(datalib: AnyECMWFDatalibClass) -> None:
         datetime(2019, 5, 31, 3),
     ]
 
-    dl = ERA5(
+    dl = datalib(
         time=(datetime(2019, 5, 31, 0, 29), datetime(2019, 5, 31, 2, 40)),
         variables=["vo"],
         pressure_levels=[200],

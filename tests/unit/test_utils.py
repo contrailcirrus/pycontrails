@@ -21,6 +21,7 @@ else:
 
 from pycontrails import Flight, MetDataset
 from pycontrails.utils import types
+from pycontrails.utils.array import searchsorted2d
 from pycontrails.utils.iteration import chunk_list
 from pycontrails.utils.json import NumpyEncoder
 from pycontrails.utils.temp import remove_tempfile, temp_file, temp_filename
@@ -255,3 +256,45 @@ def test_type_guard(met_cocip1: MetDataset) -> None:
     # custom error message
     with pytest.raises(TypeError, match="custom error"):
         type_guard("str", int, error_message="custom error")
+
+
+@pytest.mark.parametrize("seed", [12345, 301217, 8675309, 90210, 48])
+def test_searchsorted2d(seed: int) -> None:
+    """Test vectorized implementation on random arrays."""
+
+    rng = np.random.default_rng(seed)
+    m, n, p = rng.integers(1, 10, 3)
+
+    a = np.sort(rng.uniform(size=(m, n)), axis=1)
+    v = rng.uniform(size=(p,))
+
+    i = np.stack([np.searchsorted(row, v) for row in a])
+    np.testing.assert_array_equal(i, searchsorted2d(a, v))
+
+
+def test_searchsorted2d_with_nan() -> None:
+    """Test behavior with nans."""
+
+    # Error if any nans in v
+    a = np.ones((2, 4))
+    v = np.array([np.nan, 0.0, np.nan])
+    with pytest.raises(ValueError, match="The parameter 'v' must not"):
+        _ = searchsorted2d(a, v)
+
+    # Return 0 for rows with nan in a
+    a[0, 0] = np.nan
+    v = np.full((3,), 2.0)
+    np.testing.assert_array_equal(searchsorted2d(a, v), [[0, 0, 0], [4, 4, 4]])
+
+
+def test_searchsorted_input_shape() -> None:
+    """Test input shape validation."""
+
+    a = np.empty((2, 4))
+    v = np.empty((3,))
+
+    with pytest.raises(ValueError, match="The parameter 'a' must be"):
+        _ = searchsorted2d(v, v)
+
+    with pytest.raises(ValueError, match="The parameter 'v' must be"):
+        _ = searchsorted2d(a, a)
