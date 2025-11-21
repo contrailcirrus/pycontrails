@@ -225,6 +225,9 @@ filterwarnings = [
     "ignore:Conversion of an array with ndim > 0 to a scalar:DeprecationWarning:pyproj.transformer",
     "ignore:numpy.ndarray size changed:RuntimeWarning",
 ]
+markers = [
+    "unreliable: mark a test as unreliable, often due to interaction with an external service",
+]
 testpaths = ["tests/unit"]
 
 # RST linter

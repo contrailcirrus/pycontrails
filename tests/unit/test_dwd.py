@@ -35,12 +35,13 @@ AnyICONDatalibClass = TypeVar(
 #############################
 
 
+@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
-@pytest.mark.parametrize("domain", ["global", "europe", "germany"])
-def test_list_forecasts(domain: str) -> None:
+@pytest.mark.parametrize(("domain", "count"), [("global", 4), ("europe", 8), ("germany", 8)])
+def test_list_forecasts(domain: str, count: int) -> None:
     """Test forecast cycle listing."""
     forecasts = ods.list_forecasts(domain)
-    assert len(forecasts) > 0
+    assert len(forecasts) == count
 
 
 def test_list_forecasts_error() -> None:
@@ -49,6 +50,7 @@ def test_list_forecasts_error() -> None:
         _ = ods.list_forecasts("foo")
 
 
+@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps(domain: str) -> None:
@@ -59,6 +61,7 @@ def test_list_forecast_steps(domain: str) -> None:
     assert steps[-1] >= forecasts[0] + timedelta(hours=48)  # all forecasts have >= 48 hour horizon
 
 
+@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps_warning(domain: str) -> None:
@@ -192,6 +195,7 @@ def test_rpaths(
     assert ods.rpath(domain, forecast, variable, step, level) == expected
 
 
+@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_get(domain: str) -> None:
