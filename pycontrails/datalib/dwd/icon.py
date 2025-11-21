@@ -11,6 +11,7 @@ This module supports
 
 from __future__ import annotations
 
+import bz2
 import contextlib
 import functools
 import hashlib
@@ -798,25 +799,44 @@ class ICON(metsource.MetDataSource):
     @functools.cached_property
     def _global_kdtree(self) -> KDTree:
         """Get KDtree for looking up nearest neighbors on global icosahedral grid."""
-        use_cache = self.cachestore is not None and self.cache_download
+        if self.cache_download and not self.cachestore:
+            msg = "Cachestore is required to cache downloads"
+            raise ValueError(msg)
 
-        stack = contextlib.ExitStack()
-        rpath = ods.global_longitude_rpath(self.forecast_time)
-        fname = rpath.removesuffix(".bz2").split("/")[-1]
-        lpath = self.cachestore.path(fname) if use_cache else stack.enter_context(temp.temp_file())  # type:ignore
-        with stack:
-            if not (use_cache and self.cachestore.exists(lpath)):  # type:ignore
-                ods.get(rpath, lpath)
-            ds = xr.open_dataset(lpath, engine="cfgrib", backend_kwargs={"indexpath": ""})
+        downloads = contextlib.ExitStack()
+        decompressed = contextlib.ExitStack()
+        rpaths = [
+            ods.global_longitude_rpath(self.forecast_time),
+            ods.global_latitude_rpath(self.forecast_time),
+        ]
+        lpaths = []
+        gribs = []
+        for rpath in rpaths:
+            if not self.cache_download:
+                lpaths.append(downloads.enter_context(temp.temp_file()))
+            else:
+                lpaths.append(self.cachestore.path(rpath.split("/")[-1]))  # type:ignore
+            gribs.append(decompressed.enter_context(temp.temp_file()))
+
+        with decompressed:
+            with downloads:
+                tasks = []
+                for rpath, lpath in zip(rpaths, lpaths, strict=True):
+                    if self.cache_download and self.cachestore.exists(lpath):  # type:ignore
+                        continue
+                    tasks.append(ods._get_async(rpath, lpath))
+                coroutines.run_all(tasks)
+
+                for lpath, grib in zip(lpaths, gribs, strict=True):
+                    with open(lpath, "rb") as f:
+                        data = bz2.decompress(f.read())
+                    with open(grib, "wb") as f:
+                        f.write(data)
+
+            ds = xr.open_dataset(gribs[0], engine="cfgrib", backend_kwargs={"indexpath": ""})
             lon = ds["tlon"].values
 
-        rpath = ods.global_latitude_rpath(self.forecast_time)
-        fname = rpath.removesuffix(".bz2").split("/")[-1]
-        lpath = self.cachestore.path(fname) if use_cache else stack.enter_context(temp.temp_file())  # type:ignore
-        with stack:
-            if not (use_cache and self.cachestore.exists(lpath)):  # type:ignore
-                ods.get(rpath, lpath)
-            ds = xr.open_dataset(lpath, engine="cfgrib", backend_kwargs={"indexpath": ""})
+            ds = xr.open_dataset(gribs[1], engine="cfgrib", backend_kwargs={"indexpath": ""})
             lat = ds["tlat"].values
 
         x, y, z = _ll_to_cartesian(lon, lat)
@@ -828,31 +848,42 @@ class ICON(metsource.MetDataSource):
             msg = "Cachestore is required to download and cache data"
             raise ValueError(msg)
 
-        stack = contextlib.ExitStack()
+        downloads = contextlib.ExitStack()
+        decompressed = contextlib.ExitStack()
         rpaths = self.rpaths(time)
         lpaths = []
+        gribs = []
         for rpath in rpaths:
             if not self.cache_download:
-                lpaths.append(stack.enter_context(temp.temp_file()))
+                lpaths.append(downloads.enter_context(temp.temp_file()))
             else:
-                fname = rpath.removesuffix(".bz2").split("/")[-1]
-                lpaths.append(self.cachestore.path(fname))
+                lpaths.append(self.cachestore.path(rpath.split("/")[-1]))
+            gribs.append(decompressed.enter_context(temp.temp_file()))
 
         # ecCodes will complain about missing latitude/longitude coordinates
         # when opening grib messages on the unstructured global grid.
         # This complaint comes from `logging.warning`, not `warnings.warn`,
         # so we use a custom content manager to temporarily add a filter
         # to the logger that issues the warning.
-        with stack, _eccodes_warning_filter():
-            tasks = []
-            for rpath, lpath in zip(rpaths, lpaths, strict=True):
-                if self.cache_download and self.cachestore.exists(lpath):
-                    continue
-                tasks.append(ods._get_async(rpath, lpath))
-            coroutines.run_all(tasks)
+        with decompressed, _eccodes_warning_filter():
+            with downloads:
+                tasks = []
+                for rpath, lpath in zip(rpaths, lpaths, strict=True):
+                    if self.cache_download and self.cachestore.exists(lpath):
+                        continue
+                    tasks.append(ods._get_async(rpath, lpath))
+                coroutines.run_all(tasks)
+
+                breakpoint()
+
+                for lpath, grib in zip(lpaths, gribs, strict=True):
+                    with open(lpath, "rb") as f:
+                        data = bz2.decompress(f.read())
+                    with open(grib, "wb") as f:
+                        f.write(data)
 
             ds = xr.open_mfdataset(
-                lpaths,
+                gribs,
                 combine="by_coords",
                 compat="equals",
                 preprocess=_preprocess_grib,
