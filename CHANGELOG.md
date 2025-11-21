@@ -13,6 +13,7 @@
 - Modify `metsource.parse_timesteps` to accept a new optional `shift` argument. This argument can be used to make `metsource.parse_timesteps` return times that are not even multiples of `freq` (e.g., six-hourly timesteps starting at 3Z). The behavior of `metsource.parse_timesteps` is unchanged if this argument is omitted.
 - Extract some utilities for ECMWF model-to-pressure-level conversion to a more flexible (less ECMWF-specific) `met_utils.ml_to_pl` function and a new `utils.arrays` module. The updated utilities include some minor behavioral changes to improve handling of nan values.
 - Add utilities for running coroutines sychronously.
+- Register `pytest.mark.unreliable` to mark unreliable tests (e.g., tests vulnerable to upstream changes in an external service). These tests are skipped in the release workflow.
 
 ## 0.59.1
 
