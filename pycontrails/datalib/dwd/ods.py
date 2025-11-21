@@ -157,7 +157,7 @@ def global_longitude_rpath(forecast: datetime) -> str:
     )
 
 
-def rpath(domain: str, forecast_time: datetime, variable: str, step: int, level: int | None) -> str:
+def rpath(domain: str, forecast: datetime, variable: str, step: int, level: int | None) -> str:
     """Get URL remote data file.
 
     Parameters
@@ -191,8 +191,8 @@ def rpath(domain: str, forecast_time: datetime, variable: str, step: int, level:
     step_level_str = _step_level_str(domain, step, level)
 
     return (
-        f"{_root(domain)}/{forecast_time.hour:02d}/{variable}/"
-        f"{_prefix(domain)}_{level_type}-level_{forecast_time.strftime('%Y%m%d%H')}"
+        f"{_root(domain)}/{forecast.hour:02d}/{variable}/"
+        f"{_prefix(domain)}_{level_type}-level_{forecast.strftime('%Y%m%d%H')}"
         f"_{step_level_str}_{variable if domain == 'germany' else variable.upper()}.grib2.bz2"
     )
 
