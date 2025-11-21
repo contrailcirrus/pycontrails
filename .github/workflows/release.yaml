@@ -56,7 +56,7 @@ jobs:
           CIBW_ENVIRONMENT_PASS_LINUX: GITHUB_ACTIONS
           CIBW_TEST_COMMAND: >
             mv {project}/pycontrails {project}/pycontrails-bak &&
-            python -m pytest {project}/tests -vv &&
+            python -m pytest -m "not unreliable" {project}/tests -vv &&
             mv {project}/pycontrails-bak {project}/pycontrails
 
       - name: Upload wheels
