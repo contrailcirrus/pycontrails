@@ -11,6 +11,7 @@ This module supports
 
 from __future__ import annotations
 
+import asyncio
 import bz2
 import contextlib
 import functools
@@ -44,8 +45,18 @@ from pycontrails.datalib import met_utils
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.dwd import ods
 from pycontrails.physics import units
-from pycontrails.utils import coroutines, temp
+from pycontrails.utils import coroutines, dependencies, temp
 from pycontrails.utils.types import DatetimeLike
+
+try:
+    import aiohttp
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="dwd.icon module",
+        package_name="aiohttp",
+        module_not_found_error=exc,
+        pycontrails_optional_package="dwd",
+    )
 
 MODEL_LEVEL_VARIABLES = [
     met_var.AirTemperature,
@@ -799,10 +810,6 @@ class ICON(metsource.MetDataSource):
     @functools.cached_property
     def _global_kdtree(self) -> KDTree:
         """Get KDtree for looking up nearest neighbors on global icosahedral grid."""
-        if self.cache_download and not self.cachestore:
-            msg = "Cachestore is required to cache downloads"
-            raise ValueError(msg)
-
         downloads = contextlib.ExitStack()
         decompressed = contextlib.ExitStack()
         rpaths = [
@@ -820,13 +827,7 @@ class ICON(metsource.MetDataSource):
 
         with decompressed:
             with downloads:
-                tasks = []
-                for rpath, lpath in zip(rpaths, lpaths, strict=True):
-                    if self.cache_download and self.cachestore.exists(lpath):  # type:ignore
-                        continue
-                    tasks.append(ods._get_async(rpath, lpath))
-                coroutines.run_all(tasks)
-
+                coroutines.run(self._download_async(rpaths, lpaths))
                 for lpath, grib in zip(lpaths, gribs, strict=True):
                     with open(lpath, "rb") as f:
                         data = bz2.decompress(f.read())
@@ -867,15 +868,7 @@ class ICON(metsource.MetDataSource):
         # to the logger that issues the warning.
         with decompressed, _eccodes_warning_filter():
             with downloads:
-                tasks = []
-                for rpath, lpath in zip(rpaths, lpaths, strict=True):
-                    if self.cache_download and self.cachestore.exists(lpath):
-                        continue
-                    tasks.append(ods._get_async(rpath, lpath))
-                coroutines.run_all(tasks)
-
-                breakpoint()
-
+                coroutines.run(self._download_async(rpaths, lpaths))
                 for lpath, grib in zip(lpaths, gribs, strict=True):
                     with open(lpath, "rb") as f:
                         data = bz2.decompress(f.read())
@@ -907,6 +900,20 @@ class ICON(metsource.MetDataSource):
 
             ds.attrs["pycontrails_version"] = pycontrails.__version__
             self.cache_dataset(ds)
+
+    async def _download_async(self, rpaths: list[str], lpaths: list[str]) -> None:
+        """Download files asynchronously."""
+        if self.cache_download and not self.cachestore:
+            msg = "Cachestore is required to cache downloads."
+            raise ValueError(msg)
+
+        async with aiohttp.ClientSession(raise_for_status=True) as session:
+            tasks = []
+            for rpath, lpath in zip(rpaths, lpaths, strict=True):
+                if self.cache_download and self.cachestore.exists(lpath):  # type:ignore
+                    continue
+                tasks.append(ods._get_async(rpath, lpath, session))
+            await asyncio.gather(*tasks)
 
 
 def _preprocess_grib(ds: xr.Dataset) -> xr.Dataset:
