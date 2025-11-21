@@ -39,26 +39,6 @@ def run(task: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(task)
 
 
-def run_all(tasks: list[Coroutine[Any, Any, T]]) -> list[T]:
-    """Run multiple coroutines sychronously.
-
-    Parameters
-    ----------
-    tasks : list[Coroutine[Any, Any, T][]
-        List of coroutine objects
-
-    Returns
-    -------
-    list[T]
-        List of values returned by each coroutine
-    """
-
-    async def _run_all(tasks: list[Coroutine[Any, Any, T]]) -> list[T]:
-        return await asyncio.gather(*tasks)
-
-    return run(_run_all(tasks))
-
-
 def materialize(aiter: AsyncIterator[T]) -> list[T]:
     """Materialize a list from an async iterator.
 
@@ -74,10 +54,7 @@ def materialize(aiter: AsyncIterator[T]) -> list[T]:
         List of values yielded by the generator.
     """
 
-    async def _materialize_async(aiter: AsyncIterator[T]) -> list[T]:
-        out = []
-        async for item in aiter:
-            out.append(item)
-        return out
+    async def _materialize(aiter: AsyncIterator[T]) -> list[T]:
+        return [item async for item in aiter]
 
-    return run(_materialize_async(aiter))
+    return run(_materialize(aiter))

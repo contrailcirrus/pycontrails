@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import warnings
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
 from html.parser import HTMLParser
 
-import aiohttp
-import aiohttp.web
+from pycontrails.utils import coroutines, dependencies
 
-from pycontrails.utils import coroutines
+try:
+    import aiohttp
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="dwd.ods module",
+        package_name="aiohttp",
+        module_not_found_error=exc,
+        pycontrails_optional_package="dwd",
+    )
 
 
 def list_forecasts(domain: str) -> list[datetime]:
@@ -34,23 +42,26 @@ async def _list_forecasts_async(domain: str) -> list[datetime]:
     """Async helper function for _list_forecasts."""
     start_times = []
 
-    tasks = [anext(_ls_async(f"{cycle}/athb_t")) for cycle in _ls(_root(domain))]
-    for task in asyncio.as_completed(tasks):
-        try:
-            sample_grib = await task
-        except StopAsyncIteration as e:
-            msg = "Could not find OLR GRIB file to read forecast start time."
-            raise FileNotFoundError(msg) from e
+    async with aiohttp.ClientSession(raise_for_status=True) as session:
+        cycles = [c async for c in _ls_async(_root(domain), session=session)]
+        tasks = [anext(_ls_async(f"{cycle}/athb_t", session=session)) for cycle in cycles]
 
-        try:
-            idx = -5 if domain == "germany" else -4
-            start_str = sample_grib.split("_")[idx]
-            start = datetime.strptime(start_str, "%Y%m%d%H")
-        except ValueError as e:
-            msg = f"Could not parse date from GRIB file at {sample_grib}"
-            raise ValueError(msg) from e
+        for task in asyncio.as_completed(tasks):
+            try:
+                sample_grib = await task
+            except StopAsyncIteration as e:
+                msg = "Could not find OLR GRIB file to read forecast start time."
+                raise FileNotFoundError(msg) from e
 
-        start_times.append(start)
+            try:
+                idx = -5 if domain == "germany" else -4
+                start_str = sample_grib.split("_")[idx]
+                start = datetime.strptime(start_str, "%Y%m%d%H")
+            except ValueError as e:
+                msg = f"Could not parse date from GRIB file at {sample_grib}"
+                raise ValueError(msg) from e
+
+            start_times.append(start)
 
     return sorted(start_times)
 
@@ -189,8 +200,6 @@ def rpath(domain: str, forecast_time: datetime, variable: str, step: int, level:
 def get(rpath: str, lpath: str) -> None:
     """Get data file from Open Data Server.
 
-    bzip2 files (.bz2 extension) will be decompressed before saving.
-
     Parameters
     ----------
     rpath : str
@@ -200,15 +209,15 @@ def get(rpath: str, lpath: str) -> None:
         Local path where file contents will be saved
 
     """
-    return coroutines.run(_get_async(rpath, lpath))
+    return coroutines.run(_get_async(rpath, lpath, None))
 
 
-async def _get_async(rpath: str, lpath: str) -> None:
+async def _get_async(rpath: str, lpath: str, session: aiohttp.ClientSession | None) -> None:
     """Async helper function for get."""
     try:
         async with (
-            aiohttp.ClientSession(raise_for_status=True) as session,
-            session.get(f"https://{rpath}") as response,
+            _use_or_create_session(session) as _session,
+            _session.get(f"https://{rpath}") as response,
         ):
             content = await response.read()
     except aiohttp.ClientError as e:
@@ -248,15 +257,15 @@ def _ls(url: str) -> list[str]:
     # dependency on a synchronous http request library. The helper
     # only issues a single get request, so there's no significant
     # performance benefit from concurrency.
-    return coroutines.materialize(_ls_async(url))
+    return coroutines.materialize(_ls_async(url, None))
 
 
-async def _ls_async(url: str) -> AsyncGenerator[str, None]:
+async def _ls_async(url: str, session: aiohttp.ClientSession | None) -> AsyncIterator[str]:
     """Async helper function for _ls."""
     try:
         async with (
-            aiohttp.ClientSession(raise_for_status=True) as session,
-            session.get(f"https://{url}") as response,
+            _use_or_create_session(session) as _session,
+            _session.get(f"https://{url}") as response,
         ):
             text = await response.text()
     except aiohttp.ClientError as e:
@@ -269,6 +278,24 @@ async def _ls_async(url: str) -> AsyncGenerator[str, None]:
 
     for child in parser.children:
         yield f"{url}/{child}"
+
+
+@contextlib.asynccontextmanager
+async def _use_or_create_session(
+    session: aiohttp.ClientSession | None,
+) -> AsyncIterator[aiohttp.ClientSession]:
+    """Provide session for async requests, using an existing session if provided."""
+    if session is None:
+        session = aiohttp.ClientSession(raise_for_status=True)
+        local_session = True
+    else:
+        local_session = False
+
+    try:
+        yield session
+    finally:
+        if local_session:
+            await session.close()
 
 
 def _root(domain: str) -> str:
