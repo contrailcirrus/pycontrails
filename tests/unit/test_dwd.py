@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import os
 from datetime import datetime, timedelta
 from typing import TypeVar
 
@@ -9,7 +10,8 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from pycontrails.datalib.dwd import ICON, flight_level_pressure
+from pycontrails.datalib.dwd import ICON, flight_level_pressure, ods
+from tests import OFFLINE
 
 
 class ICONGlobal(ICON):
@@ -27,6 +29,182 @@ class ICONGermany(ICON):
 AnyICONDatalibClass = TypeVar(
     "AnyICONDatalibClass", type[ICON], type[ICONGlobal], type[ICONEurope], type[ICONGermany]
 )
+
+#############################
+# Open Data Server utilities
+#############################
+
+
+@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.parametrize("domain", ["global", "europe", "germany"])
+def test_list_forecasts(domain: str) -> None:
+    """Test forecast cycle listing."""
+    forecasts = ods.list_forecasts(domain)
+    assert len(forecasts) > 0
+
+
+def test_list_forecasts_error() -> None:
+    """Test errors with invalid domains."""
+    with pytest.raises(ValueError, match="Unknown domain"):
+        _ = ods.list_forecasts("foo")
+
+
+@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.parametrize("domain", ["global", "europe", "germany"])
+def test_list_forecast_steps(domain: str) -> None:
+    """Test forecast step listing."""
+    forecasts = ods.list_forecasts(domain)
+    steps = ods.list_forecast_steps(domain, forecasts[0])
+    assert steps[0] == forecasts[0]
+    assert steps[-1] >= forecasts[0] + timedelta(hours=48)  # all forecasts have >= 48 hour horizon
+
+
+@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.parametrize("domain", ["global", "europe", "germany"])
+def test_list_forecast_steps_warning(domain: str) -> None:
+    """Test warning when no data found for forecast."""
+    with pytest.warns(UserWarning, match="No data available for forecast"):
+        steps = ods.list_forecast_steps(domain, datetime(1900, 1, 1))
+    assert len(steps) == 0
+
+
+def test_list_forecast_steps_invalid_domain() -> None:
+    """Test forecast step listing with invalid domain."""
+    with pytest.raises(ValueError, match="Unknown domain"):
+        _ = ods.list_forecast_steps("foo", datetime(1900, 1, 1))
+
+
+def test_global_latitude_rpath() -> None:
+    """Test global latitude remote path generation."""
+    forecast = datetime(2024, 12, 31, 18)
+    path = ods.global_latitude_rpath(forecast)
+    assert path == (
+        "opendata.dwd.de/weather/nwp/icon/grib/18/clat/"
+        "icon_global_icosahedral_time-invariant_2024123118_CLAT.grib2.bz2"
+    )
+
+    forecast = datetime(2025, 1, 1, 0)
+    path = ods.global_latitude_rpath(forecast)
+    assert path == (
+        "opendata.dwd.de/weather/nwp/icon/grib/00/clat/"
+        "icon_global_icosahedral_time-invariant_2025010100_CLAT.grib2.bz2"
+    )
+
+
+def test_global_longitude_rpath() -> None:
+    """Test global longitude remote path generation."""
+    forecast = datetime(2024, 12, 31, 18)
+    path = ods.global_longitude_rpath(forecast)
+    assert path == (
+        "opendata.dwd.de/weather/nwp/icon/grib/18/clon/"
+        "icon_global_icosahedral_time-invariant_2024123118_CLON.grib2.bz2"
+    )
+
+    forecast = datetime(2025, 1, 1, 0)
+    path = ods.global_longitude_rpath(forecast)
+    assert path == (
+        "opendata.dwd.de/weather/nwp/icon/grib/00/clon/"
+        "icon_global_icosahedral_time-invariant_2025010100_CLON.grib2.bz2"
+    )
+
+
+@pytest.mark.parametrize(
+    ("domain", "forecast", "variable", "step", "level", "expected"),
+    [
+        (
+            "global",
+            datetime(2024, 12, 31, 18),
+            "t",
+            0,
+            1,
+            "opendata.dwd.de/weather/nwp/icon/grib/18/t/icon_global_icosahedral_model-level_2024123118_000_1_T.grib2.bz2",
+        ),
+        (
+            "global",
+            datetime(2025, 1, 1, 0),
+            "q",
+            6,
+            30,
+            "opendata.dwd.de/weather/nwp/icon/grib/00/q/icon_global_icosahedral_model-level_2025010100_006_30_Q.grib2.bz2",
+        ),
+        (
+            "global",
+            datetime(2025, 1, 1, 6),
+            "athb_t",
+            12,
+            None,
+            "opendata.dwd.de/weather/nwp/icon/grib/06/athb_t/icon_global_icosahedral_single-level_2025010106_012_ATHB_T.grib2.bz2",
+        ),
+        (
+            "europe",
+            datetime(2024, 12, 31, 18),
+            "t",
+            0,
+            1,
+            "opendata.dwd.de/weather/nwp/icon-eu/grib/18/t/icon-eu_europe_regular-lat-lon_model-level_2024123118_000_1_T.grib2.bz2",
+        ),
+        (
+            "europe",
+            datetime(2025, 1, 1, 0),
+            "q",
+            6,
+            30,
+            "opendata.dwd.de/weather/nwp/icon-eu/grib/00/q/icon-eu_europe_regular-lat-lon_model-level_2025010100_006_30_Q.grib2.bz2",
+        ),
+        (
+            "europe",
+            datetime(2025, 1, 1, 6),
+            "athb_t",
+            12,
+            None,
+            "opendata.dwd.de/weather/nwp/icon-eu/grib/06/athb_t/icon-eu_europe_regular-lat-lon_single-level_2025010106_012_ATHB_T.grib2.bz2",
+        ),
+        (
+            "germany",
+            datetime(2024, 12, 31, 18),
+            "t",
+            0,
+            1,
+            "opendata.dwd.de/weather/nwp/icon-d2/grib/18/t/icon-d2_germany_regular-lat-lon_model-level_2024123118_000_1_t.grib2.bz2",
+        ),
+        (
+            "germany",
+            datetime(2025, 1, 1, 0),
+            "q",
+            6,
+            30,
+            "opendata.dwd.de/weather/nwp/icon-d2/grib/00/q/icon-d2_germany_regular-lat-lon_model-level_2025010100_006_30_q.grib2.bz2",
+        ),
+        (
+            "germany",
+            datetime(2025, 1, 1, 6),
+            "athb_t",
+            12,
+            None,
+            "opendata.dwd.de/weather/nwp/icon-d2/grib/06/athb_t/icon-d2_germany_regular-lat-lon_single-level_2025010106_012_2d_athb_t.grib2.bz2",
+        ),
+    ],
+)
+def test_rpaths(
+    domain: str, forecast: datetime, variable: str, step: int, level: int | None, expected: str
+) -> None:
+    """Test rpath generation."""
+    assert ods.rpath(domain, forecast, variable, step, level) == expected
+
+
+@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.parametrize("domain", ["global", "europe", "germany"])
+def test_get(domain: str) -> None:
+    """Test downloads"""
+    forecast = ods.list_forecasts(domain)[0]
+
+    ods.get(ods.rpath(domain, forecast, "t", 0, 1), os.devnull)
+    ods.get(ods.rpath(domain, forecast, "athb_t", 0, None), os.devnull)
+
+    if domain == "global":
+        ods.get(ods.global_latitude_rpath(forecast), os.devnull)
+        ods.get(ods.global_longitude_rpath(forecast), os.devnull)
+
 
 ########################
 # Domain input handling
