@@ -40,7 +40,7 @@ jobs:
 
       # https://cibuildwheel.readthedocs.io/en/stable/options/#testing
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.2
+        uses: pypa/cibuildwheel@v3.3
         env:
           CIBW_BUILD: cp311-* cp312-* cp313-* cp314-*
           CIBW_SKIP: '*-win32 *-manylinux_i686 *-musllinux*'
