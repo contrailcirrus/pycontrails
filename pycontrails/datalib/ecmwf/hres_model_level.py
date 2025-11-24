@@ -258,7 +258,7 @@ class HRESModelLevel(ECMWFAPI):
 
     @property
     def steps(self) -> list[int]:
-        """Forecast steps from :attr:`forecast_time` corresponding within input :attr:`time`.
+        """Forecast steps corresponding to input :attr:`time`.
 
         Returns
         -------

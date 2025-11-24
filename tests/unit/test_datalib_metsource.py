@@ -100,6 +100,36 @@ def test_parse_timesteps_frequency_input() -> None:
     assert ts == [datetime(2019, 5, 31, 0, 29), datetime(2019, 5, 31, 1, 40)]
 
 
+def test_parse_timesteps_shift_input() -> None:
+    """Test timestep parsing with shift input."""
+    ts = metsource.parse_timesteps(
+        ("2019-05-31T00:29:00", "2019-05-31T08:40:00"), freq="3h", shift="1h"
+    )
+    assert ts == [
+        datetime(2019, 5, 30, 22),
+        datetime(2019, 5, 31, 1),
+        datetime(2019, 5, 31, 4),
+        datetime(2019, 5, 31, 7),
+        datetime(2019, 5, 31, 10),
+    ]
+
+    # shifts are applied modulo frequency
+    assert (
+        metsource.parse_timesteps(
+            ("2019-05-31T00:29:00", "2019-05-31T08:40:00"), freq="3h", shift="4h"
+        )
+        == ts
+    )
+
+    # shifts are applied modulo frequency
+    assert (
+        metsource.parse_timesteps(
+            ("2019-05-31T00:29:00", "2019-05-31T08:40:00"), freq="3h", shift="-2h"
+        )
+        == ts
+    )
+
+
 @pytest.mark.parametrize(("freq", "datasource_freq"), [("1h", "1h"), ("2h", "1h"), ("3h", "1h")])
 def test_validate_timestep_frequency_valid(freq: str, datasource_freq: str) -> None:
     """Test timestep frequency validation with valid frequencies."""
