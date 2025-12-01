@@ -441,9 +441,6 @@ class ICON(metsource.MetDataSource):
         If True, cache downloaded GRIB files rather than storing them in a temporary file.
         By default, False.
 
-    download_threads : int, optional
-        Limit the number of threads used to download data.
-
 
     See Also
     --------
@@ -459,7 +456,6 @@ class ICON(metsource.MetDataSource):
         "cache_download",
         "cachestore",
         "domain",
-        "download_threads",
         "forecast_time",
         "model_levels",
         "show_progress",
@@ -480,9 +476,6 @@ class ICON(metsource.MetDataSource):
     #: Whether to save raw data files to :attr:`cachestore` for reuse
     cache_download: bool
 
-    #: Number of threads used to download data
-    download_threads: int | None
-
     def __init__(
         self,
         time: metsource.TimeInput,
@@ -496,7 +489,6 @@ class ICON(metsource.MetDataSource):
         show_progress: bool = False,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
         cache_download: bool = False,
-        download_threads: int | None = None,
     ) -> None:
         # Parse and set instance attributes
 
@@ -583,7 +575,6 @@ class ICON(metsource.MetDataSource):
         self.show_progress = show_progress
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.cache_download = cache_download
-        self.download_threads = download_threads
         self._global_kdtree: KDTree | None = None
 
     def __repr__(self) -> str:
