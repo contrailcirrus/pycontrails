@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import bz2
 import contextlib
-import functools
 import hashlib
 import itertools
 import logging
@@ -456,7 +455,7 @@ class ICON(metsource.MetDataSource):
     __marker = object()
 
     __slots__ = (
-        "__dict__",
+        "_global_kdtree",
         "cache_download",
         "cachestore",
         "domain",
@@ -585,6 +584,7 @@ class ICON(metsource.MetDataSource):
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.cache_download = cache_download
         self.download_threads = download_threads
+        self._global_kdtree: KDTree | None = None
 
     def __repr__(self) -> str:
         base = super().__repr__()
@@ -808,9 +808,11 @@ class ICON(metsource.MetDataSource):
         kwargs.setdefault("cachestore", self.cachestore)
         return MetDataset(ds, **kwargs)
 
-    @functools.cached_property
-    def _global_kdtree(self) -> KDTree:
+    def _set_kdtree(self) -> None:
         """Get KDtree for looking up nearest neighbors on global icosahedral grid."""
+        if self._global_kdtree:
+            return
+
         downloads = contextlib.ExitStack()
         decompressed = contextlib.ExitStack()
         rpaths = [
@@ -842,7 +844,7 @@ class ICON(metsource.MetDataSource):
             lat = ds["tlat"].values
 
         x, y, z = _ll_to_cartesian(lon, lat)
-        return KDTree(data=np.stack((x, y, z), axis=-1))
+        self._global_kdtree = KDTree(data=np.stack((x, y, z), axis=-1))
 
     def _download_convert_cache_handler(self, time: datetime) -> None:
         """Download, convert, and cache ICON model level data."""
@@ -892,6 +894,7 @@ class ICON(metsource.MetDataSource):
                 if self.grid is None:
                     msg = "Grid resolution must be set before remapping."
                     raise ValueError(msg)
+                self._set_kdtree()
                 ds = _global_icosahedral_to_regular_lat_lon(ds, self._global_kdtree, self.grid)
 
             if self.is_single_level:
