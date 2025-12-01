@@ -14,6 +14,7 @@
 - Extract some utilities for ECMWF model-to-pressure-level conversion to a more flexible (less ECMWF-specific) `met_utils.ml_to_pl` function and a new `utils.arrays` module. The updated utilities include some minor behavioral changes to improve handling of nan values.
 - Add utilities for running coroutines sychronously.
 - Register `pytest.mark.unreliable` to mark unreliable tests (e.g., tests vulnerable to upstream changes in an external service). These tests are skipped in the release workflow.
+- Skip tempfile removal in `temp.py` utility module when the temporary file does not exist.
 
 ## 0.59.1
 
