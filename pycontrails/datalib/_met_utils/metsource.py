@@ -65,6 +65,7 @@ def parse_timesteps(
         Time shift relative to even multiples of `freq`.
         If None (the default), time steps will be even multiples of `freq`.
         Otherwise, time steps will be congruent to `shift` modulo `freq`.
+        This parameter is ignored if `freq` is None.
 
     Returns
     -------
@@ -88,7 +89,7 @@ def parse_timesteps(
     >>> parse_timesteps(("2000-01-01 00:00", "2000-01-01 03:00"), freq="3h")
     [datetime.datetime(2000, 1, 1, 0, 0), datetime.datetime(2000, 1, 1, 3, 0)]
 
-    >>> parse_timesteps(("2000-01-01 01:00", "2000-01-01 04:00"), freq="3h", shift="1h")
+    >>> parse_timesteps(("2000-01-01 01:00", "2000-01-01 06:00"), freq="3h", shift="1h")
     [datetime.datetime(2000, 1, 1, 1, 0), datetime.datetime(2000, 1, 1, 4, 0)]
 
     """
