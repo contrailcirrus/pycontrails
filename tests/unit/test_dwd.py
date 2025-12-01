@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from pycontrails.datalib.dwd import ICON, flight_level_pressure, ods
+from pycontrails.datalib.dwd import ICON, flight_level_pressure, icon, ods
 from tests import OFFLINE
 
 
@@ -55,10 +55,10 @@ def test_list_forecasts_error() -> None:
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps(domain: str) -> None:
     """Test forecast step listing."""
-    forecasts = ods.list_forecasts(domain)
-    steps = ods.list_forecast_steps(domain, forecasts[0])
-    assert steps[0] == forecasts[0]
-    assert steps[-1] >= forecasts[0] + timedelta(hours=48)  # all forecasts have >= 48 hour horizon
+    forecast = ods.list_forecasts(domain)[1]
+    steps = ods.list_forecast_steps(domain, forecast)
+    assert steps[0] == forecast
+    assert steps[-1] >= forecast + timedelta(hours=48)  # all forecasts have >= 48 hour horizon
 
 
 @pytest.mark.unreliable
@@ -75,6 +75,30 @@ def test_list_forecast_steps_invalid_domain() -> None:
     """Test forecast step listing with invalid domain."""
     with pytest.raises(ValueError, match="Unknown domain"):
         _ = ods.list_forecast_steps("foo", datetime(1900, 1, 1))
+
+
+@pytest.mark.unreliable
+@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.parametrize("domain", ["global", "europe", "germany"])
+def test_list_forecast_steps_icon_datalib_consistency(domain: str) -> None:
+    """Test consistency between available forecast steps and ICON datalib expectations."""
+    forecasts = ods.list_forecasts(domain)
+    assert np.all(np.diff(np.array(forecasts)) == icon.forecast_frequency(domain))
+
+    for forecast in forecasts[1:3]:
+        assert forecast.hour in icon.valid_forecast_hours(domain)
+
+        steps = ods.list_forecast_steps(domain, forecast)
+        assert steps[0] == forecast
+        assert steps[-1] == icon.last_step(domain, forecast)
+
+        last_hourly = icon.last_hourly_step(domain, forecast)
+        hourly = [t for t in steps if t <= last_hourly]
+        assert np.all(np.diff(np.array(hourly)) == timedelta(hours=1))
+
+        extended = [t for t in steps if t >= last_hourly]
+        dt = pd.to_timedelta(icon.extended_forecast_timestep(domain, forecast))
+        assert np.all(np.diff(np.array(extended)) == dt)
 
 
 def test_global_latitude_rpath() -> None:
@@ -200,7 +224,7 @@ def test_rpaths(
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_get(domain: str) -> None:
     """Test downloads"""
-    forecast = ods.list_forecasts(domain)[0]
+    forecast = ods.list_forecasts(domain)[1]
 
     ods.get(ods.rpath(domain, forecast, "t", 0, 1), os.devnull)
     ods.get(ods.rpath(domain, forecast, "athb_t", 0, None), os.devnull)
