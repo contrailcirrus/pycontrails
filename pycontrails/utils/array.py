@@ -77,7 +77,9 @@ def searchsorted2d(
     # than O(n) time... but I think this is probably
     # faster than manually looping over a.
     na_mask = np.isnan(a).any(axis=1, keepdims=True)
-    a = np.nan_to_num(a, nan=np.nanmax(a))
+    contains_na = na_mask.any()
+    if contains_na:
+        a = np.nan_to_num(a, nan=np.nanmax(a))
 
     offset_scalar = max(np.ptp(a).item(), np.ptp(v).item()) + 1.0
 
@@ -92,4 +94,6 @@ def searchsorted2d(
 
     # Return 0 for rows that contain any nan values.
     idx_scaled = np.searchsorted(a_scaled.reshape(-1), v_scaled.reshape(-1)).reshape(v_scaled.shape)
-    return np.where(na_mask, 0, idx_scaled - n * steps.astype(np.int64))
+    if contains_na:
+        return np.where(na_mask, 0, idx_scaled - n * steps.astype(np.int64))
+    return idx_scaled - n * steps.astype(np.int64)
