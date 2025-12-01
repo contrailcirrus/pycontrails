@@ -342,9 +342,10 @@ class ICON(metsource.MetDataSource):
     provide a long-term forecast archive*. Data for each forecast cycle is typically available
     for about 24 hours.
 
-    Global ICON forecasts are provided on an icosahedral grid and must be interpolated to a
-    latitude-longitude grid. *This datalib currently supports nearest-neighbor interpolation only.*
-    Additional interpolation methods may be added in future releases.
+    Global ICON forecasts are provided on an icosahedral grid and must be remapped to a
+    latitude-longitude grid. *This datalib currently supports nearest-neighbor remapping only.*
+    Nearest-neighbor remapping preserves extreme values in forecast fields but can alter the
+    locations where they occur. Additional remapping methods may be added in future releases.
 
     The forecast horizon depends on the domain and forecast initialization time:
 
