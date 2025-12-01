@@ -428,7 +428,7 @@ class ICON(metsource.MetDataSource):
         Specify ICON model levels to include in downloads from the Open Data Server.
         By default, this is set to include all model levels.
 
-    progress: bool, optional
+    show_progress: bool, optional
         Show progress while downloading and processing ICON data.
         Disabled by default.
 
@@ -462,7 +462,7 @@ class ICON(metsource.MetDataSource):
         "download_threads",
         "forecast_time",
         "model_levels",
-        "progress",
+        "show_progress",
     )
 
     #: ICON forecast domain
@@ -475,7 +475,7 @@ class ICON(metsource.MetDataSource):
     model_levels: list[int]
 
     #: Whether to show progress bar while downloading and processing data
-    progress: bool
+    show_progress: bool
 
     #: Whether to save raw data files to :attr:`cachestore` for reuse
     cache_download: bool
@@ -493,7 +493,7 @@ class ICON(metsource.MetDataSource):
         grid: float | None = None,
         forecast_time: DatetimeLike | None = None,
         model_levels: list[int] | None = None,
-        progress: bool = False,
+        show_progress: bool = False,
         cachestore: cache.CacheStore = __marker,  # type: ignore[assignment]
         cache_download: bool = False,
         download_threads: int | None = None,
@@ -580,7 +580,7 @@ class ICON(metsource.MetDataSource):
             msg = f"Selected forecast time {self.forecast_time} is after first timestep at {start}."
             raise ValueError(msg)
 
-        self.progress = progress
+        self.show_progress = show_progress
         self.cachestore = cache.DiskCacheStore() if cachestore is self.__marker else cachestore
         self.cache_download = cache_download
         self.download_threads = download_threads
@@ -676,7 +676,7 @@ class ICON(metsource.MetDataSource):
 
     @override
     def download_dataset(self, times: list[datetime]) -> None:
-        if self.progress:
+        if self.show_progress:
             times = tqdm(times)
         for time in times:
             LOG.debug(
