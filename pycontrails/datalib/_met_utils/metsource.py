@@ -90,7 +90,8 @@ def parse_timesteps(
     [datetime.datetime(2000, 1, 1, 0, 0), datetime.datetime(2000, 1, 1, 3, 0)]
 
     >>> parse_timesteps(("2000-01-01 01:00", "2000-01-01 06:00"), freq="3h", shift="1h")
-    [datetime.datetime(2000, 1, 1, 1, 0), datetime.datetime(2000, 1, 1, 4, 0)]
+    [datetime.datetime(2000, 1, 1, 1, 0), datetime.datetime(2000, 1, 1, 4, 0), \
+    datetime.datetime(2000, 1, 1, 7, 0)]
 
     """
 
