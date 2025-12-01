@@ -220,7 +220,15 @@ async def _get_async(rpath: str, lpath: str, session: aiohttp.ClientSession | No
             _session.get(f"https://{rpath}") as response,
         ):
             content = await response.read()
-    except aiohttp.ClientError as e:
+    except aiohttp.ClientResponseError as e:
+        if e.status == 404:
+            msg = (
+                f"Remote file {rpath} not found on DWD Open Data Server. "
+                "You may be requesting data from a past forecast that is no longer available. "
+                "Note that `list_forecasts` and `list_forecast_steps` can be used to check "
+                "available forecast cycles and steps."
+            )
+            raise FileNotFoundError(msg) from e
         msg = f"Error while downloading file at {rpath}"
         raise RuntimeError(msg) from e
 
