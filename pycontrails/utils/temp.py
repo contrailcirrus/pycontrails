@@ -34,6 +34,9 @@ def remove_tempfile(temp_filename: str) -> None:
     temp_filename : str
         Temp filename
     """
+    if not os.path.exists(temp_filename):
+        return
+
     try:
         os.unlink(temp_filename)
     except OSError as e:
