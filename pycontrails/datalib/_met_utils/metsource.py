@@ -419,7 +419,7 @@ class MetDataSource(abc.ABC):
         Returns
         -------
         list[str]
-            Lst of variable short names.
+            List of variable short names.
         """
         return [v.short_name for v in self.variables]
 
