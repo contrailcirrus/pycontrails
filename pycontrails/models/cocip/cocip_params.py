@@ -58,7 +58,7 @@ class CocipParams(AdvectionBuffers):
     # Implementation parameters
     # -------------------------
 
-    #: Determines whether :meth:`Cocip.process_emissions` runs on model :meth:`Cocip.eval`
+    #: Determines whether :meth:`Cocip._process_emissions` runs on model :meth:`Cocip.eval`
     #: Set to ``False`` when input Flight includes emissions data.
     process_emissions: bool = True
 
@@ -137,12 +137,6 @@ class CocipParams(AdvectionBuffers):
     #: to allow for false negative calibration and model uncertainty studies.
     filter_initially_persistent: bool = True
 
-    #: Continue evolving contrail waypoints ``persistent_buffer`` beyond
-    #: end of contrail life.
-    #: Passing in a non-default value is unusual, but is included
-    #: to allow for false negative calibration and model uncertainty studies.
-    persistent_buffer: np.timedelta64 | None = None
-
     # -------
     # Outputs
     # -------
@@ -170,6 +164,13 @@ class CocipParams(AdvectionBuffers):
     # ----------------
     # Model parameters
     # ----------------
+
+    #: Perform CoCiP time integration using the second-order Runge-Kutta scheme.
+    #: If False, a first-order Euler method is used instead. Note that the first-order Euler
+    #: method was used exclusively in earlier versions of pycontrails (until v0.54.3).
+    #:
+    #: .. versionadded:: 0.54.4
+    second_order_runge: bool = False
 
     #: Initial wake vortex depth scaling factor.
     #: This factor scales max contrail downward displacement after the wake vortex phase
