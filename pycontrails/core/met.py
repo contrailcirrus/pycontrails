@@ -804,7 +804,7 @@ class MetDataset(MetBase):
             da = self.data[key]
         except KeyError as e:
             raise KeyError(
-                f"Variable {key} not found. Available variables: {', '.join(self.data.data_vars)}. "
+                f"Variable {key} not found. Available variables: {', '.join(self)}. "
                 "To get items (e.g. 'time' or 'level') from underlying xr.Dataset object, "
                 "use the 'data' attribute."
             ) from e
