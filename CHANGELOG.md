@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Internals
+
+- Add [pandas 3.0](https://pandas.pydata.org/docs/dev/whatsnew/v3.0.0.html) compatibility.
+
 ## 0.60.0
 
 ### Features

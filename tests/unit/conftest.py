@@ -248,7 +248,7 @@ def met_cocip_nonuniform_time(met_cocip1: MetDataset) -> MetDataset:
     """Return a MetDataset with nonuniform time."""
     ds = met_cocip1.data
     ds = ds.isel(time=slice(0, 3))
-    time = ds["time"].values
+    time = ds["time"].values.copy()
     time[2] += np.timedelta64(5, "h")
     ds["time"] = time
     return MetDataset(ds)
@@ -385,7 +385,7 @@ def flight_cocip1() -> Flight:
     df["engine_efficiency"] = np.linspace(0.34, 0.35, 20)  # ope
     df["fuel_flow"] = np.linspace(2.1, 2.4, 20)  # kg/s
     df["aircraft_mass"] = np.linspace(154445, 154345, 20)  # kg
-    df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:30:00", periods=20)
+    df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:30:00", periods=20, unit="ns")
     return Flight(df, attrs=attrs)
 
 

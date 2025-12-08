@@ -76,7 +76,7 @@ def test_compare_dry_advection_to_cocip(
     assert df1["time"].notna().all()
 
     assert df1.shape == (208, 17)
-    df1_sl = df1.query("time == '2019-01-01T01:25'")
+    df1_sl = df1.loc[df1["time"] == "2019-01-01T01:25"]
 
     model = Cocip(
         met_cocip1,
@@ -90,7 +90,7 @@ def test_compare_dry_advection_to_cocip(
     df2 = model.contrail
     assert isinstance(df2, pd.DataFrame)
     assert df2.shape == (196, 58)
-    df2_sl = df2.query("time == '2019-01-01T01:25'")
+    df2_sl = df2[df2["time"] == "2019-01-01T01:25"]
 
     # Pin some mean values to demonstrate the difference in vertical advection
     assert df1_sl["level"].mean() == pytest.approx(219.56, abs=0.01)

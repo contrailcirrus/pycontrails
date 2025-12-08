@@ -97,7 +97,7 @@ def test_numpy_encoder() -> None:
     assert loaded_dict["array"] == array
     assert loaded_dict["bool_"] == bool_
     assert loaded_dict["series"] == array
-    assert loaded_dict["date_range"] == date_range.to_numpy().tolist()
+    assert pd.to_datetime(loaded_dict["date_range"]).tolist() == date_range.tolist()
 
 
 @pytest.mark.skipif(synthetic_flight_unavailable, reason="synthetic_flight unavailable")

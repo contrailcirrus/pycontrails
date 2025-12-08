@@ -923,7 +923,7 @@ class Flight(GeoVectorDataset):
                 df = pd.concat([df, filled])
 
         # STEP 3: Set the time index, and sort it
-        df = df.set_index("time", verify_integrity=True).sort_index()
+        df = df.set_index("time").sort_index()
 
         # STEP 4: handle antimeridian crossings
         # For flights spanning the antimeridian, we translate them to a

@@ -1412,7 +1412,7 @@ def test_met_with_duplicated(met_ecmwf_pl_path: str, coord: str, copy: bool) -> 
     ds = MetDataset(xr.open_dataset(met_ecmwf_pl_path)).data
 
     # duplicate the first value of the specified coordinate
-    ds[coord].values[1] = ds[coord].values[0]
+    ds[coord] = np.r_[ds[coord].values[0], ds[coord].values[0], ds[coord].values[2:]]
     assert not ds[coord].to_index().is_unique
 
     if not copy:

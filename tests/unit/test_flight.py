@@ -17,6 +17,7 @@ from pycontrails import Flight, GeoVectorDataset, MetDataArray, MetDataset, SAFB
 from pycontrails.core import flight
 from pycontrails.models.issr import ISSR
 from pycontrails.physics import constants, jet, units
+from pycontrails.utils.json import NumpyEncoder
 
 ##########
 # Fixtures
@@ -1177,7 +1178,7 @@ def test_flight_to_dict(flight_fake: Flight) -> None:
     assert "level" not in flight_dict
 
     # Ensure serializable
-    assert json.dumps(flight_dict)
+    assert json.dumps(flight_dict, cls=NumpyEncoder)
 
     # Ensure time is in unix seconds
     assert flight_dict["time"][0] < 1e10

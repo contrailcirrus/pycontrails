@@ -2189,7 +2189,7 @@ def _parse_pandas_time(time: pd.Series) -> pd.Series:
     """
     try:
         # If the time series is a string, try to convert it to a datetime
-        if time.dtype == "O":
+        if isinstance(time.dtype, np.dtypes.ObjectDType | pd.StringDtype):
             return pd.to_datetime(time)
 
         # If the time is an int, try to parse it as unix time

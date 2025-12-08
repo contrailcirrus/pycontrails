@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import json
 from typing import Any
 
@@ -46,46 +47,21 @@ class NumpyEncoder(json.JSONEncoder):
         Any
             Encoded object.
         """
-        if isinstance(
-            obj,
-            np.int_
-            | np.intc
-            | np.intp
-            | np.int8
-            | np.int16
-            | np.int32
-            | np.int64
-            | np.uint8
-            | np.uint16
-            | np.uint32
-            | np.uint64,
-        ):
-            return int(obj)
+        if isinstance(obj, np.generic):
+            return obj.item()
 
-        if isinstance(obj, np.float16 | np.float32 | np.float64):
-            return float(obj)
-
-        # TODO: this is not easily reversible - np.timedelta64(str(np.timedelta64(1, "h"))) raises
-        if isinstance(obj, (np.timedelta64)):
+        if isinstance(obj, datetime.datetime | datetime.timedelta):
             return str(obj)
 
-        if isinstance(obj, (np.datetime64)):
-            return str(obj)
-
-        if isinstance(obj, np.complex64 | np.complex128):
+        if isinstance(obj, complex):
             return {"real": obj.real, "imag": obj.imag}
 
         if isinstance(obj, np.ndarray):
             return obj.tolist()
 
-        if isinstance(obj, (np.bool_)):
-            return bool(obj)
-
-        if isinstance(obj, (np.void)):
-            return None
-
-        if isinstance(obj, pd.Series | pd.Index):
-            return obj.to_numpy().tolist()
+        # Try to handle some pandas objects (pd.Timedelta, pd.Timestamp, pd.Series)
+        if hasattr(obj, "to_numpy"):
+            return obj.to_numpy()
 
         try:
             return json.JSONEncoder.default(self, obj)
