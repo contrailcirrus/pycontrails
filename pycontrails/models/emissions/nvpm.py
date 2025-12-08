@@ -490,8 +490,9 @@ def nvpm_number_emission_profiles_meem(
     # Temporary solution as no details are provided in paper. Awaiting authors recommendation.
     is_staged_combustor = combustor in ("DAC", "TAPS", "TAPS II")
     if is_staged_combustor:
-        fuel_flow = np.insert(fuel_flow, 2, (fuel_flow[1] * 1.001))
-        thrust_setting = np.insert(thrust_setting, 2, (thrust_setting[1] * 1.001))
+        fuel_flow = np.insert(fuel_flow, 2, fuel_flow[1] * 1.001)
+        thrust_setting = np.insert(thrust_setting, 2, thrust_setting[1] * 1.001)
+        nvpm_ei_n = np.insert(nvpm_ei_n, 2, nvpm_ei_n[1] * 1.001)
 
     # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
     elif fifth_data_point_number:
@@ -514,14 +515,14 @@ def nvpm_number_emission_profiles_meem(
         nvpm_ei_n = np.insert(nvpm_ei_n, 2, nvpm_ei_n_fifth)
 
     # Adjust nvPM emissions index due to fuel hydrogen content differences
-    if not (13.4 <= hydrogen_content <= 15.4):
+    if hydrogen_content < 13.4 or hydrogen_content > 15.4:
         warnings.warn(
             f"Fuel hydrogen content {hydrogen_content} % is outside the valid range"
             "(13.4 - 15.4 %), and may lead to inaccuracies."
         )
 
     k_num = number_fuel_composition_correction_meem(hydrogen_content, thrust_setting)
-    return EmissionsProfileInterpolator(xp=fuel_flow, fp=(nvpm_ei_n * k_num))
+    return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_n * k_num)
 
 
 def mass_fuel_composition_correction_meem(

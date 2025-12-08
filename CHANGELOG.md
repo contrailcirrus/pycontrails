@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixes
+
+- Fix `numpy.shape` incompatibility in the MEEM2 emissions model for DAC, TAPS, or TAPS II combustors. The MEEM2 implementation for these combustors is not yet finalized.
+
 ### Internals
 
 - Add [pandas 3.0](https://pandas.pydata.org/docs/dev/whatsnew/v3.0.0.html) compatibility.
