@@ -380,8 +380,8 @@ def nvpm_mass_emission_profiles_meem(
     # Temporary solution as no details are provided in paper. Awaiting authors recommendation.
     is_staged_combustor = combustor in ("DAC", "TAPS", "TAPS II")
     if is_staged_combustor:
-        fuel_flow = np.insert(fuel_flow, 2, (fuel_flow[1] * 1.001))
-        thrust_setting = np.insert(thrust_setting, 2, (thrust_setting[1] * 1.001))
+        fuel_flow = np.insert(fuel_flow, 2, fuel_flow[1] * 1.001)
+        thrust_setting = np.insert(thrust_setting, 2, thrust_setting[1] * 1.001)
         nvpm_ei_m_lean_burn = np.mean(nvpm_ei_m[2:])
         nvpm_ei_m = np.r_[nvpm_ei_m[:2], [nvpm_ei_m_lean_burn] * 3]
 
@@ -492,7 +492,8 @@ def nvpm_number_emission_profiles_meem(
     if is_staged_combustor:
         fuel_flow = np.insert(fuel_flow, 2, fuel_flow[1] * 1.001)
         thrust_setting = np.insert(thrust_setting, 2, thrust_setting[1] * 1.001)
-        nvpm_ei_n = np.insert(nvpm_ei_n, 2, nvpm_ei_n[1] * 1.001)
+        nvpm_ei_n_lean_burn = np.mean(nvpm_ei_n[2:])
+        nvpm_ei_n = np.r_[nvpm_ei_n[:2], [nvpm_ei_n_lean_burn] * 3]
 
     # Add fifth data point if the maximum nvPM EI number occurs between 30% and 85% of fuel flow
     elif fifth_data_point_number:
