@@ -25,7 +25,7 @@ class NumpyEncoder(json.JSONEncoder):
 
     >>> data = np.datetime64(1234567890, "s")
     >>> json.dumps(data, cls=NumpyEncoder)
-    '"2009-02-13T23:31:30"'
+    '"2009-02-13 23:31:30"'
 
     Notes
     -----
