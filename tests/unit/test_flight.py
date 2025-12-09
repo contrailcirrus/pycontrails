@@ -988,19 +988,18 @@ def test_quadrant_plus_antimeridian_cross(direction: str, missing_quadrant: str)
     else:
         longitude = np.linspace(350, 350 - 340, n)
     longitude = (longitude + 180) % 360 - 180
+    fl = Flight(
+        longitude=longitude,
+        latitude=np.zeros(n),
+        altitude=np.full(n, 10000),
+        time=pd.date_range("2022-01-01", "2022-01-01T06", n),
+    )
 
     if missing_quadrant == "east":
         mask = (longitude >= -180) & (longitude <= -90)
     else:
         mask = (longitude <= 180) & (longitude >= 90)
-    longitude = longitude[~mask]
-
-    fl = Flight(
-        longitude=longitude,
-        latitude=np.zeros(longitude.size),
-        altitude=np.full(longitude.size, 10000),
-        time=pd.date_range("2022-01-01", "2022-01-01T06", longitude.size),
-    )
+    fl = fl.filter(~mask)
 
     fl2 = fl.resample_and_fill("5s")
     assert np.all(fl2["longitude"] < 180)
