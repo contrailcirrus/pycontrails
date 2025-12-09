@@ -978,6 +978,38 @@ def test_no_viable_antimeridian_shift(direction: str) -> None:
         fl.resample_and_fill("5s")
 
 
+@pytest.mark.parametrize("direction", ["east", "west"])
+@pytest.mark.parametrize("missing_quadrant", ["east", "west"])
+def test_quadrant_plus_antimeridian_cross(direction: str, missing_quadrant: str) -> None:
+    """Test resampling for flights that cross entire longitudinal quadrant plus antimeridian."""
+    n = 100
+    if direction == "east":
+        longitude = np.linspace(10, 10 + 340, n)
+    else:
+        longitude = np.linspace(350, 350 - 340, n)
+    longitude = (longitude + 180) % 360 - 180
+
+    if missing_quadrant == "east":
+        mask = (longitude >= -180) & (longitude <= -90)
+    else:
+        mask = (longitude <= 180) & (longitude >= 90)
+    longitude = longitude[~mask]
+
+    fl = Flight(
+        longitude=longitude,
+        latitude=np.zeros(longitude.size),
+        altitude=np.full(longitude.size, 10000),
+        time=pd.date_range("2022-01-01", "2022-01-01T06", longitude.size),
+    )
+
+    fl2 = fl.resample_and_fill("5s")
+    assert np.all(fl2["longitude"] < 180)
+    assert np.all(fl2["longitude"] >= -180)
+    assert np.all(np.isfinite(fl2["longitude"]))
+    assert np.all(fl2.segment_length()[:-1] < 10000)
+    assert np.all(fl2.segment_length()[:-1] > 8000)
+
+
 def test_intersect_issr_met(met_era5_fake: MetDataset, flight_fake: Flight) -> None:
     """Test `intersect_met` and `length_met` methods."""
     issr = ISSR(met_era5_fake).eval()["issr"]
