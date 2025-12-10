@@ -929,7 +929,7 @@ class Flight(GeoVectorDataset):
         # For flights spanning the antimeridian, we translate them to a
         # common "chart" away from the antimeridian (see variable `shift`),
         # then apply the interpolation, then shift back to their original position.
-        shift = _antimeridian_shift(df["longitude"].values)
+        shift = _antimeridian_shift(df["longitude"].to_numpy())
         if shift is not None:
             df["longitude"] = (df["longitude"] - shift) % 360.0
 
@@ -2165,8 +2165,8 @@ def _antimeridian_shift(lon: npt.NDArray[np.floating]) -> float | None:
     if np.any(np.isnan(lon)):
         warnings.warn("Anti-meridian crossings can't be reliably detected with nan longitudes")
 
-    s1 = (lon >= -180) & (lon <= -90)
-    s2 = (lon <= 180) & (lon >= 90)
+    s1 = (lon >= -180.0) & (lon <= -90.0)
+    s2 = (lon <= 180.0) & (lon >= 90.0)
     jump12 = s1[:-1] & s2[1:]  # westward
     jump21 = s2[:-1] & s1[1:]  # eastward
     if not np.any(jump12 | jump21):
@@ -2182,9 +2182,9 @@ def _antimeridian_shift(lon: npt.NDArray[np.floating]) -> float | None:
 
     # shift must be between maximum longitude east of crossings
     # and minimum longitude west of crossings
-    shift_min = np.nanmax(lon[east])
-    shift_max = np.nanmin(lon[~east])
+    shift_min = np.nanmax(lon[east]).item()
+    shift_max = np.nanmin(lon[~east]).item()
     if shift_min >= shift_max:
         msg = "Cannot handle flight that spans more than 360 degrees longitude"
         raise ValueError(msg)
-    return (shift_min + shift_max) / 2
+    return (shift_min + shift_max) / 2.0
