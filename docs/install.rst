@@ -27,8 +27,8 @@ With Python 3.11 or later, install the latest release from PyPI using ``pip``:
     # install with all optional dependencies
     $ pip install "pycontrails[complete]"
 
-Wheels are currently built for python 3.11 - 3.14 and tested for
-python 3.11 - 3.13 on Linux, macOS, and Windows.
+Wheels are currently built and tested for python 3.11 - 3.14
+on Linux, macOS, and Windows.
 
 Install the latest development version directly from GitHub:
 
