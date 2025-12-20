@@ -1309,8 +1309,6 @@ class Cocip(Model):
             contrail["sac"] = self._downwash_flight["sac"]
         if not self.params["filter_initially_persistent"]:
             contrail["initially_persistent"] = self._downwash_flight["persistent_1"]
-        if self.params["persistent_buffer"] is not None:
-            contrail["end_of_life"] = np.full(contrail.size, np.datetime64("NaT", "ns"))
 
         return contrail
 
@@ -2206,6 +2204,8 @@ def calc_contrail_properties(
             - "tau_contrail"
             - "dn_dt_agg"
             - "dn_dt_turb"
+            - "heat_rate" if radiative_heating_effects is True
+            - "d_heat_rate" if radiative_heating_effects is True
 
     Parameters
     ----------
@@ -2347,18 +2347,16 @@ def calc_contrail_properties(
         contrail.update(heat_rate=heat_rate, d_heat_rate=d_heat_rate)
 
 
-def calc_timestep_contrail_evolution(
+def time_integration_runge_kutta(
     met: MetDataset,
     rad: MetDataset,
     contrail_1: GeoVectorDataset,
+    contrail_12: GeoVectorDataset,
     time_2: np.datetime64,
     params: dict[str, Any],
     **interp_kwargs: Any,
 ) -> GeoVectorDataset:
-    """Calculate the contrail evolution across timestep (t1 -> t2).
-
-    Note the variable suffix "_1" is used to reference the current time
-    and the suffix "_2" is used to refer to the time at the next timestep.
+    """Integrate contrail properties from t1 to t2 using the second-order Runge-Kutta scheme.
 
     Parameters
     ----------
@@ -2368,6 +2366,8 @@ def calc_timestep_contrail_evolution(
         Radiation data
     contrail_1 : GeoVectorDataset
         Contrail waypoints at current timestep (1)
+    contrail_12 : GeoVectorDataset
+        Contrail waypoints at next timestep (2) with intermediate solutions, see `Notes`
     time_2 : np.datetime64
         Time at the end of the evolution step (2)
     params : dict[str, Any]
@@ -2379,62 +2379,80 @@ def calc_timestep_contrail_evolution(
     -------
     GeoVectorDataset
         The contrail evolved to ``time_2``.
-    """
 
-    # get lat/lon for current timestep (t1)
+    Notes
+    -----
+    - Suffix "_1" is used to reference the current time,
+    - Suffix "_2" is used to refer to the time at the next timestep, and
+    - Suffix "_12" is used to refer to the intermediate step in the second-order Runge-Kutta scheme.
+    - This function becomes a first-order Euler scheme if `contrail_12` is set to `contrail_1`
+
+    In a personal communication with Ulrich Schumann (6-August-2024), it was clarified that the
+    weightings for the advected contrail location (X, Y, p) are set as t1 = 0.5 and t2 = 0.5, while
+    the evolved contrail properties are now weighted by t1 = 0 and t2 = 1,instead of t1 = 0.5 and
+    t2 = 0.5, which was stated in Schumann (2012), because these contrail properties are evolving
+    exponentially.
+    """
+    # Retrieve `contrail_1` location
     longitude_1 = contrail_1["longitude"]
     latitude_1 = contrail_1["latitude"]
     level_1 = contrail_1.level
     time_1 = contrail_1["time"]
 
-    # get contrail_1 geometry
+    # Retrieve `contrail_1` geometry
     segment_length_1 = contrail_1["segment_length"]
     width_1 = contrail_1["width"]
     depth_1 = contrail_1["depth"]
 
-    # get required met values for evolution calculations
+    # Retrieve met values at `contrail_1` for evolution calculations
     q_sat_1 = contrail_1["q_sat"]
     rho_air_1 = contrail_1["rho_air"]
     u_wind_1 = contrail_1["u_wind"]
     v_wind_1 = contrail_1["v_wind"]
-
     specific_humidity_1 = contrail_1["specific_humidity"]
     vertical_velocity_1 = contrail_1["vertical_velocity"]
     iwc_1 = contrail_1["iwc"]
 
-    # get required contrail_1 properties
+    # Retrieve absolute `contrail_1` properties
     sigma_yz_1 = contrail_1["sigma_yz"]
-    dsn_dz_1 = contrail_1["dsn_dz"]
-    terminal_fall_speed_1 = contrail_1["terminal_fall_speed"]
-    diffuse_h_1 = contrail_1["diffuse_h"]
-    diffuse_v_1 = contrail_1["diffuse_v"]
     plume_mass_per_m_1 = contrail_1["plume_mass_per_m"]
-    dn_dt_agg_1 = contrail_1["dn_dt_agg"]
-    dn_dt_turb_1 = contrail_1["dn_dt_turb"]
     n_ice_per_m_1 = contrail_1["n_ice_per_m"]
 
-    # get contrail_1 radiative properties
-    rf_net_1 = contrail_1["rf_net"]
+    # Retrieve met values at `contrail_12` for advection calculations
+    u_wind_12 = contrail_12["u_wind"]
+    v_wind_12 = contrail_12["v_wind"]
+    vertical_velocity_12 = contrail_12["vertical_velocity"]
+
+    # Retrieve `contrail_12` properties related to rate of change calculations
+    dsn_dz_12 = contrail_12["dsn_dz"]
+    terminal_fall_speed_12 = contrail_12["terminal_fall_speed"]
+    diffuse_h_12 = contrail_12["diffuse_h"]
+    diffuse_v_12 = contrail_12["diffuse_v"]
+    dn_dt_agg_12 = contrail_12["dn_dt_agg"]
+    dn_dt_turb_12 = contrail_12["dn_dt_turb"]
 
     # initialize new timestep with evolved coordinates
     # assume waypoints are the same to start
     waypoint_2 = contrail_1["waypoint"]
-    formation_time_2 = contrail_1["formation_time"]
+    formation_time = contrail_1["formation_time"]
     time_2_array = np.full_like(time_1, time_2)
     dt = time_2_array - time_1
 
     # get new contrail location & segment properties after t_step
-    longitude_2, latitude_2 = geo.advect_horizontal(longitude_1, latitude_1, u_wind_1, v_wind_1, dt)
-    level_2 = geo.advect_level(level_1, vertical_velocity_1, rho_air_1, terminal_fall_speed_1, dt)
+    u_wind = 0.5 * (u_wind_1 + u_wind_12)
+    v_wind = 0.5 * (v_wind_1 + v_wind_12)
+    vertical_velocity = 0.5 * (vertical_velocity_1 + vertical_velocity_12)
+    longitude_2, latitude_2 = geo.advect_horizontal(longitude_1, latitude_1, u_wind, v_wind, dt)
+    level_2 = geo.advect_level(level_1, vertical_velocity, rho_air_1, terminal_fall_speed_12, dt)
     altitude_2 = units.pl_to_m(level_2)
 
     contrail_2 = GeoVectorDataset._from_fastpath(
         {
             "waypoint": waypoint_2,
             "flight_id": contrail_1["flight_id"],
-            "formation_time": formation_time_2,
+            "formation_time": formation_time,
             "time": time_2_array,
-            "age": time_2_array - formation_time_2,
+            "age": time_2_array - formation_time,
             "longitude": longitude_2,
             "latitude": latitude_2,
             "altitude": altitude_2,
@@ -2451,16 +2469,19 @@ def calc_timestep_contrail_evolution(
     # Update cumulative radiative heating energy absorbed by the contrail
     # This will always be zero if radiative_heating_effects is not activated in cocip_params
     if params["radiative_heating_effects"]:
-        dt_sec = dt / np.timedelta64(1, "s")
-        heat_rate_1 = contrail_1["heat_rate"]
+        # Retrieve properties
+        heat_rate_12 = contrail_12["heat_rate"]
         cumul_heat = contrail_1["cumul_heat"]
-        cumul_heat += heat_rate_1 * dt_sec
+        d_heat_rate_12 = contrail_12["d_heat_rate"]
+        cumul_differential_heat = contrail_1["cumul_differential_heat"]
+
+        # Calculate cumulative heat
+        dt_sec = dt / np.timedelta64(1, "s")
+        cumul_heat = cumul_heat + heat_rate_12 * dt_sec  # don't use += to avoid mutating contrail_1
         cumul_heat.clip(max=1.5, out=cumul_heat)  # Constrain additional heat to 1.5 K as precaution
         contrail_2["cumul_heat"] = cumul_heat
 
-        d_heat_rate_1 = contrail_1["d_heat_rate"]
-        cumul_differential_heat = contrail_1["cumul_differential_heat"]
-        cumul_differential_heat += -d_heat_rate_1 * dt_sec
+        cumul_differential_heat = cumul_differential_heat - d_heat_rate_12 * dt_sec  # don't use -=
         contrail_2["cumul_differential_heat"] = cumul_differential_heat
 
     # Attach a few more artifacts for disabled filtering
@@ -2468,8 +2489,6 @@ def calc_timestep_contrail_evolution(
         contrail_2["sac"] = contrail_1["sac"]
     if not params["filter_initially_persistent"]:
         contrail_2["initially_persistent"] = contrail_1["initially_persistent"]
-    if params["persistent_buffer"] is not None:
-        contrail_2["end_of_life"] = contrail_1["end_of_life"]
 
     # calculate initial contrail properties for the next timestep
     calc_continuous(contrail_2)
@@ -2484,9 +2503,9 @@ def calc_timestep_contrail_evolution(
         width_1,
         depth_1,
         sigma_yz_1,
-        dsn_dz_1,
-        diffuse_h_1,
-        diffuse_v_1,
+        dsn_dz_12,
+        diffuse_h_12,
+        diffuse_v_12,
         seg_ratio_2,
         dt,
         max_depth=params["max_depth"],
@@ -2539,7 +2558,7 @@ def calc_timestep_contrail_evolution(
         plume_mass_per_m_2,
     )
     n_ice_per_m_2 = contrail_properties.new_ice_particle_number(
-        n_ice_per_m_1, dn_dt_agg_1, dn_dt_turb_1, seg_ratio_2, dt
+        n_ice_per_m_1, dn_dt_agg_12, dn_dt_turb_12, seg_ratio_2, dt
     )
 
     contrail_2["n_ice_per_m"] = n_ice_per_m_2
@@ -2559,10 +2578,65 @@ def calc_timestep_contrail_evolution(
         params["radiative_heating_effects"],
     )
     calc_radiative_properties(contrail_2, params)
+    return contrail_2
+
+
+def calc_timestep_contrail_evolution(
+    met: MetDataset,
+    rad: MetDataset,
+    contrail_1: GeoVectorDataset,
+    time_2: np.datetime64,
+    params: dict[str, Any],
+    **interp_kwargs: Any,
+) -> GeoVectorDataset:
+    """Calculate the contrail evolution across timestep (t1 -> t2).
+
+    Note the variable suffix "_1" is used to reference the current time
+    and the suffix "_2" is used to refer to the time at the next timestep.
+
+    Parameters
+    ----------
+    met : MetDataset
+       Meteorology data
+    rad : MetDataset
+        Radiation data
+    contrail_1 : GeoVectorDataset
+        Contrail waypoints at current timestep (1)
+    time_2 : np.datetime64
+        Time at the end of the evolution step (2)
+    params : dict[str, Any]
+        Model parameters
+    **interp_kwargs : Any
+        Interpolation keyword arguments
+
+    Returns
+    -------
+    GeoVectorDataset
+        The contrail evolved to ``time_2``.
+
+    Notes
+    -----
+    Subscript ``12`` denotes the intermediate step in the second-order Runge-Kutta scheme.
+    For further details, see :func:`time_integration_runge_kutta`.
+    """
+    # First-order Euler method
+    contrail_12 = contrail_1  # Set intermediate values to the initial values
+    contrail_2 = time_integration_runge_kutta(
+        met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
+    )
+
+    # Second-order Runge-Kutta scheme
+    if params["second_order_runge"]:
+        # contrail_2 calculated in first-order Euler method is now used as intermediate values
+        contrail_12 = contrail_2
+        contrail_2 = time_integration_runge_kutta(
+            met, rad, contrail_1, contrail_12, time_2, params, **interp_kwargs
+        )
 
     # get properties to measure persistence
     latitude_2 = contrail_2["latitude"]
     altitude_2 = contrail_2.altitude
+    segment_length_2 = contrail_2["segment_length"]
     age_2 = contrail_2["age"]
     tau_contrail_2 = contrail_2["tau_contrail"]
     n_ice_per_vol_2 = contrail_2["n_ice_per_vol"]
@@ -2579,7 +2653,15 @@ def calc_timestep_contrail_evolution(
     )
 
     # Get energy forcing by looking forward to the next time step radiative forcing
+    width_1 = contrail_1["width"]
+    width_2 = contrail_2["width"]
+    rf_net_1 = contrail_1["rf_net"]
     rf_net_2 = contrail_2["rf_net"]
+
+    time_1 = contrail_1["time"]
+    time_2_array = np.full_like(time_1, time_2)
+    dt = time_2_array - time_1
+
     energy_forcing_2 = contrail_properties.energy_forcing(
         rf_net_t1=rf_net_1,
         rf_net_t2=rf_net_2,
@@ -2613,25 +2695,6 @@ def calc_timestep_contrail_evolution(
         persistent_2.sum(),
         persistent_2.size,
     )
-
-    if (buff := params["persistent_buffer"]) is not None:
-        # Here mask gets waypoints that are just now losing persistence
-        mask = (~persistent_2) & np.isnat(contrail_2["end_of_life"])
-        contrail_2["end_of_life"][mask] = time_2
-
-        # Keep waypoints that are still persistent, which is determined by filt2
-        # And waypoints within the persistent buffer, which is determined by filt1
-        # So we only drop waypoints that are outside of the persistent buffer
-        filt1 = contrail_2["time"] - contrail_2["end_of_life"] < buff
-        filt2 = np.isnat(contrail_2["end_of_life"])
-        filt = filt1 | filt2
-        logger.debug(
-            "Fraction of waypoints surviving with buffer %s: %s / %s",
-            buff,
-            filt.sum(),
-            filt.size,
-        )
-        return contrail_2.filter(filt)
 
     # filter persistent contrails
     final_contrail = contrail_2.filter(persistent_2)
