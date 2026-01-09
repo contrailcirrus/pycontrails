@@ -42,7 +42,7 @@ class JetA(Fuel):
 
     References
     ----------
-    - :cite:`celikel2001forecasting`
+    - :cite:`celikelForecastingCivilAviation2001`
     - :cite:`leeContributionGlobalAviation2021`
     - :cite:`stettlerAirQualityPublic2011`
     - :cite:`wilkersonAnalysisEmissionData2010`

@@ -143,7 +143,7 @@ def e_sat_ice(T: ArrayScalarLike) -> ArrayScalarLike:
 
     References
     ----------
-    - :cite:`sonntag1994`
+    - :cite:`sonntagAdvancementsFieldHygrometry1994`
 
     """
     # Goff Gratch equation (Smithsonian Tables, 1984)
