@@ -45,7 +45,7 @@ from pycontrails.utils import dependencies
 
 def flight_waypoint_summary_statistics(
     flight_waypoints: GeoVectorDataset | pd.DataFrame,
-    contrails: GeoVectorDataset | pd.DataFrame,
+    contrails: GeoVectorDataset | pd.DataFrame | None,
 ) -> GeoVectorDataset:
     """
     Calculate the contrail summary statistics at each flight waypoint.
@@ -54,7 +54,7 @@ def flight_waypoint_summary_statistics(
     ----------
     flight_waypoints : GeoVectorDataset | pd.DataFrame
         Flight waypoints that were used in :meth:`Cocip.eval` to produce ``contrails``.
-    contrails : GeoVectorDataset | pd.DataFrame
+    contrails : GeoVectorDataset | pd.DataFrame | None
         Contrail evolution outputs from CoCiP, :attr:`Cocip.contrail`
 
     Returns
@@ -111,6 +111,24 @@ def flight_waypoint_summary_statistics(
         flight_waypoints = flight_waypoints.dataframe
 
     flight_waypoints = flight_waypoints.set_index(["flight_id", "waypoint"])
+
+    # If contrails is None, fill all output columns with np.nan
+    if contrails is None:
+        # Prepare column names as in the normal aggregation
+        out_cols = []
+        for col, agg in agg_map.items():
+            if isinstance(agg, list):
+                for a in agg:
+                    out_cols.append(f"{a}_{col}")
+            else:
+                out_cols.append(f"{agg}_{col}")
+        rename_cols = {"mean_altitude": "mean_contrail_altitude", "sum_ef": "ef"}
+        out_cols = [rename_cols.get(c, c) for c in out_cols]
+
+        # Create empty dataframe with NaNs
+        empty_df = pd.DataFrame(np.nan, index=flight_waypoints.index, columns=out_cols)
+        out = flight_waypoints.join(empty_df, how="left").reset_index()
+        return GeoVectorDataset(out)
 
     # Check and pre-process `contrails`
     if isinstance(contrails, GeoVectorDataset):
