@@ -203,7 +203,11 @@ class CocipParams(AdvectionBuffers):
     #: CoCiP only uses the ambient conditions at the mid-point of the Gaussian plume,
     #: and the edges could be in subsaturated conditions and sublimate. Important when
     #: :attr:`radiative_heating_effects` is enabled.
-    max_depth: float = 1500.0
+    #:
+    #:  .. versionchanged:: 0.60.2
+    #: No longer needed due to limits to horizontal and vertical plume diffusivities,
+    #: see Section 2.2 of Schumann & Seifert (2025), https://doi.org/10.5194/acp-25-18571-2025
+    max_depth: float = None
 
     #: Experimental. Improved ice crystal number survival fraction in the wake vortex phase.
     #: Implement :cite:`lottermoserHighResolutionEarlyContrails2025`, who developed a
