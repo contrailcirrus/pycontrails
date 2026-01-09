@@ -862,8 +862,11 @@ def horizontal_diffusivity(
     -----
     Accounts for the turbulence-induced diffusive contrail spreading in
     the horizontal direction.
+
+    The maximum horizontal diffusivity is limited to 100.0 m^{2} s^{-1}, see Section 2.2 of
+    Schumann & Seifert (2025), https://doi.org/10.5194/acp-25-18571-2025
     """
-    return 0.1 * ds_dz * depth**2
+    return np.minimum(0.1 * ds_dz * depth**2, 100.0)
 
 
 def vertical_diffusivity(
@@ -920,6 +923,9 @@ def vertical_diffusivity(
     , which found that the original formulation estimated thinner
     contrails relative to satellite observations. The vertical diffusivity
     was enlarged so that the simulated contrails are more consistent with observations.
+
+    The maximum vertical diffusivity is limited to 10.0 m^{2} s^{-1}, see Section 2.2 of
+    Schumann & Seifert (2025), https://doi.org/10.5194/acp-25-18571-2025
     """
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
     n_bv.clip(min=0.001, out=n_bv)
@@ -931,7 +937,10 @@ def vertical_diffusivity(
     else:
         cvs = 0.01
 
-    return cvs / n_bv + sedimentation_impact_factor * terminal_fall_speed * depth_eff
+    return np.minimum(
+        cvs / n_bv + sedimentation_impact_factor * terminal_fall_speed * depth_eff,
+        10.0
+    )
 
 
 ####################
