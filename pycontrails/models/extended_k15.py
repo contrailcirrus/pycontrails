@@ -65,14 +65,19 @@ class Particle:
     kappa: float
     gmd: float
     gsd: float
-    n_ambient: float
+    n_ambient: float = 0.0
+    ei_vpm: float = 0.0
 
     def __post_init__(self) -> None:
         ptype = self.type
+        if ptype == ParticleType.AMBIENT and self.n_ambient <= 0.0:
+            raise ValueError("n_ambient must be positive for ParticleType.AMBIENT")
+        if ptype == ParticleType.VPM and self.ei_vpm <= 0.0:
+            raise ValueError("ei_vpm must be positive for ParticleType.VPM")
         if ptype != ParticleType.AMBIENT and self.n_ambient:
-            raise ValueError(f"n_ambient must be 0 for aircraft-emitted {ptype.value} particles")
-        if ptype == ParticleType.AMBIENT and self.n_ambient < 0.0:
-            raise ValueError("n_ambient must be non-negative for ambient particles")
+            raise ValueError("n_ambient must be 0 for ParticleType.NVPM and ParticleType.VPM")
+        if ptype != ParticleType.VPM and self.ei_vpm != 0.0:
+            raise ValueError("ei_vpm must be 0 for ParticleType.NVPM and ParticleType.AMBIENT")
 
 
 def _default_particles() -> list[Particle]:
@@ -468,7 +473,6 @@ def droplet_apparent_emission_index(
     T_exhaust: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
     nvpm_ei_n: npt.NDArray[np.floating],
-    vpm_ei_n: float,
     G: npt.NDArray[np.floating],
     particles: list[Particle] | None = None,
     n_plume_points: int = 40,
@@ -498,8 +502,6 @@ def droplet_apparent_emission_index(
         Pressure altitude at each waypoint, [:math:`Pa`]
     nvpm_ei_n : npt.NDArray[np.floating]
         nvPM number emissions index, [:math:`kg^{-1}`]
-    vpm_ei_n : float
-        vPM number emissions index, [:math:`kg^{-1}`]
     G : npt.NDArray[np.floating]
         Slope of the mixing line in a temperature-humidity diagram.
     particles : list[Particle] | None, optional
@@ -521,7 +523,7 @@ def droplet_apparent_emission_index(
     All input arrays must be broadcastable to the same shape. For better performance
     when evaluating multiple points or grids, it is helpful to arrange the arrays so that
     meteorological variables (``specific_humidity``, ``T_ambient``, ``air_pressure``, ``G``)
-    correspond to dimension 0, while aircraft emissions (``nvpm_ei_n``, ``vpm_ei_n``) correspond
+    correspond to dimension 0, while aircraft emissions (``nvpm_ei_n``) correspond
     to dimension 1. This setup allows the plume temperature calculation to be computed once
     and reused for multiple emissions values.
 
@@ -545,12 +547,12 @@ def droplet_apparent_emission_index(
         specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n
     )
     try:
-        np.broadcast(specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n, vpm_ei_n)
+        np.broadcast(specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n)
     except ValueError as e:
         raise ValueError(
             "Input arrays must be broadcastable to the same shape. "
             "Check the dimensions of specific_humidity, T_ambient, T_exhaust, "
-            "air_pressure, G, nvpm_ei_n, and vpm_ei_n."
+            "air_pressure, G, and nvpm_ei_n."
         ) from e
 
     # Determine plume temperature limits
@@ -585,7 +587,6 @@ def droplet_apparent_emission_index(
         T_plume=T_plume,
         T_ambient=T_ambient[..., np.newaxis],
         nvpm_ei_n=nvpm_ei_n[..., np.newaxis],
-        vpm_ei_n=vpm_ei_n,
         S_mw=S_mw,
         dilution=dilution,
         rho_air=rho_air,
@@ -735,7 +736,6 @@ def water_droplet_activation(
     T_plume: npt.NDArray[np.floating],
     T_ambient: npt.NDArray[np.floating],
     nvpm_ei_n: npt.NDArray[np.floating],
-    vpm_ei_n: float,
     S_mw: npt.NDArray[np.floating],
     dilution: npt.NDArray[np.floating],
     rho_air: npt.NDArray[np.floating],
@@ -753,8 +753,6 @@ def water_droplet_activation(
         Ambient temperature for each waypoint, [:math:`K`].
     nvpm_ei_n : npt.NDArray[np.floating]
         nvPM number emissions index, [:math:`kg^{-1}`].
-    vpm_ei_n : float
-        vPM number emissions index, [:math:`kg^{-1}`].
     S_mw : npt.NDArray[np.floating]
         Water saturation ratio in the aircraft plume without droplet condensation.
     dilution : npt.NDArray[np.floating]
@@ -783,7 +781,9 @@ def water_droplet_activation(
         elif particle.type == ParticleType.NVPM:
             n_total_p = emissions_index_to_number_concentration(nvpm_ei_n, rho_air, dilution, nu_0)
         elif particle.type == ParticleType.VPM:
-            n_total_p = emissions_index_to_number_concentration(vpm_ei_n, rho_air, dilution, nu_0)
+            n_total_p = emissions_index_to_number_concentration(
+                particle.ei_vpm, rho_air, dilution, nu_0
+            )
         else:
             raise ValueError("Particle type unknown")
 
