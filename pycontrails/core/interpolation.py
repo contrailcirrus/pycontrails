@@ -34,7 +34,9 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
     #. Override the :meth:`_evaluate_linear` method with a faster implementation. See
        the :meth:`_evaluate_linear` docstring for more information.
 
-    **This class should not be used directly. Instead, use the** :func:`interp` **function.**
+    **This class should not be used directly. The implementation is brittle and makes
+    use of private methods and attributes of the parent class. It is susceptible to breakage
+    when scipy is updated. Instead, use the** :func:`interp` **function.**
 
     .. versionchanged:: 0.40.0
 
@@ -88,12 +90,48 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             return
 
         # Fast path: no validation
-        self.grid = points
-        self.values = values
+        self._grid = points
+        self._values = values
         self.method = method
         self.bounds_error = bounds_error
         self.fill_value = fill_value
-        self._spline = None  # XXX: setting private attribute on RGI
+        self._spline = None
+
+    @property
+    def values(self) -> npt.NDArray[np.floating]:
+        """Return the values array.
+
+        This is a band-aid to maintain compatibility with scipy after breaking changes
+        introduced in 1.17. This can be removed when support for scipy < 1.17 is dropped.
+        """
+        return self._values
+
+    @property
+    def grid(self) -> tuple[npt.NDArray[np.floating], ...]:
+        """Return the grid points.
+
+        This is a band-aid to maintain compatibility with scipy after breaking changes
+        introduced in 1.17. This can be removed when support for scipy < 1.17 is dropped.
+        """
+        return self._grid
+
+    @values.setter
+    def values(self, val: npt.NDArray[np.floating]) -> None:
+        """Set the values array.
+
+        This is a band-aid to maintain compatibility with scipy after breaking changes
+        introduced in 1.17. This can be removed when support for scipy < 1.17 is dropped.
+        """
+        self._values = val
+
+    @grid.setter
+    def grid(self, val: tuple[npt.NDArray[np.floating], ...]) -> None:
+        """Set the grid points.
+
+        This is a band-aid to maintain compatibility with scipy after breaking changes
+        introduced in 1.17. This can be removed when support for scipy < 1.17 is dropped.
+        """
+        self._grid = val
 
     def _prepare_xi_simple(self, xi: npt.NDArray[np.floating]) -> npt.NDArray[np.bool_]:
         """Run looser version of :meth:`_prepare_xi`.
@@ -112,15 +150,15 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         if self.bounds_error:
             for i, p in enumerate(xi.T):
-                g0 = self.grid[i][0]
-                g1 = self.grid[i][-1]
+                g0 = self._grid[i][0]
+                g1 = self._grid[i][-1]
                 if not (np.all(p >= g0) and np.all(p <= g1)):
                     msg = f"One of the requested xi is out of bounds in dimension {i}"
                     raise ValueError(msg)
 
             return np.zeros(xi.shape[0], dtype=bool)
 
-        return self._find_out_of_bounds(xi.T)  # XXX: calling private method on RGI
+        return self._find_out_of_bounds(xi.T)
 
     def __call__(
         self, xi: npt.NDArray[np.floating], method: str | None = None
@@ -147,7 +185,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             return super().__call__(xi, method)
 
         out_of_bounds = self._prepare_xi_simple(xi)
-        xi_indices, norm_distances = self._find_indices(xi.T)  # XXX: calling private method on RGI
+        xi_indices, norm_distances = self._find_indices(xi.T)
 
         out = self._evaluate_linear(xi_indices, norm_distances)
         return self._set_out_of_bounds(out, out_of_bounds)
@@ -214,13 +252,13 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
         # Squeeze as much as possible
         # Our cython implementation requires non-degenerate arrays
-        non_degen = tuple(s > 1 for s in self.values.shape)
-        values = self.values.squeeze()
+        non_degen = tuple(s > 1 for s in self._values.shape)
+        values = self._values.squeeze()
         indices = indices[non_degen, :]
         norm_distances = norm_distances[non_degen, :]
 
         ndim, n_points = indices.shape
-        out = np.empty(n_points, dtype=self.values.dtype)
+        out = np.empty(n_points, dtype=self._values.dtype)
 
         if ndim == 4:
             return rgi_cython.evaluate_linear_4d(values, indices, norm_distances, out)

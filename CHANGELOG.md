@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Update `PycontrailsRegularGridInterpolator` for compatibility with changes introduced in [scipy 1.17](https://docs.scipy.org/doc/scipy/release/1.17.0-notes.html#scipy-interpolate-improvements).
+
 ## 0.60.1
 
 ### Fixes
