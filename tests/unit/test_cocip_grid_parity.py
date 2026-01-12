@@ -75,11 +75,13 @@ def fl(met: MetDataset, request) -> Flight:
     return syn()
 
 
+@pytest.mark.parametrize("second_order_runge", [True, False])
 def test_parity(
     fl: Flight,
     met: MetDataset,
     rad: MetDataset,
     bada_model: AircraftPerformance,
+    second_order_runge: bool,
 ) -> None:
     """Ensure substantial parity between `Cocip` and `CocipGrid`."""
 
@@ -96,6 +98,7 @@ def test_parity(
         "max_age": np.timedelta64(1, "h"),
         "interpolation_bounds_error": True,
         "humidity_scaling": ExponentialBoostHumidityScaling(),
+        "second_order_runge": second_order_runge,
     }
     cocip = Cocip(met=met, rad=rad, **model_params, aircraft_performance=bada_model)
     out1 = cocip.eval(fl)
