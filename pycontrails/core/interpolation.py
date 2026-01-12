@@ -106,15 +106,6 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         """
         return self._values
 
-    @property
-    def grid(self) -> tuple[npt.NDArray[np.floating], ...]:
-        """Return the grid points.
-
-        This is a band-aid to maintain compatibility with scipy after breaking changes
-        introduced in 1.17. This can be removed when support for scipy < 1.17 is dropped.
-        """
-        return self._grid
-
     @values.setter
     def values(self, val: npt.NDArray[np.floating]) -> None:
         """Set the values array.
@@ -123,6 +114,15 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         introduced in 1.17. This can be removed when support for scipy < 1.17 is dropped.
         """
         self._values = val
+
+    @property
+    def grid(self) -> tuple[npt.NDArray[np.floating], ...]:
+        """Return the grid points.
+
+        This is a band-aid to maintain compatibility with scipy after breaking changes
+        introduced in 1.17. This can be removed when support for scipy < 1.17 is dropped.
+        """
+        return self._grid
 
     @grid.setter
     def grid(self, val: tuple[npt.NDArray[np.floating], ...]) -> None:
