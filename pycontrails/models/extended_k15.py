@@ -7,6 +7,8 @@ A preprint is available :cite:`ponsonbyUpdatedMicrophysicalModel2025`.
 
 import dataclasses
 import enum
+import functools
+import os
 import warnings
 from collections.abc import Callable
 
@@ -14,6 +16,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy.optimize
 import scipy.special
+from scipy.interpolate import RegularGridInterpolator
 
 from pycontrails.physics import constants, thermo
 
@@ -21,7 +24,7 @@ from pycontrails.physics import constants, thermo
 # Radiative Forcing and Mitigation Assessment" for details on these default parameters.
 DEFAULT_VPM_EI_N = 2.0e17  # vPM number emissions index, [kg^-1]
 DEFAULT_EXHAUST_T = 600.0  # Exhaust temperature, [K]
-EXPERIMENTAL_WARNING = True
+EXPERIMENTAL_WARNING = not os.getenv("PYCONTRAILS_SILENCE_VPM_WARNING")
 
 
 class ParticleType(enum.StrEnum):
@@ -344,9 +347,9 @@ def activation_radius(
         to form a water droplet in the emissions plume.
 
     """
-    cond = S_w > 1.0
     S_w, kappa, temperature = np.broadcast_arrays(S_w, kappa, temperature)
 
+    cond = S_w > 1.0
     S_w_cond = S_w[cond]
     kappa_cond = kappa[cond]
     temperature_cond = temperature[cond]
@@ -365,6 +368,58 @@ def activation_radius(
     return out
 
 
+@functools.lru_cache(maxsize=8)
+def _activation_radius_rgi(kappa: float) -> RegularGridInterpolator:
+    """Construct ``RegularGridInterpolator`` to estimate :func:`activation_radius` for fixed kappa.
+
+    Here the grid is defined over ``log(log(S_w))`` and ``T``, and the interpolated
+    values are ``log(r_act)``. The coordinates are chosen to provide an approximation with
+    error comparable to those from the root-finding method in :func:`activation_radius`.
+
+    Results are cached for up to 8 unique ``kappa`` values.
+    """
+    log_log_S_w_coord = np.arange(-10.0, 1.0, 0.05, dtype=float)
+    S_w_coord = np.exp(np.exp(log_log_S_w_coord))
+    T_coord = np.arange(190.0, 250.0, 1.0, dtype=float)  # consistent with _t_plume_test_points
+
+    # With the above coordinates, the 2D grid below has shape (220, 60)
+    r_grid = activation_radius(S_w_coord[:, np.newaxis], kappa, T_coord[np.newaxis, :])
+
+    log_r_grid = np.log(r_grid)
+    return RegularGridInterpolator(
+        (log_log_S_w_coord, T_coord),
+        log_r_grid,
+        method="linear",
+        bounds_error=False,
+        fill_value=np.nan,
+    )
+
+
+def _activation_radius_lookup(
+    S_w: npt.NDArray[np.floating],
+    kappa: float,
+    temperature: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    """Approximate activation radius using a precomputed lookup table.
+
+    Unlike :func:`activation_radius`, this function can only handle a scalar ``kappa``.
+    """
+    S_w, temperature = np.broadcast_arrays(S_w, temperature)
+
+    cond = S_w > 1.0
+    S_w_cond = S_w[cond]
+    temperature_cond = temperature[cond]
+
+    rgi = _activation_radius_rgi(kappa)
+
+    # rgi uses log(log(S_w)) and T as coordinates, and returns log(r_act)
+    r_act_cond = np.exp(rgi((np.log(np.log(S_w_cond)), temperature_cond)))
+
+    out = np.full_like(S_w, np.nan)
+    out[cond] = r_act_cond
+    return out
+
+
 def _t_plume_test_points(
     specific_humidity: npt.NDArray[np.floating],
     T_ambient: npt.NDArray[np.floating],
@@ -374,11 +429,14 @@ def _t_plume_test_points(
 ) -> npt.NDArray[np.floating]:
     """Determine test points for the plume temperature along the mixing line."""
     target_shape = (1,) * T_ambient.ndim + (-1,)
-    step = 0.005
+    step = 1.0
 
-    # Initially we take a shotgun approach
-    # We could use some optimization technique here as well, but it's not obviously worth it
-    T_plume_test = np.arange(190.0, 300.0, step, dtype=float).reshape(target_shape)
+    # Initially we take a shotgun approach but with a coarse step size
+    # Decreasing the step size results in a tighter range for some points,
+    # but it can drastically increase memory usage.
+    # The upper bound of 250 K is chosen because the SAC is unlikely to hold
+    # above this temperature. We rarely encounter ambient temperatures below 190 K.
+    T_plume_test = np.arange(190.0, 250.0, step, dtype=float).reshape(target_shape)
     p_mw = thermo.water_vapor_partial_pressure_along_mixing_line(
         specific_humidity=specific_humidity[..., np.newaxis],
         air_pressure=air_pressure[..., np.newaxis],
@@ -413,9 +471,20 @@ def droplet_apparent_emission_index(
     vpm_ei_n: float,
     G: npt.NDArray[np.floating],
     particles: list[Particle] | None = None,
-    n_plume_points: int = 50,
+    n_plume_points: int = 40,
 ) -> npt.NDArray[np.floating]:
     """Calculate the droplet apparent emissions index from nvPM, vPM and ambient particles.
+
+    This function is the main entry point for the extended K15 model. It can be called
+    directly from the :class:`Cocip` model by enabling the ``vpm_activation`` parameter.
+
+    .. versionadded:: 0.55.0
+
+    .. versionchanged:: 0.60.2
+
+        Make implementation more memory and compute performant by constructing intermediate
+        lookup tables for the activation radius calculation. See :func:`_activation_radius_rgi`.
+        Change the default value of ``n_plume_points`` from 50 to 40.
 
     Parameters
     ----------
@@ -438,8 +507,9 @@ def droplet_apparent_emission_index(
         ``Particle`` instances representing nvPM, vPM, and ambient particles.
     n_plume_points : int
         Number of points to evaluate the plume temperature along the mixing line.
-        Increasing this value can improve accuracy. Values above 40 are typically
-        sufficient. See the :func:`droplet_activation` for numerical considerations.
+        Increasing this value can improve accuracy at the expense of compute and
+        memory cost. Values at or above 40 are typically sufficient. See
+        :func:`droplet_activation` for numerical considerations.
 
     Returns
     -------
@@ -702,7 +772,7 @@ def water_droplet_activation(
     res = []
 
     for particle in particles:
-        r_act_p = activation_radius(S_mw, particle.kappa, T_plume)
+        r_act_p = _activation_radius_lookup(S_mw, particle.kappa, T_plume)
         phi_p = fraction_of_water_activated_particles(particle.gmd, particle.gsd, r_act_p)
 
         # Calculate total number concentration for a given particle type
