@@ -1,10 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.60.2
+
+### Features
+
+- Improve memory and compute performance of the extended K15 model by constructing intermediate lookup tables for the activation radius calculation. The new implementation uses a cached `RegularGridInterpolator` to approximate the activation radius instead of repeated root-finding, providing significant speedups when running the vPM activation model over large datasets (such as in `CocipGrid` or `Cocip` with a large `Fleet`).
 
 ### Fixes
 
 - Update `PycontrailsRegularGridInterpolator` for compatibility with changes introduced in [scipy 1.17](https://docs.scipy.org/doc/scipy/release/1.17.0-notes.html#scipy-interpolate-improvements).
+
+### Internals
+
+- Change the default `n_plume_points` parameter in `droplet_apparent_emission_index` from 50 to 40.
+- The experimental warning in the extended K15 model can now be suppressed by setting the `PYCONTRAILS_SILENCE_VPM_WARNING` environment variable.
 
 ## 0.60.1
 
