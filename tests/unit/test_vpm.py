@@ -54,7 +54,6 @@ def test_droplet_apparent_emission_index() -> None:
         T_exhaust=600.0,
         air_pressure=18000.0,
         nvpm_ei_n=3.0e14,
-        vpm_ei_n=3.0e17,
         G=1.2,
     )
     assert aei == pytest.approx(1.76e14, rel=0.01)
@@ -89,14 +88,6 @@ def test_against_ponsonby_values(nvpm_ei_n: float, vpm_ei_n: float, expected_aei
             kappa=5.0e-3,
             gmd=3.5e-8,
             gsd=2.0,
-            n_ambient=0.0,
-        ),
-        extended_k15.Particle(
-            type=extended_k15.ParticleType.VPM,
-            kappa=0.5,
-            gmd=2.5e-9,
-            gsd=1.3,
-            n_ambient=0.0,
         ),
         extended_k15.Particle(
             type=extended_k15.ParticleType.AMBIENT,
@@ -107,13 +98,23 @@ def test_against_ponsonby_values(nvpm_ei_n: float, vpm_ei_n: float, expected_aei
         ),
     ]
 
+    if vpm_ei_n:
+        particles.append(
+            extended_k15.Particle(
+                type=extended_k15.ParticleType.VPM,
+                kappa=0.5,
+                gmd=2.5e-9,
+                gsd=1.3,
+                ei_vpm=vpm_ei_n,
+            )
+        )
+
     aei = extended_k15.droplet_apparent_emission_index(
         specific_humidity=q,
         T_ambient=T_a,
         T_exhaust=600.0,
         air_pressure=p_a,
         nvpm_ei_n=nvpm_ei_n,
-        vpm_ei_n=vpm_ei_n,
         G=G,
         particles=particles,
     )
