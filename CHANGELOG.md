@@ -5,6 +5,8 @@
 ### Features
 
 - Improve memory and compute performance of the extended K15 model by constructing intermediate lookup tables for the activation radius calculation. The new implementation uses a cached `RegularGridInterpolator` to approximate the activation radius instead of repeated root-finding, providing significant speedups when running the vPM activation model over large datasets (such as in `CocipGrid` or `Cocip` with a large `Fleet`).
+- Add new `CocipParams.max_horizontal_diffusivity` and `CocipParams.max_vertical_diffusivity` parameters to cap the maximum diffusivity used within `Cocip` to simulate contrail spreading. Both parameters are optional and default to `None`, in which case no cap is applied. See Section 2.2 of [Schumann and Seifert (2025)](https://doi.org/10.5194/acp-25-18571-2025) for details.
+- Allow passing `max_depth=None` as a valid `CocipParams` parameter to disable the maximum contrail depth limit in `Cocip`. In a future release, the diffusivity-based depth limit will be the default behavior.
 
 ### Fixes
 
@@ -14,6 +16,7 @@
 
 - Change the default `n_plume_points` parameter in `droplet_apparent_emission_index` from 50 to 40.
 - The experimental warning in the extended K15 model can now be suppressed by setting the `PYCONTRAILS_SILENCE_VPM_WARNING` environment variable.
+- Add a `Particle.vpm_ei` field to represent the volatile particulate matter (vPM) emission index number. Remove the `vpm_ei_n` parameter in various functions within the `extended_k15` module in favor of this new field.
 
 ## 0.60.1
 

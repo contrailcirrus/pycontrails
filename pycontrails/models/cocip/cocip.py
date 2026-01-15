@@ -994,7 +994,6 @@ class Cocip(Model):
                 T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
                 air_pressure=air_pressure,
                 nvpm_ei_n=nvpm_ei_n,
-                vpm_ei_n=self.source.attrs.get("vpm_ei_n", extended_k15.DEFAULT_VPM_EI_N),
                 G=self._sac_flight["G"],
             )
             min_aei = None  # don't clip

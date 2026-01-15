@@ -1509,7 +1509,6 @@ def find_initial_persistent_contrails(
             T_exhaust=vector.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
             air_pressure=air_pressure,
             nvpm_ei_n=nvpm_ei_n,
-            vpm_ei_n=vector.attrs.get("vpm_ei_n", extended_k15.DEFAULT_VPM_EI_N),
             G=vector["G"],
         )
         min_aei = None
@@ -1572,6 +1571,8 @@ def find_initial_persistent_contrails(
         wind_shear_enhancement_exponent=wind_shear_enhancement_exponent,
         sedimentation_impact_factor=sedimentation_impact_factor,
         radiative_heating_effects=False,  # Not yet supported in CocipGrid
+        max_horizontal_diffusivity=params["max_horizontal_diffusivity"],
+        max_vertical_diffusivity=params["max_vertical_diffusivity"],
     )
 
     # assumes "sdr", "rsr", and "olr" are already available on vector
@@ -1695,10 +1696,12 @@ def calc_evolve_one_step(
 
     cocip.calc_contrail_properties(
         next_contrail,
-        params["effective_vertical_resolution"],
-        params["wind_shear_enhancement_exponent"],
-        params["sedimentation_impact_factor"],
+        effective_vertical_resolution=params["effective_vertical_resolution"],
+        wind_shear_enhancement_exponent=params["wind_shear_enhancement_exponent"],
+        sedimentation_impact_factor=params["sedimentation_impact_factor"],
         radiative_heating_effects=False,  # Not yet supported in CocipGrid
+        max_horizontal_diffusivity=params["max_horizontal_diffusivity"],
+        max_vertical_diffusivity=params["max_vertical_diffusivity"],
     )
     cocip.calc_radiative_properties(next_contrail, params)
 

@@ -465,7 +465,11 @@ def _calc_geometry(
 
     depth_eff = contrail_properties.plume_effective_depth(width, area_eff)
 
-    diffuse_h = contrail_properties.horizontal_diffusivity(ds_dz, depth)
+    diffuse_h = contrail_properties.horizontal_diffusivity(
+        ds_dz,
+        depth,
+        max_horizontal_diffusivity=None,  # Not yet supported in DryAdvection
+    )
     diffuse_v = contrail_properties.vertical_diffusivity(
         air_pressure,
         air_temperature,
@@ -474,6 +478,7 @@ def _calc_geometry(
         terminal_fall_speed=0.0,
         sedimentation_impact_factor=0.0,
         eff_heat_rate=None,
+        max_vertical_diffusivity=None,  # Not yet supported in DryAdvection
     )
 
     if verbose_outputs:
