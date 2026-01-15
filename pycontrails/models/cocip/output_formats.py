@@ -135,20 +135,23 @@ def flight_waypoint_summary_statistics(
         contrail_vars = ["flight_id", "waypoint", "formation_time", *agg_map]
         contrail_vars.remove("age")
         contrails.ensure_vars(contrail_vars)
-        contrails = contrails.dataframe
+        contrails_df = contrails.dataframe
+    else:
+        contrails_df = contrails
 
-    contrails["age"] = (contrails["time"] - contrails["formation_time"]) / np.timedelta64(1, "h")
+    hour = np.timedelta64(1, "h")
+    contrails_df["age"] = (contrails_df["time"] - contrails_df["formation_time"]) / hour
 
     # Calculate contrail statistics at each flight waypoint
-    contrails = contrails.groupby(["flight_id", "waypoint"]).agg(agg_map)
-    contrails.columns = (
-        contrails.columns.get_level_values(1) + "_" + contrails.columns.get_level_values(0)
+    contrails_df = contrails_df.groupby(["flight_id", "waypoint"]).agg(agg_map)
+    contrails_df.columns = (
+        contrails_df.columns.get_level_values(1) + "_" + contrails_df.columns.get_level_values(0)
     )
     rename_cols = {"mean_altitude": "mean_contrail_altitude", "sum_ef": "ef"}
-    contrails = contrails.rename(columns=rename_cols)
+    contrails_df = contrails_df.rename(columns=rename_cols)
 
     # Concatenate to flight-waypoint outputs
-    out = flight_waypoints.join(contrails, how="left")
+    out = flight_waypoints.join(contrails_df, how="left")
     out = out.reset_index()
     return GeoVectorDataset(out)
 
