@@ -54,7 +54,7 @@ class Particle:
         concentration entrained in the contrail plume. For emission particles,
         this should be set to ``0.0``.
     ei_vpm : float
-        Volatile particulate matter (vPM) number emissions index, [:math:`kg^{-1}`].
+        Volatile particulate matter (vPM) emissions index number, [:math:`kg^{-1}`].
         For vPM particles, this specifies the number of vPM particles emitted
         per kilogram of fuel burned. For non-vPM particles, this should be set to ``0.0``.
 
@@ -79,7 +79,7 @@ class Particle:
             raise ValueError("ei_vpm must be positive for ParticleType.VPM")
         if ptype != ParticleType.AMBIENT and self.n_ambient:
             raise ValueError("n_ambient must be 0 for ParticleType.NVPM and ParticleType.VPM")
-        if ptype != ParticleType.VPM and self.ei_vpm != 0.0:
+        if ptype != ParticleType.VPM and self.ei_vpm:
             raise ValueError("ei_vpm must be 0 for ParticleType.NVPM and ParticleType.AMBIENT")
 
 
@@ -491,7 +491,8 @@ def droplet_apparent_emission_index(
 
         Make implementation more memory and compute performant by constructing intermediate
         lookup tables for the activation radius calculation. See :func:`_activation_radius_rgi`.
-        Change the default value of ``n_plume_points`` from 50 to 40.
+        Change the default value of ``n_plume_points`` from 50 to 40. Remove the ``vpm_ei_n``
+        parameter, which is now specified per ``Particle`` instance.
 
     Parameters
     ----------
