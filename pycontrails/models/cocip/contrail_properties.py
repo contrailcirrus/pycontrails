@@ -836,7 +836,9 @@ def ice_particle_mass(r_ice_vol: npt.NDArray[np.floating]) -> npt.NDArray[np.flo
 
 
 def horizontal_diffusivity(
-    ds_dz: npt.NDArray[np.floating], depth: npt.NDArray[np.floating]
+    ds_dz: npt.NDArray[np.floating],
+    depth: npt.NDArray[np.floating],
+    max_horizontal_diffusivity: float | None,
 ) -> npt.NDArray[np.floating]:
     """
     Calculate contrail horizontal diffusivity.
@@ -848,6 +850,9 @@ def horizontal_diffusivity(
         to altitude (``dz``), [:math:`m s^{-1} / Pa`]
     depth : npt.NDArray[np.floating]
         Contrail depth at each waypoint, [:math:`m`]
+    max_horizontal_diffusivity: float | None
+        Constrain max horizontal diffusivity to prevent unrealistic values, [:math:`m^{2} s^{-1}`]
+        If None is passed, the maximum vertical diffusivity will not be constrained.
 
     Returns
     -------
@@ -863,10 +868,15 @@ def horizontal_diffusivity(
     Accounts for the turbulence-induced diffusive contrail spreading in
     the horizontal direction.
 
-    The maximum horizontal diffusivity is limited to 100.0 m^{2} s^{-1}, see Section 2.2 of
+    The maximum horizontal diffusivity can be limited to 100.0 m^{2} s^{-1}, see Section 2.2 of
     Schumann & Seifert (2025), https://doi.org/10.5194/acp-25-18571-2025
     """
-    return np.minimum(0.1 * ds_dz * depth**2, 100.0)
+    d_h = 0.1 * ds_dz * depth**2
+
+    if max_horizontal_diffusivity is not None:
+        d_h = np.minimum(d_h, max_horizontal_diffusivity)
+
+    return d_h
 
 
 def vertical_diffusivity(
@@ -877,6 +887,7 @@ def vertical_diffusivity(
     terminal_fall_speed: npt.NDArray[np.floating] | float,
     sedimentation_impact_factor: npt.NDArray[np.floating] | float,
     eff_heat_rate: npt.NDArray[np.floating] | None,
+    max_vertical_diffusivity: float | None,
 ) -> npt.NDArray[np.floating]:
     """
     Calculate contrail vertical diffusivity.
@@ -899,6 +910,9 @@ def vertical_diffusivity(
         Effective heating rate, i.e., rate of which the contrail plume
         is heated, [:math:`K s^{-1}`]. If None is passed, the radiative
         heating effects on contrail cirrus properties are not included.
+    max_vertical_diffusivity: float | None
+        Constrain max vertical diffusivity to prevent unrealistic values, [:math:`m^{2} s^{-1}`]
+        If None is passed, the maximum vertical diffusivity will not be constrained.
 
     Returns
     -------
@@ -924,7 +938,7 @@ def vertical_diffusivity(
     contrails relative to satellite observations. The vertical diffusivity
     was enlarged so that the simulated contrails are more consistent with observations.
 
-    The maximum vertical diffusivity is limited to 10.0 m^{2} s^{-1}, see Section 2.2 of
+    The maximum vertical diffusivity can be limited to 10.0 m^{2} s^{-1}, see Section 2.2 of
     Schumann & Seifert (2025), https://doi.org/10.5194/acp-25-18571-2025
     """
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
@@ -937,10 +951,12 @@ def vertical_diffusivity(
     else:
         cvs = 0.01
 
-    return np.minimum(
-        cvs / n_bv + sedimentation_impact_factor * terminal_fall_speed * depth_eff,
-        10.0
-    )
+    d_v = cvs / n_bv + sedimentation_impact_factor * terminal_fall_speed * depth_eff
+
+    if max_vertical_diffusivity is not None:
+        d_v = np.minimum(d_v, max_vertical_diffusivity)
+
+    return d_v
 
 
 ####################

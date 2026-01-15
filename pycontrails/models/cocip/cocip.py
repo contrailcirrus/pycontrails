@@ -1098,6 +1098,8 @@ class Cocip(Model):
             self.params["wind_shear_enhancement_exponent"],
             self.params["sedimentation_impact_factor"],
             self.params["radiative_heating_effects"],
+            self.params["max_horizontal_diffusivity"],
+            self.params["max_vertical_diffusivity"],
         )
 
         # Intersect with rad dataset
@@ -1172,6 +1174,8 @@ class Cocip(Model):
                 self.params["wind_shear_enhancement_exponent"],
                 self.params["sedimentation_impact_factor"],
                 self.params["radiative_heating_effects"],
+                self.params["max_horizontal_diffusivity"],
+                self.params["max_vertical_diffusivity"],
             )
 
             final_contrail = calc_timestep_contrail_evolution(
@@ -2186,6 +2190,8 @@ def calc_contrail_properties(
     wind_shear_enhancement_exponent: float | npt.NDArray[np.floating],
     sedimentation_impact_factor: float | npt.NDArray[np.floating],
     radiative_heating_effects: bool,
+    max_horizontal_diffusivity: float | None,
+    max_vertical_diffusivity: float | None,
 ) -> None:
     """Calculate geometric and ice-related properties of contrail.
 
@@ -2219,6 +2225,12 @@ def calc_contrail_properties(
         Passed into `contrail_properties.vertical_diffusivity`.
     radiative_heating_effects: bool
         Include radiative heating effects on contrail cirrus properties.
+    max_horizontal_diffusivity: float | None
+        Constrain max horizontal diffusivity to prevent unrealistic values, [:math:`m^{2} s^{-1}`]
+        If None is passed, the maximum vertical diffusivity will not be constrained.
+    max_vertical_diffusivity: float | None
+        Constrain max vertical diffusivity to prevent unrealistic values, [:math:`m^{2} s^{-1}`]
+        If None is passed, the maximum vertical diffusivity will not be constrained.
     """
     time = contrail["time"]
     iwc = contrail["iwc"]
@@ -2272,7 +2284,11 @@ def calc_contrail_properties(
     terminal_fall_speed = contrail_properties.ice_particle_terminal_fall_speed(
         air_pressure, air_temperature, r_ice_vol
     )
-    diffuse_h = contrail_properties.horizontal_diffusivity(ds_dz, depth)
+    diffuse_h = contrail_properties.horizontal_diffusivity(
+        ds_dz,
+        depth,
+        max_horizontal_diffusivity,
+    )
 
     if radiative_heating_effects:
         # theta_rad has float64 dtype, convert back to float32 if needed
@@ -2321,6 +2337,7 @@ def calc_contrail_properties(
         terminal_fall_speed=terminal_fall_speed,
         sedimentation_impact_factor=sedimentation_impact_factor,
         eff_heat_rate=eff_heat_rate,
+        max_vertical_diffusivity=max_vertical_diffusivity,
     )
 
     dn_dt_agg = contrail_properties.particle_losses_aggregation(
@@ -2557,6 +2574,8 @@ def calc_timestep_contrail_evolution(
         params["wind_shear_enhancement_exponent"],
         params["sedimentation_impact_factor"],
         params["radiative_heating_effects"],
+        params["max_horizontal_diffusivity"],
+        params["max_vertical_diffusivity"],
     )
     calc_radiative_properties(contrail_2, params)
 
