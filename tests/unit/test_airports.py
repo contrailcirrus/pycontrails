@@ -26,8 +26,8 @@ def test_global_airports_database(airport_database: pd.DataFrame) -> None:
 def test_nearest_airport_identification(airport_database: pd.DataFrame) -> None:
     """Ensure that the nearest airport for a given coordinates is correctly identified."""
     # Somewhere near Singapore Changi Airport (1.36 N, 103.99 E)
-    longitude = 103.5
-    latitude = 1.5
+    longitude = 104.0
+    latitude = 1.35
     altitude = 2950
     airport_icao = airports.find_nearest_airport(airport_database, longitude, latitude, altitude)
     assert airport_icao == "WSSS"
