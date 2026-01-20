@@ -27,6 +27,7 @@ from pycontrails.core.models import Model, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict
 from pycontrails.datalib import ecmwf, gfs
 from pycontrails.models import extended_k15, sac, tau_cirrus
+from pycontrails.models.extended_k15 import Particle, ParticleType
 from pycontrails.models.cocip import (
     contrail_properties,
     radiative_forcing,
@@ -975,15 +976,31 @@ class Cocip(Model):
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
         if self.params["vpm_activation"]:
+            is_low_nvpm = nvpm_ei_n < 1.0e12
+
+            aei = np.empty_like(nvpm_ei_n)
+
             # We can add a Cocip parameter for T_exhaust, vpm_ei_n, and particles
-            aei = extended_k15.droplet_apparent_emission_index(
-                specific_humidity=specific_humidity,
-                T_ambient=air_temperature,
+            aei[~is_low_nvpm] = extended_k15.droplet_apparent_emission_index(
+                specific_humidity=specific_humidity[~is_low_nvpm],
+                T_ambient=air_temperature[~is_low_nvpm],
                 T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
-                air_pressure=air_pressure,
-                nvpm_ei_n=nvpm_ei_n,
-                G=self._sac_flight["G"],
+                air_pressure=air_pressure[~is_low_nvpm],
+                nvpm_ei_n=nvpm_ei_n[~is_low_nvpm],
+                G=self._sac_flight["G"][~is_low_nvpm],
+                particles=self.params["particles_hi_nvpm"],
             )
+
+            aei[is_low_nvpm] = extended_k15.droplet_apparent_emission_index(
+                specific_humidity=specific_humidity[is_low_nvpm],
+                T_ambient=air_temperature[is_low_nvpm],
+                T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
+                air_pressure=air_pressure[is_low_nvpm],
+                nvpm_ei_n=nvpm_ei_n[is_low_nvpm],
+                G=self._sac_flight["G"][is_low_nvpm],
+                particles=self.params["particles_low_nvpm"],
+            )
+
             min_aei = None  # don't clip
 
         else:
