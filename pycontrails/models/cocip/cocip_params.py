@@ -16,6 +16,7 @@ from pycontrails.models.emissions import Emissions
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.extended_k15 import Particle, ParticleType
 from pycontrails.models.humidity_scaling import HumidityScaling
+from pycontrails.models.extended_k15 import Particle, ParticleType
 
 
 def _radius_threshold_um() -> npt.NDArray[np.float32]:
