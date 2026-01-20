@@ -299,7 +299,7 @@ def _e_sat_piecewise(T: np.ndarray) -> np.ndarray:
     """
     condlist = [T >= -constants.absolute_zero, T < -constants.absolute_zero]  # noqa: SIM300
     funclist = [e_sat_liquid, e_sat_ice, np.nan]  # nan passed through
-    return np.piecewise(T, condlist, funclist)
+    return np.piecewise(T, condlist, funclist)  # type: ignore[call-overload]
 
 
 # ----------------------------

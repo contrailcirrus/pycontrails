@@ -149,7 +149,7 @@ def m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     """
     condlist = [h < constants.h_tropopause, h >= constants.h_tropopause]
     funclist = [_low_altitude_m_to_pl, _high_altitude_m_to_pl, np.nan]  # nan passed through
-    return np.piecewise(h, condlist, funclist)
+    return np.piecewise(h, condlist, funclist)  # type: ignore[call-overload]
 
 
 def _low_altitude_pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
@@ -205,7 +205,7 @@ def pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     pl_tropopause = m_to_pl(constants.h_tropopause)
     condlist = [pl < pl_tropopause, pl >= pl_tropopause]
     funclist = [_high_altitude_pl_to_m, _low_altitude_pl_to_m, np.nan]  # nan passed through
-    return np.piecewise(pl, condlist, funclist)
+    return np.piecewise(pl, condlist, funclist)  # type: ignore[call-overload]
 
 
 def degrees_to_radians(degrees: ArrayScalarLike) -> ArrayScalarLike:
