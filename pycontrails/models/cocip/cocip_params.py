@@ -15,6 +15,7 @@ from pycontrails.core.models import AdvectionBuffers
 from pycontrails.models.emissions import Emissions
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.humidity_scaling import HumidityScaling
+from pycontrails.models.extended_k15 import Particle, ParticleType
 
 
 def _radius_threshold_um() -> npt.NDArray[np.float32]:
@@ -243,6 +244,21 @@ class CocipParams(AdvectionBuffers):
     #:
     #: .. versionadded:: 0.55.0
     vpm_activation: bool = False
+
+    #: Particle types (low nvPM)
+    particles_low_nvpm = [
+        Particle(type=ParticleType.NVPM, kappa=0.005, gmd=30.0e-9, gsd=2.0),
+        Particle(type=ParticleType.VPM, kappa=0.6, gmd=1.0e-9, gsd=1.50, ei_vpm=1e17),  # Sulfur
+        Particle(type=ParticleType.VPM, kappa=0.01, gmd=5.0e-9, gsd=1.40, ei_vpm=1e15),  # Oil
+        Particle(type=ParticleType.AMBIENT, kappa=0.5, gmd=30.0e-9, gsd=2.3, n_ambient=600.0e6),
+    ]
+
+    # Particle types (high nvPM)
+    particles_hi_nvpm = [
+        Particle(type=ParticleType.NVPM, kappa=0.005, gmd=30.0e-9, gsd=2.0),
+        Particle(type=ParticleType.VPM, kappa=0.6, gmd=1.0e-9, gsd=1.50, ei_vpm=1e17),  # Sulfur
+        Particle(type=ParticleType.AMBIENT, kappa=0.5, gmd=30.0e-9, gsd=2.3, n_ambient=600.0e6),
+    ]
 
     #: Experimental. Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
