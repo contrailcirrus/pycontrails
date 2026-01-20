@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Internals
+
+- Run test suite on python 3.14 in CI.
+
 ## 0.60.2
 
 ### Features
