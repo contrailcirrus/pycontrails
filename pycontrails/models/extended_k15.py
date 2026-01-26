@@ -23,7 +23,7 @@ from pycontrails.physics import constants, thermo
 # See upcoming Teoh et. al paper "Impact of Volatile Particulate Matter on Global Contrail
 # Radiative Forcing and Mitigation Assessment" for details on these default parameters.
 DEFAULT_EXHAUST_T = 600.0  # Exhaust temperature, [K]
-EXPERIMENTAL_WARNING = not os.getenv("PYCONTRAILS_SILENCE_VPM_WARNING")
+EXPERIMENTAL_WARNING = False
 
 
 class ParticleType(enum.StrEnum):
