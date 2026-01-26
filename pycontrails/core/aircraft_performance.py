@@ -661,7 +661,7 @@ def _fill_low_altitude_with_isa_temperature(vector: GeoVectorDataset, met_level_
     necessarily extend to the surface. This function fills points below the
     lowest altitude in the gridded data with ISA temperature values.
 
-    This function operates in-place and modifies the ``air_temperature`` field.
+    This function operates in-place by replacing the ``air_temperature`` field of ``vector``.
 
     Parameters
     ----------
@@ -675,5 +675,9 @@ def _fill_low_altitude_with_isa_temperature(vector: GeoVectorDataset, met_level_
     low_alt = vector.level > met_level_max
     cond = is_nan & low_alt
 
+    if not cond.any():
+        return
+
     t_isa = vector.T_isa()
-    air_temperature[cond] = t_isa[cond]
+    air_temperature = np.where(cond, t_isa, air_temperature)
+    vector.update(air_temperature=air_temperature)

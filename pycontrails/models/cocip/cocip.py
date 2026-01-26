@@ -2249,7 +2249,8 @@ def calc_contrail_properties(
     sigma_yz = contrail["sigma_yz"]
 
     if radiative_heating_effects:
-        air_temperature += contrail["cumul_heat"]
+        air_temperature = air_temperature + contrail["cumul_heat"]  # avoid += (may be read-only)
+        contrail.update(air_temperature=air_temperature)
 
     # get required radiation
     sdr = contrail["sdr"]
@@ -2470,13 +2471,13 @@ def calc_timestep_contrail_evolution(
         dt_sec = dt / np.timedelta64(1, "s")
         heat_rate_1 = contrail_1["heat_rate"]
         cumul_heat = contrail_1["cumul_heat"]
-        cumul_heat += heat_rate_1 * dt_sec
+        cumul_heat = cumul_heat + heat_rate_1 * dt_sec  # avoid += (may be read-only)
         cumul_heat.clip(max=1.5, out=cumul_heat)  # Constrain additional heat to 1.5 K as precaution
         contrail_2["cumul_heat"] = cumul_heat
 
         d_heat_rate_1 = contrail_1["d_heat_rate"]
         cumul_differential_heat = contrail_1["cumul_differential_heat"]
-        cumul_differential_heat += -d_heat_rate_1 * dt_sec
+        cumul_differential_heat = cumul_differential_heat - d_heat_rate_1 * dt_sec  # avoid +=
         contrail_2["cumul_differential_heat"] = cumul_differential_heat
 
     # Attach a few more artifacts for disabled filtering

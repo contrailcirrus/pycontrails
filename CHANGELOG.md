@@ -5,6 +5,7 @@
 ### Internals
 
 - Run test suite on python 3.14 in CI.
+- Add additional [pandas 3.0](https://pandas.pydata.org/docs/dev/whatsnew/v3.0.0.html) compatibility when `Flight` arrays are read-only.
 
 ## 0.60.2
 
