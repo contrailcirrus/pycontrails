@@ -978,7 +978,7 @@ class Cocip(Model):
         if self.params["vpm_activation"]:
             is_lean_burn = nvpm_ei_n < 1.0e12
 
-            aei = np.empty_like(nvpm_ei_n)
+            aei = np.full_like(nvpm_ei_n, np.nan, dtype=float)
 
             # Rich-burn engines
             aei[~is_lean_burn] = extended_k15.droplet_apparent_emission_index(
