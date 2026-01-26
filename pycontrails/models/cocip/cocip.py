@@ -978,30 +978,28 @@ class Cocip(Model):
         if self.params["vpm_activation"]:
             is_low_nvpm = nvpm_ei_n < 1.0e12
 
-            aei = np.full_like(nvpm_ei_n, np.nan, dtype=float)
+            aei = np.empty_like(nvpm_ei_n)
 
             # We can add a Cocip parameter for T_exhaust, vpm_ei_n, and particles
-            if (~is_low_nvpm).any():
-                aei[~is_low_nvpm] = extended_k15.droplet_apparent_emission_index(
-                    specific_humidity=specific_humidity[~is_low_nvpm],
-                    T_ambient=air_temperature[~is_low_nvpm],
-                    T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
-                    air_pressure=air_pressure[~is_low_nvpm],
-                    nvpm_ei_n=nvpm_ei_n[~is_low_nvpm],
-                    G=self._sac_flight["G"][~is_low_nvpm],
-                    particles=self.params["particles_hi_nvpm"],
-                )
+            aei[~is_low_nvpm] = extended_k15.droplet_apparent_emission_index(
+                specific_humidity=specific_humidity[~is_low_nvpm],
+                T_ambient=air_temperature[~is_low_nvpm],
+                T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
+                air_pressure=air_pressure[~is_low_nvpm],
+                nvpm_ei_n=nvpm_ei_n[~is_low_nvpm],
+                G=self._sac_flight["G"][~is_low_nvpm],
+                particles=self.params["particles_hi_nvpm"],
+            )
 
-            if is_low_nvpm.any():
-                aei[is_low_nvpm] = extended_k15.droplet_apparent_emission_index(
-                    specific_humidity=specific_humidity[is_low_nvpm],
-                    T_ambient=air_temperature[is_low_nvpm],
-                    T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
-                    air_pressure=air_pressure[is_low_nvpm],
-                    nvpm_ei_n=nvpm_ei_n[is_low_nvpm],
-                    G=self._sac_flight["G"][is_low_nvpm],
-                    particles=self.params["particles_low_nvpm"],
-                )
+            aei[is_low_nvpm] = extended_k15.droplet_apparent_emission_index(
+                specific_humidity=specific_humidity[is_low_nvpm],
+                T_ambient=air_temperature[is_low_nvpm],
+                T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
+                air_pressure=air_pressure[is_low_nvpm],
+                nvpm_ei_n=nvpm_ei_n[is_low_nvpm],
+                G=self._sac_flight["G"][is_low_nvpm],
+                particles=self.params["particles_low_nvpm"],
+            )
 
             min_aei = None  # don't clip
 
