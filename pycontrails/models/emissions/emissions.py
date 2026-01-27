@@ -211,9 +211,9 @@ class Emissions(Model):
 
         self._gaseous_emission_indices(engine_uid)
         if self.params["use_meem"]:
-            self._nvpm_emission_indices_meem2_approach(engine_uid)
+            self._nvpm_emission_indices_meem2_workflow(engine_uid)
         else:
-            self._nvpm_emission_indices_gaia_approach(engine_uid)
+            self._nvpm_emission_indices_gaia_workflow(engine_uid)
 
         self._total_pollutant_emissions()
         return self.source
@@ -325,8 +325,8 @@ class Emissions(Model):
         self.source["co_ei"] = co_ei * 1e-3  # g-CO/kg-fuel to kg-CO/kg-fuel
         self.source["hc_ei"] = hc_ei * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
 
-    def _nvpm_emission_indices_gaia_approach(self, engine_uid: str | None) -> None:
-        """Calculate nvPM mass and number emission indices using the GAIA approach.
+    def _nvpm_emission_indices_gaia_workflow(self, engine_uid: str | None) -> None:
+        """Calculate nvPM mass and number emission indices using the GAIA workflow.
 
         This method attaches the following variables to the underlying :attr:`source`.
             - nvpm_ei_m
@@ -382,8 +382,8 @@ class Emissions(Model):
         self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
 
-    def _nvpm_emission_indices_meem2_approach(self, engine_uid: str | None) -> None:
-        """Calculate nvPM mass and number emission indices using the MEEM2 approach.
+    def _nvpm_emission_indices_meem2_workflow(self, engine_uid: str | None) -> None:
+        """Calculate nvPM mass and number emission indices using the MEEM2 workflow.
 
         This method attaches the following variables to the underlying :attr:`source`.
             - nvpm_ei_m
