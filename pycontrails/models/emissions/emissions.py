@@ -564,7 +564,7 @@ class Emissions(Model):
             air_pressure=average_pressure,
             thrust_setting=thrust_setting,
             afr=afr,
-            q_fuel=fuel.q_fuel,
+            q_fuel=43.13e6,  # q_fuel not provided in `edb_gaseous`, but Jet A-1 were mainly used
             bypass_ratio=edb_gaseous.bypass_ratio,
             pressure_ratio=edb_gaseous.pressure_ratio,
         )
@@ -732,7 +732,7 @@ class Emissions(Model):
             air_pressure=average_pressure,
             thrust_setting=thrust_setting,
             afr=afr,
-            q_fuel=fuel.q_fuel,
+            q_fuel=43.13e6,  # q_fuel not provided in `edb_gaseous`, but Jet A-1 were mainly used
             bypass_ratio=edb_gaseous.bypass_ratio,
             pressure_ratio=edb_gaseous.pressure_ratio,
         )
