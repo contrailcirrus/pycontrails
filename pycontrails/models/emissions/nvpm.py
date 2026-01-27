@@ -1318,6 +1318,9 @@ def nvpm_mass_fuel_correction_icao_annex_16(
     npt.NDArray[np.floating]
         nvPM mass fuel composition correction factor
     """
+    # Thrust setting cannot be computed when engine data is not provided in
+    # the ICAO EDB, so set default to 45% thrust.
+    thrust_setting = np.nan_to_num(thrust_setting, nan=0.45)
     return np.exp((1.08 * thrust_setting - 1.31) * (hydrogen_content - 13.8))
 
 
@@ -1340,6 +1343,9 @@ def nvpm_number_fuel_correction_icao_annex_16(
     npt.NDArray[np.floating]
         nvPM number fuel composition correction factor
     """
+    # Thrust setting cannot be computed when engine data is not provided in
+    # the ICAO EDB, so set default to 45% thrust.
+    thrust_setting = np.nan_to_num(thrust_setting, nan=0.45)
     return np.exp((0.99 * thrust_setting - 1.05) * (hydrogen_content - 13.8))
 
 
