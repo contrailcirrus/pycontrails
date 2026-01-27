@@ -93,52 +93,6 @@ class EDBnvpm:
     nvpm_ei_n_no_sl_85: float
     nvpm_ei_n_no_sl_max: float
 
-    @property
-    def nvpm_ei_m_t4_t2(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index mass profile."""
-        return nvpm_emission_profiles_t4_t2(
-            pressure_ratio=self.pressure_ratio,
-            combustor=self.combustor,
-            temp_min=self.temp_min,
-            temp_max=self.temp_max,
-            q_fuel=self.fuel_heat * 1e6,
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[0]
-
-    @property
-    def nvpm_ei_n_t4_t2(self) -> EmissionsProfileInterpolator:
-        """Get the nvPM emissions index number profile."""
-        return nvpm_emission_profiles_t4_t2(
-            pressure_ratio=self.pressure_ratio,
-            combustor=self.combustor,
-            temp_min=self.temp_min,
-            temp_max=self.temp_max,
-            q_fuel=self.fuel_heat * 1e6,
-            ff_7=self.ff_7,
-            ff_30=self.ff_30,
-            ff_85=self.ff_85,
-            ff_100=self.ff_100,
-            nvpm_ei_m_7=self.nvpm_ei_m_7,
-            nvpm_ei_m_30=self.nvpm_ei_m_30,
-            nvpm_ei_m_85=self.nvpm_ei_m_85,
-            nvpm_ei_m_100=self.nvpm_ei_m_100,
-            nvpm_ei_n_7=self.nvpm_ei_n_7,
-            nvpm_ei_n_30=self.nvpm_ei_n_30,
-            nvpm_ei_n_85=self.nvpm_ei_n_85,
-            nvpm_ei_n_100=self.nvpm_ei_n_100,
-        )[1]
-
 
 # ---------------------------------
 # nvPM emissions: T4/T2 methodology
@@ -148,6 +102,7 @@ class EDBnvpm:
 @functools.cache
 def nvpm_emission_profiles_t4_t2(
     pressure_ratio: float,
+    hydrogen_content: float,
     combustor: str,
     temp_min: float,
     temp_max: float,
@@ -172,6 +127,8 @@ def nvpm_emission_profiles_t4_t2(
     ----------
     pressure_ratio : float
         Engine pressure ratio, unitless
+    hydrogen_content : float
+        The percentage of hydrogen mass content in the fuel.
     combustor : str
         Engine combustor type provided by the ICAO EDB column `Combustor Description`.
     temp_min : float
@@ -227,6 +184,7 @@ def nvpm_emission_profiles_t4_t2(
         nvpm_ei_m_lean_burn = np.mean(nvpm_ei_m[2:])
         nvpm_ei_m = np.r_[nvpm_ei_m[:2], [nvpm_ei_m_lean_burn] * 3]
 
+    # Calculate T4/T2 for the four data points
     thrust_setting = fuel_flow / fuel_flow_max
     avg_temp = (temp_min + temp_max) / 2.0
 
@@ -240,13 +198,25 @@ def nvpm_emission_profiles_t4_t2(
         cruise=False,
     )
 
-    nvpm_ei_m_interp = EmissionsProfileInterpolator(t4_t2, nvpm_ei_m)
-    nvpm_ei_n_interp = EmissionsProfileInterpolator(t4_t2, nvpm_ei_n)
+    # Adjust nvPM emissions index due to fuel hydrogen content differences
+    if not (13.4 <= hydrogen_content <= 15.4):
+        warnings.warn(
+            f"Fuel hydrogen content {hydrogen_content} % is outside the valid range"
+            "(13.4 - 15.4 %), and may lead to inaccuracies."
+        )
+
+    k_mass = nvpm_mass_fuel_correction_icao_annex_16(hydrogen_content, thrust_setting)
+    k_num = nvpm_number_fuel_correction_icao_annex_16(hydrogen_content, thrust_setting)
+
+    nvpm_ei_m_interp = EmissionsProfileInterpolator(xp=t4_t2, fp=(nvpm_ei_m * k_mass))
+    nvpm_ei_n_interp = EmissionsProfileInterpolator(xp=t4_t2, fp=(nvpm_ei_n * k_num))
     return nvpm_ei_m_interp, nvpm_ei_n_interp
 
 
 def estimate_nvpm_t4_t2(
-    edb_nvpm: EDBnvpm,
+    nvpm_ei_m_profile: EmissionsProfileInterpolator,
+    nvpm_ei_n_profile: EmissionsProfileInterpolator,
+    pressure_ratio: float,
     true_airspeed: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
@@ -263,8 +233,14 @@ def estimate_nvpm_t4_t2(
 
     Parameters
     ----------
-    edb_nvpm : EDBnvpm
-        EDB nvPM data
+    nvpm_ei_m_profile : EmissionsProfileInterpolator
+        T4/T2-derived nvPM mass emissions index versus T4/T2 for the selected engine
+        See :func:`nvpm_emission_profiles_t4_t2`.
+    nvpm_ei_n_profile : EmissionsProfileInterpolator
+        T4/T2-derived nvPM number emissions index versus T4/T2 for the selected engine
+        See :func:`nvpm_emission_profiles_t4_t2`.
+    pressure_ratio : float
+        Engine pressure ratio, unitless
     true_airspeed: npt.NDArray[np.floating]
         true airspeed for each waypoint, [:math:`m s^{-1}`]
     air_temperature: npt.NDArray[np.floating]
@@ -289,15 +265,15 @@ def estimate_nvpm_t4_t2(
         thrust_setting,
         air_temperature,
         air_pressure,
-        edb_nvpm.pressure_ratio,
+        pressure_ratio,
         q_fuel,
         cruise=True,
     )
 
     # Interpolate nvPM EI_m and EI_n
-    nvpm_ei_m = edb_nvpm.nvpm_ei_m_t4_t2.interp(t4_t2)
+    nvpm_ei_m = nvpm_ei_m_profile.interp(t4_t2)
     nvpm_ei_m = nvpm_ei_m * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
-    nvpm_ei_n = edb_nvpm.nvpm_ei_n_t4_t2.interp(t4_t2)
+    nvpm_ei_n = nvpm_ei_n_profile.interp(t4_t2)
     return nvpm_ei_m, nvpm_ei_n
 
 
@@ -412,7 +388,7 @@ def nvpm_mass_emission_profiles_meem(
             "(13.4 - 15.4 %), and may lead to inaccuracies."
         )
 
-    k_mass = mass_fuel_composition_correction_meem(hydrogen_content, thrust_setting)
+    k_mass = nvpm_mass_fuel_correction_icao_annex_16(hydrogen_content, thrust_setting)
     return EmissionsProfileInterpolator(xp=fuel_flow, fp=(nvpm_ei_m * k_mass))
 
 
@@ -522,16 +498,16 @@ def nvpm_number_emission_profiles_meem(
             "(13.4 - 15.4 %), and may lead to inaccuracies."
         )
 
-    k_num = number_fuel_composition_correction_meem(hydrogen_content, thrust_setting)
+    k_num = nvpm_number_fuel_correction_icao_annex_16(hydrogen_content, thrust_setting)
     return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_n * k_num)
 
 
-def mass_fuel_composition_correction_meem(
+def nvpm_mass_fuel_correction_icao_annex_16(
     hydrogen_content: float | npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
     r"""
-    Calculate fuel composition correction factor for nvPM mass emissions index.
+    Calculate fuel correction factor for nvPM mass with the ICAO Annex 16 equation.
 
     Parameters
     ----------
@@ -548,12 +524,12 @@ def mass_fuel_composition_correction_meem(
     return np.exp((1.08 * thrust_setting - 1.31) * (hydrogen_content - 13.8))
 
 
-def number_fuel_composition_correction_meem(
+def nvpm_number_fuel_correction_icao_annex_16(
     hydrogen_content: float | npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
     r"""
-    Calculate fuel composition correction factor for nvPM number emissions index.
+    Calculate fuel correction factor for nvPM number with the ICAO Annex 16 equation.
 
     Parameters
     ----------

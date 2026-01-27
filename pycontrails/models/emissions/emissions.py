@@ -486,9 +486,32 @@ class Emissions(Model):
         """
         nvpm_data_source = "ICAO EDB (T4/T2)"
 
+        # Get T4/T2 nvPM emissions profile
+        nvpm_ei_m_profile, nvpm_ei_n_profile = nvpm.nvpm_emission_profiles_t4_t2(
+            pressure_ratio=edb_nvpm.pressure_ratio,
+            combustor=edb_nvpm.combustor,
+            temp_min=edb_nvpm.temp_min,
+            temp_max=edb_nvpm.temp_max,
+            q_fuel=edb_nvpm.fuel_heat * 1e6,
+            ff_7=edb_nvpm.ff_7,
+            ff_30=edb_nvpm.ff_30,
+            ff_85=edb_nvpm.ff_85,
+            ff_100=edb_nvpm.ff_100,
+            nvpm_ei_m_7=edb_nvpm.nvpm_ei_m_7,
+            nvpm_ei_m_30=edb_nvpm.nvpm_ei_m_30,
+            nvpm_ei_m_85=edb_nvpm.nvpm_ei_m_85,
+            nvpm_ei_m_100=edb_nvpm.nvpm_ei_m_100,
+            nvpm_ei_n_7=edb_nvpm.nvpm_ei_n_7,
+            nvpm_ei_n_30=edb_nvpm.nvpm_ei_n_30,
+            nvpm_ei_n_85=edb_nvpm.nvpm_ei_n_85,
+            nvpm_ei_n_100=edb_nvpm.nvpm_ei_n_100,
+        )[1]
+
         # Emissions indices
         return nvpm_data_source, *nvpm.estimate_nvpm_t4_t2(
-            edb_nvpm,
+            nvpm_ei_m_profile=nvpm_ei_m_profile,
+            nvpm_ei_n_profile=nvpm_ei_n_profile,
+            pressure_ratio=edb_nvpm.pressure_ratio,
             true_airspeed=self.source.get_data_or_attr("true_airspeed"),
             air_temperature=self.source["air_temperature"],
             air_pressure=self.source.air_pressure,
