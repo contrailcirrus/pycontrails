@@ -502,50 +502,6 @@ def nvpm_number_emission_profiles_meem(
     return EmissionsProfileInterpolator(xp=fuel_flow, fp=nvpm_ei_n * k_num)
 
 
-def nvpm_mass_fuel_correction_icao_annex_16(
-    hydrogen_content: float | npt.NDArray[np.floating],
-    thrust_setting: npt.NDArray[np.floating],
-) -> npt.NDArray[np.floating]:
-    r"""
-    Calculate fuel correction factor for nvPM mass with the ICAO Annex 16 equation.
-
-    Parameters
-    ----------
-    hydrogen_content: float
-        The percentage of hydrogen mass content in the fuel.
-    thrust_setting : ArrayScalarLike
-        Engine thrust setting, unitless
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        nvPM mass fuel composition correction factor
-    """
-    return np.exp((1.08 * thrust_setting - 1.31) * (hydrogen_content - 13.8))
-
-
-def nvpm_number_fuel_correction_icao_annex_16(
-    hydrogen_content: float | npt.NDArray[np.floating],
-    thrust_setting: npt.NDArray[np.floating],
-) -> npt.NDArray[np.floating]:
-    r"""
-    Calculate fuel correction factor for nvPM number with the ICAO Annex 16 equation.
-
-    Parameters
-    ----------
-    hydrogen_content: float
-        The percentage of hydrogen mass content in the fuel.
-    thrust_setting : ArrayScalarLike
-        Engine thrust setting, unitless
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        nvPM number fuel composition correction factor
-    """
-    return np.exp((0.99 * thrust_setting - 1.05) * (hydrogen_content - 13.8))
-
-
 def estimate_nvpm_meem(
     nvpm_ei_m_profile: EmissionsProfileInterpolator,
     nvpm_ei_n_profile: EmissionsProfileInterpolator,
@@ -1338,9 +1294,53 @@ def number_emissions_index_fractal_aggregates(
     return nvpm_ei_m / denom
 
 
-# -------------------------------------------------------------
-# Scale nvPM emissions indices due to sustainable aviation fuel
-# -------------------------------------------------------------
+# ---------------------------------------------------------
+# Scale nvPM emissions indices due to fuel hydrogen content
+# ---------------------------------------------------------
+
+
+def nvpm_mass_fuel_correction_icao_annex_16(
+    hydrogen_content: float | npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    r"""
+    Calculate fuel correction factor for nvPM mass with the ICAO Annex 16 equation.
+
+    Parameters
+    ----------
+    hydrogen_content: float
+        The percentage of hydrogen mass content in the fuel.
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM mass fuel composition correction factor
+    """
+    return np.exp((1.08 * thrust_setting - 1.31) * (hydrogen_content - 13.8))
+
+
+def nvpm_number_fuel_correction_icao_annex_16(
+    hydrogen_content: float | npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    r"""
+    Calculate fuel correction factor for nvPM number with the ICAO Annex 16 equation.
+
+    Parameters
+    ----------
+    hydrogen_content: float
+        The percentage of hydrogen mass content in the fuel.
+    thrust_setting : ArrayScalarLike
+        Engine thrust setting, unitless
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        nvPM number fuel composition correction factor
+    """
+    return np.exp((0.99 * thrust_setting - 1.05) * (hydrogen_content - 13.8))
 
 
 def nvpm_number_ei_pct_reduction_due_to_saf(

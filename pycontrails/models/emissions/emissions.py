@@ -505,7 +505,7 @@ class Emissions(Model):
             nvpm_ei_n_30=edb_nvpm.nvpm_ei_n_30,
             nvpm_ei_n_85=edb_nvpm.nvpm_ei_n_85,
             nvpm_ei_n_100=edb_nvpm.nvpm_ei_n_100,
-        )[1]
+        )
 
         # Emissions indices
         return nvpm_data_source, *nvpm.estimate_nvpm_t4_t2(
