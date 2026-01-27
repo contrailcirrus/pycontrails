@@ -378,19 +378,6 @@ class Emissions(Model):
 
         nvpm_data_source, nvpm_ei_m, nvpm_ei_n = nvpm_data
 
-        # Adjust nvPM emission indices if SAF is used.
-        if isinstance(fuel, SAFBlend) and fuel.pct_blend:
-            thrust_setting = self.source["thrust_setting"]
-            pct_eim_reduction = nvpm.nvpm_mass_ei_pct_reduction_due_to_saf(
-                fuel.hydrogen_content, thrust_setting
-            )
-            pct_ein_reduction = nvpm.nvpm_number_ei_pct_reduction_due_to_saf(
-                fuel.hydrogen_content, thrust_setting
-            )
-
-            nvpm_ei_m *= 1.0 + pct_eim_reduction / 100.0
-            nvpm_ei_n *= 1.0 + pct_ein_reduction / 100.0
-
         self.source.attrs["nvpm_data_source"] = nvpm_data_source
         self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
