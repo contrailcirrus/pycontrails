@@ -1343,37 +1343,6 @@ def nvpm_number_fuel_correction_icao_annex_16(
     return np.exp((0.99 * thrust_setting - 1.05) * (hydrogen_content - 13.8))
 
 
-def nvpm_number_ei_pct_reduction_due_to_saf(
-    hydrogen_content: float | npt.NDArray[np.floating],
-    thrust_setting: npt.NDArray[np.floating],
-) -> npt.NDArray[np.floating]:
-    """
-    Adjust nvPM number emissions index to account for the effects of sustainable aviation fuels.
-
-    Parameters
-    ----------
-    hydrogen_content: float
-        The percentage of hydrogen mass content in the fuel.
-    thrust_setting: npt.NDArray[np.floating]
-        Engine thrust setting, where the equivalent fuel mass flow rate per engine at
-        sea level, :math:`[0 - 1]`.
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        Percentage reduction in nvPM number emissions index
-
-    References
-    ----------
-    - :cite:`teohTargetedUseSustainable2022`
-    - :cite:`bremEffectsFuelAromatic2015`
-    """
-    a0 = -114.21
-    a1 = 1.06
-    a2 = 0.5
-    return _template_saf_reduction(hydrogen_content, thrust_setting, a0, a1, a2)
-
-
 def nvpm_mass_ei_pct_reduction_due_to_saf(
     hydrogen_content: float | npt.NDArray[np.floating],
     thrust_setting: npt.NDArray[np.floating],
@@ -1402,9 +1371,50 @@ def nvpm_mass_ei_pct_reduction_due_to_saf(
     - :cite:`teohTargetedUseSustainable2022`
     - :cite:`bremEffectsFuelAromatic2015`
     """
+    warnings.warn(
+        f"Function has been deprecated, use `nvpm_mass_fuel_correction_icao_annex_16` instead.",
+        category=FutureWarning,
+        stacklevel=2,
+    )
     a0 = -124.05
     a1 = 1.02
     a2 = 0.6
+    return _template_saf_reduction(hydrogen_content, thrust_setting, a0, a1, a2)
+
+
+def nvpm_number_ei_pct_reduction_due_to_saf(
+    hydrogen_content: float | npt.NDArray[np.floating],
+    thrust_setting: npt.NDArray[np.floating],
+) -> npt.NDArray[np.floating]:
+    """
+    Adjust nvPM number emissions index to account for the effects of sustainable aviation fuels.
+
+    Parameters
+    ----------
+    hydrogen_content: float
+        The percentage of hydrogen mass content in the fuel.
+    thrust_setting: npt.NDArray[np.floating]
+        Engine thrust setting, where the equivalent fuel mass flow rate per engine at
+        sea level, :math:`[0 - 1]`.
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Percentage reduction in nvPM number emissions index
+
+    References
+    ----------
+    - :cite:`teohTargetedUseSustainable2022`
+    - :cite:`bremEffectsFuelAromatic2015`
+    """
+    warnings.warn(
+        f"Function has been deprecated, use `nvpm_number_fuel_correction_icao_annex_16` instead.",
+        category=FutureWarning,
+        stacklevel=2,
+    )
+    a0 = -114.21
+    a1 = 1.06
+    a2 = 0.5
     return _template_saf_reduction(hydrogen_content, thrust_setting, a0, a1, a2)
 
 
