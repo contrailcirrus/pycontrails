@@ -374,7 +374,7 @@ class Emissions(Model):
                     f"Cannot find 'engine_uid' {engine_uid} in EDB. "
                     "A constant emissions will be used."
                 )
-            nvpm_data = self._nvpm_emission_indices_constant()
+            nvpm_data = self._nvpm_emission_indices_constant(fuel)
 
         nvpm_data_source, nvpm_ei_m, nvpm_ei_n = nvpm_data
 
@@ -437,7 +437,7 @@ class Emissions(Model):
                     f"Cannot find 'engine_uid' {engine_uid} in EDB. "
                     "A constant emissions will be used."
                 )
-            nvpm_data = self._nvpm_emission_indices_constant()
+            nvpm_data = self._nvpm_emission_indices_constant(fuel)
 
         nvpm_data_source, nvpm_ei_m, nvpm_ei_n = nvpm_data
 
@@ -844,7 +844,7 @@ class Emissions(Model):
         return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
 
     def _nvpm_emission_indices_constant(
-        self,
+        self, fuel: Fuel,
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """
         Assume constant emission indices for nvPM mass and number.
@@ -854,6 +854,11 @@ class Emissions(Model):
 
         - nvpm_ei_m = 0.088 g-nvPM/kg-fuel (Table 2 of Stettler et al., 2013)
         - nvpm_ei_n = 1e15 /kg-fuel (Schumann et al., 2015)
+
+        Parameters
+        ----------
+        fuel : Fuel
+            Fuel type.
 
         Returns
         -------
@@ -873,7 +878,14 @@ class Emissions(Model):
         nvpm_data_source = "Constant"
         nvpm_ei_m = np.full(len(self.source), 0.088 * 1e-3, dtype=np.float32)  # g to kg
         nvpm_ei_n = np.full(len(self.source), self.params["default_nvpm_ei_n"], dtype=np.float32)
-        return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
+
+        # Adjust for fuel hydrogen content
+        thrust_setting = self.source["thrust_setting"]
+        k_mass = nvpm.nvpm_mass_fuel_correction_icao_annex_16(fuel.hydrogen_content, thrust_setting)
+        k_num = nvpm.nvpm_number_fuel_correction_icao_annex_16(
+            fuel.hydrogen_content, thrust_setting
+        )
+        return nvpm_data_source, (nvpm_ei_m * k_mass), (nvpm_ei_n * k_num)
 
     def _total_pollutant_emissions(self) -> None:
         if not isinstance(self.source, Flight):
