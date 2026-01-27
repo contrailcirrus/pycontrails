@@ -211,7 +211,7 @@ class Emissions(Model):
 
         self._gaseous_emission_indices(engine_uid)
         if self.params["use_meem"]:
-            self._nvpm_emission_indices_meem_scope11(engine_uid)
+            self._nvpm_emission_indices_meem2(engine_uid)
         else:
             self._nvpm_emission_indices_gaia(engine_uid)
 
@@ -362,9 +362,11 @@ class Emissions(Model):
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
 
         if edb_nvpm is not None:
+            # TODO: Update here
             nvpm_data = self._nvpm_emission_indices_t4_t2(edb_nvpm, fuel)
         elif edb_gaseous is not None:
             nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
+
         else:
             if engine_uid is not None:
                 warnings.warn(
@@ -392,7 +394,7 @@ class Emissions(Model):
         self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
 
-    def _nvpm_emission_indices_meem_scope11(self, engine_uid: str | None) -> None:
+    def _nvpm_emission_indices_meem2(self, engine_uid: str | None) -> None:
         """Calculate nvPM mass and number emission indices using MEEM2 and SCOPE11 methodologies.
 
         This method attaches the following variables to the underlying :attr:`source`.
@@ -440,7 +442,7 @@ class Emissions(Model):
         if edb_nvpm is not None:
             nvpm_data = self._nvpm_emission_indices_meem(edb_nvpm, fuel)
         elif edb_gaseous is not None and has_sn_data:
-            nvpm_data = self._nvpm_emission_indices_scope11(edb_gaseous, fuel)
+            nvpm_data = self._nvpm_emission_indices_scope11_meem2(edb_gaseous, fuel)
         else:
             if engine_uid is not None:
                 warnings.warn(
@@ -628,7 +630,7 @@ class Emissions(Model):
             ff_100=edb_nvpm.ff_100,
         )
 
-    def _nvpm_emission_indices_scope11(
+    def _nvpm_emission_indices_scope11_meem2(
         self, edb_gaseous: gaseous.EDBGaseous, fuel: Fuel
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """
