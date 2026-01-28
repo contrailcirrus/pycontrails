@@ -181,7 +181,7 @@ def test_scope11_nvpm_emissions_profile():
 
     # Check nvPM EIm
     nvpm_ei_m_scope_est = nvpm.mass_ei_scope11(smoke_number, afr, edb_gaseous.bypass_ratio)
-    nvpm_ei_m_scope_mg = np.array([15.69, 22.36, 428.61, 424.27])   # Consistent with measurements
+    nvpm_ei_m_scope_mg = np.array([15.69, 22.36, 428.61, 424.27])  # Consistent with measurements
     np.testing.assert_allclose(nvpm_ei_m_scope_est * 1e6, nvpm_ei_m_scope_mg, atol=0.01)
     # Older FOX approach would give the following values: 38.0, 128.9, 591.9, 801.0 mg/kg
     # See :func:`test_fox_fa_model_nvpm_emissions_profile`.
@@ -237,7 +237,7 @@ def test_fox_fa_model_nvpm_emissions_profile():
         0.0,
         fuel_flow,
         thrust_setting,
-        edb_gaseous.pressure_ratio
+        edb_gaseous.pressure_ratio,
     )
     nvpm_ei_m_fox = np.array([38.03, 128.90, 591.87, 801.00])
     np.testing.assert_allclose(nvpm_ei_m_fox_est, nvpm_ei_m_fox, atol=0.01)
@@ -248,9 +248,9 @@ def test_fox_fa_model_nvpm_emissions_profile():
         0.0,
         thrust_setting,
         edb_gaseous.pressure_ratio,
-        43.13e6
+        43.13e6,
     )
-    nvpm_gmd_fa = np.array([12.02, 19.34, 39.54, 45.79])    # nm
+    nvpm_gmd_fa = np.array([12.02, 19.34, 39.54, 45.79])  # nm
     np.testing.assert_allclose(nvpm_gmd_fa_est, nvpm_gmd_fa_est, atol=0.01)
 
     nvpm_ei_n_fa_est = nvpm.number_emissions_index_fractal_aggregates(

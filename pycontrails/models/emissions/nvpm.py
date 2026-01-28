@@ -208,8 +208,8 @@ def nvpm_emission_profiles_t4_t2(
     k_mass = nvpm_mass_fuel_correction_icao_annex_16(hydrogen_content, thrust_setting)
     k_num = nvpm_number_fuel_correction_icao_annex_16(hydrogen_content, thrust_setting)
 
-    nvpm_ei_m_interp = EmissionsProfileInterpolator(xp=t4_t2, fp=(nvpm_ei_m * k_mass))
-    nvpm_ei_n_interp = EmissionsProfileInterpolator(xp=t4_t2, fp=(nvpm_ei_n * k_num))
+    nvpm_ei_m_interp = EmissionsProfileInterpolator(xp=t4_t2, fp=nvpm_ei_m * k_mass)
+    nvpm_ei_n_interp = EmissionsProfileInterpolator(xp=t4_t2, fp=nvpm_ei_n * k_num)
     return nvpm_ei_m_interp, nvpm_ei_n_interp
 
 
@@ -1378,7 +1378,7 @@ def nvpm_mass_ei_pct_reduction_due_to_saf(
     - :cite:`bremEffectsFuelAromatic2015`
     """
     warnings.warn(
-        f"Function has been deprecated, use `nvpm_mass_fuel_correction_icao_annex_16` instead.",
+        "Function has been deprecated, use `nvpm_mass_fuel_correction_icao_annex_16` instead.",
         category=FutureWarning,
         stacklevel=2,
     )
@@ -1414,7 +1414,7 @@ def nvpm_number_ei_pct_reduction_due_to_saf(
     - :cite:`bremEffectsFuelAromatic2015`
     """
     warnings.warn(
-        f"Function has been deprecated, use `nvpm_number_fuel_correction_icao_annex_16` instead.",
+        "Function has been deprecated, use `nvpm_number_fuel_correction_icao_annex_16` instead.",
         category=FutureWarning,
         stacklevel=2,
     )
