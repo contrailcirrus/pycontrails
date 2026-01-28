@@ -2,10 +2,20 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- Update nvPM fuel correction for the GAIA workflow: The standard ICAO Annex 16 methodology is now used in place of the Teoh et al. (2022) approach.
+- Revise fallback for engines not covered in the nvPM ICAO EDB: The SCOPE11 method now replaces the FOX-ImFOX methodology in the GAIA workflow. SCOPE11 is used to construct the nvPM emissions profile, which is then passed to the T4/T2 methodology to estimate the cruise nvPM mass and number emissions.
+
+### Fixes
+
+- Constant nvPM EI cases are now correctly adjusted for the fuel hydrogen content.
+
 ### Internals
 
 - Run test suite on python 3.14 in CI.
 - Add additional [pandas 3.0](https://pandas.pydata.org/docs/dev/whatsnew/v3.0.0.html) compatibility when `Flight` arrays are read-only.
+- Add new unit test to improve ease of evaluating different nvPM models
 
 ## 0.60.2
 
