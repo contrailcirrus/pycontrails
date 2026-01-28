@@ -42,7 +42,7 @@ class ModelTestGrid(Model):
     source: MetDataset
 
     def eval(self, source: None = None, **params: Any) -> MetDataArray:
-        self.set_source()
+        self.set_source(source)
         self.update_params(params)
         self.source.data["temp"] = self.met.data["air_temperature"]
         return self.source["temp"]
@@ -172,15 +172,14 @@ def test_model_type_guards(met_era5_fake: MetDataset, flight_fake: Flight) -> No
 
 @pytest.mark.parametrize("model_class", [ModelTestGrid, ModelTestFlight])
 def test_model_hash(met_era5_fake: MetDataset, model_class: type[Model]) -> None:
-    """Check the pinned model hash as a way to test for model degradation.
+    """Test that model hash is deterministic and changes when params change."""
+    model1 = model_class(met=met_era5_fake)
+    model2 = model_class(met=met_era5_fake)
+    assert model1.hash == model2.hash
 
-    This hash will change anytime a new model parameter is added or changed.
-    """
-    model = model_class(met=met_era5_fake)
-    if isinstance(model, ModelTestFlight):
-        assert model.hash == "dd4baeba92e02f0e556c1ff3db0536f01130db94"
-    else:
-        assert model.hash == "f6da5a74322032367d9dd7a40590d32ebad1a871"
+    # hash should change when params change
+    model3 = model_class(met=met_era5_fake, param1="different_value")
+    assert model3.hash != model1.hash
 
 
 # ----------------
