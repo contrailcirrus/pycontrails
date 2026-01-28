@@ -16,7 +16,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from pycontrails.core.flight import Flight
-from pycontrails.core.fuel import Fuel
+from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
@@ -561,7 +561,7 @@ class Emissions(Model):
             air_pressure=average_pressure,
             thrust_setting=thrust_setting,
             afr=afr,
-            q_fuel=43.13e6,  # q_fuel not provided in `edb_gaseous`, but Jet A-1 were mainly used
+            q_fuel=JetA.q_fuel,  # q_fuel not provided in edb_gaseous, but Jet A-1 were mainly used
             bypass_ratio=edb_gaseous.bypass_ratio,
             pressure_ratio=edb_gaseous.pressure_ratio,
         )
@@ -572,7 +572,7 @@ class Emissions(Model):
             combustor=edb_gaseous.combustor,
             temp_min=edb_gaseous.temp_min,
             temp_max=edb_gaseous.temp_max,
-            q_fuel=43.13e6,  # q_fuel not provided in `edb_gaseous`, but Jet A-1 were mainly used
+            q_fuel=JetA.q_fuel,  # q_fuel not provided in edb_gaseous, but Jet A-1 were mainly used
             ff_7=edb_gaseous.ff_7,
             ff_30=edb_gaseous.ff_30,
             ff_85=edb_gaseous.ff_85,
@@ -729,7 +729,7 @@ class Emissions(Model):
             air_pressure=average_pressure,
             thrust_setting=thrust_setting,
             afr=afr,
-            q_fuel=43.13e6,  # q_fuel not provided in `edb_gaseous`, but Jet A-1 were mainly used
+            q_fuel=JetA.q_fuel,  # q_fuel not provided in edb_gaseous, but Jet A-1 were mainly used
             bypass_ratio=edb_gaseous.bypass_ratio,
             pressure_ratio=edb_gaseous.pressure_ratio,
         )
@@ -1042,7 +1042,7 @@ def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
     df = pd.read_csv(EDB_ENGINE_PATH)
     df = df.rename(columns=columns)
     # Convert ambient pressure from kPa to Pa
-    df[["pressure_min", "pressure_max"]] = df[["pressure_min", "pressure_max"]] * 1000
+    df[["pressure_min", "pressure_max"]] = df[["pressure_min", "pressure_max"]] * 1000.0
     return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
 
