@@ -16,7 +16,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from pycontrails.core.flight import Flight
-from pycontrails.core.fuel import Fuel, SAFBlend
+from pycontrails.core.fuel import Fuel
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import AirTemperature, MetVariable, SpecificHumidity
 from pycontrails.core.models import Model, ModelParams
@@ -365,9 +365,6 @@ class Emissions(Model):
             nvpm_data = self._nvpm_emission_indices_t4_t2(edb_nvpm, fuel)
         elif edb_gaseous is not None:
             nvpm_data = self._nvpm_emission_indices_scope11_with_t4_t2(edb_gaseous, fuel)
-            #: Deprecated at version:: 0.60.3
-            #nvpm_data = self._nvpm_emission_indices_sac(edb_gaseous, fuel)
-
         else:
             if engine_uid is not None:
                 warnings.warn(
@@ -774,77 +771,9 @@ class Emissions(Model):
             ff_100=edb_gaseous.ff_100,
         )
 
-    def _nvpm_emission_indices_sac(
-        self, edb_gaseous: gaseous.EDBGaseous, fuel: Fuel
-    ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
-        """Calculate EIs for nvPM mass and number assuming the profile of single annular combustors.
-
-        nvPM EI_m is calculated using the FOX and ImFOX methods, while the nvPM EI_n
-        is calculated using the Fractal Aggregates (FA) model.
-
-        Deprecated at version 0.60.3.
-
-        For the replacement function, see :func:`_nvpm_emission_indices_scope11_with_t4_t2`.
-
-        Parameters
-        ----------
-        edb_gaseous : EDBGaseous
-            EDB gaseous data
-        fuel : Fuel
-            Fuel type.
-
-        Returns
-        -------
-        nvpm_data_source : str
-            Source of nvpm data.
-        nvpm_ei_m : npt.NDArray[np.floating]
-            nvPM mass emissions index, [:math:`kg/kg_{fuel}`]
-        nvpm_ei_n : npt.NDArray[np.floating]
-            nvPM number emissions index, [:math:`kg_{fuel}^{-1}`]
-
-        References
-        ----------
-        - :cite:`stettlerGlobalCivilAviation2013`
-        - :cite:`abrahamsonPredictiveModelDevelopment2016`
-        - :cite:`teohTargetedUseSustainable2022`
-        """
-        warnings.warn(
-            f"Function has been deprecated, use `_nvpm_emission_indices_scope11_with_t4_t2` instead.",
-            category=FutureWarning,
-            stacklevel=2,
-        )
-
-        nvpm_data_source = "FA Model"
-
-        # calculate properties
-        thrust_setting = self.source["thrust_setting"]
-        fuel_flow_per_engine = self.source.get_data_or_attr("fuel_flow_per_engine")
-        true_airspeed = self.source.get_data_or_attr("true_airspeed")
-        air_temperature = self.source["air_temperature"]
-
-        # Emissions indices
-        nvpm_ei_m = nvpm_mass_emissions_index_sac(
-            edb_gaseous,
-            air_pressure=self.source.air_pressure,
-            true_airspeed=true_airspeed,
-            air_temperature=air_temperature,
-            thrust_setting=thrust_setting,
-            fuel_flow_per_engine=fuel_flow_per_engine,
-            hydrogen_content=fuel.hydrogen_content,
-        )
-        nvpm_gmd = nvpm_geometric_mean_diameter_sac(
-            edb_gaseous,
-            air_pressure=self.source.air_pressure,
-            true_airspeed=true_airspeed,
-            air_temperature=air_temperature,
-            thrust_setting=thrust_setting,
-            q_fuel=fuel.q_fuel,
-        )
-        nvpm_ei_n = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m, nvpm_gmd)
-        return nvpm_data_source, nvpm_ei_m, nvpm_ei_n
-
     def _nvpm_emission_indices_constant(
-        self, fuel: Fuel,
+        self,
+        fuel: Fuel,
     ) -> tuple[str, npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         """
         Assume constant emission indices for nvPM mass and number.
@@ -885,7 +814,7 @@ class Emissions(Model):
         k_num = nvpm.nvpm_number_fuel_correction_icao_annex_16(
             fuel.hydrogen_content, thrust_setting
         )
-        return nvpm_data_source, (nvpm_ei_m * k_mass), (nvpm_ei_n * k_num)
+        return nvpm_data_source, nvpm_ei_m * k_mass, nvpm_ei_n * k_num
 
     def _total_pollutant_emissions(self) -> None:
         if not isinstance(self.source, Flight):
