@@ -1275,9 +1275,9 @@ class MetDataset(MetBase):
           * longitude     (longitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
           * latitude      (latitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
           * level         (level) float64 16B 250.0 300.0
-          * time          (time) datetime64[ns] 8B 2019-01-01
             air_pressure  (level) float32 8B 2.5e+04 3e+04
             altitude      (level) float32 8B 1.036e+04 9.164e+03
+          * time          (time) datetime64[ns] 8B 2019-01-01
         Data variables:
             *empty*
 
@@ -1298,9 +1298,9 @@ class MetDataset(MetBase):
           * longitude     (longitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
           * latitude      (latitude) float64 160B 0.0 0.5 1.0 1.5 ... 8.0 8.5 9.0 9.5
           * level         (level) float64 16B 250.0 300.0
-          * time          (time) datetime64[ns] 8B 2019-01-01
             air_pressure  (level) float32 8B 2.5e+04 3e+04
             altitude      (level) float32 8B 1.036e+04 9.164e+03
+          * time          (time) datetime64[ns] 8B 2019-01-01
         Data variables:
             temperature   (longitude, latitude, level, time) float64 6kB 234.5 ... 234.5
             humidity      (longitude, latitude, level, time) float64 6kB 0.5 0.5 ... 0.5
