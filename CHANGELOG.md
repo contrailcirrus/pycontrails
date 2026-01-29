@@ -15,7 +15,9 @@
 
 - Run test suite on python 3.14 in CI.
 - Add additional [pandas 3.0](https://pandas.pydata.org/docs/dev/whatsnew/v3.0.0.html) compatibility when `Flight` arrays are read-only.
-- Add new unit test to improve ease of evaluating different nvPM models
+- Add new unit test to improve ease of evaluating different nvPM models.
+- Fill missing temperature and pressure values in the EDB gaseous CSV file with ISA standard atmosphere values. This only affects older engines for which these values are missing.
+- Assume a constant nvPM emission index when smoke numbers are not available.
 
 ## 0.60.2
 

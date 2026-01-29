@@ -358,23 +358,37 @@ class Emissions(Model):
                     "the fuel type must be provided in the attributes. "
                 ) from exc
 
-        edb_nvpm = self.edb_engine_nvpm.get(engine_uid) if engine_uid else None
-        edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
+        # Calculate nvPM emission indices using nvPM data from the EDB if available
+        edb_nvpm = self.edb_engine_nvpm.get(engine_uid)  # type: ignore[arg-type]
+        if edb_nvpm:
+            nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_t4_t2(
+                edb_nvpm, fuel
+            )
+            self.source.attrs["nvpm_data_source"] = nvpm_data_source
+            self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
+            self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
+            return
 
-        if edb_nvpm is not None:
-            nvpm_data = self._nvpm_emission_indices_t4_t2(edb_nvpm, fuel)
-        elif edb_gaseous is not None:
-            nvpm_data = self._nvpm_emission_indices_scope11_with_t4_t2(edb_gaseous, fuel)
-        else:
-            if engine_uid is not None:
-                warnings.warn(
-                    f"Cannot find 'engine_uid' {engine_uid} in EDB. "
-                    "A constant emissions will be used."
+        # Calculate nvPM emission indices using gaseous data from the EDB if available
+        # and the smoke numbers are all available
+        edb_gaseous = self.edb_engine_gaseous.get(engine_uid)  # type: ignore[arg-type]
+        if edb_gaseous:
+            sn = [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100]
+            if np.isfinite(sn).all():
+                nvpm_data_source, nvpm_ei_m, nvpm_ei_n = (
+                    self._nvpm_emission_indices_scope11_with_t4_t2(edb_gaseous, fuel)
                 )
-            nvpm_data = self._nvpm_emission_indices_constant(fuel)
+                self.source.attrs["nvpm_data_source"] = nvpm_data_source
+                self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
+                self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
+                return
 
-        nvpm_data_source, nvpm_ei_m, nvpm_ei_n = nvpm_data
-
+        # Use a constant nvPM emission index if no data is available
+        if engine_uid is not None:
+            warnings.warn(
+                f"Cannot find 'engine_uid' {engine_uid} in EDB. A constant emissions will be used."
+            )
+        nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_constant(fuel)
         self.source.attrs["nvpm_data_source"] = nvpm_data_source
         self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
         self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
@@ -985,8 +999,7 @@ def get_thrust_setting(
     )
 
     thrust_setting = fuel_flow_per_engine / edb_gaseous.ff_100
-    thrust_setting.clip(0.03, 1.0, out=thrust_setting)  # clip in place
-    return thrust_setting
+    return np.clip(thrust_setting, 0.03, 1.0)
 
 
 # ---------------------------------------------------
@@ -1039,10 +1052,20 @@ def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
         "Ambient Baro Max (kPa)": "pressure_max",
     }
 
-    df = pd.read_csv(EDB_ENGINE_PATH)
-    df = df.rename(columns=columns)
+    df = pd.read_csv(EDB_ENGINE_PATH).rename(columns=columns)
+
+    # Fill missing temperature and pressure values with ISA ground conditions
+    fill_temperature = 288.15  # ISA ground temperature (K)
+    fill_pressure = 101.325  # ISA ground pressure (kPa)
+    df["temp_min"] = df["temp_min"].fillna(fill_temperature)
+    df["temp_max"] = df["temp_max"].fillna(fill_temperature)
+    df["pressure_min"] = df["pressure_min"].fillna(fill_pressure)
+    df["pressure_max"] = df["pressure_max"].fillna(fill_pressure)
+
     # Convert ambient pressure from kPa to Pa
-    df[["pressure_min", "pressure_max"]] = df[["pressure_min", "pressure_max"]] * 1000.0
+    df["pressure_min"] = df["pressure_min"] * 1000.0
+    df["pressure_max"] = df["pressure_max"] * 1000.0
+
     return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
 

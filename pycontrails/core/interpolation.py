@@ -692,11 +692,11 @@ class EmissionsProfileInterpolator:
         if len(self.xp) != len(self.fp):
             msg = "xp and fp must have the same length"
             raise ValueError(msg)
-        if not np.all(np.diff(self.xp) > 0.0):
-            msg = "xp must be strictly increasing"
-            raise ValueError(msg)
         if np.any(np.isnan(self.xp)):
             msg = "xp must not contain nan values"
+            raise ValueError(msg)
+        if not np.all(np.diff(self.xp) > 0.0):
+            msg = "xp must be strictly increasing"
             raise ValueError(msg)
 
     def interp(self, x: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:

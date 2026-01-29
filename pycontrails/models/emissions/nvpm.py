@@ -557,7 +557,7 @@ def estimate_nvpm_meem(
     fuel_flow_per_engine = jet.equivalent_fuel_flow_rate_at_sea_level(
         fuel_flow_per_engine, theta_amb, delta_amb, mach_num
     )
-    fuel_flow_per_engine.clip(ff_7, ff_100, out=fuel_flow_per_engine)  # clip in place
+    fuel_flow_per_engine = np.clip(fuel_flow_per_engine, ff_7, ff_100)
 
     # Interpolate nvPM EI_m for ground conditions
     nvpm_ei_m_sl = nvpm_ei_m_profile.interp(fuel_flow_per_engine)
