@@ -2468,9 +2468,9 @@ def calc_timestep_contrail_evolution(
     # Update cumulative radiative heating energy absorbed by the contrail
     # This will always be zero if radiative_heating_effects is not activated in cocip_params
     if params["radiative_heating_effects"]:
-        dt_sec = dt / np.timedelta64(1, "s")
         heat_rate_1 = contrail_1["heat_rate"]
         cumul_heat = contrail_1["cumul_heat"]
+        dt_sec = (dt / np.timedelta64(1, "s")).astype(cumul_heat.dtype, copy=False)
         cumul_heat = cumul_heat + heat_rate_1 * dt_sec  # avoid += (may be read-only)
         cumul_heat.clip(max=1.5, out=cumul_heat)  # Constrain additional heat to 1.5 K as precaution
         contrail_2["cumul_heat"] = cumul_heat
