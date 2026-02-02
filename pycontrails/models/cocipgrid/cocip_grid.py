@@ -1104,7 +1104,6 @@ def _evolve_vector(
 
     # After advection, out has time t
     out = advect(vector, dt, dt_head, dt_tail)  # type: ignore[arg-type]
-
     out = run_interpolators(
         out,
         met,
@@ -1113,7 +1112,23 @@ def _evolve_vector(
         humidity_scaling=params["humidity_scaling"],
         **params["_interp_kwargs"],
     )
-    out = calc_evolve_one_step(vector, out, params)
+
+    # required by process-split implementation of revised ice budget
+    if params["revised_contrail_ice_budget"]:
+        sed = sediment(vector, dt)  # type: ignore[arg-type]
+        sed = run_interpolators(
+            sed,
+            met,
+            rad=None,
+            dz_m=None,
+            humidity_scaling=params["humidity_scaling"],
+            keys=("air_temperature", "specific_humidity"),
+            **params["_interp_kwargs"],
+        )
+    else:
+        sed = None
+
+    out = calc_evolve_one_step(vector, sed, out, params)
     ef_summary = out.select(("index", "age", "ef"), copy=False)
 
     return out, ef_summary
@@ -1587,6 +1602,7 @@ def find_initial_persistent_contrails(
 
 def calc_evolve_one_step(
     curr_contrail: GeoVectorDataset,
+    sed_contrail: GeoVectorDataset | None,
     next_contrail: GeoVectorDataset,
     params: dict[str, Any],
 ) -> GeoVectorDataset:
@@ -1595,10 +1611,19 @@ def calc_evolve_one_step(
     This function attaches additional variables to ``next_contrail``, then
     filters by :func:`contrail_properties.contrail_persistent`.
 
+    .. versionchanged:: 0.60.3
+
+        A required ``sed_contrail`` parameter was added to support integration using
+        a revised contrail ice budget. This parameter is unused and can be set to ``None``
+        when using the original contrail ice budget.
+
     Parameters
     ----------
     curr_contrail : GeoVectorDataset
         Existing contrail
+    sed_contrail : GeoVectorDataset
+        Result of sedimentation of existing contrail already interpolated against CoCiP met data.
+        Only required when ``params["revised_contrail_ice_budget"]`` is ``True``.
     next_contrail : GeoVectorDataset
         Result of advecting existing contrail already interpolated against CoCiP met data
     params : dict[str, Any]
@@ -1670,17 +1695,74 @@ def calc_evolve_one_step(
 
     rho_air_t2 = next_contrail["rho_air"]
     plume_mass_per_m_t2 = contrail_properties.plume_mass_per_distance(area_eff_t2, rho_air_t2)
-    iwc_t2 = contrail_properties.new_ice_water_content(
-        iwc_t1=iwc_t1,
-        q_t1=specific_humidity_t1,
-        q_t2=specific_humidity_t2,
-        q_sat_t1=q_sat_t1,
-        q_sat_t2=q_sat_t2,
-        # FIXME
-        q_sat_t2_sed=q_sat_t1,
-        mass_plume_t1=plume_mass_per_m_t1,
-        mass_plume_t2=plume_mass_per_m_t2,
-    )
+
+    if params["revised_contrail_ice_budget"]:
+        if sed_contrail is None:
+            msg = (
+                "Contrail properties after sedimentation must be provided when using "
+                "revised contrail ice budget."
+            )
+            raise ValueError(msg)
+
+        # get ambient specific humidity and saturation specific humidity after sedimentation
+        specific_humidity_sed = sed_contrail["specific_humidity"]
+        q_sat_sed = thermo.q_sat_ice(sed_contrail["air_temperature"], sed_contrail["air_pressure"])
+
+        # compute plume mass after sedimentation
+        plume_mass_per_m_sed = contrail_properties.plume_mass_per_distance(
+            curr_contrail["area_eff"],
+            thermo.rho_d(sed_contrail["air_temperature"], sed_contrail["air_pressure"]),
+        )
+
+        # get plume depth, terminal fall speed, and phase relaxation rate
+        # used to limit deposition/sedimentation in a shallow but rapidly-sedimenting plume
+        terminal_fall_speed_t1 = curr_contrail["terminal_fall_speed"]
+        depth_eff_t1 = contrail_properties.plume_effective_depth(
+            width_t1, curr_contrail["area_eff"]
+        )
+        n_ice_per_vol_t1 = contrail_properties.ice_particle_number_per_volume_of_plume(
+            curr_contrail["n_ice_per_m"], curr_contrail["area_eff"]
+        )
+        n_ice_per_kg_t1 = contrail_properties.ice_particle_number_per_mass_of_air(
+            n_ice_per_vol_t1,
+            thermo.rho_d(curr_contrail["air_temperature"], curr_contrail["air_pressure"]),
+        )
+        r_vol_t1 = contrail_properties.ice_particle_volume_mean_radius(iwc_t1, n_ice_per_kg_t1)
+        vapor_diffusivity_t1 = thermo.diffusivity_water_vapor(
+            curr_contrail["air_temperature"], curr_contrail["air_pressure"]
+        )
+        phase_relax_rate_t1 = contrail_properties.phase_relaxation_rate(
+            r_vol_t1, n_ice_per_vol_t1, vapor_diffusivity_t1
+        )
+
+        iwc_t2 = contrail_properties.new_ice_water_content_revised(
+            iwc_t1=iwc_t1,
+            q_t1=specific_humidity_t1,
+            q_sed=specific_humidity_sed,
+            q_t2=specific_humidity_t2,
+            q_sat_t1=q_sat_t1,
+            q_sat_sed=q_sat_sed,
+            q_sat_t2=q_sat_t2,
+            mass_plume_t1=plume_mass_per_m_t1,
+            mass_plume_sed=plume_mass_per_m_sed,
+            mass_plume_t2=plume_mass_per_m_t2,
+            depth_eff=depth_eff_t1,
+            terminal_fall_speed=terminal_fall_speed_t1,
+            phase_relax_rate=phase_relax_rate_t1,
+            dt=dt,
+        )
+
+    else:
+        iwc_t2 = contrail_properties.new_ice_water_content(
+            iwc_t1=iwc_t1,
+            q_t1=specific_humidity_t1,
+            q_t2=specific_humidity_t2,
+            q_sat_t1=q_sat_t1,
+            q_sat_t2=q_sat_t2,
+            mass_plume_t1=plume_mass_per_m_t1,
+            mass_plume_t2=plume_mass_per_m_t2,
+        )
+
     next_contrail["iwc"] = iwc_t2
 
     n_ice_per_m_t1 = curr_contrail["n_ice_per_m"]
@@ -2098,6 +2180,64 @@ def advect(
     data["latitude_tail"] = latitude_tail_t2
     data["segment_length"] = segment_length_t2
     data["head_tail_dt"] = head_tail_dt_t2
+
+    return GeoVectorDataset._from_fastpath(data, attrs=contrail.attrs).copy()
+
+
+def sediment(
+    contrail: GeoVectorDataset,
+    dt: np.timedelta64 | npt.NDArray[np.timedelta64],
+) -> GeoVectorDataset:
+    """Compute location of new contrail after sedimentation only.
+
+    Parameter ``contrail`` is not modified.
+
+    Required when using revised contrail ice budget.
+
+    Parameters
+    ----------
+    contrail : GeoVectorDataset
+        Original contrail grid points already interpolated against wind data
+    dt : np.timedelta64 | npt.NDArray[np.timedelta64]
+        Time step for sedimentation
+
+    Returns
+    -------
+    GeoVectorDataset
+        New contrail instance with keys:
+            - "index"
+            - "longitude"
+            - "latitude"
+            - "level"
+            - "air_pressure"
+            - "altitude",
+            - "time"
+    """
+    longitude = contrail["longitude"]
+    latitude = contrail["latitude"]
+    level = contrail["level"]
+    time = contrail["time"]
+    rho_air = contrail["rho_air"]
+    terminal_fall_speed = contrail["terminal_fall_speed"]
+
+    # Using the _t2 convention for post-advection data
+    index_t2 = contrail["index"]
+    time_t2 = time + dt
+    longitude_t2 = longitude
+    latitude_t2 = latitude
+
+    level_t2 = geo.advect_level(level, 0.0, rho_air, terminal_fall_speed, dt)
+    altitude_t2 = units.pl_to_m(level_t2)
+
+    data = {
+        "index": index_t2,
+        "longitude": longitude_t2,
+        "latitude": latitude_t2,
+        "level": level_t2,
+        "air_pressure": 100.0 * level_t2,
+        "altitude": altitude_t2,
+        "time": time_t2,
+    }
 
     return GeoVectorDataset._from_fastpath(data, attrs=contrail.attrs).copy()
 
