@@ -1336,28 +1336,24 @@ class Cocip(Model):
             self._downwash_contrail._invalidate_indices()
 
     def _bundle_results(self) -> None:
-        # ---
+        verbose_outputs = self.params["verbose_outputs"]
+        compute_atr20 = self.params["compute_atr20"]
+
         # Create contrail dataframe (self.contrail)
-        # ---
         self.contrail = GeoVectorDataset.sum(self.contrail_list).dataframe
         self.contrail["timestep"] = np.concatenate(
             [np.full(c.size, i) for i, c in enumerate(self.contrail_list)]
         )
-
-        # add age in hours to the contrail waypoint outputs
         age_hours = np.empty_like(self.contrail["ef"])
         np.divide(self.contrail["age"], np.timedelta64(1, "h"), out=age_hours)
         self.contrail["age_hours"] = age_hours
 
-        verbose_outputs = self.params["verbose_outputs"]
         if verbose_outputs:
-            # Compute dt_integration -- logic is somewhat complicated, but
-            # we're simply addressing that the first dt_integration
-            # is different from the rest
-
-            # We call reset_index to introduces an `index` RangeIndex column,
-            # Which we use in the `groupby` to identify the
-            # index of the first evolution step at each waypoint.
+            # Logic is somewhat complicated: we're addressing that the first
+            # dt_integration is different from the rest
+            # We call reset_index to introduce an index RangeIndex column,
+            # which we use in the groupby to identify the index of the
+            # first evolution step at each waypoint.
             tmp = self.contrail.reset_index()
             cols = ["formation_time", "time", "index"]
             first_form_time = tmp.groupby("waypoint")[cols].first()
@@ -1375,7 +1371,7 @@ class Cocip(Model):
         col_idx = ["flight_id", "waypoint"] if isinstance(self.source, Fleet) else ["waypoint"]
         del self.source["_met_intersection"]
 
-        # Attach intermediate calculations from `sac_flight` and `downwash_flight` to flight
+        # SAC columns to attach from _sac_flight
         sac_cols = [
             "width",
             "depth",
@@ -1385,18 +1381,13 @@ class Cocip(Model):
             "altitude_1",
             "persistent_1",
         ]
-
-        # add additional columns
         if verbose_outputs:
             sac_cols += ["dT_dz", "ds_dz", "dz_max"]
 
-        downwash_cols = [
-            "rho_air_1",
-            "iwc_1",
-            "f_surv",
-            "n_ice_per_m_0",
-            "n_ice_per_m_1",
-        ]
+        # Downwash columns to attach from _downwash_flight
+        downwash_cols = ["rho_air_1", "iwc_1", "f_surv", "n_ice_per_m_0", "n_ice_per_m_1"]
+
+        # Combine source with sac and downwash data
         df = pd.concat(
             [
                 self.source.dataframe.set_index(col_idx),
@@ -1409,63 +1400,65 @@ class Cocip(Model):
         # Aggregate contrail data back to flight
         grouped = self.contrail.groupby(col_idx)
 
-        # Perform all aggregations
+        # Build aggregation dict for contrail -> source aggregation
         agg_dict = {"ef": ["sum"], "age": ["max"]}
-        if self.params["compute_atr20"]:
+        if compute_atr20:
             agg_dict["global_yearly_mean_rf"] = ["sum"]
             agg_dict["atr20"] = ["sum"]
 
+        # Radiative forcing columns: always include mean, optionally min/max
         rad_keys = ["sdr", "rsr", "olr", "rf_sw", "rf_lw", "rf_net"]
         for key in rad_keys:
-            if verbose_outputs:
-                agg_dict[key] = ["mean", "min", "max"]
-            else:
-                agg_dict[key] = ["mean"]
+            agg_dict[key] = ["mean", "min", "max"] if verbose_outputs else ["mean"]
 
         aggregated = grouped.agg(agg_dict)
         aggregated.columns = [f"{k1}_{k2}" for k1, k2 in aggregated.columns]
-        aggregated = aggregated.rename(columns={"ef_sum": "ef", "age_max": "contrail_age"})
-        if self.params["compute_atr20"]:
-            aggregated = aggregated.rename(
-                columns={"global_yearly_mean_rf_sum": "global_yearly_mean_rf", "atr20_sum": "atr20"}
-            )
 
-        # Join the two
+        # Rename aggregated columns to standard names
+        rename_cols = {"ef_sum": "ef", "age_max": "contrail_age"}
+        if compute_atr20:
+            rename_cols["global_yearly_mean_rf_sum"] = "global_yearly_mean_rf"
+            rename_cols["atr20_sum"] = "atr20"
+        aggregated = aggregated.rename(columns=rename_cols)
+
+        # Join aggregated contrail data to source
         df = df.join(aggregated)
 
         # Fill missing values for ef and contrail_age per conventions
-        # Mean, max, and min radiative values are *not* filled with 0
+        # Note: radiative forcing mean, max, and min values are *not* filled with 0
         df.fillna({"ef": 0.0, "contrail_age": np.timedelta64(0, "ns")}, inplace=True)
 
-        # cocip flag for each waypoint
-        # -1 if negative EF, 0 if no EF, 1 if positive EF,
-        # or NaN for outside of domain of flight waypoints that don't persist
+        # Cocip flag for each waypoint:
+        # -1 if negative EF, 0 if no EF, 1 if positive EF, NaN for waypoints outside met domain
         df["cocip"] = np.sign(df["ef"])
         logger.debug("Total number of waypoints with nonzero EF: %s", df["cocip"].ne(0.0).sum())
 
-        # reset the index
+        # Reset index and reassign to source (without creating a new instance)
         df = df.reset_index()
-
-        # Reassign to source
         self.source.data = VectorDataDict({k: v.to_numpy() for k, v in df.items()})
 
     def _fill_empty_flight_results(self, return_list_flight: bool) -> Flight | list[Flight]:
         """Fill empty results into flight / fleet and return.
 
-        This method attaches an all nan array to each of the variables:
-            - sdr
-            - rsr
-            - olr
-            - rf_sw
-            - rf_lw
-            - rf_net
+        This method creates an empty :attr:`contrail` DataFrame with the standard columns
+        and attaches standard output columns to :attr:`source`.
 
-        This method also attaches zeros (for trajectory points contained within met grid)
-        or nans (for trajectory points outside of the met grid) to the following variables.
-            - ef
-            - cocip
-            - contrail_age
-            - persistent_1
+        The following columns are added to :attr:`source` with nan values:
+            - sdr_mean, rsr_mean, olr_mean, rf_sw_mean, rf_lw_mean, rf_net_mean
+            - width, depth, rhi_1, air_temperature_1, specific_humidity_1, altitude_1
+            - rho_air_1, iwc_1, f_surv, n_ice_per_m_0, n_ice_per_m_1
+
+        The following columns are added with zeros (for waypoints within met grid)
+        or nans (for waypoints outside the met grid):
+            - ef, cocip, contrail_age, persistent_1
+
+        When ``verbose_outputs=True``, additional columns are added:
+            - dT_dz, ds_dz, dz_max (to source)
+            - sdr_min, sdr_max, rsr_min, rsr_max, olr_min, olr_max,
+              rf_sw_min, rf_sw_max, rf_lw_min, rf_lw_max, rf_net_min, rf_net_max (to source)
+
+        When ``compute_atr20=True``, additional columns are added:
+            - global_yearly_mean_rf, atr20 (to source and contrail)
 
         Parameters
         ----------
@@ -1480,18 +1473,145 @@ class Cocip(Model):
         """
         self._cleanup_indices()
 
+        verbose_outputs = self.params["verbose_outputs"]
+        compute_atr20 = self.params["compute_atr20"]
+
         intersection = self.source.data.pop("_met_intersection")
         zeros_and_nans = np.zeros(intersection.shape, dtype=np.float32)
         zeros_and_nans[~intersection] = np.nan
+        nan_array = np.full(intersection.shape, np.nan, dtype=np.float32)
+
+        # Columns with zeros (inside met) or nans (outside met)
         self.source["ef"] = zeros_and_nans.copy()
         self.source["persistent_1"] = zeros_and_nans.copy()
         self.source["cocip"] = np.sign(zeros_and_nans)
         self.source["contrail_age"] = zeros_and_nans.astype("timedelta64[ns]")
 
+        # SAC columns (nan-filled)
+        sac_cols = [
+            "width",
+            "depth",
+            "rhi_1",
+            "air_temperature_1",
+            "specific_humidity_1",
+            "altitude_1",
+        ]
+        for col in sac_cols:
+            if col not in self.source:
+                self.source[col] = nan_array.copy()
+
+        # Downwash columns (nan-filled)
+        downwash_cols = ["rho_air_1", "iwc_1", "f_surv", "n_ice_per_m_0", "n_ice_per_m_1"]
+        for col in downwash_cols:
+            if col not in self.source:
+                self.source[col] = nan_array.copy()
+
+        # Radiative forcing aggregation columns (nan-filled)
+        rad_keys = ["sdr", "rsr", "olr", "rf_sw", "rf_lw", "rf_net"]
+        for key in rad_keys:
+            self.source[f"{key}_mean"] = nan_array.copy()
+            if verbose_outputs:
+                self.source[f"{key}_min"] = nan_array.copy()
+                self.source[f"{key}_max"] = nan_array.copy()
+
+        # Verbose output columns (nan-filled)
+        if verbose_outputs:
+            verbose_cols = ["dT_dz", "ds_dz", "dz_max"]
+            for col in verbose_cols:
+                if col not in self.source:
+                    self.source[col] = nan_array.copy()
+
+        # ATR20 columns (nan-filled)
+        if compute_atr20:
+            self.source["global_yearly_mean_rf"] = nan_array.copy()
+            self.source["atr20"] = nan_array.copy()
+
+        # Create empty contrail DataFrame with standard columns
+        self.contrail = self._create_empty_contrail_dataframe()
+
         if return_list_flight:
             return self.source.to_flight_list()  # type: ignore[attr-defined]
 
         return self.source
+
+    def _create_empty_contrail_dataframe(self) -> pd.DataFrame:
+        """Create an empty contrail DataFrame with the standard columns and dtypes.
+
+        Returns
+        -------
+        pd.DataFrame
+            Empty DataFrame with standard contrail columns.
+        """
+        # Define column dtypes for the contrail DataFrame
+        # These match the columns produced by _bundle_results when contrails exist
+        col_dtypes = {
+            "waypoint": np.int64,
+            "flight_id": str,
+            "formation_time": "datetime64[ns]",
+            "time": "datetime64[ns]",
+            "age": "timedelta64[ns]",
+            "longitude": np.float32,
+            "latitude": np.float32,
+            "altitude": np.float32,
+            "level": np.float32,
+            "continuous": bool,
+            "segment_length": np.float32,
+            "sin_a": np.float32,
+            "cos_a": np.float32,
+            "width": np.float32,
+            "depth": np.float32,
+            "sigma_yz": np.float32,
+            "air_temperature": np.float32,
+            "specific_humidity": np.float32,
+            "air_pressure": np.float32,
+            "rhi": np.float32,
+            "rho_air": np.float32,
+            "q_sat": np.float32,
+            "n_ice_per_m": np.float32,
+            "iwc": np.float32,
+            "u_wind": np.float32,
+            "v_wind": np.float32,
+            "vertical_velocity": np.float32,
+            "tau_cirrus": np.float32,
+            "dsn_dz": np.float32,
+            "sdr": np.float32,
+            "rsr": np.float32,
+            "olr": np.float32,
+            "area_eff": np.float32,
+            "plume_mass_per_m": np.float32,
+            "r_ice_vol": np.float32,
+            "terminal_fall_speed": np.float32,
+            "diffuse_h": np.float32,
+            "diffuse_v": np.float32,
+            "n_ice_per_vol": np.float32,
+            "tau_contrail": np.float32,
+            "dn_dt_agg": np.float32,
+            "dn_dt_turb": np.float32,
+            "rf_sw": np.float32,
+            "rf_lw": np.float32,
+            "rf_net": np.float32,
+            "persistent": bool,
+            "ef": np.float32,
+            "timestep": np.int64,
+            "age_hours": np.float32,
+        }
+
+        # Add verbose output columns
+        if self.params["verbose_outputs"]:
+            col_dtypes["air_temperature_lower"] = np.float32
+            col_dtypes["u_wind_lower"] = np.float32
+            col_dtypes["v_wind_lower"] = np.float32
+            col_dtypes["dT_dz"] = np.float32
+            col_dtypes["ds_dz"] = np.float32
+            col_dtypes["dt_integration"] = "timedelta64[ns]"
+
+        # Add ATR20 columns
+        if self.params["compute_atr20"]:
+            col_dtypes["global_yearly_mean_rf"] = np.float32
+            col_dtypes["atr20"] = np.float32
+
+        # Create empty DataFrame with proper dtypes
+        return pd.DataFrame({col: np.array([], dtype=dtype) for col, dtype in col_dtypes.items()})  # type: ignore[call-overload]
 
 
 # ----------------------------------------
