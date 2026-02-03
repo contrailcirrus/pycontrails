@@ -1612,6 +1612,9 @@ def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: Me
     # This key was removed
     assert "_met_intersection" not in out
 
+    assert isinstance(cocip.contrail, pd.DataFrame)
+    assert cocip.contrail.empty
+
 
 @pytest.mark.filterwarnings("ignore:.*the contrail has no intersection with the met")
 @pytest.mark.parametrize("q_method", [None, "cubic-spline"])
