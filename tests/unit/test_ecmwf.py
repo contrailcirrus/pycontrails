@@ -625,7 +625,7 @@ def test_ERA5_set_met_source_metadata(product_type: str, variables: str) -> None
 
     assert ds.attrs["provider"] == "ECMWF"
     assert ds.attrs["dataset"] == "ERA5"
-    assert ds.attrs["product"] == product_type.split("_")[0]
+    assert ds.attrs["product"] == product_type.split("_", maxsplit=1)[0]
 
 
 @pytest.mark.usefixtures("_dask_single_threaded")
