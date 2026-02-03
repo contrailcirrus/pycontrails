@@ -447,7 +447,6 @@ def test_init_model(met: MetDataset, rad: MetDataset) -> None:
 
     # outputs
     assert cocip.contrail is None
-    assert cocip.contrail_dataset is None
 
 
 def test_cocip_processes_met(met: MetDataset, rad: MetDataset) -> None:
@@ -1039,15 +1038,6 @@ def test_eval_generic(reference: str, generic: str, request: pytest.FixtureReque
         cocip.contrail.drop(["top_net_thermal_radiation", "top_net_solar_radiation"], axis=1),
         cocip_generic.contrail.drop(["toa_net_downward_shortwave_flux"], axis=1),
     )
-
-
-def test_xarray_contrail(cocip_persistent: Cocip) -> None:
-    """Confirm expected contrail output on attribute `contrail_dataset`."""
-    assert cocip_persistent.contrail_dataset["longitude"].shape == (8, 12)
-
-    # The contrail_dataset['timestep'] does not necessarily coincide with cocip.timesteps
-    assert cocip_persistent.contrail_dataset["timestep"].size == 8
-    assert cocip_persistent.contrail_dataset["waypoint"].size == 12
 
 
 def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerformance) -> None:

@@ -16,7 +16,6 @@ else:
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import xarray as xr
 
 from pycontrails.core import met_var, models
 from pycontrails.core.aircraft_performance import AircraftPerformance
@@ -224,7 +223,6 @@ class Cocip(Model):
         "_downwash_flight",
         "_sac_flight",
         "contrail",
-        "contrail_dataset",
         "contrail_list",
         "rad",
         "timesteps",
@@ -329,9 +327,6 @@ class Cocip(Model):
     #:   :func:`contrail_properties.energy_forcing`.
     contrail: pd.DataFrame | None
 
-    #: :class:`xr.Dataset` representation of contrail evolution.
-    contrail_dataset: xr.Dataset | None
-
     #: Array of :class:`numpy.datetime64` time steps for contrail evolution
     timesteps: npt.NDArray[np.datetime64]
 
@@ -351,19 +346,12 @@ class Cocip(Model):
         params: dict[str, Any] | None = None,
         **params_kwargs: Any,
     ) -> None:
-        # call Model init
         super().__init__(met, params=params, **params_kwargs)
 
         compute_tau_cirrus = self.params["compute_tau_cirrus_in_model_init"]
         self.met, self.rad = process_met_datasets(met, rad, compute_tau_cirrus)
 
-        # initialize outputs to None
-        self.contrail = None
-        self.contrail_dataset = None
-
-    # ----------
-    # Public API
-    # ----------
+        self.contrail = None  # initialize the contrail attribute to None
 
     @overload
     def eval(self, source: Fleet, **params: Any) -> Fleet: ...
@@ -1379,15 +1367,6 @@ class Cocip(Model):
             self.contrail = tmp.set_index("index")
             self.contrail["dt_integration"] = first_dt
             self.contrail.fillna({"dt_integration": self.params["dt_integration"]}, inplace=True)
-
-            # ---
-            # Create contrail xr.Dataset (self.contrail_dataset)
-            # ---
-            if isinstance(self.source, Fleet):
-                keys = ["flight_id", "timestep", "waypoint"]
-            else:
-                keys = ["timestep", "waypoint"]
-            self.contrail_dataset = xr.Dataset.from_dataframe(self.contrail.set_index(keys))
 
         # ---
         # Create output Flight / Fleet (self.source)
