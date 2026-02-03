@@ -6,6 +6,8 @@
 
 - Update nvPM fuel correction for the GAIA workflow: The standard ICAO Annex 16 methodology is now used in place of the Teoh et al. (2022) approach.
 - Revise fallback for engines not covered in the nvPM ICAO EDB: The SCOPE11 method now replaces the FOX-ImFOX methodology in the GAIA workflow. SCOPE11 is used to construct the nvPM emissions profile, which is then passed to the T4/T2 methodology to estimate the cruise nvPM mass and number emissions.
+- The `Cocip.contrail` attribute is now always set to a `pd.DataFrame` after `eval` is called, even when no contrails are formed. Previously, it remained `None` in early-exit scenarios. The empty DataFrame has standardized column names and dtypes matching the structure produced when contrails persist.
+- The `Cocip` model now adds consistent output columns to `source` regardless of whether contrails are formed. When no contrails form, columns such as `sdr_mean`, `rsr_mean`, `olr_mean`, `rf_sw_mean`, `rf_lw_mean`, `rf_net_mean`, and intermediate SAC/downwash columns (`width`, `depth`, `rhi_1`, `rho_air_1`, `iwc_1`, `f_surv`, etc.) are filled with `nan` values. This ensures that the output schema is consistent across runs of `Cocip.eval` but may slightly increase memory usage in scenarios where no contrails are formed.
 
 ### Fixes
 
