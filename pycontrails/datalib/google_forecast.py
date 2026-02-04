@@ -32,6 +32,7 @@ Severity = MetVariable(
     standard_name="contrails",
     long_name="Contrail Severity Index",
     description="The severity (0-4) of forecasted contrail warming.",
+    units="dimensionless",
 )
 
 
@@ -42,6 +43,7 @@ EffectiveEnergyForcing = MetVariable(
     description=(
         "The effective energy forcing of contrail warming. It has the ERF/RF ratio applied."
     ),
+    units="J m**-1",
 )
 
 
