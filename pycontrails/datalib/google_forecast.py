@@ -43,7 +43,7 @@ EffectiveEnergyForcing = MetVariable(
 class GoogleForecast(metsource.MetDataSource):
     """Google Forecast datalib to download precomputed contrail forecasts from API sources.
 
-    This class provides an interface to the Google Contrails Forecast API.
+    This class provides an interface to the `Google Contrails Forecast API <https://developers.google.com/contrails>`_.
     It returns a :class:`MetDataset` containing the forecasted energy forcing.
 
     Parameters
