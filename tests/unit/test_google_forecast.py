@@ -46,9 +46,8 @@ def test_google_forecast_init(local_cache):
     assert gf.url == "https://contrails.googleapis.com/v2/grids"
     assert gf._credentials == "test-key"
     assert gf.timesteps == [pd.Timestamp("2022-01-01 12:00:00")]
-    assert gf.request_headers == {"x-goog-api-key": "test-key"}
+    assert gf._request_headers == {"x-goog-api-key": "test-key"}
 
-    # Test with default credentials (mocked)
     # Test with default credentials (mocked)
     with (
         mock.patch("google.auth.default", return_value=("default-creds", "project")),
@@ -59,7 +58,7 @@ def test_google_forecast_init(local_cache):
 
         gf = GoogleForecast(time="2022-01-01 12:00:00", cachestore=local_cache)
         assert gf._credentials is None
-        assert gf.request_headers == {"x-goog-api-key": "default-creds"}
+        assert gf._request_headers == {"x-goog-api-key": "default-creds"}
 
 
 def test_google_forecast_download(mock_requests, local_cache):
