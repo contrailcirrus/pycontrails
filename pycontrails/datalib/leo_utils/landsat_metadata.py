@@ -192,7 +192,7 @@ def parse_ephemeris_landsat(ang_content: str) -> pd.DataFrame:
     -------
     pd.DataFrame
         A :class:`pandas.DataFrame` containing the ephemeris track with columns:
-        - EPHEMERIS_TIME: Timestamps of the ephemeris data.
+        - EPHEMERIS_TIME: Timestamps of the ephemeris data with datetime64[ns]
         - EPHEMERIS_ECEF_X: ECEF X coordinates.
         - EPHEMERIS_ECEF_Y: ECEF Y coordinates.
         - EPHEMERIS_ECEF_Z: ECEF Z coordinates.
@@ -224,7 +224,7 @@ def parse_ephemeris_landsat(ang_content: str) -> pd.DataFrame:
     seconds = float(match.group(1))
 
     t0 = (
-        pd.Timestamp(year=year, month=1, day=1)
+        pd.Timestamp(year=year, month=1, day=1).as_unit("ns")  # pandas 3.0 uses us
         + pd.Timedelta(days=day - 1)
         + pd.Timedelta(seconds=seconds)
     )
