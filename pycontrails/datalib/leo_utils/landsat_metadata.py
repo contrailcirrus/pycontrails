@@ -192,7 +192,7 @@ def parse_ephemeris_landsat(ang_content: str) -> pd.DataFrame:
     -------
     pd.DataFrame
         A :class:`pandas.DataFrame` containing the ephemeris track with columns:
-        - EPHEMERIS_TIME: Timestamps of the ephemeris data with datetime64[ns]
+        - EPHEMERIS_TIME: Timestamps of the ephemeris data as datetime64[ns]
         - EPHEMERIS_ECEF_X: ECEF X coordinates.
         - EPHEMERIS_ECEF_Y: ECEF Y coordinates.
         - EPHEMERIS_ECEF_Z: ECEF Z coordinates.
