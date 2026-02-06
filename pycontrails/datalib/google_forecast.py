@@ -37,7 +37,7 @@ Severity = MetVariable(
 
 
 EffectiveEnergyForcing = MetVariable(
-    short_name="eef_per_m",
+    short_name="eeef_per_m",
     standard_name="expected_effective_energy_forcing",
     long_name="Expected Effective Energy Forcing",
     description=(
