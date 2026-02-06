@@ -32,7 +32,7 @@ Severity = MetVariable(
     standard_name="contrails",
     long_name="Contrail Severity Index",
     description="The severity (0-4) of forecasted contrail warming.",
-    units="dimensionless",
+    units="1",
 )
 
 
