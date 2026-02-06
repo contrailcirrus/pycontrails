@@ -41,7 +41,7 @@ EffectiveEnergyForcing = MetVariable(
     standard_name="expected_effective_energy_forcing",
     long_name="Expected Effective Energy Forcing",
     description=(
-        "The effective energy forcing of contrail warming. It has the ERF/RF ratio applied."
+        "The expected effective energy forcing of contrail warming (see https://developers.google.com/contrails/v1/forecast-description)."
     ),
     units="J m**-1",
 )
