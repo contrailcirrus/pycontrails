@@ -54,6 +54,8 @@ class GoogleForecast(metsource.MetDataSource):
     This class provides an interface to the `Google Contrails Forecast API <https://developers.google.com/contrails>`_.
     It returns a :class:`MetDataset` containing the forecast severity and/or energy forcing.
 
+    .. versionadded:: 0.60.3
+
     Parameters
     ----------
     time : metsource.TimeInput | None
