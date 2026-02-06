@@ -142,7 +142,7 @@ class Flight(GeoVectorDataset):
 
     Notes
     -----
-    The `Traffic <https://traffic-viz.github.io/index.html>`_ library has many helpful
+    The `Traffic <https://traffic-viz.github.io/index.html>`__ library has many helpful
     flight processing utilities.
 
     See :class:`traffic.core.Flight` for more information.
@@ -1097,7 +1097,7 @@ class Flight(GeoVectorDataset):
         Algorithm is derived from :meth:`traffic.core.Flight.filter`.
 
         The `traffic
-        <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`_
+        <https://traffic-viz.github.io/api_reference/traffic.core.flight.html#traffic.core.Flight.filter>`__
         algorithm also computes thresholds on sliding windows
         and replaces unacceptable values with NaNs.
 

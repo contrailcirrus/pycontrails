@@ -689,7 +689,7 @@ def mass_concentration_instrument_sampling_point(
     Returns
     -------
     npt.NDArray[np.floating]
-        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}]
+        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}`]
     """
     return (648.4 * np.exp(0.0766 * sn)) / (1 + np.exp(-1.098 * (sn - 3.064)))
 
@@ -703,7 +703,7 @@ def mass_system_loss_correction_factor(
     Parameters
     ----------
     c_bc_i : npt.NDArray[np.floating]
-        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}]
+        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}`]
         See :func:`mass_concentration_instrument_sampling_point`
     bypass_ratio : float
         Engine bypass ratio from the ICAO EDB
@@ -728,7 +728,7 @@ def mass_concentration_engine_exit(
     Parameters
     ----------
     c_bc_i : npt.NDArray[np.floating]
-        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}]
+        nvPM mass concentration at the instrument sampling point, [:math:`\mu g m^{-3}`]
         See :func:`mass_concentration_instrument_sampling_point`
     k_slm : npt.NDArray[np.floating]
         nvPM mass concentration/EI system loss correction factor
@@ -737,7 +737,7 @@ def mass_concentration_engine_exit(
     Returns
     -------
     npt.NDArray[np.floating]
-        nvPM mass concentration at the engine exit, [:math:`\mu g m^{-3}]
+        nvPM mass concentration at the engine exit, [:math:`\mu g m^{-3}`]
     """
     return c_bc_i * k_slm
 
@@ -759,7 +759,7 @@ def mass_concentration_combustor_exit(
     Parameters
     ----------
     c_bc_e : npt.NDArray[np.floating]
-        nvPM mass concentration at the engine exit plane, [:math:`\mu g m^{-3}]
+        nvPM mass concentration at the engine exit plane, [:math:`\mu g m^{-3}`]
         See :func:`mass_concentration_engine_exit`
     air_temperature: npt.NDArray[np.floating]
         Ambient temperature for each waypoint, [:math:`K`]
@@ -781,7 +781,7 @@ def mass_concentration_combustor_exit(
     Returns
     -------
     npt.NDArray[np.floating]
-        nvPM mass concentration at the combustor exit, [:math:`\mu g m^{-3}]
+        nvPM mass concentration at the combustor exit, [:math:`\mu g m^{-3}`]
     """
     rho_air_4 = air_density_combustor_exit(
         air_temperature, air_pressure, thrust_setting, afr, q_fuel, pressure_ratio, comp_efficiency
@@ -796,7 +796,7 @@ def geometric_mean_diameter_scope11(c_bc_c: npt.NDArray[np.floating]) -> npt.NDA
     Parameters
     ----------
     c_bc_c : npt.NDArray[np.floating]
-        nvPM mass concentration at the combustor exit, [:math:`\mu g m^{-3}]
+        nvPM mass concentration at the combustor exit, [:math:`\mu g m^{-3}`]
         See :func:`mass_concentration_combustor_exit`
 
     Returns
@@ -1476,8 +1476,8 @@ def exhaust_gas_volume_per_kg_fuel(
     References
     ----------
     - :cite:`stettlerGlobalCivilAviation2013`
-    # TODO: Add to bibliography
     - (Agarwal et al., 2019) https://doi.org/10.1021/acs.est.8b04060
+    # TODO: Add to bibliography
     """
     return 0.776 * afr * (1 + bypass_ratio) + 0.877
 

@@ -126,6 +126,14 @@ GRUAN Radiosondes
     datalib.gruan.GRUAN
 
 
+Google Contrail Forecast
+""""""""""""""""""""""""
+.. autosummary::
+    :toctree: api/
+
+    datalib.google_forecast.GoogleForecast
+
+
 Models
 ------
 
