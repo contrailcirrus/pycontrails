@@ -179,7 +179,7 @@ class GoogleForecast(metsource.MetDataSource):
 
         # Process: Convert flight_level to level if needed.
         if "level" not in ds.dims and "flight_level" in ds.dims:
-            ds["level"] = units.ft_to_pl(ds["flight_level"].astype(float) * 100)
+            ds["level"] = units.ft_to_pl(ds["flight_level"].astype(float) * 100.0)
             ds = ds.swap_dims({"flight_level": "level"})
 
         logger.info("Downloaded dataset: %s", ds)

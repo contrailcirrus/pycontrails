@@ -10,9 +10,14 @@
 - The `Cocip` model now adds consistent output columns to `source` regardless of whether contrails are formed. When no contrails form, columns such as `sdr_mean`, `rsr_mean`, `olr_mean`, `rf_sw_mean`, `rf_lw_mean`, `rf_net_mean`, and intermediate SAC/downwash columns (`width`, `depth`, `rhi_1`, `rho_air_1`, `iwc_1`, `f_surv`, etc.) are filled with `nan` values. This ensures that the output schema is consistent across runs of `Cocip.eval` but may slightly increase memory usage in scenarios where no contrails are formed.
 - Remove the `Cocip.contrail_dataset` attribute. Previously this was computed when `Cocip.eval` was run with the `verbose_outputs` flag enabled. If needed, users can recompute recompute this via `xr.Dataset.from_dataframe(cocip.contrail.set_index(["timestep", "waypoint"]))`.
 
+### Features
+
+- Add `GoogleForecast` datalib for accessing [Google Contrail forecasts](https://developers.google.com/contrails/v1/forecast-description). See the [Google Forecast notebook](https://py.contrails.org/notebooks/GoogleForecast.html) for usage.
+
 ### Fixes
 
 - Constant nvPM EI cases are now correctly adjusted for the fuel hydrogen content.
+- Address breaking changes to `pandas.Timestamp` unit resolution introduced in [pandas 3.0](https://pandas.pydata.org/docs/whatsnew/v3.0.0.html#datetime-timedelta-resolution-inference).
 
 ### Internals
 

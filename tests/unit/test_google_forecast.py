@@ -7,6 +7,7 @@ GOOGLE_API_KEY environment variable before running this test file.
 from __future__ import annotations
 
 import os
+import pathlib
 from unittest import mock
 
 import numpy as np
@@ -17,7 +18,7 @@ import xarray as xr
 from pycontrails import MetDataset
 from pycontrails.core import cache
 from pycontrails.datalib.google_forecast import (
-    EffectiveEnergyForcing,
+    ExpectedEffectiveEnergyForcing,
     GoogleForecast,
     Severity,
 )
@@ -31,7 +32,7 @@ def mock_requests():
 
 
 @pytest.fixture()
-def local_cache(tmp_path):
+def local_cache(tmp_path: pathlib.Path) -> cache.DiskCacheStore:
     return cache.DiskCacheStore(cache_dir=tmp_path)
 
 
@@ -61,13 +62,13 @@ def test_google_forecast_init(local_cache):
         assert gf._request_headers == {"x-goog-api-key": "default-creds"}
 
 
-def test_google_forecast_download(mock_requests, local_cache):
+def test_google_forecast_download(mock_requests, local_cache: cache.DiskCacheStore):
     """Test download_dataset."""
 
     time = pd.Timestamp("2022-01-01 12:00:00")
     gf = GoogleForecast(
         time=time,
-        variables=[Severity, EffectiveEnergyForcing],
+        variables=[Severity, ExpectedEffectiveEnergyForcing],
         key="test-key",
         cachestore=local_cache,
     )
@@ -111,7 +112,7 @@ def test_google_forecast_download(mock_requests, local_cache):
     assert np.allclose(ds_cache["contrails"], 0.5)
 
 
-def test_google_forecast_flight_level_conversion(mock_requests, local_cache):
+def test_google_forecast_flight_level_conversion(mock_requests, local_cache: cache.DiskCacheStore):
     """Test that flight_level is converted to level (pressure)."""
 
     time = pd.Timestamp("2022-01-01 12:00:00")
@@ -156,7 +157,7 @@ def test_google_forecast_flight_level_conversion(mock_requests, local_cache):
     assert np.allclose(ds_out["level"], expected_pl)
 
 
-def test_google_forecast_open_metdataset(mock_requests, local_cache):
+def test_google_forecast_open_metdataset(mock_requests, local_cache: cache.DiskCacheStore):
     """Test open_metdataset loads from cache/download."""
 
     time = pd.Timestamp("2022-01-01 12:00:00")
@@ -230,7 +231,7 @@ def _check_mds_structure(mds: MetDataset, time: pd.Timestamp) -> None:
     assert mds.data["level"].min() <= units.ft_to_pl(44000)
 
 
-def _check_mds_values(mds: MetDataset, severity: bool = False, eeef: bool = False) -> None:
+def _check_mds_values(mds: MetDataset, severity: bool, eeef: bool) -> None:
     if severity:
         assert "contrails" in mds.data
         assert (mds.data["contrails"] > 0).any()
@@ -242,64 +243,6 @@ def _check_mds_values(mds: MetDataset, severity: bool = False, eeef: bool = Fals
         assert (mds.data["expected_effective_energy_forcing"] > 2e7).any()
     else:
         assert "expected_effective_energy_forcing" not in mds.data
-
-
-@pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
-def test_integration_severity(local_cache):
-    """Integration test for Severity variable."""
-    # Forecast for 24h from now, rounded to hour
-    # Use utcnow() to get naive UTC timestamp, consistent with other tests
-    time = pd.Timestamp.utcnow().ceil("h") + pd.Timedelta("24h")
-
-    gf = GoogleForecast(
-        time=time,
-        variables=[Severity],
-        cachestore=local_cache,
-    )
-    mds = gf.open_metdataset()
-
-    mds = gf.open_metdataset()
-
-    _check_mds_structure(mds, time)
-    _check_mds_values(mds, severity=True, eeef=False)
-
-
-@pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
-def test_integration_eeef(local_cache):
-    """Integration test for EffectiveEnergyForcing variable."""
-    # Forecast for 24h from now, rounded to hour
-    time = pd.Timestamp.utcnow().ceil("h") + pd.Timedelta("24h")
-
-    gf = GoogleForecast(
-        time=time,
-        variables=[EffectiveEnergyForcing],
-        cachestore=local_cache,
-    )
-    mds = gf.open_metdataset()
-
-    mds = gf.open_metdataset()
-
-    _check_mds_structure(mds, time)
-    _check_mds_values(mds, severity=False, eeef=True)
-
-
-@pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
-def test_integration_both(local_cache):
-    """Integration test for both Severity and EffectiveEnergyForcing variables."""
-    # Forecast for 24h from now, rounded to hour
-    time = pd.Timestamp.utcnow().ceil("h") + pd.Timedelta("24h")
-
-    gf = GoogleForecast(
-        time=time,
-        variables=[Severity, EffectiveEnergyForcing],
-        cachestore=local_cache,
-    )
-    mds = gf.open_metdataset()
-
-    mds = gf.open_metdataset()
-
-    _check_mds_structure(mds, time)
-    _check_mds_values(mds, severity=True, eeef=True)
 
 
 def test_google_forecast_default_no_cache():
@@ -357,11 +300,67 @@ def test_google_forecast_no_cache_store(mock_requests):
     assert isinstance(datasets[0], xr.Dataset)
 
 
+# ---
+# Integration tests - only run if GOOGLE_API_KEY is set
+# ---
+
+
 @pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
-def test_integration_cache_consistency(tmp_path):
+def test_integration_severity(local_cache):
+    """Integration test for Severity variable."""
+    # Forecast for 24h from now, rounded to hour
+    time = pd.Timestamp.now("UTC").ceil("h") + pd.Timedelta("24h")
+
+    gf = GoogleForecast(
+        time=time,
+        variables=[Severity],
+        cachestore=local_cache,
+    )
+    mds = gf.open_metdataset()
+
+    _check_mds_structure(mds, time)
+    _check_mds_values(mds, severity=True, eeef=False)
+
+
+@pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
+def test_integration_eeef(local_cache):
+    """Integration test for ExpectedEffectiveEnergyForcing variable."""
+    # Forecast for 24h from now, rounded to hour
+    time = pd.Timestamp.now("UTC").ceil("h") + pd.Timedelta("24h")
+
+    gf = GoogleForecast(
+        time=time,
+        variables=[ExpectedEffectiveEnergyForcing],
+        cachestore=local_cache,
+    )
+    mds = gf.open_metdataset()
+
+    _check_mds_structure(mds, time)
+    _check_mds_values(mds, severity=False, eeef=True)
+
+
+@pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
+def test_integration_both(local_cache):
+    """Integration test for both Severity and ExpectedEffectiveEnergyForcing variables."""
+    # Forecast for 24h from now, rounded to hour
+    time = pd.Timestamp.now("UTC").ceil("h") + pd.Timedelta("24h")
+
+    gf = GoogleForecast(
+        time=time,
+        variables=[Severity, ExpectedEffectiveEnergyForcing],
+        cachestore=local_cache,
+    )
+    mds = gf.open_metdataset()
+
+    _check_mds_structure(mds, time)
+    _check_mds_values(mds, severity=True, eeef=True)
+
+
+@pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
+def test_integration_cache_consistency(tmp_path: pathlib.Path):
     """Integration test to verify consistency between cached and non-cached results."""
     # Forecast for 24h from now, rounded to hour
-    time = pd.Timestamp.utcnow().ceil("h") + pd.Timedelta("24h")
+    time = pd.Timestamp.now("UTC").ceil("h") + pd.Timedelta("24h")
 
     # 1. No Cache
     gf_no_cache = GoogleForecast(
