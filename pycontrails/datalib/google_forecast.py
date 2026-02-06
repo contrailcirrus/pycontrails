@@ -61,7 +61,7 @@ class GoogleForecast(metsource.MetDataSource):
         (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
         specifying the (start, end) of the date range, inclusive.
     variables : metsource.VariableInput
-        Variable name (i.e. "contrails", "eef_per_m", ["contrails", "eef_per_m"])
+        Variable name (i.e. "contrails", "eeef_per_m", ["contrails", "eeef_per_m"])
     key : str | google.auth.credentials.Credentials | None, optional
         Google Cloud Platform credentials or API key.
         If None, looks for ``GOOGLE_API_KEY`` environment variable.
