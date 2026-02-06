@@ -16,3 +16,4 @@ Models
    notebooks/advection
    integrations/ACCF
    integrations/APCEMM
+   integrations/GoogleForecast
