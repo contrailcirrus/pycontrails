@@ -1982,3 +1982,65 @@ def test_cocip_met_rad_variables_helper(
 ) -> None:
     """Test met and rad variable helper methods."""
     assert mvs == target
+
+
+@pytest.mark.filterwarnings(r"ignore:\n.*no humidity scaling")
+@pytest.mark.filterwarnings(r"ignore:.*no intersection with the met")
+@pytest.mark.parametrize(
+    ("T_add", "q_scale"),
+    [
+        (20, 1.0),  # SAC not satisfied at any waypoint
+        (10, 0.2),  # SAC satisfied at some waypoints, but no initially persistent contrails
+        (8, 0.2),  # some initially persistent contrails, but no surviving evolution at time 1
+        (0, 1.5),  # some surviving contrails at time 1
+    ],
+)
+def test_cocip_output_columns(
+    met: MetDataset,
+    rad: MetDataset,
+    fl: Flight,
+    T_add: float,
+    q_scale: float,
+) -> None:
+    """Confirm that the expected output columns are present in the CoCiP output."""
+    met.data["air_temperature"] += T_add
+    met.data["specific_humidity"] *= q_scale
+
+    cocip = Cocip(met=met, rad=rad, max_age="10 minutes", dt_integration="5 minutes")
+    out = cocip.eval(source=fl)
+
+    # Check that the number of columns is consistent
+    assert len(out.data) == 46
+    assert cocip.contrail is not None
+    assert len(cocip.contrail.columns) == 56
+
+    # In each test case, we make it slightly further into Cocip.eval
+    # The checks below confirm this
+    if (T_add, q_scale) == (20, 1.0):
+        assert out["sac"].sum() == 0.0
+        assert cocip.contrail.empty
+        return
+
+    if (T_add, q_scale) == (10, 0.2):
+        assert out["sac"].sum() == 14.0
+        assert out["persistent_1"].sum() == 0.0
+        assert cocip.contrail.empty
+        return
+
+    if (T_add, q_scale) == (8, 0.2):
+        assert out["sac"].sum() == 20
+        assert out["persistent_1"].sum() == 14
+        assert cocip.contrail.empty
+        assert out["ef"].sum() == 0.0
+        assert (out["cocip"] == 0.0).all()
+        return
+
+    if (T_add, q_scale) == (0, 1.5):
+        assert out["sac"].sum() == 20
+        assert out["persistent_1"].sum() == 19
+        assert len(cocip.contrail) == 36
+        assert out["ef"].sum() > 0.0
+        assert out["cocip"].sum() == 10
+        return
+
+    pytest.fail(f"Test case not implemented for T_add={T_add}, q_scale={q_scale}")

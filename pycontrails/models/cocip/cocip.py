@@ -1573,9 +1573,16 @@ class Cocip(Model):
             "v_wind": np.float32,
             "vertical_velocity": np.float32,
             "tau_cirrus": np.float32,
+            "air_temperature_lower": np.float32,
+            "u_wind_lower": np.float32,
+            "v_wind_lower": np.float32,
+            "dT_dz": np.float32,
+            "ds_dz": np.float32,
             "dsn_dz": np.float32,
             "sdr": np.float32,
+            "top_net_solar_radiation": np.float32,
             "rsr": np.float32,
+            "top_net_thermal_radiation": np.float32,
             "olr": np.float32,
             "area_eff": np.float32,
             "plume_mass_per_m": np.float32,
@@ -1598,11 +1605,6 @@ class Cocip(Model):
 
         # Add verbose output columns
         if self.params["verbose_outputs"]:
-            col_dtypes["air_temperature_lower"] = np.float32
-            col_dtypes["u_wind_lower"] = np.float32
-            col_dtypes["v_wind_lower"] = np.float32
-            col_dtypes["dT_dz"] = np.float32
-            col_dtypes["ds_dz"] = np.float32
             col_dtypes["dt_integration"] = "timedelta64[ns]"
 
         # Add ATR20 columns
