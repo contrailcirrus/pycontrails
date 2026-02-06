@@ -171,13 +171,15 @@ class GoogleForecast(metsource.MetDataSource):
         )
         response.raise_for_status()
 
-        # Workaround: xarray does not support loading NetCDF4 from a bytes buffer.
-        # We save directly to cache or temp
-        # Write to temp file then load and save to ensure valid NetCDF
-        with tempfile.NamedTemporaryFile() as tmp:
-            tmp.write(response.content)
-            tmp.flush()
-            ds = xr.load_dataset(tmp.name, engine="netcdf4")
+        try:
+            # On windows, NamedTemporaryFile cannot be reopened while still open.
+            # After python 3.11 support is dropped, we can use delete_on_close=False
+            # in NamedTemporaryFile to streamline this.
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                tmp.write(response.content)
+            ds = xr.load_dataset(tmp.name)
+        finally:
+            os.remove(tmp.name)
 
         # Process: Convert flight_level to level if needed.
         if "level" not in ds.dims and "flight_level" in ds.dims:
