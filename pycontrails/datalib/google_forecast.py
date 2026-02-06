@@ -32,16 +32,17 @@ Severity = MetVariable(
     standard_name="contrails",
     long_name="Contrail Severity Index",
     description="The severity (0-4) of forecasted contrail warming.",
-    units="1",
+    units="1",  # dimensionless.
 )
 
 
-EffectiveEnergyForcing = MetVariable(
+ExpectedEffectiveEnergyForcing = MetVariable(
     short_name="eeef_per_m",
     standard_name="expected_effective_energy_forcing",
     long_name="Expected Effective Energy Forcing",
     description=(
-        "The expected effective energy forcing of contrail warming (see https://developers.google.com/contrails/v1/forecast-description)."
+        "The expected effective energy forcing of contrail warming "
+        "(see https://developers.google.com/contrails/v1/forecast-description)."
     ),
     units="J m**-1",
 )
@@ -137,7 +138,7 @@ class GoogleForecast(metsource.MetDataSource):
     @property
     def supported_variables(self) -> list[MetVariable]:
         """Get supported variables."""
-        return [Severity, EffectiveEnergyForcing]
+        return [Severity, ExpectedEffectiveEnergyForcing]
 
     def create_cachepath(self, t: datetime.datetime) -> str:
         """Return cachepath to local data file based on datetime."""
