@@ -16,12 +16,17 @@ import xarray as xr
 
 from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
-from pycontrails.utils.types import DatetimeLike
 
 logger = logging.getLogger(__name__)
 
-# https://github.com/python/mypy/issues/14824
-TimeInput: TypeAlias = str | DatetimeLike | Sequence[str | DatetimeLike]
+TimeInput: TypeAlias = (
+    str
+    | datetime
+    | pd.Timestamp
+    | np.datetime64
+    | Sequence[str | datetime | pd.Timestamp | np.datetime64]
+)
+
 VariableInput = (
     str | int | MetVariable | np.ndarray | Sequence[str | int | MetVariable | Sequence[MetVariable]]
 )
@@ -547,13 +552,18 @@ class MetDataSource(abc.ABC):
     # Abstract methods to implement
     # -----------------------------
     @abc.abstractmethod
-    def download_dataset(self, times: list[datetime]) -> None:
+    def download_dataset(self, times: list[datetime]) -> list[xr.Dataset] | None:
         """Download data from data source for input times.
 
         Parameters
         ----------
         times : list[datetime]
             List of datetimes to download a store in cache
+
+        Returns
+        -------
+        list[xr.Dataset] | None
+            Downloaded datasets, or None if datasets are written to cache
         """
 
     @abc.abstractmethod

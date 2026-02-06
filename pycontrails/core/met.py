@@ -682,7 +682,7 @@ class MetBase(ABC, Generic[XArrayType]):
         return type(self)._from_fastpath(self.data.copy(), cachestore=self.cachestore)
 
 
-class MetDataset(MetBase):
+class MetDataset(MetBase[xr.Dataset]):
     """Meteorological dataset with multiple variables.
 
     Composition around :class:`xarray.Dataset` to enforce certain
@@ -829,7 +829,7 @@ class MetDataset(MetBase):
 
     def __setitem__(
         self,
-        key: Hashable | list[Hashable] | Mapping,
+        key: Hashable | list[Hashable] | Mapping[Hashable, Any],
         value: Any,
     ) -> None:
         """Shortcut to set data variable on :attr:`data`.
@@ -838,7 +838,7 @@ class MetDataset(MetBase):
 
         Parameters
         ----------
-        key : Hashable | list[Hashable] | Mapping
+        key : Hashable | list[Hashable] | Mapping[Hashable, Any]
             Variable name
         value : Any
             Value to set to variable names
@@ -872,14 +872,14 @@ class MetDataset(MetBase):
 
         self.data.__setitem__(key, value)
 
-    def update(self, other: MutableMapping | None = None, **kwargs: Any) -> None:
+    def update(self, other: MutableMapping[Hashable, Any] | None = None, **kwargs: Any) -> None:
         """Shortcut to :meth:`data.update`.
 
         See :meth:`xarray.Dataset.update` for reference.
 
         Parameters
         ----------
-        other : MutableMapping
+        other : MutableMapping[Hashable, Any]
             Variables with which to update this dataset
         **kwargs : Any
             Variables defined by keyword arguments. If a variable exists both in
@@ -1362,7 +1362,7 @@ class MetDataset(MetBase):
         return cls(ds)
 
 
-class MetDataArray(MetBase):
+class MetDataArray(MetBase[xr.DataArray]):
     """Meteorological DataArray of single variable.
 
     Wrapper around :class:`xarray.DataArray` to enforce certain
@@ -2199,7 +2199,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = ...,
         output_vertex_normals: bool = ...,
         closed: bool = ...,
-    ) -> dict: ...
+    ) -> dict[str, Any]: ...
 
     @overload
     def to_polyhedra(
@@ -2228,7 +2228,7 @@ class MetDataArray(MetBase):
         altitude_scale: float = 1.0,
         output_vertex_normals: bool = False,
         closed: bool = True,
-    ) -> dict | o3d.geometry.TriangleMesh:
+    ) -> dict[str, Any] | o3d.geometry.TriangleMesh:
         """Create a collection of polyhedra from spatial array corresponding to a single time slice.
 
         Parameters

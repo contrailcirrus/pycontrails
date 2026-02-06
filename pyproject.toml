@@ -55,17 +55,14 @@ complete = ["pycontrails[dwd,ecmwf,gcp,gfs,jupyter,pyproj,sat,vis,zarr]"]
 
 # Development dependencies
 dev = [
-    "ipdb>=0.13",
-    "memory_profiler",
     "mypy>=1.8",
-    "mypy-extensions>=1.0",
     "platformdirs>=3.0",
     "pre-commit>=2.10",
-    "psutil",
     "pyarrow>=5.0",
     "pytest>=8.2",
     "pytest-cov>=2.11",
-    "ruff>=0.9.0",
+    "ruff>=0.15.0",
+    "types-requests>=2.25",
 ]
 
 # Documentation / Sphinx dependencies
@@ -189,23 +186,11 @@ local_scheme = "no-local-version"
 [tool.mypy]
 ignore_missing_imports = true
 disallow_untyped_defs = true
-# disallow_any_generics = true  # TODO: support this in the future
+disallow_any_generics = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = false
 show_error_codes = true
-
-# # --strict
-# disallow_untyped_calls = true
-# disallow_subclassing_any = true
-# disallow_incomplete_defs = true
-# disallow_untyped_decorators = true
-# no_implicit_optional = true
-# warn_unused_ignores = true
-# warn_return_any = true
-# implicit_reexport = false
-# strict_equality = true
-# # --strict end
 
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html

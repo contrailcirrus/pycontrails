@@ -26,7 +26,7 @@ from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParam
 from pycontrails.physics import units
 from pycontrails.utils.types import ArrayOrFloat
 
-# mypy: disable-error-code = type-var
+# mypy: disable-error-code = "type-var, arg-type, return-value"
 
 
 @dataclasses.dataclass
@@ -183,7 +183,9 @@ class _PerfVariables:
     q_fuel: float
 
 
-def _nominal_perf(aircraft_mass: ArrayOrFloat, perf: _PerfVariables) -> AircraftPerformanceGridData:
+def _nominal_perf(
+    aircraft_mass: ArrayOrFloat, perf: _PerfVariables
+) -> AircraftPerformanceGridData[ArrayOrFloat]:
     """Compute nominal Poll-Schumann aircraft performance."""
 
     atyp_param = perf.atyp_param
@@ -293,7 +295,7 @@ def _estimate_mass_extremes(
     ff = _nominal_perf(mtow, perf).fuel_flow
     max_mass = mtow - 2.0 * ff * 60.0 * 20.0
 
-    return min_mass, max_mass  # type: ignore[return-value]
+    return min_mass, max_mass
 
 
 def _parse_variables(
@@ -321,7 +323,7 @@ def _parse_variables(
             raise KeyError(msg) from exc
 
         air_temperature, pressure_da = xr.broadcast(air_temperature, pressure_da)
-        return (  # type: ignore[return-value]
+        return (
             air_temperature.dims,
             air_temperature.coords,
             np.asarray(pressure_da),
