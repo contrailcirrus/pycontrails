@@ -54,6 +54,11 @@
       "name": "Thymen Woldhuis",
       "affiliation": "TU Delft",
       "type": "Researcher"
+    },
+    {
+      "name": "Max Vogler",
+      "affiliation": "Google",
+      "type": "Software Engineer"
     }
   ]
 }
