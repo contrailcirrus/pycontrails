@@ -80,9 +80,7 @@ class PSFlight(AircraftPerformance):
         **params_kwargs: Any,
     ) -> None:
         super().__init__(met=met, params=params, **params_kwargs)
-        self.aircraft_engine_params = load_aircraft_engine_params(
-            self.params["engine_deterioration_factor"]
-        )
+        self.aircraft_engine_params = load_aircraft_engine_params()
         self.synonym_dict = get_aircraft_synonym_dict_ps()
 
     def check_aircraft_type_availability(
@@ -285,7 +283,12 @@ class PSFlight(AircraftPerformance):
 
         if engine_efficiency is None:
             engine_efficiency = overall_propulsion_efficiency(
-                mach_num, c_t, c_t_eta_b, atyp_param, self.params["eta_over_eta_b_min"]
+                mach_num,
+                c_t,
+                c_t_eta_b,
+                atyp_param,
+                engine_deterioration_factor=self.params["engine_deterioration_factor"],
+                eta_over_eta_b_min=self.params["eta_over_eta_b_min"],
             )
 
         if fuel_flow is None:
@@ -748,6 +751,7 @@ def overall_propulsion_efficiency(
     c_t: ArrayOrFloat,
     c_t_eta_b: ArrayOrFloat,
     atyp_param: PSAircraftEngineParams,
+    engine_deterioration_factor: float,
     eta_over_eta_b_min: float | None = None,
 ) -> npt.NDArray[np.floating]:
     """Calculate overall propulsion efficiency.
@@ -762,6 +766,8 @@ def overall_propulsion_efficiency(
         Thrust coefficient at maximum overall propulsion efficiency for a given Mach Number.
     atyp_param : PSAircraftEngineParams
         Extracted aircraft and engine parameters.
+    engine_deterioration_factor : float, optional
+        Factor to account for engine deterioration.
     eta_over_eta_b_min : float | None, optional
         Clip the ratio of the overall propulsion efficiency to the maximum propulsion
         efficiency to this value. See :func:`propulsion_efficiency_over_max_propulsion_efficiency`.
@@ -775,9 +781,9 @@ def overall_propulsion_efficiency(
     eta_over_eta_b = propulsion_efficiency_over_max_propulsion_efficiency(mach_num, c_t, c_t_eta_b)
     if eta_over_eta_b_min is not None:
         eta_over_eta_b.clip(min=eta_over_eta_b_min, out=eta_over_eta_b)
-    eta_b = max_overall_propulsion_efficiency(
-        mach_num, atyp_param.m_des, atyp_param.eta_1, atyp_param.eta_2
-    )
+
+    eta_1 = atyp_param.eta_1 * (1.0 - engine_deterioration_factor)
+    eta_b = max_overall_propulsion_efficiency(mach_num, atyp_param.m_des, eta_1, atyp_param.eta_2)
     return eta_over_eta_b * eta_b
 
 

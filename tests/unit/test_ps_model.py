@@ -107,8 +107,7 @@ def test_ps_model() -> None:
     dv_dt = np.array([0.0, 0.0])
 
     # Extract aircraft properties for aircraft type
-    ps_model = ps.PSFlight(params={"engine_deterioration_factor": 0.0})
-    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+    atyp_param = ps.load_aircraft_engine_params()[aircraft_type_icao]
 
     # Test Reynolds Number
     rn = ps.reynolds_number(
@@ -172,7 +171,13 @@ def test_ps_model() -> None:
     np.testing.assert_array_almost_equal(c_t_eta_b, [0.0347, 0.0347], decimal=2)
 
     # Test overall propulsion efficiency
-    engine_efficiency = ps.overall_propulsion_efficiency(mach_number, c_t, c_t_eta_b, atyp_param)
+    engine_efficiency = ps.overall_propulsion_efficiency(
+        mach_number,
+        c_t,
+        c_t_eta_b,
+        atyp_param,
+        engine_deterioration_factor=0.0,
+    )
     np.testing.assert_array_almost_equal(engine_efficiency, [0.3046, 0.3053], decimal=3)
 
     # Test fuel mass flow rate
@@ -392,8 +397,7 @@ def test_normalised_aircraft_performance_curves() -> None:
     air_pressure = units.ft_to_pl(altitude_ft) * 100.0
 
     # Extract aircraft properties for aircraft type
-    ps_model = ps.PSFlight()
-    atyp_param = ps_model.aircraft_engine_params[aircraft_type_icao]
+    atyp_param = ps.load_aircraft_engine_params()[aircraft_type_icao]
     mach_num_design_opt = atyp_param.m_des
 
     # Derived coefficients
@@ -405,7 +409,13 @@ def test_normalised_aircraft_performance_curves() -> None:
     )
     c_t_over_c_t_eta_b = c_t / c_t_eta_b
 
-    eta = ps.overall_propulsion_efficiency(mach_num, c_t, c_t_eta_b, atyp_param)
+    eta = ps.overall_propulsion_efficiency(
+        mach_num,
+        c_t,
+        c_t_eta_b,
+        atyp_param,
+        engine_deterioration_factor=0.025,  # default value previously used in PSFlight
+    )
     eta_b = ps.max_overall_propulsion_efficiency(
         mach_num_design_opt, mach_num_design_opt, atyp_param.eta_1, atyp_param.eta_2
     )

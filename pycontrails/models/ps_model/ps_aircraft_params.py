@@ -11,7 +11,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from pycontrails.core.aircraft_performance import AircraftPerformanceParams
 from pycontrails.physics import constants as c
 from pycontrails.utils.types import ArrayOrFloat
 
@@ -194,17 +193,9 @@ def _row_to_aircraft_engine_params(tup: Any) -> tuple[str, PSAircraftEngineParam
 
 
 @functools.cache
-def load_aircraft_engine_params(
-    engine_deterioration_factor: float = AircraftPerformanceParams.engine_deterioration_factor,
-) -> Mapping[str, PSAircraftEngineParams]:
+def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
     """
     Extract aircraft-engine parameters for each aircraft type supported by the PS model.
-
-    Parameters
-    ----------
-    engine_deterioration_factor: float
-        Account for "in-service" engine deterioration between maintenance cycles.
-        Default value reduces `eta_1` by 2.5%, which increases the fuel flow estimates by 2.5%.
 
     Returns
     -------
@@ -256,8 +247,6 @@ def load_aircraft_engine_params(
     }
 
     df = pd.read_csv(PS_FILE_PATH, dtype=dtypes)
-    df["eta_1"] *= 1.0 - engine_deterioration_factor
-
     return dict(_row_to_aircraft_engine_params(tup) for tup in df.itertuples(index=False))
 
 
