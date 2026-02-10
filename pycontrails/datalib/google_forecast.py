@@ -20,6 +20,7 @@ from pycontrails import MetDataset, MetVariable
 from pycontrails.core import cache, met
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.physics import units
+from pycontrails.utils import dependencies
 
 if TYPE_CHECKING:
     import google.auth.credentials
@@ -78,6 +79,9 @@ class GoogleForecast(metsource.MetDataSource):
         Google Forecast API frequently recomputes forecasts, using the cache store may result in
         stale data. It is not recommended to cache future forecasts for longer than one hour.
         Defaults to None (no caching).
+    google_auth_request : google.auth.transport.requests.Request | None, optional
+        Request object to use for Google Cloud default authentication.
+        If None, the default google.auth.transport.requests.Request will be used.
     """
 
     __slots__ = ("_credentials", "_google_auth_request", "cachestore", "url")
@@ -266,11 +270,13 @@ class GoogleForecast(metsource.MetDataSource):
             try:
                 import google.auth
                 import google.auth.transport.requests
-            except ImportError as e:
-                raise ValueError(
-                    "No API key or google-auth found. Provide `key` or set "
-                    "GOOGLE_API_KEY or install google-auth."
-                ) from e
+            except ModuleNotFoundError as e:
+                dependencies.raise_module_not_found_error(
+                    name="GoogleForecast",
+                    package_name="google-auth",
+                    module_not_found_error=e,
+                    extra="Provide `key` or set GOOGLE_API_KEY or install google-auth",
+                )
 
             if not key:
                 key, _ = google.auth.default()
