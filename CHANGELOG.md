@@ -6,6 +6,10 @@
 
 - Fix a bug in the experimental `Cocip` radiative heating model that caused cumulative heating to be double-counted under certain conditions. This issue only occurred when the `radiative_heating_effect` parameter was enabled (disabled by default).
 
+### Internals
+
+- Support OAuth and `google-auth` default authentication for the `GoogleForecast` datalib.
+
 ## 0.60.3
 
 ### Breaking Changes
