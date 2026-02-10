@@ -51,8 +51,9 @@ def test_google_forecast_init(local_cache):
     assert gf._request_headers == {"x-goog-api-key": "test-key"}
 
     # Test with default credentials (mocked)
+    mock_creds = mock.Mock()
     with (
-        mock.patch("google.auth.default", return_value=("default-creds", "project")),
+        mock.patch("google.auth.default", return_value=(mock_creds, "project")),
         mock.patch.dict(os.environ),
     ):
         if "GOOGLE_API_KEY" in os.environ:
@@ -60,7 +61,18 @@ def test_google_forecast_init(local_cache):
 
         gf = GoogleForecast(time="2022-01-01 12:00:00", cachestore=local_cache)
         assert gf._credentials is None
-        assert gf._request_headers == {"x-goog-api-key": "default-creds"}
+
+        # Accessing _request_headers should trigger google.auth.default() and key.before_request()
+        headers = gf._request_headers
+        mock_creds.before_request.assert_called_once()
+
+        # Test that _google_auth_request was used
+        assert mock_creds.before_request.call_args[0][0] == gf._google_auth_request
+        assert mock_creds.before_request.call_args[0][1] == "GET"
+        assert (
+            mock_creds.before_request.call_args[0][2] == "https://contrails.googleapis.com/v2/grids"
+        )
+        assert mock_creds.before_request.call_args[0][3] == headers
 
 
 def test_google_forecast_download(mock_requests, local_cache: cache.DiskCacheStore):

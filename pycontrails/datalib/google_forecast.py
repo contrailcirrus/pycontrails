@@ -80,7 +80,7 @@ class GoogleForecast(metsource.MetDataSource):
         Defaults to None (no caching).
     """
 
-    __slots__ = ("_credentials", "cachestore", "url")
+    __slots__ = ("_credentials", "_google_auth_request", "cachestore", "url")
 
     #: Google Contrails Forecast API URL
     url: str
@@ -92,6 +92,7 @@ class GoogleForecast(metsource.MetDataSource):
         key: str | google.auth.credentials.Credentials | None = None,
         url: str = "https://contrails.googleapis.com/v2/grids",
         cachestore: cache.CacheStore | None = None,
+        google_auth_request: google.auth.transport.requests.Request | None = None,
     ) -> None:
         self.url = url
         self.cachestore = cachestore
@@ -103,6 +104,7 @@ class GoogleForecast(metsource.MetDataSource):
         self.grid = None
         self.paths = None
         self._credentials = key
+        self._google_auth_request = google_auth_request
 
     def cache_dataset(self, dataset: xr.Dataset) -> None:
         """Cache data from data source.
@@ -256,25 +258,24 @@ class GoogleForecast(metsource.MetDataSource):
         if key is None:
             key = os.getenv("GOOGLE_API_KEY")
 
-        if key is None:
+        if isinstance(key, str) and key:
+            # If a non-empty API key is provided, use it.
+            headers["x-goog-api-key"] = key
+        else:
+            # Otherwise, try to use provided or default google-auth credentials.
             try:
                 import google.auth
-
-                key, _ = google.auth.default()
+                import google.auth.transport.requests
             except ImportError as e:
                 raise ValueError(
                     "No API key or google-auth found. Provide `key` or set "
                     "GOOGLE_API_KEY or install google-auth."
                 ) from e
 
-        if isinstance(key, str):
-            headers["x-goog-api-key"] = key
-        elif hasattr(key, "apply"):
-            key.apply(headers)
-        else:
-            raise ValueError(
-                "No credentials found. Provide `key` or set GOOGLE_API_KEY or "
-                "GOOGLE_APPLICATION_CREDENTIALS."
-            )
+            if not key:
+                key, _ = google.auth.default()
+            if self._google_auth_request is None:
+                self._google_auth_request = google.auth.transport.requests.Request()
+            key.before_request(self._google_auth_request, "GET", self.url, headers)
 
         return headers
