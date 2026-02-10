@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Fix a bug in the experimental `Cocip` radiative heating model that caused cumulative heating to be double-counted under certain conditions. This issue only occurred when the `radiative_heating_effect` parameter was enabled (disabled by default).
+
 ## 0.60.3
 
 ### Breaking Changes
