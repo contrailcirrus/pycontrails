@@ -40,6 +40,8 @@ class CommonAircraftPerformanceParams:
     #: Reference:
     #: Gurrola Arrieta, M.D.J., Botez, R.M. and Lasne, A., 2024. An Engine Deterioration Model for
     #: Predicting Fuel Consumption Impact in a Regional Aircraft. Aerospace, 11(6), p.426.
+    #: If the age of the aircraft is known, the :func`engine_deterioration_factor_from_age`
+    #: function will be used to determine the engine deterioration factor.
     engine_deterioration_factor: float = 0.025
 
 
@@ -681,3 +683,31 @@ def _fill_low_altitude_with_isa_temperature(vector: GeoVectorDataset, met_level_
     t_isa = vector.T_isa()
     air_temperature = np.where(cond, t_isa, air_temperature)
     vector.update(air_temperature=air_temperature)
+
+
+def engine_deterioration_factor_from_age(age_years: float, engine_type: str) -> float:
+    """Calculate the engine deterioration factor based on the age of the aircraft engine.
+
+    Parameters
+    ----------
+    age_years : float
+        Age of the aircraft engine in years.
+    engine_type : str
+        Either "narrow" or "wide".
+
+    Returns
+    -------
+    float
+        Engine deterioration factor as a fraction of fuel flow increase.
+
+    TODO: Reference
+    """
+    ages = [0.5, 1.5, 2.5, 6.5, 10.0]
+    narrow = [1.0, 1.02, 1.04, 1.05, 1.06]
+    wide = [1.005, 1.01, 1.015, 1.018, 1.02]
+
+    if engine_type == "narrow":
+        return np.interp(age_years, ages, narrow, left=narrow[0], right=narrow[-1]) - 1.0
+    if engine_type == "wide":
+        return np.interp(age_years, ages, wide, left=wide[0], right=wide[-1]) - 1.0
+    raise ValueError(f"Invalid engine type: {engine_type}. Must be 'narrow' or 'wide'.")
