@@ -24,6 +24,7 @@ from pycontrails.core.aircraft_performance import (
     AircraftPerformance,
     AircraftPerformanceData,
     AircraftPerformanceParams,
+    engine_deterioration_factor_from_age,
 )
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
@@ -128,6 +129,16 @@ class PSFlight(AircraftPerformance):
             msg = f"Aircraft type {aircraft_type} not covered by the PS model."
             raise KeyError(msg) from exc
 
+        # Set the engine deterioration factor based on the age of the aircraft if possible.
+        first_flight_date = fl.get_constant("first_flight_date", None)  # is this the field we want?
+        if first_flight_date:
+            age_years = (fl["time"].max() - first_flight_date) / pd.Timedelta(days=365.25)
+            body_type = "narrow"  # FIXME: dynamically determine
+            engine_deterioration_factor = engine_deterioration_factor_from_age(age_years, body_type)
+        else:
+            engine_deterioration_factor = self.params["engine_deterioration_factor"]
+        fl.attrs.setdefault("engine_deterioration_factor", engine_deterioration_factor)
+
         # Set flight attributes based on engine, if they aren't already defined
         fl.attrs.setdefault("aircraft_performance_model", self.name)
         fl.attrs.setdefault("aircraft_type_ps", atyp_ps)
@@ -167,6 +178,7 @@ class PSFlight(AircraftPerformance):
             load_factor=load_factor,
             takeoff_mass=takeoff_mass,
             correct_fuel_flow=self.params["correct_fuel_flow"],
+            engine_deterioration_factor=engine_deterioration_factor,
         )
 
         # Set array aircraft_performance to flight, don't overwrite
@@ -206,6 +218,12 @@ class PSFlight(AircraftPerformance):
             correct_fuel_flow = kwargs["correct_fuel_flow"]
         except KeyError as exc:
             msg = "A 'correct_fuel_flow' kwarg is required for this model"
+            raise KeyError(msg) from exc
+
+        try:
+            engine_deterioration_factor = kwargs["engine_deterioration_factor"]
+        except KeyError as exc:
+            msg = "An 'engine_deterioration_factor' kwarg is required for this model"
             raise KeyError(msg) from exc
 
         if not isinstance(true_airspeed, np.ndarray):
@@ -287,7 +305,7 @@ class PSFlight(AircraftPerformance):
                 c_t,
                 c_t_eta_b,
                 atyp_param,
-                engine_deterioration_factor=self.params["engine_deterioration_factor"],
+                engine_deterioration_factor=engine_deterioration_factor,
                 eta_over_eta_b_min=self.params["eta_over_eta_b_min"],
             )
 
