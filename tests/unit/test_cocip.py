@@ -1670,10 +1670,12 @@ def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDa
     cocip = Cocip(met, rad=rad, params=params)
     fl1 = cocip.eval(source=fl)
     contrail1 = cocip.contrail
-    assert not cocip.params["radiative_heating_effects"]
+    assert contrail1 is not None
+
     fl2 = cocip.eval(source=fl, radiative_heating_effects=True)
     assert cocip.params["radiative_heating_effects"]
     contrail2 = cocip.contrail
+    assert contrail2 is not None
 
     # Compare output between two model runs
     expected = {"d_heat_rate", "cumul_differential_heat", "heat_rate", "cumul_heat"}
@@ -1681,7 +1683,7 @@ def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDa
 
     # Pretty massive difference in EF
     assert fl1["ef"].sum() == pytest.approx(7.3e12, rel=0.1)
-    assert fl2["ef"].sum() == pytest.approx(10.1e12, rel=0.1)
+    assert fl2["ef"].sum() == pytest.approx(13.8e12, rel=0.1)
 
     # Not nonzero in the same places!
     filt1 = fl1["ef"] != 0

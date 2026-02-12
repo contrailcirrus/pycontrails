@@ -2262,9 +2262,6 @@ def calc_radiative_properties(contrail: GeoVectorDataset, params: dict[str, Any]
     time = contrail["time"]
     air_temperature = contrail["air_temperature"]
 
-    if params["radiative_heating_effects"]:
-        air_temperature += contrail["cumul_heat"]
-
     r_ice_vol = contrail["r_ice_vol"]
     tau_contrail = contrail["tau_contrail"]
     tau_cirrus_ = contrail["tau_cirrus"]
@@ -2365,10 +2362,6 @@ def calc_contrail_properties(
     ds_dz = contrail["ds_dz"]
     dsn_dz = contrail["dsn_dz"]
     sigma_yz = contrail["sigma_yz"]
-
-    if radiative_heating_effects:
-        air_temperature = air_temperature + contrail["cumul_heat"]  # avoid += (may be read-only)
-        contrail.update(air_temperature=air_temperature)
 
     # get required radiation
     sdr = contrail["sdr"]
@@ -2637,7 +2630,8 @@ def calc_timestep_contrail_evolution(
     air_temperature_2 = interpolate_met(met, contrail_2, "air_temperature", **interp_kwargs)
 
     if params["radiative_heating_effects"]:
-        air_temperature_2 += contrail_2["cumul_heat"]
+        air_temperature_2 = air_temperature_2 + contrail_2["cumul_heat"]
+        contrail_2.update(air_temperature=air_temperature_2)
 
     interpolate_met(met, contrail_2, "specific_humidity", **interp_kwargs)
 
