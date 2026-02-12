@@ -1007,7 +1007,7 @@ class Cocip(Model):
                 wingspan,
                 true_airspeed,
                 fuel_flow,
-                nvpm_ei_n,
+                aei,
                 0.5 * depth,  # Taking the mid-point of the contrail plume
             )
         else:
