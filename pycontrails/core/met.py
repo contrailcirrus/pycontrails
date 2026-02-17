@@ -1242,6 +1242,7 @@ class MetDataset(MetBase[xr.Dataset]):
         latitude: npt.ArrayLike | float,
         level: npt.ArrayLike | float,
         time: npt.ArrayLike | np.datetime64,
+        **kwargs: Any,
     ) -> Self:
         r"""Create a :class:`MetDataset` containing a coordinate skeleton from coordinate arrays.
 
@@ -1253,6 +1254,8 @@ class MetDataset(MetBase[xr.Dataset]):
             Vertical coordinate, in [:math:`hPa`]
         time: npt.ArrayLike | np.datetime64,
             Temporal coordinates, in [:math:`UTC`]. Will be sorted.
+        **kwargs : Any
+            Passed into the constructor of the returned :class:`MetDataset`.
 
         Returns
         -------
@@ -1339,7 +1342,7 @@ class MetDataset(MetBase[xr.Dataset]):
 
             coords[key] = arr
 
-        return cls(xr.Dataset({}, coords=coords))
+        return cls(xr.Dataset({}, coords=coords), **kwargs)
 
     @classmethod
     def from_zarr(cls, store: Any, **kwargs: Any) -> Self:
