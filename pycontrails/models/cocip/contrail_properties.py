@@ -1536,7 +1536,8 @@ def new_ice_water_content_revised(
     )
 
     # change from mixing
-    delta_mass_h2o_mix = mass_plume_t2 * q_t2 - mass_plume_sed * q_sed
+    qa = 0.5 * (q_sed + q_t2)
+    delta_mass_h2o_mix = (mass_plume_t2 - mass_plume_sed) * qa
 
     # updated ice water content
     mass_h2o_t2 = (
