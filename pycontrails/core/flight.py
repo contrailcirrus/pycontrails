@@ -1551,7 +1551,17 @@ class Flight(GeoVectorDataset):
         """
         kwargs.setdefault("legend", False)
         df = self.dataframe.assign(altitude_ft=self.altitude_ft)
-        ax = df.plot(x="time", y="altitude_ft", **kwargs)
+
+        # Fix pandas 3.0 bug in which time gets mangled for scatter plots
+        if kwargs.get("kind") == "scatter":
+            import matplotlib.dates
+
+            df["time"] = matplotlib.dates.date2num(df["time"])
+            ax = df.plot(x="time", y="altitude_ft", **kwargs)
+            locator = matplotlib.dates.AutoDateLocator()
+            ax.xaxis.set_major_locator(locator)
+            ax.xaxis.set_major_formatter(matplotlib.dates.ConciseDateFormatter(locator))
+
         ax.set(xlabel="time", ylabel="altitude_ft")
         return ax
 
