@@ -1561,6 +1561,8 @@ class Flight(GeoVectorDataset):
             locator = matplotlib.dates.AutoDateLocator()
             ax.xaxis.set_major_locator(locator)
             ax.xaxis.set_major_formatter(matplotlib.dates.ConciseDateFormatter(locator))
+        else:
+            ax = df.plot(x="time", y="altitude_ft", **kwargs)
 
         ax.set(xlabel="time", ylabel="altitude_ft")
         return ax
