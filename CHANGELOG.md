@@ -5,6 +5,7 @@
 ### Fixes
 
 - Fix a bug in the experimental `Cocip` radiative heating model that caused cumulative heating to be double-counted under certain conditions. This issue only occurred when the `radiative_heating_effect` parameter was enabled (disabled by default).
+- Fix regression in the `Cocip` ice survival calculation that only affected cases where the `"unterstrasser_ice_survival_fraction"` parameter is enabled (this parameter is disabled by default).
 
 ### Internals
 
