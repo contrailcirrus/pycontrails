@@ -22,6 +22,7 @@ END_COLOR = \033[0m
 # versions of python
 pip-install:
 	python -m pip install -U pip wheel
+	python -m pip install plotly
 	python -m pip install -e ".[complete]"
 
 	# open3d wheels not available for latest python versions; install manually
