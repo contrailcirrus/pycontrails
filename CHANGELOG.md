@@ -10,10 +10,11 @@
 ### Internals
 
 - Support OAuth and `google-auth` default authentication for the `GoogleForecast` datalib.
+- Extend the IATA passenger and cargo load factor database to include new data from January-2025 to January-2026. This update introduces small changes to the load factor estimates for certain routes.
 
 ## 0.60.3
 
-### Breaking Changes
+### Breaking changes
 
 - Update nvPM fuel correction for the GAIA workflow: The standard ICAO Annex 16 methodology is now used in place of the Teoh et al. (2022) approach.
 - Revise fallback for engines not covered in the nvPM ICAO EDB: The SCOPE11 method now replaces the FOX-ImFOX methodology in the GAIA workflow. SCOPE11 is used to construct the nvPM emissions profile, which is then passed to the T4/T2 methodology to estimate the cruise nvPM mass and number emissions.
@@ -320,7 +321,7 @@
   - Converting between `Fleet` and `Flight` instances via `Fleet.from_seq` and `Fleet.to_flight_list` are also ~5x faster.
 - Implement low-memory met-downselection logic in `DryAdvection`. This is the same logic used in `CocipGrid` to reduce memory consumption by only loading the necessary time slices of the `met` data into memory. If `met` is already loaded into memory, this change will have no effect.
 
-### Breaking Changes
+### Breaking changes
 
 - Remove the `copy` parameter from `GeovectorDataset.downselect_met`. This method always returns a view of the original dataset.
 - Remove the `validate` parameter in  the `MetDataArray` constructor. Input data is now always validated.
