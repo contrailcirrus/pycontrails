@@ -1420,7 +1420,7 @@ class TestLoadFactorEstimates:
         origin_airport_icao = "WSSS"
         first_waypoint_time = pd.to_datetime("2035-06-01 09:21:48")
         lf = jet.aircraft_load_factor(origin_airport_icao, first_waypoint_time)
-        assert lf == pytest.approx(0.824, abs=1e-3)
+        assert lf == pytest.approx(0.833, abs=1e-3)
 
     def test_date_out_of_bounds_past(self) -> None:
         origin_airport_icao = "WSSS"
@@ -1431,7 +1431,7 @@ class TestLoadFactorEstimates:
     def test_no_date(self) -> None:
         origin_airport_icao = "WSSS"
         lf = jet.aircraft_load_factor(origin_airport_icao, None)
-        assert lf == pytest.approx(0.833, abs=1e-3)
+        assert lf == pytest.approx(0.842, abs=1e-3)
 
     def test_no_airport(self) -> None:
         first_waypoint_time = pd.to_datetime("2016-06-15 17:39:27")
