@@ -30,6 +30,10 @@ class DestinationAirportError(BaseSpireError):
     """Trajectory is not terminating at expected location."""
 
 
+class UnknownAirportLocationError(BaseSpireError):
+    """Cannot identify the location of an airport."""
+
+
 class FlightTooShortError(BaseSpireError):
     """Trajectory is unreasonably short in flight time."""
 
