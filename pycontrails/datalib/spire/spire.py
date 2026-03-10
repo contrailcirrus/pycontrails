@@ -24,6 +24,7 @@ from pycontrails.datalib.spire.exceptions import (
     OriginAirportError,
     ROCDError,
     SchemaError,
+    UnknownAirportLocationError,
 )
 from pycontrails.physics import geo, units
 
@@ -355,7 +356,7 @@ class ValidateTrajectoryHandler:
 
         return None
 
-    def _is_from_origin_airport(self) -> OriginAirportError | None:
+    def _is_from_origin_airport(self) -> OriginAirportError | UnknownAirportLocationError | None:
         """Verify the trajectory origin is a reasonable distance from the origin airport."""
         if self._df is None:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
@@ -370,10 +371,16 @@ class ValidateTrajectoryHandler:
                 f"Distance {first_waypoint_dist_km:.3f}km is greater than "
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM}km."
             )
-
+        if np.isnan(first_waypoint_dist_km):
+            return UnknownAirportLocationError(
+                f"Unable to identify distance between first waypoint in trajectory "
+                f"and the departure airport icao: {first_waypoint['departure_airport_icao']}"
+            )
         return None
 
-    def _is_to_destination_airport(self) -> DestinationAirportError | None:
+    def _is_to_destination_airport(
+        self,
+    ) -> DestinationAirportError | UnknownAirportLocationError | None:
         """Verify the trajectory destination is reasonable distance from the destination airport."""
         if self._df is None:
             msg = "No trajectory DataFrame has been set. Call set() before calling this method."
@@ -388,7 +395,11 @@ class ValidateTrajectoryHandler:
                 f"Distance {last_waypoint_dist_km:.3f}km is greater than "
                 f"threshold of {self.AIRPORT_DISTANCE_THRESHOLD_KM:.3f}km."
             )
-
+        if np.isnan(last_waypoint_dist_km):
+            return UnknownAirportLocationError(
+                f"Unable to identify distance between first waypoint in trajectory "
+                f"and the departure airport icao: {last_waypoint['arrival_airport_icao']}"
+            )
         return None
 
     def _is_too_slow(self) -> list[FlightTooSlowError]:
