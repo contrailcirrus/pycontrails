@@ -14,6 +14,7 @@ from pycontrails.datalib.spire.exceptions import (
     OrderingError,
     ROCDError,
     SchemaError,
+    UnknownAirportLocationError,
 )
 from tests.unit import get_static_path
 
@@ -164,11 +165,13 @@ def test_round3_violations(df_single_callsign: pd.DataFrame) -> None:
     vth = ValidateTrajectoryHandler()
     vth.set(df_single_callsign)
     violations = vth.evaluate()
-    assert len(violations) == 2
+    assert len(violations) == 4
 
-    exc0, exc1 = violations
-    assert isinstance(exc0, FlightTooFastError)
-    assert isinstance(exc1, ROCDError)
+    exc0, exc1, exc2, exc3 = violations
+    assert isinstance(exc0, UnknownAirportLocationError)
+    assert isinstance(exc1, UnknownAirportLocationError)
+    assert isinstance(exc2, FlightTooFastError)
+    assert isinstance(exc3, ROCDError)
 
 
 def test_violation_df(df_single_callsign: pd.DataFrame) -> None:
