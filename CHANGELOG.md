@@ -1,11 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.60.4
 
 ### Features
 
-- Adds new `UnknownAirportLocationError` to the `ValidationHandler` of the Spire datalib module.
-- Implements the `UnknownAirportLocationError` in the airport distance validation check. Previously, if an airport location was unknown, the airport distance check would succeed. Now, the airport distance check will return this new error.
+- Add new `UnknownAirportLocationError` to the `ValidationHandler` of the Spire datalib module. This error is used in the airport distance validation check. Previously, if an airport location was unknown, the airport distance check would succeed. Now, the airport distance check will return this new error.
 
 ### Fixes
 
