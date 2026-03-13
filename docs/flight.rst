@@ -9,5 +9,6 @@ Flight data
    :caption: Notebooks
 
    notebooks/Flight
+   notebooks/adsb-flight-loading
    notebooks/airports
    notebooks/flightplan
