@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- The `SyntheticFlight` class now sets airspeed using the `speed_m_per_s` parameter whenever it is provided. This parameter was previously used only as a fallback when BADA files were not available.
+
 ### Fixes
 
 - The `final_waypoints` instance attribute is now correctly updated by `Fleet.filter` when filtering removes the final waypoint of a flights.

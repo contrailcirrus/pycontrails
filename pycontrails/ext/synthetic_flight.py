@@ -252,16 +252,16 @@ class SyntheticFlight:
             self.bada = None
 
     def _calc_speed_m_per_s(self, level: ArrayOrFloat) -> ArrayOrFloat:
-        if self.bada is not None:
-            alt_ft = units.pl_to_ft(level)
-            return self.bada.nominal_cruising_speed(self.aircraft_type, alt_ft)
+        if self.speed_m_per_s is not None:
+            if isinstance(level, np.ndarray):
+                return np.full_like(level, self.speed_m_per_s)
+            return self.speed_m_per_s
 
-        if self.speed_m_per_s is None:
-            raise ValueError("Either specify `bada3_path`, `bada4_path` or `speed_m_per_s`.")
+        if self.bada is None:
+            raise ValueError("Either specify `speed_m_per_s`, `bada3_path`, or `bada4_path`.")
 
-        if isinstance(level, np.ndarray):
-            return np.full_like(level, self.speed_m_per_s)
-        return self.speed_m_per_s
+        alt_ft = units.pl_to_ft(level)
+        return self.bada.nominal_cruising_speed(self.aircraft_type, alt_ft)
 
     def _generate_single_flight_no_wind(self, timestep: np.timedelta64) -> Flight:
         src_lon = self.rng.uniform(self.longitude_min, self.longitude_max)
