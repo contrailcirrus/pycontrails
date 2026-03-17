@@ -303,16 +303,25 @@ def test_fleet_filter_updates_final_waypoints(syn: SyntheticFlight) -> None:
     """Ensure final waypoints are updated when Fleet.filter removes partial flights."""
 
     fls = [syn() for _ in range(5)]
-    filtered = [fl.filter(fl["longitude"] > 0) for fl in fls if np.any(fl["longitude"] > 0)]
+    east_half = [fl.filter(fl["longitude"] > -3) for fl in fls if np.any(fl["longitude"] > -3)]
+    west_half = [fl.filter(fl["longitude"] < -3) for fl in fls if np.any(fl["longitude"] < -3)]
 
     fleet = Fleet.from_seq(fls)
-    fleet1 = Fleet.from_seq(filtered)
-    fleet2 = fleet.filter(fleet["longitude"] > 0)
+    fleet1 = Fleet.from_seq(east_half)
+    fleet2 = fleet.filter(fleet["longitude"] > -3)
+    fleet3 = Fleet.from_seq(west_half)
+    fleet4 = fleet.filter(fleet["longitude"] < -3)
 
+    # Some flights are split between both halves, which ensures that at least one fleet
+    # contains a flight with its final waypoint filtered out.
     assert fleet.n_flights == 5
-    assert fleet1.n_flights == 4
-    assert fleet2.n_flights == 4
+    assert fleet1.n_flights == 5
+    assert fleet2.n_flights == 5
+    assert fleet3.n_flights == 3
+    assert fleet4.n_flights == 3
+
     np.testing.assert_array_equal(fleet2.final_waypoints, fleet1.final_waypoints)
+    np.testing.assert_array_equal(fleet4.final_waypoints, fleet3.final_waypoints)
 
 
 def test_fleet_from_seq_removes_empty_flight() -> None:
