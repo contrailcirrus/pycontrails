@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- The `final_waypoints` instance attribute is now correctly updated by `Fleet.filter` when filtering removes the final waypoint of a flights.
+
 ## 0.60.4
 
 ### Features
