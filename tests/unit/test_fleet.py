@@ -14,7 +14,7 @@ except ImportError:
 
 
 @pytest.fixture(scope="module")
-def syn():
+def syn() -> SyntheticFlight:
     """Build `SyntheticFlight` generator."""
     bounds = {
         "time": (np.datetime64("2019-10-05"), np.datetime64("2019-10-05T12")),
@@ -297,6 +297,22 @@ def test_fleet_filter_removes_flight(syn: SyntheticFlight) -> None:
     assert out.n_flights == 4
     assert id0 not in out.fl_attrs
     assert list(out.fl_attrs) == [fl.attrs["flight_id"] for fl in fls[1:]]
+
+
+def test_fleet_filter_updates_final_waypoints(syn: SyntheticFlight) -> None:
+    """Ensure final waypoints are updated when Fleet.filter removes partial flights."""
+
+    fls = [syn() for _ in range(5)]
+    filtered = [fl.filter(fl["longitude"] > 0) for fl in fls if np.any(fl["longitude"] > 0)]
+
+    fleet = Fleet.from_seq(fls)
+    fleet1 = Fleet.from_seq(filtered)
+    fleet2 = fleet.filter(fleet["longitude"] > 0)
+
+    assert fleet.n_flights == 5
+    assert fleet1.n_flights == 4
+    assert fleet2.n_flights == 4
+    np.testing.assert_array_equal(fleet2.final_waypoints, fleet1.final_waypoints)
 
 
 def test_fleet_from_seq_removes_empty_flight() -> None:
