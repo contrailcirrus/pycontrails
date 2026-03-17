@@ -2,6 +2,7 @@
 *.sublime-workspace
 *.sublime-project
 .ipynb_checkpoints/
+.virtual_documents/
 .vscode
 .DS_Store
 .idea
