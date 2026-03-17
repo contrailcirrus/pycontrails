@@ -143,7 +143,7 @@ class Fleet(Flight):
         final_waypoints = np.zeros(masked.size, dtype=bool)
         final_waypoint_indices = np.flatnonzero(masked[:-1] != masked[1:])
         final_waypoints[final_waypoint_indices] = True
-        final_waypoints[-1] = True
+        final_waypoints[-1:] = True
         kwargs.setdefault("final_waypoints", final_waypoints)
 
         return super().filter(mask, copy=copy, **kwargs)
