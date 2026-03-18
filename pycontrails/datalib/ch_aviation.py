@@ -138,8 +138,11 @@ class ChAviation(Model):
         if not hasattr(self, "data"):
             type(self).data = _load_ch_fleet_database()
 
-    # TODO: Def eval here
+    def eval(self):
+        # TODO: Def eval here
+        return
 
+    # TODO: How to deal with nan tail numbers?
     def registered_aircraft_properties(
         self, tail_number: str, date: pd.Timestamp | None = None
     ) -> AircraftChAviation | None:
@@ -164,20 +167,15 @@ class ChAviation(Model):
 
         df_aircraft = self.data.loc[[tail_number]]
 
-        # Select most recent data if date not provided
-        # TODO: Need to deal with duplicate rows (these are all with fleet + historical)
-        if len(df_aircraft) == 1 or date is None:
-            df_aircraft = df_aircraft.iloc[-1]
-        else:
-            is_before_date = date > df_aircraft["Status_change_date"].values
+        # TODO: If tail number not available, use hexcode
 
-            # If the status change date of all entries occurs after the date provided, use first row
-            if np.all(~is_before_date):
-                df_aircraft = df_aircraft.iloc[0]
-            else:
-                df_aircraft = df_aircraft[is_before_date].iloc[-1]
+        # Ensure that the data only contains one unique aircraft
+        if len(df_aircraft) != 1:
+            raise ValueError(
+                f"Expected exactly 1 row for tail_number={tail_number}, found {len(df_aircraft)}"
+            )
 
-        # TODO: Above is not checked yet
+        df_aircraft = df_aircraft.iloc[0]
 
         return AircraftChAviation(
             # Registration properties
@@ -233,12 +231,14 @@ class ChAviation(Model):
 
             average_annual_hours=df_aircraft["Avg. Annual Hours"],
             average_daily_hours=(
-                df_aircraft["Avg. Daily Utilisation"].str.split(":").str[0].astype(float)
-                + df_aircraft["Avg. Daily Utilisation"].str.split(":").str[1].astype(float) / 60
+                pd.to_timedelta(df_aircraft["Avg. Daily Utilisation"], errors="coerce")
+                .total_seconds() / 3600
+                if pd.notna(df_aircraft["Avg. Daily Utilisation"]) else np.nan
             ),
             average_daily_hours_ttm=(
-                df_aircraft["Avg. Daily Utilisation TTM"].str.split(":").str[0].astype(float)
-                + df_aircraft["Avg. Daily Utilisation TTM"].str.split(":").str[1].astype(float) / 60
+                pd.to_timedelta(df_aircraft["Avg. Daily Utilisation TTM"], errors="coerce")
+                .total_seconds() / 3600
+                if pd.notna(df_aircraft["Avg. Daily Utilisation TTM"]) else np.nan
             ),
             average_annual_cycles=df_aircraft["Avg. Annual Cycles"],
             average_stats_as_of_date=df_aircraft["Last Updated"],
@@ -284,7 +284,7 @@ class ChAviation(Model):
 @functools.cache
 def _load_ch_fleet_database() -> pd.DataFrame:
     #cirium_path = pathlib.Path(__file__).parent / "static" / "cirium-2024-cleaned-20250530.csv"
-    temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260209_fleet_database_processed.csv"
+    temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260318_fleet_database_processed.csv"
     df = pd.read_csv(
         temp_path,
         parse_dates=["First Flight", "Delivery Date", "As of date", "Last Updated", ],
@@ -293,4 +293,9 @@ def _load_ch_fleet_database() -> pd.DataFrame:
     df["ICAO Engine Emission Databank ID"] = df["ICAO Engine Emission Databank ID"].replace(
         np.nan, None
     )
+
+    # Ensure no duplicate tail numbers
+    if not df.index.is_unique:
+        raise ValueError("Duplicate Registration found in fleet database")
+
     return df
