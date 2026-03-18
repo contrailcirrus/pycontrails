@@ -138,9 +138,177 @@ class ChAviation(Model):
         if not hasattr(self, "data"):
             type(self).data = _load_ch_fleet_database()
 
-    def eval(self):
-        # TODO: Def eval here
-        return
+    def eval(self, source: Flight | None = None, **params: Any) -> Flight:
+        """Extract specific aircraft properties for flight from ch-aviation database.
+
+        Flight attribute must contain one of the following variables:
+            - ``tail_number`` (mandatory),
+            - ``icao_address`` (optional), or
+            - ``airline_iata`` and ``aircraft_type`` (optional)
+
+        The timestamp of the first waypoint is optional.
+
+        The following properties will be added to the flight attribute if the `tail_number` or
+        `icao_address` is covered in ch-aviation:
+        # TODO: Please update
+            - ``country_of_registration``
+            - ``atyp_name_ch_a``
+            - ``atyp_icao_ch_a``
+            - ``atyp_manufacturer``
+            - ``atyp_modifiers``
+            - ``engine_name``
+            - ``engine_uid``
+            - ``engine_manufacturer``
+            - ``engine_propulsion_type``
+            - ``n_engines_ch_a``
+            - ``apu_name``
+            - ``amass_mtow``
+            - ``amass_mzfw``
+            - ``amass_oew``
+            - ``amass_mpl``
+            - ``amass_fuel_capacity``
+            - ``operator_name``
+            - ``operator_icao``
+            - ``operator_iata``
+            - ``operator_type``
+            - ``aircraft_usage``
+            - ``aircraft_market_class``
+            - ``n_seats``
+            - ``status``
+            - ``last_update``
+            - ``aircraft_age``
+            - ``cumulative_reported_hours``
+            - ``cumulative_reported_cycles``
+            - ``average_utilization_hours``
+
+        The following properties will be added to the flight attribute if the `tail_number` is not
+        covered in ch-aviation, but `airline_iata` and `aircraft_type` are available:
+            - ``engine_name``
+            - ``engine_uid``
+            - ``operator_name``
+            - ``operator_iata``
+
+        Parameters
+        ----------
+        source : Flight
+            Flight to evaluate
+
+        Returns
+        -------
+        Flight
+            Flight with attached aircraft properties
+        """
+        self.update_params(params)
+        self.set_source(source)
+
+        # End evaluation if `tail_number` and `icao_address` is not provided
+        try:
+            tail_number = self.source.get_constant("tail_number")
+        except KeyError:
+            tail_number = None
+
+        try:
+            icao_address = self.source.get_constant("icao_address")
+        except KeyError:
+            icao_address = None
+
+        if tail_number is None and icao_address is None:
+            return self.source
+
+        # This fails if self.source is empty
+        t_first_wypt = self.source["time"][0]
+
+        aircraft_props = self.registered_aircraft_properties(
+            tail_number, icao_address, date=t_first_wypt
+        )
+
+        # Set attributes, if they aren't already defined
+        # TODO: Check this logic and redo look-up tables
+        if aircraft_props is None:
+            # If tail number is not available, then try to estimate from airline look-up tables
+            try:
+                airline_iata = self.source.get_constant("airline_iata")
+                atyp_icao = self.source.get_constant("aircraft_type")
+            except KeyError:
+                # End evaluation if `airline_iata` and `atyp_icao` not provided
+                return self.source
+
+            engine_props = self.airline_aircraft_engine_look_up(airline_iata, atyp_icao)
+
+            if engine_props is None:
+                return self.source
+
+            # Set attributes, if they aren't already defined
+            self.source.attrs.setdefault("engine_name", engine_props.engine_subseries)
+            self.source.attrs.setdefault("engine_uid", engine_props.engine_uid)
+            self.source.attrs.setdefault("operator_name", engine_props.operator_name)
+            self.source.attrs.setdefault("operator_iata", engine_props.operator_iata)
+            return self.source
+
+        # TODO: Above not edited
+
+        # Happy path: aircraft properties are available in ch-aviation
+        self.source.attrs.setdefault("msn", aircraft_props.msn)
+        self.source.attrs.setdefault(
+            "country_of_registration", aircraft_props.country_of_registration
+        )
+
+        # Aircraft properties
+        self.source.attrs.setdefault("atyp_icao_ch_a", aircraft_props.aircraft_type_icao)
+        self.source.attrs.setdefault("atyp_iata_ch_a", aircraft_props.aircraft_type_iata)
+        self.source.attrs.setdefault("atyp_name_ch_a", aircraft_props.aircraft_subfamily)
+        self.source.attrs.setdefault("atyp_manufacturer", aircraft_props.manufacturer)
+
+        # Engine properties
+        self.source.attrs.setdefault("engine_name", aircraft_props.engine_subtype)
+        self.source.attrs.setdefault("engine_uid", aircraft_props.engine_uid)
+        self.source.attrs.setdefault("engine_manufacturer", aircraft_props.engine_manufacturer)
+        self.source.attrs.setdefault("n_engines_ch_a", aircraft_props.n_engines)
+
+        # Performance envelope
+        self.source.attrs.setdefault("amass_mtow", aircraft_props.mtow_kg)
+
+        # Operator properties
+        self.source.attrs.setdefault("operator_name", aircraft_props.operator_name)
+        self.source.attrs.setdefault("operator_icao", aircraft_props.operator_icao)
+        self.source.attrs.setdefault("operator_iata", aircraft_props.operator_iata)
+        self.source.attrs.setdefault("operator_type", aircraft_props.operator_type)
+        self.source.attrs.setdefault("aircraft_role", aircraft_props.aircraft_role)
+        self.source.attrs.setdefault("aircraft_market_group", aircraft_props.aircraft_market_group)
+        self.source.attrs.setdefault("n_seats", aircraft_props.n_seats)
+
+        # Aircraft status
+        self.source.attrs.setdefault("status", aircraft_props.status)
+        self.source.attrs.setdefault("first_flight_date", aircraft_props.first_flight_date)
+        self.source.attrs.setdefault("delivery_date", aircraft_props.delivery_date)
+        self.source.attrs.setdefault("aircraft_age_yrs", aircraft_props.aircraft_age_yrs)
+
+        # Aircraft utilisation statistics
+        self.source.attrs.setdefault(
+            "cumulative_reported_hours", aircraft_props.cumulative_reported_hours
+        )
+        self.source.attrs.setdefault(
+            "cumulative_reported_hours_ttm", aircraft_props.cumulative_reported_hours_ttm
+        )
+        self.source.attrs.setdefault(
+            "cumulative_reported_cycles", aircraft_props.cumulative_reported_cycles
+        )
+        self.source.attrs.setdefault(
+            "cumulative_reported_cycles_ttm", aircraft_props.cumulative_reported_cycles_ttm
+        )
+        self.source.attrs.setdefault(
+            "cumulative_stats_as_of_date", aircraft_props.cumulative_stats_as_of_date
+        )
+        self.source.attrs.setdefault("average_annual_hours", aircraft_props.average_annual_hours)
+        self.source.attrs.setdefault("average_daily_hours", aircraft_props.average_daily_hours)
+        self.source.attrs.setdefault(
+            "average_daily_hours_ttm", aircraft_props.average_daily_hours_ttm
+        )
+        self.source.attrs.setdefault("average_annual_cycles", aircraft_props.average_annual_cycles)
+        self.source.attrs.setdefault(
+            "average_stats_as_of_date", aircraft_props.average_stats_as_of_date
+        )
+        return self.source
 
     def registered_aircraft_properties(
         self,
@@ -238,8 +406,8 @@ class ChAviation(Model):
 
             # Aircraft utilisation statistics
             cumulative_reported_hours=df_aircraft["Hours"],
-            cumulative_reported_cycles=df_aircraft["Cycles"],
             cumulative_reported_hours_ttm=df_aircraft["Hours TTM"],
+            cumulative_reported_cycles=df_aircraft["Cycles"],
             cumulative_reported_cycles_ttm=df_aircraft["Cycles TTM"],
             cumulative_stats_as_of_date=df_aircraft["As of date"],
 
@@ -333,7 +501,7 @@ class ChAviation(Model):
 
 @functools.cache
 def _load_ch_fleet_database() -> pd.DataFrame:
-    #cirium_path = pathlib.Path(__file__).parent / "static" / "cirium-2024-cleaned-20250530.csv"
+    #temp_path = pathlib.Path(__file__).parent / "static" / "2024-cleaned-20250530.csv"
     temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260318_fleet_database_processed.csv"
     df = pd.read_csv(temp_path, index_col="Registration")
 
