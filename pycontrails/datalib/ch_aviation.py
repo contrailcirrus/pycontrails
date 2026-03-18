@@ -18,93 +18,110 @@ from pycontrails.physics import units
 class AircraftChAviation:
     """Registered aircraft properties from ch-aviation database."""
 
-    #: Aircraft tail number -> Registration
+    #: Aircraft tail number
     tail_number: str
 
-    #: ICAO 24-bit address -> Hexcode
-    tail_number: str
+    #: ICAO 24-bit address
+    icao_address: str
 
-    #: Country of registration -> Aircraft Register
+    #: Manufacturer Serial Number, MSN
+    msn: str
+
+    #: Country of registration
     country_of_registration: str
 
-    #: ICAO aircraft type designator -> Aircraft ICAO
+    #: ICAO aircraft type designator
     aircraft_type_icao: str
 
-    #: IATA aircraft type designator -> Aircraft IATA
+    #: IATA aircraft type designator
     aircraft_type_iata: str
 
-    #: Aircraft family -> Aircraft Family
+    #: Aircraft family
     aircraft_family: str
 
-    #: Aircraft model -> Aircraft Family
-    aircraft_model: str
+    #: Aircraft model
+    aircraft_subfamily: str
 
-    #: Aircraft manufacturer -> Manufacturer
+    #: Aircraft manufacturer
     manufacturer: str
 
-    #: Engine model -> Engine Subtype
+    #: Engine model
     engine_subtype: str
 
-    #: Engine unique identification number from the ICAO Aircraft Emissions Databank -> ICAO Engine Emission Databank ID
+    #: Engine unique identification number from the ICAO Aircraft Emissions Databank
     engine_uid: str
 
-    #: Engine manufacturer -> Engine Manufacturer
+    #: Engine manufacturer
     engine_manufacturer: str
 
-    #: Number of engines -> Number of Engines
+    #: Number of engines
     n_engines: int
 
-    #: Maximum take-off weight (MTOW), [:math:`kg`] -> MTOW (kg)
+    #: Maximum take-off weight (MTOW), [:math:`kg`]
     mtow_kg: float
 
-    #: Operator name -> Operator
+    #: Operator name
     operator_name: str
 
-    #: Operator ICAO code -> Operator ICAO
+    #: Operator ICAO code
     operator_icao: str
 
-    #: Operator IATA code -> Operator IATA
+    #: Operator IATA code
     operator_iata: str
 
-    #: Operator type -> Operator Type
+    #: Operator type
     operator_type: str
 
-    #: Registered aircraft usage, i.e., passenger/military -> Aircraft Role
-    usage: str
+    #: Registered aircraft usage, i.e., passenger/military
+    aircraft_role: str
 
-    #: Aircraft market group -> Aircraft Market Group
-    market_group: str
+    #: Aircraft market group
+    aircraft_market_group: str
 
-    #: Number of seats -> "Seats Y" + "Seats YP" + "Seats W" + "Seats C" + "Seats F"
+    #: Number of seats
     n_seats: int
 
-    #: Aircraft status (in-service/storage) -> "Status"
+    #: Aircraft status
     status: str
 
-    #: First flight date -> "First Flight"
+    #: First flight date
     first_flight_date: pd.Timestamp | str
 
-    #: Delivery date -> "Delivery Date"
+    #: Delivery date
     delivery_date: pd.Timestamp | str
 
-    #: Date when the aircraft status is changed -> "As of date"
-    status_change_date: pd.Timestamp | str
+    #: Aircraft age in years
+    aircraft_age: float
 
-    #: Aircraft age (years)
-    # TODO: This will be a derived quantity
-    #age: float
-
-    #: Cumulative reported hours -> "Hours"
+    #: Cumulative reported hours
     cumulative_reported_hours: int
 
-    #: Cumulative reported cycles -> "Cycles"
+    #: Cumulative reported cycles
     cumulative_reported_cycles: int
 
-    #: Average utilization hours -> "Avg. Annual Hours"
-    average_utilization_hours: float
+    #: Cumulative reported hours, trailing twelve months
+    cumulative_reported_hours_ttm: int
 
-    #: Average utilization cycles -> "Avg. Annual Cycles"
-    average_utilization_cycles: float
+    #: Cumulative reported cycles, trailing twelve months
+    cumulative_reported_cycles_ttm: int
+
+    #: Cumulative statistics as of date
+    cumulative_stats_as_of_date: pd.Timestamp | str
+
+    #: Average annual utilization hours
+    average_annual_hours: float
+
+    #: Average daily utilization hours
+    average_daily_hours: float
+
+    #: Average daily utilization hours, trailing twelve months
+    average_daily_hours_ttm: float
+
+    #: Average annual utilization cycles
+    average_annual_cycles: float
+
+    #: Average statistics as of date
+    average_stats_as_of_date: pd.Timestamp | str
 
 
 class ChAviation(Model):
@@ -160,43 +177,71 @@ class ChAviation(Model):
             else:
                 df_aircraft = df_aircraft[is_before_date].iloc[-1]
 
-        return AircraftCirium(
+        # TODO: Above is not checked yet
+
+        return AircraftChAviation(
             # Registration properties
             tail_number=tail_number,
-            country_of_registration=df_aircraft["Country_Of_Registration"],
+            icao_address=df_aircraft["Hexcode"],
+            msn=df_aircraft["MSN"],
+            country_of_registration=df_aircraft["Aircraft Register"],
+
             # Aircraft properties
-            aircraft_subfamily=df_aircraft["aircraft_subfamily"],
-            aircraft_type_icao=df_aircraft["ICAO_ATYP"],
+            aircraft_type_icao=df_aircraft["Aircraft ICAO"],
+            aircraft_type_iata=df_aircraft["Aircraft IATA"],
+            aircraft_family=df_aircraft["Aircraft Family"],
+            aircraft_subfamily=df_aircraft["Aircraft Variant"],
             manufacturer=df_aircraft["Manufacturer"],
-            modifiers=df_aircraft["Modifiers"],
+
             # Engine properties
-            engine_subseries=df_aircraft["Engine_Subseries"],
-            engine_uid=df_aircraft["engine_uid_edb"],
-            engine_manufacturer=df_aircraft["Engine_Manufacturer"],
-            engine_propulsion_type=df_aircraft["enginepropulsiontypename"],
-            n_engines=df_aircraft["Number_Of_Engines"],
-            apu_subseries=df_aircraft["APU_Subseries"],
+            engine_subtype=df_aircraft["Engine Subtype"],
+            engine_uid=df_aircraft["ICAO Engine Emission Databank ID"],
+            engine_manufacturer=df_aircraft["Engine Manufacturer"],
+            n_engines=df_aircraft["Number of Engines"],
+
             # Performance envelope
-            mtow_kg=units.lbs_to_kg(df_aircraft["MTOW_lbs"]),
-            mzfw_kg=units.lbs_to_kg(df_aircraft["MZFW_lbs"]),
-            oew_kg=units.lbs_to_kg(df_aircraft["OEW_lbs"]),
-            max_payload_kg=units.lbs_to_kg(df_aircraft["Max_Payload_lbs"]),
-            fuel_capacity_kg=(df_aircraft["Fuel_Capacity_gallons"] * 3.7854),
+            mtow_kg=df_aircraft["MTOW (kg)"],
+
             # Operator properties
             operator_name=df_aircraft["Operator"],
-            operator_icao=df_aircraft["Operator_ICAO"],
-            operator_iata=df_aircraft["Operator_IATA"],
-            operator_type=df_aircraft["Operator_Company_Type"],
-            usage=df_aircraft["Usage"],
-            market_class=df_aircraft["Market_class"],
-            n_seats=df_aircraft["N_Seats"],
+            operator_icao=df_aircraft["Operator ICAO"],
+            operator_iata=df_aircraft["Operator IATA"],
+            operator_type=df_aircraft["Operator Type"],
+            aircraft_role=df_aircraft["Aircraft Role"],
+            aircraft_market_group=df_aircraft["Aircraft Market Group"],
+            n_seats=(
+                df_aircraft["Seats Y"]
+                + df_aircraft["Seats YP"]
+                + df_aircraft["Seats W"]
+                + df_aircraft["Seats C"]
+                + df_aircraft["Seats F"]
+            ),
+
             # Aircraft status
             status=df_aircraft["Status"],
-            status_change_date=df_aircraft["Status_change_date"],
-            age=df_aircraft["Age"],
-            cumulative_reported_hours=df_aircraft["Cumulative_Reported_Hours"],
-            cumulative_reported_cycles=df_aircraft["Cumulative_Reported_Cycles"],
-            average_utilization_hours=df_aircraft["Avg_Daily_Reported_Util"],
+            first_flight_date=df_aircraft["First Flight"],
+            delivery_date=df_aircraft["Delivery Date"],
+            # TODO: Check if date is nan
+            aircraft_age=(date - df_aircraft["Delivery Date"]) if date is not None else np.nan,
+
+            # Aircraft utilisation statistics
+            cumulative_reported_hours=df_aircraft["Hours"],
+            cumulative_reported_cycles=df_aircraft["Cycles"],
+            cumulative_reported_hours_ttm=df_aircraft["Hours TTM"],
+            cumulative_reported_cycles_ttm=df_aircraft["Cycles TTM"],
+            cumulative_stats_as_of_date=df_aircraft["As of date"],
+
+            average_annual_hours=df_aircraft["Avg. Annual Hours"],
+            average_daily_hours=(
+                df_aircraft["Avg. Daily Utilisation"].str.split(":").str[0].astype(float)
+                + df_aircraft["Avg. Daily Utilisation"].str.split(":").str[1].astype(float) / 60
+            ),
+            average_daily_hours_ttm=(
+                df_aircraft["Avg. Daily Utilisation TTM"].str.split(":").str[0].astype(float)
+                + df_aircraft["Avg. Daily Utilisation TTM"].str.split(":").str[1].astype(float) / 60
+            ),
+            average_annual_cycles=df_aircraft["Avg. Annual Cycles"],
+            average_stats_as_of_date=df_aircraft["Last Updated"],
         )
 
     def _check_tail_number_availability(
@@ -242,7 +287,7 @@ def _load_ch_fleet_database() -> pd.DataFrame:
     temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260209_fleet_database_processed.csv"
     df = pd.read_csv(
         temp_path,
-        parse_dates=["First Flight", "Delivery Date", "As of date", ],
+        parse_dates=["First Flight", "Delivery Date", "As of date", "Last Updated", ],
         index_col="Registration"
     )
     df["ICAO Engine Emission Databank ID"] = df["ICAO Engine Emission Databank ID"].replace(
