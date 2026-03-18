@@ -91,7 +91,7 @@ class AircraftChAviation:
     delivery_date: pd.Timestamp | str
 
     #: Aircraft age in years
-    aircraft_age: float
+    aircraft_age_yrs: float
 
     #: Cumulative reported hours
     cumulative_reported_hours: int
@@ -183,7 +183,8 @@ class ChAviation(Model):
         # Ensure that the data only contains one unique aircraft
         if len(df_aircraft) != 1:
             raise ValueError(
-                f"Expected exactly 1 row for tail_number={tail_number}, found {len(df_aircraft)}"
+                f"Expected exactly 1 row for tail_number={tail_number} "
+                f"and icao_address={icao_address}, found {len(df_aircraft)}"
             )
 
         df_aircraft = df_aircraft.iloc[0]
@@ -230,8 +231,10 @@ class ChAviation(Model):
             status=df_aircraft["Status"],
             first_flight_date=df_aircraft["First Flight"],
             delivery_date=df_aircraft["Delivery Date"],
-            # TODO: Check if date is nan
-            aircraft_age=(date - df_aircraft["Delivery Date"]) if date is not None else np.nan,
+            aircraft_age_yrs=(
+                (date - df_aircraft["Delivery Date"]) / pd.Timedelta(days=365.25)
+                if pd.notna(date) and pd.notna(df_aircraft["Delivery Date"]) else np.nan
+            ),
 
             # Aircraft utilisation statistics
             cumulative_reported_hours=df_aircraft["Hours"],
@@ -332,11 +335,11 @@ class ChAviation(Model):
 def _load_ch_fleet_database() -> pd.DataFrame:
     #cirium_path = pathlib.Path(__file__).parent / "static" / "cirium-2024-cleaned-20250530.csv"
     temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260318_fleet_database_processed.csv"
-    df = pd.read_csv(
-        temp_path,
-        parse_dates=["First Flight", "Delivery Date", "As of date", "Last Updated", ],
-        index_col="Registration"
-    )
+    df = pd.read_csv(temp_path, index_col="Registration")
+
+    date_cols = ["First Flight", "Delivery Date", "As of date", "Last Updated"]
+    df[date_cols] = df[date_cols].apply(pd.to_datetime, errors="coerce")
+
     df["ICAO Engine Emission Databank ID"] = df["ICAO Engine Emission Databank ID"].replace(
         np.nan, None
     )
