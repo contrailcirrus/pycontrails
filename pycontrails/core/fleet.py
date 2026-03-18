@@ -140,9 +140,8 @@ class Fleet(Flight):
 
         # final waypoints must be updated when flights are partially filtered
         masked = self["flight_id"][mask]
-        final_waypoints = np.zeros(masked.size, dtype=bool)
-        final_waypoint_indices = np.flatnonzero(masked[:-1] != masked[1:])
-        final_waypoints[final_waypoint_indices] = True
+        final_waypoints = np.empty(masked.size, dtype=bool)
+        final_waypoints[:-1] = masked[:-1] != masked[1:]
         final_waypoints[-1:] = True
         kwargs.setdefault("final_waypoints", final_waypoints)
 
