@@ -142,9 +142,11 @@ class ChAviation(Model):
         # TODO: Def eval here
         return
 
-    # TODO: How to deal with nan tail numbers?
     def registered_aircraft_properties(
-        self, tail_number: str, date: pd.Timestamp | None = None
+        self,
+        tail_number: str,
+        icao_address: str | None = None,
+        date: pd.Timestamp | None = None
     ) -> AircraftChAviation | None:
         """Get registered aircraft properties from ch-aviation fleet database.
 
@@ -152,6 +154,8 @@ class ChAviation(Model):
         ----------
         tail_number: str
             Aircraft tail number
+        icao_address: str
+            ICAO 24-bit address (Hexcode)
         date: pd.Timestamp | None
             Date of flight or date of first waypoint. If None is provided, the most recent
             registered aircraft properties will be provided.
@@ -159,15 +163,22 @@ class ChAviation(Model):
         Returns
         -------
         AircraftChAviation | None
-            Registered aircraft properties. If ``tail_number`` is not available
-            in the ch-aviation fleet database, None is returned.
+            Registered aircraft properties. If ``tail_number`` and ``icao_address`` are not
+            available in the ch-aviation fleet database, None is returned.
         """
-        if not self._check_tail_number_availability(tail_number, False):
+        # Search for tail number first, as it has the highest unique values in the fleet database
+        if self._check_tail_number_availability(tail_number, False):
+            df_aircraft = self.data.loc[[tail_number]]
+
+        # If tail number is not available, try searching for the icao_address if provided
+        elif icao_address is not None:
+            if not self._check_icao_address_availability(icao_address, False):
+                return None
+            df_aircraft = self.data[self.data["Hexcode"] == icao_address]
+
+        # tail number and icao address is not available
+        else:
             return None
-
-        df_aircraft = self.data.loc[[tail_number]]
-
-        # TODO: If tail number not available, use hexcode
 
         # Ensure that the data only contains one unique aircraft
         if len(df_aircraft) != 1:
@@ -276,6 +287,42 @@ class ChAviation(Model):
             if raise_error:
                 raise KeyError(
                     f"Aircraft tail number ({tail_number}) is not available in the ch-aviation fleet database"
+                )
+            return False
+        return True
+
+    def _check_icao_address_availability(
+        self,
+        icao_address: str,
+        raise_error: bool = True,
+    ) -> bool:
+        """
+        Check if the provided icao address is available in the ch-aviation fleet database.
+
+        Setting ``raise_error`` to True allows functions in this class to be used independently
+        outside of :meth:`eval`.
+
+        Parameters
+        ----------
+        icao_address: str
+            ICAO 24-bit address (Hexcode)
+        raise_error: bool
+            Raise a KeyError if aircraft tail number is not available.
+
+        Returns
+        -------
+        bool
+            True if icao address is available in the ch-aviation fleet database.
+
+        Raises
+        ------
+        KeyError
+            If icao address is not available in the ch-aviation fleet database.
+        """
+        if icao_address not in self.data["Hexcode"].values:
+            if raise_error:
+                raise KeyError(
+                    f"ICAO address ({icao_address}) is not available in the ch-aviation fleet database"
                 )
             return False
         return True
