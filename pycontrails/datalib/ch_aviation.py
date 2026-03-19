@@ -124,6 +124,26 @@ class AircraftChAviation:
     average_stats_as_of_date: pd.Timestamp | str
 
 
+@dataclasses.dataclass(frozen=True)
+class AirlineAircraftLookUp:
+    """Estimated engine properties from airline-aircraft look-up tables."""
+
+    #: ICAO aircraft type designator
+    aircraft_type_icao: str
+
+    #: Engine model
+    engine_subtype: str
+
+    #: Engine unique identification number from the ICAO Aircraft Emissions Databank
+    engine_uid: str
+
+    #: Operator name
+    operator_name: str
+
+    #: Operator IATA code
+    operator_iata: str
+
+
 class ChAviation(Model):
     """Support for querying the ch-aviation fleet database."""
 
@@ -137,6 +157,7 @@ class ChAviation(Model):
         super().__init__(**params_kwargs)
         if not hasattr(self, "data"):
             type(self).data = _load_ch_fleet_database()
+            type(self).airline_engines = _load_airline_engine_look_up_tables()
 
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         """Extract specific aircraft properties for flight from ch-aviation database.
@@ -201,31 +222,34 @@ class ChAviation(Model):
         self.update_params(params)
         self.set_source(source)
 
-        # End evaluation if `tail_number` and `icao_address` is not provided
-        try:
-            tail_number = self.source.get_constant("tail_number")
-        except KeyError:
-            tail_number = None
+        # End evaluation if all `tail_number`, `icao_address`, and `airline_iata` are not provided
+        keys = ["tail_number", "icao_address", "airline_iata"]
 
-        try:
-            icao_address = self.source.get_constant("icao_address")
-        except KeyError:
-            icao_address = None
+        values = []
+        for k in keys:
+            try:
+                values.append(self.source.get_constant(k))
+            except KeyError:
+                values.append(None)
 
-        if tail_number is None and icao_address is None:
+        tail_number, icao_address, airline_iata = values
+
+        if all(v is None for v in values):
             return self.source
 
         # This fails if self.source is empty
         t_first_wypt = self.source["time"][0]
 
-        aircraft_props = self.registered_aircraft_properties(
-            tail_number, icao_address, date=t_first_wypt
-        )
+        # If `tail_number` or `icao_address` are available, then get attrs from fleet database
+        if tail_number is not None or icao_address is not None:
+            aircraft_props = self.registered_aircraft_properties(
+                tail_number, icao_address, date=t_first_wypt
+            )
+        else:
+            aircraft_props = None
 
-        # Set attributes, if they aren't already defined
-        # TODO: Check this logic and redo look-up tables
+        # If tail number is not available, then try to estimate from airline look-up tables
         if aircraft_props is None:
-            # If tail number is not available, then try to estimate from airline look-up tables
             try:
                 airline_iata = self.source.get_constant("airline_iata")
                 atyp_icao = self.source.get_constant("aircraft_type")
@@ -239,13 +263,11 @@ class ChAviation(Model):
                 return self.source
 
             # Set attributes, if they aren't already defined
-            self.source.attrs.setdefault("engine_name", engine_props.engine_subseries)
+            self.source.attrs.setdefault("engine_name", engine_props.engine_subtype)
             self.source.attrs.setdefault("engine_uid", engine_props.engine_uid)
             self.source.attrs.setdefault("operator_name", engine_props.operator_name)
             self.source.attrs.setdefault("operator_iata", engine_props.operator_iata)
             return self.source
-
-        # TODO: Above not edited
 
         # Happy path: aircraft properties are available in ch-aviation
         self.source.attrs.setdefault("msn", aircraft_props.msn)
@@ -498,9 +520,96 @@ class ChAviation(Model):
             return False
         return True
 
+    def airline_aircraft_engine_look_up(
+        self,
+        airline_iata: str,
+        atyp_icao: str,
+    ) -> AirlineAircraftLookUp | None:
+        """Estimate engine information from airline-aircraft look-up tables.
+
+        Parameters
+        ----------
+        airline_iata: str
+            IATA airline designator
+        atyp_icao: str
+            ICAO aircraft type designator
+
+        Returns
+        -------
+        AirlineAircraftLookUp | None
+            Engine properties. If ``airline_iata`` and `aircraft_type_icao` is not
+            available in the look-up tables, None is returned.
+        """
+        if not self._check_airline_aircraft_availability(airline_iata, atyp_icao, False):
+            return None
+
+        df_airline = self.airline_engines.loc[airline_iata]
+
+        if isinstance(df_airline, pd.Series):
+            df_airline = pd.DataFrame(df_airline).T
+
+        df_airline_atyp = df_airline.query("Aircraft ICAO == @atyp_icao").squeeze()
+
+        return AirlineAircraftLookUp(
+            # Registration properties
+            aircraft_type_icao=atyp_icao,
+            engine_subtype=df_airline_atyp["Engine Subtype"],
+            engine_uid=df_airline_atyp["ICAO Engine Emission Databank ID"],
+            operator_name=df_airline_atyp["Operator"],
+            operator_iata=airline_iata,
+        )
+
+    def _check_airline_aircraft_availability(
+        self,
+        airline_iata: str,
+        aircraft_type_icao: str,
+        raise_error: bool = True,
+    ) -> bool:
+        """
+        Check if the provided airline and aircraft type is available in the look-up table.
+
+        Setting ``raise_error`` to True allows functions in this class to be used independently
+        outside of :meth:`eval`.
+
+        Parameters
+        ----------
+        airline_iata: str
+            IATA airline designator
+        aircraft_type_icao: str
+            ICAO aircraft type designator
+        raise_error: bool
+            Raise a KeyError if aircraft tail number is not available.
+
+        Returns
+        -------
+        bool
+            True if airline and aircraft type is available in the look-up table.
+
+        Raises
+        ------
+        KeyError
+            If airline and aircraft type is not available in the look-up table.
+        """
+        if airline_iata not in self.airline_engines.index:
+            if raise_error:
+                raise KeyError(f"Airline ({airline_iata}) is not available in the look-up tables")
+            return False
+
+        # If airline is available, now check if ICAO aircraft type designator is present
+        atyps = self.airline_engines.loc[airline_iata]["Aircraft ICAO"]
+        airline_atyps = [atyps] if isinstance(atyps, str) else atyps.to_list()
+
+        if aircraft_type_icao not in airline_atyps:
+            if raise_error:
+                raise KeyError(f"Airline ({airline_iata}) does not operate {aircraft_type_icao}.")
+            return False
+
+        return True
+
 
 @functools.cache
 def _load_ch_fleet_database() -> pd.DataFrame:
+    # TODO: Zeb to update this
     #temp_path = pathlib.Path(__file__).parent / "static" / "2024-cleaned-20250530.csv"
     temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260318_fleet_database_processed.csv"
     df = pd.read_csv(temp_path, index_col="Registration")
@@ -516,4 +625,14 @@ def _load_ch_fleet_database() -> pd.DataFrame:
     if not df.index.is_unique:
         raise ValueError("Duplicate Registration found in fleet database")
 
+    return df
+
+
+@functools.cache
+def _load_airline_engine_look_up_tables() -> pd.DataFrame:
+    # TODO: Zeb to update this
+    #temp_path = pathlib.Path(__file__).parent / "static" / "airline-engine-look-up-20250604.csv"
+    temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260318_airline_engine_look_up.csv"
+    df = pd.read_csv(temp_path, index_col="Operator IATA")
+    df["ICAO Engine Emission Databank ID"] = df["ICAO Engine Emission Databank ID"].replace(np.nan, None)
     return df
