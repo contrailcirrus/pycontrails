@@ -65,34 +65,8 @@ def test_aircraft_age_estimates():
     assert np.isnan(aircraft_props.aircraft_age_yrs)
 
 
-# TODO: Below function no longer needed?
-
-def test_aircraft_status_change():
-    """Test the ``Cirium.registered_aircraft_properties`` function for aircraft status changes."""
-    cirium = Cirium()
-
-    # G-EUUT should be in storage from 2020-03-28
-    aircraft_props = cirium.registered_aircraft_properties(
-        tail_number="G-EUUT", date=pd.Timestamp("2020-04-01")
-    )
-    assert aircraft_props.status_change_date == pd.Timestamp("2020-03-28")
-    assert aircraft_props.status == "Storage"
-
-    # G-EUUT should be back to service from 2021-04-23
-    aircraft_props = cirium.registered_aircraft_properties(
-        tail_number="G-EUUT", date=pd.Timestamp("2021-05-01")
-    )
-    assert aircraft_props.status_change_date == pd.Timestamp("2021-04-23")
-    assert aircraft_props.status == "In Service"
-
-    # If date is not given, function should return the most recent status of the aircraft
-    aircraft_props = cirium.registered_aircraft_properties(tail_number="G-EUUT")
-    assert aircraft_props.status_change_date == pd.Timestamp("2021-04-23")
-    assert aircraft_props.status == "In Service"
-
-
 def test_eval_function_with_tail_number():
-    """Test the Cirium.eval function when the tail number is available within the Cirium dataset."""
+    """Test ChAviation.eval function when the tail number is available within the fleet database."""
     fl = Flight(
         longitude=[10, 50],
         latitude=[30, 40],
@@ -104,52 +78,55 @@ def test_eval_function_with_tail_number():
         },
     )
 
-    cirium = Cirium()
-    fl = cirium.eval(fl)
+    ch_a = ChAviation()
+    fl = ch_a.eval(fl)
 
     fl_attrs = [
         "flight_id",
         "tail_number",
         "crs",
+        "msn",
         "country_of_registration",
-        "atyp_name_cirium",
-        "atyp_icao_cirium",
+        "atyp_icao_ch_a",
+        "atyp_iata_ch_a",
+        "atyp_name_ch_a",
         "atyp_manufacturer",
-        "atyp_modifiers",
         "engine_name",
         "engine_uid",
         "engine_manufacturer",
-        "engine_propulsion_type",
-        "n_engines_cirium",
-        "apu_name",
+        "n_engines_ch_a",
         "amass_mtow",
-        "amass_mzfw",
-        "amass_oew",
-        "amass_mpl",
-        "amass_fuel_capacity",
         "operator_name",
         "operator_icao",
         "operator_iata",
         "operator_type",
-        "aircraft_usage",
-        "aircraft_market_class",
+        "aircraft_role",
+        "aircraft_market_group",
         "n_seats",
         "status",
-        "last_update",
-        "aircraft_age",
+        "first_flight_date",
+        "delivery_date",
+        "aircraft_age_yrs",
         "cumulative_reported_hours",
+        "cumulative_reported_hours_ttm",
         "cumulative_reported_cycles",
-        "average_utilization_hours",
+        "cumulative_reported_cycles_ttm",
+        "cumulative_stats_as_of_date",
+        "average_annual_hours",
+        "average_daily_hours",
+        "average_daily_hours_ttm",
+        "average_annual_cycles",
+        "average_stats_as_of_date",
     ]
 
     assert np.all(pd.Series(fl.attrs.keys()).isin(fl_attrs))
 
 
 def test_eval_function_with_uncovered_tail_number():
-    """Test ``Cirium.eval`` when the tail number is not available within the Cirium dataset.
+    """Test ``ChAviation.eval`` when the tail number is not available within the fleet database.
 
-    The Cirium dataset only covers new aircraft that are introduced to the global fleet up until
-    31-December-2023. For new aircraft introduced after this date, we estimate the engine based on
+    The fleet dataset only covers new aircraft that are introduced to the global fleet up until
+    February-2026. For new aircraft introduced after this date, we estimate the engine based on
     the airline-aircraft look-up table.
     """
     fl = Flight(
@@ -159,14 +136,14 @@ def test_eval_function_with_uncovered_tail_number():
         time=[np.datetime64("2025-03-14T00"), np.datetime64("2025-03-14T05")],
         attrs={
             "flight_id": "Killer Whale",
-            "tail_number": "9V-SJI",
+            "tail_number": "9V-SDD",    # Upcoming 787-10 delivery, not in fleet database
             "airline_iata": "SQ",
-            "aircraft_type": "A359",
+            "aircraft_type": "B78X",
         },
     )
 
-    cirium = Cirium()
-    fl = cirium.eval(fl)
+    ch_a = ChAviation()
+    fl = ch_a.eval(fl)
 
     # Ensure attributes are attached
 
@@ -184,6 +161,6 @@ def test_eval_function_with_uncovered_tail_number():
     assert np.all(pd.Series(fl.attrs.keys()).isin(fl_attrs))
 
     # Check outputs
-    assert fl.attrs["engine_name"] == "Trent XWB-84"
-    assert fl.attrs["engine_uid"] == "01P18RR124"
+    assert fl.attrs["engine_name"] == "Trent 1000-J3"
+    assert fl.attrs["engine_uid"] == "02P23RR131"
     assert fl.attrs["operator_name"] == "Singapore Airlines"

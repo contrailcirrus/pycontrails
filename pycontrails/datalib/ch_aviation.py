@@ -350,8 +350,8 @@ class ChAviation(Model):
         icao_address: str
             ICAO 24-bit address (Hexcode)
         date: pd.Timestamp | None
-            Date of flight or date of first waypoint. If None is provided, the most recent
-            registered aircraft properties will be provided.
+            Date of flight or date of first waypoint. If None is provided, the `aircraft_age_yrs`
+            will be set to np.nan.
 
         Returns
         -------
@@ -551,7 +551,7 @@ class ChAviation(Model):
         if isinstance(df_airline, pd.Series):
             df_airline = pd.DataFrame(df_airline).T
 
-        df_airline_atyp = df_airline.query("Aircraft ICAO == @atyp_icao").squeeze()
+        df_airline_atyp = df_airline[df_airline["Aircraft ICAO"] == atyp_icao].squeeze()
 
         return AirlineAircraftLookUp(
             # Registration properties
