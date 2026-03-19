@@ -1,8 +1,9 @@
 """Test the ch-aviation fleet database."""
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
 from pycontrails.core import Flight
 from pycontrails.datalib.ch_aviation import ChAviation
 
@@ -10,7 +11,7 @@ from pycontrails.datalib.ch_aviation import ChAviation
 def test_number_of_unique_tail_numbers():
     """Count the number of unique tail numbers in the ch-aviation dataset."""
     ch_a = ChAviation()
-    assert ch_a.data.index.nunique() == 48826
+    assert len(ch_a.data) == 47878
 
 
 def test_database_retrieval():
@@ -19,12 +20,14 @@ def test_database_retrieval():
 
     # Retrieve DLR Advanced Technology Research Aircraft (ATRA)
     aircraft_props = ch_a.registered_aircraft_properties(tail_number="D-ATRA")
+    assert aircraft_props is not None
     assert aircraft_props.aircraft_subfamily == "A320-200"
     assert aircraft_props.engine_subtype == "V2527-A5"
     assert aircraft_props.engine_uid == "01P10IA022"
 
     # Retrieve A320 with different engine type
     aircraft_props = ch_a.registered_aircraft_properties(tail_number="G-EZUT")
+    assert aircraft_props is not None
     assert aircraft_props.aircraft_subfamily == "A320-200"
     assert aircraft_props.engine_subtype == "CFM56-5B4/3"
     assert aircraft_props.engine_uid == "01P08CM105"
@@ -41,8 +44,10 @@ def test_icao_address_fallback():
     """Test the fallback using `icao_address` if `tail_number` is not provided."""
     ch_a = ChAviation()
     aircraft_props = ch_a.registered_aircraft_properties(
-        tail_number="Killer Whale", icao_address="76CCE1"
-    )  # The tail number is actually "9V-SGA"
+        tail_number="Killer Whale",  # The tail number is actually "9V-SGA"
+        icao_address="76CCE1",
+    )
+    assert aircraft_props is not None
     assert aircraft_props.aircraft_subfamily == "A350-900(ULR)"
     assert aircraft_props.engine_subtype == "Trent XWB-84"
     assert aircraft_props.engine_uid == "01P18RR124"
@@ -50,19 +55,17 @@ def test_icao_address_fallback():
 
 def test_aircraft_age_estimates():
     ch_a = ChAviation()
-    aircraft_props = ch_a.registered_aircraft_properties(
-        tail_number="9V-SGA", date=pd.to_datetime("2026-01-01")
-    )
-    assert aircraft_props.aircraft_age_yrs == pytest.approx(7.28, rel=0.1)
-
-    aircraft_props = ch_a.registered_aircraft_properties(
-        tail_number="9V-SGA", date=pd.to_datetime("2028-03-09")
-    )
-    assert aircraft_props.aircraft_age_yrs == pytest.approx(9.46, rel=0.1)
-
-    # If date is not provided, then age should be nan
     aircraft_props = ch_a.registered_aircraft_properties(tail_number="9V-SGA")
-    assert np.isnan(aircraft_props.aircraft_age_yrs)
+    assert aircraft_props is not None
+    assert aircraft_props.aircraft_age_yrs(pd.Timestamp("2026-01-01")) == pytest.approx(
+        7.28, rel=0.1
+    )
+
+    aircraft_props = ch_a.registered_aircraft_properties(tail_number="9V-SGA")
+    assert aircraft_props is not None
+    assert aircraft_props.aircraft_age_yrs(pd.Timestamp("2028-03-09")) == pytest.approx(
+        9.46, rel=0.1
+    )
 
 
 def test_eval_function_with_tail_number():
@@ -72,19 +75,16 @@ def test_eval_function_with_tail_number():
         latitude=[30, 40],
         altitude=[10000, 11000],
         time=[np.datetime64("2023-03-14T00"), np.datetime64("2023-03-14T05")],
-        attrs={
-            "flight_id": "Killer Whale",
-            "tail_number": "SE-RET",
-        },
+        flight_id="Killer Whale",
+        tail_number="SE-RET",
     )
 
     ch_a = ChAviation()
     fl = ch_a.eval(fl)
 
-    fl_attrs = [
+    expected_fl_attrs = [
         "flight_id",
         "tail_number",
-        "crs",
         "msn",
         "country_of_registration",
         "atyp_icao_ch_a",
@@ -118,8 +118,8 @@ def test_eval_function_with_tail_number():
         "average_annual_cycles",
         "average_stats_as_of_date",
     ]
-
-    assert np.all(pd.Series(fl.attrs.keys()).isin(fl_attrs))
+    for key in expected_fl_attrs:
+        assert key in fl.attrs, f"Missing attribute: {key}"
 
 
 def test_eval_function_with_uncovered_tail_number():
@@ -134,12 +134,10 @@ def test_eval_function_with_uncovered_tail_number():
         latitude=[30, 40],
         altitude=[10000, 11000],
         time=[np.datetime64("2025-03-14T00"), np.datetime64("2025-03-14T05")],
-        attrs={
-            "flight_id": "Killer Whale",
-            "tail_number": "9V-SDD",    # Upcoming 787-10 delivery, not in fleet database
-            "airline_iata": "SQ",
-            "aircraft_type": "B78X",
-        },
+        flight_id="Killer Whale",
+        tail_number="9V-SDD",  # Upcoming 787-10 delivery, not in fleet database
+        airline_iata="SQ",
+        aircraft_type="B78X",
     )
 
     ch_a = ChAviation()
@@ -147,7 +145,7 @@ def test_eval_function_with_uncovered_tail_number():
 
     # Ensure attributes are attached
 
-    fl_attrs = [
+    expected_fl_attrs = [
         "flight_id",
         "tail_number",
         "airline_iata",
@@ -157,10 +155,42 @@ def test_eval_function_with_uncovered_tail_number():
         "operator_name",
         "operator_iata",
     ]
-
-    assert np.all(pd.Series(fl.attrs.keys()).isin(fl_attrs))
+    for key in expected_fl_attrs:
+        assert key in fl.attrs, f"Missing attribute: {key}"
 
     # Check outputs
     assert fl.attrs["engine_name"] == "Trent 1000-J3"
     assert fl.attrs["engine_uid"] == "02P23RR131"
     assert fl.attrs["operator_name"] == "Singapore Airlines"
+
+
+def test_eval_function_unknown_identifying_information():
+    """Test ``ChAviation.eval`` when unknown identifying info is available in flight attributes."""
+    fl = Flight(
+        longitude=[10, 50],
+        latitude=[30, 40],
+        altitude=[10000, 11000],
+        time=[np.datetime64("2025-03-14T00"), np.datetime64("2025-03-14T05")],
+        flight_id="ch-aviation-test",
+        airline_iata="xyz",  # Unknown airline
+        aircraft_type="B78X",
+    )
+
+    ch_a = ChAviation()
+    fl2 = ch_a.eval(fl)
+    assert fl.attrs == fl2.attrs  # No changes made to flight
+
+
+def test_eval_function_no_identifying_information():
+    """Test ``ChAviation.eval`` when no identifying info is available in flight attributes."""
+    fl = Flight(
+        longitude=[10, 50],
+        latitude=[30, 40],
+        altitude=[10000, 11000],
+        time=[np.datetime64("2025-03-14T00"), np.datetime64("2025-03-14T05")],
+        flight_id="ch-aviation-test",
+    )
+
+    ch_a = ChAviation()
+    fl2 = ch_a.eval(fl)
+    assert fl.attrs == fl2.attrs  # No changes made to flight
