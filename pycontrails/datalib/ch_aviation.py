@@ -167,43 +167,46 @@ class ChAviation(Model):
             - ``icao_address`` (optional), or
             - ``airline_iata`` and ``aircraft_type`` (optional)
 
-        The timestamp of the first waypoint is optional.
+        The timestamp of the first waypoint is optional, but preferred.
 
         The following properties will be added to the flight attribute if the `tail_number` or
-        `icao_address` is covered in ch-aviation:
-        # TODO: Please update
+        `icao_address` is covered in the fleet database:
+            - ``msn``
             - ``country_of_registration``
-            - ``atyp_name_ch_a``
             - ``atyp_icao_ch_a``
+            - ``atyp_iata_ch_a``
+            - ``atyp_name_ch_a``
             - ``atyp_manufacturer``
-            - ``atyp_modifiers``
             - ``engine_name``
             - ``engine_uid``
             - ``engine_manufacturer``
-            - ``engine_propulsion_type``
             - ``n_engines_ch_a``
-            - ``apu_name``
             - ``amass_mtow``
-            - ``amass_mzfw``
-            - ``amass_oew``
-            - ``amass_mpl``
-            - ``amass_fuel_capacity``
             - ``operator_name``
             - ``operator_icao``
             - ``operator_iata``
             - ``operator_type``
-            - ``aircraft_usage``
-            - ``aircraft_market_class``
+            - ``aircraft_role``
+            - ``aircraft_market_group``
             - ``n_seats``
             - ``status``
-            - ``last_update``
-            - ``aircraft_age``
+            - ``first_flight_date``
+            - ``delivery_date``
+            - ``aircraft_age_yrs``, if the timestamp of the first waypoint is provided in `source`
             - ``cumulative_reported_hours``
+            - ``cumulative_reported_hours_ttm``
             - ``cumulative_reported_cycles``
-            - ``average_utilization_hours``
+            - ``cumulative_reported_cycles_ttm``
+            - ``cumulative_stats_as_of_date``
+            - ``average_annual_hours``
+            - ``average_daily_hours``
+            - ``average_daily_hours_ttm``
+            - ``average_annual_cycles``
+            - ``average_stats_as_of_date``
 
-        The following properties will be added to the flight attribute if the `tail_number` is not
-        covered in ch-aviation, but `airline_iata` and `aircraft_type` are available:
+        The following properties will be added to the flight attribute if the `tail_number` and
+        `icao_address` is not covered in ch-aviation, but `airline_iata` and `aircraft_type` are
+        available:
             - ``engine_name``
             - ``engine_uid``
             - ``operator_name``
