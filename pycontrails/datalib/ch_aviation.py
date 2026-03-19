@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import os
 import pathlib
 from typing import Any
 
-import numpy as np
 import pandas as pd
+
+import pycontrails
 from pycontrails.core.flight import Flight
-from pycontrails.core.models import Model
-from pycontrails.physics import units
+from pycontrails.core.models import Model, ModelParams
 
 
 @dataclasses.dataclass(frozen=True)
@@ -85,13 +86,10 @@ class AircraftChAviation:
     status: str
 
     #: First flight date
-    first_flight_date: pd.Timestamp | str
+    first_flight_date: pd.Timestamp
 
     #: Delivery date
-    delivery_date: pd.Timestamp | str
-
-    #: Aircraft age in years
-    aircraft_age_yrs: float
+    delivery_date: pd.Timestamp
 
     #: Cumulative reported hours
     cumulative_reported_hours: int
@@ -106,7 +104,7 @@ class AircraftChAviation:
     cumulative_reported_cycles_ttm: int
 
     #: Cumulative statistics as of date
-    cumulative_stats_as_of_date: pd.Timestamp | str
+    cumulative_stats_as_of_date: pd.Timestamp
 
     #: Average annual utilization hours
     average_annual_hours: float
@@ -121,7 +119,22 @@ class AircraftChAviation:
     average_annual_cycles: float
 
     #: Average statistics as of date
-    average_stats_as_of_date: pd.Timestamp | str
+    average_stats_as_of_date: pd.Timestamp
+
+    def aircraft_age_yrs(self, date: pd.Timestamp) -> float:
+        """Estimate aircraft age in years at the provided date.
+
+        Parameters
+        ----------
+        date : pd.Timestamp
+            Date of interest
+
+        Returns
+        -------
+        float
+            Aircraft age in years at the provided date
+        """
+        return (date - self.delivery_date).days / 365.25
 
 
 @dataclasses.dataclass(frozen=True)
@@ -144,20 +157,55 @@ class AirlineAircraftLookUp:
     operator_iata: str
 
 
+@dataclasses.dataclass
+class ChAviationParams(ModelParams):
+    """Parameters for :class:`ChAviation` model."""
+
+    #: Path to ch-aviation fleet database CSV file.
+    fleet_database_path: str | pathlib.Path | None = None
+
+    #: Path to airline-aircraft engine look-up table CSV file.
+    airline_engine_lookup_path: str | pathlib.Path | None = None
+
+
+def _ch_aviation_root_path() -> pathlib.Path:
+    if (p := os.getenv("CH_AVIATION_ROOT_PATH")) is not None:
+        return pathlib.Path(p)
+    return pathlib.Path(*pycontrails.__path__).parents[1] / "ch-aviation"
+
+
 class ChAviation(Model):
     """Support for querying the ch-aviation fleet database."""
 
     name = "ch-aviation"
     long_name = "ch-aviation fleet database"
-    source: Flight
-    data: pd.DataFrame
-    airline_engines: pd.DataFrame
+    default_params = ChAviationParams
 
-    def __init__(self, **params_kwargs: Any):
-        super().__init__(**params_kwargs)
+    data: dict[str, AircraftChAviation]
+    airline_engines: dict[tuple[str, str], AirlineAircraftLookUp]
+
+    source: Flight
+
+    def __init__(
+        self,
+        params: dict[str, Any] | None = None,
+        **params_kwargs: Any,
+    ) -> None:
+        super().__init__(params=params, **params_kwargs)
+
         if not hasattr(self, "data"):
-            type(self).data = _load_ch_fleet_database()
-            type(self).airline_engines = _load_airline_engine_look_up_tables()
+            fpath = self.params["fleet_database_path"]
+            if fpath is None:
+                fpath = _ch_aviation_root_path() / "20260318_fleet_database_processed.csv"
+
+            type(self).data = _load_ch_fleet_database(fpath)
+
+        if not hasattr(self, "airline_engines"):
+            epath = self.params["airline_engine_lookup_path"]
+            if epath is None:
+                epath = _ch_aviation_root_path() / "20260318_airline_engine_look_up.csv"
+
+            type(self).airline_engines = _load_airline_engine_look_up_tables(epath)
 
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         """Extract specific aircraft properties for flight from ch-aviation database.
@@ -224,32 +272,17 @@ class ChAviation(Model):
         """
         self.update_params(params)
         self.set_source(source)
+        self.source = self.require_source_type(Flight)
 
-        # End evaluation if all `tail_number`, `icao_address`, and `airline_iata` are not provided
-        keys = ["tail_number", "icao_address", "airline_iata"]
+        tail_number = self.source.get_constant("tail_number", None)
+        icao_address = self.source.get_constant("icao_address", None)
+        airline_iata = self.source.get_constant("airline_iata", None)
 
-        values = []
-        for k in keys:
-            try:
-                values.append(self.source.get_constant(k))
-            except KeyError:
-                values.append(None)
-
-        tail_number, icao_address, airline_iata = values
-
-        if all(v is None for v in values):
+        # Early exit if no identifying information is provided
+        if tail_number is None and icao_address is None and airline_iata is None:
             return self.source
 
-        # This fails if self.source is empty
-        t_first_wypt = self.source["time"][0]
-
-        # If `tail_number` or `icao_address` are available, then get attrs from fleet database
-        if tail_number is not None or icao_address is not None:
-            aircraft_props = self.registered_aircraft_properties(
-                tail_number, icao_address, date=t_first_wypt
-            )
-        else:
-            aircraft_props = None
+        aircraft_props = self.registered_aircraft_properties(tail_number, icao_address)
 
         # If tail number is not available, then try to estimate from airline look-up tables
         if aircraft_props is None:
@@ -257,11 +290,10 @@ class ChAviation(Model):
                 airline_iata = self.source.get_constant("airline_iata")
                 atyp_icao = self.source.get_constant("aircraft_type")
             except KeyError:
-                # End evaluation if `airline_iata` and `atyp_icao` not provided
+                # End evaluation if airline_iata and atyp_icao not provided
                 return self.source
 
-            engine_props = self.airline_aircraft_engine_look_up(airline_iata, atyp_icao)
-
+            engine_props = self.airline_engines.get((airline_iata, atyp_icao))
             if engine_props is None:
                 return self.source
 
@@ -306,7 +338,10 @@ class ChAviation(Model):
         self.source.attrs.setdefault("status", aircraft_props.status)
         self.source.attrs.setdefault("first_flight_date", aircraft_props.first_flight_date)
         self.source.attrs.setdefault("delivery_date", aircraft_props.delivery_date)
-        self.source.attrs.setdefault("aircraft_age_yrs", aircraft_props.aircraft_age_yrs)
+
+        # Aircraft age
+        date = pd.Timestamp(self.source["time"][0]) if self.source else pd.Timestamp("NaT")
+        self.source.attrs.setdefault("aircraft_age_yrs", aircraft_props.aircraft_age_yrs(date))
 
         # Aircraft utilisation statistics
         self.source.attrs.setdefault(
@@ -339,7 +374,6 @@ class ChAviation(Model):
         self,
         tail_number: str,
         icao_address: str | None = None,
-        date: pd.Timestamp | None = None
     ) -> AircraftChAviation | None:
         """Get registered aircraft properties from ch-aviation fleet database.
 
@@ -349,9 +383,6 @@ class ChAviation(Model):
             Aircraft tail number
         icao_address: str
             ICAO 24-bit address (Hexcode)
-        date: pd.Timestamp | None
-            Date of flight or date of first waypoint. If None is provided, the `aircraft_age_yrs`
-            will be set to np.nan.
 
         Returns
         -------
@@ -360,282 +391,113 @@ class ChAviation(Model):
             available in the ch-aviation fleet database, None is returned.
         """
         # Search for tail number first, as it has the highest unique values in the fleet database
-        if self._check_tail_number_availability(tail_number, False):
-            df_aircraft = self.data.loc[[tail_number]]
+        aircraft = self.data.get(tail_number)
 
-        # If tail number is not available, try searching for the icao_address if provided
-        elif icao_address is not None:
-            if not self._check_icao_address_availability(icao_address, False):
-                return None
-            df_aircraft = self.data[self.data["Hexcode"] == icao_address]
+        if aircraft:
+            return aircraft
 
-        # tail number and icao address is not available
-        else:
+        if icao_address is None:
             return None
 
-        # Ensure that the data only contains one unique aircraft
-        if len(df_aircraft) != 1:
-            raise ValueError(
-                f"Expected exactly 1 row for tail_number={tail_number} "
-                f"and icao_address={icao_address}, found {len(df_aircraft)}"
-            )
-
-        df_aircraft = df_aircraft.iloc[0]
-
-        return AircraftChAviation(
-            # Registration properties
-            tail_number=tail_number,
-            icao_address=df_aircraft["Hexcode"],
-            msn=df_aircraft["MSN"],
-            country_of_registration=df_aircraft["Aircraft Register"],
-
-            # Aircraft properties
-            aircraft_type_icao=df_aircraft["Aircraft ICAO"],
-            aircraft_type_iata=df_aircraft["Aircraft IATA"],
-            aircraft_family=df_aircraft["Aircraft Family"],
-            aircraft_subfamily=df_aircraft["Aircraft Variant"],
-            manufacturer=df_aircraft["Manufacturer"],
-
-            # Engine properties
-            engine_subtype=df_aircraft["Engine Subtype"],
-            engine_uid=df_aircraft["ICAO Engine Emission Databank ID"],
-            engine_manufacturer=df_aircraft["Engine Manufacturer"],
-            n_engines=df_aircraft["Number of Engines"],
-
-            # Performance envelope
-            mtow_kg=df_aircraft["MTOW (kg)"],
-
-            # Operator properties
-            operator_name=df_aircraft["Operator"],
-            operator_icao=df_aircraft["Operator ICAO"],
-            operator_iata=df_aircraft["Operator IATA"],
-            operator_type=df_aircraft["Operator Type"],
-            aircraft_role=df_aircraft["Aircraft Role"],
-            aircraft_market_group=df_aircraft["Aircraft Market Group"],
-            n_seats=(
-                df_aircraft["Seats Y"]
-                + df_aircraft["Seats YP"]
-                + df_aircraft["Seats W"]
-                + df_aircraft["Seats C"]
-                + df_aircraft["Seats F"]
-            ),
-
-            # Aircraft status
-            status=df_aircraft["Status"],
-            first_flight_date=df_aircraft["First Flight"],
-            delivery_date=df_aircraft["Delivery Date"],
-            aircraft_age_yrs=(
-                (date - df_aircraft["Delivery Date"]) / pd.Timedelta(days=365.25)
-                if pd.notna(date) and pd.notna(df_aircraft["Delivery Date"]) else np.nan
-            ),
-
-            # Aircraft utilisation statistics
-            cumulative_reported_hours=df_aircraft["Hours"],
-            cumulative_reported_hours_ttm=df_aircraft["Hours TTM"],
-            cumulative_reported_cycles=df_aircraft["Cycles"],
-            cumulative_reported_cycles_ttm=df_aircraft["Cycles TTM"],
-            cumulative_stats_as_of_date=df_aircraft["As of date"],
-
-            average_annual_hours=df_aircraft["Avg. Annual Hours"],
-            average_daily_hours=(
-                pd.to_timedelta(df_aircraft["Avg. Daily Utilisation"], errors="coerce")
-                .total_seconds() / 3600
-                if pd.notna(df_aircraft["Avg. Daily Utilisation"]) else np.nan
-            ),
-            average_daily_hours_ttm=(
-                pd.to_timedelta(df_aircraft["Avg. Daily Utilisation TTM"], errors="coerce")
-                .total_seconds() / 3600
-                if pd.notna(df_aircraft["Avg. Daily Utilisation TTM"]) else np.nan
-            ),
-            average_annual_cycles=df_aircraft["Avg. Annual Cycles"],
-            average_stats_as_of_date=df_aircraft["Last Updated"],
-        )
-
-    def _check_tail_number_availability(
-        self,
-        tail_number: str,
-        raise_error: bool = True,
-    ) -> bool:
-        """
-        Check if the provided tail number is available in the ch-aviation fleet database.
-
-        Setting ``raise_error`` to True allows functions in this class to be used independently
-        outside of :meth:`eval`.
-
-        Parameters
-        ----------
-        tail_number: str
-            Aircraft tail number
-        raise_error: bool
-            Raise a KeyError if aircraft tail number is not available.
-
-        Returns
-        -------
-        bool
-            True if aircraft tail number is available in the ch-aviation fleet database.
-
-        Raises
-        ------
-        KeyError
-            If aircraft tail number is not available in the ch-aviation fleet database.
-        """
-        if tail_number not in self.data.index:
-            if raise_error:
-                raise KeyError(
-                    f"Aircraft tail number ({tail_number}) is not available in the ch-aviation fleet database"
-                )
-            return False
-        return True
-
-    def _check_icao_address_availability(
-        self,
-        icao_address: str,
-        raise_error: bool = True,
-    ) -> bool:
-        """
-        Check if the provided icao address is available in the ch-aviation fleet database.
-
-        Setting ``raise_error`` to True allows functions in this class to be used independently
-        outside of :meth:`eval`.
-
-        Parameters
-        ----------
-        icao_address: str
-            ICAO 24-bit address (Hexcode)
-        raise_error: bool
-            Raise a KeyError if aircraft tail number is not available.
-
-        Returns
-        -------
-        bool
-            True if icao address is available in the ch-aviation fleet database.
-
-        Raises
-        ------
-        KeyError
-            If icao address is not available in the ch-aviation fleet database.
-        """
-        if icao_address not in self.data["Hexcode"].values:
-            if raise_error:
-                raise KeyError(
-                    f"ICAO address ({icao_address}) is not available in the ch-aviation fleet database"
-                )
-            return False
-        return True
-
-    def airline_aircraft_engine_look_up(
-        self,
-        airline_iata: str,
-        atyp_icao: str,
-    ) -> AirlineAircraftLookUp | None:
-        """Estimate engine information from airline-aircraft look-up tables.
-
-        Parameters
-        ----------
-        airline_iata: str
-            IATA airline designator
-        atyp_icao: str
-            ICAO aircraft type designator
-
-        Returns
-        -------
-        AirlineAircraftLookUp | None
-            Engine properties. If ``airline_iata`` and `aircraft_type_icao` is not
-            available in the look-up tables, None is returned.
-        """
-        if not self._check_airline_aircraft_availability(airline_iata, atyp_icao, False):
-            return None
-
-        df_airline = self.airline_engines.loc[airline_iata]
-
-        if isinstance(df_airline, pd.Series):
-            df_airline = pd.DataFrame(df_airline).T
-
-        df_airline_atyp = df_airline[df_airline["Aircraft ICAO"] == atyp_icao].squeeze()
-
-        return AirlineAircraftLookUp(
-            # Registration properties
-            aircraft_type_icao=atyp_icao,
-            engine_subtype=df_airline_atyp["Engine Subtype"],
-            engine_uid=df_airline_atyp["ICAO Engine Emission Databank ID"],
-            operator_name=df_airline_atyp["Operator"],
-            operator_iata=airline_iata,
-        )
-
-    def _check_airline_aircraft_availability(
-        self,
-        airline_iata: str,
-        aircraft_type_icao: str,
-        raise_error: bool = True,
-    ) -> bool:
-        """
-        Check if the provided airline and aircraft type is available in the look-up table.
-
-        Setting ``raise_error`` to True allows functions in this class to be used independently
-        outside of :meth:`eval`.
-
-        Parameters
-        ----------
-        airline_iata: str
-            IATA airline designator
-        aircraft_type_icao: str
-            ICAO aircraft type designator
-        raise_error: bool
-            Raise a KeyError if aircraft tail number is not available.
-
-        Returns
-        -------
-        bool
-            True if airline and aircraft type is available in the look-up table.
-
-        Raises
-        ------
-        KeyError
-            If airline and aircraft type is not available in the look-up table.
-        """
-        if airline_iata not in self.airline_engines.index:
-            if raise_error:
-                raise KeyError(f"Airline ({airline_iata}) is not available in the look-up tables")
-            return False
-
-        # If airline is available, now check if ICAO aircraft type designator is present
-        atyps = self.airline_engines.loc[airline_iata]["Aircraft ICAO"]
-        airline_atyps = [atyps] if isinstance(atyps, str) else atyps.to_list()
-
-        if aircraft_type_icao not in airline_atyps:
-            if raise_error:
-                raise KeyError(f"Airline ({airline_iata}) does not operate {aircraft_type_icao}.")
-            return False
-
-        return True
+        # If tail number is not available, try searching for the icao_address provided
+        aircrafts = [ac for ac in self.data.values() if ac.icao_address == icao_address]
+        if len(aircrafts) > 1:
+            # We don't ever end up here with the 20260318_fleet_database_processed.csv data
+            raise ValueError(f"Found multiple aircraft with icao_address={icao_address}")
+        if len(aircrafts) == 1:
+            return aircrafts[0]
+        return None
 
 
-@functools.cache
-def _load_ch_fleet_database() -> pd.DataFrame:
-    # TODO: Zeb to update this
-    #temp_path = pathlib.Path(__file__).parent / "static" / "2024-cleaned-20250530.csv"
-    temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260318_fleet_database_processed.csv"
-    df = pd.read_csv(temp_path, index_col="Registration")
-
-    date_cols = ["First Flight", "Delivery Date", "As of date", "Last Updated"]
-    df[date_cols] = df[date_cols].apply(pd.to_datetime, errors="coerce")
-
-    df["ICAO Engine Emission Databank ID"] = df["ICAO Engine Emission Databank ID"].replace(
-        np.nan, None
+def _row_to_ch_aviation(tup: Any) -> tuple[str, AircraftChAviation]:
+    return tup.tail_number, AircraftChAviation(
+        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(AircraftChAviation)}
     )
 
-    # Ensure no duplicate tail numbers
-    if not df.index.is_unique:
+
+@functools.cache
+def _load_ch_fleet_database(path: str | pathlib.Path) -> dict[str, AircraftChAviation]:
+    date_cols = ["First Flight", "Delivery Date", "As of date", "Last Updated"]
+    df = pd.read_csv(
+        path,
+        parse_dates=date_cols,
+        date_format="ISO8601",
+        dtype={"Regional Partnership": str, "Lease Remarks": str},
+    )
+
+    # Defensive, unnecessary with the 20260318_fleet_database_processed.csv data
+    if not df["Registration"].is_unique:
         raise ValueError("Duplicate Registration found in fleet database")
 
-    return df
+    df["n_seats"] = df["Seats Y"] + df["Seats YP"] + df["Seats W"] + df["Seats C"] + df["Seats F"]
+    df["average_daily_hours"] = (
+        pd.to_timedelta(df["Avg. Daily Utilisation"] + ":00").dt.total_seconds() / 3600
+    )
+    df["average_daily_hours_ttm"] = (
+        pd.to_timedelta(df["Avg. Daily Utilisation TTM"] + ":00").dt.total_seconds() / 3600
+    )
+
+    # Rename other columns to match AircraftChAviation field names
+    columns = {
+        "Registration": "tail_number",
+        "Hexcode": "icao_address",
+        "MSN": "msn",
+        "Aircraft Register": "country_of_registration",
+        "Aircraft ICAO": "aircraft_type_icao",
+        "Aircraft IATA": "aircraft_type_iata",
+        "Aircraft Family": "aircraft_family",
+        "Aircraft Variant": "aircraft_subfamily",
+        "Manufacturer": "manufacturer",
+        "Engine Subtype": "engine_subtype",
+        "ICAO Engine Emission Databank ID": "engine_uid",
+        "Engine Manufacturer": "engine_manufacturer",
+        "Number of Engines": "n_engines",
+        "MTOW (kg)": "mtow_kg",
+        "Operator": "operator_name",
+        "Operator ICAO": "operator_icao",
+        "Operator IATA": "operator_iata",
+        "Operator Type": "operator_type",
+        "Aircraft Role": "aircraft_role",
+        "Aircraft Market Group": "aircraft_market_group",
+        "Status": "status",
+        "First Flight": "first_flight_date",
+        "Delivery Date": "delivery_date",
+        "Hours": "cumulative_reported_hours",
+        "Hours TTM": "cumulative_reported_hours_ttm",
+        "Cycles": "cumulative_reported_cycles",
+        "Cycles TTM": "cumulative_reported_cycles_ttm",
+        "As of date": "cumulative_stats_as_of_date",
+        "Avg. Annual Hours": "average_annual_hours",
+        "Avg. Annual Cycles": "average_annual_cycles",
+        "Last Updated": "average_stats_as_of_date",
+    }
+    df = df.rename(columns=columns)
+
+    return dict(_row_to_ch_aviation(tup) for tup in df.itertuples())
+
+
+def _row_to_airline_lookup(tup: Any) -> tuple[tuple[str, str], AirlineAircraftLookUp]:
+    return (tup.operator_iata, tup.aircraft_type_icao), AirlineAircraftLookUp(
+        **{k.name: getattr(tup, k.name) for k in dataclasses.fields(AirlineAircraftLookUp)}
+    )
 
 
 @functools.cache
-def _load_airline_engine_look_up_tables() -> pd.DataFrame:
-    # TODO: Zeb to update this
-    #temp_path = pathlib.Path(__file__).parent / "static" / "airline-engine-look-up-20250604.csv"
-    temp_path = "C:/Users/Roger/OneDrive - Imperial College London/Aviation/Datasets/ch-aviation/20260318_airline_engine_look_up.csv"
-    df = pd.read_csv(temp_path, index_col="Operator IATA")
-    df["ICAO Engine Emission Databank ID"] = df["ICAO Engine Emission Databank ID"].replace(np.nan, None)
-    return df
+def _load_airline_engine_look_up_tables(
+    path: pathlib.Path | str,
+) -> dict[tuple[str, str], AirlineAircraftLookUp]:
+    df = pd.read_csv(path)
+    columns = {
+        "Operator IATA": "operator_iata",
+        "Aircraft ICAO": "aircraft_type_icao",
+        "Engine Subtype": "engine_subtype",
+        "ICAO Engine Emission Databank ID": "engine_uid",
+        "Operator": "operator_name",
+    }
+    df = df.rename(columns=columns)
+
+    # Defensive, unnecessary with the 20260318_airline_engine_look_up.csv data
+    if df.duplicated(subset=["operator_iata", "aircraft_type_icao"]).any():
+        raise ValueError("Duplicate (operator_iata, aircraft_type_icao) found in look-up table")
+
+    return dict(_row_to_airline_lookup(tup) for tup in df.itertuples())
