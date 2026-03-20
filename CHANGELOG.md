@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Add new `ChAviation` datalib to query the ch-aviation fleet database
+
 ### Breaking changes
 
 - The `SyntheticFlight` class now sets airspeed using the `speed_m_per_s` parameter whenever it is provided. This parameter was previously used only as a fallback when BADA files were not available.
