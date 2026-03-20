@@ -224,8 +224,8 @@ class ChAviation(Model):
 
         The timestamp of the first waypoint is optional, but preferred.
 
-        The following properties will be added to the flight attribute if the `tail_number` or
-        `icao_address` is covered in the fleet database:
+        The following properties will be added to the flight attribute if the ``tail_number`` or
+        ``icao_address`` is covered in the fleet database:
             - ``msn``
             - ``country_of_registration``
             - ``atyp_icao_ch_a``
@@ -259,9 +259,9 @@ class ChAviation(Model):
             - ``average_annual_cycles``
             - ``average_stats_as_of_date``
 
-        The following properties will be added to the flight attribute if the `tail_number` and
-        `icao_address` is not covered in ch-aviation, but `airline_iata` and `aircraft_type` are
-        available:
+        The following properties will be added to the flight attribute if the ``tail_number`` and
+        ``icao_address`` are not covered in ch-aviation, but ``airline_iata`` and ``aircraft_type``
+        are available:
             - ``engine_name``
             - ``engine_uid``
             - ``operator_name``
@@ -436,7 +436,20 @@ def _load_ch_fleet_database(path: str | pathlib.Path) -> dict[str, AircraftChAvi
     if not df["Registration"].is_unique:
         raise ValueError("Duplicate Registration found in fleet database")
 
-    df["n_seats"] = df["Seats Y"] + df["Seats YP"] + df["Seats W"] + df["Seats C"] + df["Seats F"]
+    all_nan_seats = (
+        df["Seats Y"].isna()
+        & df["Seats YP"].isna()
+        & df["Seats W"].isna()
+        & df["Seats C"].isna()
+        & df["Seats F"].isna()
+    )
+    df["n_seats"] = (
+        df["Seats Y"].fillna(0.0)
+        + df["Seats YP"].fillna(0.0)
+        + df["Seats W"].fillna(0.0)
+        + df["Seats C"].fillna(0.0)
+        + df["Seats F"].fillna(0.0)
+    ).where(~all_nan_seats, other=float("nan"))
     df["average_daily_hours"] = (
         pd.to_timedelta(df["Avg. Daily Utilisation"] + ":00").dt.total_seconds() / 3600
     )
