@@ -8,6 +8,7 @@ import requests
 from google.cloud import storage
 
 import pycontrails
+from pycontrails.datalib import ch_aviation
 
 # Overwrite any CDS env configuration
 os.environ["CDSAPI_URL"] = "FAKE"
@@ -19,8 +20,10 @@ default_bada_root = pathlib.Path(*pycontrails.__path__).parents[1] / "bada"
 BADA_ROOT = pathlib.Path(os.getenv("BADA_CACHE_DIR", default_bada_root))
 BADA3_PATH = BADA_ROOT / "bada3"
 BADA4_PATH = BADA_ROOT / "bada4"
-
 BADA_AVAILABLE = BADA3_PATH.exists() and BADA4_PATH.exists()
+
+CH_AVIATION_AVAILABLE = ch_aviation._ch_aviation_root_path().is_dir()
+
 IS_WINDOWS = platform.system() == "Windows"
 
 # Disable the extended_k15 experimental warning in tests

@@ -181,7 +181,10 @@ class ChAviation(Model):
     long_name = "ch-aviation fleet database"
     default_params = ChAviationParams
 
+    #: Lookup dictionary of the form ``{tail_number: AircraftChAviation}``
     data: dict[str, AircraftChAviation]
+
+    #: Lookup dictionary of the form ``{(airline_iata, aircraft_type_icao): AirlineAircraftLookUp}``
     airline_engines: dict[tuple[str, str], AirlineAircraftLookUp]
 
     source: Flight
@@ -197,6 +200,8 @@ class ChAviation(Model):
             fpath = self.params["fleet_database_path"]
             if fpath is None:
                 fpath = _ch_aviation_root_path() / "20260318_fleet_database_processed.csv"
+            if not pathlib.Path(fpath).is_file():
+                raise FileNotFoundError(f"ch-aviation fleet database not found: {fpath}")
 
             type(self).data = _load_ch_fleet_database(fpath)
 
@@ -204,6 +209,8 @@ class ChAviation(Model):
             epath = self.params["airline_engine_lookup_path"]
             if epath is None:
                 epath = _ch_aviation_root_path() / "20260318_airline_engine_look_up.csv"
+            if not pathlib.Path(epath).is_file():
+                raise FileNotFoundError(f"ch-aviation airline-aircraft look-up not found: {epath}")
 
             type(self).airline_engines = _load_airline_engine_look_up_tables(epath)
 

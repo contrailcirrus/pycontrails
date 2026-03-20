@@ -6,6 +6,9 @@ import pytest
 
 from pycontrails.core import Flight
 from pycontrails.datalib.ch_aviation import ChAviation
+from tests import CH_AVIATION_AVAILABLE
+
+pytestmark = pytest.mark.skipif(not CH_AVIATION_AVAILABLE, reason="ch-aviation data not available")
 
 
 def test_number_of_unique_tail_numbers():
