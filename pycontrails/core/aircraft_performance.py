@@ -700,7 +700,10 @@ def engine_deterioration_factor_from_age(age_years: float, engine_type: str) -> 
     float
         Engine deterioration factor as a fraction of fuel flow increase.
 
-    TODO: Reference
+    References
+    ----------
+    Cirium EmeraldSky Emissions Methodology 2025: Detailed Description v1.8, p. 9.
+    https://assets.fta.cirium.com/wp-content/uploads/2025/11/11122423/Cirium-EmeraldSky-Emissions-Methodology-2025-Detailed-Description-v1.8.pdf
     """
     ages = [0.5, 1.5, 2.5, 6.5, 10.0]
     narrow = [1.0, 1.02, 1.04, 1.05, 1.06]
