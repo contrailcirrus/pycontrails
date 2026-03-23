@@ -4,15 +4,15 @@
 
 ### Features
 
-- Add new `ChAviation` datalib to query the ch-aviation fleet database
-
-### Breaking changes
-
-- The `SyntheticFlight` class now sets airspeed using the `speed_m_per_s` parameter whenever it is provided. This parameter was previously used only as a fallback when BADA files were not available.
+- Add new `ChAviation` datalib to query the ch-aviation fleet database for aircraft metadata. Requires ch-aviation data access.
 
 ### Fixes
 
 - The `final_waypoints` instance attribute is now correctly updated by `Fleet.filter` when filtering removes the final waypoint of a flight.
+
+### Internals
+
+- The `SyntheticFlight` class now sets airspeed using the `speed_m_per_s` parameter whenever it is provided. This parameter was previously used only as a fallback when BADA files were not available.
 
 ## 0.60.4
 
