@@ -175,7 +175,22 @@ def _ch_aviation_root_path() -> pathlib.Path:
 
 
 class ChAviation(Model):
-    """Support for querying the ch-aviation fleet database."""
+    """Support for querying the ch-aviation fleet database.
+
+    This model requires access to private ch-aviation fleet data, which is not
+    included in the pycontrails distribution.
+
+    Data file paths can be specified via :class:`ChAviationParams`:
+
+    - ``fleet_database_path``: Path to the fleet database CSV file.
+    - ``airline_engine_lookup_path``: Path to the airline-aircraft engine
+      look-up table CSV file.
+
+    If paths are not provided, this interface looks for data files in a directory
+    specified by the ``CH_AVIATION_ROOT_PATH`` environment variable. If not set,
+    the default root path is ``ch-aviation/`` as a sibling directory to the pycontrails
+    repository root.
+    """
 
     name = "ch-aviation"
     long_name = "ch-aviation fleet database"
@@ -217,15 +232,13 @@ class ChAviation(Model):
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         """Extract specific aircraft properties for flight from ch-aviation database.
 
-        Flight attribute must contain one of the following variables:
+        The ``source`` :class:`Flight` must contain one of the following variables:
             - ``tail_number`` (mandatory),
             - ``icao_address`` (optional), or
             - ``airline_iata`` and ``aircraft_type`` (optional)
 
-        The timestamp of the first waypoint is optional, but preferred.
-
-        The following properties will be added to the flight attribute if the ``tail_number`` or
-        ``icao_address`` is covered in the fleet database:
+        The following properties are added to the ``source`` attributes if the ``tail_number`` or
+        ``icao_address`` are available in the fleet database:
             - ``msn``
             - ``country_of_registration``
             - ``atyp_icao_ch_a``
@@ -247,7 +260,7 @@ class ChAviation(Model):
             - ``status``
             - ``first_flight_date``
             - ``delivery_date``
-            - ``aircraft_age_yrs``, if the timestamp of the first waypoint is provided in `source`
+            - ``aircraft_age_yrs`` (if ``source`` is non-empty)
             - ``cumulative_reported_hours``
             - ``cumulative_reported_hours_ttm``
             - ``cumulative_reported_cycles``
@@ -259,9 +272,9 @@ class ChAviation(Model):
             - ``average_annual_cycles``
             - ``average_stats_as_of_date``
 
-        The following properties will be added to the flight attribute if the ``tail_number`` and
-        ``icao_address`` are not covered in ch-aviation, but ``airline_iata`` and ``aircraft_type``
-        are available:
+        The following properties are added to the ``source`` attributes if the ``tail_number`` and
+        ``icao_address`` are not included in ch-aviation, but ``airline_iata`` and
+        ``aircraft_type`` are available:
             - ``engine_name``
             - ``engine_uid``
             - ``operator_name``
@@ -275,7 +288,7 @@ class ChAviation(Model):
         Returns
         -------
         Flight
-            Flight with attached aircraft properties
+            Flight with attached aircraft properties in :attr:`Flight.attrs`
         """
         self.update_params(params)
         self.set_source(source)

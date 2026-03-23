@@ -134,6 +134,16 @@ Google Contrail Forecast
     datalib.google_forecast.GoogleForecast
 
 
+
+Aircraft Specifications
+"""""""""""""""""""""""
+
+.. autosummary::
+    :toctree: api/
+
+    datalib.ch_aviation
+
+
 Models
 ------
 
