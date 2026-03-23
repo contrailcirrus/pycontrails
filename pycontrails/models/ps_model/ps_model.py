@@ -130,11 +130,12 @@ class PSFlight(AircraftPerformance):
             raise KeyError(msg) from exc
 
         # Set the engine deterioration factor based on the age of the aircraft if possible.
-        first_flight_date = fl.get_constant("first_flight_date", None)  # is this the field we want?
-        if first_flight_date:
-            age_years = (fl["time"].max() - first_flight_date) / pd.Timedelta(days=365.25)
+        aircraft_age_yrs = fl.get_constant("aircraft_age_yrs", None)
+        if aircraft_age_yrs is not None and not np.isnan(aircraft_age_yrs):
             body_type = "narrow"  # FIXME: dynamically determine
-            engine_deterioration_factor = engine_deterioration_factor_from_age(age_years, body_type)
+            engine_deterioration_factor = engine_deterioration_factor_from_age(
+                aircraft_age_yrs, body_type
+            )
         else:
             engine_deterioration_factor = self.params["engine_deterioration_factor"]
         fl.attrs.setdefault("engine_deterioration_factor", engine_deterioration_factor)
