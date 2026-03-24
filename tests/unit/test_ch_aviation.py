@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(not CH_AVIATION_AVAILABLE, reason="ch-aviation d
 def test_number_of_unique_tail_numbers():
     """Count the number of unique tail numbers in the ch-aviation dataset."""
     ch_a = ChAviation()
-    assert len(ch_a.data) == 47878
+    assert len(ch_a.aircraft_by_tail_number) == 47878
 
 
 def test_database_retrieval():

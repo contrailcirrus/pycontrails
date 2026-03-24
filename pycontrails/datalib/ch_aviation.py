@@ -6,7 +6,7 @@ import dataclasses
 import functools
 import os
 import pathlib
-from typing import Any
+from typing import Any, ClassVar
 
 import pandas as pd
 
@@ -197,10 +197,13 @@ class ChAviation(Model):
     default_params = ChAviationParams
 
     #: Lookup dictionary of the form ``{tail_number: AircraftChAviation}``
-    data: dict[str, AircraftChAviation]
+    aircraft_by_tail_number: ClassVar[dict[str, AircraftChAviation]]
+
+    #: Lookup dictionary of the form ``{icao_address: AircraftChAviation}``
+    aircraft_by_icao_address: ClassVar[dict[str, AircraftChAviation]]
 
     #: Lookup dictionary of the form ``{(airline_iata, aircraft_type_icao): AirlineAircraftLookUp}``
-    airline_engines: dict[tuple[str, str], AirlineAircraftLookUp]
+    airline_engines: ClassVar[dict[tuple[str, str], AirlineAircraftLookUp]]
 
     source: Flight
 
@@ -211,14 +214,19 @@ class ChAviation(Model):
     ) -> None:
         super().__init__(params=params, **params_kwargs)
 
-        if not hasattr(self, "data"):
+        # Set class variables on first instantiation as a caching mechanism
+        if not hasattr(self, "aircraft_by_tail_number"):
             fpath = self.params["fleet_database_path"]
             if fpath is None:
                 fpath = _ch_aviation_root_path() / "20260318_fleet_database_processed.csv"
             if not pathlib.Path(fpath).is_file():
                 raise FileNotFoundError(f"ch-aviation fleet database not found: {fpath}")
 
-            type(self).data = _load_ch_fleet_database(fpath)
+            data = _load_ch_fleet_database(fpath)
+            type(self).aircraft_by_tail_number = data
+            type(self).aircraft_by_icao_address = {
+                ia: ac for ac in data.values() if pd.notna(ia := ac.icao_address)
+            }
 
         if not hasattr(self, "airline_engines"):
             epath = self.params["airline_engine_lookup_path"]
@@ -411,7 +419,7 @@ class ChAviation(Model):
             available in the ch-aviation fleet database, None is returned.
         """
         # Search for tail number first, as it has the highest unique values in the fleet database
-        aircraft = self.data.get(tail_number)
+        aircraft = self.aircraft_by_tail_number.get(tail_number)
 
         if aircraft:
             return aircraft
@@ -420,13 +428,7 @@ class ChAviation(Model):
             return None
 
         # If tail number is not available, try searching for the icao_address provided
-        aircrafts = [ac for ac in self.data.values() if ac.icao_address == icao_address]
-        if len(aircrafts) > 1:
-            # We don't ever end up here with the 20260318_fleet_database_processed.csv data
-            raise ValueError(f"Found multiple aircraft with icao_address={icao_address}")
-        if len(aircrafts) == 1:
-            return aircrafts[0]
-        return None
+        return self.aircraft_by_icao_address.get(icao_address)
 
 
 def _row_to_ch_aviation(tup: Any) -> tuple[str, AircraftChAviation]:
@@ -448,6 +450,8 @@ def _load_ch_fleet_database(path: str | pathlib.Path) -> dict[str, AircraftChAvi
     # Defensive, unnecessary with the 20260318_fleet_database_processed.csv data
     if not df["Registration"].is_unique:
         raise ValueError("Duplicate Registration found in fleet database")
+    if not df["Hexcode"].dropna().is_unique:
+        raise ValueError("Duplicate Hexcode found in fleet database")
 
     all_nan_seats = (
         df["Seats Y"].isna()
