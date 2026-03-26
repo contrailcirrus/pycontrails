@@ -1502,15 +1502,31 @@ def find_initial_persistent_contrails(
     iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
     if params["vpm_activation"]:
-        # We can add a Cocip parameter for T_exhaust, vpm_ei_n, and particles
-        aei = extended_k15.droplet_apparent_emission_index(
-            specific_humidity=specific_humidity,
-            T_ambient=air_temperature,
+        is_lean_burn = nvpm_ei_n < 1.0e12
+        aei = np.empty_like(nvpm_ei_n)
+
+        # Rich-burn engines
+        aei[~is_lean_burn] = extended_k15.droplet_apparent_emission_index(
+            specific_humidity=specific_humidity[~is_lean_burn],
+            T_ambient=air_temperature[~is_lean_burn],
             T_exhaust=vector.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
-            air_pressure=air_pressure,
-            nvpm_ei_n=nvpm_ei_n,
-            G=vector["G"],
+            air_pressure=air_pressure[~is_lean_burn],
+            nvpm_ei_n=nvpm_ei_n[~is_lean_burn],
+            G=vector["G"][~is_lean_burn],
+            particles=params["particles_rich_burn"],
         )
+
+        # Lean-burn engines
+        aei[is_lean_burn] = extended_k15.droplet_apparent_emission_index(
+            specific_humidity=specific_humidity[is_lean_burn],
+            T_ambient=air_temperature[is_lean_burn],
+            T_exhaust=vector.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
+            air_pressure=air_pressure[is_lean_burn],
+            nvpm_ei_n=nvpm_ei_n[is_lean_burn],
+            G=vector["G"][is_lean_burn],
+            particles=params["particles_lean_burn"],
+        )
+
         min_aei = None
     else:
         f_activ = contrail_properties.ice_particle_activation_rate(air_temperature, T_crit_sac)
