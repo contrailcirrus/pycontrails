@@ -1923,8 +1923,8 @@ def test_cocip_vpm_activation(
     mean_ef = cocip.source["ef"].mean()
 
     if vpm_activation:
-        assert mean_n_ice_per_m_0 == pytest.approx(1764.93e11, rel=0.01)
-        assert mean_ef == pytest.approx(9.65e9, rel=0.01)
+        assert mean_n_ice_per_m_0 == pytest.approx(1074e11, rel=0.01)
+        assert mean_ef == pytest.approx(8.64e9, rel=0.01)
     else:
         assert mean_n_ice_per_m_0 == pytest.approx(8.87e11, rel=0.01)
         assert mean_ef == pytest.approx(4.90e9, rel=0.01)

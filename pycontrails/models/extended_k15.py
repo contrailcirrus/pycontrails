@@ -82,6 +82,15 @@ class Particle:
         if ptype != ParticleType.VPM and self.ei_vpm:
             raise ValueError("ei_vpm must be 0 for ParticleType.NVPM and ParticleType.AMBIENT")
 
+    @property
+    def to_json(self) -> dict[str, float | str]:
+        """Return a JSON-serializable representation of the Particle instance.
+
+        This serves to make :class:`Particle` compatible
+        with :class:`pycontrails.utils.json.NumpyEncoder`.
+        """
+        return dataclasses.asdict(self)
+
 
 def _default_particles() -> list[Particle]:
     """Define particle types representing nvPM, vPM, and ambient particles.
