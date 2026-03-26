@@ -73,7 +73,6 @@ jobs:
 
       - name: Download BADA files
         timeout-minutes: 5  # `gcloud storage cp` occasionally hangs on windows
-        shell: bash
         run: |
           mkdir -p ${{ env.BADA_CACHE_DIR }}
           gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
