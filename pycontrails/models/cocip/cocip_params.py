@@ -15,6 +15,7 @@ from pycontrails.core.models import AdvectionBuffers
 from pycontrails.models.emissions import Emissions
 from pycontrails.models.emissions.emissions import EmissionsParams
 from pycontrails.models.humidity_scaling import HumidityScaling
+from pycontrails.models.extended_k15 import Particle, ParticleType
 
 
 def _radius_threshold_um() -> npt.NDArray[np.float32]:
@@ -239,10 +240,33 @@ class CocipParams(AdvectionBuffers):
     radiative_heating_effects: bool = False
 
     #: Experimental. Apply the extended K15 model to account for vPM activation.
-    #: See the preprint `<https://doi.org/10.5194/egusphere-2025-1717>`_ for details.
+    #: See the Ponsonby et al. `<https://doi.org/10.5194/acp-25-18617-2025>`_ for details.
     #:
     #: .. versionadded:: 0.55.0
     vpm_activation: bool = False
+
+    #: Assumed vPM properties for rich-burn engines if `vpm_activation` is set to True
+    #: vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg.
+    #: Beta and subject to change (Teoh et al., 2026, in preparation)
+    #:
+    #: .. versionadded:: 0.60.5
+    particles_rich_burn: tuple[Particle, ...] = (
+        Particle(type=ParticleType.NVPM, gmd=30.0e-9, gsd=2.0, kappa=0.005),
+        Particle(type=ParticleType.VPM, gmd=1.95e-9, gsd=1.40, kappa=0.54, ei_vpm=1e17),
+        Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.3, kappa=0.5, n_ambient=600.0e6),
+    )
+
+    #: Assumed vPM properties for lean-burn engines if `vpm_activation` is set to True
+    #: vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg + nominal lubrication oil.
+    #: Beta and subject to change (Teoh et al., 2026, in preparation)
+    #:
+    #: .. versionadded:: 0.60.5
+    particles_lean_burn: tuple[Particle, ...] = (
+        Particle(type=ParticleType.NVPM, gmd=30.0e-9, gsd=2.0, kappa=0.005),
+        Particle(type=ParticleType.VPM, gmd=9.55e-9, gsd=1.40, kappa=0.33, ei_vpm=1.4e15),
+        Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.3, kappa=0.5, n_ambient=600.0e6),
+    )
+
 
     #: Experimental. Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
