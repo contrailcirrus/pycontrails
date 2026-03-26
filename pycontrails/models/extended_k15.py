@@ -1338,9 +1338,10 @@ def droplet_activation(
             "'n_plume_points' value.",
         )
 
-    # Find the first positive value, then interpolate to estimate the fractional index
-    # at which the zero crossing occurs.
-    i1 = np.argmax(f > 0.0, axis=-1, keepdims=True)
+    # Find the **last** negative-to-positive zero crossing, then interpolate to estimate
+    # the fractional index at which it occurs.
+    crossings = (f[..., :-1] <= 0.0) & (f[..., 1:] > 0.0)
+    i1 = crossings.shape[-1] - np.argmax(np.flip(crossings, axis=-1), axis=-1, keepdims=True)
     i0 = i1 - 1
     val1 = np.take_along_axis(f, i1, axis=-1)
     val0 = np.take_along_axis(f, i0, axis=-1)
