@@ -267,7 +267,6 @@ class CocipParams(AdvectionBuffers):
         Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.3, kappa=0.5, n_ambient=600.0e6),
     )
 
-
     #: Experimental. Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
     #: due to contrail-contrail overlapping.
