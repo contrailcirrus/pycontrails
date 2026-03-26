@@ -257,7 +257,8 @@ class CocipParams(AdvectionBuffers):
     )
 
     #: Assumed vPM properties for lean-burn engines if `vpm_activation` is set to True
-    #: vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg + nominal lubrication oil.
+    #: Mixed vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg
+    #:    + nominal lubrication oil (informed by Boeing ecoDemonstrator and VOLCAN campaigns)
     #: Beta and subject to change (Teoh et al., 2026, in preparation)
     #:
     #: .. versionadded:: 0.60.5
