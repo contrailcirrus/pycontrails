@@ -10,7 +10,7 @@ from typing import Any, Generic, NoReturn, overload
 import numpy as np
 import numpy.typing as npt
 
-from pycontrails.core import flight, fuel
+from pycontrails.core import aircraft_spec, flight, fuel
 from pycontrails.core.fleet import Fleet
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
@@ -685,15 +685,24 @@ def _fill_low_altitude_with_isa_temperature(vector: GeoVectorDataset, met_level_
     vector.update(air_temperature=air_temperature)
 
 
-def engine_deterioration_factor_from_age(age_years: float, engine_type: str) -> float:
+def engine_deterioration_factor_from_age(
+    age_years: float,
+    aircraft_type: str,
+    default: float = 0.025,
+) -> float:
     """Calculate the engine deterioration factor based on the age of the aircraft engine.
+
+    .. versionadded:: 0.60.5
 
     Parameters
     ----------
     age_years : float
         Age of the aircraft engine in years.
-    engine_type : str
-        Either "narrow" or "wide".
+    aircraft_type : str
+        The ICAO aircraft type. Used to determine whether to apply the narrow-body
+        or wide-body engine deterioration factor.
+    default : float, optional
+        Default engine deterioration factor to use if the ``aircraft_type`` is not recognized.
 
     Returns
     -------
@@ -705,12 +714,12 @@ def engine_deterioration_factor_from_age(age_years: float, engine_type: str) -> 
     Cirium EmeraldSky Emissions Methodology 2025: Detailed Description v1.8, p. 9.
     https://assets.fta.cirium.com/wp-content/uploads/2025/11/11122423/Cirium-EmeraldSky-Emissions-Methodology-2025-Detailed-Description-v1.8.pdf
     """
-    ages = [0.5, 1.5, 2.5, 6.5, 10.0]
-    narrow = [1.0, 1.02, 1.04, 1.05, 1.06]
-    wide = [1.005, 1.01, 1.015, 1.018, 1.02]
+    if aircraft_type in aircraft_spec.NARROW_BODY_AIRCRAFT:
+        fp = [1.0, 1.02, 1.04, 1.05, 1.06]
+    elif aircraft_type in aircraft_spec.WIDE_BODY_AIRCRAFT:
+        fp = [1.005, 1.01, 1.015, 1.018, 1.02]
+    else:
+        return default
 
-    if engine_type == "narrow":
-        return np.interp(age_years, ages, narrow, left=narrow[0], right=narrow[-1]) - 1.0
-    if engine_type == "wide":
-        return np.interp(age_years, ages, wide, left=wide[0], right=wide[-1]) - 1.0
-    raise ValueError(f"Invalid engine type: {engine_type}. Must be 'narrow' or 'wide'.")
+    xp = [0.5, 1.5, 2.5, 6.5, 10.0]
+    return np.interp(age_years, xp, fp, left=fp[0], right=fp[-1]) - 1.0
