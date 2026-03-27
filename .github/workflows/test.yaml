@@ -72,15 +72,16 @@ jobs:
         uses: google-github-actions/setup-gcloud@v3
 
       - name: Download BADA files
-        timeout-minutes: 5  # `gcloud storage cp` occasionally hangs on windows
         run: |
           mkdir -p ${{ env.BADA_CACHE_DIR }}
-          gcloud storage cp -r gs://contrails-301217-bada/bada/bada3 ${{ env.BADA_CACHE_DIR }}
-          gcloud storage cp -r gs://contrails-301217-bada/bada/bada4 ${{ env.BADA_CACHE_DIR }}
+          gcloud storage cp gs://contrails-301217-bada/bada-tar/bada3.tar.gz ${{ env.BADA_CACHE_DIR }}
+          gcloud storage cp gs://contrails-301217-bada/bada-tar/bada4.tar.gz ${{ env.BADA_CACHE_DIR }}
+          tar xzf ${{ env.BADA_CACHE_DIR }}/bada3.tar.gz -C ${{ env.BADA_CACHE_DIR }}
+          tar xzf ${{ env.BADA_CACHE_DIR }}/bada4.tar.gz -C ${{ env.BADA_CACHE_DIR }}
+          rm ${{ env.BADA_CACHE_DIR }}/*.tar.gz
           ls -l ${{ env.BADA_CACHE_DIR }}
 
       - name: Download ch-aviation database files
-        timeout-minutes: 5  # `gcloud storage cp` occasionally hangs on windows
         run: |
           mkdir -p ${{ env.CH_AVIATION_ROOT_PATH }}
           gcloud storage cp gs://contrails-301217-ch-aviation/20260318_fleet_database_processed.csv ${{ env.CH_AVIATION_ROOT_PATH }}
