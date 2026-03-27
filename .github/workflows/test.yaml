@@ -70,8 +70,6 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
-        with:
-          version: '561.0.0'
 
       - name: Download BADA files
         timeout-minutes: 5  # `gcloud storage cp` occasionally hangs on windows
