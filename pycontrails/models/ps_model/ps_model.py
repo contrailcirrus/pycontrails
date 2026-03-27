@@ -132,9 +132,8 @@ class PSFlight(AircraftPerformance):
         # Set the engine deterioration factor based on the age of the aircraft if possible.
         aircraft_age_yrs = fl.get_constant("aircraft_age_yrs", None)
         if aircraft_age_yrs is not None and not np.isnan(aircraft_age_yrs):
-            body_type = "narrow"  # FIXME: dynamically determine
             engine_deterioration_factor = engine_deterioration_factor_from_age(
-                aircraft_age_yrs, body_type
+                aircraft_age_yrs, aircraft_type, default=self.params["engine_deterioration_factor"]
             )
         else:
             engine_deterioration_factor = self.params["engine_deterioration_factor"]
