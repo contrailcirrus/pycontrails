@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Update the extended K15 model to better align with the pyrcel model as described in [Ponsonby et al. (2025)](https://acp.copernicus.org/articles/25/18617/2025/). This update changes the root-finding logic in cases of multiple roots for determining the critical droplet activation number required to quench plume supersaturation. Numerical simulations suggest that this update is unlikely to affect global contrail simulations.
+
 ### Features
 
 - Add new `ChAviation` datalib to query the ch-aviation fleet database for aircraft metadata. Requires ch-aviation data access.
