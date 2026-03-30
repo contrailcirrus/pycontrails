@@ -791,7 +791,7 @@ def overall_propulsion_efficiency(
     if eta_over_eta_b_min is not None:
         eta_over_eta_b.clip(min=eta_over_eta_b_min, out=eta_over_eta_b)
 
-    eta_1 = atyp_param.eta_1 * (1.0 - engine_deterioration_factor)
+    eta_1 = atyp_param.eta_1 / (1.0 + engine_deterioration_factor)
     eta_b = max_overall_propulsion_efficiency(mach_num, atyp_param.m_des, eta_1, atyp_param.eta_2)
     return eta_over_eta_b * eta_b
 
