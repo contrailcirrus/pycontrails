@@ -1821,6 +1821,84 @@ class GeoVectorDataset(VectorDataset):
             self._put_indices(indices)
         return out
 
+    def intersect_met_cross_section(
+        self,
+        mda: met_module.MetDataArray | met_module.MetDataset,
+        *,
+        dim: str = "level",
+        longitude: npt.NDArray[np.floating] | None = None,
+        latitude: npt.NDArray[np.floating] | None = None,
+        level: npt.NDArray[np.floating] | None = None,
+        time: npt.NDArray[np.datetime64] | None = None,
+        **interp_kwargs: Any,
+    ) -> xr.DataArray | xr.Dataset:
+        """Intersect waypoints with MetDataArray or MetDataset, retaining one dimension.
+
+        This calculates a 2D "curtain" or cross-section of the met data along the trajectory,
+        retaining the full extent of the specific dimension ``dim`` of the met data.
+
+        Parameters
+        ----------
+        mda : met_module.MetDataArray | met_module.MetDataset
+            MetDataArray or MetDataset containing meteorological variable(s).
+        dim : str, optional
+            Dimension to retain. Typically "level", "time", "latitude", or "longitude".
+            Defaults to "level".
+        longitude : npt.NDArray[np.floating] | None, optional
+            Override existing longitude coordinates for met interpolation
+        latitude : npt.NDArray[np.floating] | None, optional
+            Override existing latitude coordinates for met interpolation
+        level : npt.NDArray[np.floating] | None, optional
+            Override existing pressure level coordinates for met interpolation
+        time : npt.NDArray[np.datetime64] | None, optional
+            Override existing time coordinates for met interpolation
+        **interp_kwargs : Any
+            Additional keyword arguments to pass to :meth:`xr.DataArray.interp` or
+            :meth:`xr.Dataset.interp`.
+
+        Returns
+        -------
+        xr.DataArray | xr.Dataset
+            Interpolated cross-section. The resulting DataArray or Dataset will have
+            dimensions ``(dim, waypoint)``. The ``waypoint`` dimension will correspond
+            to the sequence of waypoints in the GeoVectorDataset, and the ``dim`` dimension
+            will correspond to the retained dimension in the Met data.
+        """
+
+        dims = {
+            "longitude": longitude if longitude is not None else self["longitude"],
+            "latitude": latitude if latitude is not None else self["latitude"],
+            "level": level if level is not None else self.level,
+            "time": time if time is not None else self["time"],
+        }
+
+        if dim not in dims:
+            raise ValueError(f"Dimension {dim} not supported, must one of {list(dims.keys())}")
+
+        interp_coords = {d: xr.DataArray(v, dims="waypoint") for d, v in dims.items() if d != dim}
+        interp_kwargs.setdefault("method", "linear")
+
+        out = mda.data.interp(
+            **interp_coords,
+            **interp_kwargs,
+        )
+
+        # Enhance vertical pressure coordinates with physical altitude equivalents.
+        # This allows plotting on top of Flight.plot_profile() which requires altitude_ft.
+        if "level" in out.coords:
+            level_coords = {}
+            if "altitude" not in out.coords:
+                level_coords["altitude"] = ("level", units.pl_to_m(out.coords["level"].values))
+            if "altitude_ft" not in out.coords:
+                level_coords["altitude_ft"] = (
+                    "level",
+                    units.m_to_ft(units.pl_to_m(out.coords["level"].values)),
+                )
+            if level_coords:
+                out = out.assign_coords(level_coords)
+
+        return out
+
     def _put_indices(self, indices: interpolation.RGIArtifacts) -> None:
         """Set entries of ``indices`` onto underlying :attr:`data.
 
