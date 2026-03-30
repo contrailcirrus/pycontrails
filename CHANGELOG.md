@@ -9,6 +9,7 @@
   - Add new `particles_rich_burn` and `particles_lean_burn` fields to `CocipParams`. These fields are only used within the `Cocip` runtime if the `vpm_activation` parameter is enabled.
   - When `vpm_activation` is enabled, waypoints are split into "rich burn" and "lean burn" categories based on the `nvpm_ei_n` value at each waypoint. Currently a hard-coded threshold of `1e12` is used to determine the fuel burn category of each waypoint.
 - Refactor the Poll-Schumann engine deterioration logic to apply deterioration at runtime rather than during aircraft-engine parameter loading. This may change behavior for downstream code that relied on pre-scaled engine parameters or called low-level Poll-Schumann functions without explicitly passing an engine deterioration factor, but should not affect the runtime behavior of the `PSFlight` model.
+- Apply the `engine_deterioration_factor` parameter in `PSFlight` via `eta -> eta / (1 + engine_deterioration_factor)` instead of `eta -> eta * (1 - engine_deterioration_factor)`. The new formulation is consistent with interpreting the factor as a fractional increase in fuel consumption. The two are equivalent to first order.
 
 ### Features
 
