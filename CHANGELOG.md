@@ -8,10 +8,12 @@
 - Update assumed vPM properties and workflow used in the extended K15 model to align with the revised methodology (Teoh et al., 2026, in preparation).
   - Add new `particles_rich_burn` and `particles_lean_burn` fields to `CocipParams`. These fields are only used within the `Cocip` runtime if the `vpm_activation` parameter is enabled.
   - When `vpm_activation` is enabled, waypoints are split into "rich burn" and "lean burn" categories based on the `nvpm_ei_n` value at each waypoint. Currently a hard-coded threshold of `1e12` is used to determine the fuel burn category of each waypoint.
+- Refactor the Poll-Schumann engine deterioration logic to apply deterioration at runtime rather than during aircraft-engine parameter loading. This may change behavior for downstream code that relied on pre-scaled engine parameters or called low-level Poll-Schumann functions without explicitly passing an engine deterioration factor, but should not affect the runtime behavior of the `PSFlight` model.
 
 ### Features
 
 - Add new `ChAviation` datalib to query the ch-aviation fleet database for aircraft metadata. Requires ch-aviation data access.
+- Add age-based engine deterioration estimation to `PSFlight` using the `aircraft_age_yrs` field, with separate deterioration curves for narrow-body and wide-body aircraft. Now when the `PSFlight` aircraft performance model is used and the `aircraft_age_yrs` field is provided on the `source`, the engine deterioration factor is automatically estimated and applied to the engine parameters. The `engine_deterioration_factor` parameter is still applied when `aircraft_age_yrs` is not present.
 
 ### Fixes
 
@@ -21,6 +23,7 @@
 
 - The `SyntheticFlight` class now sets airspeed using the `speed_m_per_s` parameter whenever it is provided. This parameter was previously used only as a fallback when BADA files were not available.
 - Download tar-gzipped BADA files from GCS in the test workflow instead of individual files to speed up download time and reduce the likelihood of the CI failing due to transient gcloud bugs.
+- Add new `aircraft_spec` module which defines known narrow-body and wide-body aircraft types.
 
 ## 0.60.4
 
