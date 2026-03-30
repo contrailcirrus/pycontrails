@@ -10,7 +10,7 @@ import enum
 import functools
 import os
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -90,19 +90,6 @@ class Particle:
         with :class:`pycontrails.utils.json.NumpyEncoder`.
         """
         return dataclasses.asdict(self)
-
-
-def _default_particles() -> list[Particle]:
-    """Define particle types representing nvPM, vPM, and ambient particles.
-
-    See upcoming Teoh et. al paper "Impact of Volatile Particulate Matter on Global Contrail
-    Radiative Forcing and Mitigation Assessment" for details on these default parameters.
-    """
-    return [
-        Particle(type=ParticleType.NVPM, kappa=0.005, gmd=30.0e-9, gsd=2.0),
-        Particle(type=ParticleType.VPM, kappa=0.2, gmd=1.8e-9, gsd=1.5, ei_vpm=2.0e17),
-        Particle(type=ParticleType.AMBIENT, kappa=0.5, gmd=30.0e-9, gsd=2.3, n_ambient=600.0e6),
-    ]
 
 
 @dataclasses.dataclass
@@ -486,7 +473,8 @@ def droplet_apparent_emission_index(
     air_pressure: npt.NDArray[np.floating],
     nvpm_ei_n: npt.NDArray[np.floating],
     G: npt.NDArray[np.floating],
-    particles: list[Particle] | None = None,
+    particles: Sequence[Particle],
+    *,
     n_plume_points: int = 40,
 ) -> npt.NDArray[np.floating]:
     """Calculate the droplet apparent emissions index from nvPM, vPM and ambient particles.
@@ -517,9 +505,11 @@ def droplet_apparent_emission_index(
         nvPM number emissions index, [:math:`kg^{-1}`]
     G : npt.NDArray[np.floating]
         Slope of the mixing line in a temperature-humidity diagram.
-    particles : list[Particle] | None, optional
-        List of particle types to consider. If ``None``, defaults to a list of
-        ``Particle`` instances representing nvPM, vPM, and ambient particles.
+    particles : Sequence[Particle]
+        List of particle types to consider. See
+        :attr:`pycontrails.models.cocip.CocipParams.particles_rich_burn`
+        and :attr:`pycontrails.models.cocip.CocipParams.particles_lean_burn` for
+        recommended defaults.
     n_plume_points : int
         Number of points to evaluate the plume temperature along the mixing line.
         Increasing this value can improve accuracy at the expense of compute and
@@ -552,8 +542,6 @@ def droplet_apparent_emission_index(
             analyses or explicit reference to the limitations outlined above.
             """
         )
-
-    particles = particles or _default_particles()
 
     # Confirm all parameters are broadcastable
     specific_humidity, T_ambient, T_exhaust, air_pressure, G, nvpm_ei_n = np.atleast_1d(
@@ -745,7 +733,7 @@ def _plume_age_timescale(
 
 
 def water_droplet_activation(
-    particles: list[Particle],
+    particles: Sequence[Particle],
     T_plume: npt.NDArray[np.floating],
     T_ambient: npt.NDArray[np.floating],
     nvpm_ei_n: npt.NDArray[np.floating],
@@ -758,7 +746,7 @@ def water_droplet_activation(
 
     Parameters
     ----------
-    particles : list[Particle]
+    particles : Sequence[Particle]
         Properties of different particles in the contrail plume.
     T_plume : npt.NDArray[np.floating]
         Plume temperature evolution along mixing line, [:math:`K`].
