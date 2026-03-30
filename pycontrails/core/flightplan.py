@@ -1,7 +1,15 @@
 """ATC Flight Plan Parser."""
 
+import datetime
+import io
 import re
-from typing import Any
+import xml.etree.ElementTree as ET
+from typing import IO, Any, AnyStr
+
+import pandas as pd
+
+from pycontrails.core import flight
+from pycontrails.physics import units
 
 
 def to_atc_plan(plan: dict[str, Any]) -> str:
@@ -226,3 +234,110 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
             flightplan["supplementary_info"] = suplInfo
 
     return flightplan
+
+
+def parse_ofp_xml(raw_xml: AnyStr | IO[AnyStr]) -> flight.Flight:
+    """Parse an ARINC 633 Operational Flight Plan (OFP) XML into a Flight object.
+
+    Extracts waypoint-level information such as latitude, longitude, altitude, and
+    time for the main flight plan (departure, waypoints, arrival) to construct a
+    :class:`Flight` instance.
+
+    Parameters
+    ----------
+    raw_xml : str | bytes | IO[str] | IO[bytes]
+        String, bytes, or file-like object containing the ARINC 633 XML data.
+
+    Returns
+    -------
+    Flight
+        A :class:`Flight` instance containing the parsed waypoints.
+    """
+    if isinstance(raw_xml, bytes):
+        raw_xml = io.BytesIO(raw_xml)
+    elif isinstance(raw_xml, str):
+        raw_xml = io.StringIO(raw_xml)
+    tree = ET.parse(raw_xml)
+    root = tree.getroot()
+
+    flight_el = _find_or_error(root, ".//{*}Flight")
+    dep_dt = pd.to_datetime(flight_el.get("scheduledTimeOfDeparture"), utc=True)
+
+    df = pd.DataFrame(
+        [_parse_waypoint(wp, dep_dt) for wp in root.findall("./{*}Waypoints/{*}Waypoint")]
+    )
+    if df.empty:
+        raise ValueError("No waypoints found in ARINC 633 XML.")
+
+    flight_no_el = _find_or_error(root, ".//{*}CommercialFlightNumber")
+    return flight.Flight(data=df, attrs={"flight_id": flight_no_el.text})
+
+
+def _parse_waypoint(wp: ET.Element, departure: pd.Timestamp) -> dict[str, Any]:
+    """Parse an ARINC 633 <Waypoint> element."""
+    coord = _find_or_error(wp, "{*}Coordinates")
+
+    return {
+        "waypoint_name": wp.get("waypointId") or wp.get("waypointName"),
+        "country_code": wp.get("countryICAOCode"),
+        "latitude": float(coord.attrib["latitude"]) / 3600.0,
+        "longitude": float(coord.attrib["longitude"]) / 3600.0,
+        "altitude": _parse_altitude_m(wp),
+        "time": _parse_time(wp, departure),
+    }
+
+
+def _find_or_error(el: ET.Element, path: str) -> ET.Element:
+    result = el.find(path)
+    if result is None:
+        raise ValueError(f"Could not find {path} in {ET.tostring(el, encoding='unicode')[:200]}")
+    return result
+
+
+def _parse_time(wp: ET.Element, departure: datetime.datetime) -> datetime.datetime:
+    """Parse the time from an ARINC 633 <Waypoint> element."""
+    cft = wp.find(".//{*}CumulatedFlightTime/{*}EstimatedTime/{*}Value")
+    if cft is not None and cft.text:
+        return departure + pd.to_timedelta(cft.text)
+
+    tow = wp.find(".//{*}TimeOverWaypoint/{*}EstimatedTime/{*}Value")
+    if tow is not None and tow.text:
+        return pd.to_datetime(tow.text, utc=True)
+
+    if wp.get("sequenceId") == "1":
+        # For the first waypoint (usually the departure airport) we can fall
+        # back to the flights departure time.
+        return departure
+
+    raise ValueError(f"No time found for waypoint {ET.tostring(wp, encoding='unicode')}")
+
+
+def _parse_altitude_m(wp: ET.Element) -> float:
+    """Parse the altitude in meters from an ARINC 633 <Waypoint> element."""
+    alt = wp.find(".//{*}EstimatedAltitude/{*}Value")
+    if alt is None or alt.text is None:
+        if wp.get("sequenceId") == "1":
+            # For the first waypoint (usually the departure airport) we can
+            # fall back to 0m altitude.
+            return 0.0
+
+        raise ValueError(f"No altitude found for waypoint {ET.tostring(wp, encoding='unicode')}")
+
+    unit = alt.get("unit")
+    val = float(alt.text)
+    mult = 1.0
+
+    if not unit:
+        raise ValueError(f"No unit in altitude in {ET.tostring(wp, encoding='unicode')[:200]}")
+
+    if "/" in unit:  # Convert units like "ft/100".
+        unit, mult_str = unit.split("/")
+        mult = float(mult_str)
+
+    if unit == "ft":
+        return units.ft_to_m(val) * mult
+
+    if unit == "m":
+        return val * mult
+
+    raise ValueError(f"Unknown unit: {unit} in {ET.tostring(wp, encoding='unicode')[:200]}")
