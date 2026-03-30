@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pandas as pd
+
 from pycontrails.core import flightplan
 
 
@@ -92,3 +94,180 @@ def test_flightplan_two() -> None:
         "-PAEN0600\n"
         "-DOF/170428 RMK/DO NOT POST)"
     )
+
+
+def test_ofp_xml_parser() -> None:
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <FlightPlan computedTime="2026-03-23T12:00:00Z"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://aeec.aviation-ia.net/633 FlightPlan.xsd"
+            xmlns="http://aeec.aviation-ia.net/633">
+        <M633SupplementaryHeader>
+            <Flight scheduledTimeOfDeparture="2026-03-23T14:00:00Z">
+                <FlightIdentification>
+                    <FlightNumber airlineIATACode="ZZ" number="1234">
+                        <CommercialFlightNumber>ZZ1234</CommercialFlightNumber>
+                    </FlightNumber>
+                </FlightIdentification>
+            </Flight>
+        </M633SupplementaryHeader>
+        <Waypoints>
+            <Waypoint waypointId="AAAA">
+                <Coordinates latitude="0" longitude="3600"/>
+                <Altitude>
+                <EstimatedAltitude>
+                    <Value unit="ft/100">1</Value> 
+                </EstimatedAltitude>
+            </Altitude>
+                <TimeOverWaypoint>
+                    <EstimatedTime>
+                        <Value>2026-03-23T14:01:00Z</Value>
+                    </EstimatedTime>
+                </TimeOverWaypoint>
+            </Waypoint>
+            <Waypoint waypointId="BBBB">
+                <Coordinates latitude="+324000" longitude="-648000"/>
+                <Altitude>
+                <EstimatedAltitude>
+                    <Value unit="ft">25000</Value> 
+                </EstimatedAltitude>
+            </Altitude>
+                <TimeOverWaypoint>
+                    <EstimatedTime>
+                        <Value>2026-03-23T17:00:00Z</Value>
+                    </EstimatedTime>
+                </TimeOverWaypoint>
+            </Waypoint>
+        </Waypoints>
+    </FlightPlan>
+    """
+
+    flight = flightplan.parse_ofp_xml(xml)
+
+    assert flight.attrs["flight_id"] == "ZZ1234"
+    assert flight.data["waypoint_name"].tolist() == ["AAAA", "BBBB"]
+    assert flight.data["latitude"].tolist() == [0.0, 90.0]
+    assert flight.data["longitude"].tolist() == [1.0, -180.0]
+    assert flight.data["altitude"].tolist() == [30.48, 7620.0]
+    assert flight.data["time"].tolist() == [
+        pd.to_datetime("2026-03-23T14:01:00Z").value,
+        pd.to_datetime("2026-03-23T17:00:00Z").value,
+    ]
+
+
+def test_ofp_parser_departure_fallback() -> None:
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <FlightPlan
+            computedTime="2026-03-23T12:00:00Z"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://aeec.aviation-ia.net/633 FlightPlan.xsd"
+            xmlns="http://aeec.aviation-ia.net/633">
+        <M633SupplementaryHeader>
+            <Flight scheduledTimeOfDeparture="2026-03-23T14:00:00Z">
+                <FlightIdentification>
+                    <FlightNumber airlineIATACode="ZZ" number="1234">
+                        <CommercialFlightNumber>ZZ1234</CommercialFlightNumber>
+                    </FlightNumber>
+                </FlightIdentification>
+            </Flight>
+        </M633SupplementaryHeader>
+        <Waypoints>
+            <Waypoint waypointId="AAAA" sequenceId="1">
+                <Coordinates latitude="0" longitude="0"/>
+            </Waypoint>
+        </Waypoints>
+    </FlightPlan>
+    """
+
+    flight = flightplan.parse_ofp_xml(xml)
+
+    assert flight.data["time"].tolist() == [
+        pd.to_datetime("2026-03-23T14:00:00Z").value,
+    ]
+    assert flight.data["altitude"].tolist() == [0.0]
+
+
+def test_ofp_parser_cumulated_flight_time() -> None:
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <FlightPlan computedTime="2026-03-23T12:00:00Z"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://aeec.aviation-ia.net/633 FlightPlan.xsd"
+            xmlns="http://aeec.aviation-ia.net/633">
+        <M633SupplementaryHeader>
+            <Flight scheduledTimeOfDeparture="2026-03-23T14:00:00Z">
+                <FlightIdentification>
+                    <FlightNumber airlineIATACode="ZZ" number="1234">
+                        <CommercialFlightNumber>ZZ1234</CommercialFlightNumber>
+                    </FlightNumber>
+                </FlightIdentification>
+            </Flight>
+        </M633SupplementaryHeader>
+        <Waypoints>
+            <Waypoint waypointId="AAAA" sequenceId="1">
+                <Coordinates latitude="0" longitude="0"/>   
+                <CumulatedFlightTime>
+                    <EstimatedTime>
+                        <Value>PT10M50S</Value>
+                    </EstimatedTime>
+                </CumulatedFlightTime>
+            </Waypoint>
+        </Waypoints>
+    </FlightPlan>
+    """
+
+    flight = flightplan.parse_ofp_xml(xml)
+
+    assert flight.data["time"].tolist() == [
+        pd.to_datetime("2026-03-23T14:10:50Z").value,
+    ]
+
+
+def test_ofp_parser_altitude_formats() -> None:
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <FlightPlan computedTime="2026-03-23T12:00:00Z"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://aeec.aviation-ia.net/633 FlightPlan.xsd"
+            xmlns="http://aeec.aviation-ia.net/633">
+        <M633SupplementaryHeader>
+            <Flight scheduledTimeOfDeparture="2026-03-23T14:00:00Z">
+                <FlightIdentification>
+                    <FlightNumber airlineIATACode="ZZ" number="1234">
+                        <CommercialFlightNumber>ZZ1234</CommercialFlightNumber>
+                    </FlightNumber>
+                </FlightIdentification>
+            </Flight>
+        </M633SupplementaryHeader>
+        <Waypoints>
+            <Waypoint waypointId="AAAA" sequenceId="1">
+                <Coordinates latitude="0" longitude="0"/>   
+                <Altitude>
+                    <EstimatedAltitude>
+                        <Value unit="ft/100">250</Value>
+                    </EstimatedAltitude>
+                </Altitude>
+                 <TimeOverWaypoint>
+                    <EstimatedTime>
+                        <Value>2026-03-23T14:00:00Z</Value>
+                    </EstimatedTime>
+                </TimeOverWaypoint>
+            </Waypoint>
+            <Waypoint waypointId="BBBB" sequenceId="2">
+                <Coordinates latitude="0" longitude="0"/>   
+                <Altitude>
+                    <EstimatedAltitude>
+                        <Value unit="m">10000</Value>
+                    </EstimatedAltitude>
+                </Altitude>
+                 <TimeOverWaypoint>
+                    <EstimatedTime>
+                        <Value>2026-03-23T17:00:00Z</Value>
+                    </EstimatedTime>
+                </TimeOverWaypoint>
+            </Waypoint>
+        </Waypoints>
+    </FlightPlan>
+    """
+
+    flight = flightplan.parse_ofp_xml(xml)
+
+    assert flight.data["altitude"].tolist() == [7620, 10000]
