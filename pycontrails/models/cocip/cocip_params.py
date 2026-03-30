@@ -245,9 +245,12 @@ class CocipParams(AdvectionBuffers):
     #: .. versionadded:: 0.55.0
     vpm_activation: bool = False
 
-    #: Assumed vPM properties for rich-burn engines if `vpm_activation` is set to True
-    #: vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg.
-    #: Beta and subject to change (Teoh et al., 2026, in preparation)
+    #: Assumed vPM properties for rich-burn engines if :attr:`vpm_activation` is enabled.
+    #: ::
+    #:
+    #:     vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg
+    #:
+    #: Beta and subject to change (Teoh et al., 2026, in preparation).
     #:
     #: .. versionadded:: 0.60.5
     particles_rich_burn: tuple[Particle, ...] = (
@@ -256,10 +259,13 @@ class CocipParams(AdvectionBuffers):
         Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.3, kappa=0.5, n_ambient=600.0e6),
     )
 
-    #: Assumed vPM properties for lean-burn engines if `vpm_activation` is set to True
-    #: Mixed vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg
-    #:    + nominal lubrication oil (informed by Boeing ecoDemonstrator and VOLCAN campaigns)
-    #: Beta and subject to change (Teoh et al., 2026, in preparation)
+    #: Assumed vPM properties for lean-burn engines if :attr:`vpm_activation` is enabled.
+    #: ::
+    #:
+    #:     Mixed vPM = Fuel sulphur content of 500 ppm + EI organics of 5 mg/kg
+    #:     + nominal lubrication oil (informed by Boeing ecoDemonstrator and VOLCAN campaigns)
+    #:
+    #: Beta and subject to change (Teoh et al., 2026, in preparation).
     #:
     #: .. versionadded:: 0.60.5
     particles_lean_burn: tuple[Particle, ...] = (
