@@ -5,6 +5,7 @@ import pytest
 
 from pycontrails import JetA
 from pycontrails.models import extended_k15, sac
+from pycontrails.models.cocip.cocip_params import CocipParams
 from pycontrails.models.humidity_scaling import humidity_scaling as hs
 
 
@@ -55,6 +56,7 @@ def test_droplet_apparent_emission_index() -> None:
         air_pressure=18000.0,
         nvpm_ei_n=3.0e14,
         G=1.2,
+        particles=CocipParams.particles_rich_burn,
     )
     assert aei == pytest.approx(1.76e14, rel=0.01)
 
