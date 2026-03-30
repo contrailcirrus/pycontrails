@@ -20,6 +20,7 @@
 ### Internals
 
 - The `SyntheticFlight` class now sets airspeed using the `speed_m_per_s` parameter whenever it is provided. This parameter was previously used only as a fallback when BADA files were not available.
+- Download tar-gzipped BADA files from GCS in the test workflow instead of individual files to speed up download time and reduce the likelihood of the CI failing due to transient gcloud bugs.
 
 ## 0.60.4
 
