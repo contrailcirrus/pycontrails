@@ -163,6 +163,49 @@ class AircraftPerformance(Model):
         - ``total_fuel_burn``: total fuel burn, [:math:`kg`]
         """
 
+    def get_engine_deterioration_factor(self, fl: Flight, aircraft_type: str) -> float:
+        """Determine the engine deterioration factor based on the age of the aircraft if possible.
+
+        This simple method is provided to avoid some repetition in the implementing classes.
+
+        The priority for determining the engine deterioration factor is as follows:
+
+        1. If ``fl.attrs["engine_deterioration_factor"]`` is already set, use that value.
+        2. If ``fl.attrs["aircraft_age_yrs"]`` is set, call
+           :func:`engine_deterioration_factor_from_age` to determine the engine deterioration
+           factor based on the age of the aircraft.
+        3. Otherwise, use the default value from :attr:`params`.
+
+        Parameters
+        ----------
+        fl : Flight
+            Flight trajectory to evaluate. The ``fl.attrs`` is updated in-place with the
+            computed engine deterioration factor if it is not already set.
+        aircraft_type : str
+            The ICAO aircraft type. Likely the same as ``fl.attrs["aircraft_type"]``,
+            but passed explicitly to avoid circular dependencies between the model
+            and the flight attributes.
+
+        Returns
+        -------
+        float
+            Engine deterioration factor as a fraction of fuel flow increase.
+        """
+        out = fl.attrs.get("engine_deterioration_factor")
+        if out is not None:
+            return out
+
+        default = self.params["engine_deterioration_factor"]
+
+        aircraft_age_yrs = fl.get_constant("aircraft_age_yrs", None)
+        if aircraft_age_yrs is not None and not np.isnan(aircraft_age_yrs):
+            out = engine_deterioration_factor_from_age(aircraft_age_yrs, aircraft_type, default)
+        else:
+            out = default
+
+        fl.attrs["engine_deterioration_factor"] = out
+        return out
+
     def simulate_fuel_and_performance(
         self,
         *,

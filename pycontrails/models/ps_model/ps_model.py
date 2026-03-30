@@ -24,7 +24,6 @@ from pycontrails.core.aircraft_performance import (
     AircraftPerformance,
     AircraftPerformanceData,
     AircraftPerformanceParams,
-    engine_deterioration_factor_from_age,
 )
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
@@ -129,15 +128,7 @@ class PSFlight(AircraftPerformance):
             msg = f"Aircraft type {aircraft_type} not covered by the PS model."
             raise KeyError(msg) from exc
 
-        # Set the engine deterioration factor based on the age of the aircraft if possible.
-        aircraft_age_yrs = fl.get_constant("aircraft_age_yrs", None)
-        if aircraft_age_yrs is not None and not np.isnan(aircraft_age_yrs):
-            engine_deterioration_factor = engine_deterioration_factor_from_age(
-                aircraft_age_yrs, aircraft_type, default=self.params["engine_deterioration_factor"]
-            )
-        else:
-            engine_deterioration_factor = self.params["engine_deterioration_factor"]
-        fl.attrs.setdefault("engine_deterioration_factor", engine_deterioration_factor)
+        engine_deterioration_factor = self.get_engine_deterioration_factor(fl, aircraft_type)
 
         # Set flight attributes based on engine, if they aren't already defined
         fl.attrs.setdefault("aircraft_performance_model", self.name)
