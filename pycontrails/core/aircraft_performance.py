@@ -765,4 +765,4 @@ def engine_deterioration_factor_from_age(
         return default
 
     xp = [0.5, 1.5, 2.5, 6.5, 10.0]
-    return np.interp(age_years, xp, fp, left=fp[0], right=fp[-1]) - 1.0
+    return np.interp(age_years, xp, fp, left=fp[0], right=fp[-1]).item() - 1.0

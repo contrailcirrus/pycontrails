@@ -13,7 +13,10 @@
 ### Features
 
 - Add new `ChAviation` datalib to query the ch-aviation fleet database for aircraft metadata. Requires ch-aviation data access.
-- Add age-based engine deterioration estimation to `PSFlight` using the `aircraft_age_yrs` field, with separate deterioration curves for narrow-body and wide-body aircraft. Now when the `PSFlight` aircraft performance model is used and the `aircraft_age_yrs` field is provided on the `source`, the engine deterioration factor is automatically estimated and applied to the engine parameters. The `engine_deterioration_factor` parameter is still applied when `aircraft_age_yrs` is not present.
+- Add age-based engine deterioration estimation to `PSFlight` using the `aircraft_age_yrs` field, with separate deterioration curves for narrow-body and wide-body aircraft. The applied engine deterioration factor is now determined using the following order of precedence:
+  1. An explicitly provided `engine_deterioration_factor` on the `source`.
+  2. An estimation based on the `aircraft_age_yrs` field.
+  3. The default `PSFlight` parameter value.
 
 ### Fixes
 
