@@ -1062,7 +1062,7 @@ class VectorDataset:  # noqa: PLW1641
         if out is not marker:
             return out
 
-        arr: np.ndarray = self.data.get(key, marker)  # type: ignore[arg-type]
+        arr: np.ndarray = self.data.get(key, marker)
         if arr is not marker:
             try:
                 vals = np.unique(arr)
