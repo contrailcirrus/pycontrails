@@ -18,6 +18,7 @@
   1. An explicitly provided `engine_deterioration_factor` on the `source`.
   2. An estimation based on the `aircraft_age_yrs` field.
   3. The default `PSFlight` parameter value.
+- Add OFP XML flight plan parser following ARINC 633. This allows parsing standardized flight plans into `Flight` instances.
 
 ### Fixes
 

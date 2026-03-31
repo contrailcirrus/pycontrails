@@ -263,14 +263,29 @@ def parse_ofp_xml(raw_xml: AnyStr | IO[AnyStr]) -> flight.Flight:
     flight_el = _find_or_error(root, ".//{*}Flight")
     dep_dt = pd.to_datetime(flight_el.get("scheduledTimeOfDeparture"), utc=True)
 
-    df = pd.DataFrame(
-        [_parse_waypoint(wp, dep_dt) for wp in root.findall("./{*}Waypoints/{*}Waypoint")]
-    )
+    waypoints = [_parse_waypoint(wp, dep_dt) for wp in root.findall("./{*}Waypoints/{*}Waypoint")]
+    df = pd.DataFrame(waypoints).drop_duplicates(subset="time", keep="last")
     if df.empty:
         raise ValueError("No waypoints found in ARINC 633 XML.")
 
-    flight_no_el = _find_or_error(root, ".//{*}CommercialFlightNumber")
-    return flight.Flight(data=df, attrs={"flight_id": flight_no_el.text})
+    attrs: dict[str, str] = {}
+
+    if val := root.findtext(".//{*}FlightKeyIdentifier"):
+        attrs["flight_id"] = val
+    if val := root.findtext(".//{*}CommercialFlightNumber"):
+        attrs["flight_number"] = val
+    if val := root.findtext(".//{*}AircraftICAOType"):
+        attrs["aircraft_type"] = val
+    if val := root.findtext(".//{*}DepartureAirport/{*}AirportICAOCode"):
+        attrs["departure_airport"] = val
+    if val := root.findtext(".//{*}ArrivalAirport/{*}AirportICAOCode"):
+        attrs["arrival_airport"] = val
+
+    aircraft_el = root.find(".//{*}Aircraft")
+    if aircraft_el is not None and (val := aircraft_el.get("aircraftRegistration")):
+        attrs["tail_number"] = val
+
+    return flight.Flight(data=df, attrs=attrs)
 
 
 def _parse_waypoint(wp: ET.Element, departure: pd.Timestamp) -> dict[str, Any]:

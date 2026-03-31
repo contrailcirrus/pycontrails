@@ -143,15 +143,16 @@ def test_ofp_xml_parser() -> None:
     """
 
     flight = flightplan.parse_ofp_xml(xml)
+    assert len(flight) == 2
 
-    assert flight.attrs["flight_id"] == "ZZ1234"
-    assert flight.data["waypoint_name"].tolist() == ["AAAA", "BBBB"]
-    assert flight.data["latitude"].tolist() == [0.0, 90.0]
-    assert flight.data["longitude"].tolist() == [1.0, -180.0]
-    assert flight.data["altitude"].tolist() == [30.48, 7620.0]
-    assert flight.data["time"].tolist() == [
-        pd.to_datetime("2026-03-23T14:01:00Z").value,
-        pd.to_datetime("2026-03-23T17:00:00Z").value,
+    assert flight.attrs["flight_number"] == "ZZ1234"
+    assert flight["waypoint_name"].tolist() == ["AAAA", "BBBB"]
+    assert flight["latitude"].tolist() == [0.0, 90.0]
+    assert flight["longitude"].tolist() == [1.0, -180.0]
+    assert flight["altitude"].tolist() == [30.48, 7620.0]
+    assert flight["time"].tolist() == [
+        pd.Timestamp("2026-03-23T14:01:00Z").value,
+        pd.Timestamp("2026-03-23T17:00:00Z").value,
     ]
 
 
@@ -180,11 +181,12 @@ def test_ofp_parser_departure_fallback() -> None:
     """
 
     flight = flightplan.parse_ofp_xml(xml)
+    assert len(flight) == 1
 
-    assert flight.data["time"].tolist() == [
-        pd.to_datetime("2026-03-23T14:00:00Z").value,
+    assert flight["time"].tolist() == [
+        pd.Timestamp("2026-03-23T14:00:00Z").value,
     ]
-    assert flight.data["altitude"].tolist() == [0.0]
+    assert flight["altitude"].tolist() == [0.0]
 
 
 def test_ofp_parser_cumulated_flight_time() -> None:
@@ -216,8 +218,9 @@ def test_ofp_parser_cumulated_flight_time() -> None:
     """
 
     flight = flightplan.parse_ofp_xml(xml)
+    assert len(flight) == 1
 
-    assert flight.data["time"].tolist() == [
+    assert flight["time"].tolist() == [
         pd.to_datetime("2026-03-23T14:10:50Z").value,
     ]
 
@@ -269,5 +272,6 @@ def test_ofp_parser_altitude_formats() -> None:
     """
 
     flight = flightplan.parse_ofp_xml(xml)
+    assert len(flight) == 2
 
-    assert flight.data["altitude"].tolist() == [7620, 10000]
+    assert flight["altitude"].tolist() == [7620, 10000]
