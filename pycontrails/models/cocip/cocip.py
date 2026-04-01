@@ -1100,6 +1100,7 @@ class Cocip(Model):
             self._downwash_contrail,
             self.params["effective_vertical_resolution"],
             self.params["wind_shear_enhancement_exponent"],
+            self.params["convective_velocity_scale"],
             self.params["sedimentation_impact_factor"],
             self.params["radiative_heating_effects"],
             self.params["max_horizontal_diffusivity"],
@@ -1176,6 +1177,7 @@ class Cocip(Model):
                 latest_contrail,
                 self.params["effective_vertical_resolution"],
                 self.params["wind_shear_enhancement_exponent"],
+                self.params["convective_velocity_scale"],
                 self.params["sedimentation_impact_factor"],
                 self.params["radiative_heating_effects"],
                 self.params["max_horizontal_diffusivity"],
@@ -2310,6 +2312,7 @@ def calc_contrail_properties(
     contrail: GeoVectorDataset,
     effective_vertical_resolution: float | npt.NDArray[np.floating],
     wind_shear_enhancement_exponent: float | npt.NDArray[np.floating],
+    convective_velocity_scale: float | npt.NDArray[np.floating],
     sedimentation_impact_factor: float | npt.NDArray[np.floating],
     radiative_heating_effects: bool,
     max_horizontal_diffusivity: float | None,
@@ -2343,6 +2346,8 @@ def calc_contrail_properties(
         Passed into :func:`wind_shear.wind_shear_enhancement_factor`.
     wind_shear_enhancement_exponent : float | npt.NDArray[np.floating]
         Passed into :func:`wind_shear.wind_shear_enhancement_factor`.
+    convective_velocity_scale: float | npt.NDArray[np.floating]
+        Passed into `contrail_properties.vertical_diffusivity`.
     sedimentation_impact_factor: float | npt.NDArray[np.floating]
         Passed into `contrail_properties.vertical_diffusivity`.
     radiative_heating_effects: bool
@@ -2454,6 +2459,7 @@ def calc_contrail_properties(
         dT_dz=dT_dz,
         depth_eff=depth_eff,
         terminal_fall_speed=terminal_fall_speed,
+        convective_velocity_scale=convective_velocity_scale,
         sedimentation_impact_factor=sedimentation_impact_factor,
         eff_heat_rate=eff_heat_rate,
         max_vertical_diffusivity=max_vertical_diffusivity,
@@ -2692,6 +2698,7 @@ def calc_timestep_contrail_evolution(
         contrail_2,
         params["effective_vertical_resolution"],
         params["wind_shear_enhancement_exponent"],
+        params["convective_velocity_scale"],
         params["sedimentation_impact_factor"],
         params["radiative_heating_effects"],
         params["max_horizontal_diffusivity"],

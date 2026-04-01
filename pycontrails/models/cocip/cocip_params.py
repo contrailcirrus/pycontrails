@@ -178,6 +178,13 @@ class CocipParams(AdvectionBuffers):
     #: Denoted :math:`C_{D0}` in eq (14) in :cite:`schumannContrailCirrusPrediction2012`.
     initial_wake_vortex_depth: float = 0.5
 
+    #: Convective velocity scale, [:math:`m s^{-1}`]. Equivalent to :math:`\sqrt{c_V} w_N'`
+    #: in eq. (35) of :cite:`schumannContrailCirrusPrediction2012`.
+    #: The default value is based on :cite:`schumannAviationinducedCirrusRadiation2013`
+    #: and is higher than the value derived from :math:`c_V = 0.2` and :math:`w_N' = 0.1` m s^{-1}
+    #: in the original publication.
+    convective_velocity_scale: float = 0.1
+
     #: Sedimentation impact factor. Denoted by :math:`f_{T}` in eq. (35) of
     #: :cite:`schumannContrailCirrusPrediction2012`.
     #: Schumann describes this as "an important adjustable parameter", and sets
