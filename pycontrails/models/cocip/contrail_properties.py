@@ -906,7 +906,7 @@ def vertical_diffusivity(
     terminal_fall_speed : npt.NDArray[np.floating] | float
         Terminal fall speed of contrail ice particles, [:math:`m s^{-1}`]
     convective_velocity_scale : npt.NDArray[np.floating] | float
-        Convective velocity scale, [:math:`m s^{-1}`] equivalent to `sqrt()`
+        Convective velocity scale, [:math:`m s^{-1}`]
     sedimentation_impact_factor : npt.NDArray[np.floating] | float
         Enhancement parameter denoted by `f_T` in eq. (35) Schumann (2012).
     eff_heat_rate: npt.NDArray[np.floating] | None
