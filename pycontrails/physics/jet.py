@@ -16,13 +16,18 @@ import numpy.typing as npt
 import pandas as pd
 
 from pycontrails.core import flight
+from pycontrails.core.airports import global_airport_database, distance_between_airports
 from pycontrails.physics import constants, units
 from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 
 logger = logging.getLogger(__name__)
 _path_to_static = pathlib.Path(__file__).parent / "static"
 PLF_PATH = _path_to_static / "iata-passenger-load-factors-20260304.csv"
-CLF_PATH = _path_to_static / "iata-cargo-load-factors-20260304.csv"
+CLF_PATH = _path_to_static / "dray-2019-annual-mean-cargo-load-factors.csv"
+
+#: `iata-cargo-load-factors-20260304.csv` is replaced by `dray-2019-annual-mean-cargo-load-factors`
+#: The IATA cargo statistics does not distinguish between freight carried in the passenger aircraft
+#: hold and freight carried by dedicated freighter aircraft.
 
 
 # -------------------
@@ -352,8 +357,8 @@ def reserve_fuel_requirements(
 
 
 @functools.cache
-def _historical_regional_load_factor(path: pathlib.Path) -> pd.DataFrame:
-    """Load the historical regional load factor database.
+def _iata_passenger_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
+    """Load the IATA Air Passenger Market Analysis passenger load factor database.
 
     Daily load factors are estimated from linearly interpolating the monthly statistics.
 
@@ -371,6 +376,41 @@ def _historical_regional_load_factor(path: pathlib.Path) -> pd.DataFrame:
     """
     df = pd.read_csv(path, index_col="Date", parse_dates=True, date_format="%d/%m/%Y")
     return df.resample("D").interpolate()
+
+
+@functools.cache
+def _dray_cargo_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
+    """Load the Dray et al. (2024) cargo load factor database.
+
+    2019 annual mean cargo load factors provided by Dray et al. (2024).
+
+    Returns
+    -------
+    pd.DataFrame
+        Historical regional load factor for each day.
+
+    Notes
+    -----
+    The 2019 global and regional annual mean cargo load factors is estimated using data provided by
+    Dray et al. (2024). The cargo load factor for each region and distance range is estimated as
+    the total freight carried divided by the total available freight capacity.
+
+    References
+    ----------
+    - Dray et al., 2024 (https://doi.org/10.1016/j.jairtraman.2024.102692)
+    """
+    df = pd.read_csv(path)
+    df["mean_passenger_hold_freight_lf"] = (
+        df["pax_hold_freight_carried_tonnes"] / df["pax_hold_freight_capacity_tonnes"]
+    )
+    df["mean_dedicated_freight_lf"] = (
+        df["dedicated_freight_carried_tonnes"] / df["dedicated_freight_capacity_tonnes"]
+    )
+
+    # Calculate cargo load factors
+    df["mean_passenger_hold_freight_lf"] = (df["mean_passenger_hold_freight_lf"].fillna(0))
+    df["mean_dedicated_freight_lf"] = (df["mean_dedicated_freight_lf"].fillna(0))
+    return df
 
 
 AIRPORT_TO_REGION = {
@@ -431,7 +471,7 @@ def passenger_load_factor(
         region = "Global"
 
     # Load IATA Air Passenger Market Analysis monthly load factors
-    lf_database = _historical_regional_load_factor(PLF_PATH)
+    lf_database = _iata_passenger_load_factor_database(PLF_PATH)
 
     # If `first_waypoint_time` is None, global/regional averages for the trailing twelve months
     # will be assumed.
