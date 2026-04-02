@@ -540,15 +540,30 @@ def _load_airline_engine_look_up_tables(
     return dict(_row_to_airline_lookup(tup) for tup in df.itertuples())
 
 
-# -------------------------------
-# Updated aircraft mass estimates
-# -------------------------------
+# ----------------------------------
+# Updated aircraft payload estimates
+# ----------------------------------
 
 # Note: Move to jet.py?
 
 
 # TODO: ch-aviation initial aircraft mass function, need to account for different aircraft types?
-# TODO: Dray et al. (2024) -> Estimate cargo load factor by region
+def aircraft_payload(
+    aircraft_role: str,
+    max_payload: float,
+    n_seats: int,
+):
+    # TODO: Zeb, this is the main function. Do we need to list all the inputs required for
+    # TODO: the `passenger_aircraft_payload` and `dedicated_freighter_payload` functions?
+    # If ch_aviation["Aircraft Role"] == "Passenger" and `n_seats` > 50 (guardrail)
+    # use `passenger_aircraft_payload` function
+
+    # If ch_aviation["Aircraft Role"] == "Cargo"
+    # use `dedicated_freighter_payload` function
+
+    # Else, just assume 80% of max_payload
+    return
+
 
 
 def passenger_aircraft_payload(
