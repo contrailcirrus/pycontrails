@@ -257,11 +257,14 @@ def distance_between_airports(
     if origin_airport_icao == destination_airport_icao:
         return None
 
+    # Set icao_code to index, so it can be queried
+    airports_idx = airports.set_index("icao_code")
+
     try:
-        origin_lon = airports["longitude"][origin_airport_icao]
-        origin_lat = airports["latitude"][origin_airport_icao]
-        destination_lon = airports["longitude"][destination_airport_icao]
-        destination_lat = airports["latitude"][destination_airport_icao]
+        origin_lon = airports_idx.loc[origin_airport_icao, "longitude"]
+        origin_lat = airports_idx.loc[origin_airport_icao, "latitude"]
+        destination_lon = airports_idx.loc[destination_airport_icao, "longitude"]
+        destination_lat = airports_idx.loc[destination_airport_icao, "latitude"]
     except KeyError:
         return None
     else:
