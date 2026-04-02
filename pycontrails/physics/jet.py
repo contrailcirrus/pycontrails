@@ -619,10 +619,10 @@ def initial_aircraft_mass(
     *,
     operating_empty_weight: float,
     max_takeoff_weight: float,
-    max_payload: float,
+    payload: float,
     total_fuel_burn: float,
     total_reserve_fuel: float,
-    load_factor: float,
+    oew_uplift: float = 1.03,
 ) -> float:
     """Estimate initial aircraft mass as a function of load factor and fuel requirements.
 
@@ -647,14 +647,14 @@ def initial_aircraft_mass(
         the crew and necessary equipment, but excluding usable fuel and payload, [:math:`kg`]
     max_takeoff_weight: float
         Aircraft maximum take-off weight, [:math:`kg`]
-    max_payload: float
-        Aircraft maximum payload, [:math:`kg`]
+    payload: float
+        Aircraft payload, [:math:`kg`]
     total_fuel_burn: float
         Total fuel consumption for the flight, obtained from prior iterations, [:math:`kg`]
     total_reserve_fuel: float
         Total reserve fuel requirements, [:math:`kg`]
-    load_factor: float
-        Aircraft load factor assumption (between 0 and 1)
+    oew_uplift: float
+        Multiple to increase operational empty weight. Defaults to 1.03, following Cirium (2025).
 
     Returns
     -------
@@ -664,13 +664,15 @@ def initial_aircraft_mass(
     References
     ----------
     - :cite:`wasiukAircraftPerformanceModel2015`
+    - Cirium EmeraldSky Emissions Methodology 2025: Detailed Description v1.8, p. 9.
+    https://assets.fta.cirium.com/wp-content/uploads/2025/11/11122423/Cirium-EmeraldSky-Emissions-Methodology-2025-Detailed-Description-v1.8.pdf
 
     See Also
     --------
     reserve_fuel_requirements
     aircraft_load_factor
     """
-    tom = operating_empty_weight + load_factor * max_payload + total_fuel_burn + total_reserve_fuel
+    tom = (operating_empty_weight * oew_uplift) + payload + total_fuel_burn + total_reserve_fuel
     return min(tom, max_takeoff_weight)
 
 
@@ -723,14 +725,15 @@ def update_aircraft_mass(
     initial_aircraft_mass
     aircraft_load_factor
     """
+    payload = load_factor * max_payload
+
     if takeoff_mass is None:
         takeoff_mass = initial_aircraft_mass(
             operating_empty_weight=operating_empty_weight,
             max_takeoff_weight=max_takeoff_weight,
-            max_payload=max_payload,
+            payload=payload,
             total_fuel_burn=np.nansum(fuel_burn).item(),
             total_reserve_fuel=total_reserve_fuel,
-            load_factor=load_factor,
         )
 
     # Calculate updated aircraft mass for each waypoint
