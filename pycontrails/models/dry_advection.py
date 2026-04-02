@@ -476,7 +476,7 @@ def _calc_geometry(
         dT_dz,
         depth_eff,
         terminal_fall_speed=0.0,
-        convective_velocity_scale=0.1,
+        turbulent_vertical_velocity_scale=0.1,
         sedimentation_impact_factor=0.0,
         eff_heat_rate=None,
         max_vertical_diffusivity=None,  # Not yet supported in DryAdvection

@@ -1578,8 +1578,8 @@ def find_initial_persistent_contrails(
     wind_shear_enhancement_exponent = persistent_contrail.get(
         "wind_shear_enhancement_exponent", params["wind_shear_enhancement_exponent"]
     )
-    convective_velocity_scale = persistent_contrail.get(
-        "convective_velocity_scale", params["convective_velocity_scale"]
+    turbulent_vertical_velocity_scale = persistent_contrail.get(
+        "turbulent_vertical_velocity_scale", params["turbulent_vertical_velocity_scale"]
     )
     sedimentation_impact_factor = persistent_contrail.get(
         "sedimentation_impact_factor", params["sedimentation_impact_factor"]
@@ -1588,7 +1588,7 @@ def find_initial_persistent_contrails(
         persistent_contrail,
         effective_vertical_resolution=effective_vertical_resolution,
         wind_shear_enhancement_exponent=wind_shear_enhancement_exponent,
-        convective_velocity_scale=convective_velocity_scale,
+        turbuent_vertical_velocity_scale=turbulent_vertical_velocity_scale,
         sedimentation_impact_factor=sedimentation_impact_factor,
         radiative_heating_effects=False,  # Not yet supported in CocipGrid
         max_horizontal_diffusivity=params["max_horizontal_diffusivity"],
@@ -1718,7 +1718,7 @@ def calc_evolve_one_step(
         next_contrail,
         effective_vertical_resolution=params["effective_vertical_resolution"],
         wind_shear_enhancement_exponent=params["wind_shear_enhancement_exponent"],
-        convective_velocity_scale=params["convective_velocity_scale"],
+        turbulent_vertical_velocity_scale=params["turbulent_vertical_velocity_scale"],
         sedimentation_impact_factor=params["sedimentation_impact_factor"],
         radiative_heating_effects=False,  # Not yet supported in CocipGrid
         max_horizontal_diffusivity=params["max_horizontal_diffusivity"],
