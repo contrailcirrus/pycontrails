@@ -6,7 +6,7 @@
 
 - Experimental: Integrate alternative contrail parametric radiative forcing model (Schumann, 2025) into the CoCiP workflow: The original parametric RF model assumes a near-linear dependence of contrail RF on the contrail and natural cirrus optical depth and provides the best fit to the libRadtran dataset with the minimum number of model coefficients. This alternative model provides a stronger non-linear dependence to the contrail and natural cirrus optical depth, consistent with the ECMWF ecRad model, but yields a slightly weaker fit to the libRadtran dataset. This new parameterization can be enabled within the `Cocip` and `CocipGrid` models via the `parametric_rf_model_s2025` parameter.
 - Add new `GeoVectorDataset.intersect_met_cross_section` method which can be used create curtain plots of meteorological variables along a flight track. See the [Google Forecast notebook](https://py.contrails.org/integrations/GoogleForecast.html) for an example of this method in use.
-- Make the convective velocity scale used to calculate vertical diffusivity (`w_N'` in Equation 35 of [Schumann 2012](https://doi.org/10.5194/gmd-5-543-2012)) a user-configurable parameter.
+- Make the turbulent vertical velocity scale used to calculate vertical diffusivity (`w_N'` in Equation 35 of [Schumann 2012](https://doi.org/10.5194/gmd-5-543-2012)) a user-configurable parameter.
 
 ### Breaking changes
 
@@ -14,7 +14,7 @@
 - Integrate the [Dray et al. (2024) cargo load factor database](https://doi.org/10.1016/j.jairtraman.2024.102692), which provides the 2019 annual mean origin-destination specific cargo load factors in the passenger hold and dedicated freighters. Discontinue the use of the IATA cargo load factor database, as it does not distinguish between freight carried in the passenger hold and dedicated freighters.
 - Provide reference values for the number of seats for each passenger aircraft type to improve payload estimates.
 - Remove `DEFAULT_LOAD_FACTOR` and `jet.aircraft_load_factor`. Passenger aircraft and cargo aircraft load factors are now handled separately.
-- Fix a bug in the vertical diffusivity calculation. Vertical diffusivity is now correctly diagnosed based on the square of the convective velocity scale. This changes default behavior only when the convective velocity scale is itself diagnosed based on differential radiative heating at the top and bottom of the contrail (`radiative_heating_effects = True`).
+- Fix a bug in the vertical diffusivity calculation. Vertical diffusivity is now correctly diagnosed based on the square of the turbulent vertical velocity scale. This changes default behavior only when the turbulent vertical velocity scale is itself diagnosed based on differential radiative heating at the top and bottom of the contrail (`radiative_heating_effects = True`).
 
 ## 0.60.5
 

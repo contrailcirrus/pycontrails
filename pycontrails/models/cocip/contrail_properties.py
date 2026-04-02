@@ -885,7 +885,7 @@ def vertical_diffusivity(
     dT_dz: npt.NDArray[np.floating],
     depth_eff: npt.NDArray[np.floating],
     terminal_fall_speed: npt.NDArray[np.floating] | float,
-    convective_velocity_scale: npt.NDArray[np.floating] | float,
+    turbulent_vertical_velocity_scale: npt.NDArray[np.floating] | float,
     sedimentation_impact_factor: npt.NDArray[np.floating] | float,
     eff_heat_rate: npt.NDArray[np.floating] | None,
     max_vertical_diffusivity: float | None,
@@ -905,7 +905,7 @@ def vertical_diffusivity(
         Effective depth of the contrail plume, [:math:`m`]
     terminal_fall_speed : npt.NDArray[np.floating] | float
         Terminal fall speed of contrail ice particles, [:math:`m s^{-1}`]
-    convective_velocity_scale : npt.NDArray[np.floating] | float
+    turbulent_vertical_velocity_scale : npt.NDArray[np.floating] | float
         Convective velocity scale, [:math:`m s^{-1}`]
     sedimentation_impact_factor : npt.NDArray[np.floating] | float
         Enhancement parameter denoted by `f_T` in eq. (35) Schumann (2012).
@@ -934,9 +934,9 @@ def vertical_diffusivity(
 
     The first term in Eq. (35) of :cite:`schumannContrailCirrusPrediction2012` is
     (c_V * w'_N^2 / N_BV, where c_V = 0.2 and w'_N = 0.1 m s-1) is different
-    than outlined below. Here, a convective velocity scale (provided as input) is used
+    than outlined below. Here, a turbulent vertical velocity scale (provided as input) is used
     directly (without scaling by c_V) when radiative heating effects are not activated
-    We currently recommend setting the convective velocity scale to 0.1 m s^{-1} based
+    We currently recommend setting the turbulent vertical velocity scale to 0.1 m s^{-1} based
     on guidance from :cite:`schumannAviationinducedCirrusRadiation2013`,
     which found that the original formulation estimated thinner
     contrails relative to satellite observations. The recommended value produces
@@ -948,14 +948,16 @@ def vertical_diffusivity(
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
     n_bv.clip(min=0.001, out=n_bv)
 
-    cvs: npt.NDArray[np.floating] | float
+    w_prime: npt.NDArray[np.floating] | float
     if eff_heat_rate is not None:
-        cvs = radiative_heating.convective_velocity_scale(depth_eff, eff_heat_rate, air_temperature)
-        cvs.clip(min=0.01, out=cvs)
+        w_prime = radiative_heating.convective_velocity_scale(
+            depth_eff, eff_heat_rate, air_temperature
+        )
+        w_prime.clip(min=0.01, out=w_prime)
     else:
-        cvs = convective_velocity_scale
+        w_prime = turbulent_vertical_velocity_scale
 
-    d_v = cvs**2 / n_bv + sedimentation_impact_factor * terminal_fall_speed * depth_eff
+    d_v = w_prime**2 / n_bv + sedimentation_impact_factor * terminal_fall_speed * depth_eff
 
     if max_vertical_diffusivity is not None:
         d_v = np.minimum(d_v, max_vertical_diffusivity)
