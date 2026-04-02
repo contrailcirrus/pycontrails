@@ -506,7 +506,7 @@ def cargo_load_factor(
     origin_airport_icao: str | None = None,
     destination_airport_icao: str | None = None,
     total_flight_dist: float | None = None,
-    passenger_aircraft: bool = False,
+    passenger_aircraft: bool = True,
 ) -> float:
     """
     Estimate cargo load factor carried by passenger aircraft and dedicated freighters.
