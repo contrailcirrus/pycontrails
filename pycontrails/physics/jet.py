@@ -368,11 +368,6 @@ def _historical_regional_load_factor(path: pathlib.Path) -> pd.DataFrame:
     publication of the Air Passenger Market Analysis, where the static file will be continuously
     updated. The report estimates the regional passenger load factor by dividing the revenue
     passenger-km (RPK) by the available seat-km (ASK).
-
-    The monthly **cargo load factor** for each region is compiled from IATA's monthly publication
-    of the Air Cargo Market Analysis, where the static file will be continuously updated.
-    The report estimates the regional cargo load factor by dividing the freight tonne-km (FTK)
-    by the available freight tonne-km (AFTK).
     """
     df = pd.read_csv(path, index_col="Date", parse_dates=True, date_format="%d/%m/%Y")
     return df.resample("D").interpolate()
@@ -404,14 +399,12 @@ AIRPORT_TO_REGION = {
 }
 
 
-def aircraft_load_factor(
+def passenger_load_factor(
     origin_airport_icao: str | None = None,
     first_waypoint_time: pd.Timestamp | None = None,
-    *,
-    freighter: bool = False,
 ) -> float:
     """
-    Estimate passenger/cargo load factor based on historical data.
+    Estimate passenger load factor based on historical data.
 
     Accounts for regional and seasonal differences.
 
@@ -423,13 +416,11 @@ def aircraft_load_factor(
     first_waypoint_time : pd.Timestamp | None
         First waypoint UTC time. If None is provided, then regionally or globally averaged values
         from the trailing twelve months will be used.
-    freighter: bool
-        Historical cargo load factor will be used if true, otherwise use passenger load factor.
 
     Returns
     -------
     float
-        Passenger/cargo load factor [0 - 1], unitless
+        Passenger load factor [0 - 1], unitless
     """
     # If origin airport is provided, use regional load factor.
     # Otherwise, do not allow empty string and `None` to pass
@@ -439,11 +430,8 @@ def aircraft_load_factor(
     else:
         region = "Global"
 
-    # Use passenger or cargo database
-    if freighter:
-        lf_database = _historical_regional_load_factor(CLF_PATH)
-    else:
-        lf_database = _historical_regional_load_factor(PLF_PATH)
+    # Load IATA Air Passenger Market Analysis monthly load factors
+    lf_database = _historical_regional_load_factor(PLF_PATH)
 
     # If `first_waypoint_time` is None, global/regional averages for the trailing twelve months
     # will be assumed.
