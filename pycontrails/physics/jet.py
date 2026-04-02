@@ -502,6 +502,103 @@ def passenger_load_factor(
     return lf_database.at[date, region].item()
 
 
+def cargo_load_factor(
+    origin_airport_icao: str | None = None,
+    destination_airport_icao: str | None = None,
+    total_flight_dist: float | None = None,
+    passenger_aircraft: bool = False,
+) -> float:
+    """
+    Estimate cargo load factor carried by passenger aircraft and dedicated freighters.
+
+    Accounts for regional asymmetries in freight flow and distance-specific variability
+
+    Parameters
+    ----------
+    origin_airport_icao : str | None
+        ICAO code of origin airport. If None is provided, then assume global mean values.
+    destination_airport_icao : str | None
+        ICAO code of destination airport. If None is provided, then assume global mean values.
+    total_flight_dist : float
+        Total flight distance flown, [:math:`km`]
+        Use great-circle distance between first and last known waypoint for consistency with the
+        cargo database.
+    passenger_aircraft : bool
+        Use cargo load factors for the passenger hold if true, otherwise use cargo load factors for
+        dedicated freighters
+
+    Returns
+    -------
+    float
+        Passenger load factor [0 - 1], unitless
+    """
+    # If origin airport is provided, use regional load factor.
+    # Otherwise, do not allow empty string and `None` to pass
+    if origin_airport_icao:
+        first_letter = origin_airport_icao[0]
+        origin_region = AIRPORT_TO_REGION.get(first_letter, "Global")
+    else:
+        origin_region = "Global"
+
+    if destination_airport_icao:
+        first_letter = destination_airport_icao[0]
+        destination_region = AIRPORT_TO_REGION.get(first_letter, "Global")
+    else:
+        destination_region = "Global"
+
+    # If either origin or destination is None, both become `Global` because no data is available for
+    # regional -> global, or global -> regional
+    if (origin_region == "Global") or (destination_region == "Global"):
+        origin_region = "Global"
+        destination_region = "Global"
+
+    # Load Dray et al. (2024) cargo database
+    clf_database = _dray_cargo_load_factor_database(CLF_PATH)
+
+    # Filter for region of interest
+    filt = (
+        (clf_database["origin"] == origin_region)
+        & (clf_database["destination"] == destination_region)
+    )
+    rows = clf_database[filt].copy()
+    rows.sort_values(by=["dist_mid"], inplace=True)
+
+    # If distance is not provided, then try to estimate with origin and destination airport pairs
+    if total_flight_dist is None:
+        # TODO: To Zeb, might be able to make this more efficient
+        airports = global_airport_database()
+        total_flight_dist = distance_between_airports(
+            airports,
+            origin_airport_icao,
+            destination_airport_icao
+        )
+
+    # If `total_flight_dist` is still None, assume 2019 global annual mean values
+    if total_flight_dist is None:
+        if passenger_aircraft:
+            #return 0.171
+            return (
+                rows["pax_hold_freight_carried_tonnes"].sum()
+                / rows["pax_hold_freight_capacity_tonnes"].sum()
+            )
+        else:
+            #return 0.553
+            return (
+                rows["dedicated_freight_carried_tonnes"].sum()
+                / rows["dedicated_freight_capacity_tonnes"].sum()
+            )
+
+    # Otherwise, query cargo database
+    xp_clf = rows["dist_mid"].to_numpy()
+
+    if passenger_aircraft:
+        fp_clf = rows["mean_passenger_hold_freight_lf"].to_numpy()
+    else:
+        fp_clf = rows["mean_dedicated_freight_lf"].to_numpy()
+
+    return np.interp(total_flight_dist, xp_clf, fp_clf)
+
+
 def aircraft_weight(aircraft_mass: ArrayOrFloat) -> ArrayOrFloat:
     """Calculate the aircraft weight at each waypoint.
 
