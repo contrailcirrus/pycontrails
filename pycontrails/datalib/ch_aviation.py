@@ -538,3 +538,82 @@ def _load_airline_engine_look_up_tables(
         raise ValueError("Duplicate (operator_iata, aircraft_type_icao) found in look-up table")
 
     return dict(_row_to_airline_lookup(tup) for tup in df.itertuples())
+
+
+# -------------------------------
+# Updated aircraft mass estimates
+# -------------------------------
+
+# Note: Move to jet.py?
+
+
+# TODO: ch-aviation initial aircraft mass function, need to account for different aircraft types?
+# TODO: Dray et al. (2024) -> Estimate cargo load factor by region
+
+
+def passenger_aircraft_payload(
+    max_payload: float,
+    n_seats: int,
+    passenger_load_factor: float,
+    belly_cargo_load_factor: float, *,
+    pax_mass: float = 100.0
+) -> float:
+    """Estimate payload for passenger aircraft.
+
+    Parameters
+    ----------
+    max_payload: float
+        Aircraft maximum payload, [:math:`kg`]
+    n_seats: int
+        Total number of seats in passenger aircraft (can be obtained from ch-aviation database)
+    passenger_load_factor: float
+        Passenger load factor (between 0 and 1)
+    belly_cargo_load_factor: float
+        Cargo load factor in the passenger hold (between 0 and 1)
+    pax_mass: float
+        Assumed passenger plus baggage mass, [:math:`kg`]
+
+    Returns
+    -------
+    float
+        Estimated passenger aircraft payload, [:math:`kg`]
+
+    References
+    ----------
+    - :cite: Dray et al. (2024), https://doi.org/10.1016/j.jairtraman.2024.102692
+    """
+    # Estimate maximum cargo payload: Assume 100% passenger load factor
+    max_cargo_payload = max_payload - (n_seats * pax_mass)
+
+    # Estimate passenger payload,
+    pax_payload = n_seats * passenger_load_factor * pax_mass
+
+    # Estimate cargo payload
+    cargo_payload = belly_cargo_load_factor * max_cargo_payload
+    return pax_payload + cargo_payload
+
+
+def dedicated_freighter_payload(
+    max_payload: float,
+    dedicated_cargo_load_factor: float,
+) -> float:
+    """Estimate payload for passenger aircraft.
+
+    Parameters
+    ----------
+    max_payload: float
+        Aircraft maximum payload, [:math:`kg`]
+    dedicated_cargo_load_factor: float
+        Assumed cargo load factor for dedicated freighters (between 0 and 1)
+
+    Returns
+    -------
+    float
+        Estimated passenger aircraft payload, [:math:`kg`]
+
+    References
+    ----------
+    - :cite: Teoh et al. (2026), in preparation
+    """
+    return max_payload * dedicated_cargo_load_factor
+
