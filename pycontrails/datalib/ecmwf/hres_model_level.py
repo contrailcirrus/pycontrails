@@ -383,7 +383,7 @@ class HRESModelLevel(ECMWFAPI):
             f"retrieve,\n"
             f"class=od,\n"
             f"date={date},\n"
-            f"expver=1,\n"
+            f"expver=80,\n"
             f"levelist={'/'.join(str(lev) for lev in sorted(self.model_levels))},\n"
             f"levtype=ml,\n"
             f"param={'/'.join(str(p) for p in sorted(grib_params))},\n"
