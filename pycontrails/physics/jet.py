@@ -23,6 +23,7 @@ from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 logger = logging.getLogger(__name__)
 _path_to_static = pathlib.Path(__file__).parent / "static"
 PLF_PATH = _path_to_static / "iata-passenger-load-factors-20260304.csv"
+N_SEATS_PATH = _path_to_static / "pax-aircraft-n-seats-ref-values-20260407.csv"
 CLF_PATH = _path_to_static / "dray-2019-annual-mean-cargo-load-factors.csv"
 
 #: `iata-cargo-load-factors-20260304.csv` is replaced by `dray-2019-annual-mean-cargo-load-factors`
@@ -379,6 +380,21 @@ def _iata_passenger_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
 
 
 @functools.cache
+def _passenger_aircraft_n_seats_database(path: pathlib.Path) -> dict[str, str]:
+    """Load a derived database containing the number of seats for each passenger aircraft type.
+
+    Reference values for each passenger aircraft type are estimated using the median seat counts
+    from the global ch-aviation fleet database
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary of the form ``{"aircraft_type": "n_seats"}``.
+    """
+    return pd.read_csv(path).set_index("aircraft_type")["n_seats"].to_dict()
+
+
+@functools.cache
 def _dray_cargo_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
     """Load the Dray et al. (2024) cargo load factor database.
 
@@ -500,6 +516,25 @@ def passenger_load_factor(
         date = lf_database.index[filt][0]
 
     return lf_database.at[date, region].item()
+
+
+def number_of_seats(aircraft_type: str | None = None) -> int:
+    """
+    Estimate number of seats for the provided aircraft type
+
+    Parameters
+    ----------
+    aircraft_type : str
+        ICAO aircraft type designator
+
+    Returns
+    -------
+    int
+        Reference values for the number of seats
+    """
+    # TODO: I think this is fine to open-source, but better double confirm with Tom
+    pax_atyps_n_seats = _passenger_aircraft_n_seats_database(N_SEATS_PATH)
+    return pax_atyps_n_seats.get(aircraft_type, 0)
 
 
 def cargo_load_factor(
@@ -713,8 +748,8 @@ def aircraft_payload(
     - :cite: Teoh et al. (2026), in preparation
     - :cite: Dray et al. (2024), https://doi.org/10.1016/j.jairtraman.2024.102692
     """
-    # For passenger aircraft with `n_seats` > 50 (guardrails)
-    if aircraft_role == "Passenger" and n_seats > 50:
+    # For passenger aircraft with `n_seats` > 30 (guardrails)
+    if aircraft_role == "Passenger" and n_seats > 30:
         return passenger_aircraft_payload(
             max_payload,
             n_seats,
