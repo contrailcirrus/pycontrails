@@ -439,12 +439,12 @@ class AircraftPerformance(Model):
             #### TODO: Estimate payload here
             # TODO: Zeb `aircraft_role` should be obtained from flight.attrs? If none then assume passenger?
             aircraft_role = "Passenger"     # Hard code here as a placeholder
-            n_seats = 100       # Hard code here as a placeholder
+            n_seats = 100       # Hard code here as a placeholder, use jet.number_of_seats
 
             # TODO: Zeb, perhaps these default values should be an aircraft performance model_param?
             pax_lf = 0.80       # Hard code here as a placeholder, use jet.passenger_load_factor
             cargo_lf = 0.20       # Hard code here as a placeholder, use jet.dedicated_freighter_payload
-            
+
             payload = jet.aircraft_payload(
                 max_payload=amass_mpl,
                 aircraft_role=aircraft_role,
