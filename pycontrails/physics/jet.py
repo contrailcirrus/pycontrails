@@ -798,10 +798,9 @@ def update_aircraft_mass(
     *,
     operating_empty_weight: float,
     max_takeoff_weight: float,
-    max_payload: float,
+    payload: float,
     fuel_burn: npt.NDArray[np.floating],
     total_reserve_fuel: float,
-    load_factor: float,
     takeoff_mass: float | None,
 ) -> npt.NDArray[np.floating]:
     """Update aircraft mass based on the simulated total fuel consumption.
@@ -817,15 +816,12 @@ def update_aircraft_mass(
         Aircraft reference mass, [:math:`kg`].
     max_takeoff_weight: float
         Aircraft maximum take-off weight, [:math:`kg`].
-    max_payload: float
-        Aircraft maximum payload, [:math:`kg`]
+    payload: float
+        Aircraft payload, [:math:`kg`]
     fuel_burn: npt.NDArray[np.floating]
         Fuel consumption for each waypoint, [:math:`kg`]
     total_reserve_fuel: float
         Total reserve fuel requirements, [:math:`kg`]
-    load_factor: float
-        Aircraft load factor assumption (between 0 and 1). This is the ratio of the
-        actual payload weight to the maximum payload weight.
     takeoff_mass: float | None
         Initial aircraft mass, [:math:`kg`]. If None, the initial mass is calculated
         using :func:`initial_aircraft_mass`. If supplied, all other parameters except
@@ -843,8 +839,6 @@ def update_aircraft_mass(
     initial_aircraft_mass
     aircraft_load_factor
     """
-    payload = load_factor * max_payload
-
     if takeoff_mass is None:
         takeoff_mass = initial_aircraft_mass(
             operating_empty_weight=operating_empty_weight,
