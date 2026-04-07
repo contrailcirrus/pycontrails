@@ -599,22 +599,6 @@ def cargo_load_factor(
     return np.interp(total_flight_dist, xp_clf, fp_clf)
 
 
-def aircraft_weight(aircraft_mass: ArrayOrFloat) -> ArrayOrFloat:
-    """Calculate the aircraft weight at each waypoint.
-
-    Parameters
-    ----------
-    aircraft_mass : ArrayOrFloat
-        Aircraft mass, [:math:`kg`]
-
-    Returns
-    -------
-    ArrayOrFloat
-        Aircraft weight, [:math:`N`]
-    """
-    return aircraft_mass * constants.g
-
-
 def initial_aircraft_mass(
     *,
     operating_empty_weight: float,
