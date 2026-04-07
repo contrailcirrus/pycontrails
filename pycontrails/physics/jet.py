@@ -599,6 +599,141 @@ def cargo_load_factor(
     return np.interp(total_flight_dist, xp_clf, fp_clf)
 
 
+def passenger_aircraft_payload(
+    max_payload: float,
+    n_seats: int,
+    pax_lf: float,
+    cargo_lf: float, *,
+    pax_mass: float = 100.0
+) -> float:
+    """Estimate payload for passenger aircraft.
+
+    Parameters
+    ----------
+    max_payload: float
+        Aircraft maximum payload, [:math:`kg`]
+    n_seats: int
+        Total number of seats in passenger aircraft
+    pax_lf: float
+        Passenger load factor (between 0 and 1).
+        Refer to :func:`passenger_load_factor` for historical regional-specific values.
+    cargo_lf: float
+        Cargo load factor in the passenger hold (between 0 and 1).
+        Refer to :func:`cargo_load_factor` for origin-destination specific reference values.
+    pax_mass: float
+        Assumed passenger plus baggage mass, [:math:`kg`]
+        Defaults to the ICAO-recommend value of 100 kg
+
+    Returns
+    -------
+    float
+        Estimated passenger aircraft payload, [:math:`kg`]
+
+    References
+    ----------
+    - :cite: Dray et al. (2024), https://doi.org/10.1016/j.jairtraman.2024.102692
+    """
+    # Estimate maximum cargo payload: Assume 100% passenger load factor
+    max_cargo_payload = max_payload - (n_seats * pax_mass)
+
+    # Estimate passenger payload,
+    pax_payload = n_seats * pax_lf * pax_mass
+
+    # Estimate cargo payload
+    cargo_payload = cargo_lf * max_cargo_payload
+    return pax_payload + cargo_payload
+
+
+def dedicated_freighter_payload(
+    max_payload: float,
+    cargo_lf: float,
+) -> float:
+    """Estimate payload for passenger aircraft.
+
+    Parameters
+    ----------
+    max_payload: float
+        Aircraft maximum payload, [:math:`kg`]
+    cargo_lf: float
+        Cargo load factor for dedicated freighters (between 0 and 1). Refer to
+        :func:`cargo_load_factor` for origin-destination specific reference values.
+
+    Returns
+    -------
+    float
+        Estimated cargo aircraft payload, [:math:`kg`]
+
+    References
+    ----------
+    - :cite: Teoh et al. (2026), in preparation
+    """
+    return max_payload * cargo_lf
+
+
+def aircraft_payload(
+    *,
+    max_payload: float,
+    aircraft_role: str = "Passenger",
+    n_seats: int = 0,
+    pax_lf: float = 0.80,
+    pax_mass: float = 100.0,
+    cargo_lf: float = 0.20,
+) -> float:
+    """Estimate the payload mass based on the aircraft role.
+
+    Parameters
+    ----------
+    max_payload: float
+        Aircraft maximum payload, [:math:`kg`]
+    aircraft_role: str
+        Aircraft role, i.e., "Passenger", "Cargo", "Others", etc.
+        Assumes passenger aircraft (i.e., "Passenger") by default. For dedicated freighters, the
+        aircraft role should be set to "Cargo".
+    n_seats: int
+        Total number of seats in passenger aircraft
+    pax_lf: float
+        Passenger load factor (between 0 and 1).
+        Refer to :func:`passenger_load_factor` for historical values. Otherwise, defaults to 0.8
+    pax_mass: float
+        Assumed passenger plus baggage mass, [:math:`kg`]
+        Defaults to the ICAO-recommend value of 100 kg
+    cargo_lf: float
+        Cargo load factor (between 0 and 1)
+        For "Passenger" aircraft, this is the assumed cargo load factor in the passenger hold. For
+        "Cargo" aircraft, this is the assumed cargo load factor for dedicated freighters. Refer to
+        :func:`cargo_load_factor` for reference values for passenger aircraft and freighters.
+
+    Returns
+    -------
+    float
+        Estimated aircraft payload, [:math:`kg`]
+
+    References
+    ----------
+    - :cite: Teoh et al. (2026), in preparation
+    - :cite: Dray et al. (2024), https://doi.org/10.1016/j.jairtraman.2024.102692
+    """
+    # For passenger aircraft with `n_seats` > 50 (guardrails)
+    if aircraft_role == "Passenger" and n_seats > 50:
+        return passenger_aircraft_payload(
+            max_payload,
+            n_seats,
+            pax_lf,
+            cargo_lf,
+            pax_mass=pax_mass,
+        )
+
+    # For dedicated freighters
+    if aircraft_role == "Cargo":
+        return dedicated_freighter_payload(
+            max_payload,
+            cargo_lf,
+        )
+
+    # For non-passenger and non-cargo aircraft, assume 70% of maximum payload
+    return 0.70 * max_payload
+
+
 def initial_aircraft_mass(
     *,
     operating_empty_weight: float,
@@ -612,17 +747,17 @@ def initial_aircraft_mass(
 
     This function uses the following equation::
 
-        TOM = OEM + PM + FM_nc + TFM
-            = OEM + LF * MPM + FM_nc + TFM
+        TOM = (OEM * OEM_uplift) + PM + FM_res + TFM
+        TOM = min(TOM, MTOW)
 
     where:
     - TOM is the aircraft take-off mass
     - OEM is the aircraft operating empty weight
+    - OEM_uplift is a multiple applied to the operating empty weight to account for biases
     - PM is the payload mass
-    - FM_nc is the mass of the fuel not consumed
+    - FM_res is the mass of the reserve fuel
     - TFM is the trip fuel mass
-    - LF is the load factor
-    - MPM is the maximum payload mass
+    - MTOW is the aircraft maximum take-off weight
 
     Parameters
     ----------
@@ -653,8 +788,7 @@ def initial_aircraft_mass(
 
     See Also
     --------
-    reserve_fuel_requirements
-    aircraft_load_factor
+    :func:`reserve_fuel_requirements`
     """
     tom = (operating_empty_weight * oew_uplift) + payload + total_fuel_burn + total_reserve_fuel
     return min(tom, max_takeoff_weight)
