@@ -147,117 +147,8 @@ class RFConstants:
     )
 
 
-@dataclasses.dataclass(frozen=True)
-class RFConstantsV2:
-    # TODO: Update docstring
-    """
-    Constants that are used to calculate the local contrail radiative forcing.
-
-    See Table 1 of :cite:`schumannParametricRadiativeForcing2012`.
-
-    Each coefficient has 8 elements, one corresponding to each contrail ice particle habit (shape)::
-
-        [
-            Sphere,
-            Solid column,
-            Hollow column,
-            Rough aggregate,
-            Rosette-6,
-            Plate,
-            Droxtal,
-            Myhre,
-        ]
-
-    For each waypoint, the distinct mix of ice particle habits are approximated using the mean
-    contrail ice particle radius (``r_vol_um``) relative to ``radius_threshold_um``.
-
-    For example:
-
-    - if ``r_vol_um`` for a waypoint < 5 um, the mix of ice particle habits will be 100% droxtals.
-    - if ``r_vol_um`` for a waypoint between 5 and 9.5 um, the mix of ice particle habits will
-      be 30% solid columns, 70% droxtals.
-
-    See Table 2 from :cite:`schumannEffectiveRadiusIce2011`.
-
-
-    References
-    ----------
-    - :cite:`schumannEffectiveRadiusIce2011`
-    - :cite:`schumannParametricRadiativeForcing2012`
-    """
-
-    # -----
-    # Variables/coefficients used to calculate the local contrail longwave radiative forcing.
-    # -----
-    AK = np.array([3.23595, 3.25723, 3.23853, 3.20214, 3.22151, 3.20444, 4.00515, 3.24338])
-
-    SIGMA = np.array(
-        [3.35993e-06, 3.00607e-06, 3.33420e-06, 4.09619e-06,
-         3.67116e-06, 4.02626e-06, 4.94882e-08,3.21650e-06]
-    )
-
-    DELTA = np.array(
-        [0.874430, 0.776886, 0.713890, 0.657861, 0.716007, 0.687059, 0.842696, 0.769347])
-
-    QLW = np.array([0.312496, 0.386529, 0.370883, 0.297256, 0.218414, 1.97702, 0.252445, 0.248097])
-
-    cDTAUCI = np.array(
-        [0.200662, 0.174288, 0.148988, 0.0944375, 0.197152, 0.146475, 0.235398, 0.135923]
-    )
-
-    tauexpLW = np.array(
-        [0.941626, 0.921358, 0.924119, 0.929786, 0.931181, 0.927095, 0.856405, 0.924699]
-    )
-
-    # -----
-    # Variables/coefficients used to calculate the local contrail shortwave radiative forcing.
-    # -----
-    # NOTE: `GAMMA` in Fortran -> `gamma_upper` in Python v1
-    GAMMA = np.array([9.06419, 5.45276, 6.61548, 5.49484, 6.66096, 7.96645, 6.15650, 6.69045])
-
-    # NOTE: `GAMMAS` in Fortran -> `gamma_lower` in Python v1
-    GAMMAS = np.array([40.5364, 16.8060, 22.3319, 16.9001, 25.5195, 7.61456, 9.75937, 9.33121])
-
-    # NOTE: `TT` in Fortran -> `t_a` in Python v1
-    TT = np.array([0.879304, 0.901417, 0.881617, 0.898850, 0.879667, 0.883407, 0.898837, 1.00788])
-
-    GALBS = np.array(
-        [0.432165, 0.874683, 0.647569, 0.897522, 0.712315, 0.720927, 0.815349, 0.932811]
-    )
-
-    ACTH = np.array(
-        [0.0129326, 0.0249145, 0.0190486, 0.0245007, 0.0201106, 0.0394534, 0.0325837, 0.0590863]
-    )
-
-    BCTH = np.array([1.41410, 1.37992, 1.56329, 1.40405, 1.38461, 1.58401, 1.34064, 1.45445])
-
-    CCTH = np.array(
-        [0.174603, 0.312233, 0.336866, 0.331776, 0.174517, 0.246677, 0.224502, 0.338728]
-    )
-
-    DCTH = np.array(
-        [0.838433, 0.680409, 0.665093, 0.625401, 0.795688, 0.500001, 0.452205, 0.807171]
-    )
-
-    # NOTE: `FRSW` in Fortran -> `F_r` in Python v1
-    FRSW = np.array([0.930169, 0.918669, 1.00763, 0.742713, 0.945019, 3.40950, 1.37480, 1.39646])
-
-    RADDSW = np.array([5.99100, 37.5521, 39.3959, 121.831, 20.5531, 16.8181, 156.619, 163.951])
-
-    QSW = np.array([1.90758, 3.15424, 3.15424, 1.63419, 2.70324, 1.66234, 1.88483, 1.88483])
-
-    EXALB = np.array(
-        [0.155310, 0.142510, 0.165978, 0.149808, 0.165641, 0.167064, 0.172320, 0.212536]
-    )
-
-    cDTAUCISW = np.array(
-        [0.224998, 0.195919, 0.242060, 0.206488, 0.238648, 0.261965, 0.245360, 0.300703]
-    )
-
-
 # create a new constants class to use within module
 RF_CONST = RFConstants()
-RF_CONST_V2 = RFConstantsV2()
 
 
 # ----------
@@ -553,9 +444,9 @@ def effective_radius_myhre(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np
     return np.minimum(r_vol_um, 45.0)
 
 
-# -----------------
-# Radiative Forcing
-# -----------------
+# ----------------------------------------------------------
+# Parametric radiative forcing model: Schumann et al. (2012)
+# ----------------------------------------------------------
 
 
 def longwave_radiative_forcing(
@@ -989,10 +880,111 @@ def effective_tau_cirrus(
     return np.exp(tau_cirrus * delta_sc_aps - tau_cirrus_eff * delta_sc)
 
 
-# -----------------------------
-# Parametric RF model (V2)
-# -----------------------------
-# TODO: Cite zenodo repository
+# ----------------------------------------------------------
+# Parametric radiative forcing model (V2): Schumann (2025)
+# ----------------------------------------------------------
+
+@dataclasses.dataclass(frozen=True)
+class RFConstantsV2:
+    """
+    Constants that are used to calculate the local contrail radiative forcing (V2).
+
+    Each coefficient has 8 elements, one corresponding to each contrail ice particle habit (shape)::
+
+        [
+            Sphere,
+            Solid column,
+            Hollow column,
+            Rough aggregate,
+            Rosette-6,
+            Plate,
+            Droxtal,
+            Myhre,
+        ]
+
+    For each waypoint, the distinct mix of ice particle habits are approximated using the mean
+    contrail ice particle radius (``r_vol_um``) relative to ``radius_threshold_um``.
+
+    For example:
+
+    - if ``r_vol_um`` for a waypoint < 5 um, the mix of ice particle habits will be 100% droxtals.
+    - if ``r_vol_um`` for a waypoint between 5 and 9.5 um, the mix of ice particle habits will
+      be 30% solid columns, 70% droxtals.
+
+    See Table 2 from :cite:`schumannEffectiveRadiusIce2011`.
+
+    References
+    ----------
+    - `mo_rf.f90` in Schumann (2025), https://doi.org/10.5281/zenodo.17581103
+    """
+
+    # -----
+    # Variables/coefficients used to calculate the local contrail longwave radiative forcing.
+    # -----
+    AK = np.array([3.23595, 3.25723, 3.23853, 3.20214, 3.22151, 3.20444, 4.00515, 3.24338])
+
+    SIGMA = np.array(
+        [3.35993e-06, 3.00607e-06, 3.33420e-06, 4.09619e-06,
+         3.67116e-06, 4.02626e-06, 4.94882e-08,3.21650e-06]
+    )
+
+    DELTA = np.array(
+        [0.874430, 0.776886, 0.713890, 0.657861, 0.716007, 0.687059, 0.842696, 0.769347])
+
+    QLW = np.array([0.312496, 0.386529, 0.370883, 0.297256, 0.218414, 1.97702, 0.252445, 0.248097])
+
+    cDTAUCI = np.array(
+        [0.200662, 0.174288, 0.148988, 0.0944375, 0.197152, 0.146475, 0.235398, 0.135923]
+    )
+
+    tauexpLW = np.array(
+        [0.941626, 0.921358, 0.924119, 0.929786, 0.931181, 0.927095, 0.856405, 0.924699]
+    )
+
+    # -----
+    # Variables/coefficients used to calculate the local contrail shortwave radiative forcing.
+    # -----
+    GAMMA = np.array([9.06419, 5.45276, 6.61548, 5.49484, 6.66096, 7.96645, 6.15650, 6.69045])
+
+    GAMMAS = np.array([40.5364, 16.8060, 22.3319, 16.9001, 25.5195, 7.61456, 9.75937, 9.33121])
+
+    TT = np.array([0.879304, 0.901417, 0.881617, 0.898850, 0.879667, 0.883407, 0.898837, 1.00788])
+
+    GALBS = np.array(
+        [0.432165, 0.874683, 0.647569, 0.897522, 0.712315, 0.720927, 0.815349, 0.932811]
+    )
+
+    ACTH = np.array(
+        [0.0129326, 0.0249145, 0.0190486, 0.0245007, 0.0201106, 0.0394534, 0.0325837, 0.0590863]
+    )
+
+    BCTH = np.array([1.41410, 1.37992, 1.56329, 1.40405, 1.38461, 1.58401, 1.34064, 1.45445])
+
+    CCTH = np.array(
+        [0.174603, 0.312233, 0.336866, 0.331776, 0.174517, 0.246677, 0.224502, 0.338728]
+    )
+
+    DCTH = np.array(
+        [0.838433, 0.680409, 0.665093, 0.625401, 0.795688, 0.500001, 0.452205, 0.807171]
+    )
+
+    FRSW = np.array([0.930169, 0.918669, 1.00763, 0.742713, 0.945019, 3.40950, 1.37480, 1.39646])
+
+    RADDSW = np.array([5.99100, 37.5521, 39.3959, 121.831, 20.5531, 16.8181, 156.619, 163.951])
+
+    QSW = np.array([1.90758, 3.15424, 3.15424, 1.63419, 2.70324, 1.66234, 1.88483, 1.88483])
+
+    EXALB = np.array(
+        [0.155310, 0.142510, 0.165978, 0.149808, 0.165641, 0.167064, 0.172320, 0.212536]
+    )
+
+    cDTAUCISW = np.array(
+        [0.224998, 0.195919, 0.242060, 0.206488, 0.238648, 0.261965, 0.245360, 0.300703]
+    )
+
+
+RF_CONST_V2 = RFConstantsV2()
+
 
 def longwave_radiative_forcing_v2(
     r_vol_um: npt.NDArray[np.floating],
@@ -1041,7 +1033,7 @@ def longwave_radiative_forcing_v2(
 
     References
     ----------
-    - :cite:`schumannParametricRadiativeForcing2012`
+    - `mo_rf.f90` in Schumann (2025), https://doi.org/10.5281/zenodo.17581103
     """
     # get list of habit weight indexs where the weights > 0
     # this is a tuple of (np.array[waypoint index], np.array[habit type index])
@@ -1142,7 +1134,7 @@ def shortwave_radiative_forcing_v2(
 
     References
     ----------
-    - :cite:`schumannParametricRadiativeForcing2012`
+    - `mo_rf.f90` in Schumann (2025), https://doi.org/10.5281/zenodo.17581103
     """
     # create mask for daytime (sdr > 0)
     day = sdr > 0.0
