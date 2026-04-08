@@ -168,3 +168,67 @@ def test_override_habit_distributions() -> None:
     habit_distributions[1, 2] = 0.3
     with pytest.raises(ValueError, match="number of rows in"):
         radiative_forcing.habit_weights(r_vol_um, habit_distributions, np.array([5, 10]))
+
+
+def test_parametric_rf_model_v2():
+    """Test behaviour of parametric RF model V1 and V2."""
+    cp = CocipParams()
+    habit_distributions = cp.habit_distributions.astype("float64")
+    radius_threshold_um = cp.radius_threshold_um.astype("float64")
+
+    tau_cirrus = np.linspace(0.0, 5.0, 11)
+    air_temperature = np.full(tau_cirrus.shape, 210.0)
+    r_vol_um = np.full(tau_cirrus.shape, 16.0)
+    tau_contrail = np.full(tau_cirrus.shape, 0.75)
+    sd0 = np.full(tau_cirrus.shape, 1365.0)
+    sdr = np.full(tau_cirrus.shape, 300.0)
+    rsr = np.full(tau_cirrus.shape, 180.0)
+    olr = np.full(tau_cirrus.shape, 130.0)
+
+    habit_weights = radiative_forcing.habit_weights(
+        r_vol_um, habit_distributions, radius_threshold_um
+    )
+
+    # Calculate longwave radiative forcing
+    rf_lw_v1 = radiative_forcing.longwave_radiative_forcing(
+        r_vol_um, olr, air_temperature, tau_contrail, tau_cirrus, habit_weights
+    )
+
+    rf_lw_v2 = radiative_forcing.longwave_radiative_forcing_v2(
+        r_vol_um, olr, air_temperature, tau_contrail, tau_cirrus, habit_weights
+    )
+
+    # Based on Figure 8 of Schumann et al. (2025), https://doi.org/10.5194/acp-25-18571-2025:
+    # (i) `rf_lw_v2` is approximately equal to `rf_lw_v1`, while
+    # (i) `rf_lw_v2` should be larger than `rf_lw_v1` when tau_cirrus is small, and
+    # (ii) `rf_lw_v2` should be smaller than `rf_lw_v1` when tau_cirrus is large
+    rf_lw_v1_actual = np.array(
+        [9.657, 9.260, 8.881, 8.519, 8.173, 7.843, 7.527, 7.225, 6.937, 6.661, 6.397]
+    )
+    rf_lw_v2_actual = np.array(
+        [10.555, 9.491, 8.536, 7.679, 6.909, 6.217, 5.595, 5.037, 4.535, 4.084, 3.678]
+    )
+
+    np.testing.assert_array_almost_equal(rf_lw_v1, rf_lw_v1_actual, decimal=3)
+    np.testing.assert_array_almost_equal(rf_lw_v2, rf_lw_v2_actual, decimal=3)
+
+    # Calculate shortwave radiative forcing
+    rf_sw_v1 = radiative_forcing.shortwave_radiative_forcing(
+        r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus, habit_weights
+    )
+
+    rf_sw_v2 = radiative_forcing.shortwave_radiative_forcing_v2(
+        r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus, habit_weights
+    )
+
+    # Based on Figure 8 of Schumann et al. (2025), https://doi.org/10.5194/acp-25-18571-2025:
+    # The change in `rf_sw` between V1 and V2 is smaller than `rf_lw`
+    rf_sw_v1_actual = np.array(
+        [-12.258, -9.496, -7.359, -5.706, -4.425, -3.434, -2.665, -2.070, -1.608, -1.250, -0.972]
+    )
+    rf_sw_v2_actual = np.array(
+        [-12.778, -9.934, -7.726, -6.011, -4.678, -3.642, -2.836, -2.210, -1.722, -1.343, -1.047]
+    )
+
+    np.testing.assert_array_almost_equal(rf_sw_v1, rf_sw_v1_actual, decimal=3)
+    np.testing.assert_array_almost_equal(rf_sw_v2, rf_sw_v2_actual, decimal=3)
