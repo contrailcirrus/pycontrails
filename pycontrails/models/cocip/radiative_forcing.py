@@ -916,6 +916,11 @@ class RFConstantsV2:
     References
     ----------
     - `mo_rf.f90` in Schumann (2025), https://doi.org/10.5281/zenodo.17581103
+    - Figure 8 of Schumann et al. (2025), https://doi.org/10.5194/acp-25-18571-2025
+
+    Notes
+    -----
+    - Coefficients obtained directly from the algorithm of Schumann (2025).
     """
 
     # -----
@@ -1034,6 +1039,11 @@ def longwave_radiative_forcing_v2(
     References
     ----------
     - `mo_rf.f90` in Schumann (2025), https://doi.org/10.5281/zenodo.17581103
+    - Figure 8 of Schumann et al. (2025), https://doi.org/10.5194/acp-25-18571-2025
+
+    Notes
+    -----
+    - Equations obtained directly from the algorithm of Schumann (2025).
     """
     # get list of habit weight indexs where the weights > 0
     # this is a tuple of (np.array[waypoint index], np.array[habit type index])
@@ -1135,6 +1145,11 @@ def shortwave_radiative_forcing_v2(
     References
     ----------
     - `mo_rf.f90` in Schumann (2025), https://doi.org/10.5281/zenodo.17581103
+    - Figure 8 of Schumann et al. (2025), https://doi.org/10.5194/acp-25-18571-2025
+
+    Notes
+    -----
+    - Equations obtained directly from the algorithm of Schumann (2025).
     """
     # create mask for daytime (sdr > 0)
     day = sdr > 0.0
@@ -1191,7 +1206,7 @@ def shortwave_radiative_forcing_v2(
     LOG1mCTH = np.log(1 - mue)
     CTHF = np.exp(LOG1mCTH * BCTH) * np.exp(LOGCTH * CCTH) * ABK - ACTH
     QCTH = 1.0 / (mue + 1.0e-6)
-    TAUCTH = tau_contrail * QCTH
+    TAUCTH = tau_contrail_h * QCTH
 
     # calculate the RF SW per habit type
     rf_sw_per_habit = -(
