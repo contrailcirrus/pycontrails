@@ -884,6 +884,7 @@ def effective_tau_cirrus(
 # Parametric radiative forcing model: Schumann (2025)
 # ---------------------------------------------------
 
+
 @dataclasses.dataclass(frozen=True)
 class RFConstantsS2025:
     """
@@ -929,12 +930,21 @@ class RFConstantsS2025:
     ak = np.array([3.23595, 3.25723, 3.23853, 3.20214, 3.22151, 3.20444, 4.00515, 3.24338])
 
     sigma = np.array(
-        [3.35993e-06, 3.00607e-06, 3.33420e-06, 4.09619e-06,
-         3.67116e-06, 4.02626e-06, 4.94882e-08,3.21650e-06]
+        [
+            3.35993e-06,
+            3.00607e-06,
+            3.33420e-06,
+            4.09619e-06,
+            3.67116e-06,
+            4.02626e-06,
+            4.94882e-08,
+            3.21650e-06,
+        ]
     )
 
     delta = np.array(
-        [0.874430, 0.776886, 0.713890, 0.657861, 0.716007, 0.687059, 0.842696, 0.769347])
+        [0.874430, 0.776886, 0.713890, 0.657861, 0.716007, 0.687059, 0.842696, 0.769347]
+    )
 
     qlw = np.array([0.312496, 0.386529, 0.370883, 0.297256, 0.218414, 1.97702, 0.252445, 0.248097])
 
@@ -1078,7 +1088,7 @@ def longwave_radiative_forcing_s2025(
 
     # Longwave radiation calculations: Calculate the RF LW per habit type
     rf_lw_per_habit = (
-        (olr_h - sigma * (air_temperature_h ** ak))
+        (olr_h - sigma * (air_temperature_h**ak))
         * (1.0 - np.exp(-delta * np.exp(np.log(tau_contrail_h) * tau_exp_lw)))
         * (1.0 - np.exp(-qlw * r_eff_um_h))
         * np.exp(-c_dtauci * tau_cirrus_h)
@@ -1228,6 +1238,7 @@ def shortwave_radiative_forcing_s2025(
     rf_sw_weighted[idx0, idx1] = rf_sw_per_habit * habit_weights_[habit_weight_mask]
 
     return np.sum(rf_sw_weighted, axis=1)
+
 
 # -----------------------------
 # Contrail-contrail overlapping
@@ -1508,7 +1519,7 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
     habit_distributions: npt.NDArray[np.floating],
     radius_threshold_um: npt.NDArray[np.floating],
     *,
-    rf_model_s2025: bool = False
+    rf_model_s2025: bool = False,
 ) -> GeoVectorDataset:
     """
     Calculate local contrail SW and LW RF after accounting for contrail overlapping.
