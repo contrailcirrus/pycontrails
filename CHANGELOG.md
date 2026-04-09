@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.61.0 [unreleased]
+
+### Features
+
+- Experimental: Integrate alternative contrail parametric radiative forcing model (Schumann, 2025) into the CoCiP workflow: The original parametric RF model assumes a near-linear dependence of contrail RF on the contrail and natural cirrus optical depth and provides the best fit to the libRadtran dataset with the minimum number of model coefficients. This alternative model provides a stronger non-linear dependence to the contrail and natural cirrus optical depth, consistent with the ECMWF ecRad model, but yields a slightly weaker fit to the libRadtran dataset. This new parameterization can be enabled within the `Cocip` and `CocipGrid` models via the `parametric_rf_model_s2025` parameter.
+
 ## 0.60.5
 
 ### Breaking changes

@@ -2872,7 +2872,7 @@ def _contrail_contrail_overlapping(
         min_altitude_m=params["min_altitude_m"],
         max_altitude_m=params["max_altitude_m"],
         dz_overlap_m=params["dz_overlap_m"],
-        rf_model_s2025=params["parametric_rf_model_s2025"]
+        rf_model_s2025=params["parametric_rf_model_s2025"],
     )
 
     contrail.update(

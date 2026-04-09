@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 
 from pycontrails.models.cocip import CocipParams, radiative_forcing
-from pycontrails.models.cocip.radiative_forcing import RF_CONST_S2012, RFConstants
+from pycontrails.models.cocip.radiative_forcing import RF_CONST_S2012, RFConstantsS2012
 from pycontrails.physics import geo
 
 
 def test_rf_const() -> None:
     """Test the RFConstant types."""
 
-    assert isinstance(RF_CONST_S2012, RFConstants)
+    assert isinstance(RF_CONST_S2012, RFConstantsS2012)
 
     # the indexes of the habit_weights should be the (radius_threshold x habits)
     # includes radius < rf_const.radius_threshold_um[0] as the 0th row index
@@ -19,7 +19,7 @@ def test_rf_const() -> None:
     assert cp.habit_distributions.shape == (cp.radius_threshold_um.size + 1, cp.habits.size)
 
     # make sure habit specific attributes are the same length as the habits
-    for attr, val in RFConstants.__dict__.items():
+    for attr, val in RFConstantsS2012.__dict__.items():
         if not attr.startswith("_"):
             assert isinstance(val, np.ndarray)
             assert val.size == cp.habits.size
