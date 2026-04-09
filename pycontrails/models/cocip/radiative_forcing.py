@@ -887,7 +887,7 @@ def effective_tau_cirrus(
 @dataclasses.dataclass(frozen=True)
 class RFConstantsS2025:
     """
-    Constants that are used to calculate the local contrail radiative forcing (V2).
+    Constants that are used to calculate the local contrail radiative forcing (Schumann, 2025).
 
     Each coefficient has 8 elements, one corresponding to each contrail ice particle habit (shape)::
 
@@ -926,64 +926,64 @@ class RFConstantsS2025:
     # -----
     # Variables/coefficients used to calculate the local contrail longwave radiative forcing.
     # -----
-    AK = np.array([3.23595, 3.25723, 3.23853, 3.20214, 3.22151, 3.20444, 4.00515, 3.24338])
+    ak = np.array([3.23595, 3.25723, 3.23853, 3.20214, 3.22151, 3.20444, 4.00515, 3.24338])
 
-    SIGMA = np.array(
+    sigma = np.array(
         [3.35993e-06, 3.00607e-06, 3.33420e-06, 4.09619e-06,
          3.67116e-06, 4.02626e-06, 4.94882e-08,3.21650e-06]
     )
 
-    DELTA = np.array(
+    delta = np.array(
         [0.874430, 0.776886, 0.713890, 0.657861, 0.716007, 0.687059, 0.842696, 0.769347])
 
-    QLW = np.array([0.312496, 0.386529, 0.370883, 0.297256, 0.218414, 1.97702, 0.252445, 0.248097])
+    qlw = np.array([0.312496, 0.386529, 0.370883, 0.297256, 0.218414, 1.97702, 0.252445, 0.248097])
 
-    cDTAUCI = np.array(
+    c_dtauci = np.array(
         [0.200662, 0.174288, 0.148988, 0.0944375, 0.197152, 0.146475, 0.235398, 0.135923]
     )
 
-    tauexpLW = np.array(
+    tau_exp_lw = np.array(
         [0.941626, 0.921358, 0.924119, 0.929786, 0.931181, 0.927095, 0.856405, 0.924699]
     )
 
     # -----
     # Variables/coefficients used to calculate the local contrail shortwave radiative forcing.
     # -----
-    GAMMA = np.array([9.06419, 5.45276, 6.61548, 5.49484, 6.66096, 7.96645, 6.15650, 6.69045])
+    gamma = np.array([9.06419, 5.45276, 6.61548, 5.49484, 6.66096, 7.96645, 6.15650, 6.69045])
 
-    GAMMAS = np.array([40.5364, 16.8060, 22.3319, 16.9001, 25.5195, 7.61456, 9.75937, 9.33121])
+    gammas = np.array([40.5364, 16.8060, 22.3319, 16.9001, 25.5195, 7.61456, 9.75937, 9.33121])
 
-    TT = np.array([0.879304, 0.901417, 0.881617, 0.898850, 0.879667, 0.883407, 0.898837, 1.00788])
+    tt = np.array([0.879304, 0.901417, 0.881617, 0.898850, 0.879667, 0.883407, 0.898837, 1.00788])
 
-    GALBS = np.array(
+    galbs = np.array(
         [0.432165, 0.874683, 0.647569, 0.897522, 0.712315, 0.720927, 0.815349, 0.932811]
     )
 
-    ACTH = np.array(
+    acth = np.array(
         [0.0129326, 0.0249145, 0.0190486, 0.0245007, 0.0201106, 0.0394534, 0.0325837, 0.0590863]
     )
 
-    BCTH = np.array([1.41410, 1.37992, 1.56329, 1.40405, 1.38461, 1.58401, 1.34064, 1.45445])
+    bcth = np.array([1.41410, 1.37992, 1.56329, 1.40405, 1.38461, 1.58401, 1.34064, 1.45445])
 
-    CCTH = np.array(
+    ccth = np.array(
         [0.174603, 0.312233, 0.336866, 0.331776, 0.174517, 0.246677, 0.224502, 0.338728]
     )
 
-    DCTH = np.array(
+    dcth = np.array(
         [0.838433, 0.680409, 0.665093, 0.625401, 0.795688, 0.500001, 0.452205, 0.807171]
     )
 
-    FRSW = np.array([0.930169, 0.918669, 1.00763, 0.742713, 0.945019, 3.40950, 1.37480, 1.39646])
+    frsw = np.array([0.930169, 0.918669, 1.00763, 0.742713, 0.945019, 3.40950, 1.37480, 1.39646])
 
-    RADDSW = np.array([5.99100, 37.5521, 39.3959, 121.831, 20.5531, 16.8181, 156.619, 163.951])
+    raddsw = np.array([5.99100, 37.5521, 39.3959, 121.831, 20.5531, 16.8181, 156.619, 163.951])
 
-    QSW = np.array([1.90758, 3.15424, 3.15424, 1.63419, 2.70324, 1.66234, 1.88483, 1.88483])
+    qsw = np.array([1.90758, 3.15424, 3.15424, 1.63419, 2.70324, 1.66234, 1.88483, 1.88483])
 
-    EXALB = np.array(
+    exalb = np.array(
         [0.155310, 0.142510, 0.165978, 0.149808, 0.165641, 0.167064, 0.172320, 0.212536]
     )
 
-    cDTAUCISW = np.array(
+    c_dtauci_sw = np.array(
         [0.224998, 0.195919, 0.242060, 0.206488, 0.238648, 0.261965, 0.245360, 0.300703]
     )
 
@@ -1051,12 +1051,12 @@ def longwave_radiative_forcing_s2025(
     idx0, idx1 = np.nonzero(habit_weight_mask)
 
     # Convert parametric coefficients for vectorized operations
-    AK = RF_CONST_S2025.AK[idx1]
-    SIGMA = RF_CONST_S2025.SIGMA[idx1]
-    DELTA = RF_CONST_S2025.DELTA[idx1]
-    QLW = RF_CONST_S2025.QLW[idx1]
-    cDTAUCI = RF_CONST_S2025.cDTAUCI[idx1]
-    tauexpLW = RF_CONST_S2025.tauexpLW[idx1]
+    ak = RF_CONST_S2025.ak[idx1]
+    sigma = RF_CONST_S2025.sigma[idx1]
+    delta = RF_CONST_S2025.delta[idx1]
+    qlw = RF_CONST_S2025.qlw[idx1]
+    c_dtauci = RF_CONST_S2025.c_dtauci[idx1]
+    tau_exp_lw = RF_CONST_S2025.tau_exp_lw[idx1]
 
     olr_h = olr[idx0]
     tau_cirrus_h = tau_cirrus[idx0]
@@ -1078,10 +1078,10 @@ def longwave_radiative_forcing_s2025(
 
     # Longwave radiation calculations: Calculate the RF LW per habit type
     rf_lw_per_habit = (
-        (olr_h - SIGMA * (air_temperature_h ** AK))
-        * (1.0 - np.exp(-DELTA * np.exp(np.log(tau_contrail_h) * tauexpLW)))
-        * (1.0 - np.exp(-QLW * r_eff_um_h))
-        * np.exp(-cDTAUCI * tau_cirrus_h)
+        (olr_h - sigma * (air_temperature_h ** ak))
+        * (1.0 - np.exp(-delta * np.exp(np.log(tau_contrail_h) * tau_exp_lw)))
+        * (1.0 - np.exp(-qlw * r_eff_um_h))
+        * np.exp(-c_dtauci * tau_cirrus_h)
     )
     rf_lw_per_habit.clip(min=0.0, out=rf_lw_per_habit)
 
@@ -1164,19 +1164,19 @@ def shortwave_radiative_forcing_s2025(
     idx0, idx1 = np.nonzero(habit_weight_mask)
 
     # Convert parametric coefficients for vectorized operations
-    GAMMA = RF_CONST_S2025.GAMMA[idx1]
-    GAMMAS = RF_CONST_S2025.GAMMAS[idx1]
-    TT = RF_CONST_S2025.TT[idx1]
-    GALBS = RF_CONST_S2025.GALBS[idx1]
-    ACTH = RF_CONST_S2025.ACTH[idx1]
-    BCTH = RF_CONST_S2025.BCTH[idx1]
-    CCTH = RF_CONST_S2025.CCTH[idx1]
-    DCTH = RF_CONST_S2025.DCTH[idx1]
-    FRSW = RF_CONST_S2025.FRSW[idx1]
-    RADDSW = RF_CONST_S2025.RADDSW[idx1]
-    QSW = RF_CONST_S2025.QSW[idx1]
-    EXALB = RF_CONST_S2025.EXALB[idx1]
-    cDTAUCISW = RF_CONST_S2025.cDTAUCISW[idx1]
+    gamma = RF_CONST_S2025.gamma[idx1]
+    gammas = RF_CONST_S2025.gammas[idx1]
+    tt = RF_CONST_S2025.tt[idx1]
+    galbs = RF_CONST_S2025.galbs[idx1]
+    acth = RF_CONST_S2025.acth[idx1]
+    bcth = RF_CONST_S2025.bcth[idx1]
+    ccth = RF_CONST_S2025.ccth[idx1]
+    dcth = RF_CONST_S2025.dcth[idx1]
+    frsw = RF_CONST_S2025.frsw[idx1]
+    raddsw = RF_CONST_S2025.raddsw[idx1]
+    qsw = RF_CONST_S2025.qsw[idx1]
+    exalb = RF_CONST_S2025.exalb[idx1]
+    c_dtaucisw = RF_CONST_S2025.c_dtauci_sw[idx1]
 
     sdr_h = sdr[idx0]
     rsr_h = rsr[idx0]
@@ -1201,22 +1201,22 @@ def shortwave_radiative_forcing_s2025(
         r_eff_um_h = r_eff_um[idx0]
 
     # Local contrail shortwave radiative forcing calculations
-    ABK = ACTH / (0.5 ** (BCTH + CCTH))
-    LOGCTH = np.log(mue)
-    LOG1mCTH = np.log(1 - mue)
-    CTHF = np.exp(LOG1mCTH * BCTH) * np.exp(LOGCTH * CCTH) * ABK - ACTH
-    QCTH = 1.0 / (mue + 1.0e-6)
-    TAUCTH = tau_contrail_h * QCTH
+    abk = acth / (0.5 ** (bcth + ccth))
+    log_mue = np.log(mue)
+    log_one_minus_mue = np.log(1 - mue)
+    cthf = np.exp(log_one_minus_mue * bcth) * np.exp(log_mue * ccth) * abk - acth
+    qcth = 1.0 / (mue + 1.0e-6)
+    taucth = tau_contrail_h * qcth
 
     # calculate the RF SW per habit type
     rf_sw_per_habit = -(
         sdr_h
-        * ((TT - albedo_) ** 2)
-        * (TAUCTH / (GAMMA + TAUCTH))
-        * (DCTH + CTHF * (GAMMAS + tau_contrail_h * GALBS) / (1.0 + tau_contrail_h * GALBS))
-        * (1.0 + FRSW * np.exp(-r_eff_um_h / RADDSW))
-        * (1.0 - np.exp(-QSW * r_eff_um_h))
-        * np.exp((cDTAUCISW - EXALB * QCTH) * tau_cirrus_h)
+        * ((tt - albedo_) ** 2)
+        * (taucth / (gamma + taucth))
+        * (dcth + cthf * (gammas + tau_contrail_h * galbs) / (1.0 + tau_contrail_h * galbs))
+        * (1.0 + frsw * np.exp(-r_eff_um_h / raddsw))
+        * (1.0 - np.exp(-qsw * r_eff_um_h))
+        * np.exp((c_dtaucisw - exalb * qcth) * tau_cirrus_h)
     )
     rf_sw_per_habit.clip(max=0.0, out=rf_sw_per_habit)
 
