@@ -428,12 +428,12 @@ def test_normalised_aircraft_performance_curves() -> None:
     assert c_t_over_c_t_eta_b[i_max] < 1.01
 
 
-@pytest.mark.parametrize("load_factor", [0.5, 0.6, 0.7, 0.8])
-def test_total_fuel_burn(load_factor: float) -> None:
-    """Check pinned total fuel burn values for different load factors."""
+@pytest.mark.parametrize("payload", [6000, 9000, 12000, 15000])
+def test_total_fuel_burn(payload: float) -> None:
+    """Check pinned total fuel burn values for different custom payloads."""
     df_flight = pd.read_csv(get_static_path("flight.csv"))
 
-    attrs = {"flight_id": "1", "aircraft_type": "A320", "load_factor": load_factor}
+    attrs = {"flight_id": "1", "aircraft_type": "A320", "payload": payload}
     flight = Flight(df_flight.iloc[:100], attrs=attrs)
 
     flight["air_temperature"] = flight.T_isa()
@@ -443,14 +443,14 @@ def test_total_fuel_burn(load_factor: float) -> None:
     ps_model = ps.PSFlight()
     out = ps_model.eval(flight)
 
-    if load_factor == 0.5:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5035, abs=1.0)
-    elif load_factor == 0.6:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5332, abs=1.0)
-    elif load_factor == 0.7:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5461, abs=1.0)
-    elif load_factor == 0.8:
-        assert out.attrs["total_fuel_burn"] == pytest.approx(5581, abs=1.0)
+    if payload == 6000:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(4588, abs=1.0)
+    elif payload == 9000:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5122, abs=1.0)
+    elif payload == 12000:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5424, abs=1.0)
+    elif payload == 15000:
+        assert out.attrs["total_fuel_burn"] == pytest.approx(5601, abs=1.0)
     else:
         pytest.fail("Unexpected load factor")
 

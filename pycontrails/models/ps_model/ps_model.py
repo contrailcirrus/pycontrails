@@ -20,7 +20,6 @@ import pandas as pd
 
 from pycontrails.core import flight
 from pycontrails.core.aircraft_performance import (
-    DEFAULT_LOAD_FACTOR,
     AircraftPerformance,
     AircraftPerformanceData,
     AircraftPerformanceParams,
@@ -143,7 +142,7 @@ class PSFlight(AircraftPerformance):
         amass_oew = fl.attrs.get("amass_oew", aircraft_params.amass_oew)
         amass_mtow = fl.attrs.get("amass_mtow", aircraft_params.amass_mtow)
         amass_mpl = fl.attrs.get("amass_mpl", aircraft_params.amass_mpl)
-        load_factor = fl.attrs.get("load_factor", DEFAULT_LOAD_FACTOR)
+        payload = self.estimate_payload(fl, aircraft_type, amass_mpl)
         takeoff_mass = fl.attrs.get("takeoff_mass")
         q_fuel = fl.fuel.q_fuel
 
@@ -166,7 +165,7 @@ class PSFlight(AircraftPerformance):
             amass_oew=amass_oew,
             amass_mtow=amass_mtow,
             amass_mpl=amass_mpl,
-            load_factor=load_factor,
+            payload=payload,
             takeoff_mass=takeoff_mass,
             correct_fuel_flow=self.params["correct_fuel_flow"],
             engine_deterioration_factor=engine_deterioration_factor,

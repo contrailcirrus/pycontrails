@@ -9,6 +9,7 @@ from typing import Any, Generic, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 
 from pycontrails.core import aircraft_spec, flight, fuel
 from pycontrails.core.fleet import Fleet
@@ -19,12 +20,6 @@ from pycontrails.core.models import Model, ModelParams, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import jet
 from pycontrails.utils.types import ArrayOrFloat
-
-#: Default load factor for aircraft performance models.
-#: See :func:`pycontrails.physics.jet.aircraft_load_factor`
-#: for a higher precision approach to estimating the load factor.
-DEFAULT_LOAD_FACTOR = 0.83
-
 
 # --------------------------------------
 # Trajectory aircraft performance models
@@ -206,6 +201,63 @@ class AircraftPerformance(Model):
         fl.attrs["engine_deterioration_factor"] = out
         return out
 
+    def estimate_payload(self, fl: Flight, aircraft_type: str, max_payload: float) -> float:
+        """Estimate the payload for a flight.
+
+        This method looks for the following attributes in ``fl.attrs`` to determine the payload.
+        If any of these attributes are missing, they are estimated and added to ``fl.attrs``.
+        - ``payload``
+        - ``aircraft_role``
+        - ``n_seats``
+        - ``passenger_load_factor``
+        - ``cargo_load_factor``
+        """
+        if (out := fl.attrs.get("payload")) is not None:
+            return out
+
+        aircraft_role = fl.attrs.get("aircraft_role")
+        if aircraft_role is None:
+            aircraft_role = "Passenger"
+            fl.attrs["aircraft_role"] = aircraft_role
+
+        n_seats = fl.attrs.get("n_seats")
+        if n_seats is None:
+            n_seats = jet.number_of_seats(aircraft_type)
+            fl.attrs["n_seats"] = n_seats
+
+        pax_lf = fl.attrs.get("passenger_load_factor")
+        if pax_lf is None:
+            origin_airport_icao = fl.attrs.get("origin_airport_icao")
+            first_waypoint_time = pd.Timestamp(fl.data["time"][0]) if fl else None
+            pax_lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
+            fl.attrs["passenger_load_factor"] = pax_lf
+
+        cargo_lf = fl.attrs.get("cargo_load_factor")
+        if cargo_lf is None:
+            origin_airport_icao = fl.attrs.get("origin_airport_icao")
+            destination_airport_icao = fl.attrs.get("destination_airport_icao")
+            if origin_airport_icao is None and destination_airport_icao is None:
+                total_flight_dist = np.nansum(fl.segment_haversine()).item()
+            else:
+                total_flight_dist = None
+            cargo_lf = jet.cargo_load_factor(
+                origin_airport_icao,
+                destination_airport_icao,
+                total_flight_dist,
+                aircraft_role == "Passenger",
+            )
+            fl.attrs["cargo_load_factor"] = cargo_lf
+
+        out = jet.aircraft_payload(
+            max_payload=max_payload,
+            aircraft_role=aircraft_role,
+            n_seats=n_seats,
+            pax_lf=pax_lf,
+            cargo_lf=cargo_lf,
+        )
+        fl.attrs["payload"] = out
+        return out
+
     def simulate_fuel_and_performance(
         self,
         *,
@@ -223,7 +275,7 @@ class AircraftPerformance(Model):
         amass_oew: float,
         amass_mtow: float,
         amass_mpl: float,
-        load_factor: float,
+        payload: float,
         takeoff_mass: float | None,
         **kwargs: Any,
     ) -> AircraftPerformanceData:
@@ -269,11 +321,8 @@ class AircraftPerformance(Model):
             Aircraft maximum payload, [:math:`kg`]. Used to determine
             the initial aircraft mass if ``takeoff_mass`` is not provided.
             This quantity is constant for a given aircraft type.
-        load_factor : float
-            Aircraft load factor assumption (between 0 and 1). If unknown,
-            a value of 0.7 is a reasonable default. Typically, this parameter
-            is between 0.6 and 0.8. During the height of the COVID-19 pandemic,
-            this parameter was often much lower.
+        payload : float
+            Aircraft payload, [:math:`kg`]. See :meth:`estimate_payload` for methodology.
         takeoff_mass : float | None, optional
             If known, the takeoff mass can be provided to skip the calculation
             in :func:`jet.initial_aircraft_mass`. In this case, the parameters
@@ -318,7 +367,7 @@ class AircraftPerformance(Model):
             amass_oew=amass_oew,
             amass_mtow=amass_mtow,
             amass_mpl=amass_mpl,
-            load_factor=load_factor,
+            payload=payload,
             takeoff_mass=takeoff_mass,
             **kwargs,
         )
@@ -390,21 +439,20 @@ class AircraftPerformance(Model):
         n_iter: int,
         amass_oew: float,
         amass_mtow: float,
-        amass_mpl: float,
-        load_factor: float,
+        payload: float,
         takeoff_mass: float | None,
         **kwargs: Any,
     ) -> AircraftPerformanceData:
         # Variable aircraft_mass will change dynamically after each iteration
-        # Set the initial aircraft mass depending on a possible load factor
 
+        # Set the initial aircraft mass depending on a possible load factor
         aircraft_mass: npt.NDArray[np.floating] | float
         if takeoff_mass is not None:
             aircraft_mass = takeoff_mass
         else:
             # The initial aircraft mass gets updated at each iteration
-            # The exact value here is not important
-            aircraft_mass = amass_oew + load_factor * (amass_mtow - amass_oew)
+            # The exact value here is not important, hence the crude hard-coded estimate
+            aircraft_mass = amass_oew + 0.8 * (amass_mtow - amass_oew)
 
         for _ in range(n_iter):
             aircraft_performance = self.calculate_aircraft_performance(
@@ -434,23 +482,6 @@ class AircraftPerformance(Model):
                 altitude_ft,
                 aircraft_performance.fuel_flow,
                 aircraft_performance.fuel_burn,
-            )
-
-            #### TODO: Estimate payload here
-            # TODO: Zeb `aircraft_role` should be obtained from flight.attrs? If none then assume passenger?
-            aircraft_role = "Passenger"     # Hard code here as a placeholder
-            n_seats = 100       # Hard code here as a placeholder, use jet.number_of_seats
-
-            # TODO: Zeb, perhaps these default values should be an aircraft performance model_param?
-            pax_lf = 0.80       # Hard code here as a placeholder, use jet.passenger_load_factor
-            cargo_lf = 0.20       # Hard code here as a placeholder, use jet.dedicated_freighter_payload
-
-            payload = jet.aircraft_payload(
-                max_payload=amass_mpl,
-                aircraft_role=aircraft_role,
-                n_seats=n_seats,
-                pax_lf=pax_lf,
-                cargo_lf=cargo_lf,
             )
 
             aircraft_mass = jet.update_aircraft_mass(
