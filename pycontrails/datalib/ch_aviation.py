@@ -538,4 +538,3 @@ def _load_airline_engine_look_up_tables(
         raise ValueError("Duplicate (operator_iata, aircraft_type_icao) found in look-up table")
 
     return dict(_row_to_airline_lookup(tup) for tup in df.itertuples())
-

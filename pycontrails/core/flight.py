@@ -119,7 +119,7 @@ class Flight(GeoVectorDataset):
           calculations with the ICAO Aircraft Emissions Databank (EDB).
         - ``max_mach_number``: Maximum Mach number at cruise altitude. Used by
           some aircraft performance models to clip true airspeed.
-        - ``load_factor``: The load factor used in determining the aircraft's
+        - ``payload``: The payload used in determining the aircraft's
           take-off weight. Used by some aircraft performance models.
 
         Numeric quantities that are constant over the entire flight trajectory

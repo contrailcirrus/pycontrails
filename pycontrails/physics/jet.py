@@ -424,8 +424,8 @@ def _dray_cargo_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
     )
 
     # Calculate cargo load factors
-    df["mean_passenger_hold_freight_lf"] = df["mean_passenger_hold_freight_lf"].fillna(0)
-    df["mean_dedicated_freight_lf"] = df["mean_dedicated_freight_lf"].fillna(0)
+    df["mean_passenger_hold_freight_lf"] = df["mean_passenger_hold_freight_lf"].fillna(0.0)
+    df["mean_dedicated_freight_lf"] = df["mean_dedicated_freight_lf"].fillna(0.0)
     return df
 
 
@@ -739,20 +739,11 @@ def aircraft_payload(
     """
     # For passenger aircraft with `n_seats` > 30 (guardrails)
     if aircraft_role == "Passenger" and n_seats > 30:
-        return passenger_aircraft_payload(
-            max_payload,
-            n_seats,
-            pax_lf,
-            cargo_lf,
-            pax_mass=pax_mass,
-        )
+        return passenger_aircraft_payload(max_payload, n_seats, pax_lf, cargo_lf, pax_mass=pax_mass)
 
     # For dedicated freighters
     if aircraft_role == "Cargo":
-        return dedicated_freighter_payload(
-            max_payload,
-            cargo_lf,
-        )
+        return dedicated_freighter_payload(max_payload, cargo_lf)
 
     # For non-passenger and non-cargo aircraft, assume 70% of maximum payload
     return 0.70 * max_payload
