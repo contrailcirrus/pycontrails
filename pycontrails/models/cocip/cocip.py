@@ -2280,12 +2280,20 @@ def calc_radiative_properties(contrail: GeoVectorDataset, params: dict[str, Any]
     habit_weights = radiative_forcing.habit_weights(
         r_vol_um, params["habit_distributions"], params["radius_threshold_um"]
     )
-    rf_lw = radiative_forcing.longwave_radiative_forcing(
-        r_vol_um, olr, air_temperature, tau_contrail, tau_cirrus_, habit_weights
-    )
-    rf_sw = radiative_forcing.shortwave_radiative_forcing(
-        r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus_, habit_weights
-    )
+    if params["parametric_rf_model_s2025"]:
+        rf_lw = radiative_forcing.longwave_radiative_forcing_s2025(
+            r_vol_um, olr, air_temperature, tau_contrail, tau_cirrus_, habit_weights
+        )
+        rf_sw = radiative_forcing.shortwave_radiative_forcing_s2025(
+            r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus_, habit_weights
+        )
+    else:
+        rf_lw = radiative_forcing.longwave_radiative_forcing(
+            r_vol_um, olr, air_temperature, tau_contrail, tau_cirrus_, habit_weights
+        )
+        rf_sw = radiative_forcing.shortwave_radiative_forcing(
+            r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus_, habit_weights
+        )
 
     # scale RF by enhancement factors
     rf_lw_scaled = rf_lw * params["rf_lw_enhancement_factor"]
@@ -2864,6 +2872,7 @@ def _contrail_contrail_overlapping(
         min_altitude_m=params["min_altitude_m"],
         max_altitude_m=params["max_altitude_m"],
         dz_overlap_m=params["dz_overlap_m"],
+        rf_model_s2025=params["parametric_rf_model_s2025"]
     )
 
     contrail.update(

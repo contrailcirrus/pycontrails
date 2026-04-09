@@ -274,6 +274,21 @@ class CocipParams(AdvectionBuffers):
         Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.3, kappa=0.5, n_ambient=600.0e6),
     )
 
+    #: Experimental. Alternative contrail parametric radiative forcing model.
+    #: The original parametric RF model (Schumann et al., 2012) assumes a near-linear dependence of
+    #: contrail RF on the contrail and natural cirrus optical depth. However, the ECMWF ecRad model
+    #: suggests a stronger nonlinear dependence. Schumann (2025) introduces an alternative
+    #: formulation to allow for stronger RF non-linearity. The original formulation remains the
+    #: best fit to the libRadtran dataset with the minimum number of model coefficients, while the
+    #: alternative formulation yields a slightly weaker regression fit.
+    #:
+    #: See the Schumann (2025) `<https://doi.org/10.5281/zenodo.17241725>`_, `mo_rf.f90` in
+    #: Schumann (2025) `<https://doi.org/10.5281/zenodo.17581102>`_, and Figure 8 of Schumann &
+    #: Seifert (2025), `<https://doi.org/10.5194/acp-25-18571-2025>`_.
+    #:
+    #:  .. versionadded:: 0.61.0
+    parametric_rf_model_s2025: bool = False
+
     #: Experimental. Radiative effects due to contrail-contrail overlapping
     #: Account for change in local contrail shortwave and longwave radiative forcing
     #: due to contrail-contrail overlapping.
