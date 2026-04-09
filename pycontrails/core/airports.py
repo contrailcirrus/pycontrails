@@ -247,16 +247,14 @@ def distance_between_airports(
 
     Returns
     -------
-    float
-        Great-circle distance from waypoint to airports, [:math:`km`]
+    float | None
+        Great-circle distance from waypoint to airports, [:math:`km`] or
+        None if either airport is not found in the database.
 
     See Also
     --------
     :func:`geo.haversine`
     """
-    if origin_airport_icao == destination_airport_icao:
-        return None
-
     # Set icao_code to index, so it can be queried
     airports_idx = airports.set_index("icao_code")
 
@@ -267,7 +265,5 @@ def distance_between_airports(
         destination_lat = airports_idx.loc[destination_airport_icao, "latitude"]
     except KeyError:
         return None
-    else:
-        return geo.haversine(
-            origin_lon, origin_lat, destination_lon, destination_lat
-        ) / 1000  # Units: km
+
+    return geo.haversine(origin_lon, origin_lat, destination_lon, destination_lat) / 1000.0  #  km

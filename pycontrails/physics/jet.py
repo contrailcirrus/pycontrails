@@ -16,7 +16,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from pycontrails.core import flight
-from pycontrails.core.airports import global_airport_database, distance_between_airports
+from pycontrails.core.airports import distance_between_airports, global_airport_database
 from pycontrails.physics import constants, units
 from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 
@@ -380,7 +380,7 @@ def _iata_passenger_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
 
 
 @functools.cache
-def _passenger_aircraft_n_seats_database(path: pathlib.Path) -> dict[str, str]:
+def _passenger_aircraft_n_seats_database(path: pathlib.Path) -> dict[str, int]:
     """Load a derived database containing the number of seats for each passenger aircraft type.
 
     Reference values for each passenger aircraft type are estimated using the median seat counts
@@ -388,10 +388,10 @@ def _passenger_aircraft_n_seats_database(path: pathlib.Path) -> dict[str, str]:
 
     Returns
     -------
-    dict[str, str]
-        Dictionary of the form ``{"aircraft_type": "n_seats"}``.
+    dict[str, int]
+        Dictionary of the form ``{aircraft_type: n_seats}``.
     """
-    return pd.read_csv(path).set_index("aircraft_type")["n_seats"].to_dict()
+    return pd.read_csv(path, index_col="aircraft_type")["n_seats"].to_dict()
 
 
 @functools.cache
@@ -424,8 +424,8 @@ def _dray_cargo_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
     )
 
     # Calculate cargo load factors
-    df["mean_passenger_hold_freight_lf"] = (df["mean_passenger_hold_freight_lf"].fillna(0))
-    df["mean_dedicated_freight_lf"] = (df["mean_dedicated_freight_lf"].fillna(0))
+    df["mean_passenger_hold_freight_lf"] = df["mean_passenger_hold_freight_lf"].fillna(0)
+    df["mean_dedicated_freight_lf"] = df["mean_dedicated_freight_lf"].fillna(0)
     return df
 
 
@@ -519,8 +519,7 @@ def passenger_load_factor(
 
 
 def number_of_seats(aircraft_type: str | None = None) -> int:
-    """
-    Estimate number of seats for the provided aircraft type
+    """Estimate number of seats for the provided aircraft type.
 
     Parameters
     ----------
@@ -532,9 +531,10 @@ def number_of_seats(aircraft_type: str | None = None) -> int:
     int
         Reference values for the number of seats
     """
-    # TODO: I think this is fine to open-source, but better double confirm with Tom
-    pax_atyps_n_seats = _passenger_aircraft_n_seats_database(N_SEATS_PATH)
-    return pax_atyps_n_seats.get(aircraft_type, 0)
+    if aircraft_type is None:
+        return 0
+    lookup = _passenger_aircraft_n_seats_database(N_SEATS_PATH)
+    return lookup.get(aircraft_type, 0)
 
 
 def cargo_load_factor(
@@ -583,7 +583,7 @@ def cargo_load_factor(
 
     # If either origin or destination is None, both become `Global` because no data is available for
     # regional -> global, or global -> regional
-    if (origin_region == "Global") or (destination_region == "Global"):
+    if origin_region == "Global" or destination_region == "Global":
         origin_region = "Global"
         destination_region = "Global"
 
@@ -591,55 +591,44 @@ def cargo_load_factor(
     clf_database = _dray_cargo_load_factor_database(CLF_PATH)
 
     # Filter for region of interest
-    filt = (
-        (clf_database["origin"] == origin_region)
-        & (clf_database["destination"] == destination_region)
+    filt = (clf_database["origin"] == origin_region) & (
+        clf_database["destination"] == destination_region
     )
-    rows = clf_database[filt].copy()
-    rows.sort_values(by=["dist_mid"], inplace=True)
+    rows = clf_database[filt].sort_values(by="dist_mid")
 
     # If distance is not provided, then try to estimate with origin and destination airport pairs
-    if total_flight_dist is None:
-        # TODO: To Zeb, might be able to make this more efficient
+    if total_flight_dist is None and origin_airport_icao and destination_airport_icao:
         airports = global_airport_database()
         total_flight_dist = distance_between_airports(
             airports,
             origin_airport_icao,
-            destination_airport_icao
+            destination_airport_icao,
         )
 
     # If `total_flight_dist` is still None, assume 2019 global annual mean values
     if total_flight_dist is None:
         if passenger_aircraft:
-            #return 0.171
             return (
                 rows["pax_hold_freight_carried_tonnes"].sum()
                 / rows["pax_hold_freight_capacity_tonnes"].sum()
             )
-        else:
-            #return 0.553
-            return (
-                rows["dedicated_freight_carried_tonnes"].sum()
-                / rows["dedicated_freight_capacity_tonnes"].sum()
-            )
+        return (
+            rows["dedicated_freight_carried_tonnes"].sum()
+            / rows["dedicated_freight_capacity_tonnes"].sum()
+        )
 
     # Otherwise, query cargo database
-    xp_clf = rows["dist_mid"].to_numpy()
-
+    xp_clf = rows["dist_mid"]
     if passenger_aircraft:
-        fp_clf = rows["mean_passenger_hold_freight_lf"].to_numpy()
+        fp_clf = rows["mean_passenger_hold_freight_lf"]
     else:
-        fp_clf = rows["mean_dedicated_freight_lf"].to_numpy()
+        fp_clf = rows["mean_dedicated_freight_lf"]
 
     return np.interp(total_flight_dist, xp_clf, fp_clf)
 
 
 def passenger_aircraft_payload(
-    max_payload: float,
-    n_seats: int,
-    pax_lf: float,
-    cargo_lf: float, *,
-    pax_mass: float = 100.0
+    max_payload: float, n_seats: int, pax_lf: float, cargo_lf: float, *, pax_mass: float = 100.0
 ) -> float:
     """Estimate payload for passenger aircraft.
 
