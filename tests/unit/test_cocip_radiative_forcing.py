@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 
 from pycontrails.models.cocip import CocipParams, radiative_forcing
-from pycontrails.models.cocip.radiative_forcing import RF_CONST, RFConstants
+from pycontrails.models.cocip.radiative_forcing import RF_CONST_S2012, RFConstants
 from pycontrails.physics import geo
 
 
 def test_rf_const() -> None:
     """Test the RFConstant types."""
 
-    assert isinstance(RF_CONST, RFConstants)
+    assert isinstance(RF_CONST_S2012, RFConstants)
 
     # the indexes of the habit_weights should be the (radius_threshold x habits)
     # includes radius < rf_const.radius_threshold_um[0] as the 0th row index
@@ -194,7 +194,7 @@ def test_parametric_rf_model_v2():
         r_vol_um, olr, air_temperature, tau_contrail, tau_cirrus, habit_weights
     )
 
-    rf_lw_v2 = radiative_forcing.longwave_radiative_forcing_v2(
+    rf_lw_v2 = radiative_forcing.longwave_radiative_forcing_s2025(
         r_vol_um, olr, air_temperature, tau_contrail, tau_cirrus, habit_weights
     )
 
@@ -217,7 +217,7 @@ def test_parametric_rf_model_v2():
         r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus, habit_weights
     )
 
-    rf_sw_v2 = radiative_forcing.shortwave_radiative_forcing_v2(
+    rf_sw_v2 = radiative_forcing.shortwave_radiative_forcing_s2025(
         r_vol_um, sdr, rsr, sd0, tau_contrail, tau_cirrus, habit_weights
     )
 

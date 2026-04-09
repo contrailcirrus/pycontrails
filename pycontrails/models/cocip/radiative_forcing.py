@@ -22,7 +22,7 @@ from pycontrails.physics import geo
 
 
 @dataclasses.dataclass(frozen=True)
-class RFConstants:
+class RFConstantsS2012:
     """
     Constants that are used to calculate the local contrail radiative forcing.
 
@@ -148,7 +148,7 @@ class RFConstants:
 
 
 # create a new constants class to use within module
-RF_CONST = RFConstants()
+RF_CONST_S2012 = RFConstantsS2012()
 
 
 # ----------
@@ -504,11 +504,11 @@ def longwave_radiative_forcing(
     idx0, idx1 = np.nonzero(habit_weight_mask)
 
     # Convert parametric coefficients for vectorized operations
-    delta_t = RF_CONST.delta_t[idx1]
-    delta_lc = RF_CONST.delta_lc[idx1]
-    delta_lr = RF_CONST.delta_lr[idx1]
-    k_t = RF_CONST.k_t[idx1]
-    T_0 = RF_CONST.T_0[idx1]
+    delta_t = RF_CONST_S2012.delta_t[idx1]
+    delta_lc = RF_CONST_S2012.delta_lc[idx1]
+    delta_lr = RF_CONST_S2012.delta_lr[idx1]
+    k_t = RF_CONST_S2012.k_t[idx1]
+    T_0 = RF_CONST_S2012.T_0[idx1]
 
     olr_h = olr[idx0]
     tau_cirrus_h = tau_cirrus[idx0]
@@ -615,16 +615,16 @@ def shortwave_radiative_forcing(
     idx0, idx1 = np.nonzero(habit_weight_mask)
 
     # Convert parametric coefficients for vectorized operations
-    t_a = RF_CONST.t_a[idx1]
-    A_mu = RF_CONST.A_mu[idx1]
-    B_mu = RF_CONST.B_mu[idx1]
-    C_mu = RF_CONST.C_mu[idx1]
-    delta_sr = RF_CONST.delta_sr[idx1]
-    F_r = RF_CONST.F_r[idx1]
-    gamma_lower = RF_CONST.gamma_lower[idx1]
-    gamma_upper = RF_CONST.gamma_upper[idx1]
-    delta_sc = RF_CONST.delta_sc[idx1]
-    delta_sc_aps = RF_CONST.delta_sc_aps[idx1]
+    t_a = RF_CONST_S2012.t_a[idx1]
+    A_mu = RF_CONST_S2012.A_mu[idx1]
+    B_mu = RF_CONST_S2012.B_mu[idx1]
+    C_mu = RF_CONST_S2012.C_mu[idx1]
+    delta_sr = RF_CONST_S2012.delta_sr[idx1]
+    F_r = RF_CONST_S2012.F_r[idx1]
+    gamma_lower = RF_CONST_S2012.gamma_lower[idx1]
+    gamma_upper = RF_CONST_S2012.gamma_upper[idx1]
+    delta_sc = RF_CONST_S2012.delta_sc[idx1]
+    delta_sc_aps = RF_CONST_S2012.delta_sc_aps[idx1]
 
     sdr_h = sdr[idx0]
     rsr_h = rsr[idx0]
@@ -880,12 +880,12 @@ def effective_tau_cirrus(
     return np.exp(tau_cirrus * delta_sc_aps - tau_cirrus_eff * delta_sc)
 
 
-# ----------------------------------------------------------
-# Parametric radiative forcing model (V2): Schumann (2025)
-# ----------------------------------------------------------
+# ---------------------------------------------------
+# Parametric radiative forcing model: Schumann (2025)
+# ---------------------------------------------------
 
 @dataclasses.dataclass(frozen=True)
-class RFConstantsV2:
+class RFConstantsS2025:
     """
     Constants that are used to calculate the local contrail radiative forcing (V2).
 
@@ -988,10 +988,10 @@ class RFConstantsV2:
     )
 
 
-RF_CONST_V2 = RFConstantsV2()
+RF_CONST_S2025 = RFConstantsS2025()
 
 
-def longwave_radiative_forcing_v2(
+def longwave_radiative_forcing_s2025(
     r_vol_um: npt.NDArray[np.floating],
     olr: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
@@ -1051,12 +1051,12 @@ def longwave_radiative_forcing_v2(
     idx0, idx1 = np.nonzero(habit_weight_mask)
 
     # Convert parametric coefficients for vectorized operations
-    AK = RF_CONST_V2.AK[idx1]
-    SIGMA = RF_CONST_V2.SIGMA[idx1]
-    DELTA = RF_CONST_V2.DELTA[idx1]
-    QLW = RF_CONST_V2.QLW[idx1]
-    cDTAUCI = RF_CONST_V2.cDTAUCI[idx1]
-    tauexpLW = RF_CONST_V2.tauexpLW[idx1]
+    AK = RF_CONST_S2025.AK[idx1]
+    SIGMA = RF_CONST_S2025.SIGMA[idx1]
+    DELTA = RF_CONST_S2025.DELTA[idx1]
+    QLW = RF_CONST_S2025.QLW[idx1]
+    cDTAUCI = RF_CONST_S2025.cDTAUCI[idx1]
+    tauexpLW = RF_CONST_S2025.tauexpLW[idx1]
 
     olr_h = olr[idx0]
     tau_cirrus_h = tau_cirrus[idx0]
@@ -1094,7 +1094,7 @@ def longwave_radiative_forcing_v2(
     return np.sum(rf_lw_weighted, axis=1)
 
 
-def shortwave_radiative_forcing_v2(
+def shortwave_radiative_forcing_s2025(
     r_vol_um: npt.NDArray[np.floating],
     sdr: npt.NDArray[np.floating],
     rsr: npt.NDArray[np.floating],
@@ -1164,19 +1164,19 @@ def shortwave_radiative_forcing_v2(
     idx0, idx1 = np.nonzero(habit_weight_mask)
 
     # Convert parametric coefficients for vectorized operations
-    GAMMA = RF_CONST_V2.GAMMA[idx1]
-    GAMMAS = RF_CONST_V2.GAMMAS[idx1]
-    TT = RF_CONST_V2.TT[idx1]
-    GALBS = RF_CONST_V2.GALBS[idx1]
-    ACTH = RF_CONST_V2.ACTH[idx1]
-    BCTH = RF_CONST_V2.BCTH[idx1]
-    CCTH = RF_CONST_V2.CCTH[idx1]
-    DCTH = RF_CONST_V2.DCTH[idx1]
-    FRSW = RF_CONST_V2.FRSW[idx1]
-    RADDSW = RF_CONST_V2.RADDSW[idx1]
-    QSW = RF_CONST_V2.QSW[idx1]
-    EXALB = RF_CONST_V2.EXALB[idx1]
-    cDTAUCISW = RF_CONST_V2.cDTAUCISW[idx1]
+    GAMMA = RF_CONST_S2025.GAMMA[idx1]
+    GAMMAS = RF_CONST_S2025.GAMMAS[idx1]
+    TT = RF_CONST_S2025.TT[idx1]
+    GALBS = RF_CONST_S2025.GALBS[idx1]
+    ACTH = RF_CONST_S2025.ACTH[idx1]
+    BCTH = RF_CONST_S2025.BCTH[idx1]
+    CCTH = RF_CONST_S2025.CCTH[idx1]
+    DCTH = RF_CONST_S2025.DCTH[idx1]
+    FRSW = RF_CONST_S2025.FRSW[idx1]
+    RADDSW = RF_CONST_S2025.RADDSW[idx1]
+    QSW = RF_CONST_S2025.QSW[idx1]
+    EXALB = RF_CONST_S2025.EXALB[idx1]
+    cDTAUCISW = RF_CONST_S2025.cDTAUCISW[idx1]
 
     sdr_h = sdr[idx0]
     rsr_h = rsr[idx0]
@@ -1243,6 +1243,7 @@ def contrail_contrail_overlap_radiative_effects(
     max_altitude_m: float = 13000.0,
     dz_overlap_m: float = 500.0,
     spatial_grid_res: float = 0.25,
+    rf_model_s2025: bool = False,
 ) -> GeoVectorDataset:
     r"""
     Calculate radiative properties after accounting for contrail overlapping.
@@ -1280,6 +1281,9 @@ def contrail_contrail_overlap_radiative_effects(
         See :attr:`CocipParams.dz_overlap_m`
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
+    rf_model_s2025 : bool
+        Use alternative parametric RF model (Schumann, 2025)
+        See :attr:`CocipParams.parametric_rf_model_s2025`
 
     Returns
     -------
@@ -1503,6 +1507,8 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
     contrails_level: GeoVectorDataset,
     habit_distributions: npt.NDArray[np.floating],
     radius_threshold_um: npt.NDArray[np.floating],
+    *,
+    rf_model_s2025: bool = False
 ) -> GeoVectorDataset:
     """
     Calculate local contrail SW and LW RF after accounting for contrail overlapping.
@@ -1517,6 +1523,9 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
     radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
         See :attr:`CocipParams.radius_threshold_um`
+    rf_model_s2025 : bool
+        Use alternative parametric RF model (Schumann, 2025)
+        See :attr:`CocipParams.parametric_rf_model_s2025`
 
     Returns
     -------
@@ -1534,24 +1543,46 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
     tau_cirrus = contrails_level["tau_cirrus"] + contrails_level["tau_contrails_above"]
 
     # Calculate local SW and LW RF
-    contrails_level["rf_sw_overlap"] = shortwave_radiative_forcing(
-        r_vol_um,
-        contrails_level["sdr"],
-        contrails_level["rsr_overlap"],
-        sd0,
-        tau_contrail,
-        tau_cirrus,
-        habit_w,
-    )
+    if rf_model_s2025:
+        contrails_level["rf_sw_overlap"] = shortwave_radiative_forcing_s2025(
+            r_vol_um,
+            contrails_level["sdr"],
+            contrails_level["rsr_overlap"],
+            sd0,
+            tau_contrail,
+            tau_cirrus,
+            habit_w,
+        )
 
-    contrails_level["rf_lw_overlap"] = longwave_radiative_forcing(
-        r_vol_um,
-        contrails_level["olr_overlap"],
-        contrails_level["air_temperature"],
-        tau_contrail,
-        tau_cirrus,
-        habit_w,
-    )
+        contrails_level["rf_lw_overlap"] = longwave_radiative_forcing_s2025(
+            r_vol_um,
+            contrails_level["olr_overlap"],
+            contrails_level["air_temperature"],
+            tau_contrail,
+            tau_cirrus,
+            habit_w,
+        )
+
+    else:
+        contrails_level["rf_sw_overlap"] = shortwave_radiative_forcing(
+            r_vol_um,
+            contrails_level["sdr"],
+            contrails_level["rsr_overlap"],
+            sd0,
+            tau_contrail,
+            tau_cirrus,
+            habit_w,
+        )
+
+        contrails_level["rf_lw_overlap"] = longwave_radiative_forcing(
+            r_vol_um,
+            contrails_level["olr_overlap"],
+            contrails_level["air_temperature"],
+            tau_contrail,
+            tau_cirrus,
+            habit_w,
+        )
+
     contrails_level["rf_net_overlap"] = (
         contrails_level["rf_lw_overlap"] + contrails_level["rf_sw_overlap"]
     )
