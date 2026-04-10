@@ -6,6 +6,7 @@ import pytest
 
 from pycontrails.core import Flight
 from pycontrails.datalib.ch_aviation import ChAviation
+from pycontrails.models.ps_model import PSFlight
 from tests import CH_AVIATION_AVAILABLE
 
 pytestmark = pytest.mark.skipif(not CH_AVIATION_AVAILABLE, reason="ch-aviation data not available")
@@ -197,3 +198,42 @@ def test_eval_function_no_identifying_information():
     ch_a = ChAviation()
     fl2 = ch_a.eval(fl)
     assert fl.attrs == fl2.attrs  # No changes made to flight
+
+
+@pytest.mark.parametrize("tail_number", ["D-ATRA", "G-EZUT", "9V-SGA", None])
+def test_ch_aviation_with_ps_flight(tail_number: str):
+    """Confirm that chaining ChAviation with PSFlight leads to a more precise payload estimate."""
+    fl = Flight(
+        longitude=[10, 50],
+        latitude=[30, 40],
+        altitude=[10000, 11000],
+        time=[np.datetime64("2025-03-14T00"), np.datetime64("2025-03-14T05")],
+        flight_id="ch-aviation-test",
+    )
+    if tail_number is not None:
+        fl.attrs["tail_number"] = tail_number
+    else:
+        fl.attrs["aircraft_type"] = "B737"
+
+    cha = ChAviation()
+    fl = cha.eval(fl)
+    if tail_number:
+        fl.attrs["aircraft_type"] = fl.attrs["atyp_icao_ch_a"]  # TODO: streamline?
+
+    fl["air_temperature"] = fl.T_isa()  # needed for PSFlight
+    fl["true_airspeed"] = [230, 240]  # needed for PSFlight
+
+    psf = PSFlight()
+
+    # PSFlight adds a new payload field
+    assert "payload" not in fl.attrs
+    fl = psf.eval(fl)
+
+    if tail_number == "D-ATRA":
+        assert fl.attrs["payload"] == pytest.approx(13933, abs=1)
+    elif tail_number == "G-EZUT":
+        assert fl.attrs["payload"] == pytest.approx(15012, abs=1)
+    elif tail_number == "9V-SGA":
+        assert fl.attrs["payload"] == pytest.approx(12995, abs=1)
+    else:
+        assert fl.attrs["payload"] == pytest.approx(11057, abs=1)
