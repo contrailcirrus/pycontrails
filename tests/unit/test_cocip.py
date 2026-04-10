@@ -1043,7 +1043,7 @@ def test_eval_generic(reference: str, generic: str, request: pytest.FixtureReque
 def test_emissions(met: MetDataset, rad: MetDataset, bada_model: AircraftPerformance) -> None:
     """Test `Cocip` use of `Emissions` model."""
     # demo synthetic flight for BADA
-    attrs = {"flight_id": "test BADA/EDB", "aircraft_type": "A320"}
+    attrs = {"flight_id": "test BADA/EDB", "aircraft_type": "A320", "payload": 12000}
 
     # Example flight
     df = pd.DataFrame()
