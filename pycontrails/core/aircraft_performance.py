@@ -236,7 +236,7 @@ class AircraftPerformance(Model):
         if cargo_lf is None:
             origin_airport_icao = fl.attrs.get("origin_airport_icao")
             destination_airport_icao = fl.attrs.get("destination_airport_icao")
-            if origin_airport_icao is None and destination_airport_icao is None:
+            if origin_airport_icao is None or destination_airport_icao is None:
                 total_flight_dist = np.nansum(fl.segment_haversine()).item()
             else:
                 total_flight_dist = None
@@ -326,7 +326,7 @@ class AircraftPerformance(Model):
         takeoff_mass : float | None, optional
             If known, the takeoff mass can be provided to skip the calculation
             in :func:`jet.initial_aircraft_mass`. In this case, the parameters
-            ``load_factor``, ``amass_oew``, ``amass_mtow``, and ``amass_mpl`` are
+            ``payload``, ``amass_oew``, ``amass_mtow``, and ``amass_mpl`` are
             ignored.
         **kwargs : Any
             Additional keyword arguments are passed to :meth:`calculate_aircraft_performance`.

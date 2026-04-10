@@ -591,10 +591,9 @@ def cargo_load_factor(
     clf_database = _dray_cargo_load_factor_database(CLF_PATH)
 
     # Filter for region of interest
-    filt = (clf_database["origin"] == origin_region) & (
-        clf_database["destination"] == destination_region
-    )
-    rows = clf_database[filt].sort_values(by="dist_mid")
+    rows = clf_database.query(
+        "origin == @origin_region and destination == @destination_region"
+    ).sort_values(by="dist_mid")
 
     # If distance is not provided, then try to estimate with origin and destination airport pairs
     if total_flight_dist is None and origin_airport_icao and destination_airport_icao:
