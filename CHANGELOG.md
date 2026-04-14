@@ -6,6 +6,13 @@
 
 - Experimental: Integrate alternative contrail parametric radiative forcing model (Schumann, 2025) into the CoCiP workflow: The original parametric RF model assumes a near-linear dependence of contrail RF on the contrail and natural cirrus optical depth and provides the best fit to the libRadtran dataset with the minimum number of model coefficients. This alternative model provides a stronger non-linear dependence to the contrail and natural cirrus optical depth, consistent with the ECMWF ecRad model, but yields a slightly weaker fit to the libRadtran dataset. This new parameterization can be enabled within the `Cocip` and `CocipGrid` models via the `parametric_rf_model_s2025` parameter.
 
+### Breaking changes
+
+- Replace the previous methodology for estimating aircraft mass (based on load factor) with a new approach that estimates payload mass based on passanger seat count aircraft and cargo capacity.Evaluated against the Brazilian ANAC dataset, this refinement improves takeoff mass accuracy by 5 - 10%. Aircraft performance models (`PSFlight` and `BADAFlight`) have been updated to integrate this new approach.
+  - Integrate the [Dray et al. (2024) cargo load factor database](https://doi.org/10.1016/j.jairtraman.2024.102692), which provides the 2019 annual mean origin-destination specific cargo load factors in the passenger hold and dedicated freighters. Discontinue the use of the IATA cargo load factor database, as it does not distinguish between freight carried in the passenger hold and dedicated freighters.
+  - Provide reference values for the number of seats for each passenger aircraft type to improve payload estimates.
+  - Remove `DEFAULT_LOAD_FACTOR` and `jet.aircraft_load_factor`. Passenger aircraft and cargo aircraft load factors are now handled separately.
+
 ## 0.60.5
 
 ### Breaking changes
