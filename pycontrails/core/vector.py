@@ -1868,10 +1868,7 @@ class GeoVectorDataset(VectorDataset):
         interp_coords = {d: xr.DataArray(v, dims="waypoint") for d, v in dims.items() if d != dim}
         interp_kwargs.setdefault("method", "linear")
 
-        out = mda.data.interp(
-            **interp_coords,
-            **interp_kwargs,
-        )
+        out = mda.data.interp(**interp_coords, **interp_kwargs)  # type: ignore
 
         # Enhance vertical pressure coordinates with physical altitude equivalents.
         # This allows plotting on top of Flight.plot_profile() which requires altitude_ft.
