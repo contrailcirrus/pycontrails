@@ -1588,7 +1588,7 @@ def find_initial_persistent_contrails(
         persistent_contrail,
         effective_vertical_resolution=effective_vertical_resolution,
         wind_shear_enhancement_exponent=wind_shear_enhancement_exponent,
-        turbuent_vertical_velocity_scale=turbulent_vertical_velocity_scale,
+        turbulent_vertical_velocity_scale=turbulent_vertical_velocity_scale,
         sedimentation_impact_factor=sedimentation_impact_factor,
         radiative_heating_effects=False,  # Not yet supported in CocipGrid
         max_horizontal_diffusivity=params["max_horizontal_diffusivity"],
