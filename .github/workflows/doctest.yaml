@@ -70,10 +70,11 @@ jobs:
         run: make dev-install
 
       # https://cloud.google.com/artifact-registry/docs/python/authentication
-      - name: Install pycontrails-bada
-        run: |
-          pip install keyring keyrings.google-artifactregistry-auth
-          pip install -U -i https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple pycontrails-bada
+      # FIXME: Uncomment after pycontrails-bada 0.9.0 is released
+      # - name: Install pycontrails-bada
+      #   run: |
+      #     pip install keyring keyrings.google-artifactregistry-auth
+      #     pip install -U -i https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple pycontrails-bada
 
       - name: Test notebooks
         run: make nb-test
