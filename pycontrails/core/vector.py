@@ -1863,7 +1863,7 @@ class GeoVectorDataset(VectorDataset):
         }
 
         if dim not in dims:
-            raise ValueError(f"Dimension {dim} not supported, must one of {list(dims.keys())}")
+            raise ValueError(f"Dimension {dim} not supported, must one of {list(dims)}")
 
         interp_coords = {d: xr.DataArray(v, dims="waypoint") for d, v in dims.items() if d != dim}
         interp_kwargs.setdefault("method", "linear")
