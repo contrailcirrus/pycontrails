@@ -1826,16 +1826,14 @@ class GeoVectorDataset(VectorDataset):
         mda: met_module.MetDataArray | met_module.MetDataset,
         *,
         dim: str = "level",
-        longitude: npt.NDArray[np.floating] | None = None,
-        latitude: npt.NDArray[np.floating] | None = None,
-        level: npt.NDArray[np.floating] | None = None,
-        time: npt.NDArray[np.datetime64] | None = None,
         **interp_kwargs: Any,
     ) -> xr.DataArray | xr.Dataset:
         """Intersect waypoints with MetDataArray or MetDataset, retaining one dimension.
 
         This calculates a 2D "curtain" or cross-section of the met data along the trajectory,
-        retaining the full extent of the specific dimension ``dim`` of the met data.
+        retaining the full extent of the specific dimension ``dim`` of the met data. This is
+        useful for plotting 2D charts, e.g. vertical flight profiles. While ``intersect_met``
+        returns a 1D result, this method returns a 2D result.
 
         Parameters
         ----------
@@ -1844,14 +1842,6 @@ class GeoVectorDataset(VectorDataset):
         dim : str, optional
             Dimension to retain. Typically "level", "time", "latitude", or "longitude".
             Defaults to "level".
-        longitude : npt.NDArray[np.floating] | None, optional
-            Override existing longitude coordinates for met interpolation
-        latitude : npt.NDArray[np.floating] | None, optional
-            Override existing latitude coordinates for met interpolation
-        level : npt.NDArray[np.floating] | None, optional
-            Override existing pressure level coordinates for met interpolation
-        time : npt.NDArray[np.datetime64] | None, optional
-            Override existing time coordinates for met interpolation
         **interp_kwargs : Any
             Additional keyword arguments to pass to :meth:`xr.DataArray.interp` or
             :meth:`xr.Dataset.interp`.
@@ -1866,10 +1856,10 @@ class GeoVectorDataset(VectorDataset):
         """
 
         dims = {
-            "longitude": longitude if longitude is not None else self["longitude"],
-            "latitude": latitude if latitude is not None else self["latitude"],
-            "level": level if level is not None else self.level,
-            "time": time if time is not None else self["time"],
+            "longitude": self["longitude"],
+            "latitude": self["latitude"],
+            "level": self.level,
+            "time": self["time"],
         }
 
         if dim not in dims:
@@ -1888,10 +1878,13 @@ class GeoVectorDataset(VectorDataset):
         if "level" in out.coords:
             level_coords = {}
             if "altitude" not in out.coords:
-                level_coords["altitude"] = ("level", units.pl_to_m(out.coords["level"].values))
+                level_coords["altitude"] = (
+                    out.coords["level"].dims,
+                    units.pl_to_m(out.coords["level"].values),
+                )
             if "altitude_ft" not in out.coords:
                 level_coords["altitude_ft"] = (
-                    "level",
+                    out.coords["level"].dims,
                     units.m_to_ft(units.pl_to_m(out.coords["level"].values)),
                 )
             if level_coords:

@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pytest
+import xarray as xr
 
 from pycontrails import GeoVectorDataset, MetDataset, VectorDataset
 from pycontrails.core.vector import AttrDict, VectorDataDict
@@ -628,6 +629,75 @@ def test_coord_intersect_met(met_issr: MetDataset) -> None:
         longitude=longitude, latitude=latitude, level=np.linspace(200, 220, 100), time=time
     )
     assert not gvds.coords_intersect_met(met_issr).any()
+
+
+def test_intersect_met_cross_section() -> None:
+    """Test intersect_met_cross_section."""
+    lon = np.array([-15, -14, -13, -12])
+    lat = np.array([10, 11, 12, 13])
+    time = pd.date_range("2021-10-05 00:00:00", "2021-10-05 03:00:00", periods=4)
+    level = np.array([200, 250, 300, 350])
+
+    gvds = GeoVectorDataset(longitude=lon, latitude=lat, level=level, time=time)
+
+    grid_lon = np.linspace(-20, -10, 5)
+    grid_lat = np.linspace(5, 15, 5)
+    grid_level = np.array([200, 250, 300, 350, 400])
+    grid_time = pd.date_range("2021-10-05 00:00:00", "2021-10-05 04:00:00", periods=5)
+
+    shape = (5, 5, 5, 5)
+    temp = np.zeros(shape)
+    for j, lat_val in enumerate(grid_lat):
+        for k, lev_val in enumerate(grid_level):
+            temp[:, j, k, :] = 100 * lat_val + lev_val
+
+    ds = xr.Dataset(
+        data_vars={
+            "air_temperature": (["longitude", "latitude", "level", "time"], temp),
+        },
+        coords={
+            "longitude": grid_lon,
+            "latitude": grid_lat,
+            "level": grid_level,
+            "time": grid_time,
+        },
+    )
+    met = MetDataset(ds)
+
+    res = gvds.intersect_met_cross_section(met["air_temperature"], dim="level")
+    assert isinstance(res, xr.DataArray)
+    assert "waypoint" in res.dims
+    assert "level" in res.dims
+    assert res.shape == (4, 5)
+
+    # Check exact values
+    for i in range(4):
+        for k, lev_val in enumerate(grid_level):
+            expected = 100 * gvds["latitude"][i] + lev_val
+            np.testing.assert_allclose(res[i, k], expected)
+
+    assert "altitude" in res.coords
+    assert "altitude_ft" in res.coords
+
+    res_time = gvds.intersect_met_cross_section(met["air_temperature"], dim="time")
+    assert "waypoint" in res_time.dims
+    assert "time" in res_time.dims
+    assert res_time.shape == (4, 5)
+
+    # Check exact values
+    for i in range(4):
+        expected = 100 * gvds["latitude"][i] + gvds["level"][i]
+        for t in range(5):
+            np.testing.assert_allclose(res_time[i, t], expected)
+
+    res_ds = gvds.intersect_met_cross_section(met, dim="level")
+    assert isinstance(res_ds, xr.Dataset)
+    assert "air_temperature" in res_ds
+    assert "waypoint" in res_ds["air_temperature"].dims
+    assert "level" in res_ds["air_temperature"].dims
+
+    with pytest.raises(ValueError, match="Dimension invalid not supported"):
+        gvds.intersect_met_cross_section(met, dim="invalid")
 
 
 def test_broadcast_attrs(random_path: VectorDataset) -> None:
