@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Internals
+
+- Update `CocipParams.particles_{lean,rich}_burn` ambient particle GSD from 2.3 to 2.2 for consistency with Teoh et al. (2026, in preparation).
+
 ## 0.61.0
 
 ### Features

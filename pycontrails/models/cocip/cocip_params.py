@@ -263,7 +263,7 @@ class CocipParams(AdvectionBuffers):
     particles_rich_burn: tuple[Particle, ...] = (
         Particle(type=ParticleType.NVPM, gmd=30.0e-9, gsd=2.0, kappa=0.005),
         Particle(type=ParticleType.VPM, gmd=1.95e-9, gsd=1.40, kappa=0.54, ei_vpm=1e17),
-        Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.3, kappa=0.5, n_ambient=600.0e6),
+        Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.2, kappa=0.5, n_ambient=600.0e6),
     )
 
     #: Assumed vPM properties for lean-burn engines if :attr:`vpm_activation` is enabled.
@@ -278,7 +278,7 @@ class CocipParams(AdvectionBuffers):
     particles_lean_burn: tuple[Particle, ...] = (
         Particle(type=ParticleType.NVPM, gmd=30.0e-9, gsd=2.0, kappa=0.005),
         Particle(type=ParticleType.VPM, gmd=9.55e-9, gsd=1.40, kappa=0.33, ei_vpm=1.4e15),
-        Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.3, kappa=0.5, n_ambient=600.0e6),
+        Particle(type=ParticleType.AMBIENT, gmd=30.0e-9, gsd=2.2, kappa=0.5, n_ambient=600.0e6),
     )
 
     #: Experimental. Alternative contrail parametric radiative forcing model.
