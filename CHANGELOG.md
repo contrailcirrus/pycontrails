@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Features
+
+- Experimental: Implement a revised version of the CoCiP contrail ice budget that ensures contrails in air at 100% RHi conserve total ice mass. The revisions can be activated in `Cocip` and `CocipGrid` by setting the `revised_contrail_ice_budget` parameter to `True`. However, they are disabled by default and should be used with caution, as they lead to significant changes in the optical properties of aged contrails. The ice budget revisions and their impact on CoCiP simulations will be described in detail in a future publication.
+
 ### Internals
 
 - Update `CocipParams.particles_{lean,rich}_burn` ambient particle GSD from 2.3 to 2.2 for consistency with Teoh et al. (2026, in preparation).
