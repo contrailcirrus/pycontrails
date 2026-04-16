@@ -1515,17 +1515,12 @@ def new_ice_water_content_revised(
     npt.NDArray[np.floating]
         Contrail ice water content at the end of the time step, [:math:`kg_{ice} kg_{air}^{-1}`]
 
-    Notes (TODO: update)
+    Notes
     -----
-    (1) The ice water content is fully conservative.
-    (2) ``mass_h2o_t2``: the total H2O mass (ice + vapour) per unit of
-        contrail plume [Units of kg-H2O/m]
-    (3) ``q_sat`` is used to calculate mass_h2o because air inside the
-        contrail is assumed to be ice saturated.
-    (4) ``(mass_plume_t2 - mass_plume) * q_mean``: contrail absorbs
-        (releases) H2O from (to) surrounding air.
-    (5) ``iwc_t2 = mass_h2o_t2 / mass_plume_t2 - q_sat_t2``: H2O in the
-        gas phase is removed (``- q_sat_t2``).
+    (1) Differences between this function and :func:`new_ice_water_content` will be described
+    in a future publication. The documentation for this function will be updated when the
+    publication is available.
+
     """
     # change from falling through sub/supersaturated air
     dt_s = units.dt_to_seconds(dt, iwc_t1.dtype)

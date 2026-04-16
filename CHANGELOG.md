@@ -4,7 +4,7 @@
 
 ### Features
 
-- Experimental: Implement a revised version of the CoCiP contrail ice budget that ensures contrails in air at 100% RHi conserve total ice mass. The revisions can be activated in `Cocip` and `CocipGrid` by setting the `revised_contrail_ice_budget` parameter to `True`. However, they are disabled by default and should be used with caution, as they lead to significant changes in the optical properties of aged contrails. The ice budget revisions and their impact on CoCiP simulations will be described in detail in a future publication.
+- Experimental: Implement a revised version of the CoCiP contrail ice budget, disabled by default and activated in `Cocip` and `CocipGrid` by setting the `revised_contrail_ice_budget` parameter to `True`. The revisions and their impact on CoCiP simulations will be described in detail in a future publication; in brief, the revised ice budget includes tendencies associated with sedimentation across an ambient humidity gradient and ensures that contrails conserve total ice when in air at 100% RHi. This feature should be used with caution, as it changes the optical properties of aged contrails and leads to significant increases in contrail radiative forcing.
 
 ### Internals
 
