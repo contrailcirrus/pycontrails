@@ -158,7 +158,7 @@ def diffusivity_water_vapor(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScal
     # this only renders our code more boilerplate and less performant.
     # This comment is pasted several places in `pycontrails` -- they should all be
     # addressed at the same time.
-    T = np.clip(T, -40.0 - constants.absolute_zero, 40.0 - constants.absolute_zero)  # type: ignore[return-value]
+    T = np.clip(T, -40.0 - constants.absolute_zero, 40.0 - constants.absolute_zero)  # type: ignore[assignment]
     T0 = 273.15
     p0 = 101325.0
     return 0.0000211 * (T / T0) ** 1.94 * (p0 / p)
