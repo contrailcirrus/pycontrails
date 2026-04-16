@@ -334,8 +334,10 @@ class CocipParams(AdvectionBuffers):
     rf_lw_enhancement_factor: float = 1.0
 
     #: Experimental: use revised contrail ice budget (to be described in a forthcoming paper).
-    #: The revised ice budget includes tendencies associated with sedimentation across an
-    #: ambient humidity gradient.
+    #: In brief, the revised ice budget includes tendencies associated with sedimentation across an
+    #: ambient humidity gradient and ensures that contrails conserve total ice when in air at 100%
+    #: RHi. This feature should be activated with caution, as it changes the optical properties of
+    #: aged contrails and lead to significant increases in contrail radiative forcing.
     revised_contrail_ice_budget: bool = False
 
     # ---------------------------------------

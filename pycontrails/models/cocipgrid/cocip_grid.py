@@ -1634,7 +1634,7 @@ def calc_evolve_one_step(
     .. versionchanged:: 0.60.3
 
         A required ``sed_contrail`` parameter was added to support integration using
-        a revised contrail ice budget. This parameter is unused and can be set to ``None``
+        the revised contrail ice budget. This parameter is unused and can be set to ``None``
         when using the original contrail ice budget.
 
     Parameters
