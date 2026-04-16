@@ -1053,3 +1053,31 @@ def test_cocip_grid_met_rad_variables_helper(
 ) -> None:
     """Test met and rad variable helper properties."""
     assert grid_mvs == traj_mvs
+
+
+def test_cocip_grid_revised_contrail_ice_budget_param(
+    source: MetDataset, instance_params: dict[str, Any]
+) -> None:
+    """Test that ice budget revisions change gridded output."""
+    gc1 = CocipGrid(**instance_params, aircraft_performance=PSGrid())
+    gc2 = CocipGrid(
+        **instance_params, aircraft_performance=PSGrid(), revised_contrail_ice_budget=True
+    )
+
+    source = CocipGrid.create_source(
+        level=[230, 240, 250, 260],
+        time=np.datetime64("2019-01-01"),
+        longitude=np.linspace(-35, -25, 40),
+        latitude=np.linspace(51, 57, 20),
+    )
+
+    out1 = gc1.eval(source)
+    out2 = gc2.eval(source)
+
+    # Revisions generally increase EF, though only slightly when
+    # contrails are relatively young
+    efpm1 = out1["ef_per_m"].data.mean().item()
+    efpm2 = out2["ef_per_m"].data.mean().item()
+    assert efpm1 == pytest.approx(5.6e6, rel=0.1)
+    assert efpm2 == pytest.approx(5.7e6, rel=0.1)
+    assert efpm2 - efpm1 == pytest.approx(0.2e6, rel=0.1)

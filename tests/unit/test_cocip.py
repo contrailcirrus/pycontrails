@@ -2047,3 +2047,46 @@ def test_cocip_output_columns(
         return
 
     pytest.fail(f"Test case not implemented for T_add={T_add}, q_scale={q_scale}")
+
+
+def test_revised_contrail_ice_budget_param(fl: Flight, met: MetDataset, rad: MetDataset):
+    """Run Cocip with the revised_contrail_ice_budget parameter.
+
+    The purpose of this test is to show that this parameter changes simulation output.
+    """
+
+    fl.update(longitude=np.linspace(-29.0, -32.0, 20))
+    fl.update(latitude=np.linspace(56.0, 57.0, 20))
+    fl.update(altitude=np.full(20, 10900.0))
+
+    params = {
+        "max_age": np.timedelta64(90, "m"),  # keep short to avoid blowing out of bounds
+        "dt_integration": np.timedelta64(10, "m"),
+        "process_emissions": False,
+        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
+    }
+
+    # Artificially shift time to get some SDR
+    met.data = met.data.assign_coords(time=met.data["time"] + np.timedelta64(12, "h"))
+    rad.data = rad.data.assign_coords(time=rad.data["time"] + np.timedelta64(12, "h"))
+    fl.update(time=fl["time"] + np.timedelta64(12, "h"))
+
+    cocip = Cocip(met, rad=rad, params=params)
+    fl1 = cocip.eval(source=fl)
+    contrail1 = cocip.contrail
+    assert contrail1 is not None
+    assert not cocip.params["revised_contrail_ice_budget"]
+
+    fl2 = cocip.eval(source=fl, revised_contrail_ice_budget=True)
+    assert cocip.params["revised_contrail_ice_budget"]
+    contrail2 = cocip.contrail
+    assert contrail2 is not None
+
+    # Compare output between two model runs
+    assert set(contrail1.columns) == set(contrail2.columns)
+
+    # Revisions generally increase EF, though only slightly when
+    # contrails are relatively young
+    assert fl1["ef"].sum() == pytest.approx(7.3e12, rel=0.1)
+    assert fl2["ef"].sum() == pytest.approx(7.3e12, rel=0.1)
+    assert fl2["ef"].sum() - fl1["ef"].sum() == pytest.approx(0.06e12, rel=0.1)
