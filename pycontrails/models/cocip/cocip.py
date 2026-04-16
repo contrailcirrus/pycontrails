@@ -27,7 +27,6 @@ from pycontrails.core.models import Model, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict
 from pycontrails.datalib import ecmwf, gfs
 from pycontrails.models import extended_k15, sac, tau_cirrus
-from pycontrails.models.extended_k15 import Particle, ParticleType
 from pycontrails.models.cocip import (
     contrail_properties,
     radiative_forcing,
