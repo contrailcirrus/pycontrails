@@ -864,8 +864,8 @@ def phase_relaxation_rate(
 
     References
     ----------
-    - :cite:`hallPrupaccherSurvivalIceParticles1976`
-    - :cite:`prupaccherKlettMicrophysicsCloudsPrecipitation2010`
+    - :cite:`hallSurvivalIceParticles1976`
+    - :cite:`pruppacherMicrophysicsCloudsPrecipitation2010`
 
     Notes
     -----
