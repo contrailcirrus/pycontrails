@@ -1631,7 +1631,7 @@ def calc_evolve_one_step(
     This function attaches additional variables to ``next_contrail``, then
     filters by :func:`contrail_properties.contrail_persistent`.
 
-    .. versionchanged:: 0.60.3
+    .. versionchanged:: 0.62.0
 
         A required ``sed_contrail`` parameter was added to support integration using
         the revised contrail ice budget. This parameter is unused and can be set to ``None``
