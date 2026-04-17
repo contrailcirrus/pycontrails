@@ -242,8 +242,9 @@ To automatically sync the Zotero library with the
 
 - Install `Zotero <https://www.zotero.org/>`__ and add the `pycontrails library <https://www.zotero.org/groups/4730892/pycontrails/library>`__.
 - Install the `Zotero Better Bibtex extension <https://retorque.re/zotero-better-bibtex/installation/>`__. Leave defaults during setup.
+- In Better Bibtex settings, set "Add URLs to BibTeX export" to "in the 'url' field".
 - Right click on the **pycontrails** library and select *Export Library*
-- Export as *Better Bibtex*. You can optionally check *Keep Updated* if you want
+- Export as *Better BibTeX*. You can optionally check *Keep Updated* if you want
   this file to update every time you make a change to the library.
 - Select the file ``_static/pycontrails.bib`` and press *Save* to overwrite the file.
 - Commit the updated ``_static/pycontrails.bib``
