@@ -338,6 +338,8 @@ class CocipParams(AdvectionBuffers):
     #: ambient humidity gradient and ensures that contrails conserve total ice when in air at 100%
     #: RHi. This feature should be activated with caution, as it changes the optical properties of
     #: aged contrails and lead to significant increases in contrail radiative forcing.
+    #:
+    #:  .. versionadded:: 0.62.0
     revised_contrail_ice_budget: bool = False
 
     # ---------------------------------------
