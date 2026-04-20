@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixes
+
+- Fix `jet.cargo_load_factor` to handle cases where no data is available for the specified origin and destination region pair. In such cases, the function now falls back to using global mean estimates instead raising a meaningless error.
+
 ## 0.62.0
 
 ### Features
