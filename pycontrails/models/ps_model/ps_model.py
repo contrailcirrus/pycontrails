@@ -313,9 +313,6 @@ class PSFlight(AircraftPerformance):
             fuel_flow = np.full_like(true_airspeed, fuel_flow)
 
         # Flight phase
-        segment_duration = flight.segment_duration(time, dtype=altitude_ft.dtype)
-        rocd = flight.segment_rocd(segment_duration, altitude_ft, air_temperature)
-
         if correct_fuel_flow:
             flight_phase = flight.segment_phase(rocd, altitude_ft)
             fuel_flow = fuel_flow_correction(
@@ -613,9 +610,8 @@ def wave_drag_coefficient(
         atyp_param.cos_sweep**3 * atyp_param.j_1 * (x - atyp_param.j_2) ** 2,
     )
 
-    return np.where(  # type: ignore[return-value]
-        x < atyp_param.x_ref, c_d_w, c_d_w + atyp_param.j_3 * (x - atyp_param.x_ref) ** 4
-    )
+    d_ref_4 = ((x - atyp_param.x_ref) ** 2) ** 2  # avoid **4 for performance
+    return np.where(x < atyp_param.x_ref, c_d_w, c_d_w + atyp_param.j_3 * d_ref_4)  # type: ignore[return-value]
 
 
 def airframe_drag_coefficient(
@@ -719,11 +715,8 @@ def thrust_force(
     Eq. (95) of :cite:`pollEstimationMethodFuel2021a`.
     """
     theta = units.degrees_to_radians(theta)
-    f_thrust = (
-        (aircraft_mass * constants.g * np.cos(theta) * (c_d / c_l))
-        + (aircraft_mass * constants.g * np.sin(theta))
-        + aircraft_mass * dv_dt
-    )
+    mg = aircraft_mass * constants.g
+    f_thrust = (mg * np.cos(theta) * (c_d / c_l)) + (mg * np.sin(theta)) + aircraft_mass * dv_dt
     return f_thrust.clip(min=0.0)
 
 
@@ -821,23 +814,27 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     - ``eta / eta_b`` is approximated using a fourth-order polynomial
     - ``eta_b`` is the maximum overall propulsion efficiency for a given Mach number
     """
-    c_t_over_c_t_eta_b = c_t / c_t_eta_b
+    x = c_t / c_t_eta_b
+    sigma = np.maximum(1.3 * (0.4 - mach_num), np.float32(0.0))  # avoid f32 -> f64 promotions
 
-    sigma = np.where(mach_num < 0.4, 1.3 * (0.4 - mach_num), np.float32(0.0))  # avoid promotion
+    s = sigma - 0.43
+    p = sigma * 0.43
 
-    eta_over_eta_b_low = (
-        10.0 * (1.0 + 0.8 * (sigma - 0.43) - 0.6027 * sigma * 0.43) * c_t_over_c_t_eta_b
-        + 33.3333 * (-1.0 - 0.97 * (sigma - 0.43) + 0.8281 * sigma * 0.43) * (c_t_over_c_t_eta_b**2)
-        + 37.037 * (1.0 + (sigma - 0.43) - 0.9163 * sigma * 0.43) * (c_t_over_c_t_eta_b**3)
-    )
-    eta_over_eta_b_hi = (
-        (1.0 + (sigma - 0.43) - sigma * 0.43)
-        + (4.0 * sigma * 0.43 - 2.0 * (sigma - 0.43)) * c_t_over_c_t_eta_b
-        + ((sigma - 0.43) - 6 * sigma * 0.43) * (c_t_over_c_t_eta_b**2)
-        + 4.0 * sigma * 0.43 * (c_t_over_c_t_eta_b**3)
-        - sigma * 0.43 * (c_t_over_c_t_eta_b**4)
-    )
-    return np.where(c_t_over_c_t_eta_b < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
+    # Horner's method for cubic
+    a1 = 10.0 * (1.0 + 0.8 * s - 0.6027 * p)
+    a2 = 33.3333 * (-1.0 - 0.97 * s + 0.8281 * p)
+    a3 = 37.037 * (1.0 + s - 0.9163 * p)
+    eta_over_eta_b_low = x * (a1 + x * (a2 + x * a3))
+
+    # Horner's method for quartic
+    b0 = 1.0 + s - p
+    b1 = 4.0 * p - 2.0 * s
+    b2 = s - 6.0 * p
+    b3 = 4.0 * p
+    b4 = -p
+    eta_over_eta_b_hi = b0 + x * (b1 + x * (b2 + x * (b3 + x * b4)))
+
+    return np.where(x < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
 
 
 def thrust_coefficient_at_max_efficiency(
@@ -940,7 +937,7 @@ def fuel_mass_flow_rate(
     """
     return (
         (constants.kappa / 2)
-        * (c_t * mach_num**3 / eta)
+        * (c_t * mach_num**2 * mach_num / eta)  # avoid **3 for performance
         * (constants.kappa * constants.R_d * air_temperature) ** 0.5
         * air_pressure
         * wing_surface_area

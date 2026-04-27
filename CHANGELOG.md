@@ -6,6 +6,10 @@
 
 - Fix `jet.cargo_load_factor` to handle cases where no data is available for the specified origin and destination region pair. In such cases, the function now falls back to using global mean estimates instead raising a meaningless error.
 
+### Internals
+
+- Add minor performance improvements to Poll-Schumann internal model functions.
+
 ## 0.62.0
 
 ### Features
