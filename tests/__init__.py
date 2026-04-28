@@ -40,7 +40,7 @@ else:
 
 try:
     from google.cloud import storage
-    
+
     storage.Client()
 except Exception:
     GCP_CREDENTIALS = False
