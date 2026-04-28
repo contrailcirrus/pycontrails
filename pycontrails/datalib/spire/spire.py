@@ -80,7 +80,7 @@ class ValidateTrajectoryHandler:
     CRUISE_LOW_ALTITUDE_THRESHOLD_FT = 15000.0  # lowest expected cruise altitude
     INSTANTANEOUS_HIGH_GROUND_SPEED_THRESHOLD_MPS = 350.0  # 350m/sec ~= 780mph ~= 1260kph
     INSTANTANEOUS_LOW_GROUND_SPEED_THRESHOLD_MPS = 45.0  # 45m/sec ~= 100mph ~= 160kph
-    AVG_LOW_GROUND_SPEED_THRESHOLD_MPS = 100.0  # 120m/sec ~= 223mph ~= 360 kph
+    AVG_LOW_GROUND_SPEED_THRESHOLD_MPS = 85.0  # 85m/sec ~= 190mph ~= 306 kph
     AVG_LOW_GROUND_SPEED_ROLLING_WINDOW_PERIOD_MIN = 30.0  # rolling period for avg speed comparison
     AIRPORT_DISTANCE_THRESHOLD_KM = 200.0
     MIN_FLIGHT_LENGTH_HR = 0.4
