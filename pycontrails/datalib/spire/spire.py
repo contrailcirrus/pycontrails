@@ -99,7 +99,6 @@ class ValidateTrajectoryHandler:
         "departure_scheduled_time": pdtypes.is_datetime64_any_dtype,
         "arrival_airport_icao": pdtypes.is_string_dtype,
         "arrival_scheduled_time": pdtypes.is_datetime64_any_dtype,
-        "ingestion_time": pdtypes.is_datetime64_any_dtype,
         "timestamp": pdtypes.is_datetime64_any_dtype,
         "latitude": pdtypes.is_numeric_dtype,
         "longitude": pdtypes.is_numeric_dtype,
