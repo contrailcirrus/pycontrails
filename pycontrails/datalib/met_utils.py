@@ -25,7 +25,11 @@ def _interp_artifacts(
     return idx, dist, out_of_bounds
 
 
-def _interp_on_chunk(ds_chunk: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.Dataset:
+def _interp_on_chunk(
+    ds_chunk: xr.Dataset,
+    target_pl: npt.NDArray[np.floating],
+    extrapolate: bool
+) -> xr.Dataset:
     """Interpolate the data on a chunk to the target pressure levels.
 
     Parameters
@@ -36,6 +40,10 @@ def _interp_on_chunk(ds_chunk: xr.Dataset, target_pl: npt.NDArray[np.floating]) 
         "model_level" dimension across chunks.
     target_pl : npt.NDArray[np.floating]
         Target pressure levels, [:math:`hPa`].
+    extrapolate : bool
+        The new model levels may be outside the bounds of the old levels.
+        If extrapolate is True, values outside the bounds will be linearly extrapolated.
+        Otherwise they will be set to NaN.
 
     Returns
     -------
@@ -78,7 +86,8 @@ def _interp_on_chunk(ds_chunk: xr.Dataset, target_pl: npt.NDArray[np.floating]) 
         f0 = np.take_along_axis(fp, idx - 1, axis=-1)
         f1 = np.take_along_axis(fp, idx, axis=-1)
         interped = f0 + dist * (f1 - f0)
-        interped[out_of_bounds] = np.nan  # we could extrapolate here like RGI(..., fill_value=None)
+        if extrapolate:
+            interped[out_of_bounds] = np.nan
 
         coords = {k: da.coords[k] for k in da.dims[:-1]}
         coords["level"] = target_pl
@@ -115,6 +124,7 @@ def _build_template(ds: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.D
 def ml_to_pl(
     ds: xr.Dataset,
     target_pl: npt.ArrayLike,
+    extrapolate: bool = False
 ) -> xr.Dataset:
     r"""Interpolate model-level meteorology data to pressure levels.
 
@@ -132,6 +142,10 @@ def ml_to_pl(
     target_pl : npt.ArrayLike
         Target pressure levels, [:math:`hPa`]. Will be promoted to a 1D array if a scalar
         is provided and flattened to 1D if multidimensional array is provided.
+    extrapolate : bool
+        The new model levels may be outside the bounds of the old levels.
+        If extrapolate is True, values outside the bounds will be linearly extrapolated.
+        Otherwise they will be set to NaN.
 
     Returns
     -------
