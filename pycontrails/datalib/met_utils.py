@@ -26,9 +26,7 @@ def _interp_artifacts(
 
 
 def _interp_on_chunk(
-    ds_chunk: xr.Dataset,
-    target_pl: npt.NDArray[np.floating],
-    extrapolate: bool
+    ds_chunk: xr.Dataset, target_pl: npt.NDArray[np.floating], extrapolate: bool
 ) -> xr.Dataset:
     """Interpolate the data on a chunk to the target pressure levels.
 
@@ -121,11 +119,7 @@ def _build_template(ds: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.D
     return xr.Dataset(data_vars=vars, coords=coords, attrs=ds.attrs).chunk(chunks)
 
 
-def ml_to_pl(
-    ds: xr.Dataset,
-    target_pl: npt.ArrayLike,
-    extrapolate: bool = False
-) -> xr.Dataset:
+def ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike, extrapolate: bool = False) -> xr.Dataset:
     r"""Interpolate model-level meteorology data to pressure levels.
 
     The implementation is here is consistent with ECMWF's
