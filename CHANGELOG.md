@@ -2,6 +2,10 @@
 
 ## 0.63.1 [Unreleased]
 
+### Features
+
+- Support extrapolation in model-level-to-pressure-level interpolation
+  (ml\_to\_pl)
 ### Fixes
 
 - Fix a `Cocip` radiative heating bug introduced in v0.61.0 in which the minimum `w_prime` value was accidentally squared, before being squared again when calculating `d_v`. While the effect of this bug was significant, it only occurred when the `radiative_heating_effects` parameter was enabled (disabled by default).
