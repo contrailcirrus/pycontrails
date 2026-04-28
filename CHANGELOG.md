@@ -9,10 +9,10 @@
 ### Internals
 
 - Add minor performance improvements to Poll-Schumann internal model functions.
+- Updates Spire ValidateTrajectoryHandler `AVG_LOW_GROUND_SPEED_THRESHOLD_MPS` constant to 85 m/s from 100 m/s based on 2024-2025 flights data analysis.
 
 ### Breaking changes
 - Removes `ingestion_time` from Spire data schema as it's not required for any contrail predictions.
-- Updates Spire ValidateTrajectoryHandler `AVG_LOW_GROUND_SPEED_THRESHOLD_MPS` constant to 85 m/s from 100 m/s based on 2024-2025 flights data analysis.
 
 ## 0.62.0
 
