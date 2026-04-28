@@ -5,7 +5,6 @@ import pathlib
 import platform
 
 import requests
-from google.cloud import storage
 
 import pycontrails
 from pycontrails.datalib import ch_aviation
@@ -40,6 +39,8 @@ else:
     OPEN3D_AVAILABLE = True
 
 try:
+    from google.cloud import storage
+    
     storage.Client()
 except Exception:
     GCP_CREDENTIALS = False
