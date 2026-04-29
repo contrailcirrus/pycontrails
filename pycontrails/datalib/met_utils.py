@@ -84,7 +84,7 @@ def _interp_on_chunk(
         f0 = np.take_along_axis(fp, idx - 1, axis=-1)
         f1 = np.take_along_axis(fp, idx, axis=-1)
         interped = f0 + dist * (f1 - f0)
-        if extrapolate:
+        if not extrapolate:
             interped[out_of_bounds] = np.nan
 
         coords = {k: da.coords[k] for k in da.dims[:-1]}
@@ -185,4 +185,4 @@ def ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike, extrapolate: bool = False
     target_pl = np.atleast_1d(target_pl).ravel()
     template = _build_template(ds, target_pl)
 
-    return xr.map_blocks(_interp_on_chunk, ds, (target_pl,), template=template)
+    return xr.map_blocks(_interp_on_chunk, ds, (target_pl, extrapolate), template=template)
