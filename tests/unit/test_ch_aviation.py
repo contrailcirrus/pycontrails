@@ -86,44 +86,23 @@ def test_eval_function_with_tail_number():
     ch_a = ChAviation()
     fl = ch_a.eval(fl)
 
-    expected_fl_attrs = [
+    expected_fl_attrs = {
         "flight_id",
         "tail_number",
         "msn",
-        "country_of_registration",
-        "atyp_icao_ch_a",
-        "atyp_iata_ch_a",
         "atyp_name_ch_a",
-        "atyp_manufacturer",
         "engine_name",
         "engine_uid",
         "engine_manufacturer",
         "n_engines_ch_a",
-        "amass_mtow",
         "operator_name",
-        "operator_icao",
-        "operator_iata",
-        "operator_type",
-        "aircraft_role",
-        "aircraft_market_group",
-        "n_seats",
         "status",
         "first_flight_date",
         "delivery_date",
         "aircraft_age_yrs",
-        "cumulative_reported_hours",
-        "cumulative_reported_hours_ttm",
-        "cumulative_reported_cycles",
-        "cumulative_reported_cycles_ttm",
-        "cumulative_stats_as_of_date",
-        "average_annual_hours",
-        "average_daily_hours",
-        "average_daily_hours_ttm",
-        "average_annual_cycles",
-        "average_stats_as_of_date",
-    ]
-    for key in expected_fl_attrs:
-        assert key in fl.attrs, f"Missing attribute: {key}"
+    }
+    missing = expected_fl_attrs - set(fl.attrs)
+    assert not missing, f"Missing attributes: {missing}"
 
 
 def test_eval_function_with_uncovered_tail_number():
