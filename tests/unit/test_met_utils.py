@@ -117,11 +117,11 @@ def test_ml_to_pl_out_of_bounds_extrapolated(ds_ml: xr.Dataset) -> None:
 
     ds_pl = met_utils.ml_to_pl(ds_ml, [50, 150, 250, 350, 450, 550], extrapolate=True)
     assert np.isnan(ds_pl.sel(level=slice(100, 500))).sum() == 0
-    assert not np.isnan(ds_pl.sel(level=50)).any()
-    assert not np.isnan(ds_pl.sel(level=550)).any()
+    assert not np.isnan(ds_pl.air_temperature.sel(level=50)).any()
+    assert not np.isnan(ds_pl.air_temperature.sel(level=550)).any()
     origin_t = ds_pl.sel(x=0, y=0).air_temperature
-    assert origin_t.sel(level=550) > origin_t.sel(level=500)
-    assert origin_t.sel(level=50) < origin_t.sel(level=100)
+    assert origin_t.sel(level=550) > origin_t.sel(level=450)
+    assert origin_t.sel(level=50) < origin_t.sel(level=150)
 
 
 def test_ml_to_pl_nan_in_data(ds_ml: xr.Dataset) -> None:
