@@ -600,7 +600,7 @@ def test_calc_emissions(
     keys = (
         "wingspan",
         "n_engine",
-        "bada_model",
+        "aircraft_performance_model",
         "fuel",
         "max_mach",
         "segment_length",
@@ -611,9 +611,9 @@ def test_calc_emissions(
         assert key in vector.attrs
 
     if bada_priority == 3:
-        assert vector.attrs["bada_model"] == "BADA3"
+        assert vector.attrs["aircraft_performance_model"] == "BADA3"
     else:
-        assert vector.attrs["bada_model"] == "BADA4"
+        assert vector.attrs["aircraft_performance_model"] == "BADA4"
 
     # Ensure not seeing crazy fluctuations in true_airspeed and fuel_flow
     # AND check that values are also non-constant

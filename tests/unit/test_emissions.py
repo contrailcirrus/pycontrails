@@ -65,7 +65,7 @@ def test_emissions_eval(flight_fake: Flight, bada: str, aircraft_type: str, engi
     flight_fake.attrs["aircraft_type"] = aircraft_type
     flight_fake.attrs["aircraft_type_bada"] = aircraft_type
     flight_fake.attrs["engine_uid"] = engine_uid
-    flight_fake.attrs["bada_model"] = bada
+    flight_fake.attrs["aircraft_performance_model"] = bada
     flight_fake.attrs["n_engine"] = 2
 
     out_fl = emissions.eval(source=flight_fake)
@@ -123,7 +123,7 @@ def test_emissions_eval_no_n_engine(
     flight_fake.attrs["aircraft_type"] = aircraft_type
     flight_fake.attrs["aircraft_type_bada"] = aircraft_type
     flight_fake.attrs["engine_uid"] = engine_uid
-    flight_fake.attrs["bada_model"] = bada
+    flight_fake.attrs["aircraft_performance_model"] = bada
 
     out_fl = emissions.eval(source=flight_fake)
     assert emissions.source is not flight_fake  # since copy is True
