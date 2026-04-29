@@ -700,8 +700,8 @@ def test_ps_flight_on_fleet() -> None:
     assert out.fl_attrs[2]["aircraft_type"] == "A333"
     assert out.fl_attrs[1]["flight_id"] == 1
     assert out.fl_attrs[2]["flight_id"] == 2
-    assert out.fl_attrs[1]["aircraft_performance_model"] == "PSFlight"
-    assert out.fl_attrs[2]["aircraft_performance_model"] == "PSFlight"
+    assert out.fl_attrs[1]["aircraft_performance_model"] == "PS"
+    assert out.fl_attrs[2]["aircraft_performance_model"] == "PS"
     assert out.fl_attrs[1]["n_engine"] == 2
     assert out.fl_attrs[2]["n_engine"] == 2
     assert out.fl_attrs[1]["wingspan"] == 34.1
