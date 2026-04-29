@@ -174,6 +174,15 @@ def _ch_aviation_root_path() -> pathlib.Path:
     return pathlib.Path(*pycontrails.__path__).parents[1] / "ch-aviation"
 
 
+def _set_value_skip_nan(attrs: dict[str, Any], key: str, value: Any) -> None:
+    """Set value in attrs dict if key is not already defined and value is not NaN / NaT / None."""
+    if key in attrs:
+        return
+    if pd.isna(value):
+        return
+    attrs[key] = value
+
+
 class ChAviation(Model):
     """Support for querying the ch-aviation fleet database.
 
@@ -326,75 +335,77 @@ class ChAviation(Model):
                 return self.source
 
             # Set attributes, if they aren't already defined
-            self.source.attrs.setdefault("engine_name", engine_props.engine_subtype)
-            self.source.attrs.setdefault("engine_uid", engine_props.engine_uid)
-            self.source.attrs.setdefault("operator_name", engine_props.operator_name)
-            self.source.attrs.setdefault("operator_iata", engine_props.operator_iata)
+            attrs = self.source.attrs
+            _set_value_skip_nan(attrs, "engine_name", engine_props.engine_subtype)
+            _set_value_skip_nan(attrs, "engine_uid", engine_props.engine_uid)
+            _set_value_skip_nan(attrs, "operator_name", engine_props.operator_name)
+            _set_value_skip_nan(attrs, "operator_iata", engine_props.operator_iata)
             return self.source
 
         # Happy path: aircraft properties are available in ch-aviation
-        self.source.attrs.setdefault("msn", aircraft_props.msn)
-        self.source.attrs.setdefault(
-            "country_of_registration", aircraft_props.country_of_registration
+        attrs = self.source.attrs
+        _set_value_skip_nan(attrs, "msn", aircraft_props.msn)
+        _set_value_skip_nan(
+            attrs, "country_of_registration", aircraft_props.country_of_registration
         )
 
         # Aircraft properties
-        self.source.attrs.setdefault("atyp_icao_ch_a", aircraft_props.aircraft_type_icao)
-        self.source.attrs.setdefault("atyp_iata_ch_a", aircraft_props.aircraft_type_iata)
-        self.source.attrs.setdefault("atyp_name_ch_a", aircraft_props.aircraft_subfamily)
-        self.source.attrs.setdefault("atyp_manufacturer", aircraft_props.manufacturer)
+        _set_value_skip_nan(attrs, "atyp_icao_ch_a", aircraft_props.aircraft_type_icao)
+        _set_value_skip_nan(attrs, "atyp_iata_ch_a", aircraft_props.aircraft_type_iata)
+        _set_value_skip_nan(attrs, "atyp_name_ch_a", aircraft_props.aircraft_subfamily)
+        _set_value_skip_nan(attrs, "atyp_manufacturer", aircraft_props.manufacturer)
 
         # Engine properties
-        self.source.attrs.setdefault("engine_name", aircraft_props.engine_subtype)
-        self.source.attrs.setdefault("engine_uid", aircraft_props.engine_uid)
-        self.source.attrs.setdefault("engine_manufacturer", aircraft_props.engine_manufacturer)
-        self.source.attrs.setdefault("n_engines_ch_a", aircraft_props.n_engines)
+        _set_value_skip_nan(attrs, "engine_name", aircraft_props.engine_subtype)
+        _set_value_skip_nan(attrs, "engine_uid", aircraft_props.engine_uid)
+        _set_value_skip_nan(attrs, "engine_manufacturer", aircraft_props.engine_manufacturer)
+        _set_value_skip_nan(attrs, "n_engines_ch_a", aircraft_props.n_engines)
 
         # Performance envelope
-        self.source.attrs.setdefault("amass_mtow", aircraft_props.mtow_kg)
+        _set_value_skip_nan(attrs, "amass_mtow", aircraft_props.mtow_kg)
 
         # Operator properties
-        self.source.attrs.setdefault("operator_name", aircraft_props.operator_name)
-        self.source.attrs.setdefault("operator_icao", aircraft_props.operator_icao)
-        self.source.attrs.setdefault("operator_iata", aircraft_props.operator_iata)
-        self.source.attrs.setdefault("operator_type", aircraft_props.operator_type)
-        self.source.attrs.setdefault("aircraft_role", aircraft_props.aircraft_role)
-        self.source.attrs.setdefault("aircraft_market_group", aircraft_props.aircraft_market_group)
-        self.source.attrs.setdefault("n_seats", aircraft_props.n_seats)
+        _set_value_skip_nan(attrs, "operator_name", aircraft_props.operator_name)
+        _set_value_skip_nan(attrs, "operator_icao", aircraft_props.operator_icao)
+        _set_value_skip_nan(attrs, "operator_iata", aircraft_props.operator_iata)
+        _set_value_skip_nan(attrs, "operator_type", aircraft_props.operator_type)
+        _set_value_skip_nan(attrs, "aircraft_role", aircraft_props.aircraft_role)
+        _set_value_skip_nan(attrs, "aircraft_market_group", aircraft_props.aircraft_market_group)
+        _set_value_skip_nan(attrs, "n_seats", aircraft_props.n_seats)
 
         # Aircraft status
-        self.source.attrs.setdefault("status", aircraft_props.status)
-        self.source.attrs.setdefault("first_flight_date", aircraft_props.first_flight_date)
-        self.source.attrs.setdefault("delivery_date", aircraft_props.delivery_date)
+        _set_value_skip_nan(attrs, "status", aircraft_props.status)
+        _set_value_skip_nan(attrs, "first_flight_date", aircraft_props.first_flight_date)
+        _set_value_skip_nan(attrs, "delivery_date", aircraft_props.delivery_date)
 
         # Aircraft age
         date = pd.Timestamp(self.source["time"][0]) if self.source else pd.Timestamp("NaT")
-        self.source.attrs.setdefault("aircraft_age_yrs", aircraft_props.aircraft_age_yrs(date))
+        _set_value_skip_nan(attrs, "aircraft_age_yrs", aircraft_props.aircraft_age_yrs(date))
 
         # Aircraft utilisation statistics
-        self.source.attrs.setdefault(
-            "cumulative_reported_hours", aircraft_props.cumulative_reported_hours
+        _set_value_skip_nan(
+            attrs, "cumulative_reported_hours", aircraft_props.cumulative_reported_hours
         )
-        self.source.attrs.setdefault(
-            "cumulative_reported_hours_ttm", aircraft_props.cumulative_reported_hours_ttm
+        _set_value_skip_nan(
+            attrs, "cumulative_reported_hours_ttm", aircraft_props.cumulative_reported_hours_ttm
         )
-        self.source.attrs.setdefault(
-            "cumulative_reported_cycles", aircraft_props.cumulative_reported_cycles
+        _set_value_skip_nan(
+            attrs, "cumulative_reported_cycles", aircraft_props.cumulative_reported_cycles
         )
-        self.source.attrs.setdefault(
-            "cumulative_reported_cycles_ttm", aircraft_props.cumulative_reported_cycles_ttm
+        _set_value_skip_nan(
+            attrs, "cumulative_reported_cycles_ttm", aircraft_props.cumulative_reported_cycles_ttm
         )
-        self.source.attrs.setdefault(
-            "cumulative_stats_as_of_date", aircraft_props.cumulative_stats_as_of_date
+        _set_value_skip_nan(
+            attrs, "cumulative_stats_as_of_date", aircraft_props.cumulative_stats_as_of_date
         )
-        self.source.attrs.setdefault("average_annual_hours", aircraft_props.average_annual_hours)
-        self.source.attrs.setdefault("average_daily_hours", aircraft_props.average_daily_hours)
-        self.source.attrs.setdefault(
-            "average_daily_hours_ttm", aircraft_props.average_daily_hours_ttm
+        _set_value_skip_nan(attrs, "average_annual_hours", aircraft_props.average_annual_hours)
+        _set_value_skip_nan(attrs, "average_daily_hours", aircraft_props.average_daily_hours)
+        _set_value_skip_nan(
+            attrs, "average_daily_hours_ttm", aircraft_props.average_daily_hours_ttm
         )
-        self.source.attrs.setdefault("average_annual_cycles", aircraft_props.average_annual_cycles)
-        self.source.attrs.setdefault(
-            "average_stats_as_of_date", aircraft_props.average_stats_as_of_date
+        _set_value_skip_nan(attrs, "average_annual_cycles", aircraft_props.average_annual_cycles)
+        _set_value_skip_nan(
+            attrs, "average_stats_as_of_date", aircraft_props.average_stats_as_of_date
         )
         return self.source
 
