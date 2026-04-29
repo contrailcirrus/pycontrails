@@ -205,6 +205,7 @@ def ml_to_pl(
     *,
     lnsp: xr.DataArray | None = None,
     sp: xr.DataArray | None = None,
+    extrapolate: bool = False,
 ) -> xr.Dataset:
     r"""Interpolate L137 model-level meteorology data to pressure levels.
 
@@ -228,6 +229,10 @@ def ml_to_pl(
     sp : xr.DataArray
         Surface pressure, [:math:`\text{Pa}`]. At least one of ``lnsp`` or ``sp`` must be provided.
         The chunking over dimensions in common with ``ds`` must be the same as ``ds``.
+    extrapolate : bool
+        The new model levels may be outside the bounds of the old levels.
+        If extrapolate is True, values outside the bounds will be linearly extrapolated.
+        Otherwise they will be set to NaN.
 
     Returns
     -------
@@ -252,4 +257,4 @@ def ml_to_pl(
         raise ValueError(msg)
     ds = ds.assign(pressure_level=pl)
 
-    return met_utils.ml_to_pl(ds, target_pl)
+    return met_utils.ml_to_pl(ds, target_pl, extrapolate=extrapolate)
