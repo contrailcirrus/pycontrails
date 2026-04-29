@@ -229,7 +229,7 @@ def test_mach_number_limits_scalar() -> None:
     )
 
     np.testing.assert_array_almost_equal(
-        mmax, [0.645, 0.703, 0.770, 0.84, 0.84, 0.84, 0.84], decimal=3
+        mmax, [0.624, 0.683, 0.749, 0.82, 0.82, 0.82, 0.82], decimal=3
     )
 
 
@@ -269,7 +269,7 @@ def test_mach_number_limits_vector() -> None:
     )
 
     np.testing.assert_array_almost_equal(
-        mmax, [0.645, 0.703, 0.770, 0.84, 0.84, 0.84, 0.84], decimal=3
+        mmax, [0.624, 0.683, 0.749, 0.82, 0.82, 0.82, 0.82], decimal=3
     )
 
 
@@ -440,7 +440,7 @@ def test_total_fuel_burn(payload: float) -> None:
     flight["true_airspeed"] = units.knots_to_m_per_s(flight["speed"])
 
     # Aircraft performance model
-    ps_model = ps.PSFlight()
+    ps_model = ps.PSFlight(max_mach_buffer=0.02)  # using old buffer value to match pinned values
     out = ps_model.eval(flight)
 
     if payload == 6000:
@@ -513,7 +513,7 @@ def test_ps_optimal_mach() -> None:
     )
 
     np.testing.assert_array_almost_equal(
-        mach_opt["mach_number"].values, [0.645, 0.703, 0.77, 0.804, 0.81, 0.807, 0.795], decimal=3
+        mach_opt["mach_number"].values, [0.624, 0.683, 0.749, 0.804, 0.81, 0.807, 0.795], decimal=3
     )
 
 

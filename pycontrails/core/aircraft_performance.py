@@ -67,6 +67,14 @@ class AircraftPerformanceParams(ModelParams, CommonAircraftPerformanceParams):
     #: filled with zero wind.
     fill_low_altitude_with_zero_wind: bool = False
 
+    #: Add or reduce the maximum permitted Mach number guardrail. This
+    #: parameter buffers the aircraft max Mach number by an additional amount.
+    #:
+    #: .. versionadded:: 0.63.0
+    #:
+    #:    Previously this parameter was hard-coded. Default now changed from 0.02 to 0.0
+    max_mach_buffer: float = 0.0
+
 
 class AircraftPerformance(Model):
     """
