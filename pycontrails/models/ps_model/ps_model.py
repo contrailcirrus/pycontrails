@@ -130,7 +130,7 @@ class PSFlight(AircraftPerformance):
         engine_deterioration_factor = self.get_engine_deterioration_factor(fl, aircraft_type)
 
         # Set flight attributes based on engine, if they aren't already defined
-        fl.attrs.setdefault("aircraft_performance_model", self.name)
+        fl.attrs.setdefault("aircraft_performance_model", "PS")
         fl.attrs.setdefault("aircraft_type_ps", atyp_ps)
         fl.attrs.setdefault("n_engine", aircraft_params.n_engine)
 
