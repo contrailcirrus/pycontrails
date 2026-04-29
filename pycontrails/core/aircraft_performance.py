@@ -216,14 +216,14 @@ class AircraftPerformance(Model):
             return out
 
         aircraft_role = fl.attrs.get("aircraft_role")
-        if pd.isna(aircraft_role):  # check for None or np.nan (ch-aviation adds nan)
+        if aircraft_role is None:
             aircraft_role = "Passenger"
-            fl.attrs.update(aircraft_role=aircraft_role)
+            fl.attrs["aircraft_role"] = aircraft_role
 
         n_seats = fl.attrs.get("n_seats")
-        if pd.isna(n_seats):  # check for None or np.nan (ch-aviation adds nan)
+        if n_seats is None:
             n_seats = jet.number_of_seats(aircraft_type)
-            fl.attrs.update(n_seats=n_seats)
+            fl.attrs["n_seats"] = n_seats
 
         pax_lf = fl.attrs.get("passenger_load_factor")
         if pax_lf is None:
@@ -250,8 +250,8 @@ class AircraftPerformance(Model):
 
         out = jet.aircraft_payload(
             max_payload=max_payload,
-            aircraft_role=aircraft_role,  # type: ignore[arg-type]
-            n_seats=n_seats,  # type: ignore[arg-type]
+            aircraft_role=aircraft_role,
+            n_seats=n_seats,
             pax_lf=pax_lf,
             cargo_lf=cargo_lf,
         )
