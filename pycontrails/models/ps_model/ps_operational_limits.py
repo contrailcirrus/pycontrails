@@ -24,10 +24,13 @@ def max_mach_number_by_altitude(
     p_inf_co: float,
     *,
     atm_speed_limit: bool = True,
-    buffer: float = 0.02,
+    buffer: float = 0.0,
 ) -> ArrayOrFloat:
-    """
-    Calculate maximum permitted Mach number at a given altitude.
+    """Calculate maximum permitted Mach number at a given altitude.
+
+    .. versionchanged:: 0.63.0
+
+        Default value of ``buffer`` changed from 0.02 to 0.0.
 
     Parameters
     ----------

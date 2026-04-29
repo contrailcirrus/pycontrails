@@ -233,7 +233,7 @@ class PSFlight(AircraftPerformance):
             atyp_param.p_i_max,
             atyp_param.p_inf_co,
             atm_speed_limit=False,
-            buffer=0.02,
+            buffer=self.params["max_mach_buffer"],
         )
         true_airspeed, mach_num = jet.clip_mach_number(true_airspeed, air_temperature, max_mach)
 
