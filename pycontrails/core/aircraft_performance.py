@@ -493,8 +493,8 @@ class AircraftPerformance(Model):
             )
 
             aircraft_mass = jet.update_aircraft_mass(
-                operating_empty_weight=amass_oew,
-                max_takeoff_weight=amass_mtow,
+                amass_oew=amass_oew,
+                amass_mtow=amass_mtow,
                 payload=payload,
                 fuel_burn=aircraft_performance.fuel_burn,
                 total_reserve_fuel=tot_reserve_fuel,
