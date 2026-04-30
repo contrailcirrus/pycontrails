@@ -13,7 +13,6 @@ from typing import Any, TypeAlias
 import numpy as np
 import pandas as pd
 import xarray as xr
-
 from pycontrails.core import cache
 from pycontrails.core.met import MetDataset, MetVariable
 
@@ -121,6 +120,12 @@ def parse_timesteps(
             "Time input must be compatible with 'pd.to_datetime()'"
         )
         raise ValueError(msg) from e
+
+    # ensure timezone naive
+    if t0.tzinfo:
+        t0 = t0.tz_convert("UTC").tz_localize(None)
+    if t1.tzinfo:
+        t1 = t1.tz_convert("UTC").tz_localize(None)
 
     if freq is None:
         daterange = pd.DatetimeIndex([t0, t1])
