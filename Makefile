@@ -219,7 +219,8 @@ nb-check-links:
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
 		--check-links-ignore "https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast" \
-		docs/notebooks/*.ipynb
+		docs/notebooks/*.ipynb \
+		--check-links-ignore "https://applications.icao.int"
 
 # Execute all notebooks in docs
 # NOTE notebooks from docs/integrations/ manually
