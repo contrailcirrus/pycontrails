@@ -1,22 +1,28 @@
 # Changelog
 
-## [Unreleased]
+## 0.63.0
 
 ### Features
 
-- Support extrapolation in model-level-to-pressure-level interpolation
-  (ml\_to\_pl)
+- Support extrapolation in model-level-to-pressure-level interpolation (`pycontrails.datalib.ecmwf.ml_to_pl`).
+
 ### Fixes
 
-- Fix `jet.cargo_load_factor` to handle cases where no data is available for the specified origin and destination region pair. In such cases, the function now falls back to using global mean estimates instead raising a meaningless error.
+- Fix `jet.cargo_load_factor` to handle cases where no data is available for the specified origin and destination region pair. In such cases, the function now falls back to using global mean estimates instead of raising a meaningless error.
+- No longer set `Flight.attrs` with NaN or NaT values in `ChAviation` datalib when the metadata is missing.
 
 ### Internals
 
 - Add minor performance improvements to Poll-Schumann internal model functions.
-- Update Spire ValidateTrajectoryHandler `AVG_LOW_GROUND_SPEED_THRESHOLD_MPS` constant to 85 m/s from 100 m/s based on 2024-2025 flights data analysis.
+- Update Spire `ValidateTrajectoryHandler.AVG_LOW_GROUND_SPEED_THRESHOLD_MPS` constant from 100 m/s to 85 m/s based on 2024-2025 flights data analysis.
+- Handle timezone-aware timestamps in met datalibs.
 
 ### Breaking changes
+
 - Remove `ingestion_time` from Spire data schema as it's not required for any contrail predictions.
+- Expose the maximum Mach number buffer applied in `PSFlight` via a new `AircraftPerformanceParams.max_mach_buffer` parameter. Previously this was hard-coded to 0.02. The default value has now changed from 0.02 to 0.0. With this new default, downstream users should expect a small change in `PSFlight` fuel flow estimates (typically a decrease) when working with noisy ADS-B. Set this to 0.02 to retain previous behavior.
+- Change the `fl.attrs["aircraft_performance_model"]` value from `"PSFlight"` to `"PS"` when the `PSFlight` model is used for consistency with `BADAFlight`.
+- Rename the function arguments `max_takeoff_weight` -> `amass_mtow` and `operating_empty_weight` -> `amass_oew` in `jet.update_aircraft_mass` and `jet.initial_aircraft_mass`. This is to standardize the naming convention for aircraft mass parameters across pycontrails. Typically these functions are not called directly so the risk that downstream code is affected by this change is low.
 
 ## 0.62.0
 
