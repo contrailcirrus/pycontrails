@@ -758,8 +758,8 @@ def aircraft_payload(
 
 def initial_aircraft_mass(
     *,
-    operating_empty_weight: float,
-    max_takeoff_weight: float,
+    amass_oew: float,
+    amass_mtow: float,
     payload: float,
     total_fuel_burn: float,
     total_reserve_fuel: float,
@@ -783,10 +783,10 @@ def initial_aircraft_mass(
 
     Parameters
     ----------
-    operating_empty_weight: float
+    amass_oew: float
         Aircraft operating empty weight, i.e. the basic weight of an aircraft including
         the crew and necessary equipment, but excluding usable fuel and payload, [:math:`kg`]
-    max_takeoff_weight: float
+    amass_mtow: float
         Aircraft maximum take-off weight, [:math:`kg`]
     payload: float
         Aircraft payload, [:math:`kg`]
@@ -812,14 +812,14 @@ def initial_aircraft_mass(
     --------
     :func:`reserve_fuel_requirements`
     """
-    tom = (operating_empty_weight * oew_uplift) + payload + total_fuel_burn + total_reserve_fuel
-    return min(tom, max_takeoff_weight)
+    tom = (amass_oew * oew_uplift) + payload + total_fuel_burn + total_reserve_fuel
+    return min(tom, amass_mtow)
 
 
 def update_aircraft_mass(
     *,
-    operating_empty_weight: float,
-    max_takeoff_weight: float,
+    amass_oew: float,
+    amass_mtow: float,
     payload: float,
     fuel_burn: npt.NDArray[np.floating],
     total_reserve_fuel: float,
@@ -831,12 +831,12 @@ def update_aircraft_mass(
 
     Parameters
     ----------
-    operating_empty_weight: float
+    amass_oew: float
         Aircraft operating empty weight, i.e. the basic weight of an aircraft including
         the crew and necessary equipment, but excluding usable fuel and payload, [:math:`kg`].
     ref_mass: float
         Aircraft reference mass, [:math:`kg`].
-    max_takeoff_weight: float
+    amass_mtow: float
         Aircraft maximum take-off weight, [:math:`kg`].
     payload: float
         Aircraft payload, [:math:`kg`]
@@ -863,8 +863,8 @@ def update_aircraft_mass(
     """
     if takeoff_mass is None:
         takeoff_mass = initial_aircraft_mass(
-            operating_empty_weight=operating_empty_weight,
-            max_takeoff_weight=max_takeoff_weight,
+            amass_oew=amass_oew,
+            amass_mtow=amass_mtow,
             payload=payload,
             total_fuel_burn=np.nansum(fuel_burn).item(),
             total_reserve_fuel=total_reserve_fuel,
