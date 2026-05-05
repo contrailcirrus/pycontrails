@@ -631,7 +631,7 @@ def cargo_load_factor(
     else:
         fp_clf = rows["mean_dedicated_freight_lf"]
 
-    return np.interp(total_flight_dist, xp_clf, fp_clf)
+    return np.interp(total_flight_dist, xp_clf, fp_clf).item()
 
 
 def passenger_aircraft_payload(
