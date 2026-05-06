@@ -978,10 +978,16 @@ def vertical_diffusivity(
 
     The first term in Eq. (35) of :cite:`schumannContrailCirrusPrediction2012` is
     (c_V * w'_N^2 / N_BV, where c_V = 0.2 and w'_N = 0.1 m s-1) is different
-    than outlined below. Here, a turbulent vertical velocity scale (provided as input) is used
-    directly (without scaling by c_V) when radiative heating effects are not activated
-    We currently recommend setting the turbulent vertical velocity scale to 0.1 m s^{-1} based
-    on guidance from :cite:`schumannAviationinducedCirrusRadiation2013`,
+    than outlined below.
+
+    Previously, the c_V = 0.2 term was included in Eq. (35) of
+    :cite:`schumannContrailCirrusPrediction2012`. However, this was removed in
+    :cite:`schumannAviationinducedCirrusRadiation2013` as described in Paragraph 27, meaning that
+    the vertical diffusivity is enhanced by a factor of 5.
+
+    Here, a turbulent vertical velocity scale (provided as input) is used directly when radiative
+    heating effects are not activated. We recommend setting the turbulent vertical velocity scale
+    to 0.1 m s^{-1} based on Eq. (35) of :cite:`schumannContrailCirrusPrediction2012`,
     which found that the original formulation estimated thinner
     contrails relative to satellite observations. The recommended value produces
     simulated contrails are more consistent with observations.
@@ -992,12 +998,13 @@ def vertical_diffusivity(
     n_bv = thermo.brunt_vaisala_frequency(air_pressure, air_temperature, dT_dz)
     n_bv.clip(min=0.001, out=n_bv)
 
+    # Vertical diffusivity is enhanced further as radiative heating causes convective instability
     w_prime: npt.NDArray[np.floating] | float
     if eff_heat_rate is not None:
         w_prime = radiative_heating.convective_velocity_scale(
             depth_eff, eff_heat_rate, air_temperature
         )
-        w_prime.clip(min=0.01, out=w_prime)
+        w_prime.clip(min=turbulent_vertical_velocity_scale, out=w_prime)
     else:
         w_prime = turbulent_vertical_velocity_scale
 
