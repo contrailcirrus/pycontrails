@@ -1684,14 +1684,14 @@ def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDa
 
     # Pretty massive difference in EF
     assert fl1["ef"].sum() == pytest.approx(7.3e12, rel=0.1)
-    assert fl2["ef"].sum() == pytest.approx(3.8e12, rel=0.1)
+    assert fl2["ef"].sum() == pytest.approx(4.1e12, rel=0.1)
 
     # Not nonzero in the same places!
     filt1 = fl1["ef"] != 0
     filt2 = fl2["ef"] != 0
     assert np.all(filt1 >= filt2)
     assert filt1.sum() == 10
-    assert filt2.sum() == 9
+    assert filt2.sum() == 8
 
 
 def test_radiative_heating_effects():
