@@ -1,6 +1,7 @@
 """Tooling and support for meteorology data."""
 
 import warnings
+from collections.abc import Hashable
 
 import dask.array
 import numpy as np
@@ -101,7 +102,7 @@ def _interp_on_chunk(
 
 
 def _build_template(
-    ds: xr.Dataset, target_pl: npt.NDArray[np.floating], dimension_order: list[str]
+    ds: xr.Dataset, target_pl: npt.NDArray[np.floating], dimension_order: list[Hashable]
 ) -> xr.Dataset:
     """Build the template dataset for the interpolated data."""
     coords = {k: ds.coords[k] for k in dimension_order if k != "model_level"} | {"level": target_pl}
@@ -178,7 +179,7 @@ def ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike, extrapolate: bool = False
     # IMPORTANT: model_level must be the last dimension for _interp_on_chunk
     ds = ds.transpose(..., "model_level")
 
-    dimension_order = None
+    dimension_order: list[Hashable] = []
     for name, da in ds.items():
         if not dimension_order:
             dimension_order = list(da.dims)
