@@ -100,9 +100,11 @@ def _interp_on_chunk(
     return xr.Dataset(interped_dict)
 
 
-def _build_template(ds: xr.Dataset, target_pl: npt.NDArray[np.floating]) -> xr.Dataset:
+def _build_template(
+    ds: xr.Dataset, target_pl: npt.NDArray[np.floating], dimension_order: list[str]
+) -> xr.Dataset:
     """Build the template dataset for the interpolated data."""
-    coords = {k: ds.coords[k] for k in ds.dims if k != "model_level"} | {"level": target_pl}
+    coords = {k: ds.coords[k] for k in dimension_order if k != "model_level"} | {"level": target_pl}
 
     dims = tuple(coords)
     shape = tuple(len(v) for v in coords.values())
@@ -176,6 +178,17 @@ def ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike, extrapolate: bool = False
     # IMPORTANT: model_level must be the last dimension for _interp_on_chunk
     ds = ds.transpose(..., "model_level")
 
+    dimension_order = None
+    for name, da in ds.items():
+        if not dimension_order:
+            dimension_order = list(da.dims)
+        elif list(da.dims) != dimension_order:
+            msg = (
+                f"Variable {name} have inconsistent dimension orders "
+                f"{list(da.dims)} vs {dimension_order}"
+            )
+            raise ValueError(msg)
+
     # Raise if chunks over model level
     if ds.chunks and len(ds.chunks["model_level"]) > 1:
         msg = "The 'model_level' dimension must not be split across chunks"
@@ -183,6 +196,6 @@ def ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike, extrapolate: bool = False
 
     target_pl = np.asarray(target_pl, dtype=ds["pressure_level"].dtype)
     target_pl = np.atleast_1d(target_pl).ravel()
-    template = _build_template(ds, target_pl)
+    template = _build_template(ds, target_pl, dimension_order)
 
     return xr.map_blocks(_interp_on_chunk, ds, (target_pl, extrapolate), template=template)
