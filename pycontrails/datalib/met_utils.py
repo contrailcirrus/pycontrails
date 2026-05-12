@@ -185,7 +185,7 @@ def ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike, extrapolate: bool = False
             dimension_order = list(da.dims)
         elif list(da.dims) != dimension_order:
             msg = (
-                f"Variable {name} have inconsistent dimension orders "
+                f"Variable {name} have inconsistent dimension orders: "
                 f"{list(da.dims)} vs {dimension_order}"
             )
             raise ValueError(msg)
