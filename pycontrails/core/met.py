@@ -2786,11 +2786,11 @@ def _add_vertical_coords(data: XArrayType) -> XArrayType:
     # It is more important for air_pressure and altitude to be grid-aligned than to be
     # coordinate-aligned, so we use the dtype of the data to determine the precision of
     # these coordinates
-    dtype = (
-        np.result_type(*data.data_vars.values(), np.float32)
-        if isinstance(data, xr.Dataset)
-        else data.dtype
-    )
+    if isinstance(data, xr.Dataset):
+        dtypes = [v.dtype for v in data.data_vars.values() if np.issubdtype(v.dtype, np.floating)]
+        dtype = np.result_type(*dtypes, np.float32)
+    else:
+        dtype = data.dtype
 
     level = data["level"].values
 
