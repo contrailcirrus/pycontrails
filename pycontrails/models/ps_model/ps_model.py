@@ -830,19 +830,20 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     # Slow path: when Mach < 0.4 we have nonzero sigma, which modifies the polynomial coefficients
     low_mach = mach_num < 0.4
     if np.any(low_mach):
-        sigma = 1.3 * (0.4 - mach_num[low_mach])
-        s = sigma - 0.43
+        # mypy is right, this will fail for scalar mach_num
+        sigma = 1.3 * (0.4 - mach_num[low_mach])  # type: ignore[index]
+        s = sigma - 0.43  # type: ignore[assignment]
         p = sigma * 0.43
-        x_sub = x[low_mach]
+        x_sub = x[low_mach]  # type: ignore[index]
 
-        a1 = 10.0 * (1.0 + 0.8 * s - 0.6027 * p)
-        a2 = 33.3333 * (-1.0 - 0.97 * s + 0.8281 * p)
-        a3 = 37.037 * (1.0 + s - 0.9163 * p)
+        a1 = 10.0 * (1.0 + 0.8 * s - 0.6027 * p)  # type: ignore[assignment]
+        a2 = 33.3333 * (-1.0 - 0.97 * s + 0.8281 * p)  # type: ignore[assignment]
+        a3 = 37.037 * (1.0 + s - 0.9163 * p)  # type: ignore[assignment]
         eta_low = x_sub * (a1 + x_sub * (a2 + x_sub * a3))
 
-        b0 = 1.0 + s - p
-        b1 = 4.0 * p - 2.0 * s
-        b2 = s - 6.0 * p
+        b0 = 1.0 + s - p  # type: ignore[assignment]
+        b1 = 4.0 * p - 2.0 * s  # type: ignore[assignment]
+        b2 = s - 6.0 * p  # type: ignore[assignment]
         b3 = 4.0 * p
         b4 = -p
         eta_hi = b0 + x_sub * (b1 + x_sub * (b2 + x_sub * (b3 + x_sub * b4)))
