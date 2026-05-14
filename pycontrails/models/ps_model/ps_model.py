@@ -604,14 +604,12 @@ def wave_drag_coefficient(
     m_cc = atyp_param.wing_constant - 0.10 * (c_lift / atyp_param.cos_sweep**2)
     x = mach_num * atyp_param.cos_sweep / m_cc
 
-    c_d_w = np.where(
-        x < atyp_param.j_2,
-        0.0,
-        atyp_param.cos_sweep**3 * atyp_param.j_1 * (x - atyp_param.j_2) ** 2,
-    )
+    dx_j2 = np.maximum(x - atyp_param.j_2, np.float32(0.0))
+    c_d_w = atyp_param.cos_sweep**3 * atyp_param.j_1 * dx_j2 * dx_j2
 
-    d_ref_4 = ((x - atyp_param.x_ref) ** 2) ** 2  # avoid **4 for performance
-    return np.where(x < atyp_param.x_ref, c_d_w, c_d_w + atyp_param.j_3 * d_ref_4)  # type: ignore[return-value]
+    dx_ref = np.maximum(x - atyp_param.x_ref, np.float32(0.0))
+    d_ref_4 = (dx_ref**2) ** 2  # avoid **4 for performance
+    return c_d_w + atyp_param.j_3 * d_ref_4
 
 
 def airframe_drag_coefficient(
@@ -815,26 +813,43 @@ def propulsion_efficiency_over_max_propulsion_efficiency(
     - ``eta_b`` is the maximum overall propulsion efficiency for a given Mach number
     """
     x = c_t / c_t_eta_b
-    sigma = np.maximum(1.3 * (0.4 - mach_num), np.float32(0.0))  # avoid f32 -> f64 promotions
 
-    s = sigma - 0.43
-    p = sigma * 0.43
+    # Fast path: for Mach >= 0.4, sigma=0 => s=-0.43, p=0
+    s = -0.43
+    a1 = 10.0 * (1.0 + 0.8 * s)
+    a2 = 33.3333 * (-1.0 - 0.97 * s)
+    a3 = 37.037 * (1.0 + s)
+    b0 = 1.0 + s
+    b1 = -2.0 * s
+    b2 = s
 
-    # Horner's method for cubic
-    a1 = 10.0 * (1.0 + 0.8 * s - 0.6027 * p)
-    a2 = 33.3333 * (-1.0 - 0.97 * s + 0.8281 * p)
-    a3 = 37.037 * (1.0 + s - 0.9163 * p)
     eta_over_eta_b_low = x * (a1 + x * (a2 + x * a3))
+    eta_over_eta_b_hi = b0 + x * (b1 + b2 * x)
+    result = np.where(x < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
 
-    # Horner's method for quartic
-    b0 = 1.0 + s - p
-    b1 = 4.0 * p - 2.0 * s
-    b2 = s - 6.0 * p
-    b3 = 4.0 * p
-    b4 = -p
-    eta_over_eta_b_hi = b0 + x * (b1 + x * (b2 + x * (b3 + x * b4)))
+    # Slow path: when Mach < 0.4 we have nonzero sigma, which modifies the polynomial coefficients
+    low_mach = mach_num < 0.4
+    if np.any(low_mach):
+        sigma = 1.3 * (0.4 - mach_num[low_mach])
+        s = sigma - 0.43
+        p = sigma * 0.43
+        x_sub = x[low_mach]
 
-    return np.where(x < 0.3, eta_over_eta_b_low, eta_over_eta_b_hi)
+        a1 = 10.0 * (1.0 + 0.8 * s - 0.6027 * p)
+        a2 = 33.3333 * (-1.0 - 0.97 * s + 0.8281 * p)
+        a3 = 37.037 * (1.0 + s - 0.9163 * p)
+        eta_low = x_sub * (a1 + x_sub * (a2 + x_sub * a3))
+
+        b0 = 1.0 + s - p
+        b1 = 4.0 * p - 2.0 * s
+        b2 = s - 6.0 * p
+        b3 = 4.0 * p
+        b4 = -p
+        eta_hi = b0 + x_sub * (b1 + x_sub * (b2 + x_sub * (b3 + x_sub * b4)))
+
+        result[low_mach] = np.where(x_sub < 0.3, eta_low, eta_hi)
+
+    return result
 
 
 def thrust_coefficient_at_max_efficiency(
