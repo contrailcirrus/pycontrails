@@ -4,3 +4,20 @@
 article table.align-default {
     margin-left: 0;
 }
+
+.jp-RenderedHTMLCommon table,
+div.rendered_html table {
+  color: var(--color-content-foreground);
+}
+.jp-RenderedHTMLCommon thead,
+div.rendered_html thead {
+  border-bottom: 1px solid var(--color-foreground-border);
+}
+.jp-RenderedHTMLCommon tbody tr:nth-child(even),
+div.rendered_html tbody tr:nth-child(even) {
+  background: var(--color-background-primary);
+}
+.jp-RenderedHTMLCommon tbody tr:nth-child(odd),
+div.rendered_html tbody tr:nth-child(odd) {
+  background: var(--color-background-secondary);
+}
