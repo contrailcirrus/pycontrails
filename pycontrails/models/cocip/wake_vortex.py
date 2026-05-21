@@ -40,6 +40,7 @@ def max_downward_displacement(
     air_pressure: npt.NDArray[np.floating],
     effective_vertical_resolution: float,
     wind_shear_enhancement_exponent: npt.NDArray[np.floating] | float,
+    turbulent_vertical_velocity_scale: npt.NDArray[np.floating] | float,
 ) -> npt.NDArray[np.floating]:
     """
     Calculate the maximum contrail downward displacement after the wake vortex phase.
@@ -64,6 +65,8 @@ def max_downward_displacement(
         Passed through to :func:`wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
     wind_shear_enhancement_exponent: npt.NDArray[np.floating] | float
         Passed through to :func:`wind_shear.wind_shear_enhancement_factor`
+    turbulent_vertical_velocity_scale : npt.NDArray[np.floating] | float
+        Passed through to :func:`turbulent_kinetic_energy_dissipation_rate`, [:math:`m s^{-1}`]
 
     Returns
     -------
@@ -100,6 +103,7 @@ def max_downward_displacement(
         t_0=t_0[is_weakly_stratified],
         effective_vertical_resolution=effective_vertical_resolution,
         wind_shear_enhancement_exponent=wind_shear_enhancement_exponent,
+        turbulent_vertical_velocity_scale=turbulent_vertical_velocity_scale,
     )
 
     dz_max_strong[is_weakly_stratified] = dz_max_weak
@@ -194,6 +198,7 @@ def downward_displacement_weakly_stratified(
     t_0: npt.NDArray[np.floating],
     effective_vertical_resolution: float,
     wind_shear_enhancement_exponent: npt.NDArray[np.floating] | float,
+    turbulent_vertical_velocity_scale: npt.NDArray[np.floating] | float,
 ) -> npt.NDArray[np.floating]:
     """
     Calculate the maximum contrail downward displacement under weakly/stably stratified conditions.
@@ -220,6 +225,8 @@ def downward_displacement_weakly_stratified(
         Passed through to :func:`wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
     wind_shear_enhancement_exponent: npt.NDArray[np.floating] | float
         Passed through to :func:`wind_shear.wind_shear_enhancement_factor`
+    turbulent_vertical_velocity_scale : npt.NDArray[np.floating] | float
+        Passed through to :func:`turbulent_kinetic_energy_dissipation_rate`, [:math:`m s^{-1}`]
 
     Returns
     -------
@@ -242,7 +249,9 @@ def downward_displacement_weakly_stratified(
 
     # Calculate epsilon and epsilon star
     # In Schumann's Fortran code, epsn = EDR and epsn_st = EPSN
-    epsn = turbulent_kinetic_energy_dissipation_rate(ds_dz, shear_enhancement_factor)
+    epsn = turbulent_kinetic_energy_dissipation_rate(
+        ds_dz, shear_enhancement_factor, turbulent_vertical_velocity_scale
+    )
     epsn_st = normalized_dissipation_rate(epsn, wingspan, true_airspeed, aircraft_mass, rho_air)
     return b_0 * (7.68 * (1 - 4.07 * epsn_st + 5.67 * epsn_st**2) * (0.79 - n_bv * t_0) + 1.88)
 
@@ -269,6 +278,7 @@ def wake_vortex_separation(
 def turbulent_kinetic_energy_dissipation_rate(
     ds_dz: npt.NDArray[np.floating],
     shear_enhancement_factor: npt.NDArray[np.floating] | float = 1.0,
+    turbulent_vertical_velocity_scale: npt.NDArray[np.floating] | float = 0.1,
 ) -> npt.NDArray[np.floating]:
     """
     Calculate the turbulent kinetic energy dissipation rate (epsilon).
@@ -281,6 +291,8 @@ def turbulent_kinetic_energy_dissipation_rate(
         Difference in wind speed over dz in the atmosphere, [:math:`m s^{-1} / m`]
     shear_enhancement_factor : npt.NDArray[np.floating] | float
         Multiplication factor to enhance the wind shear
+    turbulent_vertical_velocity_scale : npt.NDArray[np.floating] | float
+        Turbulent vertical velocity scale, [:math:`m s^{-1}`]
 
     Returns
     -------
@@ -299,7 +311,7 @@ def turbulent_kinetic_energy_dissipation_rate(
     - :cite:`schumannContrailCirrusPrediction2012`
     - :cite:`schumannTurbulentMixingStably1995`
     """
-    return 0.5 * 0.1**2 * (ds_dz * shear_enhancement_factor**2)
+    return 0.5 * turbulent_vertical_velocity_scale**2 * (ds_dz * shear_enhancement_factor**2)
 
 
 def normalized_dissipation_rate(

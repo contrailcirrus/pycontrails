@@ -875,6 +875,7 @@ class Cocip(Model):
             air_pressure,
             effective_vertical_resolution=self.params["effective_vertical_resolution"],
             wind_shear_enhancement_exponent=self.params["wind_shear_enhancement_exponent"],
+            turbulent_vertical_velocity_scale=self.params["turbulent_vertical_velocity_scale"],
         )
 
         # derive downwash values and save to data model
