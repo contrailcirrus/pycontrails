@@ -1377,6 +1377,7 @@ def simulate_wake_vortex_downwash(
     T_crit_sac = vector["T_crit_sac"]
 
     wsee = _get_source_param_override("wind_shear_enhancement_exponent", vector, params)
+    wn = _get_source_param_override("turbulent_vertical_velocity_scale", vector, params)
     wingspan = _get_source_param_override("wingspan", vector, params)
     aircraft_mass = _get_source_param_override("aircraft_mass", vector, params)
 
@@ -1390,6 +1391,7 @@ def simulate_wake_vortex_downwash(
         air_pressure=air_pressure,
         effective_vertical_resolution=params["effective_vertical_resolution"],
         wind_shear_enhancement_exponent=wsee,
+        turbulent_vertical_velocity_scale=wn,
     )
 
     width = wake_vortex.initial_contrail_width(wingspan, dz_max)
