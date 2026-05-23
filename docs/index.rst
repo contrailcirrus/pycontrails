@@ -66,10 +66,8 @@ Learn more at `Contrails.org <https://contrails.org>`_.
    :caption: Links
 
    Github <https://github.com/contrailcirrus/pycontrails>
-   Contrails.org <https://contrails.org>
    Contrails API <https://api.contrails.org>
-   Contrails Map <https://map.contrails.org>
-   Contrails Navigator <https://forecast.contrails.org>
+   Contrails.org <https://contrails.org>
 
 
 .. |PyPI version| image:: https://img.shields.io/pypi/v/pycontrails.svg
