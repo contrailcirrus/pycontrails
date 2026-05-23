@@ -5,7 +5,7 @@ Literature
 Publications
 ------------
 
-Publications including ``pycontrails``:
+Publications using ``pycontrails``:
 
 - :cite:`teohAviationContrailClimate2022`
 - :cite:`teohTargetedUseSustainable2022`
@@ -17,6 +17,7 @@ Publications including ``pycontrails``:
 - :cite:`teohGlobalAviationContrail2024`
 - :cite:`engbergForecastingContrailClimate2025`
 - :cite:`lowGroundbasedContrailObservations2025`
+- :cite:`deanImpactForecastStability2025`
 
 If you use ``pycontrails`` in your work, please cite using the Zenodo DOI:
 
