@@ -1,5 +1,10 @@
 @import "theme.css";
 
+/* Logo */
+.sidebar-logo {
+  margin: 0;
+  max-width: 35px;
+}
 
 article table.align-default {
     margin-left: 0;
