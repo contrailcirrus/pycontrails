@@ -75,8 +75,8 @@ SINGLE_LEVEL_VARIABLES: list[MetVariable] = [
 _met_var_to_ods_mapping = {
     met_var.AirTemperature: "t",
     met_var.SpecificHumidity: "qv",
-    met_var.NorthwardWind: "u",
-    met_var.EastwardWind: "v",
+    met_var.NorthwardWind: "v",
+    met_var.EastwardWind: "u",
     met_var.GeometricVerticalVelocity: "w",
     met_var.MassFractionOfCloudIceInAir: "qi",
     met_var.TOAOutgoingLongwaveFlux: "athb_t",
@@ -86,8 +86,8 @@ _met_var_to_ods_mapping = {
 _icon_to_met_var: dict[Hashable, MetVariable] = {
     "t": met_var.AirTemperature,
     "q": met_var.SpecificHumidity,
-    "u": met_var.NorthwardWind,
-    "v": met_var.EastwardWind,
+    "v": met_var.NorthwardWind,
+    "u": met_var.EastwardWind,
     "wz": met_var.GeometricVerticalVelocity,
     "QI": met_var.MassFractionOfCloudIceInAir,
     "avg_tnlwrf": met_var.TOAOutgoingLongwaveFlux,
