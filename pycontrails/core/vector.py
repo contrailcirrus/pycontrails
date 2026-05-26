@@ -8,7 +8,7 @@ import logging
 import sys
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
-from typing import Any, Self, overload, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Self, overload
 
 if sys.version_info >= (3, 12):
     from typing import override

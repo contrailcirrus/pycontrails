@@ -11,7 +11,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, fields
-from typing import Any, NoReturn, TypeVar, overload, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, NoReturn, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
