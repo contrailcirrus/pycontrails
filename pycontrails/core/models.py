@@ -11,12 +11,11 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, fields
-from typing import Any, NoReturn, TypeVar, overload
+from typing import Any, NoReturn, TypeVar, overload, TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import scipy.interpolate
 import xarray as xr
 
 from pycontrails.core.fleet import Fleet
@@ -28,6 +27,9 @@ from pycontrails.datalib.ecmwf import ECMWF_VARIABLES
 from pycontrails.datalib.gfs import GFS_VARIABLES
 from pycontrails.utils.json import NumpyEncoder
 from pycontrails.utils.types import type_guard
+
+if TYPE_CHECKING:
+    import scipy.interpolate
 
 logger = logging.getLogger(__name__)
 
@@ -1219,6 +1221,7 @@ def _load_spline() -> scipy.interpolate.PchipInterpolator:
     scipy.interpolate.PchipInterpolator
         Spline interpolator.
     """
+    import scipy.interpolate
 
     level = [
         50.0,

@@ -8,7 +8,7 @@ import logging
 import sys
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
-from typing import Any, Self, overload
+from typing import Any, Self, overload, TYPE_CHECKING
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -20,11 +20,14 @@ import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
-from pycontrails.core import coordinates, interpolation
+from pycontrails.core import coordinates
 from pycontrails.core import met as met_module
 from pycontrails.physics import units
 from pycontrails.utils import dependencies
 from pycontrails.utils import json as json_utils
+
+if TYPE_CHECKING:
+    from pycontrails.core import interpolation
 
 logger = logging.getLogger(__name__)
 
@@ -1934,6 +1937,8 @@ class GeoVectorDataset(VectorDataset):
             :meth:`scipy.interpolate.RegularGridInterpolator._find_indices`,
             or None if cached output is not present on instance.
         """
+        from pycontrails.core import interpolation
+
         try:
             indices_x = self["_indices_x"]
             indices_y = self["_indices_y"]

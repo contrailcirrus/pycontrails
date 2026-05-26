@@ -17,7 +17,6 @@ else:
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import scipy.signal
 
 from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorDataset
@@ -1646,6 +1645,8 @@ def _sg_filter(
     ArithmeticError
         Raised if NaN values input to SG filter
     """
+    import scipy.signal
+
     # The window_length must be less than or equal to the number of data points available.
     window_length = min(window_length, vals.size)
 
@@ -1888,6 +1889,8 @@ def filter_altitude(
     :meth:`traffic.core.Flight.filter`
     :func:`scipy.signal.medfilt`
     """
+    import scipy.signal
+
     if not len(altitude_ft):
         raise ValueError("Altitude must have non-zero length to filter")
 

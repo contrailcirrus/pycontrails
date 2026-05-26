@@ -41,7 +41,6 @@ import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
-from pycontrails.core import interpolation
 from pycontrails.core import vector as vector_module
 from pycontrails.core.cache import CacheStore, DiskCacheStore
 from pycontrails.core.met_var import AirPressure, Altitude, MetVariable
@@ -54,6 +53,8 @@ logger = logging.getLogger(__name__)
 # optional imports
 if TYPE_CHECKING:
     import open3d as o3d
+
+    from pycontrails.core import interpolation
 
 XArrayType = TypeVar("XArrayType", xr.Dataset, xr.DataArray)
 MetDataType = TypeVar("MetDataType", "MetDataset", "MetDataArray")
@@ -1687,6 +1688,8 @@ class MetDataArray(MetBase[xr.DataArray]):
                235.715  , 237.86479, 239.9927 , 242.10797], dtype=float32)
 
         """
+        from pycontrails.core import interpolation
+
         if lowmem:
             return self._interp_lowmem(
                 longitude,
@@ -1743,6 +1746,8 @@ class MetDataArray(MetBase[xr.DataArray]):
         Parameters and return types are identical to :meth:`interpolate`, except
         that the ``localize`` keyword argument is omitted.
         """
+        from pycontrails.core import interpolation
+
         # Convert all inputs to 1d arrays
         # Not validating against ndim >= 2
         longitude, latitude, level, time = np.atleast_1d(longitude, latitude, level, time)
