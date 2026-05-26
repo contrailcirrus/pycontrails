@@ -922,7 +922,7 @@ def _preprocess_grib(ds: xr.Dataset) -> xr.Dataset:
     if "model_level" in ds.coords:
         ds = ds.expand_dims("model_level")
 
-    ds = ds.drop(["step", "time"]).rename(valid_time="time").expand_dims("time")
+    ds = ds.drop_vars(["step", "time"]).rename(valid_time="time").expand_dims("time")
     return ds.reset_coords(drop=True)
 
 
