@@ -2,12 +2,15 @@
 
 ## 0.63.1 [Unreleased]
 
+### Breaking changes
+
+- Fix an ICON datalib bug so that `"u"` and `"v"` are correctly mapped to zonal and meridional wind, respectively. Users of the ICON datalib should update to the latest pycontrails version to avoid incorrectly transposing horizontal wind components.
+
 ### Fixes
 
 - Fix a `Cocip` radiative heating bug introduced in v0.61.0 in which the minimum `w_prime` value was accidentally squared, before being squared again when calculating `d_v`. While the effect of this bug was significant, it only occurred when the `radiative_heating_effects` parameter was enabled (disabled by default).
 - Ensure `met_utils.ml_to_pl` handles cases where dataset dimension order is different from variable dimension order.
 - Pass user-provided `turbulent_vertical_velocity_scale` parameter through to vortex downwash calculations in `Cocip` and `CocipGrid`.
-- Fix an ICON datalib bug so that `"u"` and `"v"` are correctly mapped to zonal and meridional wind, respectively.
 
 ## 0.63.0
 
