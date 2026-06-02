@@ -377,7 +377,7 @@ class Flight(GeoVectorDataset):
         ...     time=pd.date_range('2021-01-01T12', '2021-01-01T14', periods=200),
         ... )
         >>> fl.max_distance_gap
-        np.float64(7391.27...)
+        7391.27...
         """
         return self.segment_length()[:-1].max().item()
 
