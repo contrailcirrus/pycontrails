@@ -312,7 +312,7 @@ class DryAdvection(models.Model):
         max_age = self.params["max_age"]
         if max_age is None:
             max_age = max(
-                np.timedelta64(0), self.params["timesteps"].max() - self.source["time"].max()
+                np.timedelta64(0, "ns"), self.params["timesteps"].max() - self.source["time"].max()
             )
         buffers["time_buffer"] = (np.timedelta64(0, "ns"), max_age)
 

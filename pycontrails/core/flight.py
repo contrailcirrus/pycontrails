@@ -254,7 +254,7 @@ class Flight(GeoVectorDataset):
         time_diff = np.diff(self["time"])
 
         # Ensure that time is sorted
-        if self and np.any(time_diff < np.timedelta64(0)):
+        if self and np.any(time_diff < np.timedelta64(0, "ns")):
             if not copy:
                 raise ValueError(
                     "The 'time' array must be sorted if 'copy=False' on creation. "
@@ -268,7 +268,7 @@ class Flight(GeoVectorDataset):
 
         # Check for duplicate times. If dropping duplicates,
         # keep the *first* occurrence of each time.
-        duplicated_times = time_diff == np.timedelta64(0)
+        duplicated_times = time_diff == np.timedelta64(0, "ns")
         if self and np.any(duplicated_times):
             if drop_duplicated_times:
                 mask = np.insert(duplicated_times, 0, False)
@@ -379,7 +379,7 @@ class Flight(GeoVectorDataset):
         >>> fl.max_distance_gap
         np.float64(7391.27...)
         """
-        return self.segment_length()[:-1].max()
+        return self.segment_length()[:-1].max().item()
 
     @property
     def length(self) -> float:

@@ -1606,7 +1606,7 @@ def test_cocip_no_persistence_ef_fill_value(fl: Flight, met: MetDataset, rad: Me
     np.testing.assert_array_equal(out["sac"], [0] * 8 + [np.nan] * 12)
     np.testing.assert_array_equal(out["ef"], [0] * 8 + [np.nan] * 12)
     np.testing.assert_array_equal(
-        out["contrail_age"], [np.timedelta64(0, "s")] * 8 + [np.timedelta64("nat")] * 12
+        out["contrail_age"], [np.timedelta64(0, "s")] * 8 + [np.timedelta64("nat", "ns")] * 12
     )
 
     # This key was removed

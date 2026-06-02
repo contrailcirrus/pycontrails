@@ -396,7 +396,7 @@ def test_ISSR_flight_missing_waypoint(met_era5_fake: MetDataset, flight_fake: Fl
     fl["altitude"][200] = np.nan
     fl["longitude"][210] = np.nan
     fl["latitude"][212] = np.nan
-    fl["time"][217] = np.datetime64("NaT")
+    fl["time"][217] = np.datetime64("NaT", "ns")
 
     out2 = ISSR(met_era5_fake).eval(source=fl)
 

@@ -435,7 +435,7 @@ def test_altitude_interpolation(fl: Flight) -> None:
 
     def _check_rocd(_fl: Flight, nominal_rocd: float = constants.nominal_rocd) -> np.bool_:
         """Check rate of climb/descent."""
-        dt = np.diff(_fl["time"], append=np.datetime64("NaT")) / np.timedelta64(1, "s")
+        dt = np.diff(_fl["time"], append=np.datetime64("NaT", "ns")) / np.timedelta64(1, "s")
         dalt = np.diff(_fl.altitude, append=np.nan)
         rocd = np.abs(dalt / dt)
         return np.all(rocd[:-1] < 2 * nominal_rocd)

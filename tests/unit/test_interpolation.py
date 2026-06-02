@@ -540,7 +540,7 @@ def test_interpolation_propagate_nan(
         level[idx] = np.nan
         dim = 2
     elif coord == "time":
-        time[idx] = np.datetime64("NaT")
+        time[idx] = np.datetime64("NaT", "ns")
         dim = 3
 
     if bounds_error:
