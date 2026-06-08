@@ -313,6 +313,7 @@ Core
     core.coordinates
     core.fleet
     core.flight
+    core.flightplan
     core.fuel
     core.interpolation
     core.met
