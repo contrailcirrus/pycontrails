@@ -1777,7 +1777,7 @@ def _process_rad(rad: MetDataset) -> MetDataset:
                 "HRES data must have a boolean 'radiation_accumulated' attribute. "
                 "This attribute is used to determine whether the radiation data "
                 "has been accumulated over the time period. This is the case for "
-                "HRES data taken from a common time of forecast with multiple "
+                "HRES data taken from a common forecast reference time with multiple "
                 "forecast steps. If this is not the case, set the "
                 "'radiation_accumulated' attribute to False."
             )
