@@ -176,7 +176,12 @@ class Emissions(Model):
             )
 
         if "n_engine" not in self.source.attrs:
-            aircraft_type = self.source.get_constant("aircraft_type", None)
+            try:
+                aircraft_type = self.source.get_constant("aircraft_type")
+            except KeyError as exc:
+                msg = "An 'aircraft_type' must be provided if 'n_engine' is not in source attrs."
+                raise KeyError(msg) from exc
+
             self.source.attrs["n_engine"] = self.default_engines.at[aircraft_type, "n_engine"]
 
         try:
