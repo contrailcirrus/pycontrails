@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.63.3 [unreleased]
+
+### Breaking changes
+
+- No longer build wheels for macos x86_64. (macos arm64 wheels will still be built and supported)
+
+### Internals
+
+- Move cibuildwheel configs from the `.github/workflows/release.yaml` workflow to the `pyproject.toml` for easier local testing.
+
 ## 0.63.2
 
 ### Fixes
