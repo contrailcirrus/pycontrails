@@ -204,7 +204,7 @@ class Emissions(Model):
             try:
                 edb_gaseous = self.edb_engine_gaseous[engine_uid]  # type: ignore[index]
             except KeyError:
-                self.source["thrust_setting"] = np.full(len(self.source), np.nan, dtype=np.float32)
+                self.source["thrust_setting"] = np.full(self.source.size, np.nan, dtype=np.float32)
             else:
                 self.source["thrust_setting"] = get_thrust_setting(
                     edb_gaseous,
@@ -265,35 +265,29 @@ class Emissions(Model):
         air_temperature = self.source["air_temperature"]
 
         # Emissions indices
-        self.source["nox_ei"] = (
-            gaseous.estimate_nox_ffm2(
-                edb_gaseous.log_ei_nox_profile,
-                fuel_flow_per_engine,
-                true_airspeed,
-                self.source.air_pressure,
-                air_temperature,
-                self.source["specific_humidity"],
-            )
+        self.source["nox_ei"] = gaseous.estimate_nox_ffm2(
+            edb_gaseous.log_ei_nox_profile,
+            fuel_flow_per_engine,
+            true_airspeed,
+            self.source.air_pressure,
+            air_temperature,
+            self.source["specific_humidity"],
         )
 
-        self.source["co_ei"] = (
-            gaseous.estimate_ei_co_hc_ffm2(
-                edb_gaseous.log_ei_co_profile,
-                fuel_flow_per_engine,
-                true_airspeed,
-                self.source.air_pressure,
-                air_temperature,
-            )
+        self.source["co_ei"] = gaseous.estimate_ei_co_hc_ffm2(
+            edb_gaseous.log_ei_co_profile,
+            fuel_flow_per_engine,
+            true_airspeed,
+            self.source.air_pressure,
+            air_temperature,
         )
 
-        self.source["hc_ei"] = (
-            gaseous.estimate_ei_co_hc_ffm2(
-                edb_gaseous.log_ei_hc_profile,
-                fuel_flow_per_engine,
-                true_airspeed,
-                self.source.air_pressure,
-                air_temperature,
-            )
+        self.source["hc_ei"] = gaseous.estimate_ei_co_hc_ffm2(
+            edb_gaseous.log_ei_hc_profile,
+            fuel_flow_per_engine,
+            true_airspeed,
+            self.source.air_pressure,
+            air_temperature,
         )
 
     def _gaseous_emissions_constant(self) -> None:
@@ -320,9 +314,9 @@ class Emissions(Model):
         self.source.attrs["gaseous_data_source"] = "Constant"
 
         # Units of NOx, CO, and HC EI: kg/kg fuel
-        nox_ei = np.full(shape=len(self.source), fill_value=(15.14 * 1e-3), dtype=np.float32)
-        co_ei = np.full(shape=len(self.source), fill_value=(3.61 * 1e-3), dtype=np.float32)
-        hc_ei = np.full(shape=len(self.source), fill_value=(0.520 * 1e-3), dtype=np.float32)
+        nox_ei = np.full(shape=self.source.size, fill_value=15.14 * 1e-3, dtype=np.float32)
+        co_ei = np.full(shape=self.source.size, fill_value=3.61 * 1e-3, dtype=np.float32)
+        hc_ei = np.full(shape=self.source.size, fill_value=0.520 * 1e-3, dtype=np.float32)
 
         self.source["nox_ei"] = nox_ei
         self.source["co_ei"] = co_ei
@@ -824,8 +818,8 @@ class Emissions(Model):
         nvpm_data_source = "Constant"
 
         # Units of nvPM mass EI: kg/kg fuel
-        nvpm_ei_m = np.full(len(self.source), fill_value=(0.088 * 1e-3), dtype=np.float32)
-        nvpm_ei_n = np.full(len(self.source), self.params["default_nvpm_ei_n"], dtype=np.float32)
+        nvpm_ei_m = np.full(self.source.size, fill_value=0.088 * 1e-3, dtype=np.float32)
+        nvpm_ei_n = np.full(self.source.size, self.params["default_nvpm_ei_n"], dtype=np.float32)
 
         # Adjust for fuel hydrogen content
         thrust_setting = self.source["thrust_setting"]
@@ -916,51 +910,7 @@ def nvpm_mass_emissions_index_sac(
     nvpm_ei_m_imfox = nvpm.mass_emissions_index_imfox(
         fuel_flow_per_engine, thrust_setting, hydrogen_content
     )
-    nvpm_ei_m = 0.5 * (0.8 * nvpm_ei_m_fox + 1.5 * nvpm_ei_m_imfox)
-    return nvpm_ei_m
-
-
-def nvpm_geometric_mean_diameter_sac(
-    edb_gaseous: gaseous.EDBGaseous,
-    air_pressure: npt.NDArray[np.floating],
-    true_airspeed: npt.NDArray[np.floating],
-    air_temperature: npt.NDArray[np.floating],
-    thrust_setting: npt.NDArray[np.floating],
-    q_fuel: float,
-) -> npt.NDArray[np.floating]:
-    r"""
-    Estimate nvPM geometric mean diameter for singular annular combustor (SAC) engines.
-
-    Parameters
-    ----------
-    edb_gaseous : EDBGaseous
-        EDB gaseous data
-    air_pressure: npt.NDArray[np.floating]
-        pressure altitude at each waypoint, [:math:`Pa`]
-    true_airspeed: npt.NDArray[np.floating]
-        true airspeed for each waypoint, [:math:`m s^{-1}`]
-    air_temperature: npt.NDArray[np.floating]
-        ambient temperature for each waypoint, [:math:`K`]
-    thrust_setting : npt.NDArray[np.floating]
-        thrust setting
-    q_fuel : float
-        Lower calorific value (LCV) of fuel, [:math:`J \ kg_{fuel}^{-1}`].
-
-    Returns
-    -------
-    npt.NDArray[np.floating]
-        nvPM geometric mean diameter, [:math:`m`]
-    """
-    nvpm_gmd = nvpm.geometric_mean_diameter_sac(
-        air_pressure,
-        air_temperature,
-        true_airspeed,
-        thrust_setting,
-        edb_gaseous.pressure_ratio,
-        q_fuel,
-        cruise=True,
-    )
-    return nvpm_gmd
+    return 0.5 * (0.8 * nvpm_ei_m_fox + 1.5 * nvpm_ei_m_imfox)
 
 
 def get_thrust_setting(
@@ -1082,10 +1032,10 @@ def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
         "ei_hc_85",
         "ei_hc_100",
     ]
-    df[gaseous_ei_cols] *= 1e-3     # g/kg to kg/kg
+    df[gaseous_ei_cols] *= 1e-3  # g/kg to kg/kg
 
-    df["pressure_min"] = df["pressure_min"] * 1000.0    # kPa to Pa
-    df["pressure_max"] = df["pressure_max"] * 1000.0    # kPa to Pa
+    pressure_cols = ["pressure_min", "pressure_max"]
+    df[pressure_cols] *= 1e3  # kPa to Pa
 
     return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
@@ -1144,7 +1094,7 @@ def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
     df = df.astype({"nvpm_ei_m_use_max": bool, "nvpm_ei_n_use_max": bool})
 
     # Convert units in ICAO EDB to standardised SI units
-    df["fuel_heat"] *= 1e6    # MJ/kg to J/kg
+    df["fuel_heat"] *= 1e6  # MJ/kg to J/kg
 
     nvpm_mass_ei_cols = [
         "nvpm_ei_m_7",
