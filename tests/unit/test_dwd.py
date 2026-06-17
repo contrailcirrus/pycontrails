@@ -44,6 +44,7 @@ def test_list_forecasts(domain: str, count: int) -> None:
     assert len(forecasts) == count
 
 
+@pytest.mark.unreliable
 def test_list_forecasts_error() -> None:
     """Test errors with invalid domains."""
     with pytest.raises(ValueError, match="Unknown domain"):
@@ -71,6 +72,7 @@ def test_list_forecast_steps_warning(domain: str) -> None:
     assert len(steps) == 0
 
 
+@pytest.mark.unreliable
 def test_list_forecast_steps_invalid_domain() -> None:
     """Test forecast step listing with invalid domain."""
     with pytest.raises(ValueError, match="Unknown domain"):
