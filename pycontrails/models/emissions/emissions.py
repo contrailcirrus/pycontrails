@@ -917,7 +917,7 @@ def nvpm_mass_emissions_index_sac(
         fuel_flow_per_engine, thrust_setting, hydrogen_content
     )
     nvpm_ei_m = 0.5 * (0.8 * nvpm_ei_m_fox + 1.5 * nvpm_ei_m_imfox)
-    return nvpm_ei_m * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
+    return nvpm_ei_m
 
 
 def nvpm_geometric_mean_diameter_sac(
