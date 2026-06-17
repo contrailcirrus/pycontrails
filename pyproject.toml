@@ -302,4 +302,4 @@ test-sources = ["tests"]
 environment-pass = ["GITHUB_ACTIONS"]
 
 [tool.cibuildwheel.macos]
-archs = ["x86_64", "arm64"]
+archs = ["arm64"]
