@@ -886,7 +886,7 @@ def mass_emissions_index_fox(
     Returns
     -------
     npt.NDArray[np.floating]
-        nvPM mass emissions index, [:math:`mg \ kg_{fuel}^{-1}`]
+        nvPM mass emissions index, [:math:`kg \ kg_{fuel}^{-1}`]
 
     References
     ----------
@@ -920,7 +920,10 @@ def mass_emissions_index_fox(
         afr_ref=afr_ref,
     )
     q_exhaust_cru = exhaust_gas_volume_per_kg_fuel(afr_cru)
-    return convert_nvpm_mass_concentration_to_ei(c_bc_cru, q_exhaust_cru)
+    return convert_nvpm_mass_concentration_to_ei(
+        c_bc_cru, q_exhaust_cru
+    ) * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
+
 
 
 def flame_temperature(t_3: ArrayScalarLike) -> ArrayScalarLike:
@@ -1081,7 +1084,7 @@ def mass_emissions_index_imfox(
     Returns
     -------
     npt.NDArray[np.floating]
-        nvPM mass emissions index, [:math:`mg \ kg_{fuel}^{-1}`]
+        nvPM mass emissions index, [:math:`kg \ kg_{fuel}^{-1}`]
 
     References
     ----------
@@ -1093,7 +1096,9 @@ def mass_emissions_index_imfox(
         fuel_flow_per_engine, afr_cru, t_4_cru, fuel_hydrogen=fuel_hydrogen
     )
     q_exhaust_cru = exhaust_gas_volume_per_kg_fuel(afr_cru)
-    return convert_nvpm_mass_concentration_to_ei(c_bc_cru, q_exhaust_cru)
+    return convert_nvpm_mass_concentration_to_ei(
+        c_bc_cru, q_exhaust_cru
+    ) * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
 
 
 def air_to_fuel_ratio_imfox(thrust_setting: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
