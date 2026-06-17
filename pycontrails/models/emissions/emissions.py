@@ -1124,7 +1124,21 @@ def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
         "nvPM EInum Max (#/kg)": "nvpm_ei_n_no_sl_max",
     }
 
+    nvpm_mass_cols = [
+        "nvPM EImass_SL Idle (mg/kg)",
+        "nvPM EImass_SL App (mg/kg)",
+        "nvPM EImass_SL C/O (mg/kg)",
+        "nvPM EImass_SL T/O (mg/kg)",
+        "nvPM EImass App (mg/kg)",
+        "nvPM EImass C/O (mg/kg)",
+        "nvPM EImass Max (mg/kg)",
+    ]
+
     df = pd.read_csv(EDB_NVPM_PATH)
+
+    # Convert nvPM mass EI from mg/kg to kg/kg
+    df[nvpm_mass_cols] *= 1e-6
+
     df = df.rename(columns=columns)
     df = df.astype({"nvpm_ei_m_use_max": bool, "nvpm_ei_n_use_max": bool})
     return dict(_row_to_edb_nvpm(tup) for tup in df.itertuples(index=False))

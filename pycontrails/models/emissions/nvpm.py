@@ -272,7 +272,6 @@ def estimate_nvpm_t4_t2(
 
     # Interpolate nvPM EI_m and EI_n
     nvpm_ei_m = nvpm_ei_m_profile.interp(t4_t2)
-    nvpm_ei_m = nvpm_ei_m * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
     nvpm_ei_n = nvpm_ei_n_profile.interp(t4_t2)
     return nvpm_ei_m, nvpm_ei_n
 
@@ -561,7 +560,6 @@ def estimate_nvpm_meem(
 
     # Interpolate nvPM EI_m for ground conditions
     nvpm_ei_m_sl = nvpm_ei_m_profile.interp(fuel_flow_per_engine)
-    nvpm_ei_m_sl = nvpm_ei_m_sl * 1e-6  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
 
     # Interpolate nvPM EI_n for ground conditions
     nvpm_ei_n_sl = nvpm_ei_n_profile.interp(fuel_flow_per_engine)
