@@ -239,7 +239,7 @@ def test_fox_fa_model_nvpm_emissions_profile():
         thrust_setting,
         edb_gaseous.pressure_ratio,
     )
-    nvpm_ei_m_fox = np.array([38.03, 128.90, 591.87, 801.00])
+    nvpm_ei_m_fox = np.array([38.03, 128.90, 591.87, 801.00]) * 1e-6  # mg/kg -> kg/kg
     np.testing.assert_allclose(nvpm_ei_m_fox_est, nvpm_ei_m_fox, atol=0.01)
 
     nvpm_gmd_fa_est = nvpm.geometric_mean_diameter_sac(
@@ -250,13 +250,10 @@ def test_fox_fa_model_nvpm_emissions_profile():
         edb_gaseous.pressure_ratio,
         43.13e6,
     )
-    nvpm_gmd_fa = np.array([12.02, 19.34, 39.54, 45.79])  # nm
+    nvpm_gmd_fa = np.array([12.02, 19.34, 39.54, 45.79]) * 1e-9  # nm -> m
     np.testing.assert_allclose(nvpm_gmd_fa_est, nvpm_gmd_fa_est, atol=0.01)
 
-    nvpm_ei_n_fa_est = nvpm.number_emissions_index_fractal_aggregates(
-        nvpm_ei_m_fox * 1e-6,
-        nvpm_gmd_fa * 1e-9,
-    )
+    nvpm_ei_n_fa_est = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m_fox, nvpm_gmd_fa)
     nvpm_ei_n_fa = np.array([5.66, 4.94, 2.95, 2.62]) * 1e15
     np.testing.assert_allclose(nvpm_ei_n_fa_est, nvpm_ei_n_fa, atol=0.01e15)
 
@@ -280,41 +277,32 @@ def test_emissions_index_ffm2():
     edb_gaseous = emissions.edb_engine_gaseous[engine_uid]
 
     # Nitrogen oxide
-    nox_ei = (
-        gaseous.estimate_nox_ffm2(
-            edb_gaseous.log_ei_nox_profile,
-            fuel_flow_per_engine_cruise,
-            true_airspeed,
-            air_pressure,
-            air_temperature,
-        )
-        * 1e-3
+    nox_ei = gaseous.estimate_nox_ffm2(
+        edb_gaseous.log_ei_nox_profile,
+        fuel_flow_per_engine_cruise,
+        true_airspeed,
+        air_pressure,
+        air_temperature,
     )
     np.testing.assert_almost_equal(nox_ei, np.array([0.019298]), decimal=6)
 
     # Carbon monoxide (descent conditions with very low power)
-    co_ei = (
-        gaseous.estimate_ei_co_hc_ffm2(
-            edb_gaseous.log_ei_co_profile,
-            fuel_flow_per_engine_descent,
-            true_airspeed,
-            air_pressure,
-            air_temperature,
-        )
-        * 1e-3
+    co_ei = gaseous.estimate_ei_co_hc_ffm2(
+        edb_gaseous.log_ei_co_profile,
+        fuel_flow_per_engine_descent,
+        true_airspeed,
+        air_pressure,
+        air_temperature,
     )
     np.testing.assert_almost_equal(co_ei, np.array([0.028461]), decimal=6)
 
     # Hydrocarbons (descent conditions with very low power)
-    hc_ei = (
-        gaseous.estimate_ei_co_hc_ffm2(
-            edb_gaseous.log_ei_hc_profile,
-            fuel_flow_per_engine_descent,
-            true_airspeed,
-            air_pressure,
-            air_temperature,
-        )
-        * 1e-3
+    hc_ei = gaseous.estimate_ei_co_hc_ffm2(
+        edb_gaseous.log_ei_hc_profile,
+        fuel_flow_per_engine_descent,
+        true_airspeed,
+        air_pressure,
+        air_temperature,
     )
     np.testing.assert_almost_equal(hc_ei, np.array([0.000077817]), decimal=6)
 
@@ -333,15 +321,12 @@ def test_E45x_hydrocarbon_emissions_index() -> None:
     edb_gaseous = emissions.edb_engine_gaseous[engine_uid]
 
     # Hydrocarbons (descent conditions with very low power)
-    hc_ei = (
-        gaseous.estimate_ei_co_hc_ffm2(
-            edb_gaseous.log_ei_hc_profile,
-            fuel_flow_per_engine_descent,
-            true_airspeed,
-            air_pressure,
-            air_temperature,
-        )
-        * 1e-3
+    hc_ei = gaseous.estimate_ei_co_hc_ffm2(
+        edb_gaseous.log_ei_hc_profile,
+        fuel_flow_per_engine_descent,
+        true_airspeed,
+        air_pressure,
+        air_temperature,
     )
     np.testing.assert_almost_equal(hc_ei, np.array([0.0097947]), decimal=6)
 
