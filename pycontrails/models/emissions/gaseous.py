@@ -64,31 +64,31 @@ class EDBGaseous:
     EMISSIONS:
     -------------------------------------
     ei_nox_7: float
-        NOx emissions index at 7% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+        NOx emissions index at 7% thrust setting, [:math:`kg_{NO_{X}}/kg_{fuel}`]
     ei_nox_30: float
-        NOx emissions index at 30% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+        NOx emissions index at 30% thrust setting, [:math:`kg_{NO_{X}}/kg_{fuel}`]
     ei_nox_85: float
-        NOx emissions index at 85% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+        NOx emissions index at 85% thrust setting, [:math:`kg_{NO_{X}}/kg_{fuel}`]
     ei_nox_100: float
-        NOx emissions index at 100% thrust setting, [:math:`g_{NO_{X}}/kg_{fuel}`]
+        NOx emissions index at 100% thrust setting, [:math:`kg_{NO_{X}}/kg_{fuel}`]
 
     ei_co_7: float
-        CO emissions index at 7% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+        CO emissions index at 7% thrust setting, [:math:`kg_{CO}/kg_{fuel}`]
     ei_co_30: float
-        CO emissions index at 30% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+        CO emissions index at 30% thrust setting, [:math:`kg_{CO}/kg_{fuel}`]
     ei_co_85: float
-        CO emissions index at 85% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+        CO emissions index at 85% thrust setting, [:math:`kg_{CO}/kg_{fuel}`]
     ei_co_100: float
-        CO emissions index at 100% thrust setting, [:math:`g_{CO}/kg_{fuel}`]
+        CO emissions index at 100% thrust setting, [:math:`kg_{CO}/kg_{fuel}`]
 
     ei_hc_7: float
-        HC emissions index at 7% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+        HC emissions index at 7% thrust setting, [:math:`kg_{HC}/kg_{fuel}`]
     ei_hc_30: float
-        HC emissions index at 30% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+        HC emissions index at 30% thrust setting, [:math:`kg_{HC}/kg_{fuel}`]
     ei_hc_85: float
-        HC emissions index at 85% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+        HC emissions index at 85% thrust setting, [:math:`kg_{HC}/kg_{fuel}`]
     ei_hc_100: float
-        HC emissions index at 100% thrust setting, [:math:`g_{HC}/kg_{fuel}`]
+        HC emissions index at 100% thrust setting, [:math:`kg_{HC}/kg_{fuel}`]
 
     sn_7: float
         smoke number at 7% thrust setting
@@ -217,13 +217,13 @@ def nitrogen_oxide_emissions_index_profile_ffm2(
     ff_take_off: float
         ICAO EDB fuel mass flow rate at take-off (100% power), [:math:`kg s^{-1}`]
     ei_nox_idle: float
-        ICAO EDB NOx emissions index at idle conditions (7% power), [:math:`g_{NO_{X}}/kg_{fuel}`]
+        ICAO EDB NOx emissions index at idle conditions (7% power), [:math:`kg_{NO_{X}}/kg_{fuel}`]
     ei_nox_approach: float
-        ICAO EDB NOx emissions index at approach (30% power), [:math:`g_{NO_{X}}/kg_{fuel}`]
+        ICAO EDB NOx emissions index at approach (30% power), [:math:`kg_{NO_{X}}/kg_{fuel}`]
     ei_nox_climb: float
-        ICAO EDB NOx emissions index at climb out (85% power), [:math:`g_{NO_{X}}/kg_{fuel}`]
+        ICAO EDB NOx emissions index at climb out (85% power), [:math:`kg_{NO_{X}}/kg_{fuel}`]
     ei_nox_take_off: float
-        ICAO EDB NOx emissions index at take-off (100% power), [:math:`g_{NO_{X}}/kg_{fuel}`]
+        ICAO EDB NOx emissions index at take-off (100% power), [:math:`kg_{NO_{X}}/kg_{fuel}`]
 
     Returns
     -------
@@ -276,16 +276,16 @@ def co_hc_emissions_index_profile_ffm2(
         (100% power), [:math:`kg s^{-1}`]
     ei_idle: float
         ICAO EDB CO or HC emissions index at idle conditions
-        (7% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        (7% power), [:math:`kg_{pollutant}/kg_{fuel}`]
     ei_approach: float
         ICAO EDB CO or HC emissions index at approach
-        (30% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        (30% power), [:math:`kg_{pollutant}/kg_{fuel}`]
     ei_climb: float
         ICAO EDB CO or HC emissions index at climb out
-        (85% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        (85% power), [:math:`kg_{pollutant}/kg_{fuel}`]
     ei_take_off: float
         ICAO EDB CO or HC emissions index at take-off
-        (100% power), [:math:`g_{pollutant}/kg_{fuel}`]
+        (100% power), [:math:`kg_{pollutant}/kg_{fuel}`]
 
     Returns
     -------
@@ -298,8 +298,8 @@ def co_hc_emissions_index_profile_ffm2(
     fuel_flow_edb *= installation_correction_factor
 
     ei_edb = np.array([ei_idle, ei_approach, ei_climb, ei_take_off], dtype=float)
-    min_vals_ = np.array([1e-3, 1e-3, 1e-4, 1e-4])
-    ei_edb = np.maximum(ei_edb, min_vals_)
+    min_vals = np.array([1e-6, 1e-6, 1e-7, 1e-7])
+    ei_edb = np.maximum(ei_edb, min_vals)
 
     # Get straight-line equation between idle and approach
     m, c = np.polyfit(fuel_flow_edb[:2], ei_edb[:2], deg=1)
@@ -308,9 +308,7 @@ def co_hc_emissions_index_profile_ffm2(
 
     ff_low_power = fuel_flow_edb[3] * 0.03
     ei_co_low_power = min((m * ff_low_power + c), (2 * ei_edb[0]))
-    ei_co_low_power = max(
-        ei_co_low_power, 1e-3
-    )  # Prevent zero/negative values, similar to line 115
+    ei_co_low_power = max(ei_co_low_power, 1e-6)  # Prevent zero/negative values
 
     # Permutation 1: Emissions profile when the bi-linear fit does not work
     # (Figure 14 of DuBois & Paynter, 2006)
@@ -367,6 +365,11 @@ def estimate_nox_ffm2(
         ambient temperature for each waypoint, [:math:`K`]
     specific_humidity: npt.NDArray[np.floating] | None
         specific humidity for each waypoint, [:math:`kg_{H_{2}O}/kg_{air}`]
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        NOx emissions index, [:math:`kg_{NO_X}/kg_{fuel}`]
     """
 
     if specific_humidity is None:
@@ -407,6 +410,11 @@ def estimate_ei_co_hc_ffm2(
         pressure altitude at each waypoint, [:math:`Pa`]
     air_temperature : npt.NDArray[np.floating]
         ambient temperature for each waypoint, [:math:`K`]
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        CO or HC emissions index, [:math:`kg_{pollutant}/kg_{fuel}`]
     """
     mach_num = units.tas_to_mach_number(true_airspeed, air_temperature)
     theta_amb = jet.temperature_ratio(air_temperature)
