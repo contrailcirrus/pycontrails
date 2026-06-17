@@ -274,7 +274,6 @@ class Emissions(Model):
                 air_temperature,
                 self.source["specific_humidity"],
             )
-            * 1e-3  # g-NOx/kg-fuel to kg-NOx/kg-fuel
         )
 
         self.source["co_ei"] = (
@@ -285,7 +284,6 @@ class Emissions(Model):
                 self.source.air_pressure,
                 air_temperature,
             )
-            * 1e-3  # g-CO/kg-fuel to kg-CO/kg-fuel
         )
 
         self.source["hc_ei"] = (
@@ -296,7 +294,6 @@ class Emissions(Model):
                 self.source.air_pressure,
                 air_temperature,
             )
-            * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
         )
 
     def _gaseous_emissions_constant(self) -> None:
@@ -322,13 +319,14 @@ class Emissions(Model):
         """
         self.source.attrs["gaseous_data_source"] = "Constant"
 
-        nox_ei = np.full(shape=len(self.source), fill_value=15.14, dtype=np.float32)
-        co_ei = np.full(shape=len(self.source), fill_value=3.61, dtype=np.float32)
-        hc_ei = np.full(shape=len(self.source), fill_value=0.520, dtype=np.float32)
+        # Units of NOx, CO, and HC EI: kg/kg fuel
+        nox_ei = np.full(shape=len(self.source), fill_value=(15.14 * 1e-3), dtype=np.float32)
+        co_ei = np.full(shape=len(self.source), fill_value=(3.61 * 1e-3), dtype=np.float32)
+        hc_ei = np.full(shape=len(self.source), fill_value=(0.520 * 1e-3), dtype=np.float32)
 
-        self.source["nox_ei"] = nox_ei * 1e-3  # g-NOx/kg-fuel to kg-NOx/kg-fuel
-        self.source["co_ei"] = co_ei * 1e-3  # g-CO/kg-fuel to kg-CO/kg-fuel
-        self.source["hc_ei"] = hc_ei * 1e-3  # g-HC/kg-fuel to kg-HC/kg-fuel
+        self.source["nox_ei"] = nox_ei
+        self.source["co_ei"] = co_ei
+        self.source["hc_ei"] = hc_ei
 
     def _nvpm_emission_indices_gaia_workflow(self, engine_uid: str | None) -> None:
         """Calculate nvPM mass and number emission indices using the GAIA workflow.
@@ -498,7 +496,7 @@ class Emissions(Model):
             combustor=edb_nvpm.combustor,
             temp_min=edb_nvpm.temp_min,
             temp_max=edb_nvpm.temp_max,
-            q_fuel=edb_nvpm.fuel_heat * 1e6,
+            q_fuel=edb_nvpm.fuel_heat,
             ff_7=edb_nvpm.ff_7,
             ff_30=edb_nvpm.ff_30,
             ff_85=edb_nvpm.ff_85,
@@ -824,7 +822,9 @@ class Emissions(Model):
         - :cite:`schumannDehydrationEffectsContrails2015`
         """
         nvpm_data_source = "Constant"
-        nvpm_ei_m = np.full(len(self.source), 0.088 * 1e-3, dtype=np.float32)  # g to kg
+
+        # Units of nvPM mass EI: kg/kg fuel
+        nvpm_ei_m = np.full(len(self.source), fill_value=(0.088 * 1e-3), dtype=np.float32)
         nvpm_ei_n = np.full(len(self.source), self.params["default_nvpm_ei_n"], dtype=np.float32)
 
         # Adjust for fuel hydrogen content
@@ -1067,9 +1067,25 @@ def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
     df["pressure_min"] = df["pressure_min"].fillna(fill_pressure)
     df["pressure_max"] = df["pressure_max"].fillna(fill_pressure)
 
-    # Convert ambient pressure from kPa to Pa
-    df["pressure_min"] = df["pressure_min"] * 1000.0
-    df["pressure_max"] = df["pressure_max"] * 1000.0
+    # Convert units in ICAO EDB to standardised SI units
+    gaseous_ei_cols = [
+        "ei_nox_7",
+        "ei_nox_30",
+        "ei_nox_85",
+        "ei_nox_100",
+        "ei_co_7",
+        "ei_co_30",
+        "ei_co_85",
+        "ei_co_100",
+        "ei_hc_7",
+        "ei_hc_30",
+        "ei_hc_85",
+        "ei_hc_100",
+    ]
+    df[gaseous_ei_cols] *= 1e-3     # g/kg to kg/kg
+
+    df["pressure_min"] = df["pressure_min"] * 1000.0    # kPa to Pa
+    df["pressure_max"] = df["pressure_max"] * 1000.0    # kPa to Pa
 
     return dict(_row_to_edb_gaseous(tup) for tup in df.itertuples(index=False))
 
@@ -1124,23 +1140,23 @@ def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
         "nvPM EInum Max (#/kg)": "nvpm_ei_n_no_sl_max",
     }
 
-    nvpm_mass_cols = [
-        "nvPM EImass_SL Idle (mg/kg)",
-        "nvPM EImass_SL App (mg/kg)",
-        "nvPM EImass_SL C/O (mg/kg)",
-        "nvPM EImass_SL T/O (mg/kg)",
-        "nvPM EImass App (mg/kg)",
-        "nvPM EImass C/O (mg/kg)",
-        "nvPM EImass Max (mg/kg)",
+    df = pd.read_csv(EDB_NVPM_PATH).rename(columns=columns)
+    df = df.astype({"nvpm_ei_m_use_max": bool, "nvpm_ei_n_use_max": bool})
+
+    # Convert units in ICAO EDB to standardised SI units
+    df["fuel_heat"] *= 1e6    # MJ/kg to J/kg
+
+    nvpm_mass_ei_cols = [
+        "nvpm_ei_m_7",
+        "nvpm_ei_m_30",
+        "nvpm_ei_m_85",
+        "nvpm_ei_m_100",
+        "nvpm_ei_m_no_sl_30",
+        "nvpm_ei_m_no_sl_85",
+        "nvpm_ei_m_no_sl_max",
     ]
 
-    df = pd.read_csv(EDB_NVPM_PATH)
-
-    # Convert nvPM mass EI from mg/kg to kg/kg
-    df[nvpm_mass_cols] *= 1e-6
-
-    df = df.rename(columns=columns)
-    df = df.astype({"nvpm_ei_m_use_max": bool, "nvpm_ei_n_use_max": bool})
+    df[nvpm_mass_ei_cols] *= 1e-6  # mg/kg to kg/kg
     return dict(_row_to_edb_nvpm(tup) for tup in df.itertuples(index=False))
 
 
