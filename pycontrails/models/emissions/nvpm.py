@@ -1243,7 +1243,7 @@ def geometric_mean_diameter_sac(
         comp_efficiency=comp_efficiency,
         cruise=cruise,
     )
-    return (2.5883 * t4_t2**2) - (5.3723 * t4_t2) + 16.721 - delta_loss
+    return ((2.5883 * t4_t2**2) - (5.3723 * t4_t2) + 16.721 - delta_loss) * 1e-9  # nm to m
 
 
 def number_emissions_index_fractal_aggregates(
