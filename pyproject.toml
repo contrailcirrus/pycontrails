@@ -287,3 +287,19 @@ extend-immutable-calls = ["numpy.timedelta64", "numpy.float32", "os.path.join"]
 style = "numpy"
 skip-checking-raises = true
 check-class-attributes = false
+
+# https://cibuildwheel.pypa.io/en/stable/options/
+[tool.cibuildwheel]
+build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+skip = ["*-win32", "*-manylinux_i686", "*-musllinux*"]
+build-verbosity = 3
+test-extras = ["complete", "dev"]
+test-skip = "*-macosx_arm64"
+test-command = "python -m pytest -m \"not unreliable\" ./tests -vv"
+test-sources = ["tests"]
+
+[tool.cibuildwheel.linux]
+environment-pass = ["GITHUB_ACTIONS"]
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
