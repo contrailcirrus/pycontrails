@@ -1227,7 +1227,7 @@ def geometric_mean_diameter_sac(
     Returns
     -------
     npt.NDArray[np.floating]
-        nvPM geometric mean diameter, [:math:`nm`]
+        nvPM geometric mean diameter, [:math:`m`]
 
     References
     ----------

@@ -960,7 +960,7 @@ def nvpm_geometric_mean_diameter_sac(
         q_fuel,
         cruise=True,
     )
-    return nvpm_gmd * 1e-9  # nm to m
+    return nvpm_gmd
 
 
 def get_thrust_setting(
