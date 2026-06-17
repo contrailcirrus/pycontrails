@@ -240,7 +240,7 @@ def test_fox_fa_model_nvpm_emissions_profile():
         edb_gaseous.pressure_ratio,
     )
     nvpm_ei_m_fox = np.array([38.03, 128.90, 591.87, 801.00]) * 1e-6  # mg/kg -> kg/kg
-    np.testing.assert_allclose(nvpm_ei_m_fox_est, nvpm_ei_m_fox, atol=0.01)
+    np.testing.assert_allclose(nvpm_ei_m_fox_est, nvpm_ei_m_fox, atol=0.01e-6)
 
     nvpm_gmd_fa_est = nvpm.geometric_mean_diameter_sac(
         average_pressure,
@@ -251,7 +251,7 @@ def test_fox_fa_model_nvpm_emissions_profile():
         43.13e6,
     )
     nvpm_gmd_fa = np.array([12.02, 19.34, 39.54, 45.79]) * 1e-9  # nm -> m
-    np.testing.assert_allclose(nvpm_gmd_fa_est, nvpm_gmd_fa_est, atol=0.01)
+    np.testing.assert_allclose(nvpm_gmd_fa_est, nvpm_gmd_fa, atol=0.01e-9)
 
     nvpm_ei_n_fa_est = nvpm.number_emissions_index_fractal_aggregates(nvpm_ei_m_fox, nvpm_gmd_fa)
     nvpm_ei_n_fa = np.array([5.66, 4.94, 2.95, 2.62]) * 1e15
