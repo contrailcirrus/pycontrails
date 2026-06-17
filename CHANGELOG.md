@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.63.2
+
+### Fixes
+
+- Fix unit conversion bug identified in `nvpm_ei_m` estimates when SCOPE11 is used. This does not affect the downstream simulated contrail properties and forcing estimates.
+
+### Internals
+
+- Refactor emissions functions so that SI units are used throughout computations. This ensures consistency and prevents future unit conversion bugs.
+
 ## 0.63.1
 
 ### Breaking changes
