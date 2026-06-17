@@ -892,7 +892,7 @@ def nvpm_mass_emissions_index_sac(
     fuel_flow_per_engine: npt.NDArray[np.floating]
         fuel mass flow rate per engine, [:math:`kg s^{-1}`]
     hydrogen_content : float
-        Engine unique identification number from the ICAO EDB
+        The percentage of hydrogen mass content in the fuel.
 
     Returns
     -------
