@@ -38,26 +38,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      # https://cibuildwheel.readthedocs.io/en/stable/options/#testing
+      # cibuildwheel config in pyproject.toml
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.1
-        env:
-          CIBW_BUILD: cp311-* cp312-* cp313-* cp314-*
-          CIBW_SKIP: '*-win32 *-manylinux_i686 *-musllinux*'
-          CIBW_BUILD_VERBOSITY: 3
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_TEST_SKIP: '*-macosx_arm64'
-          # Completely isolate tests to prevent cibuildwheel from importing the
-          # source instead of the wheel. This happens when tests/__init__.py is read.
-          CIBW_TEST_EXTRAS: "complete,dev"
-          # Make sure GITHUB_ACTIONS
-          # (used to selectively skip expensive unit test)
-          # is passed through when testing linux wheels
-          CIBW_ENVIRONMENT_PASS_LINUX: GITHUB_ACTIONS
-          CIBW_TEST_COMMAND: >
-            mv {project}/pycontrails {project}/pycontrails-bak &&
-            python -m pytest -m "not unreliable" {project}/tests -vv &&
-            mv {project}/pycontrails-bak {project}/pycontrails
 
       - name: Upload wheels
         uses: actions/upload-artifact@v7
