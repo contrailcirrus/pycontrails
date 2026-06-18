@@ -216,6 +216,12 @@ nb-check-links:
         --check-links-ignore "https://doi.org/10.1175/JAMC-D-11-0242.1" \
 		--check-links-ignore "https://doi.org/10.1021/acs.est.9b05608" \
 		--check-links-ignore "https://doi.org/10.1021/acs.est.2c05781" \
+		--check-links-ignore "https://doi.org/10.5194/acp-17-403-2017" \
+		--check-links-ignore "https://doi.org/10.5194/acp-2022-169" \
+		--check-links-ignore "https://doi.org/10.5194/gmd-5-543-2012" \
+		--check-links-ignore "https://doi.org/10.5194/egusphere-2024-1361" \
+		--check-links-ignore "https://doi.org/10.5194/egusphere-2025-3312" \
+		--check-links-ignore "https://gmd.copernicus.org/articles/5/543/2012/" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
 		--check-links-ignore "https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast" \
