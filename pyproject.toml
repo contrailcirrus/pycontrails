@@ -291,15 +291,11 @@ check-class-attributes = false
 # https://cibuildwheel.pypa.io/en/stable/options/
 [tool.cibuildwheel]
 build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
-skip = ["*-win32", "*-manylinux_i686", "*-musllinux*"]
+skip = ["*-win32", "*-manylinux_i686", "*-musllinux*", "*-macosx_x86_64"]
 build-verbosity = 3
 test-extras = ["complete", "dev"]
-test-skip = "*-macosx_arm64"
 test-command = "python -m pytest -m \"not unreliable\" ./tests -vv"
 test-sources = ["tests", "pyproject.toml"]
 
 [tool.cibuildwheel.linux]
 environment-pass = ["GITHUB_ACTIONS"]
-
-[tool.cibuildwheel.macos]
-archs = ["arm64"]
