@@ -1,10 +1,14 @@
 # Changelog
 
-## 0.63.3 [unreleased]
+## 0.63.3
+
+### Fixes
+
+- Fix release workflow that prevented v0.63.2 wheels from being uploaded to PyPI.
 
 ### Breaking changes
 
-- No longer build wheels for macos x86_64. (macos arm64 wheels will still be built and supported)
+- No longer build wheels for macOS x86_64. (macOS arm64 wheels will continue to be built and supported.)
 
 ### Internals
 
