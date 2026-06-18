@@ -296,7 +296,7 @@ build-verbosity = 3
 test-extras = ["complete", "dev"]
 test-skip = "*-macosx_arm64"
 test-command = "python -m pytest -m \"not unreliable\" ./tests -vv"
-test-sources = ["tests"]
+test-sources = ["tests", "pyproject.toml"]
 
 [tool.cibuildwheel.linux]
 environment-pass = ["GITHUB_ACTIONS"]
