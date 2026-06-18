@@ -221,6 +221,7 @@ nb-check-links:
 		--check-links-ignore "https://doi.org/10.5194/gmd-5-543-2012" \
 		--check-links-ignore "https://doi.org/10.5194/egusphere-2024-1361" \
 		--check-links-ignore "https://doi.org/10.5194/egusphere-2025-3312" \
+		--check-links-ignore "https://doi.org/10.5194/acp-22-10919-2022" \
 		--check-links-ignore "https://gmd.copernicus.org/articles/5/543/2012/" \
 		--check-links-ignore "https://github.com/contrailcirrus/pycontrails-bada" \
 		--check-links-ignore "https://ourairports.com" \
