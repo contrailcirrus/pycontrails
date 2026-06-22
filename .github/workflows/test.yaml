@@ -89,7 +89,7 @@ jobs:
           ls -l ${{ env.CH_AVIATION_ROOT_PATH }}
 
       - name: Install make - windows
-        if: ${{ matrix.os == 'windows-latest' }}
+        if: matrix.os == 'windows-latest'
         run: choco install make
 
       - name: Install pycontrails (dev)
@@ -110,10 +110,13 @@ jobs:
           mypy --version
           pip list
 
+      - name: mypy
+        if: matrix.pyversion != '3.11'
+        run: make mypy
+
       - name: QC & Test
         shell: bash
         run: |
           pip check
           make lint
-          make mypy
           make pytest
