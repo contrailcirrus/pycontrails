@@ -1194,11 +1194,11 @@ class Flight(GeoVectorDataset):
         else:
             lat[distance < 0] = np.nan
             lon[distance < 0] = np.nan
-            seg_idx[distance < 0] = 0  # type: ignore
+            seg_idx[distance < 0] = 0
 
             lat[distance >= cumulative_lengths[-1]] = lat_[-1]
             lon[distance >= cumulative_lengths[-1]] = lon_[-1]
-            seg_idx[distance >= cumulative_lengths[-1]] = self.size - 1  # type: ignore
+            seg_idx[distance >= cumulative_lengths[-1]] = self.size - 1
 
         if shift is not None:
             # We need to translate back to the original chart here
