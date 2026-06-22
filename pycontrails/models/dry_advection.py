@@ -562,13 +562,13 @@ def _evolve_one_step(
     longitude = vector["longitude"]
 
     dt = t - vector["time"]
-    longitude_2, latitude_2 = geo.advect_horizontal(longitude, latitude, u_wind, v_wind, dt)  # type: ignore[arg-type]
+    longitude_2, latitude_2 = geo.advect_horizontal(longitude, latitude, u_wind, v_wind, dt)
     level_2 = geo.advect_level(
         vector.level,
         vertical_velocity,
         rho_air=0.0,
         terminal_fall_speed=0.0,
-        dt=dt,  # type: ignore[arg-type]
+        dt=dt,
     )
 
     out = GeoVectorDataset._from_fastpath(
@@ -595,7 +595,7 @@ def _evolve_one_step(
     azimuth_2, width_2, depth_2, sigma_yz_2, area_eff_2 = _calc_geometry(
         vector,
         dz_m=dz_m,
-        dt=dt,  # type: ignore[arg-type]
+        dt=dt,
         max_depth=max_depth,
         verbose_outputs=verbose_outputs,
     )

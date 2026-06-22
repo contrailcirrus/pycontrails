@@ -1099,11 +1099,11 @@ def _evolve_vector(
     else:
         head_tail_dt = vector["head_tail_dt"]
         half_head_tail_dt = head_tail_dt / 2
-        dt_head = dt - half_head_tail_dt  # type: ignore[operator]
-        dt_tail = dt + half_head_tail_dt  # type: ignore[operator]
+        dt_head = dt - half_head_tail_dt
+        dt_tail = dt + half_head_tail_dt
 
     # After advection, out has time t
-    out = advect(vector, dt, dt_head, dt_tail)  # type: ignore[arg-type]
+    out = advect(vector, dt, dt_head, dt_tail)
     out = run_interpolators(
         out,
         met,
@@ -1115,7 +1115,7 @@ def _evolve_vector(
 
     # required by process-split implementation of revised ice budget
     if params["revised_contrail_ice_budget"]:
-        sed = sediment(vector, dt)  # type: ignore[arg-type]
+        sed = sediment(vector, dt)
         sed = run_interpolators(
             sed,
             met,
