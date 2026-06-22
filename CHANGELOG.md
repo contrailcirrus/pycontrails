@@ -13,6 +13,7 @@
 ### Internals
 
 - Move cibuildwheel configs from the `.github/workflows/release.yaml` workflow to the `pyproject.toml` for easier local testing.
+- Remove mypy check for python 3.11 in the test workflow (numpy 2.5 only supports python 3.12 and above).
 
 ## 0.63.2
 

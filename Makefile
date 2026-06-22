@@ -81,6 +81,7 @@ yamllint:
 	yamllint -d "{extends: default, rules: {line-length: {max: 100}}}" .
 
 mypy:
+	python -c 'import numpy; assert tuple(int(x) for x in numpy.__version__.split(".", 2)) >= (2, 5), f"numpy >= 2.5 required, got {numpy.__version__}"'
 	mypy pycontrails
 
 pytest:
