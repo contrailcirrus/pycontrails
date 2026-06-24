@@ -12,7 +12,6 @@ from pycontrails.datalib.gruan import GRUAN, extract_gruan_time
 from tests import OFFLINE
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_available_sites_live() -> None:
     """Test live retrieval of available sites.
@@ -49,7 +48,6 @@ def test_gruan_repr(gruan: GRUAN) -> None:
     assert repr_str == "GRUAN(product='RS92-GDP.2', site='LIN')"
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_ftp_reuse(gruan: GRUAN) -> None:
     """Test that FTP connection is reused."""
@@ -59,7 +57,6 @@ def test_ftp_reuse(gruan: GRUAN) -> None:
     assert ftp1.pwd() == "/"
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_available_products_live(gruan: GRUAN) -> None:
     """Test live retrieval of available products."""
@@ -73,7 +70,6 @@ def test_available_products_live(gruan: GRUAN) -> None:
     assert {p for p in products if "." not in p} == expected
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_years(gruan: GRUAN) -> None:
     """Test available years retrieval."""
@@ -82,7 +78,6 @@ def test_years(gruan: GRUAN) -> None:
     assert years == list(range(2005, 2022))
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_list_files_and_extract_time(gruan: GRUAN) -> None:
     """Test listing files for a given year."""
@@ -97,7 +92,6 @@ def test_list_files_and_extract_time(gruan: GRUAN) -> None:
         assert version == 1
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_get_with_cache_live(gruan: GRUAN, cachestore: DiskCacheStore) -> None:
     """Test cached retrieval using live FTP."""
@@ -120,7 +114,6 @@ def test_get_with_cache_live(gruan: GRUAN, cachestore: DiskCacheStore) -> None:
         gruan.cachestore = None  # restore
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_get_with_no_cache_live(gruan: GRUAN) -> None:
     """Test cached retrieval using live FTP."""
@@ -139,7 +132,6 @@ def test_paths(gruan: GRUAN) -> None:
     assert gruan.base_path_site.endswith("/RS92-GDP/version-002/LIN")
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_gruan_unknown_product() -> None:
     """Test GRUAN with unknown product."""
@@ -147,7 +139,6 @@ def test_gruan_unknown_product() -> None:
         GRUAN(product="UNKNOWN", site="LIN")
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 def test_gruan_unknown_site() -> None:
     """Test GRUAN with unknown site."""

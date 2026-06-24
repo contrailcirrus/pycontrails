@@ -210,9 +210,6 @@ filterwarnings = [
     "ignore:Conversion of an array with ndim > 0 to a scalar:DeprecationWarning:pyproj.transformer",
     "ignore:numpy.ndarray size changed:RuntimeWarning",
 ]
-markers = [
-    "unreliable: mark a test as unreliable, often due to interaction with an external service",
-]
 testpaths = ["tests/unit"]
 
 # RST linter
@@ -293,8 +290,7 @@ build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
 skip = ["*-win32", "*-manylinux_i686", "*-musllinux*", "*-macosx_x86_64"]
 build-verbosity = 3
 test-extras = ["complete", "dev"]
-test-command = "python -m pytest -m \"not unreliable\" ./tests -vv"
+# Force tests that make network calls to be skipped (see tests/__init__.py)
+environment = { PYCONTRAILS_OFFLINE = "1" }
+test-command = "python -m pytest ./tests -vv"
 test-sources = ["tests", "pyproject.toml"]
-
-[tool.cibuildwheel.linux]
-environment-pass = ["GITHUB_ACTIONS"]

@@ -14,6 +14,8 @@
 
 - Move cibuildwheel configs from the `.github/workflows/release.yaml` workflow to the `pyproject.toml` for easier local testing.
 - Remove mypy check for python 3.11 in the test workflow (numpy 2.5 only supports python 3.12 and above).
+- Remove the `pytest.mark.unreliable` marker in favor of skipping tests that make network calls with `pytest.mark.skipif(OFFLINE)`. Set the `PYCONTRAILS_OFFLINE` environment variable to force these tests to be skipped regardless of network availability. This variable is now set in the release workflow to skip all tests that make network calls.
+- Remove the `IN_GITHUB_ACTIONS` flag from the LEO tests, which was redundant with the `PYCONTRAILS_SKIP_LEO_TESTS` environment variable.
 
 ## 0.63.2
 

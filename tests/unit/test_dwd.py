@@ -35,7 +35,6 @@ AnyICONDatalibClass = TypeVar(
 #############################
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize(("domain", "count"), [("global", 4), ("europe", 8), ("germany", 8)])
 def test_list_forecasts(domain: str, count: int) -> None:
@@ -44,14 +43,12 @@ def test_list_forecasts(domain: str, count: int) -> None:
     assert len(forecasts) == count
 
 
-@pytest.mark.unreliable
 def test_list_forecasts_error() -> None:
     """Test errors with invalid domains."""
     with pytest.raises(ValueError, match="Unknown domain"):
         _ = ods.list_forecasts("foo")
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps(domain: str) -> None:
@@ -62,7 +59,6 @@ def test_list_forecast_steps(domain: str) -> None:
     assert steps[-1] >= forecast + timedelta(hours=48)  # all forecasts have >= 48 hour horizon
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps_warning(domain: str) -> None:
@@ -72,14 +68,12 @@ def test_list_forecast_steps_warning(domain: str) -> None:
     assert len(steps) == 0
 
 
-@pytest.mark.unreliable
 def test_list_forecast_steps_invalid_domain() -> None:
     """Test forecast step listing with invalid domain."""
     with pytest.raises(ValueError, match="Unknown domain"):
         _ = ods.list_forecast_steps("foo", datetime(1900, 1, 1))
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps_icon_datalib_consistency(domain: str) -> None:
@@ -221,7 +215,6 @@ def test_rpaths(
     assert ods.rpath(domain, forecast, variable, step, level) == expected
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_get(domain: str) -> None:

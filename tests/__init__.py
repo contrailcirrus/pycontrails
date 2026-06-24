@@ -56,9 +56,15 @@ except Exception:
 else:
     BIGQUERY_ACCESS = True
 
-try:
-    requests.get("https://github.com", timeout=5)
-except Exception:
+# Tests that make network calls are skipped when OFFLINE is True. Set the
+# PYCONTRAILS_OFFLINE environment variable to force these tests to be skipped
+# regardless of network availability (e.g., in the release workflow).
+if os.getenv("PYCONTRAILS_OFFLINE"):
     OFFLINE = True
 else:
-    OFFLINE = False
+    try:
+        requests.get("https://github.com", timeout=5)
+    except Exception:
+        OFFLINE = True
+    else:
+        OFFLINE = False

@@ -318,7 +318,6 @@ def test_google_forecast_no_cache_store(mock_requests):
 # ---
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
 def test_integration_severity(local_cache):
@@ -337,7 +336,6 @@ def test_integration_severity(local_cache):
     _check_mds_values(mds, severity=True, eeef=False)
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
 def test_integration_eeef(local_cache):
@@ -356,7 +354,6 @@ def test_integration_eeef(local_cache):
     _check_mds_values(mds, severity=False, eeef=True)
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
 def test_integration_both(local_cache):
@@ -375,7 +372,6 @@ def test_integration_both(local_cache):
     _check_mds_values(mds, severity=True, eeef=True)
 
 
-@pytest.mark.unreliable
 @pytest.mark.skipif(OFFLINE, reason="offline")
 @pytest.mark.skipif("GOOGLE_API_KEY" not in os.environ, reason="GOOGLE_API_KEY not set")
 def test_integration_cache_consistency(tmp_path: pathlib.Path):
