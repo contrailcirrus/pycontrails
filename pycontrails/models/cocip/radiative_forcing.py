@@ -1394,7 +1394,10 @@ def contrail_contrail_overlap_radiative_effects(
 
         # Calculate local contrail SW and LW RF with contrail overlapping
         contrails_level = _local_sw_and_lw_rf_with_contrail_overlap(
-            contrails_level, habit_distributions, radius_threshold_um
+            contrails_level,
+            habit_distributions,
+            radius_threshold_um,
+            rf_model_s2025=rf_model_s2025,
         )
 
         # Cumulative change in background RSR and OLR fields
