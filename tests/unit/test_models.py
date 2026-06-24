@@ -365,7 +365,7 @@ def test_model_flight_downselect_met(met_era5_fake: MetDataset, flight_fake: Fli
         met_longitude_buffer=(15, 15),
         met_latitude_buffer=(5, 10),
         met_level_buffer=(0, 0),
-        met_time_buffer=(0, np.timedelta64(1, "h")),
+        met_time_buffer=(np.timedelta64(0, "h"), np.timedelta64(1, "h")),
     )
     # When eval is called, the model will downselect met
     _ = flight_model.eval(source=fl2)
