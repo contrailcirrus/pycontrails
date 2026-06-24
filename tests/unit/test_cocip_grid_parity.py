@@ -145,7 +145,14 @@ def test_parity(
     exclude_keys = ["segment_length", "dsn_dz", "time", "formation_time"]
 
     for key in common_keys.difference(exclude_keys):
-        np.testing.assert_allclose(downwash1[key], downwash2[key], err_msg=key, rtol=rtol)
+        left = downwash1[key]
+        right = downwash2[key]
+        if np.issubdtype(left.dtype, np.timedelta64):
+            # Compare as float nanoseconds (passing timedelta64 to assert_allclose
+            # trips a numpy 2.5 deprecation warning)
+            left = left / np.timedelta64(1, "ns")
+            right = right / np.timedelta64(1, "ns")
+        np.testing.assert_allclose(left, right, err_msg=key, rtol=rtol)
 
     different_keys = [
         ("vertical_velocity", "lagrangian_tendency_of_air_pressure"),

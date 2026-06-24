@@ -806,8 +806,12 @@ def test_flight_output(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
 
         df = pd.read_parquet(".test.pq")
 
-        # timedelta columns have been problematic in the past
-        np.testing.assert_allclose(df["contrail_age"], out.dataframe["contrail_age"])
+        # Compare as float nanoseconds (passing timedelta64 to assert_allclose
+        # trips a numpy 2.5 deprecation warning)
+        np.testing.assert_allclose(
+            df["contrail_age"] / np.timedelta64(1, "ns"),
+            out.dataframe["contrail_age"] / np.timedelta64(1, "ns"),
+        )
 
     finally:
         # clean up
@@ -883,6 +887,16 @@ def test_eval_persistent(cocip_persistent: Cocip, regenerate_results: bool) -> N
     for key in flight_output:
         if key in ["time", "flight_id"]:
             np.testing.assert_array_equal(cocip_persistent.source[key], flight_output[key])
+            continue
+        if key == "contrail_age":
+            # Compare as float nanoseconds (passing timedelta64 to assert_allclose
+            # trips a numpy 2.5 deprecation warning)
+            np.testing.assert_allclose(
+                cocip_persistent.source[key] / np.timedelta64(1, "ns"),
+                flight_output[key] / np.timedelta64(1, "ns"),
+                err_msg=key,
+                rtol=rtol,
+            )
             continue
         if key == "atr20":
             np.testing.assert_allclose(
