@@ -56,7 +56,7 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Cache mypy and pytest
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           # Note the caches are specific to branches, so we don't need to specify here
           # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache
