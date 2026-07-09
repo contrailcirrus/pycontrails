@@ -284,11 +284,11 @@ def parse_ofp_xml(raw_xml: AnyStr | IO[AnyStr]) -> flight.Flight:
     if val := root.get("flightPlanId"):
         attrs["flight_plan_id"] = val
     if val := root.get("category"):
-        attrs["category"] = val
+        attrs["flight_plan_category"] = val
 
     m633_header = root.find(".//{*}M633Header")
     if m633_header is not None and (val := m633_header.get("timestamp")):
-        attrs["m633_timestamp"] = pd.to_datetime(val, utc=True)
+        attrs["flight_plan_header_timestamp"] = pd.to_datetime(val, utc=True)
 
     aircraft_el = root.find(".//{*}Aircraft")
     if aircraft_el is not None and (val := aircraft_el.get("aircraftRegistration")):
