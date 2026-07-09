@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Features
+
+- Extend the OFP XML flight plan parser `flightplan.parse_ofp_xml` by exposing M633 `flight_plan_timestamp`, `flight_plan_category`, and `flight_plan_id` fields.
+
 ## 0.63.3
 
 ### Fixes
