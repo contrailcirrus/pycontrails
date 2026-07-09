@@ -149,7 +149,7 @@ def test_ofp_xml_parser() -> None:
     assert flight.attrs["flight_number"] == "ZZ1234"
     assert flight.attrs["flight_plan_id"] == "OFP9"
     assert flight.attrs["category"] == "normal"
-    assert flight.attrs["m633_timestamp"] == "2026-03-23T12:01:00Z"
+    assert flight.attrs["m633_timestamp"] == pd.Timestamp("2026-03-23T12:01:00Z")
     assert flight["waypoint_name"].tolist() == ["AAAA", "BBBB"]
     assert flight["latitude"].tolist() == [0.0, 90.0]
     assert flight["longitude"].tolist() == [1.0, -180.0]
