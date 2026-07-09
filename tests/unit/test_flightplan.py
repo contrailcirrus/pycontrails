@@ -98,10 +98,11 @@ def test_flightplan_two() -> None:
 
 def test_ofp_xml_parser() -> None:
     xml = """<?xml version="1.0" encoding="UTF-8"?>
-        <FlightPlan computedTime="2026-03-23T12:00:00Z"
+        <FlightPlan flightPlanId="OFP9" category="normal" computedTime="2026-03-23T12:00:00Z"
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="http://aeec.aviation-ia.net/633 FlightPlan.xsd"
             xmlns="http://aeec.aviation-ia.net/633">
+        <M633Header timestamp="2026-03-23T12:01:00Z" versionNumber="3"/>
         <M633SupplementaryHeader>
             <Flight scheduledTimeOfDeparture="2026-03-23T14:00:00Z">
                 <FlightIdentification>
@@ -146,6 +147,9 @@ def test_ofp_xml_parser() -> None:
     assert len(flight) == 2
 
     assert flight.attrs["flight_number"] == "ZZ1234"
+    assert flight.attrs["flight_plan_id"] == "OFP9"
+    assert flight.attrs["category"] == "normal"
+    assert flight.attrs["m633_timestamp"] == "2026-03-23T12:01:00Z"
     assert flight["waypoint_name"].tolist() == ["AAAA", "BBBB"]
     assert flight["latitude"].tolist() == [0.0, 90.0]
     assert flight["longitude"].tolist() == [1.0, -180.0]
