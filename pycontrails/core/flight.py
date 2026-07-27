@@ -696,7 +696,7 @@ class Flight(GeoVectorDataset):
 
     def segment_rocd(
         self,
-        air_temperature: None | npt.NDArray[np.floating] = None,
+        air_temperature: npt.NDArray[np.floating] | None = None,
     ) -> npt.NDArray[np.floating]:
         """Calculate the rate of climb and descent (ROCD).
 
@@ -720,7 +720,7 @@ class Flight(GeoVectorDataset):
         self,
         threshold_rocd: float = 250.0,
         min_cruise_altitude_ft: float = 20000.0,
-        air_temperature: None | npt.NDArray[np.floating] = None,
+        air_temperature: npt.NDArray[np.floating] | None = None,
     ) -> npt.NDArray[np.uint8]:
         """Identify the phase of flight (climb, cruise, descent) for each segment.
 

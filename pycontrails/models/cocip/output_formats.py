@@ -2131,7 +2131,7 @@ def compare_cocip_with_goes(
     spatial_bbox: tuple[float, float, float, float] = (-160.0, -80.0, 10.0, 80.0),
     region: str = "F",
     path_write_img: pathlib.Path | None = None,
-) -> None | pathlib.Path:
+) -> pathlib.Path | None:
     r"""
     Compare simulated persistent contrails from CoCiP with GOES satellite imagery.
 

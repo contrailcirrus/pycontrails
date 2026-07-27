@@ -218,7 +218,7 @@ class CocipUncertaintyParams(CocipParams):
 
         return out
 
-    def rvs(self, size: None | int = None) -> dict[str, np.float64 | npt.NDArray[np.floating]]:
+    def rvs(self, size: int | None = None) -> dict[str, np.float64 | npt.NDArray[np.floating]]:
         """Call each distribution's `rvs` method to generate random parameters.
 
         Seed calls to `rvs` with class variable `rng`.

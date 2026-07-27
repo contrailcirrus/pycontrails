@@ -1139,7 +1139,7 @@ def air_to_fuel_ratio(
     thrust_setting: ArrayScalarLike,
     *,
     cruise: bool = False,
-    T_compressor_inlet: None | ArrayScalarLike = None,
+    T_compressor_inlet: ArrayScalarLike | None = None,
 ) -> ArrayScalarLike:
     """Calculate air-to-fuel ratio from thrust setting.
 

@@ -347,7 +347,7 @@ def estimate_nox_ffm2(
     true_airspeed: npt.NDArray[np.floating],
     air_pressure: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
-    specific_humidity: None | npt.NDArray[np.floating] = None,
+    specific_humidity: npt.NDArray[np.floating] | None = None,
 ) -> npt.NDArray[np.floating]:
     """Estimate the nitrogen oxide (NOx) emissions index (EI) at cruise conditions.
 
