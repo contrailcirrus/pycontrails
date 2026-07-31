@@ -365,9 +365,9 @@ class Fleet(Flight):
     def add_pseudo_waypoints(
         self,
         resolution: str | pd.Timedelta = "1min",
-        minimum_rocd: float = 500,
-        nominal_rocd: float = 2000,
-    ) -> Self:
+        minimum_rocd: float = 500.0,
+        nominal_rocd: float = 2000.0,
+    ) -> NoReturn:
         msg = "Only implemented for Flight instances"
         raise NotImplementedError(msg)
 
