@@ -1029,6 +1029,9 @@ class Flight(GeoVectorDataset):
         filt = (abs_rocd > 0.0) & (abs_rocd < minimum_rocd)  # both climbs and descents
 
         idx = np.flatnonzero(filt)
+        if idx.size == 0:  # early exit (this could be omitted)
+            return self.copy()
+
         d_alt_ft = alt_ft[idx + 1] - alt_ft[idx]
         d_t = np.abs(d_alt_ft) / nominal_rocd * 60.0  # minute -> second
         t_exact = time_s[idx + 1] - d_t
@@ -1044,9 +1047,9 @@ class Flight(GeoVectorDataset):
         lon = (np.interp(t, time_s, lon_unwrapped) + 180.0) % 360.0 - 180.0
         lat = np.interp(t, time_s, self["latitude"])
 
-        data = {}
+        data: dict[str, np.ndarray] = {}
         if "waypoint_name" in self:
-            data["waypoint_name"] = ["PS"] * len(idx)  # name the pseudo waypoints "PS"
+            data["waypoint_name"] = np.array(["PS"] * len(idx))  # name the pseudo waypoints "PS"
 
         for vert_key in self.vertical_keys:
             if vert_key in self:
