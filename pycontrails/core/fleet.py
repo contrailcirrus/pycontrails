@@ -362,6 +362,16 @@ class Fleet(Flight):
         return type(self).from_seq(flights, broadcast_numeric=False, attrs=self.attrs)
 
     @override
+    def add_pseudo_waypoints(
+        self,
+        resolution: str | pd.Timedelta = "1min",
+        minimum_rocd: float = 500,
+        nominal_rocd: float = 2000,
+    ) -> Self:
+        msg = "Only implemented for Flight instances"
+        raise NotImplementedError(msg)
+
+    @override
     def segment_length(self) -> npt.NDArray[np.floating]:
         return np.where(self.final_waypoints, np.nan, super().segment_length())
 
