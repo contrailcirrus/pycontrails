@@ -966,6 +966,102 @@ class Flight(GeoVectorDataset):
         data = {k: v.to_numpy() for k, v in df.items()}
         return type(self)._from_fastpath(data, attrs=self.attrs, fuel=self.fuel)
 
+    def add_pseudo_waypoints(
+        self,
+        resolution: str | pd.Timedelta = "1min",
+        minimum_rocd: float = 500.0,
+        nominal_rocd: float = 2000.0,
+    ) -> Self:
+        """Add pseudo waypoints as necessary at the start of each step climb or descent.
+
+        .. versionadded:: 0.63.4
+
+        Flight plans encode a step climb (or descent) as a pair of cruise waypoints at different
+        altitudes. Linearly interpolating altitude between them implies an unrealistic shallow
+        climb that ATC would not clear. Any segment whose ROCD is nonzero but below the
+        ``minimum_rocd`` is treated as such a step. For these segments, a pseudo waypoint is
+        inserted where the step climb actually begins. In this way, the segment becomes a level
+        flight followed by a step climb at ``nominal_rocd``.
+        ::
+
+            original                        with pseudo waypoint PS
+
+            FL360                  B        FL360                  B
+                               ,-'                                /
+                           ,-'                                   /
+            FL340   A  ,-'                  FL340   A -------- PS
+
+
+        The pseudo waypoint lands on the last multiple of ``resolution`` at or before the
+        exact step start. Rounding down lengthens the step duration, which keeps the resulting ROCD
+        at or below ``nominal_rocd``. For a step shorter than ``resolution``, snapping would
+        push the ROCD back below ``minimum_rocd``, and the exact time is kept instead.
+
+        Parameters
+        ----------
+        resolution : str | pd.Timedelta, optional
+            Frequency onto which pseudo waypoint times are snapped, by default "1min".
+            Use "1s" for the exact time.
+        minimum_rocd : float, optional
+            ROCD below which an altitude change is treated as a step climb, by default 500.0,
+            [:math:`ft min^{-1}`].
+        nominal_rocd : float, optional
+            ROCD at which the step climb or descent is flown, by default 2000.0,
+            [:math:`ft min^{-1}`].
+
+        Returns
+        -------
+        Self
+            Copy of the flight with pseudo waypoints inserted. Pseudo waypoints are named
+            "PS" if the flight has a ``waypoint_name`` key.
+        """
+        if nominal_rocd < minimum_rocd:
+            raise ValueError("The nominal ROCD must exceed the minimum ROCD")
+
+        res_s = pd.Timedelta(resolution) // pd.Timedelta("1s")
+        if res_s <= 0:
+            raise ValueError("The resolution must be at least one second")
+
+        abs_rocd = np.abs(self.segment_rocd())
+        alt_ft = self.altitude_ft
+        time_s = self["time"].astype("datetime64[s]").astype(float)  # truncate to second, floatize
+
+        filt = (abs_rocd > 0.0) & (abs_rocd < minimum_rocd)  # both climbs and descents
+
+        idx = np.flatnonzero(filt)
+        d_alt_ft = alt_ft[idx + 1] - alt_ft[idx]
+        d_t = np.abs(d_alt_ft) / nominal_rocd * 60.0  # minute -> second
+        t_exact = time_s[idx + 1] - d_t
+
+        t_snap = np.floor(t_exact / res_s) * res_s
+
+        # Snapping down can drag the ROCD back below minimum_rocd, keep the exact time in that case
+        t = np.where(t_snap <= time_s[idx + 1] - d_t * nominal_rocd / minimum_rocd, t_exact, t_snap)
+
+        # Could interpolate on the geodesic with pyproj if needed. For now, use a straight
+        # line in the Plate Carree space (same as resample_and_fill for short segments).
+        lon_unwrapped = np.unwrap(self["longitude"], period=360.0)
+        lon = (np.interp(t, time_s, lon_unwrapped) + 180.0) % 360.0 - 180.0
+        lat = np.interp(t, time_s, self["latitude"])
+
+        data = {}
+        if "waypoint_name" in self:
+            data["waypoint_name"] = ["PS"] * len(idx)  # name the pseudo waypoints "PS"
+
+        for vert_key in self.vertical_keys:
+            if vert_key in self:
+                data[vert_key] = self[vert_key][idx]
+
+        ps = Flight(
+            longitude=lon,
+            latitude=lat,
+            time=t.astype("datetime64[s]").astype("datetime64[ns]"),
+            data=data,
+        )
+
+        gvd = GeoVectorDataset.sum([self, ps], infer_attrs=False, fill_value=np.nan).sort("time")
+        return type(self)._from_fastpath(gvd.data, attrs=self.attrs, fuel=self.fuel)
+
     def clean_and_resample(
         self,
         freq: str = "1min",
