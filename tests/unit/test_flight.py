@@ -1554,3 +1554,66 @@ class TestCargoLoadFactorEstimates:
             origin_airport_icao, destination_airport_icao, total_flight_dist, pax_ac
         )
         assert lf == pytest.approx(0.664, abs=1e-3)
+
+
+@pytest.mark.parametrize("sign", [1.0, -1.0])
+def test_step_is_flown_at_nominal_rocd(sign: float) -> None:
+    """Confirm a shallow 2000 ft step becomes level flight followed by a nominal-rate step."""
+    minimum_rocd = 500.0
+    nominal_rocd = 2000.0
+
+    fl = Flight(
+        {
+            "waypoint_name": ["A", "B", "C"],
+            "longitude": [0.0, 1.0, 2.0],
+            "latitude": [40.0, 40.0, 40.0],
+            "altitude_ft": 37000.0 + sign * np.array([0.0, 2000.0, 2000.0]),
+            "time": np.datetime64("2025-01-01T00:00:00")
+            + np.array([0, 3600, 7200]).astype("timedelta64[s]"),
+        }
+    )
+    assert np.abs(fl.segment_rocd()[0]) < minimum_rocd
+    out = fl.add_pseudo_waypoints(minimum_rocd=minimum_rocd, nominal_rocd=nominal_rocd)
+
+    assert out.size == fl.size + 1  # a single waypoint added
+    assert np.sum(out["waypoint_name"] == "PS") == 1
+
+    # Level flight, then the step at the nominal rate, then level again
+    np.testing.assert_allclose(out.segment_rocd()[:-1], [0.0, sign * nominal_rocd, 0.0])
+    np.testing.assert_allclose(out.altitude_ft[1], fl.altitude_ft[0])
+    assert out["time"][1] == np.datetime64("2025-01-01T00:59:00")
+
+
+@pytest.mark.parametrize("resolution", ["1s", "1min", "2min", "10min"])
+def test_no_segment_left_below_minimum_rocd(resolution: str) -> None:
+    """Confirm every remaining altitude change is flown between the minimum and nominal rates."""
+    minimum_rocd = 500.0
+    nominal_rocd = 2000.0
+
+    # Includes a slow step climb (73 ft/min) and a slow step descent (-100 ft/min)
+    fl = Flight(
+        {
+            "waypoint_name": ["A", "B", "C", "D", "E", "F"],
+            "longitude": np.linspace(-60.0, -10.0, 6),
+            "latitude": np.linspace(41.0, 46.0, 6),
+            "altitude_ft": np.array([37000.0, 37000.0, 41000.0, 41000.0, 37000.0, 37000.0]),
+            "time": np.datetime64("2025-01-01T00:00:00")
+            + np.array([0, 1200, 4500, 7000, 9400, 12000]).astype("timedelta64[s]"),
+        }
+    )
+    rocd_in = np.abs(fl.segment_rocd()[:-1])
+    assert np.sum((rocd_in > 0.0) & (rocd_in < minimum_rocd)) == 2  # 2 waypoints should be added
+
+    out = fl.add_pseudo_waypoints(
+        resolution=resolution,
+        minimum_rocd=minimum_rocd,
+        nominal_rocd=nominal_rocd,
+    )
+    rocd = np.abs(out.segment_rocd())
+
+    assert np.all(rocd[rocd > 0.0] >= minimum_rocd)
+
+    step = np.flatnonzero(out["waypoint_name"] == "PS")
+    assert step.size == 2
+    assert np.all(rocd[step] <= nominal_rocd + 1e-6)
+    assert np.all(np.diff(out["time"]) > np.timedelta64(0, "s"))
