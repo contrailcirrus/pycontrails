@@ -40,7 +40,7 @@ jobs:
 
       # cibuildwheel config in pyproject.toml
       - name: Build wheels
-        uses: pypa/cibuildwheel@v4.1
+        uses: pypa/cibuildwheel@v4.2
 
       - name: Upload wheels
         uses: actions/upload-artifact@v7
