@@ -287,7 +287,7 @@ def effective_radius_by_habit(
         effective_radius_myhre,
         0.0,
     ]
-    return np.piecewise(r_vol_um, cond_list, func_list)  # type: ignore[call-overload]
+    return np.piecewise(r_vol_um, cond_list, func_list)  # type: ignore[arg-type]
 
 
 def effective_radius_sphere(r_vol_um: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
