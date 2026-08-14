@@ -53,6 +53,7 @@ def test_emissions_latest_engine_uid():
     updated_engine_uid = emissions.get_latest_engine_uid(engine_uid)
     assert updated_engine_uid == "01P11CM114"
 
+
 @pytest.mark.parametrize("aircraft_type", ["B737", "B738", "A320"])
 @pytest.mark.parametrize("engine_uid", ["01P11CM114", "01P11CM116", "01P08CM105"])
 @pytest.mark.parametrize("bada", ["BADA3", "BADA4"])
