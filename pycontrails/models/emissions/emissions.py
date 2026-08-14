@@ -175,6 +175,10 @@ class Emissions(Model):
                 "No 'engine_uid' found on source attrs. A constant emissions will be used."
             )
 
+        # Get the latest engine UID if the original UID has been superseded
+        engine_uid = self.get_latest_engine_uid(engine_uid)
+        self.source.attrs["engine_uid_updated"] = engine_uid
+
         if "n_engine" not in self.source.attrs:
             try:
                 aircraft_type = self.source.get_constant("aircraft_type")
@@ -222,6 +226,29 @@ class Emissions(Model):
 
         self._total_pollutant_emissions()
         return self.source
+
+    def get_latest_engine_uid(self, engine_uid: str | None) -> None | str:
+        """Return the latest ICAO EDB engine UID if the input UID has been superseded.
+
+        Parameters
+        ----------
+        engine_uid : str
+            Engine unique identification number from the ICAO EDB
+
+        Returns
+        -------
+        str
+             Latest engine unique identification number from the ICAO EDB
+        """
+        try:
+            edb_gaseous = self.edb_engine_gaseous[engine_uid]  # type: ignore[index]
+        except KeyError:
+            return None
+
+        if edb_gaseous.data_superseded:
+            return edb_gaseous.superseded_by_engine_uid
+        else:
+            return engine_uid
 
     def _gaseous_emission_indices(self, engine_uid: str | None) -> None:
         """Calculate EI's for nitrogen oxide (NOx), carbon monoxide (CO) and hydrocarbons (HC).
@@ -977,6 +1004,8 @@ def load_edb_gaseous_database() -> dict[str, gaseous.EDBGaseous]:
         "Manufacturer": "manufacturer",
         "Engine Identification": "engine_name",
         "Combustor Description": "combustor",
+        "Data Superseded": "data_superseded",
+        "Superseded by UID No": "superseded_by_engine_uid",
         "B/P Ratio": "bypass_ratio",
         "Pressure Ratio": "pressure_ratio",
         "Rated Thrust (kN)": "rated_thrust",
@@ -1060,6 +1089,8 @@ def load_edb_nvpm_database() -> dict[str, nvpm.EDBnvpm]:
         "Manufacturer": "manufacturer",
         "Engine Identification": "engine_name",
         "Combustor Description": "combustor",
+        "Data Superseded": "data_superseded",
+        "Superseded by UID No": "superseded_by_engine_uid",
         "Pressure Ratio": "pressure_ratio",
         "Ambient Temp Min (K)": "temp_min",
         "Ambient Temp Max (K)": "temp_max",
