@@ -26,8 +26,8 @@ from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import jet, units
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
-EDB_ENGINE_PATH = _path_to_static / "edb-gaseous-v31-engines.csv"
-EDB_NVPM_PATH = _path_to_static / "edb-nvpm-v31-engines.csv"
+EDB_ENGINE_PATH = _path_to_static / "edb-gaseous-v32-engines.csv"
+EDB_NVPM_PATH = _path_to_static / "edb-nvpm-v32-engines.csv"
 ENGINE_UID_PATH = _path_to_static / "default-engine-uids.csv"
 
 
