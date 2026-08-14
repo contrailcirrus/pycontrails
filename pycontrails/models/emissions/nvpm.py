@@ -36,6 +36,10 @@ class EDBnvpm:
         name of engine
     combustor: str
         description of engine combustor
+    data_superseded: bool
+        Is there an updated data for this engine UID?
+    superseded_by_engine_uid: str
+        Updated engine_uid recommended for use by the ICAO EDB
 
     -------------------------------------
     ENGINE CHARACTERISTICS:
@@ -58,6 +62,8 @@ class EDBnvpm:
     manufacturer: str
     engine_name: str
     combustor: str
+    data_superseded: bool
+    superseded_by_engine_uid: str
 
     # Engine characteristics
     pressure_ratio: float
