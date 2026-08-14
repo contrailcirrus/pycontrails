@@ -47,11 +47,11 @@ def test_emissions_class_variables():
 def test_emissions_latest_engine_uid():
     """Ensure emissions module uses latest engine_uid if available."""
     emissions = Emissions()
-    engine_uid = "11CM070"
-    # 01P11CM114
-    emissions.get_latest_engine_uid_gaseous(engine_uid)
-    print(" ")
 
+    # Test gaseous
+    engine_uid = "11CM070"
+    updated_engine_uid = emissions.get_latest_engine_uid_gaseous(engine_uid)
+    assert updated_engine_uid == "01P11CM114"
 
 @pytest.mark.parametrize("aircraft_type", ["B737", "B738", "A320"])
 @pytest.mark.parametrize("engine_uid", ["01P11CM114", "01P11CM116", "01P08CM105"])
