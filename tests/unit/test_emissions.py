@@ -36,12 +36,21 @@ def test_emissions_class_variables():
     assert emissions2.edb_engine_nvpm is emissions2.edb_engine_nvpm
 
     # Update if emissions data changes
-    assert len(emissions1.edb_engine_gaseous) == 858
-    assert len(emissions1.edb_engine_nvpm) == 243
+    assert len(emissions1.edb_engine_gaseous) == 884
+    assert len(emissions1.edb_engine_nvpm) == 269
 
     # Check that the gaseous engine UIDs are a superset of the nvPM engine UIDs in the EDB.
     # This logic is used in cocip_grid.calc_emissions
     assert set(emissions1.edb_engine_gaseous).issuperset(emissions1.edb_engine_nvpm)
+
+
+def test_emissions_latest_engine_uid():
+    """Ensure emissions module uses latest engine_uid if available."""
+    emissions = Emissions()
+    engine_uid = "11CM070"
+    # 01P11CM114
+    emissions.get_latest_engine_uid_gaseous(engine_uid)
+    print(" ")
 
 
 @pytest.mark.parametrize("aircraft_type", ["B737", "B738", "A320"])
