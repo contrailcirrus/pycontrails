@@ -227,7 +227,7 @@ class Emissions(Model):
         self._total_pollutant_emissions()
         return self.source
 
-    def get_latest_engine_uid(self, engine_uid: str | None) -> None | str:
+    def get_latest_engine_uid(self, engine_uid: str | None) -> str | None:
         """Return the latest ICAO EDB engine UID if the input UID has been superseded.
 
         Parameters
@@ -247,8 +247,7 @@ class Emissions(Model):
 
         if edb_gaseous.data_superseded:
             return edb_gaseous.superseded_by_engine_uid
-        else:
-            return engine_uid
+        return engine_uid
 
     def _gaseous_emission_indices(self, engine_uid: str | None) -> None:
         """Calculate EI's for nitrogen oxide (NOx), carbon monoxide (CO) and hydrocarbons (HC).
