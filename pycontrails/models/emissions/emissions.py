@@ -177,7 +177,7 @@ class Emissions(Model):
 
         # Get the latest engine UID if the original UID has been superseded
         engine_uid = self.get_latest_engine_uid(engine_uid)
-        self.source.attrs["engine_uid_updated"] = engine_uid
+        self.source.attrs["engine_uid_used"] = engine_uid
 
         if "n_engine" not in self.source.attrs:
             try:
@@ -240,14 +240,19 @@ class Emissions(Model):
         str
              Latest engine unique identification number from the ICAO EDB
         """
-        try:
-            edb_gaseous = self.edb_engine_gaseous[engine_uid]  # type: ignore[index]
-        except KeyError:
+        if not engine_uid:
             return None
 
-        if edb_gaseous.data_superseded:
-            return edb_gaseous.superseded_by_engine_uid
-        return engine_uid
+        while True:  # keep looking down the chain for superseded engine_uid
+            try:
+                edb_gaseous = self.edb_engine_gaseous[engine_uid]
+            except KeyError:
+                return None
+
+            if edb_gaseous.data_superseded:
+                engine_uid = edb_gaseous.superseded_by_engine_uid
+                continue
+            return engine_uid
 
     def _gaseous_emission_indices(self, engine_uid: str | None) -> None:
         """Calculate EI's for nitrogen oxide (NOx), carbon monoxide (CO) and hydrocarbons (HC).
