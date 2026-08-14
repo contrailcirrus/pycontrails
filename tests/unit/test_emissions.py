@@ -53,6 +53,11 @@ def test_emissions_latest_engine_uid():
     updated_engine_uid = emissions.get_latest_engine_uid(engine_uid)
     assert updated_engine_uid == "01P11CM114"
 
+    # Test an engine uid with multiple leaps in the get_latest_engine_uid implementation
+    engine_uid = "11PW100"
+    updated_engine_uid = emissions.get_latest_engine_uid(engine_uid)
+    assert updated_engine_uid == "03P16PW192"
+
 
 @pytest.mark.parametrize("aircraft_type", ["B737", "B738", "A320"])
 @pytest.mark.parametrize("engine_uid", ["01P11CM114", "01P11CM116", "01P08CM105"])
