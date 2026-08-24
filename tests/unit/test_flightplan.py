@@ -158,6 +158,7 @@ def test_ofp_xml_parser() -> None:
         pd.Timestamp("2026-03-23T14:01:00Z").value,
         pd.Timestamp("2026-03-23T17:00:00Z").value,
     ]
+    assert flight["functions"].tolist() == [(), ()]
 
 
 def test_ofp_parser_departure_fallback() -> None:
@@ -279,3 +280,50 @@ def test_ofp_parser_altitude_formats() -> None:
     assert len(flight) == 2
 
     assert flight["altitude"].tolist() == [7620, 10000]
+
+
+def test_ofp_parser_functions() -> None:
+    """Test parsing waypoint <Function> elements."""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <FlightPlan computedTime="2026-03-23T12:00:00Z"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://aeec.aviation-ia.net/633 FlightPlan.xsd"
+            xmlns="http://aeec.aviation-ia.net/633">
+        <M633SupplementaryHeader>
+            <Flight scheduledTimeOfDeparture="2026-03-23T14:00:00Z">
+                <FlightIdentification>
+                    <FlightNumber airlineIATACode="ZZ" number="1234">
+                        <CommercialFlightNumber>ZZ1234</CommercialFlightNumber>
+                    </FlightNumber>
+                </FlightIdentification>
+            </Flight>
+        </M633SupplementaryHeader>
+        <Waypoints>
+            <Waypoint waypointId="AAAAA" sequenceId="1">
+                <Coordinates latitude="0" longitude="0"/>
+                <Function>AtsItem15</Function>
+                <Function>BottomOfClimb</Function>
+                <Function>Enroute</Function>
+            </Waypoint>
+            <Waypoint waypointId="BBBBB" sequenceId="2">
+                <Coordinates latitude="0" longitude="0"/>
+                <TimeOverWaypoint>
+                    <EstimatedTime>
+                        <Value>2026-03-23T15:00:00Z</Value>
+                    </EstimatedTime>
+                </TimeOverWaypoint>
+                <Altitude>
+                    <EstimatedAltitude>
+                        <Value unit="m">10000</Value>
+                    </EstimatedAltitude>
+                </Altitude>
+            </Waypoint>
+        </Waypoints>
+    </FlightPlan>
+    """
+    flight = flightplan.parse_ofp_xml(xml)
+    assert len(flight) == 2
+    assert flight["functions"].tolist() == [
+        ("AtsItem15", "BottomOfClimb", "Enroute"),
+        (),
+    ]
