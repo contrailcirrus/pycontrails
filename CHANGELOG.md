@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Features
+
+- Add new `pycontrails.datalib.metoffice` module for accessing UK Met Office UM global-deterministic-10km forecast data from the public `met-office-atmospheric-model-data` S3 bucket.
+
 ## 0.63.5
 
 ### Features
