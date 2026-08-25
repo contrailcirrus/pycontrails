@@ -93,7 +93,7 @@ The data in the
 file was constructed from the `OpenSky database <https://opensky-network.org/>`__.
 We document the process here to ensure reproducibility.
 
-OpenSky provides access to an `impala shell <https://opensky-network.org/data/impala>`__
+OpenSky provides access to a `Trino interface <https://openskynetwork.github.io/opensky-api/trino.html>`__
 to query their database of ADS-B flight data.
 The query below identifies flights at low altitude in the hour after
 2022-03-01T00 (1646092800).
@@ -124,23 +124,4 @@ typically contains waypoint data with 1 second frequency.)
        AND baroaltitude IS NOT NULL
    ORDER BY time;
 
-The OpenSky impala shell simply streams text data over SSH.
-To convert to a CSV, the output of the impala shell can be piped (or copy-pasted)
-into the ``query_output.txt`` text file referenced below. The pandas
-code below converts the output of the above query to the ``data/flight.csv``
-file included here.
-
-.. code:: python
-
-   import pandas as pd
-   df = pd.read_csv("query_output.txt", sep="|", skiprows=[0, 2], skipfooter=1, engine="python")
-   df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
-   df.columns = df.columns.str.strip()
-
-   df = df.rename(columns={"lon": "longitude", "lat": "latitude", "baroaltitude": "altitude"})
-   df["time"] = pd.to_datetime(df["time"], unit="s")
-   df = df[["longitude", "latitude", "altitude", "time"]]
-
-   # artificially clip at 38000 ft to ensure we stay within met bounds
-   df["altitude"] = df["altitude"].clip(upper=11582.4)
-   df.to_csv("data/flight.csv", index=False)
+Various tools can be used to connect to the OpenSky trino interface, and provide output for example in CSV. 'pyopensky <https://github.com/open-aviation/pyopensky>`__ is the recommended library to connect to OpenSky.
