@@ -17,7 +17,7 @@ The conda-forge package includes all optional runtime dependencies.
 pip install
 -----------
 
-With Python 3.11 or later, install the latest release from PyPI using ``pip``:
+With Python 3.12 or later, install the latest release from PyPI using ``pip``:
 
 .. code-block:: bash
 
@@ -27,7 +27,7 @@ With Python 3.11 or later, install the latest release from PyPI using ``pip``:
     # install with all optional dependencies
     $ pip install "pycontrails[complete]"
 
-Wheels are currently built and tested for python 3.11 - 3.14
+Wheels are currently built and tested for python 3.12 - 3.15
 on Linux, macOS, and Windows.
 
 Install the latest development version directly from GitHub:
