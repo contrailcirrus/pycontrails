@@ -983,6 +983,14 @@ def test_eval_persistent2(cocip_persistent2: Cocip, regenerate_results: bool) ->
         if key in ["time", "flight_id"]:
             assert np.all(cocip_persistent2.source[key] == flight_output[key])
             continue
+        if key == "contrail_age":
+            np.testing.assert_allclose(
+                cocip_persistent2.source[key] / np.timedelta64(1, "s"),
+                flight_output[key].dt.total_seconds(),
+                err_msg=key,
+                rtol=rtol,
+            )
+            continue
         if key == "level":
             np.testing.assert_allclose(
                 cocip_persistent2.source.level, flight_output[key], err_msg=key
