@@ -309,7 +309,7 @@ def _parse_waypoint(wp: ET.Element, departure: pd.Timestamp) -> dict[str, Any]:
         "altitude": _parse_altitude_m(wp),
         "time": _parse_time(wp, departure),
         "functions": tuple(
-            el.text.strip() for el in wp.findall(".//{*}Function") if el.text and el.text.strip()
+            f for el in wp.findall(".//{*}Function") if el.text and (f := el.text.strip())
         ),
     }
 
