@@ -8,6 +8,7 @@
 - Add new `Flight.add_pseudo_waypoints` method. This can be used to ensure `Flight`s arising from flight plans have realistic segment ROCDs.
 - Update the [ICAO EDB](https://www.easa.europa.eu/en/domains/environment/icao-aircraft-engine-emissions-databank) static files used in pycontrails emissions modeling from v31 to v32. With this update, pycontrails now supports emissions modeling for 26 new engines, bringing the total up to 884 engines (up from 858 engines in v31). This update includes new data for LEAP-1A, LEAP-1B, LEAP-1C and Trent 1000-TEN engines.
 - Update `emissions.py` to automatically use the latest `engine_uid` if the provided `engine_uid` has been superseded. (Supersession chains are followed to the end.)
+- Support parsing the `<Function>` elements of `<Waypoint>`s of the ARINC 633 OFP. An additional `"functions"` field is now included in the `Flight` output of `flightplan.parse_ofp_xml`.
 
 ## 0.63.3
 
