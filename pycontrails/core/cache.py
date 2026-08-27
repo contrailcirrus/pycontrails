@@ -430,8 +430,6 @@ class GCPCacheStore(CacheStore):
     """
 
     __slots__ = (
-        "_bucket",
-        "_client",
         "_disk_cache",
         "bucket",
         "chunk_size",
@@ -447,8 +445,6 @@ class GCPCacheStore(CacheStore):
     show_progress: bool
     chunk_size: int
     _disk_cache: DiskCacheStore
-    _client: google.cloud.storage.Client
-    _bucket: google.cloud.storage.Bucket
 
     def __init__(
         self,
@@ -463,7 +459,7 @@ class GCPCacheStore(CacheStore):
         chunk_size: int = 64 * 262144,
     ) -> None:
         try:
-            from google.cloud import storage
+            from google.cloud import storage  # noqa: F401
         except ModuleNotFoundError as e:
             dependencies.raise_module_not_found_error(
                 name="GCPCacheStore class",
@@ -512,12 +508,6 @@ class GCPCacheStore(CacheStore):
         if cache_dir and not cache_dir.endswith("/"):
             cache_dir = f"{cache_dir}/"
 
-        # set up gcp client
-        self._client = storage.Client(project=project)
-
-        # create bucket object and make sure bucket exists
-        self._bucket = self._client.bucket(bucket)
-
         # store root bucket/cache dir
         self.project = project
         self.bucket = bucket
@@ -551,18 +541,28 @@ class GCPCacheStore(CacheStore):
     def client(self) -> google.cloud.storage.Client:
         """Handle to Google Cloud Storage client.
 
+        A new client is constructed on every access rather than cached on the
+        instance, so a :class:`GCPCacheStore` holds no unpicklable state (e.g. it
+        can be sent to a Beam worker, which reconnects on first use there).
+
         Returns
         -------
         :class:`google.cloud.storage.Client`
             Handle to Google Cloud Storage client
         """
-        return self._client
+        from google.cloud import storage
+
+        return storage.Client(project=self.project)
+
+    def _get_bucket(self) -> google.cloud.storage.Bucket:
+        """Return a handle to the GCS bucket, constructed from a fresh client."""
+        return self.client.bucket(self.bucket)
 
     @property
     @override
     def size(self) -> float:
         # get list of blobs below this path
-        blobs = self._bucket.list_blobs(prefix=self.cache_dir)
+        blobs = self._get_bucket().list_blobs(prefix=self.cache_dir)
         size = sum(b.size for b in blobs)
         logger.debug("GCP cache size %s bytes", size)
         return size / 1e6
@@ -619,7 +619,7 @@ class GCPCacheStore(CacheStore):
             return True
 
         bucket_path = self.path(cache_path)
-        blob = self._bucket.blob(bucket_path)
+        blob = self._get_bucket().blob(bucket_path)
 
         return blob.exists()
 
@@ -678,7 +678,7 @@ class GCPCacheStore(CacheStore):
         # get bucket and disk paths and blob
         bucket_path = self.path(cache_path)
         disk_path = self._disk_cache.path(cache_path)
-        blob = self._bucket.blob(bucket_path)
+        blob = self._get_bucket().blob(bucket_path)
 
         logger.debug("GCP Cache put %s to %s", disk_path, bucket_path)
 
@@ -739,7 +739,7 @@ class GCPCacheStore(CacheStore):
         bucket_path = self.path(cache_path)
         disk_path = self._disk_cache.path(cache_path)
 
-        blob = self._bucket.blob(bucket_path)
+        blob = self._get_bucket().blob(bucket_path)
         if not blob.exists():
             raise ValueError(f"No object exists in cache at path {bucket_path}")
 
@@ -807,7 +807,7 @@ class GCPCacheStore(CacheStore):
         self.clear_disk()
 
         # get list of blobs below this path
-        blobs = self._bucket.list_blobs(prefix=bucket_path)
+        blobs = self._get_bucket().list_blobs(prefix=bucket_path)
 
         # clear blobs one at a time
         for blob in blobs:
@@ -875,8 +875,9 @@ def _download_with_progress(
             pycontrails_optional_package="gcp",
         )
 
-    blob = gcp_cache._bucket.get_blob(gcp_path)
-    url = blob._get_download_url(gcp_cache._client)
+    client = gcp_cache.client
+    blob = client.bucket(gcp_cache.bucket).get_blob(gcp_path)
+    url = blob._get_download_url(client)
     description = f"Download {gcp_path}"
 
     with (
@@ -884,6 +885,6 @@ def _download_with_progress(
         tqdm.wrapattr(local_file, "write", total=blob.size, desc=description) as file_obj,
     ):
         download = ChunkedDownload(url, chunk_size, file_obj)
-        transport = gcp_cache.client._http
+        transport = client._http
         while not download.finished:
             download.consume_next_chunk(transport, timeout=gcp_cache.timeout)

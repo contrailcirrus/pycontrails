@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import pickle
 import random
 from datetime import datetime
 
@@ -194,6 +195,20 @@ class TestGCPCacheStore:
         assert _cache.bucket == BUCKET
         assert ".gcp" not in _cache._disk_cache.cache_dir
         assert f"{CACHE_DIR}" in _cache._disk_cache.cache_dir
+
+    def test_cache_pickle(self) -> None:
+        """Test that a GCPCacheStore can be pickled (it holds no live GCS handles)."""
+        _cache = GCPCacheStore(bucket=BUCKET, cache_dir=f"{CACHE_DIR}/")
+        assert not hasattr(_cache, "_client")
+        assert not hasattr(_cache, "_bucket")
+
+        unpickled = pickle.loads(pickle.dumps(_cache))
+        assert unpickled.bucket == _cache.bucket
+        assert unpickled.cache_dir == _cache.cache_dir
+        assert unpickled.read_only == _cache.read_only
+
+        # confirm it still works after crossing the pickle boundary
+        assert unpickled.exists("this-object-should-not-exist") is False
 
     def test_cache_size(self) -> None:
         _cache = GCPCacheStore(
