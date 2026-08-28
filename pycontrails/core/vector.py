@@ -5,15 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import sys
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Self, overload
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import TYPE_CHECKING, Any, Self, overload, override
 
 import numpy as np
 import numpy.typing as npt

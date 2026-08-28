@@ -6,7 +6,6 @@ import hashlib
 import json
 import logging
 import pathlib
-import sys
 import typing
 import warnings
 from abc import ABC, abstractmethod
@@ -29,12 +28,8 @@ from typing import (
     Self,
     TypeVar,
     overload,
+    override,
 )
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
 
 import numpy as np
 import numpy.typing as npt

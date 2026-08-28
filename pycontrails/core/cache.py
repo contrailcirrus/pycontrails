@@ -7,16 +7,10 @@ import logging
 import os
 import pathlib
 import shutil
-import sys
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import TYPE_CHECKING, Any, override
 
 logger = logging.getLogger(__name__)
 

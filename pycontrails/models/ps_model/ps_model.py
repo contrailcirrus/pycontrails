@@ -5,14 +5,8 @@ from __future__ import annotations
 import dataclasses
 import functools
 import pathlib
-import sys
 from collections.abc import Mapping
-from typing import Any
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import Any, override
 
 import numpy as np
 import numpy.typing as npt
