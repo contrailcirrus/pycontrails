@@ -403,6 +403,12 @@ class GCPCacheStore(CacheStore):
         Only enable reading from cache. Defaults to ``True``.
     allow_clear : bool, optional
         Allow this cache to be cleared using :meth:`clear()`. Defaults to ``False``.
+    pickleable : bool, optional
+        If ``False`` (default), the underlying :class:`google.cloud.storage.Client`
+        and bucket handle are constructed once and cached on the instance.
+        If ``True``, a fresh client/bucket is constructed on every access instead,
+        so the instance holds no unpicklable state and can be pickled (e.g. sent to
+        an Apache Beam worker as a ``Map``/``ParDo`` kwarg). Defaults to ``False``.
     disk_cache : DiskCacheStore, optional
         Specify a custom local disk cache store to mirror files.
         Defaults to :class:`DiskCacheStore(cache_dir="{user_cache_dir}/.gcp/{bucket}")`
@@ -430,9 +436,12 @@ class GCPCacheStore(CacheStore):
     """
 
     __slots__ = (
+        "_cached_bucket",
+        "_cached_client",
         "_disk_cache",
         "bucket",
         "chunk_size",
+        "pickleable",
         "project",
         "read_only",
         "show_progress",
@@ -441,10 +450,13 @@ class GCPCacheStore(CacheStore):
     project: str | None
     bucket: str
     read_only: bool
+    pickleable: bool
     timeout: int
     show_progress: bool
     chunk_size: int
     _disk_cache: DiskCacheStore
+    _cached_client: google.cloud.storage.Client | None
+    _cached_bucket: google.cloud.storage.Bucket | None
 
     def __init__(
         self,
@@ -454,6 +466,7 @@ class GCPCacheStore(CacheStore):
         disk_cache: DiskCacheStore | None = None,
         read_only: bool = True,
         allow_clear: bool = False,
+        pickleable: bool = False,
         timeout: int = 300,
         show_progress: bool = False,
         chunk_size: int = 64 * 262144,
@@ -519,6 +532,11 @@ class GCPCacheStore(CacheStore):
         # allow the cache to be cleared or not
         self.allow_clear = allow_clear
 
+        # if True, never cache the client/bucket, so the instance stays picklable
+        self.pickleable = pickleable
+        self._cached_client = None
+        self._cached_bucket = None
+
         # parameters for GCP storage upload
         self.timeout = timeout
         self.show_progress = show_progress
@@ -541,23 +559,35 @@ class GCPCacheStore(CacheStore):
     def client(self) -> google.cloud.storage.Client:
         """Handle to Google Cloud Storage client.
 
-        A new client is constructed on every access rather than cached on the
-        instance, so a :class:`GCPCacheStore` holds no unpicklable state (e.g. it
-        can be sent to a Beam worker, which reconnects on first use there).
+        Cached and reused across accesses by default. If :attr:`pickleable` is
+        ``True``, a new client is constructed on every access instead, so the
+        instance holds no unpicklable state.
 
         Returns
         -------
         :class:`google.cloud.storage.Client`
             Handle to Google Cloud Storage client
         """
+        if self._cached_client is not None:
+            return self._cached_client
+
         from google.cloud import storage
 
-        return storage.Client(project=self.project)
+        client = storage.Client(project=self.project)
+        if not self.pickleable:
+            self._cached_client = client
+        return client
 
     @property
     def _bucket(self) -> google.cloud.storage.Bucket:
-        """Return a handle to the GCS bucket, constructed from a fresh client."""
-        return self.client.bucket(self.bucket)
+        """Return a handle to the GCS bucket, cached the same way as :attr:`client`."""
+        if self._cached_bucket is not None:
+            return self._cached_bucket
+
+        bucket = self.client.bucket(self.bucket)
+        if not self.pickleable:
+            self._cached_bucket = bucket
+        return bucket
 
     @property
     @override
