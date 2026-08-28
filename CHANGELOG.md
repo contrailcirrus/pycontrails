@@ -10,6 +10,15 @@
 - Update `emissions.py` to automatically use the latest `engine_uid` if the provided `engine_uid` has been superseded. (Supersession chains are followed to the end.)
 - Support parsing the `<Function>` elements of `<Waypoint>`s of the ARINC 633 OFP. An additional `"functions"` field is now included in the `Flight` output of `flightplan.parse_ofp_xml`.
 
+### Fixes
+
+- Fix a bug in the MEEM2 nvPM workflow (`Emissions(use_meem=True)`) in which engines with only some smoke numbers were passed to SCOPE11, producing NaN `nvpm_ei_m` and `nvpm_ei_n` arrays. These engines now fall back to constant emissions indices, matching the T4/T2 workflow. Reported in [#426](https://github.com/contrailcirrus/pycontrails/issues/426).
+- Distinguish the two causes of the constant nvPM fallback warning in both the T4/T2 and MEEM2 workflows (an engine missing from the EDB, and an engine present with incomplete smoke numbers).
+
+### Internals
+
+- Update [OpenSky](https://opensky-network.org/) documentation to reference [Trino interface](https://openskynetwork.github.io/opensky-api/trino.html).
+
 ## 0.63.3
 
 ### Fixes
@@ -26,7 +35,6 @@
 - Remove mypy check for python 3.11 in the test workflow (numpy 2.5 only supports python 3.12 and above).
 - Remove the `pytest.mark.unreliable` marker in favor of skipping tests that make network calls with `pytest.mark.skipif(OFFLINE)`. Set the `PYCONTRAILS_OFFLINE` environment variable to force these tests to be skipped regardless of network availability. This variable is now set in the release workflow to skip all tests that make network calls.
 - Remove the `IN_GITHUB_ACTIONS` flag from the LEO tests, which was redundant with the `PYCONTRAILS_SKIP_LEO_TESTS` environment variable.
-- Update [OpenSky](https://opensky-network.org/) documentation to reference [Trino interface](https://openskynetwork.github.io/opensky-api/trino.html).
 
 ## 0.63.2
 

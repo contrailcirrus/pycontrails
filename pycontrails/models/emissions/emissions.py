@@ -412,7 +412,12 @@ class Emissions(Model):
                 return
 
         # Use a constant nvPM emission index if no data is available
-        if engine_uid is not None:
+        if edb_gaseous is not None:
+            warnings.warn(
+                f"Engine {engine_uid} has incomplete smoke numbers in the EDB. "
+                "A constant emissions will be used."
+            )
+        elif engine_uid is not None:
             warnings.warn(
                 f"Cannot find 'engine_uid' {engine_uid} in EDB. A constant emissions will be used."
             )
@@ -458,11 +463,9 @@ class Emissions(Model):
         edb_nvpm = self.edb_engine_nvpm.get(engine_uid) if engine_uid else None
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
         has_sn_data = (
-            edb_gaseous
-            and ~np.isnan(
-                np.array(
-                    [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100]
-                )
+            edb_gaseous is not None
+            and np.isfinite(
+                [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100]
             ).all()
         )
 
@@ -471,7 +474,12 @@ class Emissions(Model):
         elif edb_gaseous is not None and has_sn_data:
             nvpm_data = self._nvpm_emission_indices_scope11_with_meem2(edb_gaseous, fuel)
         else:
-            if engine_uid is not None:
+            if edb_gaseous is not None:
+                warnings.warn(
+                    f"Engine {engine_uid} has incomplete smoke numbers in the EDB. "
+                    "A constant emissions will be used."
+                )
+            elif engine_uid is not None:
                 warnings.warn(
                     f"Cannot find 'engine_uid' {engine_uid} in EDB. "
                     "A constant emissions will be used."
