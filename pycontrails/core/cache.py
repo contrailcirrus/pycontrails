@@ -471,15 +471,6 @@ class GCPCacheStore(CacheStore):
         show_progress: bool = False,
         chunk_size: int = 64 * 262144,
     ) -> None:
-        try:
-            from google.cloud import storage  # noqa: F401
-        except ModuleNotFoundError as e:
-            dependencies.raise_module_not_found_error(
-                name="GCPCacheStore class",
-                package_name="google-cloud-storage",
-                module_not_found_error=e,
-            )
-
         if "https://" in cache_dir:
             raise ValueError(
                 "`cache_dir` should only specify base object path within the GCS bucket. "
@@ -571,7 +562,15 @@ class GCPCacheStore(CacheStore):
         if self._cached_client is not None:
             return self._cached_client
 
-        from google.cloud import storage
+        try:
+            from google.cloud import storage
+        except ModuleNotFoundError as e:
+            dependencies.raise_module_not_found_error(
+                name="GCPCacheStore.client property",
+                package_name="google-cloud-storage",
+                module_not_found_error=e,
+                pycontrails_optional_package="gcp",
+            )
 
         client = storage.Client(project=self.project)
         if not self.pickleable:
