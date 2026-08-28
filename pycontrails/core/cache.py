@@ -554,7 +554,8 @@ class GCPCacheStore(CacheStore):
 
         return storage.Client(project=self.project)
 
-    def _get_bucket(self) -> google.cloud.storage.Bucket:
+    @property
+    def _bucket(self) -> google.cloud.storage.Bucket:
         """Return a handle to the GCS bucket, constructed from a fresh client."""
         return self.client.bucket(self.bucket)
 
@@ -562,7 +563,7 @@ class GCPCacheStore(CacheStore):
     @override
     def size(self) -> float:
         # get list of blobs below this path
-        blobs = self._get_bucket().list_blobs(prefix=self.cache_dir)
+        blobs = self._bucket.list_blobs(prefix=self.cache_dir)
         size = sum(b.size for b in blobs)
         logger.debug("GCP cache size %s bytes", size)
         return size / 1e6
@@ -619,7 +620,7 @@ class GCPCacheStore(CacheStore):
             return True
 
         bucket_path = self.path(cache_path)
-        blob = self._get_bucket().blob(bucket_path)
+        blob = self._bucket.blob(bucket_path)
 
         return blob.exists()
 
@@ -678,7 +679,7 @@ class GCPCacheStore(CacheStore):
         # get bucket and disk paths and blob
         bucket_path = self.path(cache_path)
         disk_path = self._disk_cache.path(cache_path)
-        blob = self._get_bucket().blob(bucket_path)
+        blob = self._bucket.blob(bucket_path)
 
         logger.debug("GCP Cache put %s to %s", disk_path, bucket_path)
 
@@ -739,7 +740,7 @@ class GCPCacheStore(CacheStore):
         bucket_path = self.path(cache_path)
         disk_path = self._disk_cache.path(cache_path)
 
-        blob = self._get_bucket().blob(bucket_path)
+        blob = self._bucket.blob(bucket_path)
         if not blob.exists():
             raise ValueError(f"No object exists in cache at path {bucket_path}")
 
@@ -807,7 +808,7 @@ class GCPCacheStore(CacheStore):
         self.clear_disk()
 
         # get list of blobs below this path
-        blobs = self._get_bucket().list_blobs(prefix=bucket_path)
+        blobs = self._bucket.list_blobs(prefix=bucket_path)
 
         # clear blobs one at a time
         for blob in blobs:

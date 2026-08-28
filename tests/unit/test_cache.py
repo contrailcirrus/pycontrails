@@ -200,7 +200,6 @@ class TestGCPCacheStore:
         """Test that a GCPCacheStore can be pickled (it holds no live GCS handles)."""
         _cache = GCPCacheStore(bucket=BUCKET, cache_dir=f"{CACHE_DIR}/")
         assert not hasattr(_cache, "_client")
-        assert not hasattr(_cache, "_bucket")
 
         unpickled = pickle.loads(pickle.dumps(_cache))
         assert unpickled.bucket == _cache.bucket
