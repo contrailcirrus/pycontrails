@@ -199,12 +199,57 @@ class TestGCPCacheStore:
     def test_cache_pickle(self) -> None:
         """Test that a GCPCacheStore can be pickled (it holds no live GCS handles)."""
         _cache = GCPCacheStore(bucket=BUCKET, cache_dir=f"{CACHE_DIR}/")
-        assert not hasattr(_cache, "_client")
+        assert _cache.pickleable is False
+        assert _cache._cached_client is None
+        assert _cache._cached_bucket is None
 
         unpickled = pickle.loads(pickle.dumps(_cache))
         assert unpickled.bucket == _cache.bucket
         assert unpickled.cache_dir == _cache.cache_dir
         assert unpickled.read_only == _cache.read_only
+
+        # confirm it still works after crossing the pickle boundary
+        assert unpickled.exists("this-object-should-not-exist") is False
+
+    def test_cache_client_caching(self) -> None:
+        """Test that the client/bucket are cached and reused when pickleable=False."""
+        _cache = GCPCacheStore(bucket=BUCKET, cache_dir=f"{CACHE_DIR}/", pickleable=False)
+        client1 = _cache.client
+        client2 = _cache.client
+        assert client1 is client2
+
+        bucket1 = _cache._bucket
+        bucket2 = _cache._bucket
+        assert bucket1 is bucket2
+
+    def test_cache_client_not_cached_when_pickleable(self) -> None:
+        """Test that a fresh client/bucket is built on every access when pickleable=True."""
+        _cache = GCPCacheStore(bucket=BUCKET, cache_dir=f"{CACHE_DIR}/", pickleable=True)
+        client1 = _cache.client
+        client2 = _cache.client
+        assert client1 is not client2
+
+        bucket1 = _cache._bucket
+        bucket2 = _cache._bucket
+        assert bucket1 is not bucket2
+
+        # accessing the properties never populates the caches for a pickleable instance
+        assert _cache._cached_client is None
+        assert _cache._cached_bucket is None
+
+    def test_cache_pickle_after_use_requires_pickleable(self) -> None:
+        """Test that pickleable=True allows pickling even after client/bucket access."""
+        _cache = GCPCacheStore(bucket=BUCKET, cache_dir=f"{CACHE_DIR}/", pickleable=True)
+
+        # access the client/bucket before pickling -- this is exactly what would leave
+        # unpicklable state on the instance if it were cached
+        _ = _cache.client
+        _ = _cache._bucket
+
+        unpickled = pickle.loads(pickle.dumps(_cache))
+        assert unpickled.bucket == _cache.bucket
+        assert unpickled.cache_dir == _cache.cache_dir
+        assert unpickled.pickleable is True
 
         # confirm it still works after crossing the pickle boundary
         assert unpickled.exists("this-object-should-not-exist") is False
