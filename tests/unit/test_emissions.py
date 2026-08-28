@@ -423,6 +423,31 @@ def test_emission_interp_all_nan():
     assert np.isfinite(out2["nvpm_ei_m"]).all()
 
 
+def test_meem2_partial_smoke_numbers(flight_fake: Flight):
+    """Confirm fix to https://github.com/contrailcirrus/pycontrails/issues/426
+
+    Because not all smoke numbers are available for the 1PW043 engine, a constant
+    emissions index is used.
+    """
+    emissions = Emissions(use_meem=True)
+
+    edb_gaseous = emissions.edb_engine_gaseous["1PW043"]
+    sn = [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100]
+    assert np.isfinite(sn).tolist() == [False, False, False, True]
+
+    flight_fake["air_temperature"] = np.full(flight_fake.size, 216.0)
+    flight_fake["specific_humidity"] = np.full(flight_fake.size, 1e-6)
+    flight_fake["true_airspeed"] = np.full(flight_fake.size, 247.0)
+    flight_fake["fuel_flow"] = np.full(flight_fake.size, 0.3)
+    flight_fake.attrs["engine_uid"] = "1PW043"
+    flight_fake.attrs["n_engine"] = 2
+
+    with pytest.warns(UserWarning, match="Engine 1PW043 has incomplete smoke numbers in the EDB."):
+        out = emissions.eval(source=flight_fake)
+
+    assert out.attrs["nvpm_data_source"] == "Constant"
+
+
 def test_t4_t2_ground_estimates():
     # Ground conditions from ICAO EDB (Airbus A320)
     true_airspeed = np.zeros(4)
