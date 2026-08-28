@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import math
 
 import numpy as np
 import numpy.typing as npt
@@ -149,6 +150,16 @@ class EDBGaseous:
     sn_85: float
     sn_100: float
     sn_max: float
+
+    @property
+    def has_finite_smoke_numbers(self) -> bool:
+        """Check whether smoke numbers are available at all four thrust settings."""
+        return (
+            math.isfinite(self.sn_7)
+            and math.isfinite(self.sn_30)
+            and math.isfinite(self.sn_85)
+            and math.isfinite(self.sn_100)
+        )
 
     @property
     def log_ei_nox_profile(self) -> EmissionsProfileInterpolator:

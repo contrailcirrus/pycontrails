@@ -400,16 +400,14 @@ class Emissions(Model):
         # Calculate nvPM emission indices using gaseous data from the EDB if available
         # and the smoke numbers are all available
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid)  # type: ignore[arg-type]
-        if edb_gaseous:
-            sn = [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100]
-            if np.isfinite(sn).all():
-                nvpm_data_source, nvpm_ei_m, nvpm_ei_n = (
-                    self._nvpm_emission_indices_scope11_with_t4_t2(edb_gaseous, fuel)
-                )
-                self.source.attrs["nvpm_data_source"] = nvpm_data_source
-                self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
-                self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
-                return
+        if edb_gaseous is not None and edb_gaseous.has_finite_smoke_numbers:
+            nvpm_data_source, nvpm_ei_m, nvpm_ei_n = self._nvpm_emission_indices_scope11_with_t4_t2(
+                edb_gaseous, fuel
+            )
+            self.source.attrs["nvpm_data_source"] = nvpm_data_source
+            self.source.setdefault("nvpm_ei_m", nvpm_ei_m)
+            self.source.setdefault("nvpm_ei_n", nvpm_ei_n)
+            return
 
         # Use a constant nvPM emission index if no data is available
         if edb_gaseous is not None:
@@ -462,16 +460,10 @@ class Emissions(Model):
 
         edb_nvpm = self.edb_engine_nvpm.get(engine_uid) if engine_uid else None
         edb_gaseous = self.edb_engine_gaseous.get(engine_uid) if engine_uid else None
-        has_sn_data = (
-            edb_gaseous is not None
-            and np.isfinite(
-                [edb_gaseous.sn_7, edb_gaseous.sn_30, edb_gaseous.sn_85, edb_gaseous.sn_100]
-            ).all()
-        )
 
         if edb_nvpm is not None:
             nvpm_data = self._nvpm_emission_indices_meem2(edb_nvpm, fuel)
-        elif edb_gaseous is not None and has_sn_data:
+        elif edb_gaseous is not None and edb_gaseous.has_finite_smoke_numbers:
             nvpm_data = self._nvpm_emission_indices_scope11_with_meem2(edb_gaseous, fuel)
         else:
             if edb_gaseous is not None:
