@@ -2,15 +2,9 @@
 
 from __future__ import annotations
 
-import sys
 import warnings
 from collections.abc import Iterable
-from typing import Any, NoReturn, Self
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import Any, NoReturn, Self, override
 
 import numpy as np
 import numpy.typing as npt

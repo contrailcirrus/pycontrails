@@ -3,13 +3,7 @@
 from __future__ import annotations
 
 import json
-import sys
-from typing import Any
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import Any, override
 
 import numpy as np
 import pandas as pd

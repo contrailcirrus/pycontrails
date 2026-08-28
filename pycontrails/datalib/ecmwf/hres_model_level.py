@@ -13,15 +13,9 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import logging
-import sys
 import warnings
 from datetime import datetime, timedelta
-from typing import Any
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import Any, override
 
 LOG = logging.getLogger(__name__)
 
