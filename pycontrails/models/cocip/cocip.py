@@ -3,15 +3,9 @@
 from __future__ import annotations
 
 import logging
-import sys
 import warnings
 from collections.abc import Sequence
-from typing import Any, Literal, NoReturn, overload
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import Any, Literal, NoReturn, overload, override
 
 import numpy as np
 import numpy.typing as npt

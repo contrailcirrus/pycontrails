@@ -7,16 +7,10 @@ import hashlib
 import logging
 import os
 import pathlib
-import sys
 import warnings
 from contextlib import ExitStack
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import TYPE_CHECKING, Any, override
 
 LOG = logging.getLogger(__name__)
 

@@ -7,14 +7,8 @@ import contextlib
 import dataclasses
 import functools
 import pathlib
-import sys
 import warnings
-from typing import Any, NoReturn, overload
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import Any, NoReturn, overload, override
 
 import numpy as np
 import numpy.typing as npt
