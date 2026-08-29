@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 import os
 from datetime import datetime, timedelta
-from typing import TypeVar
 
 import numpy as np
 import pandas as pd
@@ -26,9 +25,8 @@ class ICONGermany(ICON):
     __init__ = functools.partialmethod(ICON.__init__, domain="germany")
 
 
-AnyICONDatalibClass = TypeVar(
-    "AnyICONDatalibClass", type[ICON], type[ICONGlobal], type[ICONEurope], type[ICONGermany]
-)
+type AnyICONDatalibClass = ICON | ICONGlobal | ICONEurope | ICONGermany
+
 
 #############################
 # Open Data Server utilities
