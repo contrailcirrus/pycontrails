@@ -70,7 +70,7 @@ def apply_nan_mask_to_arraylike[T: (np.ndarray, xr.DataArray)](arr: T, nan_mask:
 
 def type_guard[T](
     obj: Any,
-    type_: type[T],
+    type_: type[T] | tuple[type[T], ...],
     error_message: str | None = None,
 ) -> T:
     """Shortcut utility to type guard a variable with custom error message.
@@ -79,7 +79,7 @@ def type_guard[T](
     ----------
     obj : Any
         Any variable object
-    type_ : Type[T]
+    type_ : type[T] | tuple[type[T], ...]
         Type of variable.
         Can be a tuple of types
     error_message : str, optional
