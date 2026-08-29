@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from pycontrails.physics import constants
-from pycontrails.utils.types import ArrayScalarLike, support_arraylike
+from pycontrails.utils.types import ArrayScalarLike
 
 
 def pl_to_ft(pl: ArrayScalarLike) -> ArrayScalarLike:
@@ -106,32 +106,21 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
     return constants.T_msl + h_min * constants.T_lapse_rate  # type: ignore[return-value]
 
 
-def _low_altitude_m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-    T_isa = m_to_T_isa(h)
-    power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
-    return (constants.p_surface * (T_isa / constants.T_msl) ** power_term) / 100.0
+_POWER_TERM = -constants.g / (constants.T_lapse_rate * constants.R_d)
+_DECAY = (-constants.g / (constants.R_d * m_to_T_isa(constants.h_tropopause))).item()
 
 
-def _high_altitude_m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-    T_tropopause_isa = m_to_T_isa(np.asarray(constants.h_tropopause))
-    power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
-    p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
-    inside_exp = (-constants.g / (constants.R_d * T_tropopause_isa)) * (h - constants.h_tropopause)
-    return p_tropopause_isa * np.exp(inside_exp) / 100.0
-
-
-@support_arraylike
-def m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+def m_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     r"""Convert from altitude (m) to pressure level (hPa).
 
     Parameters
     ----------
-    h : npt.NDArray[np.floating]
+    h : ArrayScalarLike
         altitude, [:math:`m`]
 
     Returns
     -------
-    npt.NDArray[np.floating]
+    ArrayScalarLike
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     References
@@ -147,28 +136,18 @@ def m_to_pl(h: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     m_to_T_isa
     ft_to_pl
     """
-    condlist = [h < constants.h_tropopause, h >= constants.h_tropopause]
-    funclist = [_low_altitude_m_to_pl, _high_altitude_m_to_pl, np.nan]  # nan passed through
-    return np.piecewise(h, condlist, funclist)  # type: ignore[arg-type]
+    T_isa = m_to_T_isa(h)
+    T_ratio = T_isa / constants.T_msl
+    p_isa = constants.p_surface * T_ratio**_POWER_TERM
+
+    # Apply exponential decay term for altitudes above the tropopause, which is 1 = exp(0) below it
+    excess_altitude = np.maximum(h - constants.h_tropopause, 0.0)
+    decay_factor = np.exp(_DECAY * excess_altitude)
+
+    return p_isa * decay_factor / 100.0
 
 
-def _low_altitude_pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-    base = 100.0 * pl / constants.p_surface
-    exponent = -constants.T_lapse_rate * constants.R_d / constants.g
-    T_isa = constants.T_msl * base**exponent
-    return (T_isa - constants.T_msl) / constants.T_lapse_rate
-
-
-def _high_altitude_pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
-    T_tropopause_isa = m_to_T_isa(np.asarray(constants.h_tropopause))
-    power_term = -constants.g / (constants.T_lapse_rate * constants.R_d)
-    p_tropopause_isa = constants.p_surface * (T_tropopause_isa / constants.T_msl) ** power_term
-    inside_exp = np.log(pl * 100.0 / p_tropopause_isa)
-    return inside_exp / (-constants.g / (constants.R_d * T_tropopause_isa)) + constants.h_tropopause
-
-
-@support_arraylike
-def pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+def pl_to_m(pl: ArrayScalarLike) -> ArrayScalarLike:
     r"""Convert from pressure level (hPa) to altitude (m).
 
     Function is slightly different from the classical formula:
@@ -180,12 +159,12 @@ def pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
 
     Parameters
     ----------
-    pl : ArrayLike
+    pl : ArrayScalarLike
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     Returns
     -------
-    ArrayLike
+    ArrayScalarLike
         altitude, [:math:`m`]
 
     References
@@ -202,10 +181,16 @@ def pl_to_m(pl: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     m_to_pl
     m_to_T_isa
     """
-    pl_tropopause = m_to_pl(constants.h_tropopause)
-    condlist = [pl < pl_tropopause, pl >= pl_tropopause]
-    funclist = [_high_altitude_pl_to_m, _low_altitude_pl_to_m, np.nan]  # nan passed through
-    return np.piecewise(pl, condlist, funclist)  # type: ignore[arg-type]
+    pl_tropopause = m_to_pl(constants.h_tropopause).item()
+
+    p_ratio = 100.0 * np.maximum(pl, pl_tropopause) / constants.p_surface
+    T_isa = constants.T_msl * p_ratio ** (1.0 / _POWER_TERM)
+    h_isa = (T_isa - constants.T_msl) / constants.T_lapse_rate
+
+    # Add the altitude above the tropopause, which is 0 = log(1) below it
+    excess_altitude = np.log(np.minimum(pl, pl_tropopause) / pl_tropopause) / _DECAY
+
+    return h_isa + excess_altitude
 
 
 def degrees_to_radians(degrees: ArrayScalarLike) -> ArrayScalarLike:
