@@ -134,7 +134,6 @@ def test_mach_tas(rng: np.random.Generator):
         for name, func in getmembers(units, isfunction)
         if name
         not in [
-            "support_arraylike",
             "longitude_distance_to_m",
             "m_to_longitude_distance",
             "tas_to_mach_number",

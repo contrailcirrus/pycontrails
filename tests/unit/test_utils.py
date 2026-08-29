@@ -189,41 +189,6 @@ def test_nan_mask() -> None:
     assert np.all(np.isnan(xr_out) == nan_mask)
 
 
-def test_support_arraylike() -> None:
-    """Test `support_arraylike` decorator."""
-    np_arr = np.arange(10)
-
-    @types.support_arraylike
-    def func(arr):
-        """Use a piecewise function here to mimic in internal use-cases."""
-        condlist = [arr < 5]
-        funclist = [lambda x: x**2, lambda x: 3 * x]
-        return np.piecewise(arr, condlist, funclist)
-
-    expected = [0, 1, 4, 9, 16, 15, 18, 21, 24, 27]
-
-    # numpy case
-    np_out = func(np_arr)
-    assert isinstance(np_out, np.ndarray)
-    np.testing.assert_array_equal(np_out, expected)
-
-    # pandas case
-    pd_arr = pd.Series(np_arr)
-    pd_out = func(pd_arr)
-    assert isinstance(pd_out, pd.Series)
-    assert (pd_out == expected).all()
-
-    # xarray case
-    xr_arr = xr.DataArray(np_arr)
-    xr_out = func(xr_arr)
-    assert isinstance(xr_out, xr.DataArray)
-    assert (xr_out == expected).all()
-
-    # float, int case
-    for i, e in enumerate(expected):
-        assert func(i) == func(float(i)) == e
-
-
 def test_chunk_list() -> None:
     """Test chunk list utility."""
 
