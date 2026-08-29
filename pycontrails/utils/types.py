@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import functools
 import sys
-from collections.abc import Callable
 from datetime import datetime
 from typing import Any, TypeVar
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
@@ -31,62 +28,6 @@ if "sphinx" in sys.modules and sys.version_info >= (3, 13):
     ArrayOrFloat.__dict__ = {}
     ArrayScalarLike.__dict__ = {}
     DatetimeLike.__dict__ = {}
-
-
-def support_arraylike(
-    func: Callable[[npt.NDArray[np.floating]], npt.NDArray[np.floating]],
-) -> Callable[[ArrayScalarLike], ArrayScalarLike]:
-    """Extend a numpy universal function operating on arrays of floats.
-
-    This decorator allows `func` to support any ArrayScalarLike parameter and
-    keeps the return type consistent with the parameter.
-
-    Parameters
-    ----------
-    func : Callable[[ArrayScalarLike], np.ndarray]
-        A numpy `ufunc` taking in a single array with `float`-like dtype.
-        This decorator assumes `func` returns a numpy array.
-
-    Returns
-    -------
-    Callable[[ArrayScalarLike], ArrayScalarLike]
-        Extended function.
-
-    See Also
-    --------
-    - `numpy ufuncs <https://numpy.org/doc/stable/reference/ufuncs.html>`_
-    """
-
-    def wrapped(arr: ArrayScalarLike) -> ArrayScalarLike:
-        x = np.asarray(arr)
-
-        # Convert to float if not already
-        if x.dtype not in (np.float32, np.float64):
-            x = x.astype(np.float64)
-        ret = func(x)
-
-        # Numpy in, numpy out
-        if isinstance(arr, np.ndarray):
-            return ret
-
-        # Keep python native numeric types native
-        if isinstance(arr, float | int):
-            return ret.item()
-
-        # Recreate pd.Series
-        if isinstance(arr, pd.Series):
-            return pd.Series(data=ret, index=arr.index)
-
-        # Recreate xr.DataArray
-        if isinstance(arr, xr.DataArray):
-            return arr.copy(data=ret)  # See documentation for xr.copy!
-
-        # Pass numpy `ret` through for anything else
-        return ret
-
-    # this line produces a mypy error starting on mypy version 1.1.0,
-    # likely due to changes in https://github.com/python/mypy/pull/16942
-    return functools.update_wrapper(wrapped, func)  # type: ignore
 
 
 def apply_nan_mask_to_arraylike(arr: ArrayLike, nan_mask: np.ndarray) -> ArrayLike:
