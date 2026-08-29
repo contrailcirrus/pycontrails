@@ -107,7 +107,7 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
 
 
 _POWER_TERM = -constants.g / (constants.T_lapse_rate * constants.R_d)
-_DECAY = (-constants.g / (constants.R_d * m_to_T_isa(constants.h_tropopause))).item()
+_DECAY = (-constants.g / (constants.R_d * m_to_T_isa(constants.h_tropopause))).item()  # type: ignore[attr-defined]
 
 
 def m_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
@@ -181,7 +181,7 @@ def pl_to_m(pl: ArrayScalarLike) -> ArrayScalarLike:
     m_to_pl
     m_to_T_isa
     """
-    pl_tropopause = m_to_pl(constants.h_tropopause).item()
+    pl_tropopause = m_to_pl(constants.h_tropopause).item()  # type: ignore[attr-defined]
 
     p_ratio = 100.0 * np.maximum(pl, pl_tropopause) / constants.p_surface
     T_isa = constants.T_msl * p_ratio ** (1.0 / _POWER_TERM)
