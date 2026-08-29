@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from pycontrails.physics import constants
-from pycontrails.utils.types import ArrayScalarLike, support_arraylike
+from pycontrails.utils.types import ArrayScalarLike
 
 # -------------------
 # Material Properties
@@ -324,23 +324,23 @@ e_sat_liquid = mk05_e_sat_liquid
 e_sat_liquid_prime = mk05_e_sat_liquid_prime
 
 
-@support_arraylike
-def _e_sat_piecewise(T: np.ndarray) -> np.ndarray:
+def _e_sat_piecewise(T: ArrayScalarLike) -> ArrayScalarLike:
     """Calculate `e_sat_liquid` when T is above freezing otherwise `e_sat_ice`.
 
     Parameters
     ----------
-    T : np.ndarray
+    T : ArrayScalarLike
         Temperature, [:math:`K`]
 
     Returns
     -------
-    np.ndarray
+    ArrayScalarLike
         Piecewise array of e_sat_liquid and e_sat_ice values.
     """
-    condlist = [T >= -constants.absolute_zero, T < -constants.absolute_zero]  # noqa: SIM300
-    funclist = [e_sat_liquid, e_sat_ice, np.nan]  # nan passed through
-    return np.piecewise(T, condlist, funclist)  # type: ignore[arg-type]
+    ice = e_sat_ice(T)
+    liquid = e_sat_liquid(T)
+    is_liquid = T >= -constants.absolute_zero
+    return ice + is_liquid * (liquid - ice)
 
 
 # ----------------------------
