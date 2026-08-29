@@ -30,7 +30,7 @@ if "sphinx" in sys.modules and sys.version_info >= (3, 13):
     DatetimeLike.__dict__ = {}
 
 
-def apply_nan_mask_to_arraylike(arr: ArrayLike, nan_mask: np.ndarray) -> ArrayLike:
+def apply_nan_mask_to_arraylike[T: (np.ndarray, xr.DataArray)](arr: T, nan_mask: np.ndarray) -> T:
     """Apply ``nan_mask`` to ``arr`` while maintaining the type.
 
     The parameter ``arr`` should have a ``float`` ``dtype``.
@@ -40,14 +40,14 @@ def apply_nan_mask_to_arraylike(arr: ArrayLike, nan_mask: np.ndarray) -> ArrayLi
 
     Parameters
     ----------
-    arr : ArrayLike
-        Array with ``np.float64`` entries
+    arr : T
+        A :class:`np.ndarray` or :class:`xr.DataArray` with ``np.float64`` entries
     nan_mask : np.ndarray
         Boolean array of the same shape as ``arr``
 
     Returns
     -------
-    ArrayLike
+    T
         Array ``arr`` with values in ``nan_mask`` set to ``np.nan``. The ``arr`` is
         mutated in place if it is a :class:`np.ndarray`. For :class:`xr.DataArray`,
         a copy is returned.
@@ -68,21 +68,18 @@ def apply_nan_mask_to_arraylike(arr: ArrayLike, nan_mask: np.ndarray) -> ArrayLi
     return arr
 
 
-_Object = TypeVar("_Object")
-
-
-def type_guard(
+def type_guard[T](
     obj: Any,
-    type_: type[_Object] | tuple[type[_Object], ...],
+    type_: type[T],
     error_message: str | None = None,
-) -> _Object:
+) -> T:
     """Shortcut utility to type guard a variable with custom error message.
 
     Parameters
     ----------
     obj : Any
         Any variable object
-    type_ : Type[_Object]
+    type_ : Type[T]
         Type of variable.
         Can be a tuple of types
     error_message : str, optional

@@ -5,7 +5,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import warnings
-from typing import Any, Generic, NoReturn, overload
+from typing import Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -744,7 +744,7 @@ class AircraftPerformanceGrid(Model):
 
 
 @dataclasses.dataclass
-class AircraftPerformanceGridData(Generic[ArrayOrFloat]):
+class AircraftPerformanceGridData[ArrayOrFloat: (np.ndarray, float)]:
     """Store the computed aircraft performance metrics for nominal cruise conditions."""
 
     #: Fuel mass flow rate, [:math:`kg s^{-1}`]

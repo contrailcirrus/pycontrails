@@ -339,7 +339,7 @@ def _e_sat_piecewise(T: ArrayScalarLike) -> ArrayScalarLike:
     """
     ice = e_sat_ice(T)
     liquid = e_sat_liquid(T)
-    is_liquid = T >= -constants.absolute_zero
+    is_liquid = T >= -constants.absolute_zero  # noqa: SIM300
     return ice + is_liquid * (liquid - ice)
 
 
