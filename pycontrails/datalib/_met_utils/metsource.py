@@ -8,7 +8,7 @@ import logging
 import pathlib
 from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Any, TypeAlias
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ from pycontrails.core.met import MetDataset, MetVariable
 
 logger = logging.getLogger(__name__)
 
-TimeInput: TypeAlias = (
+type TimeInput = (
     str
     | datetime
     | pd.Timestamp
