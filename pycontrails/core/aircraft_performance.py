@@ -19,7 +19,6 @@ from pycontrails.core.met_var import AirTemperature, EastwardWind, MetVariable, 
 from pycontrails.core.models import Model, ModelParams, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import jet
-from pycontrails.utils.types import ArrayOrFloat
 
 # --------------------------------------
 # Trajectory aircraft performance models
