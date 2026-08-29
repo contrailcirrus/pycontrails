@@ -74,14 +74,14 @@ def p_vapor(q: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
 
     Parameters
     ----------
-    q : ArrayScalarTypeVar
+    q : ArrayScalarLike
         Specific humidity, [:math:`kg \ kg^{-1}`]
-    p : ArrayScalarTypeVar
+    p : ArrayScalarLike
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarTypeVar
+    ArrayScalarLike
         Vapor pressure, [:math:`Pa`]
     """
     return q * p / constants.epsilon

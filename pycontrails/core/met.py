@@ -25,7 +25,6 @@ from typing import (
     Any,
     Literal,
     Self,
-    TypeVar,
     overload,
     override,
 )
@@ -49,8 +48,6 @@ if TYPE_CHECKING:
     import open3d as o3d
 
     from pycontrails.core import interpolation
-
-MetDataType = TypeVar("MetDataType", "MetDataset", "MetDataArray")
 
 COORD_DTYPE = np.float64
 
@@ -575,7 +572,7 @@ class MetBase[XArrayType: (xr.Dataset, xr.DataArray)](ABC):
         """
         return _is_zarr(self.data)
 
-    def downselect_met(
+    def downselect_met[MetDataType: (MetDataset, MetDataArray)](
         self,
         met: MetDataType,
         *,

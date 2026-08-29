@@ -27,11 +27,11 @@ type TimeInput = (
     | Sequence[str | datetime | pd.Timestamp | np.datetime64]
 )
 
-VariableInput = (
+type VariableInput = (
     str | int | MetVariable | np.ndarray | Sequence[str | int | MetVariable | Sequence[MetVariable]]
 )
 
-PressureLevelInput = int | float | np.ndarray | Sequence[int | float]
+type PressureLevelInput = int | float | np.ndarray | Sequence[int | float]
 
 #: NetCDF engine to use for parsing netcdf files
 NETCDF_ENGINE: str = "netcdf4"
