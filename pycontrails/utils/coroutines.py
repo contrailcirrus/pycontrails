@@ -3,12 +3,10 @@
 import asyncio
 from collections.abc import AsyncIterator, Coroutine
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, TypeVar
-
-T = TypeVar("T")
+from typing import Any
 
 
-def run(task: Coroutine[Any, Any, T]) -> T:
+def run[T](task: Coroutine[Any, Any, T]) -> T:
     """Run a coroutine synchronously.
 
     If an event loop is already running in the main thread (e.g., in Jupyter),
@@ -39,7 +37,7 @@ def run(task: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(task)
 
 
-def materialize(aiter: AsyncIterator[T]) -> list[T]:
+def materialize[T](aiter: AsyncIterator[T]) -> list[T]:
     """Materialize a list from an async iterator.
 
     Parameters

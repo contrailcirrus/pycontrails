@@ -4,7 +4,7 @@ import datetime
 import io
 import re
 import xml.etree.ElementTree as ET
-from typing import IO, Any, AnyStr
+from typing import IO, Any
 
 import pandas as pd
 
@@ -236,7 +236,7 @@ def parse_atc_plan(atc_plan: str) -> dict[str, str]:
     return flightplan
 
 
-def parse_ofp_xml(raw_xml: AnyStr | IO[AnyStr]) -> flight.Flight:
+def parse_ofp_xml(raw_xml: str | bytes | IO[str] | IO[bytes]) -> flight.Flight:
     """Parse an ARINC 633 Operational Flight Plan (OFP) XML into a Flight object.
 
     Extracts waypoint-level information such as latitude, longitude, altitude, and

@@ -23,7 +23,6 @@ from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     Literal,
     Self,
     TypeVar,
@@ -51,14 +50,12 @@ if TYPE_CHECKING:
 
     from pycontrails.core import interpolation
 
-XArrayType = TypeVar("XArrayType", xr.Dataset, xr.DataArray)
 MetDataType = TypeVar("MetDataType", "MetDataset", "MetDataArray")
-DatasetType = TypeVar("DatasetType", xr.Dataset, "MetDataset")
 
 COORD_DTYPE = np.float64
 
 
-class MetBase(ABC, Generic[XArrayType]):
+class MetBase[XArrayType: (xr.Dataset, xr.DataArray)](ABC):
     """Abstract class for building Meteorology Data handling classes.
 
     All support here should be generic to work on xr.DataArray
@@ -2472,7 +2469,10 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
     return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
 
 
-def shift_longitude(data: XArrayType, bound: float = -180.0) -> XArrayType:
+def shift_longitude[XArrayType: (xr.Dataset, xr.DataArray)](
+    data: XArrayType,
+    bound: float = -180.0,
+) -> XArrayType:
     """Shift longitude values from any input domain to [bound, 360 + bound) domain.
 
     Sorts data by ascending longitude values.
@@ -2498,7 +2498,7 @@ def shift_longitude(data: XArrayType, bound: float = -180.0) -> XArrayType:
     ).sortby("longitude", ascending=True)
 
 
-def _wrap_longitude(data: XArrayType) -> XArrayType:
+def _wrap_longitude[XArrayType: (xr.Dataset, xr.DataArray)](data: XArrayType) -> XArrayType:
     """Wrap longitude grid coordinates.
 
     This function assumes the longitude dimension on ``data``:
@@ -2631,7 +2631,10 @@ def _extract_2d_arr_and_altitude(
     return arr, altitude
 
 
-def downselect(data: XArrayType, bbox: tuple[float, ...]) -> XArrayType:
+def downselect[XArrayType: (xr.Dataset, xr.DataArray)](
+    data: XArrayType,
+    bbox: tuple[float, ...],
+) -> XArrayType:
     """Downselect :class:`xr.Dataset` or :class:`xr.DataArray` with spatial bounding box.
 
     Parameters
@@ -2701,14 +2704,14 @@ def standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> x
 
     Parameters
     ----------
-    ds : DatasetType
+    ds : xr.Dataset
         An :class:`xr.Dataset`.
     variables : Iterable[MetVariable]
         Data source variables
 
     Returns
     -------
-    DatasetType
+    xr.Dataset
         Dataset with variables renamed to standard names
     """
     variables_dict: dict[Hashable, str] = {v.short_name: v.standard_name for v in variables}
@@ -2768,7 +2771,7 @@ def _load(hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Datas
     return xr.open_mfdataset(disk_path, chunks=chunks)
 
 
-def _add_vertical_coords(data: XArrayType) -> XArrayType:
+def _add_vertical_coords[XArrayType: (xr.Dataset, xr.DataArray)](data: XArrayType) -> XArrayType:
     """Add "air_pressure" and "altitude" coordinates to data.
 
     .. versionchanged:: 0.52.1

@@ -6,7 +6,7 @@ import itertools
 import logging
 import warnings
 from collections.abc import Generator, Iterable, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, NoReturn, TypeVar, overload
+from typing import TYPE_CHECKING, Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -2552,19 +2552,19 @@ def _get_uncertainty_params(contrail: VectorDataset) -> dict[str, npt.NDArray[np
     return {key: val for key in keys if (val := contrail.get(key)) is not None}
 
 
-_T = TypeVar("_T", np.float64, np.datetime64)
-
-
-def _check_coverage(
-    met_array: npt.NDArray[_T], grid_array: npt.NDArray[_T], coord: str, name: str
+def _check_coverage[T: (np.float64, np.datetime64)](
+    met_array: npt.NDArray[T],
+    grid_array: npt.NDArray[T],
+    coord: str,
+    name: str,
 ) -> None:
     """Warn if the met data does not cover the entire source domain.
 
     Parameters
     ----------
-    met_array : npt.NDArray[_T]
+    met_array : npt.NDArray[T]
         Coordinate on met data
-    grid_array : npt.NDArray[_T]
+    grid_array : npt.NDArray[T]
         Coordinate on grid data
     coord : str
         Name of coordinate. Only used for warning message.
