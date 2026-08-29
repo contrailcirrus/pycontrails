@@ -34,13 +34,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 #: Model input source types
-ModelInput = MetDataset | GeoVectorDataset | Flight | Sequence[Flight] | None
+type ModelInput = MetDataset | GeoVectorDataset | Flight | Sequence[Flight] | None
 
 #: Model output source types
-ModelOutput = MetDataArray | MetDataset | GeoVectorDataset | Flight | list[Flight]
+type ModelOutput = MetDataArray | MetDataset | GeoVectorDataset | Flight | list[Flight]
 
 #: Model attribute source types
-SourceType = MetDataset | GeoVectorDataset | Flight | Fleet
+type SourceType = MetDataset | GeoVectorDataset | Flight | Fleet
 
 
 # ------------
