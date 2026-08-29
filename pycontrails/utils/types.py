@@ -20,14 +20,13 @@ ArrayOrFloat = TypeVar("ArrayOrFloat", np.ndarray, float)
 ArrayScalarLike = TypeVar("ArrayScalarLike", np.ndarray, xr.DataArray, float)
 
 #: Datetime like input (datetime, pd.Timestamp, np.datetime64)
-DatetimeLike = TypeVar("DatetimeLike", datetime, pd.Timestamp, np.datetime64, str)
+type DatetimeLike = datetime | pd.Timestamp | np.datetime64 | str
 
 # Crude fix for autodoc issue calling TypeVar.__dict__ on Python 3.13
 if "sphinx" in sys.modules and sys.version_info >= (3, 13):
     ArrayLike.__dict__ = {}
     ArrayOrFloat.__dict__ = {}
     ArrayScalarLike.__dict__ = {}
-    DatetimeLike.__dict__ = {}
 
 
 def apply_nan_mask_to_arraylike[T: (np.ndarray, xr.DataArray)](arr: T, nan_mask: np.ndarray) -> T:
