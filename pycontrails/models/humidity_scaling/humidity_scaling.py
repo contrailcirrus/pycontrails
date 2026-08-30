@@ -659,7 +659,7 @@ def _load_quantiles(level_type: str) -> pd.DataFrame:
 
 
 def histogram_matching(
-    era5_rhi: ArrayLike,
+    era5_rhi: npt.NDArray[np.floating] | xr.DataArray,
     product_type: str,
     level_type: str,
     member: int | None,
@@ -671,7 +671,7 @@ def histogram_matching(
 
     Parameters
     ----------
-    era5_rhi : ArrayLike
+    era5_rhi : npt.NDArray[np.floating] | xr.DataArray
         ERA5-derived RHi values for the given ensemble member.
     product_type : {"reanalysis", "ensemble_members"}
         The ERA5 product type.
