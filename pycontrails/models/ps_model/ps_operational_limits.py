@@ -34,7 +34,7 @@ def max_mach_number_by_altitude(
 
     Parameters
     ----------
-    altitude_ft : ArrayOrFloat
+    altitude_ft : npt.NDArray[np.floating] | float
         Waypoint altitude, [:math: `ft`]
     air_pressure: ArrayOrFloat
         Pressure altitude at each waypoint, [:math:`Pa`]
@@ -466,7 +466,7 @@ def maximum_mach_num(
 
 
 def fuel_flow_idle(
-    fuel_flow_idle_sls: float, altitude_ft: ArrayOrFloat
+    fuel_flow_idle_sls: float, altitude_ft: npt.NDArray[np.floating] | float
 ) -> npt.NDArray[np.floating]:
     r"""Calculate minimum fuel mass flow rate at flight idle conditions.
 
