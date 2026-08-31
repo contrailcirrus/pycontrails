@@ -212,38 +212,39 @@ class AircraftPerformance(Model):
     def estimate_payload(self, fl: Flight, aircraft_type: str, max_payload: float) -> float:
         """Estimate the payload for a flight.
 
-        This method looks for the following attributes in ``fl.attrs`` to determine the payload.
-        If any of these attributes are missing, they are estimated and added to ``fl.attrs``.
+        This method looks for the following attributes (or constants) in ``fl`` to determine
+        the payload. If any of these fields are missing, they are estimated and added
+        to ``fl.attrs``.
         - ``payload``
         - ``aircraft_role``
         - ``n_seats``
         - ``passenger_load_factor``
         - ``cargo_load_factor``
         """
-        if (out := fl.attrs.get("payload")) is not None:
+        if (out := fl.get_constant("payload", None)) is not None:
             return out
 
-        aircraft_role = fl.attrs.get("aircraft_role")
+        aircraft_role = fl.get_constant("aircraft_role", None)
         if aircraft_role is None:
             aircraft_role = "Passenger"
             fl.attrs["aircraft_role"] = aircraft_role
 
-        n_seats = fl.attrs.get("n_seats")
+        n_seats = fl.get_constant("n_seats", None)
         if n_seats is None:
             n_seats = jet.number_of_seats(aircraft_type)
             fl.attrs["n_seats"] = n_seats
 
-        pax_lf = fl.attrs.get("passenger_load_factor")
+        pax_lf = fl.get_constant("passenger_load_factor", None)
         if pax_lf is None:
-            origin_airport_icao = fl.attrs.get("origin_airport_icao")
+            origin_airport_icao = fl.get_constant("origin_airport_icao", None)
             first_waypoint_time = pd.Timestamp(fl.data["time"][0]) if fl else None
             pax_lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
             fl.attrs["passenger_load_factor"] = pax_lf
 
-        cargo_lf = fl.attrs.get("cargo_load_factor")
+        cargo_lf = fl.get_constant("cargo_load_factor", None)
         if cargo_lf is None:
-            origin_airport_icao = fl.attrs.get("origin_airport_icao")
-            destination_airport_icao = fl.attrs.get("destination_airport_icao")
+            origin_airport_icao = fl.get_constant("origin_airport_icao", None)
+            destination_airport_icao = fl.get_constant("destination_airport_icao", None)
             if origin_airport_icao is None or destination_airport_icao is None:
                 total_flight_dist = np.nansum(fl.segment_haversine()).item() / 1000.0  # m -> km
             else:
