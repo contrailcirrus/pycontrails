@@ -211,8 +211,8 @@ def test_ch_aviation_with_ps_flight(tail_number: str):
     if tail_number == "D-ATRA":
         assert fl.attrs["payload"] == pytest.approx(13933, abs=1)
     elif tail_number == "G-EZUT":
-        assert fl.attrs["payload"] == pytest.approx(15012, abs=1)
+        assert fl.attrs["payload"] == pytest.approx(15242, abs=1)
     elif tail_number == "9V-SGA":
-        assert fl.attrs["payload"] == pytest.approx(12995, abs=1)
+        assert fl.attrs["payload"] == pytest.approx(19255, abs=1)
     else:
-        assert fl.attrs["payload"] == pytest.approx(11057, abs=1)
+        assert fl.attrs["payload"] == pytest.approx(11670, abs=1)

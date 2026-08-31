@@ -245,7 +245,7 @@ class AircraftPerformance(Model):
             origin_airport_icao = fl.attrs.get("origin_airport_icao")
             destination_airport_icao = fl.attrs.get("destination_airport_icao")
             if origin_airport_icao is None or destination_airport_icao is None:
-                total_flight_dist = np.nansum(fl.segment_haversine()).item()
+                total_flight_dist = np.nansum(fl.segment_haversine()).item() / 1000.0  # m -> km
             else:
                 total_flight_dist = None
             cargo_lf = jet.cargo_load_factor(
