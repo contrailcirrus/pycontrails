@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Features
+
+- Add notebook to meteorology documentation on the access and use of experimental ARPEGE forecasts from METEO FRANCE.
+
 ### Fixes
 
 - Fix a unit conversion bug in `AircraftPerformance.estimate_payload` in which the total flight distance was passed to `jet.cargo_load_factor` in meters instead of km. This bug produced an incorrect cargo load factor for flights whose `attrs` lack `origin_airport_icao` or `destination_airport_icao`.
