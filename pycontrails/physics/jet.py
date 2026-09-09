@@ -546,7 +546,14 @@ def cargo_load_factor(
     """
     Estimate cargo load factor carried by passenger aircraft and dedicated freighters.
 
-    Accounts for regional asymmetries in freight flow and distance-specific variability
+    Accounts for regional asymmetries in freight flow and distance-specific variability.
+
+    The underlying Dray et al. cargo payload data was aggregated by hand from
+    great-circle distances between airport pairs. Passing ``origin_airport_icao``
+    and ``destination_airport_icao`` is closer to how the data was assembled, whereas
+    passing ``total_flight_dist`` gives a slightly different result. The load factors are
+    crude enough that the difference between the two approaches is expected to be smaller
+    than the error in the load factor estimates themselves.
 
     Parameters
     ----------
