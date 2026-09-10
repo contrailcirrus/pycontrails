@@ -58,6 +58,7 @@ docs/examples/airports
 .ecmwf
 *.nc
 *.grib
+*.idx
 bada/
 
 # docker
