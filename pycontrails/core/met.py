@@ -1146,11 +1146,16 @@ class MetDataset(MetBase[xr.Dataset]):
         Returns
         -------
         str
-            Provider of the data. If not one of ``"ECMWF"``, ``"NCEP"``, or ``"DWD"``,
-            a warning is issued.
+            Provider of the data. If not one of ``"ECMWF"``, ``"NCEP"``, ``"DWD"``, or
+            ``"Met Office"``, a warning is issued.
         """
-        supported = ("ECMWF", "NCEP", "DWD")
-        examples = {"ECMWF": "data provided by ECMWF", "NCEP": "GFS data", "DWD": "ICON data"}
+        supported = ("ECMWF", "NCEP", "DWD", "Met Office")
+        examples = {
+            "ECMWF": "data provided by ECMWF",
+            "NCEP": "GFS data",
+            "DWD": "ICON data",
+            "Met Office": "UM data",
+        }
         return self._get_pycontrails_attr_template("provider", supported, examples)
 
     @property
@@ -1161,14 +1166,25 @@ class MetDataset(MetBase[xr.Dataset]):
         -------
         str
             Dataset of the data. If not one of ``"ERA5"``, ``"HRES"``, ``"IFS"``,
-            ``"GFS"``, ``"ICON"``, ``"ICON-EU"``, or ``"ICON-D2"``, a warning is issued.
+            ``"GFS"``, ``"ICON"``, ``"ICON-EU"``, ``"ICON-D2"``, or
+            ``"UM-Global-Deterministic-10km"``, a warning is issued.
         """
-        supported = ("ERA5", "HRES", "IFS", "GFS", "ICON", "ICON-EU", "ICON-D2")
+        supported = (
+            "ERA5",
+            "HRES",
+            "IFS",
+            "GFS",
+            "ICON",
+            "ICON-EU",
+            "ICON-D2",
+            "UM-Global-Deterministic-10km",
+        )
         examples = {
             "ERA5": "ECMWF ERA5 reanalysis data",
             "HRES": "ECMWF HRES forecast data",
             "GFS": "NCEP GFS forecast data",
             "ICON": "DWD ICON forecast data",
+            "UM-Global-Deterministic-10km": "UK Met Office UM global deterministic forecast data",
         }
         return self._get_pycontrails_attr_template("dataset", supported, examples)
 

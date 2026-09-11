@@ -1,0 +1,341 @@
+"""Support for Met Office UM ``global-deterministic-10km`` forecast data."""
+
+from __future__ import annotations
+
+import hashlib
+import warnings
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+import pandas as pd
+import xarray as xr
+
+import pycontrails
+from pycontrails.core import met_var
+from pycontrails.core.cache import CacheStore, DiskCacheStore
+from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.datalib._met_utils import metsource
+from pycontrails.datalib.metoffice import s3
+from pycontrails.physics import thermo
+from pycontrails.utils import temp
+
+if TYPE_CHECKING:
+    import s3fs
+
+#: MetDataset.attrs values set by :meth:`MetOfficeUM.set_metadata`.
+PROVIDER = "Met Office"
+DATASET = "UM-Global-Deterministic-10km"
+PRODUCT = "forecast"
+
+
+class MetOfficeDataNotFoundError(Exception):
+    """Raised when requested data could not be fetched from the S3 archive."""
+
+
+class MetOfficeUM(metsource.MetDataSource):
+    """pycontrails datalib for the UK Met Office ``global-deterministic-10km`` product.
+
+    Live-fetches cruise-level pressure data directly from the public S3 archive on
+    a cache miss. :attr:`cachestore` also supports reading from a pre-populated
+    archive.
+
+    Parameters
+    ----------
+    time : metsource.TimeInput
+        Single datetime or ``(start, end)`` range. Parsed to hourly timesteps.
+    variables : metsource.VariableInput, optional
+        Requested variables. Defaults to
+        ``[met_var.AirTemperature, met_var.SpecificHumidity]``.
+        ``specific_humidity`` is always computed internally regardless of
+        what's requested; pass ``met_var.RelativeHumidity`` explicitly to also
+        keep the raw fetched value.
+    pressure_levels : metsource.PressureLevelInput, optional
+        Requested pressure levels in hPa. Defaults to
+        :data:`pycontrails.datalib.metoffice.s3.CRUISE_LEVELS_HPA` (the 7
+        cruise-relevant levels this datalib selects from each fetched file).
+    grid : float, optional
+        Not supported. The archive serves fixed native-grid data; regridding
+        happens downstream of this datalib, not within it. A non-``None`` value
+        is ignored with a warning.
+    lead_hours : int, optional
+        ``None`` (default) fetches the shortest-available lead for each requested
+        validity time. A fixed int fetches instead at that lead for every hour.
+    cachestore : cache.CacheStore, optional
+        Cache store for fetched, processed hourly data. Defaults to
+        :class:`pycontrails.core.cache.DiskCacheStore`. Pass
+        ``cache.GCPCacheStore(bucket=..., read_only=True)`` to read from a
+        pre-populated archive (falling back to a live fetch for any hour it
+        doesn't have); pass ``None`` to disable caching (every call re-fetches).
+
+    """
+
+    __marker = object()
+
+    __slots__ = ("cachestore", "lead_hours")
+
+    def __init__(
+        self,
+        time: metsource.TimeInput,
+        *,
+        variables: metsource.VariableInput | None = None,
+        pressure_levels: metsource.PressureLevelInput = s3.CRUISE_LEVELS_HPA,
+        grid: float | None = None,
+        lead_hours: int | None = None,
+        cachestore: CacheStore | None = __marker,  # type: ignore[assignment]
+    ) -> None:
+        if grid is not None:
+            warnings.warn(
+                f"MetOfficeUM serves fixed native-grid data; regridding is expected "
+                f"to happen downstream of this datalib, not within it. "
+                f"Ignoring grid={grid!r}."
+            )
+        self.grid = None
+        self.paths = None
+
+        self.pressure_levels = metsource.parse_pressure_levels(
+            pressure_levels, supported=list(s3.CRUISE_LEVELS_HPA)
+        )
+
+        if variables is None:
+            variables = [met_var.AirTemperature, met_var.SpecificHumidity]
+        self.variables = metsource.parse_variables(variables, self.supported_variables)
+
+        self.timesteps = metsource.parse_timesteps(time, freq="1h")
+
+        self.lead_hours = lead_hours
+        self.cachestore = DiskCacheStore() if cachestore is self.__marker else cachestore
+
+    @property
+    def pressure_level_variables(self) -> list[MetVariable]:
+        """Variables available from the S3 archive.
+
+        Returns
+        -------
+        list[MetVariable]
+            Available pressure-level variables.
+        """
+        return [met_var.AirTemperature, met_var.SpecificHumidity, met_var.RelativeHumidity]
+
+    @property
+    def single_level_variables(self) -> list[MetVariable]:
+        """Single-level variables available.
+
+        Returns
+        -------
+        list[MetVariable]
+            Always empty; the S3 archive is pressure-level only.
+        """
+        return []
+
+    def create_cachepath(self, t: datetime) -> str:
+        """Return the cache path for the processed hourly data covering ``t``.
+
+        Hashes the timestamp, the lead selection, the requested pressure
+        levels, and the requested variables, so two differently-configured
+        instances sharing a :attr:`cachestore` can't collide on the same path.
+
+        Returns
+        -------
+        str
+            Cache path for ``t``.
+
+        Raises
+        ------
+        ValueError
+            If :attr:`cachestore` is None.
+        """
+        if self.cachestore is None:
+            msg = "Cachestore is required to create cache path"
+            raise ValueError(msg)
+
+        lead = "shortest" if self.lead_hours is None else f"{self.lead_hours:03d}"
+        string = (
+            f"{lead}-{t:%Y%m%d%H}-"
+            f"{'.'.join(str(p) for p in self.pressure_levels)}-"
+            f"{'.'.join(sorted(self.variable_shortnames))}"
+        )
+        name = hashlib.md5(string.encode()).hexdigest()
+        return self.cachestore.path(f"ukmo-{name}.nc")
+
+    def cache_dataset(self, dataset: xr.Dataset) -> None:
+        """Write processed hourly data to :attr:`cachestore`.
+
+        Stages each hour through a local temp file, then writes via
+        :meth:`~pycontrails.core.cache.CacheStore.put`. A read-only
+        :attr:`cachestore` raises ``RuntimeError`` from ``put``, which is
+        caught and ignored; any other ``RuntimeError`` propagates.
+        """
+        if self.cachestore is None:
+            return
+        for t, ds in dataset.groupby("time", squeeze=False):
+            cache_path = self.create_cachepath(pd.Timestamp(t).to_pydatetime())
+            with temp.temp_file() as tmp_path:
+                ds.to_netcdf(tmp_path, mode="w")
+                try:
+                    self.cachestore.put(tmp_path, cache_path)
+                except RuntimeError:
+                    if not getattr(self.cachestore, "read_only", False):
+                        raise
+
+    def download_dataset(self, times: list[datetime]) -> None:
+        """Fetch missing hours directly from the public Met Office S3 archive.
+
+        Only called (via the inherited
+        :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource.download`)
+        with hours that
+        :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource.is_datafile_cached`
+        has already determined are missing from :attr:`cachestore`.
+
+        An hour genuinely absent from the archive (:class:`MetOfficeDataNotFoundError`)
+        doesn't abort the rest of the batch: it's collected and, if any hours failed,
+        raised as a single :class:`MetOfficeDataNotFoundError` once every hour has been
+        attempted, so one missing hour doesn't prevent the others from being fetched
+        and cached. Any other exception -- e.g. a fixed ``lead_hours``/validity
+        combination the archive can't produce (see :func:`s3.run_for_validity_at_lead`,
+        which raises ``ValueError``) -- is a caller or programming error, not a data
+        availability issue, and propagates immediately instead.
+        """
+        fs = s3.filesystem()
+        errors: dict[datetime, MetOfficeDataNotFoundError] = {}
+        for t in times:
+            try:
+                self._download_convert_cache_handler(fs, t)
+            except MetOfficeDataNotFoundError as exc:
+                errors[t] = exc
+
+        if errors:
+            detail = "; ".join(f"{t.isoformat()}: {exc}" for t, exc in errors.items())
+            msg = f"{len(errors)} of {len(times)} hour(s) could not be fetched: {detail}"
+            raise MetOfficeDataNotFoundError(msg)
+
+    def _download_convert_cache_handler(self, fs: s3fs.S3FileSystem, t: datetime) -> None:
+        """Fetch, process, and cache one missing hour.
+
+        Raises
+        ------
+        MetOfficeDataNotFoundError
+            If any requested parameter's object is missing from the S3 archive.
+        ValueError
+            If ``t`` isn't hourly, or (with a fixed :attr:`lead_hours`) if the implied
+            run doesn't reach that lead -- a caller error, not a data availability
+            issue, so it isn't wrapped as :class:`MetOfficeDataNotFoundError`.
+        """
+        if self.lead_hours is not None:
+            run = s3.run_for_validity_at_lead(t, self.lead_hours)
+            lead = self.lead_hours
+        else:
+            run = s3.run_for_validity(t)
+            lead = s3.lead_for_validity(t)
+
+        data_vars = {}
+        for parameter, variable in s3.PARAMETER_VARIABLE.items():
+            key = s3.object_key(run, t, lead, parameter)
+            try:
+                data_vars[variable] = s3.fetch_pressure_level_field(
+                    fs, key, parameter, run=run, validity=t, lead_hours=lead
+                )
+            except FileNotFoundError as exc:
+                msg = f"{t.isoformat()} could not be fetched from the S3 archive (key={key}): {exc}"
+                raise MetOfficeDataNotFoundError(msg) from exc
+
+        ds = xr.Dataset(data_vars).expand_dims(time=[pd.Timestamp(t)])
+        ds = self._process_hour(ds)
+        ds.attrs["pycontrails_version"] = pycontrails.__version__
+        self.cache_dataset(ds)
+
+    def _process_hour(self, raw_ds: xr.Dataset) -> xr.Dataset:
+        """Transform one hour of raw fetched data into the cached schema.
+
+        Selects the requested pressure levels, computes ``specific_humidity``,
+        and renames to the short names :meth:`~pycontrails.datalib._met_utils.\
+metsource.MetDataSource._check_is_ds_complete` (and the rest of pycontrails)
+        expect.
+
+        Returns
+        -------
+        xr.Dataset
+            Processed dataset with cruise levels selected, ``specific_humidity``
+            computed, and variables named by short name.
+        """
+        # MetDataset sorts coordinates on construction (copy=True), which would
+        # silently mask a non-ascending latitude axis -- check it here instead,
+        # while it's still attributable to this hour's raw fetched data.
+        latitude = raw_ds["latitude"].values
+        if not np.all(np.diff(latitude) > 0):
+            msg = f"expected ascending latitude ordering, got {latitude[:3]}...{latitude[-3:]}"
+            raise AssertionError(msg)
+
+        relative_humidity = raw_ds["relative_humidity"].values
+        if np.any(relative_humidity < -1e-3) or np.any(relative_humidity > 1.5):
+            msg = (
+                f"expected relative_humidity as a 0-1 fraction, got values in "
+                f"[{relative_humidity.min():.3g}, {relative_humidity.max():.3g}]"
+            )
+            raise AssertionError(msg)
+
+        pressure_pa = raw_ds["pressure"].values.astype(np.float64)
+        level_indices = s3.level_indices_for(pressure_pa, self.pressure_levels)
+
+        ds = raw_ds.isel(pressure=level_indices)
+        ds = ds.rename(pressure="level")
+        ds = ds.assign_coords(level=ds["level"] / 100.0)
+
+        # q is always computed and retained, regardless of what was requested:
+        # downstream ISSR/SAC-style humidity scaling needs it.
+        level_pa = ds["level"] * 100.0
+        q = ds["relative_humidity"] * thermo.q_sat_liquid(ds["air_temperature"], level_pa)
+        ds = ds.assign(specific_humidity=q)
+
+        rename = {"air_temperature": "t", "specific_humidity": "q", "relative_humidity": "r"}
+        ds = ds.rename({k: v for k, v in rename.items() if k in ds})
+
+        keep = [name for name in ("t", "q", "r") if name == "q" or name in self.variable_shortnames]
+        return ds[keep]
+
+    def open_metdataset(
+        self,
+        dataset: xr.Dataset | None = None,
+        xr_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> MetDataset:
+        """Open the requested window as a ``MetDataset``.
+
+        Returns
+        -------
+        MetDataset
+            The processed dataset for the requested window.
+        """
+        if dataset is not None:
+            msg = "Parameter 'dataset' is not supported for MetOfficeUM data"
+            raise ValueError(msg)
+        if self.cachestore is None:
+            msg = "Cachestore is required to download data"
+            raise ValueError(msg)
+
+        xr_kwargs = dict(xr_kwargs or {})
+        self.download(**xr_kwargs)
+
+        disk_paths = [self.cachestore.get(f) for f in self._cachepaths]
+        raw_ds = self.open_dataset(disk_paths, **xr_kwargs)
+        raw_ds = raw_ds.sel(time=self.timesteps)
+        if raw_ds.sizes["time"] != len(self.timesteps):
+            msg = (
+                f"expected {len(self.timesteps)} timesteps after selection, got "
+                f"{raw_ds.sizes['time']} -- an hour was silently dropped"
+            )
+            raise AssertionError(msg)
+
+        mds = MetDataset(raw_ds, **kwargs)
+        self.set_metadata(mds)
+        return mds
+
+    def set_metadata(self, ds: xr.Dataset | MetDataset) -> None:
+        """Set ``provider``/``dataset``/``product`` attrs.
+
+        ``PROVIDER``/``DATASET`` are registered in pycontrails core's
+        ``provider_attr``/``dataset_attr`` supported lists (see
+        :mod:`pycontrails.core.met`), so reading those properties back does not
+        trigger a warning.
+        """
+        ds.attrs.update(provider=PROVIDER, dataset=DATASET, product=PRODUCT)
