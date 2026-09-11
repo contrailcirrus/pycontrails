@@ -1,25 +1,4 @@
-"""Met Office data access.
-
-This module supports
-
-- Fetching Met Office UM cruise-level forecast data directly from the public
-  ``global-deterministic-10km`` S3 archive, on a cache miss, via
-  :mod:`pycontrails.datalib.metoffice.s3`'s whole-file S3 download.
-- Converting the fetched water-referenced relative humidity to
-  ``specific_humidity``, from which pycontrails' ``thermo.rhi`` recovers the
-  ice-referenced RHi conversion that ISSR/SAC-style humidity scaling needs.
-- Opening the result as a :class:`pycontrails.MetDataset`.
-
-:attr:`cachestore` (default :class:`pycontrails.core.cache.DiskCacheStore`) backs
-the inherited
-:meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource.download`, which
-live-fetches via :meth:`MetOfficeUM.download_dataset` only for genuine cache
-misses. Passing a pre-populated archive such as
-``cache.GCPCacheStore(bucket=..., read_only=True)`` as ``cachestore`` works,
-since its :meth:`~pycontrails.core.cache.CacheStore.exists`/
-:meth:`~pycontrails.core.cache.CacheStore.get` check a local mirror before
-falling back to the remote archive.
-"""
+"""Support for Met Office UM ``global-deterministic-10km`` forecast data."""
 
 from __future__ import annotations
 
@@ -243,9 +222,11 @@ class MetOfficeUM(metsource.MetDataSource):
             issue, so it isn't wrapped as :class:`MetOfficeDataNotFoundError`.
         """
         if self.lead_hours is not None:
-            run, lead = s3.run_for_validity_at_lead(t, self.lead_hours), self.lead_hours
+            run = s3.run_for_validity_at_lead(t, self.lead_hours)
+            lead = self.lead_hours
         else:
-            run, lead = s3.run_and_lead_for_validity(t)
+            run = s3.run_for_validity(t)
+            lead = s3.lead_for_validity(t)
 
         data_vars = {}
         for parameter, variable in s3.PARAMETER_VARIABLE.items():
@@ -300,8 +281,8 @@ metsource.MetDataSource._check_is_ds_complete` (and the rest of pycontrails)
         ds = ds.rename(pressure="level")
         ds = ds.assign_coords(level=ds["level"] / 100.0)
 
-        # q is always computed, regardless of what was requested: downstream
-        # ISSR/SAC-style humidity scaling needs it.
+        # q is always computed and retained, regardless of what was requested:
+        # downstream ISSR/SAC-style humidity scaling needs it.
         level_pa = ds["level"] * 100.0
         q = ds["relative_humidity"] * thermo.q_sat_liquid(ds["air_temperature"], level_pa)
         ds = ds.assign(specific_humidity=q)
@@ -309,7 +290,8 @@ metsource.MetDataSource._check_is_ds_complete` (and the rest of pycontrails)
         rename = {"air_temperature": "t", "specific_humidity": "q", "relative_humidity": "r"}
         ds = ds.rename({k: v for k, v in rename.items() if k in ds})
 
-        return ds[list(self.variable_shortnames)]
+        keep = [name for name in ("t", "q", "r") if name == "q" or name in self.variable_shortnames]
+        return ds[keep]
 
     def open_metdataset(
         self,

@@ -1,30 +1,7 @@
 """Whole-file access layer for the Met Office ``global-deterministic-10km`` product.
 
-Anonymous access to ``s3://met-office-atmospheric-model-data`` (eu-west-2). Downloads
-each object in full via ``s3fs`` to a local temp file, then selects the seven cruise
-pressure levels, optionally cropped to a caller-supplied bounding box. Each object
-also contains a ``flag`` variable, which is never loaded.
-
-This is a standalone module: it knows nothing about pycontrails' met data model. The
-pycontrails datalib (``ukmo.py``) wraps it.
-
-Key convention (validity time leads, not run time)::
-
-    global-deterministic-10km/{RUN}Z/{VALIDITY}Z-PT{LEAD}H{MIN}M-{parameter}.nc
-
-Lead selection follows the shortest-available, T+0->T+5 cycling scheme: runs occur
-every 6 hours (00/06/12/18Z), so for any hourly validity time the run is the
-preceding 6-hour boundary and the lead is the hour offset from it.
-
-Chunk layout varies by archive vintage: older files have a much finer native chunk
-layout than the current live product. Fetching via per-chunk byte-range reads made
-per-hour fetch time dominated by request count rather than bytes transferred --
-this is why every object is downloaded in full instead.
-
-This module requires the following additional dependency:
-
-- `s3fs <https://s3fs.readthedocs.io/>`_
-
+Anonymous access to ``s3://met-office-atmospheric-model-data`` (eu-west-2). Requires
+the additional dependency `s3fs <https://s3fs.readthedocs.io/>`_.
 """
 
 from __future__ import annotations
@@ -74,12 +51,18 @@ PARAMETER_VARIABLE = {
 }
 
 
-def run_and_lead_for_validity(validity: datetime.datetime) -> tuple[datetime.datetime, int]:
-    """Get the shortest-lead (run, lead) pair covering an hourly validity time.
+def _check_hourly(validity: datetime.datetime) -> None:
+    """Raise if ``validity`` doesn't fall on the hour."""
+    if validity.minute or validity.second or validity.microsecond:
+        msg = f"validity time {validity} must fall on the hour"
+        raise ValueError(msg)
+
+
+def run_for_validity(validity: datetime.datetime) -> datetime.datetime:
+    """Get the run time for the shortest lead covering an hourly validity time.
 
     Shortest available lead, cycling T+0 -> T+5. Runs occur every
-    :data:`RUN_CADENCE_HOURS` hours, so the run is the preceding cadence boundary and
-    the lead is the hour offset from it.
+    :data:`RUN_CADENCE_HOURS` hours, so the run is the preceding cadence boundary.
 
     Parameters
     ----------
@@ -88,29 +71,64 @@ def run_and_lead_for_validity(validity: datetime.datetime) -> tuple[datetime.dat
 
     Returns
     -------
-    tuple[datetime.datetime, int]
-        Run time and lead time in whole hours.
+    datetime.datetime
+        Run time.
 
     """
-    if validity.minute or validity.second or validity.microsecond:
-        msg = f"validity time {validity} must fall on the hour"
-        raise ValueError(msg)
-
+    _check_hourly(validity)
     run_hour = (validity.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
-    run = validity.replace(hour=run_hour, minute=0, second=0, microsecond=0)
-    lead_hours = validity.hour - run_hour
-    return run, lead_hours
+    return validity.replace(hour=run_hour, minute=0, second=0, microsecond=0)
 
 
-#: Run hours (UTC) every cycle reaches: hourly cadence out to T+54.
+def lead_for_validity(validity: datetime.datetime) -> int:
+    """Get the shortest lead, in whole hours, covering an hourly validity time.
+
+    See :func:`run_for_validity` for the corresponding run time.
+
+    Parameters
+    ----------
+    validity : datetime.datetime
+        Validity (forecast) time. Must fall on the hour.
+
+    Returns
+    -------
+    int
+        Lead time in whole hours.
+
+    """
+    _check_hourly(validity)
+    run_hour = (validity.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
+    return validity.hour - run_hour
+
+
+#: Lead (hours) up to which every run publishes hourly. Beyond this, the archive
+#: only publishes every :data:`_EXTENDED_CADENCE_HOURS`-th hour
+_HOURLY_CADENCE_MAX_LEAD_HOURS = 54
+
+#: Cadence (hours) beyond :data:`_HOURLY_CADENCE_MAX_LEAD_HOURS`.
+_EXTENDED_CADENCE_HOURS = 3
+
+#: Run hours (UTC) every cycle reaches: 00/06/12/18Z all publish out to
+#: :data:`_ALL_CYCLE_MAX_LEAD_HOURS`.
 _ALL_RUN_HOURS = (0, 6, 12, 18)
 
-#: Run hours (UTC) that continue publishing beyond T+54. 06Z/18Z stop around
-#: T+54-67, so only 00Z/12Z reach T+72 and beyond.
+#: Run hours (UTC) that continue publishing beyond :data:`_ALL_CYCLE_MAX_LEAD_HOURS`.
+#: 06Z/18Z stop there; only 00Z/12Z continue.
 _LONG_RUN_HOURS = (0, 12)
 
-#: Lead (hours) at/below which every cycle still reaches it.
-_ALL_CYCLE_MAX_LEAD_HOURS = 54
+#: Lead (hours) at/below which every cycle still reaches it
+_ALL_CYCLE_MAX_LEAD_HOURS = 69
+
+
+def _check_valid_lead(lead_hours: int) -> None:
+    """Raise if ``lead_hours`` isn't a lead the archive ever publishes at."""
+    if lead_hours > _HOURLY_CADENCE_MAX_LEAD_HOURS and lead_hours % _EXTENDED_CADENCE_HOURS != 0:
+        msg = (
+            f"lead {lead_hours}h is not a valid archive lead: beyond "
+            f"T+{_HOURLY_CADENCE_MAX_LEAD_HOURS}h, only every "
+            f"{_EXTENDED_CADENCE_HOURS}h is published"
+        )
+        raise ValueError(msg)
 
 
 def run_hours_for_lead(lead_hours: int) -> tuple[int, ...]:
@@ -135,8 +153,8 @@ def run_hours_for_lead(lead_hours: int) -> tuple[int, ...]:
 def run_for_validity_at_lead(validity: datetime.datetime, lead_hours: int) -> datetime.datetime:
     """Get the run time for a fixed lead, given a validity time.
 
-    Unlike :func:`run_and_lead_for_validity` (shortest-lead), this fixes
-    ``lead_hours`` and solves for ``run = validity - lead_hours``.
+    Unlike :func:`run_for_validity` (shortest-lead), this fixes ``lead_hours``
+    and solves for ``run = validity - lead_hours``.
 
     Parameters
     ----------
@@ -153,15 +171,14 @@ def run_for_validity_at_lead(validity: datetime.datetime, lead_hours: int) -> da
     Raises
     ------
     ValueError
-        If ``validity`` isn't hourly, or if the implied run hour is not one that
-        reaches ``lead_hours``. Calling this for a validity/lead
-        combination the archive can't produce is a caller bug.
+        If ``validity`` isn't hourly, if ``lead_hours`` isn't a lead the archive
+        ever publishes at (see :func:`_check_valid_lead`), or if the implied run
+        hour is not one that reaches ``lead_hours``. Calling this for a
+        validity/lead combination the archive can't produce is a caller bug.
 
     """
-    if validity.minute or validity.second or validity.microsecond:
-        msg = f"validity time {validity} must fall on the hour"
-        raise ValueError(msg)
-
+    _check_hourly(validity)
+    _check_valid_lead(lead_hours)
     run = validity - datetime.timedelta(hours=lead_hours)
     if run.hour not in run_hours_for_lead(lead_hours):
         msg = (
@@ -179,6 +196,10 @@ def object_key(
     parameter: str,
 ) -> str:
     """Build the S3 object key for a given run, validity, lead and parameter.
+
+    String template (validity time leads, not run time)::
+
+        global-deterministic-10km/{RUN}Z/{VALIDITY}Z-PT{LEAD}H{MIN}M-{parameter}.nc
 
     ``lead_hours`` is always zero-padded to 4 digits and minutes are hardcoded to
     ``00M``, since this product only ever publishes on-the-hour leads.
@@ -277,7 +298,7 @@ def level_indices_for(
         floating point).
 
     """
-    target_pa = np.asarray(levels_hpa, dtype=np.float64) * 100.0
+    target_pa = np.asarray(levels_hpa, dtype=np.float64) * 100.0  # convert from hPa -> Pa
     indices = []
     for level_hpa, level_pa in zip(levels_hpa, target_pa, strict=True):
         matches = np.flatnonzero(np.isclose(pressure_pa, level_pa, atol=1e-3))
@@ -333,6 +354,11 @@ def select_cruise_subset(
         msg = f"expected ascending latitude ordering in {key}"
         raise AssertionError(msg)
 
+    longitude = ds["longitude"].values
+    if not np.all(np.diff(longitude) > 0):
+        msg = f"expected ascending longitude ordering in {key}"
+        raise AssertionError(msg)
+
     pressure_pa = ds["pressure"].values.astype(np.float64)
     level_indices = level_indices_for(pressure_pa, CRUISE_LEVELS_HPA, key=key)
 
@@ -340,6 +366,9 @@ def select_cruise_subset(
     if extent is not None:
         lon_min, lon_max, lat_min, lat_max = extent
         da = da.sel(longitude=slice(lon_min, lon_max), latitude=slice(lat_min, lat_max))
+        if da.sizes["longitude"] == 0 or da.sizes["latitude"] == 0:
+            msg = f"extent {extent} crop produced an empty result for {key}"
+            raise AssertionError(msg)
     for attr in ("um_version", "mosg__grid_version"):
         if attr in ds.attrs:
             da.attrs[attr] = ds.attrs[attr]
