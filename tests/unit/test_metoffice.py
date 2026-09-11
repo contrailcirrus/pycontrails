@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import datetime
-import io
-import os
 import pathlib
 import warnings
 from unittest import mock
@@ -46,27 +44,8 @@ def _cached_reference_file(parameter: str) -> pathlib.Path:
         return cache_path
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    body = s3.filesystem().get_object(Bucket=s3.BUCKET, Key=key)["Body"].read()
-    cache_path.write_bytes(body)
+    s3.filesystem().get(f"s3://{s3.BUCKET}/{key}", str(cache_path))
     return cache_path
-
-
-class _CountingClient:
-    """Wraps a boto3 S3 client, counting bytes actually returned by ``get_object``."""
-
-    def __init__(self, client) -> None:
-        self._client = client
-        self.bytes_read = 0
-
-    def get_object(self, **kwargs):
-        response = self._client.get_object(**kwargs)
-        body = response["Body"].read()
-        self.bytes_read += len(body)
-        response["Body"] = io.BytesIO(body)
-        return response
-
-    def __getattr__(self, name):
-        return getattr(self._client, name)
 
 
 def test_run_and_lead_for_validity_within_cycle():
@@ -115,35 +94,6 @@ def test_run_for_validity_at_lead_rejects_unreachable_run_hour():
 def test_run_for_validity_at_lead_rejects_non_hourly():
     with pytest.raises(ValueError, match="must fall on the hour"):
         s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 3, 30), 24)
-
-
-def test_available_validity_times_at_lead_counts_per_day():
-    start = datetime.datetime(2024, 9, 1, 0)
-    end = datetime.datetime(2024, 9, 7, 23)
-
-    at_24 = s3.available_validity_times_at_lead(start, end, 24)
-    at_72 = s3.available_validity_times_at_lead(start, end, 72)
-
-    assert len(at_24) == 7 * 4
-    assert len(at_72) == 7 * 2
-    assert all(v.hour in (0, 6, 12, 18) for v in at_24)
-    assert all(v.hour in (0, 12) for v in at_72)
-
-
-def test_matched_validity_times_reduces_to_hour_0_and_12():
-    start = datetime.datetime(2024, 9, 1, 0)
-    end = datetime.datetime(2024, 9, 7, 23)
-
-    matched = s3.matched_validity_times(start, end, (0, 24, 48, 72))
-
-    assert len(matched) == 7 * 2
-    assert all(v.hour in (0, 12) for v in matched)
-
-
-def test_matched_validity_times_empty_leads():
-    start = datetime.datetime(2024, 9, 1)
-    end = datetime.datetime(2024, 9, 2)
-    assert s3.matched_validity_times(start, end, ()) == []
 
 
 def test_object_key_format_for_pressure_level_variable():
@@ -205,7 +155,7 @@ def test_select_cruise_subset_no_extent_returns_full_domain():
 @pytest.mark.parametrize(
     "parameter", ["temperature_on_pressure_levels", "relative_humidity_on_pressure_levels"]
 )
-def test_range_read_bit_identical_to_reference(parameter):
+def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parameter, monkeypatch):
     fixture_path = _cached_reference_file(parameter)
 
     local_ds = xr.open_dataset(
@@ -216,9 +166,12 @@ def test_range_read_bit_identical_to_reference(parameter):
     ).load()
 
     key = s3.object_key(REFERENCE_RUN, REFERENCE_VALIDITY, REFERENCE_LEAD_HOURS, parameter)
-    counting_client = _CountingClient(s3.filesystem())
+    fs = s3.filesystem()
+    get_mock = mock.MagicMock(wraps=fs.get)
+    monkeypatch.setattr(fs, "get", get_mock)
+
     actual = s3.fetch_pressure_level_field(
-        counting_client,
+        fs,
         key,
         parameter,
         run=REFERENCE_RUN,
@@ -231,13 +184,9 @@ def test_range_read_bit_identical_to_reference(parameter):
     assert list(actual.dims) == ["pressure", "latitude", "longitude"]
     assert actual.sizes["pressure"] == len(s3.CRUISE_LEVELS_HPA)
 
-    whole_file_size = os.path.getsize(fixture_path)
-    ratio = counting_client.bytes_read / whole_file_size
-    print(
-        f"\n[{parameter}] range-read bytes={counting_client.bytes_read} "
-        f"whole-file bytes={whole_file_size} ratio={ratio:.4f}"
-    )
-    assert counting_client.bytes_read < whole_file_size
+    # Guards against regressing back to many small per-chunk reads (the actual bug
+    # that caused ~10-minute opens): exactly one whole-object download per fetch.
+    assert get_mock.call_count == 1
 
 
 ######
@@ -250,7 +199,7 @@ UKMO_PRESSURE_PA = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
 
 
 class _FakeClient:
-    """Stand-in for a boto3 client -- never actually called since the fetch
+    """Stand-in for an s3fs filesystem -- never actually called since the fetch
     functions themselves are replaced below."""
 
 
@@ -395,7 +344,7 @@ def test_download_dataset_raises_when_live_fetch_fails(tmp_path, monkeypatch):
     monkeypatch.setattr(s3, "filesystem", _FakeClient)
 
     def failing_fetch(fs, key, parameter, **kwargs):
-        raise RuntimeError("simulated 404")
+        raise FileNotFoundError("simulated 404")
 
     monkeypatch.setattr(s3, "fetch_pressure_level_field", failing_fetch)
 
@@ -403,6 +352,58 @@ def test_download_dataset_raises_when_live_fetch_fails(tmp_path, monkeypatch):
         MetOfficeUM(
             datetime.datetime(2024, 9, 1, 0), cachestore=DiskCacheStore(tmp_path)
         ).open_metdataset()
+
+
+def test_download_dataset_propagates_programming_errors_unwrapped(tmp_path, monkeypatch):
+    """A non-``FileNotFoundError`` failure (a bug, not a missing S3 object) must
+    propagate as itself, not be relabeled as :class:`MetOfficeDataNotFoundError`."""
+    monkeypatch.setattr(s3, "filesystem", _FakeClient)
+
+    def buggy_fetch(fs, key, parameter, **kwargs):
+        raise TypeError("simulated bug")
+
+    monkeypatch.setattr(s3, "fetch_pressure_level_field", buggy_fetch)
+
+    with pytest.raises(TypeError, match="simulated bug"):
+        MetOfficeUM(
+            datetime.datetime(2024, 9, 1, 0), cachestore=DiskCacheStore(tmp_path)
+        ).open_metdataset()
+
+
+def test_download_dataset_continues_past_one_missing_hour(tmp_path, monkeypatch):
+    """A missing hour among several requested must not prevent the others from
+    being fetched and cached; the aggregated error names how many hours failed."""
+    time_range = (datetime.datetime(2024, 9, 1, 0), datetime.datetime(2024, 9, 1, 2))
+    hours = pd.date_range(*time_range, freq="1h").to_pydatetime().tolist()
+    missing_hour = hours[1]
+    monkeypatch.setattr(s3, "filesystem", _FakeClient)
+
+    def fake_fetch(fs, key, parameter, *, validity, **kwargs):
+        if validity == missing_hour:
+            raise FileNotFoundError("simulated 404")
+        variable = s3.PARAMETER_VARIABLE[parameter]
+        value = 220.0 if variable == "air_temperature" else 0.8
+        shape = (len(UKMO_PRESSURE_PA), len(UKMO_LATITUDE), len(UKMO_LONGITUDE))
+        data = np.full(shape, value, dtype=np.float64)
+        return xr.DataArray(
+            data,
+            dims=("pressure", "latitude", "longitude"),
+            coords={
+                "pressure": UKMO_PRESSURE_PA,
+                "latitude": UKMO_LATITUDE,
+                "longitude": UKMO_LONGITUDE,
+            },
+        )
+
+    monkeypatch.setattr(s3, "fetch_pressure_level_field", fake_fetch)
+
+    dlib = MetOfficeUM(time_range, cachestore=DiskCacheStore(tmp_path))
+    with pytest.raises(MetOfficeDataNotFoundError, match="1 of 3 hour"):
+        dlib.download_dataset(hours)
+
+    assert dlib.cachestore.exists(dlib.create_cachepath(hours[0]))
+    assert not dlib.cachestore.exists(dlib.create_cachepath(missing_hour))
+    assert dlib.cachestore.exists(dlib.create_cachepath(hours[2]))
 
 
 def test_open_metdataset_rejects_descending_latitude(tmp_path, monkeypatch):

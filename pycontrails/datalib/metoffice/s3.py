@@ -1,12 +1,9 @@
-"""Range-read access layer for the Met Office ``global-deterministic-10km`` product.
+"""Whole-file access layer for the Met Office ``global-deterministic-10km`` product.
 
-Anonymous access to ``s3://met-office-atmospheric-model-data`` (eu-west-2). Fetches
-only the seven cruise pressure levels, optionally cropped to a caller-supplied
-bounding box, via byte-range reads; skips the ``flag`` variable entirely.
-
-Uses a plain ``boto3`` client wrapped in a minimal seekable file-like object.
-Real concurrency requires separate processes, not threads, since ``h5py``/HDF5
-serializes internally within one process.
+Anonymous access to ``s3://met-office-atmospheric-model-data`` (eu-west-2). Downloads
+each object in full via ``s3fs`` to a local temp file, then selects the seven cruise
+pressure levels, optionally cropped to a caller-supplied bounding box. Each object
+also contains a ``flag`` variable, which is never loaded.
 
 This is a standalone module: it knows nothing about pycontrails' met data model. The
 pycontrails datalib (``ukmo.py``) wraps it.
@@ -20,35 +17,33 @@ every 6 hours (00/06/12/18Z), so for any hourly validity time the run is the
 preceding 6-hour boundary and the lead is the hour offset from it.
 
 Chunk layout varies by archive vintage: older files have a much finer native chunk
-layout than the current live product, so per-hour fetch time is dominated by
-request count rather than bytes transferred.
+layout than the current live product. Fetching via per-chunk byte-range reads made
+per-hour fetch time dominated by request count rather than bytes transferred --
+this is why every object is downloaded in full instead.
 
 This module requires the following additional dependency:
 
-- `boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/index.html>`_
+- `s3fs <https://s3fs.readthedocs.io/>`_
 
 """
 
 from __future__ import annotations
 
 import datetime
-from collections.abc import Collection
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
-from pycontrails.utils import dependencies
+from pycontrails.utils import dependencies, temp
 
 try:
-    import boto3
-    from botocore import UNSIGNED
-    from botocore.client import BaseClient
-    from botocore.config import Config
+    import s3fs
 except ModuleNotFoundError as exc:
     dependencies.raise_module_not_found_error(
         name="metoffice.s3 module",
-        package_name="boto3",
+        package_name="s3fs",
         module_not_found_error=exc,
         pycontrails_optional_package="metoffice",
     )
@@ -107,8 +102,7 @@ def run_and_lead_for_validity(validity: datetime.datetime) -> tuple[datetime.dat
     return run, lead_hours
 
 
-#: Run hours (UTC) every cycle reaches: hourly cadence out to T+54
-#: (~4,527 objects/run breakdown: "55 hourly to T+54").
+#: Run hours (UTC) every cycle reaches: hourly cadence out to T+54.
 _ALL_RUN_HOURS = (0, 6, 12, 18)
 
 #: Run hours (UTC) that continue publishing beyond T+54. 06Z/18Z stop around
@@ -139,7 +133,7 @@ def run_hours_for_lead(lead_hours: int) -> tuple[int, ...]:
 
 
 def run_for_validity_at_lead(validity: datetime.datetime, lead_hours: int) -> datetime.datetime:
-    """Get the run time for a *fixed* lead, given a validity time.
+    """Get the run time for a fixed lead, given a validity time.
 
     Unlike :func:`run_and_lead_for_validity` (shortest-lead), this fixes
     ``lead_hours`` and solves for ``run = validity - lead_hours``.
@@ -178,60 +172,6 @@ def run_for_validity_at_lead(validity: datetime.datetime, lead_hours: int) -> da
     return run
 
 
-def available_validity_times_at_lead(
-    start: datetime.datetime, end: datetime.datetime, lead_hours: int
-) -> list[datetime.datetime]:
-    """Get every hourly validity time reachable at a fixed ``lead_hours``.
-
-    Pure calendar arithmetic; no network I/O, no existence check
-    against the mirror or the S3 archive.
-
-    Parameters
-    ----------
-    start, end : datetime.datetime
-        Inclusive validity-time bounds.
-    lead_hours : int
-        Fixed lead time in whole hours.
-
-    Returns
-    -------
-    list[datetime.datetime]
-        Hourly validity times in ``[start, end]`` whose implied run hour reaches
-        ``lead_hours``, ascending.
-
-    """
-    run_hours = run_hours_for_lead(lead_hours)
-    candidates = pd.date_range(start, end, freq="1h").to_pydatetime().tolist()
-    return [v for v in candidates if (v - datetime.timedelta(hours=lead_hours)).hour in run_hours]
-
-
-def matched_validity_times(
-    start: datetime.datetime, end: datetime.datetime, leads: Collection[int]
-) -> list[datetime.datetime]:
-    """Get the intersection of validity times available at every lead in ``leads``.
-
-    This is the set that must be compared across leads: the T+0 baseline must
-    also be restricted to this same intersection, not the full per-lead set and
-    not the existing shortest-lead mirror's validity set.
-
-    Parameters
-    ----------
-    start, end : datetime.datetime
-        Inclusive validity-time bounds.
-    leads : Collection[int]
-        Fixed lead times (whole hours) to intersect over.
-
-    Returns
-    -------
-    list[datetime.datetime]
-        Ascending validity times available at every lead in ``leads``. Empty if
-        ``leads`` is empty.
-
-    """
-    sets = [set(available_validity_times_at_lead(start, end, lead)) for lead in leads]
-    return sorted(set.intersection(*sets)) if sets else []
-
-
 def object_key(
     run: datetime.datetime,
     validity: datetime.datetime,
@@ -240,17 +180,8 @@ def object_key(
 ) -> str:
     """Build the S3 object key for a given run, validity, lead and parameter.
 
-    Parameters
-    ----------
-    run : datetime.datetime
-        Model run time.
-    validity : datetime.datetime
-        Forecast validity time.
-    lead_hours : int
-        Lead time in whole hours.
-    parameter : str
-        Parameter name as it appears in the file name, e.g.
-        ``"temperature_on_pressure_levels"``.
+    ``lead_hours`` is always zero-padded to 4 digits and minutes are hardcoded to
+    ``00M``, since this product only ever publishes on-the-hour leads.
 
     Returns
     -------
@@ -264,79 +195,19 @@ def object_key(
     return f"{PRODUCT_PREFIX}/{run_str}/{validity_str}-{lead_str}-{parameter}.nc"
 
 
-def filesystem() -> BaseClient:
-    """Get a fresh anonymous-access S3 client for :data:`BUCKET`.
+def filesystem() -> s3fs.S3FileSystem:
+    """Get an anonymous-access s3fs filesystem for :data:`BUCKET`.
 
-    Not cached/shared; each caller (e.g. each mirror worker process) should get its
-    own client with its own connection pool.
+    ``s3fs`` caches filesystem instances per ``(args, kwargs)`` within a process, so
+    repeated calls with the same arguments may return the same shared instance.
 
     Returns
     -------
-    boto3.client
-        Anonymous, region-pinned S3 client.
+    s3fs.S3FileSystem
+        Anonymous, region-pinned S3 filesystem.
 
     """
-    return boto3.client(
-        "s3",
-        region_name=REGION,
-        config=Config(signature_version=UNSIGNED, max_pool_connections=32),
-    )
-
-
-class _S3RangeFile:
-    """Minimal seekable, read-only file-like object backed by ``get_object`` range reads.
-
-    Satisfies h5py's generic file-like ("fileobj") driver: ``read``/``seek``/``tell``
-    plus the ``seekable``/``readable``/``writable`` capability queries. Issues one
-    exact byte-range GET per ``read()`` call, with no speculative over-fetching and
-    no shared cache, since ``h5py`` already knows exactly which bytes it needs per
-    chunk.
-    """
-
-    def __init__(self, client: BaseClient, bucket: str, key: str) -> None:
-        self._client = client
-        self._bucket = bucket
-        self._key = key
-        self._pos = 0
-        self._size = client.head_object(Bucket=bucket, Key=key)["ContentLength"]
-
-    def seekable(self) -> bool:
-        return True
-
-    def readable(self) -> bool:
-        return True
-
-    def writable(self) -> bool:
-        return False
-
-    def seek(self, offset: int, whence: int = 0) -> int:
-        if whence == 0:
-            self._pos = offset
-        elif whence == 1:
-            self._pos += offset
-        elif whence == 2:
-            self._pos = self._size + offset
-        else:
-            msg = f"invalid whence {whence}"
-            raise ValueError(msg)
-        return self._pos
-
-    def tell(self) -> int:
-        return self._pos
-
-    def read(self, size: int | None = -1) -> bytes:
-        end = self._size - 1 if size is None or size < 0 else min(self._pos + size, self._size) - 1
-        if self._pos > end:
-            return b""
-        response = self._client.get_object(
-            Bucket=self._bucket, Key=self._key, Range=f"bytes={self._pos}-{end}"
-        )
-        data = response["Body"].read()
-        self._pos += len(data)
-        return data
-
-    def close(self) -> None:
-        """No-op; there is no open resource to release."""
+    return s3fs.S3FileSystem(anon=True, client_kwargs={"region_name": REGION})
 
 
 def _assert_time_coords_match(
@@ -346,7 +217,15 @@ def _assert_time_coords_match(
     validity: datetime.datetime | None,
     lead_hours: int | None,
 ) -> None:
-    """Assert filename-derived run/validity/lead match in-file time coordinates."""
+    """Assert filename-derived run/validity/lead match in-file time coordinates.
+
+    Raises
+    ------
+    AssertionError
+        If any of ``run``, ``validity``, ``lead_hours`` is given and doesn't match
+        the corresponding in-file coordinate.
+
+    """
     if run is not None:
         file_run = pd.Timestamp(ds["forecast_reference_time"].item())
         if file_run != pd.Timestamp(run):
@@ -366,6 +245,49 @@ def _assert_time_coords_match(
             raise AssertionError(msg)
 
 
+def level_indices_for(
+    pressure_pa: np.ndarray, levels_hpa: Sequence[float], key: str = "<dataset>"
+) -> list[int]:
+    """Get the index of each of ``levels_hpa`` within ``pressure_pa``.
+
+    Shared by :func:`select_cruise_subset` and
+    :meth:`~pycontrails.datalib.metoffice.ukmo.MetOfficeUM._process_hour`, which both
+    need to locate the same fixed set of pressure levels within a fetched field's
+    native ``pressure`` coordinate.
+
+    Parameters
+    ----------
+    pressure_pa : np.ndarray
+        In-file ``pressure`` coordinate values, in Pa.
+    levels_hpa : Sequence[float]
+        Target pressure levels, in hPa.
+    key : str, optional
+        Identifier used only in the error message.
+
+    Returns
+    -------
+    list[int]
+        Index into ``pressure_pa`` of each of ``levels_hpa``, in the same order.
+
+    Raises
+    ------
+    ValueError
+        If any level in ``levels_hpa`` isn't matched by exactly one value in
+        ``pressure_pa`` (within a 1e-3 Pa tolerance, since the in-file coordinate is
+        floating point).
+
+    """
+    target_pa = np.asarray(levels_hpa, dtype=np.float64) * 100.0
+    indices = []
+    for level_hpa, level_pa in zip(levels_hpa, target_pa, strict=True):
+        matches = np.flatnonzero(np.isclose(pressure_pa, level_pa, atol=1e-3))
+        if len(matches) != 1:
+            msg = f"expected exactly one {level_hpa} hPa level in {key}, found {len(matches)}"
+            raise ValueError(msg)
+        indices.append(int(matches[0]))
+    return indices
+
+
 def select_cruise_subset(
     ds: xr.Dataset,
     parameter: str,
@@ -375,9 +297,9 @@ def select_cruise_subset(
 ) -> xr.DataArray:
     """Select the cruise-level, region-cropped subset of a parameter from a dataset.
 
-    Pure selection logic, factored out so the same subsetting can be applied to a
-    dataset opened by any means (S3 byte-range read, local file); notably used to
-    build ground truth in tests.
+    Pure selection logic, factored out so the same subsetting can be applied
+    regardless of how ``ds`` was opened; notably used to build ground truth in
+    tests from a locally-cached reference file.
 
     Parameters
     ----------
@@ -412,14 +334,7 @@ def select_cruise_subset(
         raise AssertionError(msg)
 
     pressure_pa = ds["pressure"].values.astype(np.float64)
-    target_pa = np.asarray(CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
-    level_indices = []
-    for level_hpa, level_pa in zip(CRUISE_LEVELS_HPA, target_pa, strict=True):
-        matches = np.flatnonzero(np.isclose(pressure_pa, level_pa, atol=1e-3))
-        if len(matches) != 1:
-            msg = f"expected exactly one {level_hpa} hPa level in {key}, found {len(matches)}"
-            raise AssertionError(msg)
-        level_indices.append(int(matches[0]))
+    level_indices = level_indices_for(pressure_pa, CRUISE_LEVELS_HPA, key=key)
 
     da = ds[variable].isel(pressure=level_indices)
     if extent is not None:
@@ -431,14 +346,8 @@ def select_cruise_subset(
     return da
 
 
-def _open_dataset(fs: BaseClient, key: str) -> xr.Dataset:
-    """Lazily open the raw dataset for an object key via byte-range-capable I/O."""
-    f = _S3RangeFile(fs, BUCKET, key)
-    return xr.open_dataset(f, engine="h5netcdf", decode_times=True, decode_timedelta=True)
-
-
-def open_pressure_level_field(
-    fs: BaseClient,
+def fetch_pressure_level_field(
+    fs: s3fs.S3FileSystem,
     key: str,
     parameter: str,
     *,
@@ -447,15 +356,17 @@ def open_pressure_level_field(
     lead_hours: int | None = None,
     extent: tuple[float, float, float, float] | None = None,
 ) -> xr.DataArray:
-    """Lazily open the cruise-level, region-cropped subset of a pressure-level parameter.
+    """Download the object in full, then fetch the cruise-level, region-cropped subset.
 
-    Does not trigger any byte-range fetch; the returned array is backed by lazy
-    ``h5netcdf`` indexing. Never opens the ``flag`` variable.
+    Downloads the whole object to a local temp file via ``fs.get``, opens it with
+    ``h5netcdf``, and loads only the selected subset into memory. The temp file is
+    removed once the dataset has been closed, even if the download or selection
+    fails.
 
     Parameters
     ----------
-    fs : boto3.client
-        S3 client to read through, e.g. from :func:`filesystem`.
+    fs : s3fs.S3FileSystem
+        Filesystem to read through, e.g. from :func:`filesystem`.
     key : str
         Object key relative to :data:`BUCKET`, e.g. from :func:`object_key`.
     parameter : str
@@ -477,40 +388,15 @@ def open_pressure_level_field(
     Returns
     -------
     xr.DataArray
-        Lazy array with dims ``(pressure, latitude, longitude)``, restricted to
+        Loaded array with dims ``(pressure, latitude, longitude)``, restricted to
         :data:`CRUISE_LEVELS_HPA` and, if given, ``extent``.
 
     """
-    ds = _open_dataset(fs, key)
-
-    if run is not None or validity is not None or lead_hours is not None:
-        _assert_time_coords_match(ds, run=run, validity=validity, lead_hours=lead_hours)
-
-    return select_cruise_subset(ds, parameter, key=key, extent=extent)
-
-
-def fetch_pressure_level_field(
-    fs: BaseClient,
-    key: str,
-    parameter: str,
-    *,
-    run: datetime.datetime | None = None,
-    validity: datetime.datetime | None = None,
-    lead_hours: int | None = None,
-    extent: tuple[float, float, float, float] | None = None,
-) -> xr.DataArray:
-    """Fetch (byte-range read + load) the cruise-level, region-cropped subset of a parameter.
-
-    See :func:`open_pressure_level_field` for parameters. This is the point at which
-    the actual byte-range GETs happen.
-
-    Returns
-    -------
-    xr.DataArray
-        Loaded array with dims ``(pressure, latitude, longitude)``.
-
-    """
-    da = open_pressure_level_field(
-        fs, key, parameter, run=run, validity=validity, lead_hours=lead_hours, extent=extent
-    )
-    return da.load()
+    s3_path = f"s3://{BUCKET}/{key}"
+    with temp.temp_file() as target:
+        fs.get(s3_path, target)
+        with xr.open_dataset(
+            target, engine="h5netcdf", decode_times=True, decode_timedelta=True
+        ) as ds:
+            _assert_time_coords_match(ds, run=run, validity=validity, lead_hours=lead_hours)
+            return select_cruise_subset(ds, parameter, key=key, extent=extent).load()

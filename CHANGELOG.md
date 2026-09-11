@@ -36,6 +36,10 @@
 
 - Update [OpenSky](https://opensky-network.org/) documentation to reference [Trino interface](https://openskynetwork.github.io/opensky-api/trino.html).
 
+### Internals
+
+- Replace `boto3` with `s3fs` in the `metoffice` module, downloading each S3 object in full to a local temp file instead of issuing thousands of small byte-range GETs per file. Fixes a performance regression where opening `MetOfficeUM` data could take several minutes.
+
 ## 0.63.3
 
 ### Fixes
