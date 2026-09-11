@@ -4,7 +4,7 @@ This module supports
 
 - Fetching Met Office UM cruise-level forecast data directly from the public
   ``global-deterministic-10km`` S3 archive, on a cache miss, via
-  :mod:`pycontrails.datalib.metoffice.s3`'s byte-range read logic.
+  :mod:`pycontrails.datalib.metoffice.s3`'s whole-file S3 download.
 - Converting the fetched water-referenced relative humidity to
   ``specific_humidity``, from which pycontrails' ``thermo.rhi`` recovers the
   ice-referenced RHi conversion that ISSR/SAC-style humidity scaling needs.
@@ -42,7 +42,7 @@ from pycontrails.physics import thermo
 from pycontrails.utils import temp
 
 if TYPE_CHECKING:
-    from botocore.client import BaseClient
+    import s3fs
 
 #: MetDataset.attrs values set by :meth:`MetOfficeUM.set_metadata`.
 PROVIDER = "Met Office"
@@ -73,8 +73,8 @@ class MetOfficeUM(metsource.MetDataSource):
         keep the raw fetched value.
     pressure_levels : metsource.PressureLevelInput, optional
         Requested pressure levels in hPa. Defaults to
-        :data:`pycontrails.datalib.metoffice.s3.CRUISE_LEVELS_HPA` (the 7 levels
-        the S3 archive's byte-range crop targets).
+        :data:`pycontrails.datalib.metoffice.s3.CRUISE_LEVELS_HPA` (the 7
+        cruise-relevant levels this datalib selects from each fetched file).
     grid : float, optional
         Not supported. The archive serves fixed native-grid data; regridding
         happens downstream of this datalib, not within it. A non-``None`` value
@@ -104,7 +104,6 @@ class MetOfficeUM(metsource.MetDataSource):
         grid: float | None = None,
         lead_hours: int | None = None,
         cachestore: CacheStore | None = __marker,  # type: ignore[assignment]
-        **kwargs: Any,
     ) -> None:
         if grid is not None:
             warnings.warn(
@@ -127,8 +126,6 @@ class MetOfficeUM(metsource.MetDataSource):
 
         self.lead_hours = lead_hours
         self.cachestore = DiskCacheStore() if cachestore is self.__marker else cachestore
-
-        del kwargs  # accepted only for MetDataSource ABC compatibility; unused
 
     @property
     def pressure_level_variables(self) -> list[MetVariable]:
@@ -210,13 +207,41 @@ class MetOfficeUM(metsource.MetDataSource):
         with hours that
         :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource.is_datafile_cached`
         has already determined are missing from :attr:`cachestore`.
+
+        An hour genuinely absent from the archive (:class:`MetOfficeDataNotFoundError`)
+        doesn't abort the rest of the batch: it's collected and, if any hours failed,
+        raised as a single :class:`MetOfficeDataNotFoundError` once every hour has been
+        attempted, so one missing hour doesn't prevent the others from being fetched
+        and cached. Any other exception -- e.g. a fixed ``lead_hours``/validity
+        combination the archive can't produce (see :func:`s3.run_for_validity_at_lead`,
+        which raises ``ValueError``) -- is a caller or programming error, not a data
+        availability issue, and propagates immediately instead.
         """
         fs = s3.filesystem()
+        errors: dict[datetime, MetOfficeDataNotFoundError] = {}
         for t in times:
-            self._download_convert_cache_handler(fs, t)
+            try:
+                self._download_convert_cache_handler(fs, t)
+            except MetOfficeDataNotFoundError as exc:
+                errors[t] = exc
 
-    def _download_convert_cache_handler(self, fs: BaseClient, t: datetime) -> None:
-        """Fetch, process, and cache one missing hour."""
+        if errors:
+            detail = "; ".join(f"{t.isoformat()}: {exc}" for t, exc in errors.items())
+            msg = f"{len(errors)} of {len(times)} hour(s) could not be fetched: {detail}"
+            raise MetOfficeDataNotFoundError(msg)
+
+    def _download_convert_cache_handler(self, fs: s3fs.S3FileSystem, t: datetime) -> None:
+        """Fetch, process, and cache one missing hour.
+
+        Raises
+        ------
+        MetOfficeDataNotFoundError
+            If any requested parameter's object is missing from the S3 archive.
+        ValueError
+            If ``t`` isn't hourly, or (with a fixed :attr:`lead_hours`) if the implied
+            run doesn't reach that lead -- a caller error, not a data availability
+            issue, so it isn't wrapped as :class:`MetOfficeDataNotFoundError`.
+        """
         if self.lead_hours is not None:
             run, lead = s3.run_for_validity_at_lead(t, self.lead_hours), self.lead_hours
         else:
@@ -229,11 +254,8 @@ class MetOfficeUM(metsource.MetDataSource):
                 data_vars[variable] = s3.fetch_pressure_level_field(
                     fs, key, parameter, run=run, validity=t, lead_hours=lead
                 )
-            except Exception as exc:
-                msg = (
-                    f"{t.isoformat()} could not be fetched from the S3 archive "
-                    f"(key={key}): {exc}"
-                )
+            except FileNotFoundError as exc:
+                msg = f"{t.isoformat()} could not be fetched from the S3 archive (key={key}): {exc}"
                 raise MetOfficeDataNotFoundError(msg) from exc
 
         ds = xr.Dataset(data_vars).expand_dims(time=[pd.Timestamp(t)])
@@ -255,27 +277,24 @@ metsource.MetDataSource._check_is_ds_complete` (and the rest of pycontrails)
             Processed dataset with cruise levels selected, ``specific_humidity``
             computed, and variables named by short name.
         """
-        # Must run before `MetDataset` construction: with the default `copy=True`,
-        # `MetDataset.__init__` sorts every coordinate, masking a reversed one.
-        # `s3.select_cruise_subset` asserts this per-file; this is a cheap check
-        # on the assembled hour.
+        # MetDataset sorts coordinates on construction (copy=True), which would
+        # silently mask a non-ascending latitude axis -- check it here instead,
+        # while it's still attributable to this hour's raw fetched data.
         latitude = raw_ds["latitude"].values
         if not np.all(np.diff(latitude) > 0):
             msg = f"expected ascending latitude ordering, got {latitude[:3]}...{latitude[-3:]}"
             raise AssertionError(msg)
 
+        relative_humidity = raw_ds["relative_humidity"].values
+        if np.any(relative_humidity < -1e-3) or np.any(relative_humidity > 1.5):
+            msg = (
+                f"expected relative_humidity as a 0-1 fraction, got values in "
+                f"[{relative_humidity.min():.3g}, {relative_humidity.max():.3g}]"
+            )
+            raise AssertionError(msg)
+
         pressure_pa = raw_ds["pressure"].values.astype(np.float64)
-        target_pa = np.asarray(self.pressure_levels, dtype=np.float64) * 100.0
-        level_indices = []
-        for level_hpa, level_pa in zip(self.pressure_levels, target_pa, strict=True):
-            matches = np.flatnonzero(np.isclose(pressure_pa, level_pa, atol=1e-3))
-            if len(matches) != 1:
-                msg = (
-                    f"expected exactly one {level_hpa} hPa level in the fetched "
-                    f"data, found {len(matches)}"
-                )
-                raise ValueError(msg)
-            level_indices.append(int(matches[0]))
+        level_indices = s3.level_indices_for(pressure_pa, self.pressure_levels)
 
         ds = raw_ds.isel(pressure=level_indices)
         ds = ds.rename(pressure="level")
