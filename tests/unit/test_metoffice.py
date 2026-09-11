@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from pycontrails.core import met_var
 from pycontrails.core.cache import DiskCacheStore, GCPCacheStore
 from pycontrails.datalib.metoffice import s3
 from pycontrails.datalib.metoffice.ukmo import (
@@ -48,34 +49,47 @@ def _cached_reference_file(parameter: str) -> pathlib.Path:
     return cache_path
 
 
-def test_run_and_lead_for_validity_within_cycle():
-    run, lead_hours = s3.run_and_lead_for_validity(datetime.datetime(2024, 9, 15, 3))
-    assert run == datetime.datetime(2024, 9, 15, 0)
-    assert lead_hours == 3
+def test_run_for_validity_within_cycle():
+    assert s3.run_for_validity(datetime.datetime(2024, 9, 15, 3)) == datetime.datetime(
+        2024, 9, 15, 0
+    )
 
 
-def test_run_and_lead_for_validity_on_cycle_boundary():
-    run, lead_hours = s3.run_and_lead_for_validity(datetime.datetime(2024, 9, 15, 18))
-    assert run == datetime.datetime(2024, 9, 15, 18)
-    assert lead_hours == 0
+def test_lead_for_validity_within_cycle():
+    assert s3.lead_for_validity(datetime.datetime(2024, 9, 15, 3)) == 3
 
 
-def test_run_and_lead_for_validity_rejects_non_hourly():
+def test_run_for_validity_on_cycle_boundary():
+    assert s3.run_for_validity(datetime.datetime(2024, 9, 15, 18)) == datetime.datetime(
+        2024, 9, 15, 18
+    )
+
+
+def test_lead_for_validity_on_cycle_boundary():
+    assert s3.lead_for_validity(datetime.datetime(2024, 9, 15, 18)) == 0
+
+
+def test_run_for_validity_rejects_non_hourly():
     with pytest.raises(ValueError, match="must fall on the hour"):
-        s3.run_and_lead_for_validity(datetime.datetime(2024, 9, 15, 3, 30))
+        s3.run_for_validity(datetime.datetime(2024, 9, 15, 3, 30))
+
+
+def test_lead_for_validity_rejects_non_hourly():
+    with pytest.raises(ValueError, match="must fall on the hour"):
+        s3.lead_for_validity(datetime.datetime(2024, 9, 15, 3, 30))
 
 
 def test_run_hours_for_lead_all_cycles_at_and_below_boundary():
-    assert s3.run_hours_for_lead(54) == (0, 6, 12, 18)
+    assert s3.run_hours_for_lead(69) == (0, 6, 12, 18)
 
 
 def test_run_hours_for_lead_long_cycles_only_above_boundary():
-    assert s3.run_hours_for_lead(55) == (0, 12)
+    assert s3.run_hours_for_lead(72) == (0, 12)
 
 
 def test_run_for_validity_at_lead_matches_shortest_lead_at_lead_zero():
     validity = datetime.datetime(2024, 9, 15, 18)
-    expected_run, _ = s3.run_and_lead_for_validity(validity)
+    expected_run = s3.run_for_validity(validity)
     assert s3.run_for_validity_at_lead(validity, 0) == expected_run
 
 
@@ -86,14 +100,37 @@ def test_run_for_validity_at_lead_solves_run_minus_lead():
 
 def test_run_for_validity_at_lead_rejects_unreachable_run_hour():
     # validity 2024-09-15T06 at lead 72 implies run 2024-09-12T06, but only 00/12Z
-    # runs reach lead 72.
+    # runs reach lead 72 (06Z/18Z stop at lead 69).
     with pytest.raises(ValueError, match="does not reach that lead"):
         s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 6), 72)
+
+
+def test_run_for_validity_at_lead_accepts_06z_at_lead_69():
+    # Confirmed against the live archive: 06Z/18Z runs DO publish lead 69 (the
+    # true short-cycle cutoff), not just up to 54 as an earlier, less precise
+    # version of this boundary assumed.
+    validity = datetime.datetime(2024, 9, 15, 6) + datetime.timedelta(hours=69)
+    run = s3.run_for_validity_at_lead(validity, 69)
+    assert run == datetime.datetime(2024, 9, 15, 6)
 
 
 def test_run_for_validity_at_lead_rejects_non_hourly():
     with pytest.raises(ValueError, match="must fall on the hour"):
         s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 3, 30), 24)
+
+
+def test_run_for_validity_at_lead_rejects_lead_off_extended_cadence():
+    # Beyond T+54 the archive only publishes every 3rd hour; 55 isn't one of them.
+    with pytest.raises(ValueError, match="not a valid archive lead"):
+        s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 6), 55)
+
+
+def test_run_for_validity_at_lead_accepts_lead_on_extended_cadence():
+    # 57 = 54 + 3: a valid extended-cadence lead, previously (incorrectly)
+    # rejected for 06Z/18Z runs since it exceeds the old 54h boundary.
+    expected_run = datetime.datetime(2024, 9, 15, 6)
+    validity = expected_run + datetime.timedelta(hours=57)
+    assert s3.run_for_validity_at_lead(validity, 57) == expected_run
 
 
 def test_object_key_format_for_pressure_level_variable():
@@ -149,6 +186,35 @@ def test_select_cruise_subset_no_extent_returns_full_domain():
 
     np.testing.assert_array_equal(da["longitude"].values, longitude)
     np.testing.assert_array_equal(da["latitude"].values, latitude)
+
+
+def test_select_cruise_subset_rejects_descending_longitude():
+    pressure_pa = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
+    latitude = np.linspace(30.0, 70.0, 5)
+    longitude = np.array([10.0, 5.0, 0.0])  # descending
+    data = np.zeros((len(pressure_pa), len(latitude), len(longitude)), dtype=np.float32)
+    ds = xr.Dataset(
+        {"air_temperature": (("pressure", "latitude", "longitude"), data)},
+        coords={"pressure": pressure_pa, "latitude": latitude, "longitude": longitude},
+    )
+
+    with pytest.raises(AssertionError, match="longitude"):
+        s3.select_cruise_subset(ds, "temperature_on_pressure_levels")
+
+
+def test_select_cruise_subset_rejects_extent_producing_empty_crop():
+    pressure_pa = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
+    latitude = np.linspace(30.0, 70.0, 41)
+    longitude = np.linspace(-40.0, 0.0, 41)
+    data = np.zeros((len(pressure_pa), len(latitude), len(longitude)), dtype=np.float32)
+    ds = xr.Dataset(
+        {"air_temperature": (("pressure", "latitude", "longitude"), data)},
+        coords={"pressure": pressure_pa, "latitude": latitude, "longitude": longitude},
+    )
+
+    outside_extent = (100.0, 110.0, 80.0, 85.0)  # entirely outside the dataset's domain
+    with pytest.raises(AssertionError, match="empty result"):
+        s3.select_cruise_subset(ds, "temperature_on_pressure_levels", extent=outside_extent)
 
 
 @pytest.mark.skipif(OFFLINE, reason="offline")
@@ -331,7 +397,9 @@ def test_cache_dataset_writes_correctly_to_gcp_cache_store(tmp_path, monkeypatch
 
     disk_mirror = DiskCacheStore(tmp_path / "gcp-mirror")
     cachestore = GCPCacheStore(bucket="fake-bucket", disk_cache=disk_mirror, read_only=True)
-    monkeypatch.setattr(cachestore, "_bucket", _FakeBucket())
+    # `_bucket` is a read-only property that returns `_cached_bucket` when set;
+    # set the cache slot directly rather than the property itself.
+    monkeypatch.setattr(cachestore, "_cached_bucket", _FakeBucket())
 
     dlib = MetOfficeUM(hour, cachestore=cachestore)
     mds = dlib.open_metdataset()
@@ -431,6 +499,22 @@ def test_specific_humidity_round_trips_to_relative_humidity(tmp_path, monkeypatc
 
     recovered_rh = q / thermo.q_sat_liquid(np.float64(t_value), np.float64(level_pa))
     assert np.isclose(recovered_rh, rh_value, rtol=1e-4)
+
+
+def test_specific_humidity_retained_even_when_only_temperature_requested(tmp_path, monkeypatch):
+    """``q`` must survive even if the caller only asked for temperature: downstream
+    ISSR/SAC-style humidity scaling always needs it, per the class docstring."""
+    _patch_fetch_with_values(monkeypatch)
+    hour = datetime.datetime(2024, 9, 1, 0)
+
+    dlib = MetOfficeUM(
+        hour, variables=[met_var.AirTemperature], cachestore=DiskCacheStore(tmp_path)
+    )
+    mds = dlib.open_metdataset()
+
+    assert "t" in mds.data.data_vars
+    assert "q" in mds.data.data_vars
+    assert "r" not in mds.data.data_vars
 
 
 def test_hand_computed_rhi_matches_thermo_rhi_via_q(tmp_path, monkeypatch):
