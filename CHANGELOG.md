@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.64.0
+
+### Features
+
+- Support python 3.15. Wheels are now built and tested for python 3.12 - 3.15.
+- Build and publish wheels for Linux aarch64.
+
+### Breaking changes
+
+- Drop support for python 3.11. Python 3.12 or later is now required.
+- Simplify some `pycontrails` typing conventions:
+  - Remove the `XArrayType`, `MetDataType`, and `DatasetType` type variables. `XArrayType` and `MetDataType` are now declared with [PEP 695](https://peps.python.org/pep-0695/) type parameter syntax where they are used.
+  - Convert `ModelInput`, `ModelOutput`, `SourceType`, and `DatetimeLike` to `type` aliases.
+  - Declare generic classes and functions with PEP 695 type parameter syntax.
+
+### Internals
+
+- Rewrite `units.m_to_pl`, `units.pl_to_m`, and `thermo._e_sat_piecewise` with numpy ufuncs instead of `np.piecewise`. These functions now operate directly on floats, numpy arrays, and `xr.DataArray` inputs, and are slightly faster for small arrays. Remove the `pycontrails.utils.types.support_arraylike` decorator, which is no longer needed.
+- Remove the `typing-extensions` dependency (previously required only for python 3.11).
+- Remove the unused `scikit-learn` dependency from the `vis` optional dependencies.
+
 ## 0.63.5
 
 ### Features
