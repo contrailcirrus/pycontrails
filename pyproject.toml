@@ -287,7 +287,7 @@ check-class-attributes = false
 # https://cibuildwheel.pypa.io/en/stable/options/
 [tool.cibuildwheel]
 build = ["cp312-*", "cp313-*", "cp314-*", "cp315-*"]
-skip = ["*-win32", "*-manylinux_i686", "*-musllinux*", "*-macosx_x86_64"]
+skip = ["*-win32", "*-musllinux*"]
 build-verbosity = 3
 test-extras = ["complete", "dev"]
 # Force tests that make network calls to be skipped (see tests/__init__.py)
