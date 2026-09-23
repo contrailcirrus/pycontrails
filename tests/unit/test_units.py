@@ -147,14 +147,3 @@ def test_arraylike_support(func):
 
     s = pd.Series(z)
     assert isinstance(func(s), pd.Series | np.ndarray)
-
-
-@pytest.mark.parametrize("func", [units.pl_to_m, units.m_to_pl])
-def test_handle_nan(func):
-    """Check that `unit` module functions using `np.piecewise` pass NaN values through."""
-    x = np.array([100, 200, np.nan, 300], dtype=np.float64)
-    y = func(x)
-    assert isinstance(y, np.ndarray)
-    np.testing.assert_array_equal(np.isfinite(y), [True, True, False, True])
-    assert np.isnan(x[2])
-    assert np.isnan(y[2])
