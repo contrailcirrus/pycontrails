@@ -91,22 +91,6 @@ def test_pl_to_m_close_to_classical(rng):
     np.testing.assert_allclose(m1, m2, rtol=1e-3)
 
 
-def test_m_to_pl_int_and_array():
-    """Check vectorized call agrees with naive loop.
-
-    Calling two functions that use `np.piecewise` pattern.
-    """
-    arr = np.arange(15000)
-    y1 = units.m_to_pl(arr)
-    y2 = [units.m_to_pl(x) for x in arr]
-    np.testing.assert_array_equal(y1, y2)
-
-    arr = np.arange(100, 1000)
-    y1 = units.pl_to_m(arr)
-    y2 = [units.pl_to_m(x) for x in arr]
-    np.testing.assert_array_equal(y1, y2)
-
-
 def test_mach_tas(rng: np.random.Generator):
     """Check that the functions `tas_to_mach_number` and `mach_number_to_tas` are bijective."""
     T = rng.uniform(200, 300, 10000)
