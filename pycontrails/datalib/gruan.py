@@ -3,7 +3,6 @@
 import datetime
 import ftplib
 import functools
-import os
 import tempfile
 from concurrent import futures
 
@@ -315,15 +314,10 @@ class GRUAN:
 
         ftp = self._connect()
 
-        try:
-            # On windows, NamedTemporaryFile cannot be reopened while still open.
-            # After python 3.11 support is dropped, we can use delete_on_close=False
-            # in NamedTemporaryFile to streamline this.
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                ftp.retrbinary(f"RETR {path}", tmp.write)
+        with tempfile.NamedTemporaryFile(delete_on_close=False) as tmp:
+            ftp.retrbinary(f"RETR {path}", tmp.write)
+            tmp.close()
             return xr.load_dataset(tmp.name)
-        finally:
-            os.remove(tmp.name)
 
     def _get_with_cache(self, filename: str) -> xr.Dataset:
         if self.cachestore is None:
