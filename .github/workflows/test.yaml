@@ -95,6 +95,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: choco install make
 
+      # This can be removed once pyarrow publishes cp315 wheels to PyPI
+      - name: Use nightly wheels index for pyarrow - python 3.15
+        if: matrix.pyversion == '3.15'
+        shell: bash
+        run: |
+          echo "PIP_EXTRA_INDEX_URL=https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" >> "$GITHUB_ENV"
+          echo "PIP_ONLY_BINARY=pyarrow" >> "$GITHUB_ENV"
+
       - name: Install pycontrails (dev)
         run: make dev-install
 

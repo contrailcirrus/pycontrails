@@ -298,4 +298,4 @@ test-sources = ["tests", "pyproject.toml"]
 # This can be removed once pyarrow publishes cp315 wheels on PyPI
 [[tool.cibuildwheel.overrides]]
 select = "cp315-*"
-test-environment = { PIP_EXTRA_INDEX_URL = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple", PIP_ONLY_BINARY = "pyarrow"  }
+test-environment = { PIP_EXTRA_INDEX_URL = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple", PIP_ONLY_BINARY = "pyarrow" }
