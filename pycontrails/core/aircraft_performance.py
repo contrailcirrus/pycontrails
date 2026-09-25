@@ -5,7 +5,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import warnings
-from typing import Any, Generic, NoReturn, overload
+from typing import Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -19,7 +19,6 @@ from pycontrails.core.met_var import AirTemperature, EastwardWind, MetVariable, 
 from pycontrails.core.models import Model, ModelParams, interpolate_met
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import jet
-from pycontrails.utils.types import ArrayOrFloat
 
 # --------------------------------------
 # Trajectory aircraft performance models
@@ -744,7 +743,7 @@ class AircraftPerformanceGrid(Model):
 
 
 @dataclasses.dataclass
-class AircraftPerformanceGridData(Generic[ArrayOrFloat]):
+class AircraftPerformanceGridData[ArrayOrFloat: (np.ndarray, float)]:
     """Store the computed aircraft performance metrics for nominal cruise conditions."""
 
     #: Fuel mass flow rate, [:math:`kg s^{-1}`]

@@ -94,7 +94,7 @@ def climb_descent_angle(
 def clip_mach_number(
     true_airspeed: npt.NDArray[np.floating],
     air_temperature: npt.NDArray[np.floating],
-    max_mach_number: ArrayOrFloat,
+    max_mach_number: npt.NDArray[np.floating] | float,
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Compute the Mach number from the true airspeed and ambient temperature.
 
@@ -109,7 +109,7 @@ def clip_mach_number(
         Array of true airspeed, [:math:`m \ s^{-1}`]
     air_temperature : npt.NDArray[np.floating]
         Array of ambient temperature, [:math: `K`]
-    max_mach_number : ArrayOrFloat
+    max_mach_number : npt.NDArray[np.floating] | float
         Maximum mach number associated to aircraft. If no clipping
         is desired, this can be set tp `np.inf`.
 

@@ -8,7 +8,7 @@ import logging
 import pathlib
 from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Any, TypeAlias
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ from pycontrails.core.met import MetDataset, MetVariable
 
 logger = logging.getLogger(__name__)
 
-TimeInput: TypeAlias = (
+type TimeInput = (
     str
     | datetime
     | pd.Timestamp
@@ -27,11 +27,11 @@ TimeInput: TypeAlias = (
     | Sequence[str | datetime | pd.Timestamp | np.datetime64]
 )
 
-VariableInput = (
+type VariableInput = (
     str | int | MetVariable | np.ndarray | Sequence[str | int | MetVariable | Sequence[MetVariable]]
 )
 
-PressureLevelInput = int | float | np.ndarray | Sequence[int | float]
+type PressureLevelInput = int | float | np.ndarray | Sequence[int | float]
 
 #: NetCDF engine to use for parsing netcdf files
 NETCDF_ENGINE: str = "netcdf4"

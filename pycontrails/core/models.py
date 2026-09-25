@@ -11,7 +11,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, fields
-from typing import TYPE_CHECKING, Any, NoReturn, TypeVar, overload
+from typing import TYPE_CHECKING, Any, NoReturn, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -34,15 +34,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 #: Model input source types
-ModelInput = MetDataset | GeoVectorDataset | Flight | Sequence[Flight] | None
+type ModelInput = MetDataset | GeoVectorDataset | Flight | Sequence[Flight] | None
 
 #: Model output source types
-ModelOutput = MetDataArray | MetDataset | GeoVectorDataset | Flight | list[Flight]
+type ModelOutput = MetDataArray | MetDataset | GeoVectorDataset | Flight | list[Flight]
 
 #: Model attribute source types
-SourceType = MetDataset | GeoVectorDataset | Flight | Fleet
+type SourceType = MetDataset | GeoVectorDataset | Flight | Fleet
 
-_Source = TypeVar("_Source")
 
 # ------------
 # Model Params
@@ -464,12 +463,12 @@ class Model(ABC):
             f"Meteorology is required for this model. Specify with {type(self).__name__}(met=...) ",
         )
 
-    def require_source_type(self, type_: type[_Source] | tuple[type[_Source], ...]) -> _Source:
+    def require_source_type[T](self, type_: type[T] | tuple[type[T], ...]) -> T:
         """Ensure that :attr:`source` is ``type_``.
 
         Returns
         -------
-        _Source
+        T
             Returns reference to :attr:`source`.
             This is helpful for type narrowing :attr:`source` to specific type(s).
 

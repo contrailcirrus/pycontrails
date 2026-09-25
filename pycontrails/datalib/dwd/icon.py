@@ -18,16 +18,11 @@ import hashlib
 import itertools
 import logging
 import math
-import sys
 import warnings
 from collections.abc import Hashable, Iterator
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, override
 
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
 LOG = logging.getLogger(__name__)
 
 import dask.array

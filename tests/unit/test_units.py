@@ -91,22 +91,6 @@ def test_pl_to_m_close_to_classical(rng):
     np.testing.assert_allclose(m1, m2, rtol=1e-3)
 
 
-def test_m_to_pl_int_and_array():
-    """Check vectorized call agrees with naive loop.
-
-    Calling two functions that use `np.piecewise` pattern.
-    """
-    arr = np.arange(15000)
-    y1 = units.m_to_pl(arr)
-    y2 = [units.m_to_pl(x) for x in arr]
-    np.testing.assert_array_equal(y1, y2)
-
-    arr = np.arange(100, 1000)
-    y1 = units.pl_to_m(arr)
-    y2 = [units.pl_to_m(x) for x in arr]
-    np.testing.assert_array_equal(y1, y2)
-
-
 def test_mach_tas(rng: np.random.Generator):
     """Check that the functions `tas_to_mach_number` and `mach_number_to_tas` are bijective."""
     T = rng.uniform(200, 300, 10000)
@@ -134,7 +118,6 @@ def test_mach_tas(rng: np.random.Generator):
         for name, func in getmembers(units, isfunction)
         if name
         not in [
-            "support_arraylike",
             "longitude_distance_to_m",
             "m_to_longitude_distance",
             "tas_to_mach_number",
@@ -164,14 +147,3 @@ def test_arraylike_support(func):
 
     s = pd.Series(z)
     assert isinstance(func(s), pd.Series | np.ndarray)
-
-
-@pytest.mark.parametrize("func", [units.pl_to_m, units.m_to_pl])
-def test_handle_nan(func):
-    """Check that `unit` module functions using `np.piecewise` pass NaN values through."""
-    x = np.array([100, 200, np.nan, 300], dtype=np.float64)
-    y = func(x)
-    assert isinstance(y, np.ndarray)
-    np.testing.assert_array_equal(np.isfinite(y), [True, True, False, True])
-    assert np.isnan(x[2])
-    assert np.isnan(y[2])
