@@ -1460,18 +1460,13 @@ def new_ice_water_content(
 def new_ice_water_content_revised(
     iwc_t1: npt.NDArray[np.floating],
     q_t1: npt.NDArray[np.floating],
-    q_sed: npt.NDArray[np.floating],
     q_t2: npt.NDArray[np.floating],
     q_sat_t1: npt.NDArray[np.floating],
-    q_sat_sed: npt.NDArray[np.floating],
     q_sat_t2: npt.NDArray[np.floating],
     mass_plume_t1: npt.NDArray[np.floating],
-    mass_plume_sed: npt.NDArray[np.floating],
     mass_plume_t2: npt.NDArray[np.floating],
-    depth_eff: npt.NDArray[np.floating],
-    terminal_fall_speed: npt.NDArray[np.floating],
-    phase_relax_rate: npt.NDArray[np.floating],
-    dt: npt.NDArray[np.timedelta64],
+    net_q_flux_in: npt.NDArray[np.floating],
+    net_mass_flux_in: npt.NDArray[np.floating],
 ) -> npt.NDArray[np.floating]:
     """
     Calculate the new contrail ice water content after the time integration step (``iwc_t2``).
@@ -1484,38 +1479,25 @@ def new_ice_water_content_revised(
     q_t1 : npt.NDArray[np.floating]
         specific humidity for each waypoint at the start of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
-    q_sed : npt.NDArray[np.floating]
-        specific humidity for each waypoint
-        after sedimentation, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_t2 : npt.NDArray[np.floating]
         specific humidity for each waypoint at the end of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_sat_t1 : npt.NDArray[np.floating]
         saturation humidity for each waypoint at the start of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
-    q_sat_sed : npt.NDArray[np.floating]
-        saturation humidity for each waypoint
-        after sedimentation, [:math:`kg_{H_{2}O}/kg_{air}`]
     q_sat_t2 : npt.NDArray[np.floating]
         saturation humidity for each waypoint at the end of the
         time step, [:math:`kg_{H_{2}O}/kg_{air}`]
     mass_plume_t1 : npt.NDArray[np.floating]
         contrail plume mass per unit length at the start of the
         time step, [:math:`kg_{air} m^{-1}`]
-    mass_plume_sed : npt.NDArray[np.floating]
-        contrail plume mass per unit length
-        after sedimentation, [:math:`kg_{air} m^{-1}`]
     mass_plume_t2 : npt.NDArray[np.floating]
         contrail plume mass per unit length at the end of the
         time step, [:math:`kg_{air} m^{-1}`]
-    depth_eff : npt.NDArray[np.floating]
-        effective depth of contrail plume, [:math:`m`]
-    terminal_fall_speed : npt.NDArray[np.floating]
-        terminal fall speed of contrail plume, [:math:m `s^{-1}`]
-    phase_relax_rate : npt.NDArray[np.floating]
-        phase relaxation rate in the contrail, [:math:`s^{-1}`]
-    dt : npt.NDArray[np.timedelta64]
-        length of time integration step, [:math:`s`]
+    net_q_flux_in : npt.NDArray[np.floating]
+        net flux of humidity into plume due to sedimentation, [:math:`kg_{H_{2}O} m^{-1}`]
+    net_mass_flux_in : npt.NDArray[np.floating]
+        net flux of mass into plume due to sedimentation, [:math:`kg_{air} m^{-1}`]
 
     Returns
     -------
@@ -1529,31 +1511,14 @@ def new_ice_water_content_revised(
     publication is available.
 
     """
-    # change from falling through sub/supersaturated air
-    dt_s = units.dt_to_seconds(dt, iwc_t1.dtype)
-    qa = 0.5 * (q_t1 + q_sed)
-    qs = 0.5 * (q_sat_t1 + q_sat_sed)
-    m = 0.5 * (mass_plume_t1 + mass_plume_sed)
-    delta_mass_h2o_sed = (
-        m
-        * (qs - qa)
-        * np.expm1(-depth_eff * phase_relax_rate / terminal_fall_speed)
-        * terminal_fall_speed
-        * dt_s
-        / depth_eff
-    )
+    q_mean = 0.5 * (q_t1 + q_t2)
+    mass_h2o_t1 = mass_plume_t1 * (iwc_t1 + q_sat_t1)
 
-    # change from mixing
-    qa = 0.5 * (q_sed + q_t2)
-    delta_mass_h2o_mix = (mass_plume_t2 - mass_plume_sed) * qa
+    delta_mass_plume_mix = mass_plume_t2 - mass_plume_t1 - net_mass_flux_in
+    delta_mass_plume_mix.clip(min=0.0, out=delta_mass_plume_mix)
+    delta_mass_h2o_mix = delta_mass_plume_mix * q_mean
 
-    # updated ice water content
-    mass_h2o_t2 = (
-        mass_plume_sed * q_sat_sed
-        + mass_plume_t1 * iwc_t1
-        + delta_mass_h2o_mix
-        + delta_mass_h2o_sed
-    )
+    mass_h2o_t2 = mass_h2o_t1 + delta_mass_h2o_mix + net_q_flux_in
     iwc_t2 = (mass_h2o_t2 / mass_plume_t2) - q_sat_t2
     iwc_t2.clip(min=0.0, out=iwc_t2)
     return iwc_t2

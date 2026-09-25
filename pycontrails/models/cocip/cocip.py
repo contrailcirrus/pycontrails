@@ -2676,64 +2676,56 @@ def calc_timestep_contrail_evolution(
 
     # ... using revised ice budget ...
     if params["revised_contrail_ice_budget"]:
-        # compute ambient specific humidity and saturation specific humidity after sedimentation
-        level_sed = geo.advect_level(level_1, 0.0, rho_air_1, terminal_fall_speed_1, dt)
-        contrail_sed = GeoVectorDataset._from_fastpath(
-            {
-                "time": time_1,
-                "longitude": longitude_1,
-                "latitude": latitude_1,
-                "level": level_sed,
-            }
+        # ambient air and water vapor density at base of plume
+        ambient_rho_base_1, ambient_rhov_base_1 = _ambient_density_base(
+            met, contrail_1, params, **interp_kwargs
         )
-        interpolate_met(met, contrail_sed, "air_temperature", **interp_kwargs)
-        interpolate_met(met, contrail_sed, "specific_humidity", **interp_kwargs)
-        if humidity_scaling is not None:
-            humidity_scaling.eval(contrail_sed, copy_source=False)
-        else:
-            contrail_sed["air_pressure"] = contrail_sed.air_pressure
-
-        specific_humidity_sed = contrail_sed["specific_humidity"]
-        q_sat_sed = thermo.q_sat_ice(contrail_sed["air_temperature"], contrail_sed["air_pressure"])
-
-        # compute plume mass after sedimentation
-        plume_mass_per_m_sed = contrail_properties.plume_mass_per_distance(
-            contrail_1["area_eff"],
-            thermo.rho_d(contrail_sed["air_temperature"], contrail_sed["air_pressure"]),
+        ambient_rho_base_2, ambient_rhov_base_2 = _ambient_density_base(
+            met, contrail_2, params, **interp_kwargs
         )
 
-        # compute plume depth and ice crystal phase relaxation rate
-        # used to limit deposition/subplimation in a shallow but rapidly-sedimenting plume
-        depth_eff_1 = contrail_properties.plume_effective_depth(width_1, contrail_1["area_eff"])
-        n_ice_per_vol_1 = contrail_properties.ice_particle_number_per_volume_of_plume(
-            n_ice_per_m_1, contrail_1["area_eff"]
+        # plume air and water vapor density at top of plume
+        plume_rho_top_1, plume_rhov_top_1 = _plume_density_top(
+            met, contrail_1, params, **interp_kwargs
         )
-        n_ice_per_kg_1 = contrail_properties.ice_particle_number_per_mass_of_air(
-            n_ice_per_vol_1, rho_air_1
+        plume_rho_top_2, plume_rhov_top_2 = _plume_density_top(
+            met, contrail_2, params, **interp_kwargs
         )
-        r_vol_1 = contrail_properties.ice_particle_volume_mean_radius(iwc_1, n_ice_per_kg_1)
-        vapor_diffusivity_1 = thermo.diffusivity_water_vapor(
-            contrail_1["air_temperature"], contrail_1["air_pressure"]
+
+        # water vapor fluxes into plume at base and out of plume at top
+        q_flux_in = (
+            0.5
+            * terminal_fall_speed_1
+            * (width_1 * ambient_rhov_base_1 + width_2 * ambient_rhov_base_2)
         )
-        phase_relax_rate_1 = contrail_properties.phase_relaxation_rate(
-            r_vol_1, n_ice_per_vol_1, vapor_diffusivity_1
+        q_flux_out = (
+            0.5 * terminal_fall_speed_1 * (width_1 * plume_rhov_top_1 + width_2 * plume_rhov_top_2)
         )
+
+        # mass fluxes into plume at base and out of plume at top
+        mass_flux_in = (
+            0.5
+            * terminal_fall_speed_1
+            * (width_1 * ambient_rho_base_1 + width_2 * ambient_rho_base_2)
+        )
+        mass_flux_out = (
+            0.5 * terminal_fall_speed_1 * (width_1 * plume_rho_top_1 + width_2 * plume_rho_top_2)
+        )
+
+        dt_sec = (dt / np.timedelta64(1, "s")).astype(q_flux_in.dtype, copy=False)
+        net_q_flux_in = (q_flux_in - q_flux_out) * dt_sec
+        net_mass_flux_in = (mass_flux_in - mass_flux_out) * dt_sec
 
         iwc_2 = contrail_properties.new_ice_water_content_revised(
             iwc_1,
             specific_humidity_1,
-            specific_humidity_sed,
             specific_humidity_2,
             q_sat_1,
-            q_sat_sed,
             q_sat_2,
             plume_mass_per_m_1,
-            plume_mass_per_m_sed,
             plume_mass_per_m_2,
-            depth_eff_1,
-            terminal_fall_speed_1,
-            phase_relax_rate_1,
-            dt,
+            net_q_flux_in,
+            net_mass_flux_in,
         )
 
     # ... or original ice budget
@@ -2861,6 +2853,131 @@ def calc_timestep_contrail_evolution(
             final_contrail["global_yearly_mean_rf"][~continuous] = 0.0
             final_contrail["atr20"][~continuous] = 0.0
     return final_contrail
+
+
+def _ambient_density_base(
+    met: MetDataset,
+    contrail: GeoVectorDataset,
+    params: dict[str, Any],
+    **interp_kwargs: Any,
+) -> npt.NDArray[np.floating]:
+    """Compute ambient density of air and water vapor at plume base.
+
+    Parameters
+    ----------
+    met : MetDataset
+        Meteorology data
+
+    contrail : GeoVectorDataset
+        Contrail properties
+
+    params : dict[str, Any]
+        Cocip parameters
+
+    **interp_kwargs : Any
+        Interpolation keyword arguments
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Array of ambient air density (:math:`kg m$^{-3}`) at plume base.
+
+    npt.NDArray[np.floating]
+        Array of ambient water vapor density (:math:`kg m$^{-3}`) at plume base.
+
+    """
+    contrail = contrail.copy()  # avoid mutation
+    area_eff = contrail_properties.plume_effective_cross_sectional_area(
+        contrail["width"], contrail["depth"], contrail["sigma_yz"]
+    )
+    depth_eff = contrail_properties.plume_effective_depth(contrail["width"], area_eff)
+    air_pressure_base = thermo.pressure_dz(
+        contrail["air_temperature"], contrail.air_pressure, depth_eff / 2.0
+    )
+    level_base = air_pressure_base / 100.0
+
+    air_temperature_base = interpolate_met(
+        met, contrail, "air_temperature", "air_temperature_base", level=level_base, **interp_kwargs
+    )
+
+    specific_humidity_base = interpolate_met(
+        met,
+        contrail,
+        "specific_humidity",
+        "specific_humidity_base",
+        level=level_base,
+        **interp_kwargs,
+    )
+
+    humidity_scaling = params["humidity_scaling"]
+    if humidity_scaling is not None:
+        specific_humidity_base, _ = humidity_scaling.scale(
+            specific_humidity_base,
+            air_temperature_base,
+            air_pressure_base,
+            **humidity_scaling._scale_kwargs(),
+        )
+
+    rho_air_base = thermo.rho_d(air_temperature_base, air_pressure_base)
+
+    return rho_air_base, rho_air_base * specific_humidity_base
+
+
+def _plume_density_top(
+    met: MetDataset,
+    contrail: GeoVectorDataset,
+    params: dict[str, Any],
+    **interp_kwargs: Any,
+) -> npt.NDArray[np.floating]:
+    """Compute plume air and water vapor density at plume top.
+
+    Parameters
+    ----------
+    met : MetDataset
+        Meteorology data
+
+    contrail : GeoVectorDataset
+        Contrail properties
+
+    params : dict[str, Any]
+        Cocip parameters
+
+    **interp_kwargs : Any
+        Interpolation keyword arguments
+
+    Returns
+    -------
+    npt.NDArray[np.floating]
+        Array of plume air density (:math:`kg m$^{-3}`) at plume top.
+
+    npt.NDArray[np.floating]
+        Array of plume water vapor density (:math:`kg m$^{-3}`) at plume top.
+
+    """
+    contrail = contrail.copy()  # avoid mutation
+    area_eff = contrail_properties.plume_effective_cross_sectional_area(
+        contrail["width"], contrail["depth"], contrail["sigma_yz"]
+    )
+    depth_eff = contrail_properties.plume_effective_depth(contrail["width"], area_eff)
+    air_pressure_top = thermo.pressure_dz(
+        contrail["air_temperature"], contrail.air_pressure, -depth_eff / 2.0
+    )
+    level_top = air_pressure_top / 100.0
+
+    air_temperature_top = interpolate_met(
+        met, contrail, "air_temperature", "air_temperature_top", level=level_top, **interp_kwargs
+    )
+
+    if params["radiative_heating_effects"]:
+        air_temperature_top = (
+            air_temperature_top + contrail["cumul_heat"] + contrail["cumul_differential_heat"] / 2.0
+        )
+
+    q_sat_top = thermo.q_sat_ice(air_temperature_top, air_pressure_top)
+
+    rho_air_top = thermo.rho_d(air_temperature_top, air_pressure_top)
+
+    return rho_air_top, rho_air_top * q_sat_top
 
 
 def _rad_accumulation_to_average_instantaneous(
