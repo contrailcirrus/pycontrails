@@ -743,7 +743,7 @@ class AircraftPerformanceGrid(Model):
 
 
 @dataclasses.dataclass
-class AircraftPerformanceGridData[ArrayOrFloat: (np.ndarray, float)]:
+class AircraftPerformanceGridData[ArrayOrFloat: (npt.NDArray[np.floating], float)]:
     """Store the computed aircraft performance metrics for nominal cruise conditions."""
 
     #: Fuel mass flow rate, [:math:`kg s^{-1}`]
