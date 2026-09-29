@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 COORD_DTYPE = np.float64
 
 
-class MetBase[XArrayType: (xr.Dataset, xr.DataArray)](ABC):
+class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
     """Abstract class for building Meteorology Data handling classes.
 
     All support here should be generic to work on xr.DataArray
@@ -62,7 +62,7 @@ class MetBase[XArrayType: (xr.Dataset, xr.DataArray)](ABC):
     __slots__ = ("cachestore", "data")
 
     #: DataArray or Dataset
-    data: XArrayType
+    data: X
 
     #: Cache datastore to use for :meth:`save` or :meth:`load`
     cachestore: CacheStore | None
@@ -76,7 +76,7 @@ class MetBase[XArrayType: (xr.Dataset, xr.DataArray)](ABC):
     )
 
     @classmethod
-    def _from_fastpath(cls, data: XArrayType, cachestore: CacheStore | None = None) -> Self:
+    def _from_fastpath(cls, data: X, cachestore: CacheStore | None = None) -> Self:
         """Create new instance from consistent data.
 
         This is a low-level method that bypasses the standard constructor in certain
@@ -572,9 +572,9 @@ class MetBase[XArrayType: (xr.Dataset, xr.DataArray)](ABC):
         """
         return _is_zarr(self.data)
 
-    def downselect_met[MetDataType: (MetDataset, MetDataArray)](
+    def downselect_met[M: (MetDataset, MetDataArray)](
         self,
-        met: MetDataType,
+        met: M,
         *,
         longitude_buffer: tuple[float, float] = (0.0, 0.0),
         latitude_buffer: tuple[float, float] = (0.0, 0.0),
@@ -583,7 +583,7 @@ class MetBase[XArrayType: (xr.Dataset, xr.DataArray)](ABC):
             np.timedelta64(0, "h"),
             np.timedelta64(0, "h"),
         ),
-    ) -> MetDataType:
+    ) -> M:
         """Downselect ``met`` to encompass a spatiotemporal region of the data.
 
         .. warning::
@@ -2466,28 +2466,23 @@ def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
     return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
 
 
-def shift_longitude[XArrayType: (xr.Dataset, xr.DataArray)](
-    data: XArrayType,
-    bound: float = -180.0,
-) -> XArrayType:
+def shift_longitude[X: (xr.Dataset, xr.DataArray)](data: X, bound: float = -180.0) -> X:
     """Shift longitude values from any input domain to [bound, 360 + bound) domain.
 
     Sorts data by ascending longitude values.
 
-
     Parameters
     ----------
-    data : XArrayType
+    data : X
         :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
     bound : float, optional
         Lower bound of the domain.
         Output domain will be [bound, 360 + bound).
         Defaults to -180, which results in longitude domain [-180, 180).
 
-
     Returns
     -------
-    XArrayType
+    X
         :class:`xr.Dataset` or :class:`xr.DataArray` with longitude values on [a, 360 + a).
     """
     return data.assign_coords(
@@ -2495,7 +2490,7 @@ def shift_longitude[XArrayType: (xr.Dataset, xr.DataArray)](
     ).sortby("longitude", ascending=True)
 
 
-def _wrap_longitude[XArrayType: (xr.Dataset, xr.DataArray)](data: XArrayType) -> XArrayType:
+def _wrap_longitude[X: (xr.Dataset, xr.DataArray)](data: X) -> X:
     """Wrap longitude grid coordinates.
 
     This function assumes the longitude dimension on ``data``:
@@ -2515,12 +2510,12 @@ def _wrap_longitude[XArrayType: (xr.Dataset, xr.DataArray)](data: XArrayType) ->
 
     Parameters
     ----------
-    data : XArrayType
+    data : X
         :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
 
     Returns
     -------
-    XArrayType
+    X
         Copy of :class:`xr.Dataset` or :class:`xr.DataArray` with wrapped longitude values.
 
     Raises
@@ -2628,15 +2623,15 @@ def _extract_2d_arr_and_altitude(
     return arr, altitude
 
 
-def downselect[XArrayType: (xr.Dataset, xr.DataArray)](
-    data: XArrayType,
+def downselect[X: (xr.Dataset, xr.DataArray)](
+    data: X,
     bbox: tuple[float, ...],
-) -> XArrayType:
+) -> X:
     """Downselect :class:`xr.Dataset` or :class:`xr.DataArray` with spatial bounding box.
 
     Parameters
     ----------
-    data : XArrayType
+    data : X
         xr.Dataset or xr.DataArray to downselect
     bbox : tuple[float, ...]
         Tuple of coordinates defining a spatial bounding box in WGS84 coordinates.
@@ -2649,7 +2644,7 @@ def downselect[XArrayType: (xr.Dataset, xr.DataArray)](
 
     Returns
     -------
-    XArrayType
+    X
         Downselected xr.Dataset or xr.DataArray
 
     Raises
@@ -2768,7 +2763,7 @@ def _load(hash: str, cachestore: CacheStore, chunks: dict[str, int]) -> xr.Datas
     return xr.open_mfdataset(disk_path, chunks=chunks)
 
 
-def _add_vertical_coords[XArrayType: (xr.Dataset, xr.DataArray)](data: XArrayType) -> XArrayType:
+def _add_vertical_coords[X: (xr.Dataset, xr.DataArray)](data: X) -> X:
     """Add "air_pressure" and "altitude" coordinates to data.
 
     .. versionchanged:: 0.52.1
