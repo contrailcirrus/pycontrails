@@ -123,7 +123,7 @@ def test_init_contrail_grid_minimal_params(met_cocip1: MetDataset, rad_cocip1: M
             {
                 "longitude": [-33, -34],
                 "latitude": [55, 56],
-                "level": [1, 2],
+                "level": [100, 150],
                 "time": "2019-01-01T03",
             },
             "level",

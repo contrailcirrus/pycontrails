@@ -67,9 +67,9 @@ def test_interpolation_out_dtype(mda: MetDataArray, method: str, vector_dtype: s
 
 def test_unit_conversion():
     """Confirm basic unit conversion maintains the array dtype."""
-    level = np.array([1, 2, 3], dtype="float32")
+    level = np.array([101, 102, 103], dtype="float32")
     assert level.dtype == "float32"
-    altitude = units.pl_to_ft(level)
+    altitude = units.pl_to_m(level)
     assert altitude.dtype == "float32"
     altitude_ft = units.m_to_ft(altitude)
     assert altitude_ft.dtype == "float32"

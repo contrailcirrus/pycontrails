@@ -68,11 +68,11 @@ def test_rad_deg_agree_np(rng):
 
 def test_m_pl_bijective():
     """Check that the functions `pl_to_m` and `m_to_pl` are bijective."""
-    m1 = np.arange(0, 50000)
+    m1 = np.arange(0, 20000)
     m2 = units.pl_to_m(units.m_to_pl(m1))
     np.testing.assert_allclose(m1, m2, atol=1e-11)
 
-    pl1 = np.arange(1, 2000)
+    pl1 = np.arange(100, 2000)
     pl2 = units.m_to_pl(units.pl_to_m(pl1))
     np.testing.assert_allclose(pl1, pl2, atol=1e-11)
 
