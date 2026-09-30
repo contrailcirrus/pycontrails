@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any, overload
 
 import numpy as np
+import xarray as xr
 
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataset
@@ -18,7 +19,7 @@ from pycontrails.core.models import Model
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models import issr, sac
 from pycontrails.physics import thermo
-from pycontrails.utils.types import ArrayLike, apply_nan_mask_to_arraylike
+from pycontrails.utils.types import apply_nan_mask_to_arraylike
 
 
 @dataclass
@@ -96,29 +97,29 @@ class PCR(Model):
         return self.source
 
 
-def pcr(
-    air_temperature: ArrayLike,
-    specific_humidity: ArrayLike,
-    air_pressure: ArrayLike,
-    engine_efficiency: float | ArrayLike,
+def pcr[A: (np.ndarray, xr.DataArray)](
+    air_temperature: A,
+    specific_humidity: A,
+    air_pressure: A,
+    engine_efficiency: float | A,
     ei_h2o: float,
     q_fuel: float,
-) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
+) -> tuple[A, A, A]:
     r"""Calculate regions of persistent contrail formation.
 
     Ice Super Saturated Regions (ISSR) where the Schmidt-Appleman Criteria (SAC) is satisfied.
 
-    Parameters of type :class:`~pycontrails.utils.types.ArrayLike` must have compatible shapes.
+    Parameters of type ``A`` must have compatible shapes.
 
     Parameters
     ----------
-    air_temperature : ArrayLike
+    air_temperature : A
         A sequence or array of temperature values, [:math:`K`]
-    specific_humidity : ArrayLike
+    specific_humidity : A
         A sequence or array of specific humidity values, [:math:`kg_{H_{2}O} \ kg_{air}^{-1}`]
-    air_pressure : ArrayLike
+    air_pressure : A
         A sequence or array of atmospheric pressure values, [:math:`Pa`].
-    engine_efficiency: float | ArrayLike
+    engine_efficiency: float | A
         Engine efficiency, [:math:`0 - 1`]
     ei_h2o : float
         Emission index of water vapor, [:math:`kg \ kg^{-1}`]
@@ -127,12 +128,12 @@ def pcr(
 
     Returns
     -------
-    pcr : ArrayLike
-        PCR state of each point indexed by the :class:`~pycontrails.utils.types.ArrayLike`
+    pcr : A
+        PCR state of each point indexed by the ``A``
         parameters.
-    sac : ArrayLike
+    sac : A
         SAC state
-    issr : ArrayLike
+    issr : A
         ISSR state
     """
     issr_ = issr.issr(air_temperature, specific_humidity, air_pressure)
@@ -146,7 +147,7 @@ def pcr(
     return pcr_, sac_, issr_
 
 
-def _pcr_from_issr_and_sac(issr_: ArrayLike, sac_: ArrayLike) -> ArrayLike:
+def _pcr_from_issr_and_sac[A: (np.ndarray, xr.DataArray)](issr_: A, sac_: A) -> A:
     # store nan values to refill after casting
     nan_mask = np.isnan(issr_) | np.isnan(sac_)
 

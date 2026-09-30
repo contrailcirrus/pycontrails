@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 
 from pycontrails.physics import constants as c
-from pycontrails.utils.types import ArrayOrFloat
 
 #: Path to the Poll-Schumann aircraft parameters CSV file.
 PS_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-aircraft-params-20250328.csv"
@@ -250,18 +249,18 @@ def load_aircraft_engine_params() -> Mapping[str, PSAircraftEngineParams]:
     return dict(_row_to_aircraft_engine_params(tup) for tup in df.itertuples(index=False))
 
 
-def turbine_entry_temperature_at_max_take_off(first_flight: ArrayOrFloat) -> ArrayOrFloat:
+def turbine_entry_temperature_at_max_take_off[A: (np.ndarray, float)](first_flight: A) -> A:
     """
     Calculate turbine entry temperature at maximum take-off rating.
 
     Parameters
     ----------
-    first_flight: ArrayOrFloat
+    first_flight: A
         Year of first flight
 
     Returns
     -------
-    ArrayOrFloat
+    A
         Turbine entry temperature at maximum take-off rating, ``tet_mto``, [:math:`K`]
 
     Notes

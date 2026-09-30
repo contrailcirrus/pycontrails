@@ -13,7 +13,6 @@ from pycontrails.core import GeoVectorDataset, MetDataset, met_var, models
 from pycontrails.models.apcemm.inputs import APCEMMInput
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, thermo, units
-from pycontrails.utils.types import ArrayScalarLike
 
 _path_to_static = pathlib.Path(__file__).parent / "static"
 YAML_TEMPLATE = _path_to_static / "apcemm_yaml_template.yaml"
@@ -382,34 +381,34 @@ def run(
             raise ChildProcessError(msg)
 
 
-def normal_wind_shear(
-    u_hi: ArrayScalarLike,
-    u_lo: ArrayScalarLike,
-    v_hi: ArrayScalarLike,
-    v_lo: ArrayScalarLike,
-    azimuth: ArrayScalarLike,
-    dz: float,
-) -> ArrayScalarLike:
+def normal_wind_shear[A: (np.ndarray, xr.DataArray, float)](
+    u_hi: A,
+    u_lo: A,
+    v_hi: A,
+    v_lo: A,
+    azimuth: A,
+    dz: float
+) -> A:
     r"""Compute segment-normal wind shear from wind speeds at lower and upper levels.
 
     Parameters
     ----------
-    u_hi : ArrayScalarLike
+    u_hi : A
         Eastward wind at upper level [:math:`m/s`]
-    u_lo : ArrayScalarLike
+    u_lo : A
         Eastward wind at lower level [:math:`m/s`]
-    v_hi : ArrayScalarLike
+    v_hi : A
         Northward wind at upper level [:math:`m/s`]
-    v_lo : ArrayScalarLike
+    v_lo : A
         Northward wind at lower level [:math:`m/s`]
-    azimuth : ArrayScalarLike
+    azimuth : A
         Segment azimuth [:math:`\deg`]
     dz : float
         Distance between upper and lower level [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Segment-normal wind shear [:math:`1/s`]
     """
     du_dz = (u_hi - u_lo) / dz
@@ -420,16 +419,16 @@ def normal_wind_shear(
     return sin_az * dv_dz - cos_az * du_dz
 
 
-def soot_radius(
-    nvpm_ei_m: ArrayScalarLike, nvpm_ei_n: ArrayScalarLike, rho_bc: float = 1770.0
-) -> ArrayScalarLike:
+def soot_radius[A: (np.ndarray, xr.DataArray, float)](
+    nvpm_ei_m: A, nvpm_ei_n: A, rho_bc: float = 1770.0
+) -> A:
     """Calculate mean soot radius from mass and number emissions indices.
 
     Parameters
     ----------
-    nvpm_ei_m : ArrayScalarLike
+    nvpm_ei_m : A
         Soot mass emissions index [:math:`kg/kg`]
-    nvpm_ei_n : ArrayScalarLike
+    nvpm_ei_n : A
         Soot number emissions index [:math:`1/kg`]
     rho_bc : float, optional
         Density of black carbon [:math:`kg/m^3`]. By default, 1770.

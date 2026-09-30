@@ -24,7 +24,6 @@ from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.ps_model import ps_model, ps_operational_limits
 from pycontrails.models.ps_model.ps_aircraft_params import PSAircraftEngineParams
 from pycontrails.physics import units
-from pycontrails.utils.types import ArrayOrFloat
 
 # mypy: disable-error-code = "type-var, arg-type, return-value"
 
@@ -183,11 +182,11 @@ class _PerfVariables:
     q_fuel: float
 
 
-def _nominal_perf(
-    aircraft_mass: ArrayOrFloat,
+def _nominal_perf[A: (np.ndarray, float)](
+    aircraft_mass: A,
     perf: _PerfVariables,
     engine_deterioration_factor: float,
-) -> AircraftPerformanceGridData[ArrayOrFloat]:
+) -> AircraftPerformanceGridData[A]:
     """Compute nominal Poll-Schumann aircraft performance."""
 
     atyp_param = perf.atyp_param
@@ -256,11 +255,11 @@ def _nominal_perf(
     )
 
 
-def _newton_func(
-    aircraft_mass: ArrayOrFloat,
+def _newton_func[A: (np.ndarray, float)](
+    aircraft_mass: A,
     perf: _PerfVariables,
     engine_deterioration_factor: float,
-) -> ArrayOrFloat:
+) -> A:
     """Approximate the derivative of the engine efficiency with respect to mass.
 
     This is used to find the mass at which the engine efficiency is maximized.
@@ -530,14 +529,14 @@ def ps_nominal_grid(
     )
 
 
-def _newton_mach(
-    mach_number: ArrayOrFloat,
+def _newton_mach[A: (np.ndarray, float)](
+    mach_number: A,
     perf: _PerfVariables,
-    aircraft_mass: ArrayOrFloat,
-    headwind: ArrayOrFloat,
-    cost_index: ArrayOrFloat,
+    aircraft_mass: A,
+    headwind: A,
+    cost_index: A,
     engine_deterioration_factor: float,
-) -> ArrayOrFloat:
+) -> A:
     """Approximate the derivative of the cost of a segment based on mach number.
 
     This is used to find the mach number at which cost in minimized.
@@ -556,17 +555,17 @@ def _newton_mach(
     return eccf1 - eccf2
 
 
-def ps_nominal_optimize_mach(
+def ps_nominal_optimize_mach[A: (np.ndarray, float)](
     aircraft_type: str,
-    aircraft_mass: ArrayOrFloat,
-    cost_index: ArrayOrFloat,
-    level: ArrayOrFloat,
+    aircraft_mass: A,
+    cost_index: A,
+    level: A,
     *,
-    air_temperature: ArrayOrFloat | None = None,
-    northward_wind: ArrayOrFloat | None = None,
-    eastward_wind: ArrayOrFloat | None = None,
-    sin_a: ArrayOrFloat | None = None,
-    cos_a: ArrayOrFloat | None = None,
+    air_temperature: A | None = None,
+    northward_wind: A | None = None,
+    eastward_wind: A | None = None,
+    sin_a: A | None = None,
+    cos_a: A | None = None,
     q_fuel: float = JetA.q_fuel,
     engine_deterioration_factor: float = PSGridParams.engine_deterioration_factor,
 ) -> xr.Dataset:
@@ -580,29 +579,29 @@ def ps_nominal_optimize_mach(
     ----------
     aircraft_type : str
         The aircraft type.
-    aircraft_mass: ArrayOrFloat
+    aircraft_mass: A
         The aircraft mass, [:math:`kg`].
-    cost_index: ArrayOrFloat
+    cost_index: A
         The cost index, [:math:`kg/min`], or non-fuel cost of one minute of flight time
-    level : ArrayOrFloat
+    level : A
         The pressure level, [:math:`hPa`]. If a :class:`numpy.ndarray` is passed, it is
         assumed to be one dimensional and the same length as the``aircraft_mass`` argument.
-    air_temperature : ArrayOrFloat | None, optional
+    air_temperature : A | None, optional
         The ambient air temperature, [:math:`K`]. If None (default), the ISA
         temperature is computed from the ``level`` argument. If a :class:`numpy.ndarray`
         is passed, it is assumed to be one dimensional and the same length as the
         ``aircraft_mass`` argument.
-    air_temperature : ArrayOrFloat | None, optional
-    northward_wind: ArrayOrFloat | None = None, optional
+    air_temperature : A | None, optional
+    northward_wind: A | None = None, optional
         The northward component of winds, [:math:`m/s`]. If None (default) assumed to be
         zero.
-    eastward_wind: ArrayOrFloat | None = None, optional
+    eastward_wind: A | None = None, optional
         The eastward component of winds, [:math:`m/s`]. If None (default) assumed to be
         zero.
-    sin_a: ArrayOrFloat | None = None, optional
+    sin_a: A | None = None, optional
         The sine between the true bearing of flight and the longitudinal axis. Must be
         specified if wind data is provided. Will be ignored if wind data is not provided.
-    cos_a: ArrayOrFloat | None = None, optional
+    cos_a: A | None = None, optional
         The cosine between the true bearing of flight and the longitudinal axis. Must be
         specified if wind data is provided. Will be ignored if wind data is not provided.
     q_fuel : float, optional

@@ -8,13 +8,13 @@ from typing import Any, override
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 
 from pycontrails import GeoVectorDataset, MetDataArray, MetDataset, VectorDataset
 from pycontrails.core import models
 from pycontrails.models import humidity_scaling as hs
 from pycontrails.physics import constants, thermo, units
 from pycontrails.utils.json import NumpyEncoder
-from pycontrails.utils.types import ArrayLike
 
 cls_list = [
     cls
@@ -68,13 +68,13 @@ class DefaultHumidityScaling(hs.HumidityScaling):
     formula = "rhi -> rhi"
 
     @override
-    def scale(
+    def scale[A: (np.ndarray, xr.DataArray)](
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
+        specific_humidity: A,
+        air_temperature: A,
+        air_pressure: A,
         **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
+    ) -> tuple[A, A]:
         rhi = thermo.rhi(specific_humidity, air_temperature, air_pressure)
         return specific_humidity, rhi
 

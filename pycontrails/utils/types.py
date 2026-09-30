@@ -2,31 +2,15 @@
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
-#: Array like (np.ndarray, xr.DataArray)
-ArrayLike = TypeVar("ArrayLike", np.ndarray, xr.DataArray)
-
-#: Array or Float (np.ndarray, float)
-ArrayOrFloat = TypeVar("ArrayOrFloat", np.ndarray, float)
-
-#: Array like input (np.ndarray, xr.DataArray, float)
-ArrayScalarLike = TypeVar("ArrayScalarLike", np.ndarray, xr.DataArray, float)
-
 #: Datetime like input (datetime, pd.Timestamp, np.datetime64)
 type DatetimeLike = datetime | pd.Timestamp | np.datetime64 | str
-
-# Crude fix for autodoc issue calling TypeVar.__dict__ on Python 3.13
-if "sphinx" in sys.modules and sys.version_info >= (3, 13):
-    ArrayLike.__dict__ = {}
-    ArrayOrFloat.__dict__ = {}
-    ArrayScalarLike.__dict__ = {}
 
 
 def apply_nan_mask_to_arraylike[T: (np.ndarray, xr.DataArray)](arr: T, nan_mask: np.ndarray) -> T:

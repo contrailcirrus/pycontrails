@@ -14,7 +14,6 @@ from pyproj.geod import Geod
 from pycontrails.core.flight import Flight
 from pycontrails.core.met import MetDataArray
 from pycontrails.physics import constants, geo, units
-from pycontrails.utils.types import ArrayOrFloat
 
 try:
     from pycontrails.ext.bada import bada_model
@@ -251,7 +250,7 @@ class SyntheticFlight:
                 raise ValueError(msg) from err
             self.bada = None
 
-    def _calc_speed_m_per_s(self, level: ArrayOrFloat) -> ArrayOrFloat:
+    def _calc_speed_m_per_s[A: (np.ndarray, float)](self, level: A) -> A:
         if self.speed_m_per_s is not None:
             if isinstance(level, np.ndarray):
                 return np.full_like(level, self.speed_m_per_s)

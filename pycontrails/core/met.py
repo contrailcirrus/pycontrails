@@ -1368,7 +1368,7 @@ class MetDataArray(MetBase[xr.DataArray]):
 
     Parameters
     ----------
-    data : ArrayLike
+    data : xr.DataArray
         xr.DataArray or other array-like data source.
         When array-like input is provided, input ``**kwargs`` passed directly to
         xr.DataArray constructor.
