@@ -247,7 +247,7 @@ def _coarsen_then_concat(da1: xr.DataArray, da2: xr.DataArray) -> xr.DataArray:
     The function assumes that da2 has exactly twice the resolution of da1 in both
     the x and y dimensions.
     """
-    da2 = da2.coarsen(x=2, y=2, boundary="exact").mean()  # type: ignore[attr-defined]
+    da2 = da2.coarsen(x=2, y=2, boundary="exact").mean()
 
     # Gut check
     np.testing.assert_allclose(da1["x"], da2["x"], atol=2e-5)
