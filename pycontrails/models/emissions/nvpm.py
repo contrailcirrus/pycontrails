@@ -13,10 +13,10 @@ import warnings
 
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
 
 from pycontrails.core.interpolation import EmissionsProfileInterpolator
 from pycontrails.physics import constants, jet, units
-from pycontrails.utils.types import ArrayScalarLike
 
 # ---------------------------------
 # Data structure for ICAO EDB: nvPM
@@ -607,7 +607,7 @@ def number_ei_scope11(
         Ambient temperature for each waypoint, [:math:`K`]
     air_pressure: npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    thrust_setting : ArrayScalarLike
+    thrust_setting : npt.NDArray[np.floating]
         Engine thrust setting, unitless
     afr : npt.NDArray[np.floating]
         Air-to-fuel ratio, unitless
@@ -769,7 +769,7 @@ def mass_concentration_combustor_exit(
         Ambient temperature for each waypoint, [:math:`K`]
     air_pressure: npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    thrust_setting : ArrayScalarLike
+    thrust_setting : npt.NDArray[np.floating]
         Engine thrust setting, unitless
     afr : npt.NDArray[np.floating]
         Air-to-fuel ratio, unitless
@@ -829,7 +829,7 @@ def air_density_combustor_exit(
         Ambient temperature for each waypoint, [:math:`K`]
     air_pressure : npt.NDArray[np.floating]
         Pressure altitude at each waypoint, [:math:`Pa`]
-    thrust_setting : ArrayScalarLike
+    thrust_setting : npt.NDArray[np.floating]
         Engine thrust setting, unitless
     afr : npt.NDArray[np.floating]
         Air-to-fuel ratio, unitless
@@ -931,18 +931,18 @@ def mass_emissions_index_fox(
     )  # mg-nvPM/kg-fuel to kg-nvPM/kg-fuel
 
 
-def flame_temperature(t_3: ArrayScalarLike) -> ArrayScalarLike:
+def flame_temperature[A: (np.ndarray, xr.DataArray, float)](t_3: A) -> A:
     """
     Calculate the flame temperature at the combustion chamber (t_fl).
 
     Parameters
     ----------
-    t_3: ArrayScalarLike
+    t_3: A
         Combustor inlet temperature, [:math:`K`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Flame temperature at the combustion chamber, [:math:`K`]
     """
     return 0.9 * t_3 + 2120.0
@@ -1318,7 +1318,7 @@ def nvpm_mass_fuel_correction_icao_annex_16(
     ----------
     hydrogen_content: float
         The percentage of hydrogen mass content in the fuel.
-    thrust_setting : ArrayScalarLike
+    thrust_setting : npt.NDArray[np.floating]
         Engine thrust setting, unitless
 
     Returns
@@ -1343,7 +1343,7 @@ def nvpm_number_fuel_correction_icao_annex_16(
     ----------
     hydrogen_content: float
         The percentage of hydrogen mass content in the fuel.
-    thrust_setting : ArrayScalarLike
+    thrust_setting : npt.NDArray[np.floating]
         Engine thrust setting, unitless
 
     Returns

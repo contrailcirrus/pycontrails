@@ -744,14 +744,14 @@ class AircraftPerformanceGrid(Model):
 
 
 @dataclasses.dataclass
-class AircraftPerformanceGridData[ArrayOrFloat: (npt.NDArray[np.floating], float)]:
+class AircraftPerformanceGridData[A: (npt.NDArray[np.floating], float)]:
     """Store the computed aircraft performance metrics for nominal cruise conditions."""
 
     #: Fuel mass flow rate, [:math:`kg s^{-1}`]
-    fuel_flow: ArrayOrFloat
+    fuel_flow: A
 
     #: Engine efficiency, [:math:`0-1`]
-    engine_efficiency: ArrayOrFloat
+    engine_efficiency: A
 
 
 def _fill_low_altitude_with_isa_temperature(vector: GeoVectorDataset, met_level_max: float) -> None:

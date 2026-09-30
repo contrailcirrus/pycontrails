@@ -1,12 +1,12 @@
 """Calculate tau cirrus on Met data."""
 
 import dask.array
+import numpy as np
 import xarray as xr
 
 from pycontrails.core.met import MetDataset
 from pycontrails.core.met_var import MetVariable
 from pycontrails.physics import constants, thermo
-from pycontrails.utils.types import ArrayLike
 
 TauCirrus = MetVariable(
     short_name="tau_cirrus",
@@ -105,26 +105,26 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
     return _assign_attrs(da)
 
 
-def cirrus_effective_extinction_coef(
-    ciwc: ArrayLike,
-    T: ArrayLike,
-    p: ArrayLike,
-) -> ArrayLike:
+def cirrus_effective_extinction_coef[A: (np.ndarray, xr.DataArray)](
+    ciwc: A,
+    T: A,
+    p: A,
+) -> A:
     r"""Calculate the effective extinction coefficient for spectral range 0.2-0.69 um.
 
     Parameters
     ----------
-    ciwc : ArrayLike
+    ciwc : A
         Cloud ice water content, [:math:`kg_{ice} kg_{dry \ air}^{-1}`].
         Note that ECMWF provides specific ice water content per mass *moist* air.
-    T : ArrayLike
+    T : A
         Air temperature, [:math:`K`]
-    p : ArrayLike
+    p : A
         Air pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayLike
+    A
         Effective extinction coefficient for spectral range 0.2-0.69 um, [:math:`m^{-1}`]
 
     References

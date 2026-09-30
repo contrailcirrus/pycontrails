@@ -19,10 +19,9 @@ from pycontrails.core import models
 from pycontrails.core.met import MetDataArray, MetDataset
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.physics import constants, thermo, units
-from pycontrails.utils.types import ArrayLike
 
 
-def _rhi_over_q(air_temperature: ArrayLike, air_pressure: ArrayLike) -> ArrayLike:
+def _rhi_over_q[A: (np.ndarray, xr.DataArray)](air_temperature: A, air_pressure: A) -> A:
     """Compute the quotient ``RHi / q``."""
 
     # Keep the air_temperature term before the air_pressure term
@@ -61,35 +60,35 @@ class HumidityScaling(models.Model):
     to_json = description
 
     @abc.abstractmethod
-    def scale(
+    def scale[A: (np.ndarray, xr.DataArray)](
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
-        **kwargs: ArrayLike,
-    ) -> tuple[ArrayLike, ArrayLike]:
+        specific_humidity: A,
+        air_temperature: A,
+        air_pressure: A,
+        **kwargs: A,
+    ) -> tuple[A, A]:
         r"""Compute scaled specific humidity and RHi.
 
         See docstring for the implementing subclass for specific methodology.
 
         Parameters
         ----------
-        specific_humidity : ArrayLike
+        specific_humidity : A
             Unscaled specific relative humidity, [:math:`kg \ kg^{-1}`]. Typically,
             this is interpolated meteorology data.
-        air_temperature : ArrayLike
+        air_temperature : A
             Air temperature, [:math:`K`]. Typically, this is interpolated meteorology
             data.
-        air_pressure : ArrayLike
+        air_pressure : A
             Pressure, [:math:`Pa`]
-        kwargs : ArrayLike
+        kwargs : A
             Other keyword-only variables and model parameters used by the formula.
 
         Returns
         -------
-        specific_humidity : ArrayLike
+        specific_humidity : A
             Scaled specific humidity.
-        rhi : ArrayLike
+        rhi : A
             Scaled relative humidity over ice.
 
         See Also
@@ -202,13 +201,13 @@ class ConstantHumidityScaling(HumidityScaling):
     scaler_specific_keys = ("rhi_adj",)
 
     @override
-    def scale(
+    def scale[A: (np.ndarray, xr.DataArray)](
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
+        specific_humidity: A,
+        air_temperature: A,
+        air_pressure: A,
         **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
+    ) -> tuple[A, A]:
         rhi_adj = kwargs.get("rhi_adj", self.params["rhi_adj"])
         q = specific_humidity / rhi_adj
         rhi = thermo.rhi(q, air_temperature, air_pressure)
@@ -255,13 +254,13 @@ class ExponentialBoostHumidityScaling(HumidityScaling):
     scaler_specific_keys = "rhi_adj", "rhi_boost_exponent", "clip_upper"
 
     @override
-    def scale(
+    def scale[A: (np.ndarray, xr.DataArray)](
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
+        specific_humidity: A,
+        air_temperature: A,
+        air_pressure: A,
         **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
+    ) -> tuple[A, A]:
         # Get coefficients
         rhi_adj = kwargs["rhi_adj"]
         rhi_boost_exponent = kwargs["rhi_boost_exponent"]
@@ -453,13 +452,13 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
         return {**super()._scale_kwargs(), "q_method": q_method, "level_type": level_type}
 
     @override
-    def scale(
+    def scale[A: (np.ndarray, xr.DataArray)](
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
+        specific_humidity: A,
+        air_temperature: A,
+        air_pressure: A,
         **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
+    ) -> tuple[A, A]:
         # Get sigmoid coefficients
         q_method = kwargs["q_method"]
         level_type = kwargs["level_type"]
@@ -505,9 +504,9 @@ class ExponentialBoostLatitudeCorrectionHumidityScaling(HumidityScaling):
         return specific_humidity, rhi
 
 
-def _calc_rhi_max(air_temperature: ArrayLike) -> ArrayLike:
-    p_ice: ArrayLike
-    p_liq: ArrayLike
+def _calc_rhi_max[A: (np.ndarray, xr.DataArray)](air_temperature: A) -> A:
+    p_ice: A
+    p_liq: A
 
     if isinstance(air_temperature, xr.DataArray):
         p_ice = thermo.e_sat_ice(air_temperature)
@@ -603,13 +602,13 @@ class HumidityScalingByLevel(HumidityScaling):
     )
 
     @override
-    def scale(
+    def scale[A: (np.ndarray, xr.DataArray)](
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
+        specific_humidity: A,
+        air_temperature: A,
+        air_pressure: A,
         **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
+    ) -> tuple[A, A]:
         rhi_adj_mid_troposphere = kwargs["rhi_adj_mid_troposphere"]
         rhi_adj_stratosphere = kwargs["rhi_adj_stratosphere"]
         mid_troposphere_threshold = kwargs["mid_troposphere_threshold"]
@@ -871,13 +870,13 @@ class HistogramMatching(HumidityScaling):
         super().__init__(met, params, **params_kwargs)
 
     @override
-    def scale(
+    def scale[A: (np.ndarray, xr.DataArray)](
         self,
-        specific_humidity: ArrayLike,
-        air_temperature: ArrayLike,
-        air_pressure: ArrayLike,
+        specific_humidity: A,
+        air_temperature: A,
+        air_pressure: A,
         **kwargs: Any,
-    ) -> tuple[ArrayLike, ArrayLike]:
+    ) -> tuple[A, A]:
         rhi_over_q = _rhi_over_q(air_temperature, air_pressure)
         rhi = rhi_over_q * specific_humidity
 

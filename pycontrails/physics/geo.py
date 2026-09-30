@@ -7,28 +7,27 @@ import numpy.typing as npt
 import xarray as xr
 
 from pycontrails.physics import constants, units
-from pycontrails.utils.types import ArrayLike, ArrayOrFloat
 
 # ------------------
 # Spherical Geometry
 # ------------------
 
 
-def haversine(lons0: ArrayLike, lats0: ArrayLike, lons1: ArrayLike, lats1: ArrayLike) -> ArrayLike:
+def haversine[A: (np.ndarray, xr.DataArray)](lons0: A, lats0: A, lons1: A, lats1: A) -> A:
     r"""Calculate haversine distance between points in (lons0, lats0) and (lons1, lats1).
 
     Handles coordinates crossing the antimeridian line (-180, 180).
 
     Parameters
     ----------
-    lons0, lats0 : ArrayLike
+    lons0, lats0 : A
         Coordinates of initial points, [:math:`\deg`]
-    lons1, lats1 : ArrayLike
+    lons1, lats1 : A
         Coordinates of terminal points, [:math:`\deg`]
 
     Returns
     -------
-    ArrayLike
+    A
         Distances between corresponding points. [:math:`m`]
 
     Notes
@@ -370,11 +369,11 @@ def segment_length(
     return (dist_horizontal**2 + dist_vertical**2) ** 0.5
 
 
-def forward_azimuth(
+def forward_azimuth[A: (np.ndarray, float)](
     lons: npt.NDArray[np.floating],
     lats: npt.NDArray[np.floating],
-    az: ArrayOrFloat,
-    dist: ArrayOrFloat,
+    az: A,
+    dist: A,
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate coordinates along forward azimuth.
 
@@ -433,18 +432,18 @@ def forward_azimuth(
 # ---------------
 
 
-def solar_direct_radiation(
-    longitude: ArrayLike, latitude: ArrayLike, time: ArrayLike, threshold_cos_sza: float = 0.0
+def solar_direct_radiation[A: (np.ndarray, xr.DataArray)](
+    longitude: A, latitude: A, time: A, threshold_cos_sza: float = 0.0
 ) -> np.ndarray:
     r"""Calculate the instantaneous theoretical solar direct radiation (SDR).
 
     Parameters
     ----------
-    longitude : ArrayLike
+    longitude : A
         Longitude, [:math:`\deg`]
-    latitude : ArrayLike
+    latitude : A
         Latitude, [:math:`\deg`]
-    time : ArrayLike
+    time : A
         Time, formatted as :class:`~numpy.datetime64`
     threshold_cos_sza : float, optional
         Set the SDR to 0 when the :func:`cosine_solar_zenith_angle` is below a certain value.
@@ -452,7 +451,7 @@ def solar_direct_radiation(
 
     Returns
     -------
-    ArrayLike
+    A
         Solar direct radiation of incoming radiation, [:math:`W m^{-2}`]
 
     References
@@ -479,7 +478,7 @@ def solar_direct_radiation(
     return np.where(cos_sza < threshold_cos_sza, 0.0, cos_sza * _solar_constant)
 
 
-def solar_constant(theta_rad: ArrayLike) -> ArrayLike:
+def solar_constant[A: (np.ndarray, xr.DataArray)](theta_rad: A) -> A:
     """Calculate the solar electromagnetic radiation per unit area from orbital position.
 
     On average, the extraterrestrial irradiance is 1367 W/m**2
@@ -487,13 +486,13 @@ def solar_constant(theta_rad: ArrayLike) -> ArrayLike:
 
     Parameters
     ----------
-    theta_rad : ArrayLike
+    theta_rad : A
         Orbital position, [:math:`rad`]. Use :func:`orbital_position` to calculate
         the orbital position from time input.
 
     Returns
     -------
-    ArrayLike
+    A
         Solar constant, [:math:`W m^{-2}`]
 
     References
@@ -519,12 +518,12 @@ def solar_constant(theta_rad: ArrayLike) -> ArrayLike:
     return constants.solar_constant * orbital_effect  # type: ignore[return-value]
 
 
-def cosine_solar_zenith_angle(
-    longitude: ArrayLike,
-    latitude: ArrayLike,
-    time: ArrayLike,
-    theta_rad: ArrayLike,
-) -> ArrayLike:
+def cosine_solar_zenith_angle[A: (np.ndarray, xr.DataArray)](
+    longitude: A,
+    latitude: A,
+    time: A,
+    theta_rad: A,
+) -> A:
     r"""Calculate the cosine of the solar zenith angle.
 
     Return (:math:`\cos(\theta)`), where :math:`\theta` is the angle between the sun and the
@@ -532,18 +531,18 @@ def cosine_solar_zenith_angle(
 
     Parameters
     ----------
-    longitude : ArrayLike
+    longitude : A
         Longitude, [:math:`\deg`]
-    latitude : ArrayLike
+    latitude : A
         Latitude, [:math:`\deg`]
-    time : ArrayLike
+    time : A
         Time, formatted as :class:`~numpy.datetime64`
-    theta_rad : ArrayLike
+    theta_rad : A
         Orbital position, [:math:`rad`]. Output of :func:`orbital_position`.
 
     Returns
     -------
-    ArrayLike
+    A
         Cosine of the solar zenith angle
 
     References
@@ -565,17 +564,17 @@ def cosine_solar_zenith_angle(
     )
 
 
-def orbital_position(time: ArrayLike) -> ArrayLike:
+def orbital_position[A: (np.ndarray, xr.DataArray)](time: A) -> A:
     """Calculate the orbital position of Earth to a reference point set at the start of year.
 
     Parameters
     ----------
-    time : ArrayLike
-        ArrayLike of :class:`~numpy.datetime64` times
+    time : A
+        Array of :class:`~numpy.datetime64` times
 
     Returns
     -------
-    ArrayLike
+    A
         Orbital position of Earth, [:math:`rad`]
     """
     dt_day = days_since_reference_year(time)
@@ -583,19 +582,19 @@ def orbital_position(time: ArrayLike) -> ArrayLike:
     return units.degrees_to_radians(theta)
 
 
-def days_since_reference_year(time: ArrayLike, ref_year: int = 2000) -> ArrayLike:
+def days_since_reference_year[A: (np.ndarray, xr.DataArray)](time: A, ref_year: int = 2000) -> A:
     """Calculate the days elapsed since the start of the reference year.
 
     Parameters
     ----------
-    time : ArrayLike
-        ArrayLike of :class:`~numpy.datetime64` times
+    time : A
+        Array of :class:`~numpy.datetime64` times
     ref_year : int, optional
         Year of reference
 
     Returns
     -------
-    ArrayLike
+    A
         Days elapsed since the reference year. Output ``dtype`` is ``np.float64``.
 
     Raises
@@ -614,23 +613,23 @@ def days_since_reference_year(time: ArrayLike, ref_year: int = 2000) -> ArrayLik
     return dt_day
 
 
-def hours_since_start_of_day(time: ArrayLike) -> ArrayLike:
+def hours_since_start_of_day[A: (np.ndarray, xr.DataArray)](time: A) -> A:
     """Calculate the hours elapsed since the start of day (00:00:00 UTC).
 
     Parameters
     ----------
-    time : ArrayLike
-        ArrayLike of :class:`~numpy.datetime64` times
+    time : A
+        Array of :class:`~numpy.datetime64` times
 
     Returns
     -------
-    ArrayLike
+    A
         Hours elapsed since the start of today day. Output ``dtype`` is ``np.float64``.
     """
     return (time - time.astype("datetime64[D]")) / np.timedelta64(1, "h")
 
 
-def solar_declination_angle(theta_rad: ArrayLike) -> ArrayLike:
+def solar_declination_angle[A: (np.ndarray, xr.DataArray)](theta_rad: A) -> A:
     r"""Calculate the solar declination angle from the orbital position in radians (theta_rad).
 
     The solar declination angle is the angle between the rays of the Sun and the plane of the
@@ -640,12 +639,12 @@ def solar_declination_angle(theta_rad: ArrayLike) -> ArrayLike:
 
     Parameters
     ----------
-    theta_rad : ArrayLike
+    theta_rad : A
         Orbital position, [:math:`rad`]. Output of :func:`orbital_position`.
 
     Returns
     -------
-    ArrayLike
+    A
         Solar declination angle, [:math:`\deg`]
 
     References
@@ -672,7 +671,7 @@ def solar_declination_angle(theta_rad: ArrayLike) -> ArrayLike:
     )
 
 
-def solar_hour_angle(longitude: ArrayLike, time: ArrayLike, theta_rad: ArrayLike) -> ArrayLike:
+def solar_hour_angle[A: (np.ndarray, xr.DataArray)](longitude: A, time: A, theta_rad: A) -> A:
     r"""Calculate the sun's East to West angular displacement around the polar axis.
 
     The solar hour angle is an expression of time in angular measurements:
@@ -681,16 +680,16 @@ def solar_hour_angle(longitude: ArrayLike, time: ArrayLike, theta_rad: ArrayLike
 
     Parameters
     ----------
-    longitude : ArrayLike
+    longitude : A
         Longitude, [:math:`\deg`]
-    time : ArrayLike
-        ArrayLike of :class:`~numpy.datetime64` times
-    theta_rad : ArrayLike
+    time : A
+        Array of :class:`~numpy.datetime64` times
+    theta_rad : A
         Orbital position, [:math:`rad`]. Output of :func:`orbital_position`.
 
     Returns
     -------
-    ArrayLike
+    A
         Solar hour angle, [:math:`\deg`]
 
     See Also
@@ -707,17 +706,17 @@ def solar_hour_angle(longitude: ArrayLike, time: ArrayLike, theta_rad: ArrayLike
     return ((dt_hour - 12) * 15) + longitude + orbital_correction
 
 
-def orbital_correction_for_solar_hour_angle(theta_rad: ArrayLike) -> ArrayLike:
+def orbital_correction_for_solar_hour_angle[A: (np.ndarray, xr.DataArray)](theta_rad: A) -> A:
     r"""Calculate correction to the solar hour angle due to Earth's orbital location.
 
     Parameters
     ----------
-    theta_rad : ArrayLike
+    theta_rad : A
         Orbital position, [:math:`rad`]
 
     Returns
     -------
-    ArrayLike
+    A
         Correction to the solar hour angle as a result of Earth's orbital location, [:math:`\deg`]
 
     References
@@ -742,30 +741,30 @@ def orbital_correction_for_solar_hour_angle(theta_rad: ArrayLike) -> ArrayLike:
 # ---------
 
 
-def advect_longitude(
-    longitude: ArrayLike,
-    latitude: ArrayLike,
-    u_wind: ArrayLike,
+def advect_longitude[A: (np.ndarray, xr.DataArray)](
+    longitude: A,
+    latitude: A,
+    u_wind: A,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-) -> ArrayLike:
+) -> A:
     r"""Calculate the longitude of a particle after time ``dt`` caused by advection due to wind.
 
     Automatically wrap over the antimeridian if necessary.
 
     Parameters
     ----------
-    longitude : ArrayLike
+    longitude : A
         Original longitude, [:math:`\deg`]
-    latitude : ArrayLike
+    latitude : A
         Original latitude, [:math:`\deg`]
-    u_wind : ArrayLike
+    u_wind : A
         Wind speed in the longitudinal direction, [:math:`m s^{-1}`]
     dt : np.ndarray
         Advection timestep
 
     Returns
     -------
-    ArrayLike
+    A
         New longitude value, [:math:`\deg`]
     """
     # Use the same dtype as longitude, latitude, and u_wind
@@ -778,11 +777,11 @@ def advect_longitude(
     return (new_longitude + 180.0) % 360.0 - 180.0  # wrap antimeridian
 
 
-def advect_latitude(
-    latitude: ArrayLike,
-    v_wind: ArrayLike,
+def advect_latitude[A: (np.ndarray, xr.DataArray)](
+    latitude: A,
+    v_wind: A,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-) -> ArrayLike:
+) -> A:
     r"""Calculate the latitude of a particle after time ``dt`` caused by advection due to wind.
 
     .. note::
@@ -798,16 +797,16 @@ def advect_latitude(
 
     Parameters
     ----------
-    latitude : ArrayLike
+    latitude : A
         Original latitude, [:math:`\deg`]
-    v_wind : ArrayLike
+    v_wind : A
         Wind speed in the latitudinal direction, [:math:`m s^{-1}`]
     dt : np.ndarray
         Advection time delta
 
     Returns
     -------
-    ArrayLike
+    A
         New latitude value, [:math:`\deg`]
     """
     # Use the same dtype as latitude and v_wind
@@ -819,13 +818,13 @@ def advect_latitude(
     return latitude + units.m_to_latitude_distance(distance_m)
 
 
-def advect_level(
-    level: ArrayLike,
-    vertical_velocity: ArrayLike | float,
-    rho_air: ArrayLike | float,
-    terminal_fall_speed: ArrayLike | float,
+def advect_level[A: (np.ndarray, xr.DataArray)](
+    level: A,
+    vertical_velocity: A | float,
+    rho_air: A | float,
+    terminal_fall_speed: A | float,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
-) -> ArrayLike:
+) -> A:
     r"""Calculate the pressure level of a particle after time ``dt``.
 
     This function calculates the new pressure level of a particle as a result of
@@ -833,20 +832,20 @@ def advect_level(
 
     Parameters
     ----------
-    level : ArrayLike
+    level : A
         Pressure level, [:math:`hPa`]
-    vertical_velocity : ArrayLike
+    vertical_velocity : A
         Vertical velocity, [:math:`Pa s^{-1}`]
-    rho_air : ArrayLike | float
+    rho_air : A | float
         Air density, [:math:`kg m^{-3}`]
-    terminal_fall_speed : ArrayLike | float
+    terminal_fall_speed : A | float
         Terminal fall speed of the particle, [:math:`m s^{-1}`]
     dt : npt.NDArray[np.timedelta64] | np.timedelta64
         Time delta for each waypoint
 
     Returns
     -------
-    ArrayLike
+    A
         New pressure level, [:math:`hPa`]
     """
     dt_s = units.dt_to_seconds(dt, level.dtype)

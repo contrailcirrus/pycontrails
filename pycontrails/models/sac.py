@@ -8,6 +8,7 @@ from typing import Any, overload
 import numpy as np
 import numpy.typing as npt
 import scipy.optimize
+import xarray as xr
 
 import pycontrails
 from pycontrails.core.flight import Flight
@@ -18,7 +19,7 @@ from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, thermo
-from pycontrails.utils.types import ArrayLike, apply_nan_mask_to_arraylike
+from pycontrails.utils.types import apply_nan_mask_to_arraylike
 
 # -----------------
 # Models as classes
@@ -173,24 +174,24 @@ class SAC(Model):
 # -------------------
 
 
-def slope_mixing_line(
-    specific_humidity: ArrayLike,
-    air_pressure: ArrayLike,
-    engine_efficiency: float | ArrayLike,
+def slope_mixing_line[A: (np.ndarray, xr.DataArray)](
+    specific_humidity: A,
+    air_pressure: A,
+    engine_efficiency: float | A,
     ei_h2o: npt.NDArray[np.floating] | float,
     q_fuel: npt.NDArray[np.floating] | float,
-) -> ArrayLike:
+) -> A:
     r"""Calculate the slope of the mixing line in a temperature-humidity diagram.
 
     This quantity is often notated with ``G`` in the literature.
 
     Parameters
     ----------
-    specific_humidity : ArrayLike
+    specific_humidity : A
         A sequence or array of specific humidity values, [:math:`kg_{H_{2}O} \ kg_{air}`]
-    air_pressure : ArrayLike
+    air_pressure : A
         A sequence or array of atmospheric pressure values, [:math:`Pa`].
-    engine_efficiency: float | ArrayLike
+    engine_efficiency: float | A
         Engine efficiency, [:math:`0 - 1`]
     ei_h2o : npt.NDArray[np.floating] | float
         Emission index of water vapor, [:math:`kg \ kg^{-1}`]
@@ -199,24 +200,24 @@ def slope_mixing_line(
 
     Returns
     -------
-    ArrayLike
+    A
         Slope of the mixing line in a temperature-humidity diagram, [:math:`Pa \ K^{-1}`]
     """
     c_pm = thermo.c_pm(specific_humidity)  # Often taken as 1004 (= constants.c_pd)
     return (ei_h2o * c_pm * air_pressure) / (constants.epsilon * q_fuel * (1.0 - engine_efficiency))  # type: ignore[return-value]
 
 
-def T_sat_liquid(G: ArrayLike) -> ArrayLike:
+def T_sat_liquid[A: (np.ndarray, xr.DataArray)](G: A) -> A:
     r"""Calculate temperature at which liquid saturation curve has slope G.
 
     Parameters
     ----------
-    G : ArrayLike
+    G : A
         Slope of the mixing line in a temperature-humidity diagram.
 
     Returns
     -------
-    ArrayLike
+    A
         Maximum threshold temperature for 100% relative humidity with respect to liquid,
         [:math:`K`]. This can also be interpreted as the temperature at which the liquid
         saturation curve has slope G.
@@ -251,10 +252,10 @@ def T_sat_liquid(G: ArrayLike) -> ArrayLike:
     return -46.46 - constants.absolute_zero + 9.43 * log_ + 0.72 * log_**2  # type: ignore[return-value]
 
 
-def T_sat_liquid_high_accuracy(
-    G: ArrayLike,
+def T_sat_liquid_high_accuracy[A: (np.ndarray, xr.DataArray)](
+    G: A,
     maxiter: int = 5,
-) -> ArrayLike:
+) -> A:
     """Calculate temperature at which liquid saturation curve has slope G.
 
     The function :func:`T_sat_liquid` gives a first order approximation to equation (10)
@@ -263,7 +264,7 @@ def T_sat_liquid_high_accuracy(
 
     Parameters
     ----------
-    G : ArrayLike
+    G : A
         Slope of the mixing line
     maxiter : int, optional
         Passed into :func:`scipy.optimize.newton`. Because ``T_sat_liquid`` is already
@@ -272,7 +273,7 @@ def T_sat_liquid_high_accuracy(
 
     Returns
     -------
-    ArrayLike
+    A
         Maximum threshold temperature for 100% relative humidity with respect to liquid,
         [:math:`K`].
 
@@ -286,28 +287,28 @@ def T_sat_liquid_high_accuracy(
     """
     init_guess = T_sat_liquid(G)
 
-    def func(T: ArrayLike) -> ArrayLike:
+    def func(T: A) -> A:
         """Equation (10) from Schumann 1996."""
         return thermo.e_sat_liquid_prime(T) - G
 
     return scipy.optimize.newton(func, init_guess, maxiter=maxiter)
 
 
-def rh_critical_sac(air_temperature: ArrayLike, T_sat_liquid: ArrayLike, G: ArrayLike) -> ArrayLike:
+def rh_critical_sac[A: (np.ndarray, xr.DataArray)](air_temperature: A, T_sat_liquid: A, G: A) -> A:
     r"""Calculate critical relative humidity threshold of contrail formation.
 
     Parameters
     ----------
-    air_temperature : ArrayLike
+    air_temperature : A
         A sequence or array of temperature values, [:math:`K`]
-    T_sat_liquid : ArrayLike
+    T_sat_liquid : A
         Maximum threshold temperature for 100% relative humidity with respect to liquid, [:math:`K`]
-    G : ArrayLike
+    G : A
         Slope of the mixing line in a temperature-humidity diagram.
 
     Returns
     -------
-    ArrayLike
+    A
         Critical relative humidity of contrail formation, [:math:`[0 - 1]`]
 
     References
@@ -344,25 +345,25 @@ def rh_critical_sac(air_temperature: ArrayLike, T_sat_liquid: ArrayLike, G: Arra
     return rh_crit.where(air_temperature <= T_sat_liquid, np.inf)
 
 
-def sac(
-    rh: ArrayLike,
-    rh_crit_sac: ArrayLike,
-) -> ArrayLike:
+def sac[A: (np.ndarray, xr.DataArray)](
+    rh: A,
+    rh_crit_sac: A,
+) -> A:
     r"""Points at which the Schmidt-Appleman Criteria is satisfied.
 
-    Parameters of type :class:`~pycontrails.utils.types.ArrayLike` must have compatible shapes.
+    Parameters of type ``A`` must have compatible shapes.
 
     Parameters
     ----------
-    rh : ArrayLike
+    rh : A
         Relative humidity values
-    rh_crit_sac: ArrayLike
+    rh_crit_sac: A
         Critical relative humidity threshold of contrail formation
 
     Returns
     -------
-    ArrayLike
-        SAC state of each point indexed by the :class:`~pycontrails.utils.types.ArrayLike`
+    A
+        SAC state of each point indexed by the ``A``
         parameters. Returned array has floating ``dtype`` with values
 
             - 0.0 signifying SAC fails
@@ -377,12 +378,12 @@ def sac(
     return apply_nan_mask_to_arraylike(sac_, nan_mask)
 
 
-def T_critical_sac(
-    T_LM: ArrayLike,
-    relative_humidity: ArrayLike,
-    G: ArrayLike,
+def T_critical_sac[A: (np.ndarray, xr.DataArray)](
+    T_LM: A,
+    relative_humidity: A,
+    G: A,
     maxiter: int = 10,
-) -> ArrayLike:
+) -> A:
     r"""Estimate temperature threshold for persistent contrail formation.
 
     This quantity is defined as ``T_LC`` in Schumann (see reference below). Equation (11)
@@ -397,18 +398,18 @@ def T_critical_sac(
 
     Parameters
     ----------
-    T_LM : ArrayLike
+    T_LM : A
         Output of :func:`T_sat_liquid` calculation.
-    relative_humidity : ArrayLike
+    relative_humidity : A
         Relative humidity values
-    G : ArrayLike
+    G : A
         Slope of the mixing line in a temperature-humidity diagram.
     maxiter : int, optional
         Passed into :func:`scipy.optimize.newton`. By default, 10.
 
     Returns
     -------
-    ArrayLike
+    A
         Critical temperature threshold values.
 
     References
@@ -431,11 +432,11 @@ def T_critical_sac(
     e_L_of_T_LM_filt = thermo.e_sat_liquid(T_LM_filt)
     G_filt = G[filt]
 
-    def func(T: ArrayLike) -> ArrayLike:
+    def func(T: A) -> A:
         """Equation (11) from Schumann."""
         return T - T_LM_filt + (e_L_of_T_LM_filt - U_filt * thermo.e_sat_liquid(T)) / G_filt
 
-    def fprime(T: ArrayLike) -> ArrayLike:
+    def fprime(T: A) -> A:
         return 1.0 - U_filt * thermo.e_sat_liquid_prime(T) / G_filt
 
     # This initial guess should be less than T_LM.

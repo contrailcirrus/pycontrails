@@ -153,9 +153,6 @@ napoleon_type_aliases = {
     "SACParams": "~pycontrails.models.sac.SACParams",
     "PCC": "~pycontrails.models.pcc.PCC",
     "PCCParams": "~pycontrails.models.pcc.PCCParams",
-    # pycontrails.utils
-    "ArrayScalarLike": "~pycontrails.utils.types.ArrayScalarLike",
-    "ArrayLike": "~pycontrails.utils.types.ArrayLike",
     # numpy
     "np.ndarray": "numpy.ndarray",
     "np.datetime64": "numpy.datetime64",

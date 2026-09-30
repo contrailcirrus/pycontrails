@@ -15,7 +15,6 @@ from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorDataset
 from pycontrails.physics import constants, geo, units
 from pycontrails.utils import dependencies
-from pycontrails.utils.types import ArrayOrFloat
 
 logger = logging.getLogger(__name__)
 
@@ -1208,13 +1207,9 @@ class Flight(GeoVectorDataset):
         out.data.pop("level", None)  # avoid any ambiguity
         return out
 
-    def distance_to_coords(
-        self: Flight, distance: ArrayOrFloat
-    ) -> tuple[
-        ArrayOrFloat,
-        ArrayOrFloat,
-        np.intp | npt.NDArray[np.intp],
-    ]:
+    def distance_to_coords[A: (np.ndarray, float)](
+        self: Flight, distance: A
+    ) -> tuple[A, A, np.intp | npt.NDArray[np.intp]]:
         """
         Convert distance along flight path to geodesic coordinates.
 
@@ -1223,12 +1218,12 @@ class Flight(GeoVectorDataset):
 
         Parameters
         ----------
-        distance : ArrayOrFloat
+        distance : A
             Distance along flight path, [:math:`m`]
 
         Returns
         -------
-        tuple[ArrayOrFloat, ArrayOrFloat, np.intp | npt.NDArray[np.intp]]
+        tuple[A, A, np.intp | npt.NDArray[np.intp]]
             latitude, longitude, and segment index corresponding to distance.
         """
 
@@ -1264,10 +1259,10 @@ class Flight(GeoVectorDataset):
 
         # linear interpolation in lat/lon - assuming the way points are within 100-200km so this
         # should be accurate enough without needed to reproject or use spherical distance
-        lat1: ArrayOrFloat = lat_[seg_idx]
-        lon1: ArrayOrFloat = lon_[seg_idx]
-        lat2: ArrayOrFloat = lat_[seg_idx + 1]
-        lon2: ArrayOrFloat = lon_[seg_idx + 1]
+        lat1 = lat_[seg_idx]
+        lon1 = lon_[seg_idx]
+        lat2 = lat_[seg_idx + 1]
+        lon2 = lon_[seg_idx + 1]
 
         dx = distance - cumulative_lengths[seg_idx]
         fx = dx / lengths[seg_idx]

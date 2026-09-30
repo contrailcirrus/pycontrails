@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-
-from pycontrails.utils.types import ArrayScalarLike
+import xarray as xr
 
 
 def wind_shear_enhancement_factor(
@@ -46,39 +45,39 @@ def wind_shear_enhancement_factor(
     return 0.5 * (1.0 + ratio**wind_shear_enhancement_exponent)
 
 
-def wind_shear_normal(
-    u_wind_top: ArrayScalarLike,
-    u_wind_btm: ArrayScalarLike,
-    v_wind_top: ArrayScalarLike,
-    v_wind_btm: ArrayScalarLike,
-    cos_a: ArrayScalarLike,
-    sin_a: ArrayScalarLike,
+def wind_shear_normal[A: (np.ndarray, xr.DataArray, float)](
+    u_wind_top: A,
+    u_wind_btm: A,
+    v_wind_top: A,
+    v_wind_btm: A,
+    cos_a: A,
+    sin_a: A,
     dz: float,
-) -> ArrayScalarLike:
+) -> A:
     r"""Calculate the total wind shear normal to an axis.
 
     The total wind shear is the vertical gradient of the horizontal velocity.
 
     Parameters
     ----------
-    u_wind_top : ArrayScalarLike
+    u_wind_top : A
         u wind speed in the top layer, [:math:`m \ s^{-1}`]
-    u_wind_btm : ArrayScalarLike
+    u_wind_btm : A
         u wind speed in the bottom layer, [:math:`m \ s^{-1}`]
-    v_wind_top : ArrayScalarLike
+    v_wind_top : A
         v wind speed in the top layer, [:math:`m \ s^{-1}`]
-    v_wind_btm : ArrayScalarLike
+    v_wind_btm : A
         v wind speed in the bottom layer, [:math:`m \ s^{-1}`]
-    cos_a : ArrayScalarLike
+    cos_a : A
         Cosine component of segment
-    sin_a : ArrayScalarLike
+    sin_a : A
         Sine component of segment
     dz : float
         Difference in altitude between measurements, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
        Wind shear normal to axis, [:math:`s^{-1}`]
     """
     du_dz = (u_wind_top - u_wind_btm) / dz
@@ -86,33 +85,33 @@ def wind_shear_normal(
     return dv_dz * cos_a - du_dz * sin_a
 
 
-def wind_shear(
-    u_wind_top: ArrayScalarLike,
-    u_wind_btm: ArrayScalarLike,
-    v_wind_top: ArrayScalarLike,
-    v_wind_btm: ArrayScalarLike,
+def wind_shear[A: (np.ndarray, xr.DataArray, float)](
+    u_wind_top: A,
+    u_wind_btm: A,
+    v_wind_top: A,
+    v_wind_btm: A,
     dz: float,
-) -> ArrayScalarLike:
+) -> A:
     r"""Calculate the total wind shear.
 
     The total wind shear is the vertical gradient of the horizontal velocity.
 
     Parameters
     ----------
-    u_wind_top : ArrayScalarLike
+    u_wind_top : A
         u wind speed in the top layer, [:math:`m \ s^{-1}`]
-    u_wind_btm : ArrayScalarLike
+    u_wind_btm : A
         u wind speed in the bottom layer, [:math:`m \ s^{-1}`]
-    v_wind_top : ArrayScalarLike
+    v_wind_top : A
         v wind speed in the top layer, [:math:`m \ s^{-1}`]
-    v_wind_btm : ArrayScalarLike
+    v_wind_btm : A
         v wind speed in the bottom layer, [:math:`m \ s^{-1}`]
     dz : float
         Difference in altitude between measurements, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
        Total wind shear, [:math:`s^{-1}`]
     """
     du_dz = (u_wind_top - u_wind_btm) / dz

@@ -14,11 +14,11 @@ import pathlib
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import xarray as xr
 
 from pycontrails.core import flight
 from pycontrails.core.airports import distance_between_airports, global_airport_database
 from pycontrails.physics import constants, units
-from pycontrails.utils.types import ArrayOrFloat, ArrayScalarLike
 
 logger = logging.getLogger(__name__)
 _path_to_static = pathlib.Path(__file__).parent / "static"
@@ -254,11 +254,11 @@ def equivalent_fuel_flow_rate_at_sea_level(
     return fuel_flow_cruise * (theta_amb**3.8 / delta_amb) * np.exp(0.2 * mach_num**2)
 
 
-def equivalent_fuel_flow_rate_at_cruise(
+def equivalent_fuel_flow_rate_at_cruise[A: (np.ndarray, float)](
     fuel_flow_sls: npt.NDArray[np.floating] | float,
-    theta_amb: ArrayOrFloat,
-    delta_amb: ArrayOrFloat,
-    mach_num: ArrayOrFloat,
+    theta_amb: A,
+    delta_amb: A,
+    mach_num: A,
 ) -> npt.NDArray[np.floating]:
     r"""Convert fuel mass flow rate at sea level to equivalent fuel flow rate at cruise conditions.
 
@@ -268,11 +268,11 @@ def equivalent_fuel_flow_rate_at_cruise(
     ----------
     fuel_flow_sls : npt.NDArray[np.floating] | float
         Fuel mass flow rate, [:math:`kg s^{-1}`]
-    theta_amb : ArrayOrFloat
+    theta_amb : A
         Ratio of the ambient temperature to the temperature at mean sea-level.
-    delta_amb : ArrayOrFloat
+    delta_amb : A
         Ratio of the pressure altitude to the surface pressure.
-    mach_num : ArrayOrFloat
+    mach_num : A
         Mach number
 
     Returns
@@ -891,19 +891,19 @@ def update_aircraft_mass(
 # ------------------------------------------------------------------
 
 
-def compressor_inlet_temperature(T: ArrayScalarLike, mach_num: ArrayScalarLike) -> ArrayScalarLike:
+def compressor_inlet_temperature[A: (np.ndarray, xr.DataArray, float)](T: A, mach_num: A) -> A:
     """Calculate compressor inlet temperature for Jet engine, :math:`T_{2}`.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Ambient temperature, [:math:`K`]
-    mach_num : ArrayScalarLike
+    mach_num : A
         Mach number
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Compressor inlet temperature, [:math:`K`]
 
     References
@@ -914,19 +914,19 @@ def compressor_inlet_temperature(T: ArrayScalarLike, mach_num: ArrayScalarLike) 
     return T * (1.0 + ((constants.kappa - 1.0) / 2.0) * mach_num**2)
 
 
-def compressor_inlet_pressure(p: ArrayScalarLike, mach_num: ArrayScalarLike) -> ArrayScalarLike:
+def compressor_inlet_pressure[A: (np.ndarray, xr.DataArray, float)](p: A, mach_num: A) -> A:
     """Calculate compressor inlet pressure for Jet engine, :math:`P_{2}`.
 
     Parameters
     ----------
-    p : ArrayScalarLike
+    p : A
         Ambient pressure, [:math:`Pa`]
-    mach_num : ArrayScalarLike
+    mach_num : A
         Mach number
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Compressor inlet pressure, [:math:`Pa`]
 
     References
@@ -938,25 +938,25 @@ def compressor_inlet_pressure(p: ArrayScalarLike, mach_num: ArrayScalarLike) -> 
     return p * (1.0 + ((constants.kappa - 1.0) / 2.0) * mach_num**2) ** power_term
 
 
-def combustor_inlet_pressure(
+def combustor_inlet_pressure[A: (np.ndarray, xr.DataArray, float)](
     pressure_ratio: float,
-    p_comp_inlet: ArrayScalarLike,
-    thrust_setting: ArrayScalarLike,
-) -> ArrayScalarLike:
+    p_comp_inlet: A,
+    thrust_setting: A,
+) -> A:
     """Calculate combustor inlet pressure, :math:`P_{3}`.
 
     Parameters
     ----------
     pressure_ratio : float
         Engine pressure ratio, unitless
-    p_comp_inlet : ArrayScalarLike
+    p_comp_inlet : A
         Compressor inlet pressure, [:math:`Pa`]
-    thrust_setting : ArrayScalarLike
+    thrust_setting : A
         Engine thrust setting, unitless
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Combustor inlet pressure, [:math:`Pa`]
 
     References
@@ -967,28 +967,28 @@ def combustor_inlet_pressure(
     return (p_comp_inlet * (pressure_ratio - 1.0) * thrust_setting) + p_comp_inlet
 
 
-def combustor_inlet_temperature(
+def combustor_inlet_temperature[A: (np.ndarray, xr.DataArray, float)](
     comp_efficiency: float,
-    T_comp_inlet: ArrayScalarLike,
-    p_comp_inlet: ArrayScalarLike,
-    p_comb_inlet: ArrayScalarLike,
-) -> ArrayScalarLike:
+    T_comp_inlet: A,
+    p_comp_inlet: A,
+    p_comb_inlet: A,
+) -> A:
     """Calculate combustor inlet temperature, :math:`T_{3}`.
 
     Parameters
     ----------
     comp_efficiency : float
         Engine compressor efficiency, [:math:`0 - 1`]
-    T_comp_inlet : ArrayScalarLike
+    T_comp_inlet : A
         Compressor inlet temperature, [:math:`K`]
-    p_comp_inlet : ArrayScalarLike
+    p_comp_inlet : A
         Compressor inlet pressure, [:math:`Pa`]
-    p_comb_inlet : ArrayScalarLike
+    p_comb_inlet : A
         Compressor inlet pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Combustor inlet temperature, [:math:`K`]
 
     References
@@ -1000,23 +1000,23 @@ def combustor_inlet_temperature(
     return T_comp_inlet * (p_comb_inlet / p_comp_inlet) ** power_term
 
 
-def turbine_inlet_temperature(
-    afr: ArrayScalarLike, T_comb_inlet: ArrayScalarLike, q_fuel: float
-) -> ArrayScalarLike:
+def turbine_inlet_temperature[A: (np.ndarray, xr.DataArray, float)](
+    afr: A, T_comb_inlet: A, q_fuel: float
+) -> A:
     r"""Calculate turbine inlet temperature, :math:`T_{4}`.
 
     Parameters
     ----------
-    afr : ArrayScalarLike
+    afr : A
         Air-to-fuel ratio, unitless
-    T_comb_inlet : ArrayScalarLike
+    T_comb_inlet : A
         Combustor inlet temperature, [:math:`K`]
     q_fuel : float
         Lower calorific value (LCV) of fuel, :math:`[J \ kg_{fuel}^{-1}]`
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Tubrine inlet temperature, [:math:`K`]
 
     References
@@ -1085,17 +1085,17 @@ def thrust_force(
     )
 
 
-def thrust_setting_nd(
-    true_airspeed: ArrayScalarLike,
-    thrust_setting: ArrayScalarLike,
-    T: ArrayScalarLike,
-    p: ArrayScalarLike,
+def thrust_setting_nd[A: (np.ndarray, xr.DataArray, float)](
+    true_airspeed: A,
+    thrust_setting: A,
+    T: A,
+    p: A,
     pressure_ratio: float,
     q_fuel: float,
     *,
     comp_efficiency: float = 0.9,
     cruise: bool = False,
-) -> ArrayScalarLike:
+) -> A:
     r"""Calculate the non-dimensionalized thrust setting of a Jet engine.
 
     Result is in terms of the ratio of turbine inlet to the
@@ -1103,13 +1103,13 @@ def thrust_setting_nd(
 
     Parameters
     ----------
-    true_airspeed : ArrayScalarLike
+    true_airspeed : A
         True airspeed, [:math:`m \ s^{-1}`]
-    thrust_setting : ArrayScalarLike
+    thrust_setting : A
         Engine thrust setting, unitless
-    T : ArrayScalarLike
+    T : A
         Ambient temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Ambient pressure, [:math:`Pa`]
     pressure_ratio : float
         Engine pressure ratio, unitless
@@ -1123,7 +1123,7 @@ def thrust_setting_nd(
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Ratio of turbine inlet to the compressor inlet temperature, unitless
 
     References
@@ -1143,28 +1143,28 @@ def thrust_setting_nd(
     return T_turbine_inlet / T_compressor_inlet
 
 
-def air_to_fuel_ratio(
-    thrust_setting: ArrayScalarLike,
+def air_to_fuel_ratio[A: (np.ndarray, xr.DataArray, float)](
+    thrust_setting: A,
     *,
     cruise: bool = False,
-    T_compressor_inlet: ArrayScalarLike | None = None,
-) -> ArrayScalarLike:
+    T_compressor_inlet: A | None = None,
+) -> A:
     """Calculate air-to-fuel ratio from thrust setting.
 
     Parameters
     ----------
-    thrust_setting : ArrayScalarLike
+    thrust_setting : A
         Engine thrust setting, unitless
     cruise : bool
         Estimate thrust setting for cruise conditions. Defaults to False.
-    T_compressor_inlet : None | ArrayScalarLike
+    T_compressor_inlet : None | A
         Compressor inlet temperature, [:math:`K`]
         Required if ``cruise`` is True.
         Defaults to None
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Air-to-fuel ratio, unitless
 
     References

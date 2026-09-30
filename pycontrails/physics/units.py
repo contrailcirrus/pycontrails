@@ -6,24 +6,24 @@ import warnings
 
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
 
 from pycontrails.physics import constants
-from pycontrails.utils.types import ArrayScalarLike
 
 
-def pl_to_ft(pl: ArrayScalarLike) -> ArrayScalarLike:
+def pl_to_ft[A: (np.ndarray, xr.DataArray, float)](pl: A) -> A:
     r"""Convert from pressure level (hPa) to altitude (ft).
 
     Assumes the ICAO standard atmosphere.
 
     Parameters
     ----------
-    pl : ArrayScalarLike
+    pl : A
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         altitude, [:math:`ft`]
 
     See Also
@@ -35,19 +35,19 @@ def pl_to_ft(pl: ArrayScalarLike) -> ArrayScalarLike:
     return m_to_ft(pl_to_m(pl))
 
 
-def ft_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
+def ft_to_pl[A: (np.ndarray, xr.DataArray, float)](h: A) -> A:
     r"""Convert from altitude (ft) to pressure level (hPa).
 
     Assumes the ICAO standard atmosphere.
 
     Parameters
     ----------
-    h : ArrayScalarLike
+    h : A
         altitude, [:math:`ft`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     See Also
@@ -59,35 +59,35 @@ def ft_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     return m_to_pl(ft_to_m(h))
 
 
-def kelvin_to_celsius(kelvin: ArrayScalarLike) -> ArrayScalarLike:
+def kelvin_to_celsius[A: (np.ndarray, xr.DataArray, float)](kelvin: A) -> A:
     """Convert temperature from Kelvin to Celsius.
 
     Parameters
     ----------
-    kelvin : ArrayScalarLike
+    kelvin : A
         temperature [:math:`K`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         temperature [:math:`C`]
     """
     return kelvin + constants.absolute_zero
 
 
-def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
+def m_to_T_isa[A: (np.ndarray, xr.DataArray, float)](h: A) -> A:
     """Calculate the ambient temperature (K) for a given altitude (m).
 
     Assumes the ICAO standard atmosphere.
 
     Parameters
     ----------
-    h : ArrayScalarLike
+    h : A
         altitude, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         ICAO standard atmosphere ambient temperature, [:math:`K`]
 
 
@@ -119,17 +119,17 @@ _POWER_TERM = -constants.g / (constants.T_lapse_rate * constants.R_d)
 _DECAY = (-constants.g / (constants.R_d * m_to_T_isa(constants.h_tropopause))).item()  # type: ignore[attr-defined]
 
 
-def m_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
+def m_to_pl[A: (np.ndarray, xr.DataArray, float)](h: A) -> A:
     r"""Convert from altitude (m) to pressure level (hPa).
 
     Parameters
     ----------
-    h : ArrayScalarLike
+    h : A
         altitude, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     References
@@ -162,7 +162,7 @@ def m_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
 _PL_20KM = m_to_pl(20000.0).item()  # type: ignore[attr-defined]
 
 
-def pl_to_m(pl: ArrayScalarLike) -> ArrayScalarLike:
+def pl_to_m[A: (np.ndarray, xr.DataArray, float)](pl: A) -> A:
     r"""Convert from pressure level (hPa) to altitude (m).
 
     Function is slightly different from the classical formula:
@@ -174,12 +174,12 @@ def pl_to_m(pl: ArrayScalarLike) -> ArrayScalarLike:
 
     Parameters
     ----------
-    pl : ArrayScalarLike
+    pl : A
         pressure level, [:math:`hPa`], [:math:`mbar`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         altitude, [:math:`m`]
 
     References
@@ -218,144 +218,144 @@ def pl_to_m(pl: ArrayScalarLike) -> ArrayScalarLike:
     return h_isa + excess_altitude
 
 
-def degrees_to_radians(degrees: ArrayScalarLike) -> ArrayScalarLike:
+def degrees_to_radians[A: (np.ndarray, xr.DataArray, float)](degrees: A) -> A:
     r"""Convert from degrees to radians.
 
     Parameters
     ----------
-    degrees : ArrayScalarLike
+    degrees : A
         Degrees values, [:math:`\deg`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Radians values
     """
     return degrees * (np.pi / 180.0)
 
 
-def radians_to_degrees(radians: ArrayScalarLike) -> ArrayScalarLike:
+def radians_to_degrees[A: (np.ndarray, xr.DataArray, float)](radians: A) -> A:
     r"""Convert from radians to degrees.
 
     Parameters
     ----------
-    radians : ArrayScalarLike
+    radians : A
         degrees values, [:math:`\rad`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Radian values
     """
     return radians * (180.0 / np.pi)
 
 
-def ft_to_m(ft: ArrayScalarLike) -> ArrayScalarLike:
+def ft_to_m[A: (np.ndarray, xr.DataArray, float)](ft: A) -> A:
     """Convert length from feet to meter.
 
     Parameters
     ----------
-    ft : ArrayScalarLike
+    ft : A
         length, [:math:`ft`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         length, [:math:`m`]
     """
     return ft * 0.3048
 
 
-def m_to_ft(m: ArrayScalarLike) -> ArrayScalarLike:
+def m_to_ft[A: (np.ndarray, xr.DataArray, float)](m: A) -> A:
     """Convert length from meters to feet.
 
     Parameters
     ----------
-    m : ArrayScalarLike
+    m : A
         length, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         length, [:math:`ft`]
     """
     return m / 0.3048
 
 
-def m_per_s_to_knots(m_per_s: ArrayScalarLike) -> ArrayScalarLike:
+def m_per_s_to_knots[A: (np.ndarray, xr.DataArray, float)](m_per_s: A) -> A:
     r"""Convert speed from meters per second (m/s) to knots.
 
     Parameters
     ----------
-    m_per_s : ArrayScalarLike
+    m_per_s : A
         Speed, [:math:`m \ s^{-1}`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Speed, [:math:`knots`]
     """
     return m_per_s / 0.514444
 
 
-def knots_to_m_per_s(knots: ArrayScalarLike) -> ArrayScalarLike:
+def knots_to_m_per_s[A: (np.ndarray, xr.DataArray, float)](knots: A) -> A:
     r"""Convert speed from knots to meters per second (m/s).
 
     Parameters
     ----------
-    knots : ArrayScalarLike
+    knots : A
         Speed, [:math:`knots`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Speed, [:math:`m \ s^{-1}`]
     """
     return knots * 0.514444
 
 
-def longitude_distance_to_m(
-    distance_degrees: ArrayScalarLike, latitude_mean: ArrayScalarLike
-) -> ArrayScalarLike:
+def longitude_distance_to_m[A: (np.ndarray, xr.DataArray, float)](
+    distance_degrees: A, latitude_mean: A
+) -> A:
     r"""
     Convert longitude degrees distance between two points to cartesian distances in meters.
 
     Parameters
     ----------
-    distance_degrees : ArrayScalarLike
+    distance_degrees : A
         longitude distance, [:math:`\deg`]
-    latitude_mean : ArrayScalarLike, optional
+    latitude_mean : A, optional
         mean latitude between ``longitude_1`` and ``longitude_2``, [:math:`\deg`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         cartesian distance along the longitude axis, [:math:`m`]
     """
     latitude_mean_rad = degrees_to_radians(latitude_mean)
     return (distance_degrees / 180.0) * np.pi * constants.radius_earth * np.cos(latitude_mean_rad)
 
 
-def latitude_distance_to_m(distance_degrees: ArrayScalarLike) -> ArrayScalarLike:
+def latitude_distance_to_m[A: (np.ndarray, xr.DataArray, float)](distance_degrees: A) -> A:
     r"""
     Convert latitude degrees distance between two points to cartesian distances in meters.
 
     Parameters
     ----------
-    distance_degrees : ArrayScalarLike
+    distance_degrees : A
         latitude distance, [:math:`\deg`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Cartesian distance along the latitude axis, [:math:`m`]
     """
     return (distance_degrees / 180.0) * np.pi * constants.radius_earth
 
 
-def m_to_longitude_distance(
-    distance_m: ArrayScalarLike, latitude_mean: ArrayScalarLike
-) -> ArrayScalarLike:
+def m_to_longitude_distance[A: (np.ndarray, xr.DataArray, float)](
+    distance_m: A, latitude_mean: A
+) -> A:
     r"""
     Convert cartesian distance (meters) to differences in longitude degrees.
 
@@ -364,14 +364,14 @@ def m_to_longitude_distance(
 
     Parameters
     ----------
-    distance_m : ArrayScalarLike
+    distance_m : A
         cartesian distance along longitude axis, [:math:`m`]
-    latitude_mean : ArrayScalarLike
+    latitude_mean : A
         mean latitude between ``longitude_1`` and ``longitude_2``, [:math:`\deg`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         longitude distance, [:math:`\deg`]
     """
     return radians_to_degrees(
@@ -379,7 +379,7 @@ def m_to_longitude_distance(
     )
 
 
-def m_to_latitude_distance(distance_m: ArrayScalarLike) -> ArrayScalarLike:
+def m_to_latitude_distance[A: (np.ndarray, xr.DataArray, float)](distance_m: A) -> A:
     r"""
     Convert cartesian distance (meters) to differences in latitude degrees.
 
@@ -388,30 +388,30 @@ def m_to_latitude_distance(distance_m: ArrayScalarLike) -> ArrayScalarLike:
 
     Parameters
     ----------
-    distance_m : ArrayScalarLike
+    distance_m : A
         cartesian distance along latitude axis, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         latitude distance, [:math:`\deg`]
     """
     return radians_to_degrees(distance_m / constants.radius_earth)
 
 
-def tas_to_mach_number(true_airspeed: ArrayScalarLike, T: ArrayScalarLike) -> ArrayScalarLike:
+def tas_to_mach_number[A: (np.ndarray, xr.DataArray, float)](true_airspeed: A, T: A) -> A:
     r"""Calculate Mach number from true airspeed at a specified ambient temperature.
 
     Parameters
     ----------
-    true_airspeed : ArrayScalarLike
+    true_airspeed : A
         True airspeed, [:math:`m \ s^{-1}`]
-    T : ArrayScalarLike
+    T : A
         Ambient temperature, [:math:`K`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Mach number, [:math: `Ma`]
 
     References
@@ -445,17 +445,17 @@ def mach_number_to_tas(
     return mach_number * np.sqrt((constants.kappa * constants.R_d) * T)
 
 
-def lbs_to_kg(lbs: ArrayScalarLike) -> ArrayScalarLike:
+def lbs_to_kg[A: (np.ndarray, xr.DataArray, float)](lbs: A) -> A:
     r"""Convert mass from pounds (lbs) to kilograms (kg).
 
     Parameters
     ----------
-    lbs : ArrayScalarLike
+    lbs : A
         mass, pounds [:math:`lbs`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         mass, kilograms [:math:`kg`]
     """
     return lbs * 0.45359

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, overload
 
 import numpy as np
+import xarray as xr
 
 import pycontrails
 from pycontrails.core.flight import Flight
@@ -15,7 +16,7 @@ from pycontrails.core.models import Model, ModelParams
 from pycontrails.core.vector import GeoVectorDataset
 from pycontrails.models.humidity_scaling import HumidityScaling
 from pycontrails.physics import constants, thermo
-from pycontrails.utils.types import ArrayLike, apply_nan_mask_to_arraylike
+from pycontrails.utils.types import apply_nan_mask_to_arraylike
 
 
 @dataclass
@@ -152,13 +153,13 @@ class ISSR(Model):
         return self.source
 
 
-def issr(
-    air_temperature: ArrayLike,
-    specific_humidity: ArrayLike | None = None,
-    air_pressure: ArrayLike | None = None,
-    rhi: ArrayLike | None = None,
+def issr[A: (np.ndarray, xr.DataArray)](
+    air_temperature: A,
+    specific_humidity: A | None = None,
+    air_pressure: A | None = None,
+    rhi: A | None = None,
     rhi_threshold: float = 1.0,
-) -> ArrayLike:
+) -> A:
     r"""Calculate ice super-saturated regions.
 
     Regions where the atmospheric relative humidity over ice is greater than 1.
@@ -171,14 +172,14 @@ def issr(
 
     Parameters
     ----------
-    air_temperature : ArrayLike
+    air_temperature : A
         A sequence or array of temperature values, :math:`[K]`.
-    specific_humidity : ArrayLike | None
+    specific_humidity : A | None
         A sequence or array of specific humidity values, [:math:`kg_{H_{2}O} \ kg_{moist air}`]
         None by default.
-    air_pressure : ArrayLike | None
+    air_pressure : A | None
         A sequence or array of atmospheric pressure values, [:math:`Pa`]. None by default.
-    rhi : ArrayLike | None, optional
+    rhi : A | None, optional
         A sequence of array of RHi values, if already known. If not provided, this function
         will compute RHi from `air_temperature`, `specific_humidity`, and `air_pressure`.
         None by default.
@@ -187,7 +188,7 @@ def issr(
 
     Returns
     -------
-    ArrayLike
+    A
         ISSR state of each point indexed by the parameters.
     """
     if rhi is None:

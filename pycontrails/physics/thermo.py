@@ -3,62 +3,62 @@
 from __future__ import annotations
 
 import numpy as np
+import xarray as xr
 
 from pycontrails.physics import constants
-from pycontrails.utils.types import ArrayScalarLike
 
 # -------------------
 # Material Properties
 # -------------------
 
 
-def rho_d(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def rho_d[A: (np.ndarray, xr.DataArray, float)](T: A, p: A) -> A:
     r"""Calculate air density for (T, p) assuming dry air.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Air density of dry air, [:math:`kg \ m^{-3}`]
     """
     return p / (constants.R_d * T)
 
 
-def rho_v(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def rho_v[A: (np.ndarray, xr.DataArray, float)](T: A, p: A) -> A:
     r"""Calculate the air density for (T, p) assuming all water vapor.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Air density of water vapor, [:math:`kg \ m^{-3}`]
     """
     return p / (constants.R_v * T)
 
 
-def c_pm(q: ArrayScalarLike) -> ArrayScalarLike:
+def c_pm[A: (np.ndarray, xr.DataArray, float)](q: A) -> A:
     r"""Calculate isobaric heat capacity of moist air.
 
     Parameters
     ----------
-    q : ArrayScalarLike
+    q : A
         Specific humidity, [:math:`kg \ kg^{-1}`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Isobaric heat capacity of moist air, [:math:`J \ kg^{-1} \ K^{-1}`]
 
     Notes
@@ -69,50 +69,50 @@ def c_pm(q: ArrayScalarLike) -> ArrayScalarLike:
     return constants.c_pd * (1.0 - q) + constants.c_pv * q
 
 
-def p_vapor(q: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def p_vapor[A: (np.ndarray, xr.DataArray, float)](q: A, p: A) -> A:
     r"""Calculate the vapor pressure.
 
     Parameters
     ----------
-    q : ArrayScalarLike
+    q : A
         Specific humidity, [:math:`kg \ kg^{-1}`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Vapor pressure, [:math:`Pa`]
     """
     return q * p / constants.epsilon
 
 
-def water_vapor_partial_pressure_along_mixing_line(
-    specific_humidity: ArrayScalarLike,
-    air_pressure: ArrayScalarLike,
-    T_plume: ArrayScalarLike,
-    T_ambient: ArrayScalarLike,
-    G: ArrayScalarLike,
-) -> ArrayScalarLike:
+def water_vapor_partial_pressure_along_mixing_line[A: (np.ndarray, xr.DataArray, float)](
+    specific_humidity: A,
+    air_pressure: A,
+    T_plume: A,
+    T_ambient: A,
+    G: A,
+) -> A:
     """
     Calculate water vapor partial pressure along mixing line.
 
     Parameters
     ----------
-    specific_humidity : ArrayScalarLike
+    specific_humidity : A
         Specific humidity at each waypoint, [:math:`kg_{H_{2}O} / kg_{air}`]
-    air_pressure : ArrayScalarLike
+    air_pressure : A
         Pressure altitude at each waypoint, [:math:`Pa`]
-    T_plume : ArrayScalarLike
+    T_plume : A
         Plume temperature evolution along mixing line, [:math:`K`]
-    T_ambient : ArrayScalarLike
+    T_ambient : A
         Ambient temperature for each waypoint, [:math:`K`]
-    G : ArrayScalarLike
+    G : A
         Slope of the mixing line in a temperature-humidity diagram.
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Water vapor partial pressure along mixing line (p_mw), [:math:`Pa`]
 
     References
@@ -123,21 +123,21 @@ def water_vapor_partial_pressure_along_mixing_line(
     return p_wa + G * (T_plume - T_ambient)
 
 
-def diffusivity_water_vapor(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def diffusivity_water_vapor[A: (np.ndarray, xr.DataArray, float)](T: A, p: A) -> A:
     """
     Calculate molecular diffusivity of water vapor.
 
     Parameters
     ----------
-    T: ArrayScalarLike
+    T: A
         Air temperature, [:math:`K`]
 
-    p: ArrayScalarLike
+    p: A
         Air pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Molecular diffusivity of water vapor, [:math:`m^2 s^{-1}`]
 
     References
@@ -169,17 +169,17 @@ def diffusivity_water_vapor(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScal
 # -------------------
 
 
-def e_sat_ice(T: ArrayScalarLike) -> ArrayScalarLike:
+def e_sat_ice[A: (np.ndarray, xr.DataArray, float)](T: A) -> A:
     r"""Calculate saturation pressure of water vapor over ice.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Saturation pressure of water vapor over ice, [:math:`Pa`]
 
     References
@@ -219,17 +219,17 @@ def e_sat_ice(T: ArrayScalarLike) -> ArrayScalarLike:
     )
 
 
-def sonntag_e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
+def sonntag_e_sat_liquid[A: (np.ndarray, xr.DataArray, float)](T: A) -> A:
     """Calculate saturation pressure of water vapor over liquid water using Sonntag (1994).
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Saturation pressure of water vapor over liquid water, [:math:`Pa`]
     """
     return 100.0 * np.exp(  # type: ignore[return-value]
@@ -237,17 +237,17 @@ def sonntag_e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
     )
 
 
-def mk05_e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
+def mk05_e_sat_liquid[A: (np.ndarray, xr.DataArray, float)](T: A) -> A:
     """Calculate saturation pressure of water vapor over liquid water using Murphy and Koop (2005).
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Saturation pressure of water vapor over liquid water, [:math:`Pa`]
 
     Notes
@@ -279,34 +279,34 @@ def mk05_e_sat_liquid(T: ArrayScalarLike) -> ArrayScalarLike:
     )
 
 
-def sonntag_e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:
+def sonntag_e_sat_liquid_prime[A: (np.ndarray, xr.DataArray, float)](T: A) -> A:
     """Calculate the derivative of :func:`sonntag_e_sat_liquid`.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`].
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Derivative of :func:`sonntag_e_sat_liquid`
     """
     d_inside = 6096.9385 / (T**2) - 0.02711193 + 1.673952 * 1e-5 * 2 * T + 2.433502 / T
     return sonntag_e_sat_liquid(T) * d_inside
 
 
-def mk05_e_sat_liquid_prime(T: ArrayScalarLike) -> ArrayScalarLike:
+def mk05_e_sat_liquid_prime[A: (np.ndarray, xr.DataArray, float)](T: A) -> A:
     """Calculate the derivative of :func:`mk05_e_sat_liquid`.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`].
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Derivative of :func:`mk05_e_sat_liquid`
     """
     tanh_term = np.tanh(0.0415 * (T - 218.8))
@@ -324,17 +324,17 @@ e_sat_liquid = mk05_e_sat_liquid
 e_sat_liquid_prime = mk05_e_sat_liquid_prime
 
 
-def _e_sat_piecewise(T: ArrayScalarLike) -> ArrayScalarLike:
+def _e_sat_piecewise[A: (np.ndarray, xr.DataArray, float)](T: A) -> A:
     """Calculate `e_sat_liquid` when T is above freezing otherwise `e_sat_ice`.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Piecewise array of e_sat_liquid and e_sat_ice values.
     """
     ice = e_sat_ice(T)
@@ -348,7 +348,7 @@ def _e_sat_piecewise(T: ArrayScalarLike) -> ArrayScalarLike:
 # ----------------------------
 
 
-def q_sat(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def q_sat[A: (np.ndarray, xr.DataArray, float)](T: A, p: A) -> A:
     r"""Calculate saturation specific humidity over liquid or ice.
 
     When T is above 0 C, liquid saturation is computed. Otherwise, ice saturation
@@ -356,14 +356,14 @@ def q_sat(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Saturation specific humidity, [:math:`kg \ kg^{-1}`]
 
     Notes
@@ -374,19 +374,19 @@ def q_sat(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
     return constants.epsilon * e_sat / p
 
 
-def q_sat_ice(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def q_sat_ice[A: (np.ndarray, xr.DataArray, float)](T: A, p: A) -> A:
     r"""Calculate saturation specific humidity over ice.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Saturation specific humidity, [:math:`kg \ kg^{-1}`]
 
     Notes
@@ -396,19 +396,19 @@ def q_sat_ice(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
     return constants.epsilon * e_sat_ice(T) / p
 
 
-def q_sat_liquid(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def q_sat_liquid[A: (np.ndarray, xr.DataArray, float)](T: A, p: A) -> A:
     r"""Calculate saturation specific humidity over liquid.
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Saturation specific humidity, [:math:`kg \ kg^{-1}`]
 
     Notes
@@ -423,41 +423,41 @@ def q_sat_liquid(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
 # -----------------
 
 
-def rh(q: ArrayScalarLike, T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def rh[A: (np.ndarray, xr.DataArray, float)](q: A, T: A, p: A) -> A:
     r"""Calculate the relative humidity with respect to to liquid water.
 
     Parameters
     ----------
-    q : ArrayScalarLike
+    q : A
         Specific humidity, [:math:`kg \ kg^{-1}`]
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Relative Humidity, :math:`[0 - 1]`
     """
     return (q * p) / (constants.epsilon * e_sat_liquid(T))
 
 
-def rhi(q: ArrayScalarLike, T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def rhi[A: (np.ndarray, xr.DataArray, float)](q: A, T: A, p: A) -> A:
     r"""Calculate the relative humidity with respect to ice (RHi).
 
     Parameters
     ----------
-    q : ArrayScalarLike
+    q : A
         Specific humidity, [:math:`kg \ kg^{-1}`]
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Relative Humidity over ice, :math:`[0 - 1]`
     """
     return (q * p) / (constants.epsilon * e_sat_ice(T))
@@ -468,7 +468,7 @@ def rhi(q: ArrayScalarLike, T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScal
 # --------------
 
 
-def pressure_dz(T: ArrayScalarLike, p: ArrayScalarLike, dz: float) -> ArrayScalarLike:
+def pressure_dz[A: (np.ndarray, xr.DataArray, float)](T: A, p: A, dz: float) -> A:
     r"""Calculate the pressure altitude ``dz`` meters below input pressure.
 
     Returns surface pressure if the calculated pressure altitude is greater
@@ -476,16 +476,16 @@ def pressure_dz(T: ArrayScalarLike, p: ArrayScalarLike, dz: float) -> ArrayScala
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature, [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
     dz : float
         Difference in altitude between measurements, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Pressure at altitude, [:math:`Pa`]
 
     Notes
@@ -505,31 +505,31 @@ def pressure_dz(T: ArrayScalarLike, p: ArrayScalarLike, dz: float) -> ArrayScala
     return np.minimum(p + dp, constants.p_surface)  # type: ignore[return-value]
 
 
-def T_potential_gradient(
-    T_top: ArrayScalarLike,
-    p_top: ArrayScalarLike,
-    T_btm: ArrayScalarLike,
-    p_btm: ArrayScalarLike,
+def T_potential_gradient[A: (np.ndarray, xr.DataArray, float)](
+    T_top: A,
+    p_top: A,
+    T_btm: A,
+    p_btm: A,
     dz: float,
-) -> ArrayScalarLike:
+) -> A:
     r"""Calculate the potential temperature gradient between two altitudes.
 
     Parameters
     ----------
-    T_top : ArrayScalarLike
+    T_top : A
         Temperature at original altitude, [:math:`K`]
-    p_top : ArrayScalarLike
+    p_top : A
         Pressure at original altitude, [:math:`Pa`]
-    T_btm : ArrayScalarLike
+    T_btm : A
         Temperature at lower altitude, [:math:`K`]
-    p_btm : ArrayScalarLike
+    p_btm : A
         Pressure at lower altitude, [:math:`Pa`]
     dz : float
         Difference in altitude between measurements, [:math:`m`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Potential Temperature gradient, [:math:`K \ m^{-1}`]
     """
     T_potential_top = T_potential(T_top, p_top)
@@ -537,7 +537,7 @@ def T_potential_gradient(
     return (T_potential_top - T_potential_btm) / dz
 
 
-def T_potential(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
+def T_potential[A: (np.ndarray, xr.DataArray, float)](T: A, p: A) -> A:
     r"""Calculate potential temperature.
 
     The potential temperature is the temperature that
@@ -546,14 +546,14 @@ def T_potential(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
 
     Parameters
     ----------
-    T : ArrayScalarLike
+    T : A
         Temperature , [:math:`K`]
-    p : ArrayScalarLike
+    p : A
         Pressure, [:math:`Pa`]
 
     Returns
     -------
-    ArrayScalarLike
+    A
         Potential Temperature, [:math:`K`]
 
     References

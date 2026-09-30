@@ -12,6 +12,7 @@
 - Drop support for python 3.11. Python 3.12 or later is now required.
 - Simplify some `pycontrails` typing conventions:
   - Remove the `XArrayType`, `MetDataType`, and `DatasetType` type variables. `XArrayType` and `MetDataType` are now declared with [PEP 695](https://peps.python.org/pep-0695/) type parameter syntax where they are used.
+  - Remove the `ArrayLike`, `ArrayOrFloat`, and `ArrayScalarLike` type variables from `pycontrails.utils.types`. Functions that used them now declare a PEP 695 type parameter `A` with the same constraints, and their docstrings refer to `A`.
   - Convert `ModelInput`, `ModelOutput`, `SourceType`, and `DatetimeLike` to `type` aliases.
   - Declare generic classes and functions with PEP 695 type parameter syntax.
 - Emit a `UserWarning` from `units.m_to_T_isa`, `units.m_to_pl`, and `units.ft_to_pl` for altitudes above 20000 m, and from `units.pl_to_m` and `units.pl_to_ft` for pressure levels below 54.75 hPa (the ISA pressure at 20000 m). These functions model the atmosphere above the 11000 m tropopause as isothermal, but the ISA is isothermal only between 11000 m and 20000 m. Return values are unchanged.
