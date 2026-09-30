@@ -11,7 +11,6 @@ from pycontrails import JetA, MetDataset
 from pycontrails.models import sac
 from pycontrails.models.tau_cirrus import _assign_attrs, cirrus_effective_extinction_coef
 from pycontrails.physics import constants, geo, thermo, units
-from pycontrails.utils.types import ArrayLike
 
 # ----------
 # geo module
@@ -290,17 +289,17 @@ def m_to_pl(h: np.ndarray) -> np.ndarray:
 jetA = JetA()
 
 
-def T_critical_sac(
-    air_temperature: ArrayLike,
-    specific_humidity: ArrayLike,
-    air_pressure: ArrayLike,
+def T_critical_sac[A: (np.ndarray, xr.DataArray)](
+    air_temperature: A,
+    specific_humidity: A,
+    air_pressure: A,
     engine_efficiency: float = 0.3,
     ei_h2o: float = jetA.ei_h2o,
     q_fuel: float = jetA.q_fuel,
     *,
     n_iter: int = 10,
     dx_threshold: float = 1e-3,
-) -> ArrayLike:
+) -> A:
     r"""Estimate actual Temperature threshold for persistent contrail formation iteratively.
 
     Applies Newton iteration and the Schmidt-Appleman criterion.
@@ -310,11 +309,11 @@ def T_critical_sac(
 
     Parameters
     ----------
-    air_temperature : ArrayLike
+    air_temperature : A
         A sequence or array of temperature values, [:math:`K`]
-    specific_humidity : ArrayLike
+    specific_humidity : A
         A sequence or array of specific humidity values, [:math:`kg_{H_{2}O} \ kg_{air}`]
-    air_pressure : ArrayLike
+    air_pressure : A
         A sequence or array of atmospheric pressure values, [:math:`Pa`].
     engine_efficiency: float, optional
         Engine efficiency, [:math:`0 - 1`]
@@ -329,7 +328,7 @@ def T_critical_sac(
 
     Returns
     -------
-    ArrayLike
+    A
         Estimated Temperature threshold for contrail formation, [:math:`K`]
 
     Notes
