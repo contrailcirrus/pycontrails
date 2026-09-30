@@ -2730,8 +2730,8 @@ def originates_from_ecmwf(met: MetDataset | MetDataArray) -> bool:
 
     See Also
     --------
-    - :class:`ERA5`
-    - :class:`HRES`
+    pycontrails.datalib.ecmwf.ERA5
+    pycontrails.datalib.ecmwf.HRES
 
     """
     if isinstance(met, MetDataset):
