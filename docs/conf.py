@@ -9,6 +9,10 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
 import datetime
+import typing
+
+import sphinx.application
+import sphinx.util.typing
 
 import pycontrails
 
@@ -181,6 +185,46 @@ autodoc_default_options = {
     "show-inheritance": None,
     "inherited-members": None,
 }
+
+
+def _format_type_param(tp: typing.TypeVar) -> str:
+    """Format a PEP 695 type parameter as it appears in a type parameter list."""
+    constraints = getattr(tp, "__constraints__", ())
+    if constraints:
+        formatted = ", ".join(
+            sphinx.util.typing.stringify_annotation(c, "smart") for c in constraints
+        )
+        return f"{tp.__name__}: ({formatted})"
+    bound = getattr(tp, "__bound__", None)
+    if bound is not None:
+        return f"{tp.__name__}: {sphinx.util.typing.stringify_annotation(bound, 'smart')}"
+    return tp.__name__
+
+
+def _add_type_params(
+    app: sphinx.application.Sphinx,
+    what: str,
+    name: str,
+    obj: typing.Any,
+    options: typing.Any,
+    signature: str | None,
+    return_annotation: str | None,
+) -> tuple[str, str | None] | None:
+    """Prepend PEP 695 type parameters to autodoc signatures.
+
+    See https://github.com/sphinx-doc/sphinx/issues/10568
+    """
+    type_params = getattr(obj, "__type_params__", ())
+    if not type_params or signature is None:
+        return None
+    tp_list = ", ".join(_format_type_param(tp) for tp in type_params)
+    return f"[{tp_list}]{signature}", return_annotation
+
+
+def setup(app: sphinx.application.Sphinx) -> None:
+    """Register Sphinx event handlers."""
+    app.connect("autodoc-process-signature", _add_type_params)
+
 
 # Add references in bibtex format here
 # use with :cite:`perez2011python` etc
