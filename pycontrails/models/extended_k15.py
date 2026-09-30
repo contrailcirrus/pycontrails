@@ -479,15 +479,15 @@ def droplet_apparent_emission_index(
 ) -> npt.NDArray[np.floating]:
     """Calculate the droplet apparent emissions index from nvPM, vPM and ambient particles.
 
-    This function is the main entry point for the extended K15 model. It can be called
-    directly from the :class:`Cocip` model by enabling the ``vpm_activation`` parameter.
+    This function is the main entry point for the extended K15 model. It can be called directly from
+    the :class:`~pycontrails.models.cocip.Cocip` model by enabling the ``vpm_activation`` parameter.
 
     .. versionadded:: 0.55.0
 
     .. versionchanged:: 0.60.2
 
         Make implementation more memory and compute performant by constructing intermediate
-        lookup tables for the activation radius calculation. See :func:`_activation_radius_rgi`.
+        lookup tables for the activation radius calculation. See ``_activation_radius_rgi``.
         Change the default value of ``n_plume_points`` from 50 to 40. Remove the ``vpm_ei_n``
         parameter, which is now specified per ``Particle`` instance.
 

@@ -165,7 +165,7 @@ class GRUAN:
     - version-{NNN} zero-pads to three digits (suffix ``.2`` -> ``version-002``)
     - {SITE} is the station code (e.g. ``LIN``)
     - {YYYY} is launch year
-    - Filenames encode launch time and revision (parsed by :func:`extract_gruan_time`)
+    - Filenames encode launch time and revision (parsed by ``extract_gruan_time``)
 
     Discovery helpers methods:
 

@@ -249,53 +249,56 @@ class ChAviation(Model):
     def eval(self, source: Flight | None = None, **params: Any) -> Flight:
         """Extract specific aircraft properties for flight from ch-aviation database.
 
-        The ``source`` :class:`Flight` must contain one of the following variables:
-            - ``tail_number`` (mandatory),
-            - ``icao_address`` (optional), or
-            - ``airline_iata`` and ``aircraft_type`` (optional)
+        The ``source`` :class:`~pycontrails.Flight` must contain one of the following variables:
+
+        - ``tail_number`` (mandatory),
+        - ``icao_address`` (optional), or
+        - ``airline_iata`` and ``aircraft_type`` (optional)
 
         The following properties are added to the ``source`` attributes if the ``tail_number`` or
         ``icao_address`` are available in the fleet database:
-            - ``msn``
-            - ``country_of_registration``
-            - ``atyp_icao_ch_a``
-            - ``atyp_iata_ch_a``
-            - ``atyp_name_ch_a``
-            - ``atyp_manufacturer``
-            - ``engine_name``
-            - ``engine_uid``
-            - ``engine_manufacturer``
-            - ``n_engines_ch_a``
-            - ``amass_mtow``
-            - ``operator_name``
-            - ``operator_icao``
-            - ``operator_iata``
-            - ``operator_type``
-            - ``aircraft_role``
-            - ``aircraft_market_group``
-            - ``n_seats``
-            - ``status``
-            - ``first_flight_date``
-            - ``delivery_date``
-            - ``aircraft_age_yrs`` (if ``source`` is non-empty)
-            - ``cumulative_reported_hours``
-            - ``cumulative_reported_hours_ttm``
-            - ``cumulative_reported_cycles``
-            - ``cumulative_reported_cycles_ttm``
-            - ``cumulative_stats_as_of_date``
-            - ``average_annual_hours``
-            - ``average_daily_hours``
-            - ``average_daily_hours_ttm``
-            - ``average_annual_cycles``
-            - ``average_stats_as_of_date``
+
+        - ``msn``
+        - ``country_of_registration``
+        - ``atyp_icao_ch_a``
+        - ``atyp_iata_ch_a``
+        - ``atyp_name_ch_a``
+        - ``atyp_manufacturer``
+        - ``engine_name``
+        - ``engine_uid``
+        - ``engine_manufacturer``
+        - ``n_engines_ch_a``
+        - ``amass_mtow``
+        - ``operator_name``
+        - ``operator_icao``
+        - ``operator_iata``
+        - ``operator_type``
+        - ``aircraft_role``
+        - ``aircraft_market_group``
+        - ``n_seats``
+        - ``status``
+        - ``first_flight_date``
+        - ``delivery_date``
+        - ``aircraft_age_yrs`` (if ``source`` is non-empty)
+        - ``cumulative_reported_hours``
+        - ``cumulative_reported_hours_ttm``
+        - ``cumulative_reported_cycles``
+        - ``cumulative_reported_cycles_ttm``
+        - ``cumulative_stats_as_of_date``
+        - ``average_annual_hours``
+        - ``average_daily_hours``
+        - ``average_daily_hours_ttm``
+        - ``average_annual_cycles``
+        - ``average_stats_as_of_date``
 
         The following properties are added to the ``source`` attributes if the ``tail_number`` and
         ``icao_address`` are not included in ch-aviation, but ``airline_iata`` and
         ``aircraft_type`` are available:
-            - ``engine_name``
-            - ``engine_uid``
-            - ``operator_name``
-            - ``operator_iata``
+
+        - ``engine_name``
+        - ``engine_uid``
+        - ``operator_name``
+        - ``operator_iata``
 
         Parameters
         ----------
@@ -305,7 +308,7 @@ class ChAviation(Model):
         Returns
         -------
         Flight
-            Flight with attached aircraft properties in :attr:`Flight.attrs`
+            Flight with attached aircraft properties in :attr:`~pycontrails.Flight.attrs`
         """
         self.update_params(params)
         self.set_source(source)

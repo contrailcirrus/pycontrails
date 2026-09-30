@@ -163,7 +163,7 @@ class HRES(ECMWFAPI):
         Defaults to None.
     cachestore : cache.CacheStore | None, optional
         Cache data store for staging data files.
-        Defaults to :class:`cache.DiskCacheStore`.
+        Defaults to :class:`~pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
     url : str
         Override `ecmwf-api-client <https://github.com/ecmwf/ecmwf-api-client>`_ url
@@ -356,13 +356,13 @@ class HRES(ECMWFAPI):
         Parameters
         ----------
         timesteps : list[pd.Timestamp]
-            List of timesteps formatted as :class:`pd.Timestamps`.
+            List of timesteps formatted as :class:`~pandas.Timestamp`.
             Often this it the output from `pd.date_range()`
 
         Returns
         -------
         list[tuple[pd.Timestamp, pd.Timestamp]]
-            List of tuple time bounds that can be used as inputs to :class:`HRES(time=...)`
+            List of tuple time bounds that can be used as inputs to ``HRES(time=...)``
         """
         time_ranges = sorted({t.floor("12h") for t in timesteps})
 
@@ -467,7 +467,7 @@ class HRES(ECMWFAPI):
 
     @property
     def steps(self) -> list[int]:
-        """Forecast steps from :attr:`forecast_time` corresponding within input :attr:`time`.
+        """Forecast steps from :attr:`forecast_time` corresponding within input ``time``.
 
         Returns
         -------
@@ -506,7 +506,7 @@ class HRES(ECMWFAPI):
 
         Parameters
         ----------
-        forecast_time : :class:`datetime`, optional
+        forecast_time : :class:`~datetime.datetime`, optional
             Base datetime for the forecast.
             Defaults to :attr:`forecast_time`.
         steps : list[int], optional
@@ -596,7 +596,7 @@ class HRES(ECMWFAPI):
 
         Parameters
         ----------
-        times : list[:class:`datetime`]
+        times : list[:class:`~datetime.datetime`]
             List of datetimes to download and store in cache datastore
         """
 
@@ -669,7 +669,7 @@ class HRES(ECMWFAPI):
         )
 
     def _open_and_cache(self, xr_kwargs: dict[str, Any]) -> xr.Dataset:
-        """Open and cache :class:`xr.Dataset` from :attr:`self.paths`.
+        """Open and cache :class:`~xarray.Dataset` from :attr:`self.paths`.
 
         Parameters
         ----------
@@ -759,12 +759,12 @@ class HRES(ECMWFAPI):
         Parameters
         ----------
         ds : xr.Dataset
-            Loaded :class:`xr.Dataset`
+            Loaded :class:`~xarray.Dataset`
 
         Returns
         -------
         xr.Dataset
-            Processed :class:`xr.Dataset`
+            Processed :class:`~xarray.Dataset`
         """
 
         if "pycontrails_version" in ds.attrs:

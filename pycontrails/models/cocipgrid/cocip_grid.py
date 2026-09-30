@@ -64,14 +64,14 @@ class CocipGrid(models.Model):
     See Also
     --------
     :class:`CocipGridParams`
-    :class:`Cocip`
-    :mod:`wake_vortex`
-    :mod:`contrail_properties`
-    :mod:`radiative_forcing`
-    :mod:`humidity_scaling`
-    :class:`Emissions`
-    :mod:`sac`
-    :mod:`tau_cirrus`
+    :class:`~pycontrails.models.cocip.Cocip`
+    :mod:`~pycontrails.models.cocip.wake_vortex`
+    :mod:`~pycontrails.models.cocip.contrail_properties`
+    :mod:`~pycontrails.models.cocip.radiative_forcing`
+    :mod:`~pycontrails.models.humidity_scaling`
+    :class:`~pycontrails.models.emissions.Emissions`
+    :mod:`~pycontrails.models.sac`
+    :mod:`~pycontrails.models.tau_cirrus`
     """
 
     __slots__ = (
@@ -104,7 +104,7 @@ class CocipGrid(models.Model):
 
     #: Artifacts attached when parameter ``verbose_outputs_evolution`` is True
     #: These allow for some additional information and parity with the approach
-    #: taken by :class:`Cocip`.
+    #: taken by :class:`~pycontrails.models.cocip.Cocip`.
     contrail_list: list[GeoVectorDataset]
     contrail: pd.DataFrame
 
@@ -154,21 +154,21 @@ class CocipGrid(models.Model):
 
         .. versionchanged:: 0.25.0
 
-            No longer explicitly support :class:`Flight` as a source. Any flight source
-            will be viewed as a :class:`GeoVectorDataset`. In order to evaluate CoCiP
-            predictions over a flight trajectory, it is best to use the :class:`Cocip`
-            model. It's also possible to pre-compute segment azimuth and true airspeed
-            before passing the flight trajectory in here.
+            No longer explicitly support :class:`~pycontrails.Flight` as a source. Any flight source
+            will be viewed as a :class:`~pycontrails.GeoVectorDataset`. In order to evaluate CoCiP
+            predictions over a flight trajectory, it is best to use the
+            :class:`~pycontrails.models.cocip.Cocip` model. It's also possible to pre-compute
+            segment azimuth and true airspeed before passing the flight trajectory in here.
 
         Parameters
         ----------
         source : GeoVectorDataset | MetDataset | None
-            Input :class:`GeoVectorDataset` or :class:`MetDataset`. If None,
-            a ``NotImplementedError`` is raised. If any subclass of :class:`GeoVectorDataset`
-            is passed (e.g., :class:`Flight`), the additional structure is forgotten and
-            the model is evaluated as if it were a :class:`GeoVectorDataset`.
-            Additional variables may be passed as ``source`` data or attrs. These
-            include:
+            Input :class:`~pycontrails.GeoVectorDataset` or :class:`~pycontrails.MetDataset`. If
+            None, a ``NotImplementedError`` is raised. If any subclass of
+            :class:`~pycontrails.GeoVectorDataset` is passed (e.g., :class:`~pycontrails.Flight`),
+            the additional structure is forgotten and the model is evaluated as if it were a
+            :class:`~pycontrails.GeoVectorDataset`. Additional variables may be passed as ``source``
+            data or attrs. These include:
 
             - ``aircraft_type``: This overrides any value in :attr:`params`. Must be included
               in the source attrs (not data).
@@ -194,7 +194,8 @@ class CocipGrid(models.Model):
         Notes
         -----
         At a high level, the model is broken down into the following steps:
-          - Convert any :class:`MetDataset` ``source`` to :class:`GeoVectorDataset`.
+          - Convert any :class:`~pycontrails.MetDataset` ``source`` to
+            :class:`~pycontrails.GeoVectorDataset`.
           - Split the ``source`` into chunks of size ``params["target_split_size"]``.
           - For each timestep in :attr:`timesteps`:
 
@@ -335,8 +336,8 @@ class CocipGrid(models.Model):
         This method attaches :attr:`contrail_list` and :attr:`contrail` when
         :attr:`params["verbose_outputs_evolution"]` is True.
 
-        Mirrors implementation in :class:`Cocip`. We could do additional work here
-        if this turns out to be useful.
+        Mirrors implementation in :class:`~pycontrails.models.cocip.Cocip`. We could do additional
+        work here if this turns out to be useful.
         """
         if not self.params["verbose_outputs_evolution"]:
             return
@@ -524,7 +525,7 @@ class CocipGrid(models.Model):
     def _metdataset_source_n_splits(self) -> int:
         """Compute the number of splits at a given time for a :class:`MetDataset` source.
 
-        This method assumes :attr:`source` is a :class:`MetDataset`.
+        This method assumes :attr:`source` is a :class:`~pycontrails.MetDataset`.
 
         Returns
         -------
@@ -578,7 +579,7 @@ class CocipGrid(models.Model):
         self.params["verbose_outputs_formation"] = vo & supported
 
     def _generate_new_vectors(self, time_idx: int) -> Generator[GeoVectorDataset, None, None]:
-        """Generate :class:`GeoVectorDataset` instances from :attr:`source`.
+        """Generate :class:`~pycontrails.GeoVectorDataset` instances from :attr:`source`.
 
         Parameters
         ----------
@@ -589,7 +590,7 @@ class CocipGrid(models.Model):
         ------
         GeoVectorDataset
             Unevolved vectors arising from :attr`self.source_time` filtered by ``filt``.
-            When :attr:`source` is a :class:`MetDataset`, each yielded dataset has a
+            When :attr:`source` is a :class:`~pycontrails.MetDataset`, each yielded dataset has a
             constant time value.
         """
         if "index" in self.source:
@@ -759,7 +760,7 @@ class CocipGrid(models.Model):
         lat_step: float = 1.0,
     ) -> MetDataset:
         """
-        Shortcut to create a :class:`MetDataset` source from coordinate arrays.
+        Shortcut to create a :class:`~pycontrails.MetDataset` source from coordinate arrays.
 
         .. versionchanged:: 0.54.3
             By default, the returned latitude values now extend to the poles.
@@ -790,11 +791,11 @@ class CocipGrid(models.Model):
         Returns
         -------
         MetDataset
-            MetDataset that can be used as ``source`` input to :meth:`CocipGrid.eval(source=...)`
+            MetDataset that can be used as ``source`` input to ``CocipGrid.eval(source=...)``
 
         See Also
         --------
-        :meth:`MetDataset.from_coords`
+        :meth:`~pycontrails.MetDataset.from_coords`
         """
         if longitude is None:
             longitude = np.arange(-180, 180, lon_step, dtype=float)
@@ -1065,10 +1066,10 @@ def _evolve_vector(
 
     .. versionchanged:: 0.25.0
 
-        No longer expect ``vector`` to have a constant time variable. Consequently,
-        time step handling now mirrors that in :class:`Cocip`. Moreover, this method now
-        handles both :class:`GeoVectorDataset` and :class:`MetDataset` vectors derived
-        from :attr:`source`.
+        No longer expect ``vector`` to have a constant time variable. Consequently, time step
+        handling now mirrors that in :class:`~pycontrails.models.cocip.Cocip`. Moreover, this method
+        now handles both :class:`~pycontrails.GeoVectorDataset` and :class:`~pycontrails.MetDataset`
+        vectors derived from :attr:`source`.
 
     Parameters
     ----------
@@ -1870,7 +1871,7 @@ def calc_emissions(vector: GeoVectorDataset, params: dict[str, Any]) -> None:
         - "true_airspeed": computed by the aircraft performance model
         - "engine_efficiency": computed by the aircraft performance model
         - "fuel_flow": computed by the aircraft performance model
-        - "nvpm_ei_n": computed by the :class:`Emissions` model
+        - "nvpm_ei_n": computed by the :class:`~pycontrails.models.emissions.Emissions` model
         - "head_tail_dt"
 
     The ``params`` parameter is also mutated in-place by setting keys:
@@ -2589,7 +2590,7 @@ def _downselect_met(
 
     .. versionchanged:: 0.25.0
 
-        Support :class:`MetDataset` ``source`` for use in :class:`CocipGrid`.
+        Support :class:`~pycontrails.MetDataset` ``source`` for use in :class:`CocipGrid`.
 
     Parameters
     ----------

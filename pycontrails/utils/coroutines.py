@@ -42,7 +42,7 @@ def materialize[T](aiter: AsyncIterator[T]) -> list[T]:
 
     Parameters
     ----------
-    aiter : AsyncIterator
+    aiter : AsyncIterator[T]
         Async iterator object, typically created by calling
         an async function that yields rather than returning.
 

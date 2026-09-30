@@ -86,7 +86,7 @@ class AircraftPerformance(Model):
     :meth:`calculate_aircraft_performance` methods. At runtime, these methods
     are intended to be chained together as follows:
 
-    1. The :meth:`eval` method is called with a :class:`Flight`
+    1. The :meth:`eval` method is called with a :class:`~pycontrails.Flight`
     2. The :meth:`simulate_fuel_and_performance` method is called inside :meth:`eval`
        to iteratively calculate aircraft mass and fuel flow rate. If an aircraft
        mass is provided, the fuel flow rate is calculated once directly with a single
@@ -115,7 +115,8 @@ class AircraftPerformance(Model):
         Parameters
         ----------
         source : Flight
-            Flight trajectory to evaluate. Can be a :class:`Flight` or :class:`Fleet`.
+            Flight trajectory to evaluate. Can be a :class:`~pycontrails.Flight` or
+            :class:`~pycontrails.Fleet`.
         params : Any
             Override :attr:`params` with keyword arguments.
 
@@ -174,8 +175,8 @@ class AircraftPerformance(Model):
 
         1. If ``fl.attrs["engine_deterioration_factor"]`` is already set, use that value.
         2. If ``fl.attrs["aircraft_age_yrs"]`` is set, call
-           :func:`engine_deterioration_factor_from_age` to determine the engine deterioration
-           factor based on the age of the aircraft.
+           :func:`~pycontrails.core.aircraft_performance.engine_deterioration_factor_from_age` to
+           determine the engine deterioration factor based on the age of the aircraft.
         3. Otherwise, use the default value from :attr:`params`.
 
         Parameters
@@ -333,7 +334,7 @@ class AircraftPerformance(Model):
             Aircraft payload, [:math:`kg`]. See :meth:`estimate_payload` for methodology.
         takeoff_mass : float | None, optional
             If known, the takeoff mass can be provided to skip the calculation
-            in :func:`jet.initial_aircraft_mass`. In this case, the parameters
+            in :func:`~pycontrails.physics.jet.initial_aircraft_mass`. In this case, the parameters
             ``payload``, ``amass_oew``, ``amass_mtow``, and ``amass_mpl`` are
             ignored.
         **kwargs : Any
@@ -613,7 +614,7 @@ class AircraftPerformance(Model):
         """Add ``true_airspeed`` field to :attr:`source` data if not already present.
 
         This function operates in-place. If ``true_airspeed`` is not already present
-        on :attr:`source`, it is calculated using :meth:`Flight.segment_true_airspeed`.
+        on :attr:`source`, it is calculated using :meth:`~pycontrails.Flight.segment_true_airspeed`.
         """
         tas = self.source.get("true_airspeed")
         fill_with_groundspeed = self.params["fill_low_altitude_with_zero_wind"]

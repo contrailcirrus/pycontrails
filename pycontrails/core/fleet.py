@@ -1,4 +1,4 @@
-"""A single data structure encompassing a sequence of :class:`Flight` instances."""
+"""A single data structure encompassing a sequence of :class:`~pycontrails.Flight` instances."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorData
 
 
 class Fleet(Flight):
-    """Data structure for holding a sequence of :class:`Flight` instances.
+    """Data structure for holding a sequence of :class:`~pycontrails.Flight` instances.
 
-    Flight waypoints are merged into a single :class:`Flight`-like object.
+    Flight waypoints are merged into a single :class:`~pycontrails.Flight`-like object.
     """
 
     __slots__ = ("final_waypoints", "fl_attrs")
@@ -68,14 +68,14 @@ class Fleet(Flight):
         Parameters
         ----------
         fl_attrs : dict[str, Any] | None, optional
-            Dictionary of individual :class:`Flight` attributes.
+            Dictionary of individual :class:`~pycontrails.Flight` attributes.
 
         Returns
         -------
         final_waypoints : npt.NDArray[np.bool_]
             A boolean array in which True values correspond to final waypoint of each flight.
         fl_attrs : dict[str, Any]
-            Updated dictionary of individual :class:`Flight` attributes.
+            Updated dictionary of individual :class:`~pycontrails.Flight` attributes.
 
         Raises
         ------
@@ -158,7 +158,7 @@ class Fleet(Flight):
         broadcast_numeric: bool = True,
         attrs: dict[str, Any] | None = None,
     ) -> Self:
-        """Instantiate a :class:`Fleet` instance from an iterable of :class:`Flight`.
+        """Instantiate a :class:`Fleet` instance from an iterable of :class:`~pycontrails.Flight`.
 
         .. versionchanged:: 0.49.3
 
@@ -167,7 +167,7 @@ class Fleet(Flight):
         Parameters
         ----------
         seq : Iterable[Flight]
-            An iterable of :class:`Flight` instances.
+            An iterable of :class:`~pycontrails.Flight` instances.
         broadcast_numeric : bool, optional
             If True, broadcast numeric attributes to data variables.
         attrs : dict[str, Any] | None, optional
@@ -176,8 +176,8 @@ class Fleet(Flight):
         Returns
         -------
         Self
-            A `Fleet` instance made from concatenating the :class:`Flight`
-            instances in ``seq``. The fuel type is taken from the first :class:`Flight`
+            A `Fleet` instance made from concatenating the :class:`~pycontrails.Flight`
+            instances in ``seq``. The fuel type is taken from the first :class:`~pycontrails.Flight`
             in ``seq``.
         """
 
@@ -237,14 +237,14 @@ class Fleet(Flight):
         return len(self.fl_attrs)
 
     def to_flight_list(self, copy: bool = True) -> list[Flight]:
-        """De-concatenate merged waypoints into a list of :class:`Flight` instances.
+        """De-concatenate merged waypoints into a list of :class:`~pycontrails.Flight` instances.
 
         Any global :attr:`attrs` are lost.
 
         Parameters
         ----------
         copy : bool, optional
-            If True, make copy of each :class:`Flight` instance.
+            If True, make copy of each :class:`~pycontrails.Flight` instance.
 
         Returns
         -------
@@ -289,7 +289,7 @@ class Fleet(Flight):
         value associated to any segment property. Consequently, we need to define a custom method
         here to deal with these issues when applying this method on a fleet of flights.
 
-        See docstring for :meth:`Flight.segment_true_airspeed`.
+        See docstring for :meth:`~pycontrails.Flight.segment_true_airspeed`.
 
         Raises
         ------

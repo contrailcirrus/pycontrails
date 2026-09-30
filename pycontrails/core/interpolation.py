@@ -31,8 +31,8 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
     #. Avoid ``RegularGridInterpolator`` constructor validation when ``method="linear"``.
        In :func:`interp`, parameters are carefully crafted to fit into the intended form,
        thereby making validation unnecessary.
-    #. Override the :meth:`_evaluate_linear` method with a faster implementation. See
-       the :meth:`_evaluate_linear` docstring for more information.
+    #. Override the ``_evaluate_linear`` method with a faster implementation. See
+       the ``_evaluate_linear`` docstring for more information.
 
     **This class should not be used directly. The implementation is brittle and makes
     use of private methods and attributes of the parent class. It is susceptible to breakage
@@ -40,7 +40,7 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
 
     .. versionchanged:: 0.40.0
 
-        The :meth:`_evaluate_linear` method now uses a Cython implementation. The dtype
+        The ``_evaluate_linear`` method now uses a Cython implementation. The dtype
         of the output is now consistent with the dtype of the underlying :attr:`values`
 
     .. versionchanged:: 0.58.0
@@ -480,12 +480,12 @@ def interp(
         ``coords``.
     indices : tuple | None, optional
         Experimental. Provide intermediate artifacts computed by
-        :meth:`scipy.interpolate.RegularGridInterpolator._find_indices`
+        ``scipy.interpolate.RegularGridInterpolator._find_indices``
         to avoid redundant computation. If known and provided, this can speed
         up interpolation by avoiding an unnecessary call to ``_find_indices``.
         By default, None. Must be used precisely.
     return_indices : bool, optional
-        If True, return output of :meth:`scipy.interpolate.RegularGridInterpolator._find_indices`
+        If True, return output of ``scipy.interpolate.RegularGridInterpolator._find_indices``
         in addition to interpolated values.
 
     Returns
@@ -723,9 +723,9 @@ class EmissionsProfileInterpolator:
         """Interpolate x against xp and fp on a logarithmic scale.
 
         This method composes the following three functions.
-            1. :func:`numpy.log`
+            1. :data:`~numpy.log`
             2. :meth:`interp`
-            3. :func:`numpy.exp`
+            3. :data:`~numpy.exp`
 
         Parameters
         ----------

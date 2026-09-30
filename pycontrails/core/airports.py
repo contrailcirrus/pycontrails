@@ -50,7 +50,7 @@ def global_airport_database(
     ----------
     cachestore : cache.CacheStore | None, optional
         Cache store for airport database.
-        Defaults to :class:`cache.DiskCacheStore`.
+        Defaults to :class:`~pycontrails.core.cache.DiskCacheStore`.
     update_cache : bool, optional
         Force update to cached airports database.
 
@@ -216,7 +216,7 @@ def distance_to_airports(
 
     See Also
     --------
-    :func:`geo.haversine`
+    :func:`~pycontrails.physics.geo.haversine`
     """
     dist_horizontal = geo.haversine(
         np.full(airports["longitude"].shape, longitude),
@@ -253,7 +253,7 @@ def distance_between_airports(
 
     See Also
     --------
-    :func:`geo.haversine`
+    :func:`~pycontrails.physics.geo.haversine`
     """
     # Set icao_code to index, so it can be queried
     airports_idx = airports.set_index("icao_code")

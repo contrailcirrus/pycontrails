@@ -131,7 +131,7 @@ class VectorDataDict(dict[str, np.ndarray]):
     def setdefault(self, k: str, default: npt.ArrayLike | None = None) -> np.ndarray:
         """Thin wrapper around ``dict.setdefault``.
 
-        The main purpose of overriding is to run :meth:`_validate_array()` on set.
+        The main purpose of overriding is to run ``_validate_array()`` on set.
 
         Parameters
         ----------
@@ -354,7 +354,7 @@ class VectorDataset:  # noqa: PLW1641
         Returns
         -------
         np.ndarray
-            Values at :attr:`data[key]`
+            Values at ``data[key]``
         """
         return self.data[key]
 
@@ -371,7 +371,7 @@ class VectorDataset:  # noqa: PLW1641
         Returns
         -------
         Any
-            Values at :attr:`data[key]` or ``default_value``
+            Values at ``data[key]`` or ``default_value``
         """
         return self.data.get(key, default_value)
 
@@ -439,7 +439,7 @@ class VectorDataset:  # noqa: PLW1641
         self.data.update(other, **kwargs)
 
     def setdefault(self, key: str, default: npt.ArrayLike | None = None) -> np.ndarray:
-        """Shortcut to :meth:`VectorDataDict.setdefault`.
+        """Shortcut to :meth:`~pycontrails.core.vector.VectorDataDict.setdefault`.
 
         Parameters
         ----------
@@ -475,7 +475,7 @@ class VectorDataset:  # noqa: PLW1641
         Returns
         -------
         Any
-            Value at :attr:`data[key]` or :attr:`attrs[key]`
+            Value at ``data[key]`` or ``attrs[key]``
 
         Raises
         ------
@@ -631,12 +631,12 @@ class VectorDataset:  # noqa: PLW1641
         infer_attrs: bool = True,
         fill_value: float | None = None,
     ) -> Self:
-        """Sum a list of :class:`VectorDataset` instances.
+        """Sum a list of :class:`~pycontrails.VectorDataset` instances.
 
         Parameters
         ----------
         vectors : Sequence[VectorDataset]
-            List of :class:`VectorDataset` instances to concatenate.
+            List of :class:`~pycontrails.VectorDataset` instances to concatenate.
         infer_attrs : bool, optional
             If True, infer attributes from the first element in the sequence.
         fill_value : float | None, optional
@@ -837,8 +837,8 @@ class VectorDataset:  # noqa: PLW1641
         -------
         VectorDataset
             VectorDataset containing only data associated to ``keys``.
-            Note that this method always returns a :class:`VectorDataset`, even if
-            the calling class is a proper subclass of :class:`VectorDataset`.
+            Note that this method always returns a :class:`~pycontrails.VectorDataset`, even if
+            the calling class is a proper subclass of :class:`~pycontrails.VectorDataset`.
         """
         data = {key: np.array(self[key], copy=copy) for key in keys}
         return VectorDataset._from_fastpath(data, self.attrs)
@@ -947,7 +947,7 @@ class VectorDataset:  # noqa: PLW1641
         overwrite : bool, optional
             If True, overwrite existing values in :attr:`data`. By default False.
         raise_error : bool, optional
-            Raise KeyError if :attr:`self.attrs` does not contain some of ``keys``.
+            Raise KeyError if ``self.attrs`` does not contain some of ``keys``.
 
         Raises
         ------
@@ -1051,7 +1051,7 @@ class VectorDataset:  # noqa: PLW1641
         See Also
         --------
         get_data_or_attr
-        GeoVectorDataset.constants
+        ~pycontrails.GeoVectorDataset.constants
         """
         marker = self.__marker
 
@@ -1084,7 +1084,7 @@ class VectorDataset:  # noqa: PLW1641
     # ------------
 
     def to_dataframe(self, copy: bool = True) -> pd.DataFrame:
-        """Create :class:`pd.DataFrame` in which each key-value pair in :attr:`data` is a column.
+        """Create a :class:`~pandas.DataFrame` with a column for each key in :attr:`data`.
 
         DataFrame does **not** copy data by default.
         Use the ``copy`` parameter to copy data values on creation.
@@ -1108,7 +1108,7 @@ class VectorDataset:  # noqa: PLW1641
 
         If geo-spatial coordinates (e.g. ``"latitude"``, ``"longitude"``, ``"altitude"``)
         are present, round to a reasonable precision. If a ``"time"`` variable is present,
-        round to unix seconds. When the instance is a :class:`GeoVectorDataset`,
+        round to unix seconds. When the instance is a :class:`~pycontrails.GeoVectorDataset`,
         disregard any ``"altitude"`` or ``"level"`` coordinate and only include
         ``"altitude_ft"`` in the output.
 
@@ -1237,7 +1237,7 @@ class VectorDataset:  # noqa: PLW1641
         obj : dict[str, Any]
             Dict representation of VectorDataset (e.g. :meth:`to_dict`)
         copy : bool, optional
-            Passed to :class:`VectorDataset` constructor.
+            Passed to :class:`~pycontrails.VectorDataset` constructor.
             Defaults to True.
         **obj_kwargs : Any
             Additional properties passed as keyword arguments.
@@ -1310,7 +1310,7 @@ class GeoVectorDataset(VectorDataset):
         Must include keys/columns ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``.
         Keyword arguments for ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``
         override ``data`` inputs. Expects ``altitude`` in meters and ``time``
-        as a DatetimeLike (or array that can processed with :meth:`pd.to_datetime`).
+        as a DatetimeLike (or array that can processed with :func:`~pandas.to_datetime`).
         Additional waypoint-specific data can be included as additional keys/columns.
     longitude : npt.ArrayLike | None, optional
         Longitude data.
@@ -1330,7 +1330,7 @@ class GeoVectorDataset(VectorDataset):
     time : npt.ArrayLike | None, optional
         Time data.
         Expects an array of DatetimeLike values,
-        or array that can processed with :meth:`pd.to_datetime`.
+        or array that can processed with :func:`~pandas.to_datetime`.
         Defaults to None.
     attrs : dict[str, Any] | None, optional
         Additional properties as a dictionary.
@@ -1485,7 +1485,8 @@ class GeoVectorDataset(VectorDataset):
     def level(self) -> npt.NDArray[np.floating]:
         """Get pressure ``level`` values for points.
 
-        Automatically calculates pressure level using :func:`units.m_to_pl` using ``altitude`` key.
+        Automatically calculates pressure level using :func:`~pycontrails.physics.units.m_to_pl`
+        using ``altitude`` key.
 
         Note that if ``level`` key exists in :attr:`data`, the data at the ``level``
         key will be returned. This allows an override of the default calculation
@@ -1505,7 +1506,8 @@ class GeoVectorDataset(VectorDataset):
     def altitude(self) -> npt.NDArray[np.floating]:
         """Get altitude.
 
-        Automatically calculates altitude using :func:`units.pl_to_m` using ``level`` key.
+        Automatically calculates altitude using :func:`~pycontrails.physics.units.pl_to_m` using
+        ``level`` key.
 
         Note that if ``altitude`` key exists in :attr:`data`, the data at the ``altitude``
         key will be returned. This allows an override of the default calculation of altitude
@@ -1618,7 +1620,7 @@ class GeoVectorDataset(VectorDataset):
         Parameters
         ----------
         crs : str
-            Target CRS. Passed into to :class:`pyproj.Transformer`. The source CRS
+            Target CRS. Passed into to :class:`~pyproj.transformer.Transformer`. The source CRS
             is assumed to be EPSG:4326.
 
         Returns
@@ -1722,7 +1724,7 @@ class GeoVectorDataset(VectorDataset):
         use_indices : bool, optional
             Experimental.
         **interp_kwargs : Any
-            Additional keyword arguments to pass to :meth:`MetDataArray.intersect_met`.
+            Additional keyword arguments to pass to :meth:`~pycontrails.MetDataArray.interpolate`.
             Examples include ``method``, ``bounds_error``, and ``fill_value``. If an error such as
 
             .. code-block:: python
@@ -1840,8 +1842,8 @@ class GeoVectorDataset(VectorDataset):
             Dimension to retain. Typically "level", "time", "latitude", or "longitude".
             Defaults to "level".
         **interp_kwargs : Any
-            Additional keyword arguments to pass to :meth:`xr.DataArray.interp` or
-            :meth:`xr.Dataset.interp`.
+            Additional keyword arguments to pass to :meth:`~xarray.DataArray.interp` or
+            :meth:`~xarray.Dataset.interp`.
 
         Returns
         -------
@@ -2012,7 +2014,7 @@ class GeoVectorDataset(VectorDataset):
         Returns
         -------
         M
-            Copy of downselected MetDataset or MetDataArray.
+            Downselected MetDataset or MetDataArray.
         """
         indexes = met.indexes
         lon_slice = coordinates.slice_domain(
@@ -2093,7 +2095,7 @@ class GeoVectorDataset(VectorDataset):
 
         See Also
         --------
-        vector_to_lon_lat_grid
+        ~pycontrails.core.vector.vector_to_lon_lat_grid
         """
         return vector_to_lon_lat_grid(
             self, agg=agg, spatial_bbox=spatial_bbox, spatial_grid_res=spatial_grid_res

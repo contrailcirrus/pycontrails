@@ -64,7 +64,8 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
     #: DataArray or Dataset
     data: X
 
-    #: Cache datastore to use for :meth:`save` or :meth:`load`
+    #: Cache datastore to use for :meth:`~pycontrails.MetDataset.save` or
+    #: :meth:`~pycontrails.MetDataset.load`
     cachestore: CacheStore | None
 
     #: Default dimension order for DataArray or Dataset (x, y, z, t)
@@ -532,7 +533,7 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
 
     @property
     def attrs(self) -> dict[str, Any]:
-        """Pass through to :attr:`self.data.attrs`."""
+        """Pass through to ``self.data.attrs``."""
         return self.data.attrs
 
     def downselect(self, bbox: tuple[float, ...]) -> Self:
@@ -588,7 +589,7 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
 
         .. warning::
 
-            This method is analogous to :meth:`GeoVectorDataset.downselect_met`.
+            This method is analogous to :meth:`~pycontrails.GeoVectorDataset.downselect_met`.
             It does not change the instance data, but instead operates on the
             ``met`` input. This method is different from :meth:`downselect` which
             operates on the instance data.
@@ -599,7 +600,7 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
 
         Parameters
         ----------
-        met : MetDataset | MetDataArray
+        met : M
             MetDataset or MetDataArray to downselect.
         longitude_buffer : tuple[float, float], optional
             Extend longitude domain past by ``longitude_buffer[0]`` on the low side
@@ -624,8 +625,8 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
 
         Returns
         -------
-        MetDataset | MetDataArray
-            Copy of downselected MetDataset or MetDataArray.
+        M
+            Downselected MetDataset or MetDataArray.
         """
         indexes = self.indexes
         lon = indexes["longitude"].to_numpy()
@@ -682,7 +683,7 @@ class MetDataset(MetBase[xr.Dataset]):
     ----------
     data : xr.Dataset
         :class:`xarray.Dataset` containing meteorological variables and coordinates
-    cachestore : :class:`CacheStore`, optional
+    cachestore : :class:`~pycontrails.core.cache.CacheStore`, optional
         Cache datastore for staging intermediates with :meth:`save`.
         Defaults to None.
     wrap_longitude : bool, optional
@@ -692,15 +693,15 @@ class MetDataset(MetBase[xr.Dataset]):
     copy : bool, optional
         Copy data on construction. Defaults to True.
     attrs : dict[str, Any], optional
-        Attributes to add to :attr:`data.attrs`. Defaults to None. Generally, pycontrails
-        :class:`pycontrails.core.models.Models` may use the following attributes:
+        Attributes to add to ``data.attrs``. Defaults to None. Generally, pycontrails
+        :class:`~pycontrails.Model` may use the following attributes:
 
         - ``provider``: Name of the data provider (e.g. ``"ECMWF"``).
         - ``dataset``: Name of the dataset (e.g. ``"ERA5"``).
         - ``product``: Name of the product type (e.g. ``"reanalysis"``).
 
     **attrs_kwargs : Any
-        Keyword arguments to add to :attr:`data.attrs`. Defaults to None.
+        Keyword arguments to add to ``data.attrs``. Defaults to None.
 
     Examples
     --------
@@ -813,7 +814,7 @@ class MetDataset(MetBase[xr.Dataset]):
         Returns
         -------
         Any
-            Values returned from  :attr:`data.get(key, default_value)`
+            Values returned from  ``data.get(key, default_value)``
         """
         return self.data.get(key, default_value)
 
@@ -835,7 +836,7 @@ class MetDataset(MetBase[xr.Dataset]):
 
         See Also
         --------
-        - :class:`xarray.Dataset.__setitem__`
+        xarray.Dataset.__setitem__
         """
 
         # pull data of MetDataArray value
@@ -863,7 +864,7 @@ class MetDataset(MetBase[xr.Dataset]):
         self.data.__setitem__(key, value)
 
     def update(self, other: MutableMapping[Hashable, Any] | None = None, **kwargs: Any) -> None:
-        """Shortcut to :meth:`data.update`.
+        """Shortcut to ``data.update``.
 
         See :meth:`xarray.Dataset.update` for reference.
 
@@ -947,7 +948,7 @@ class MetDataset(MetBase[xr.Dataset]):
         -------
         list[str]
             List of met keys verified in :class:`MetDataset`.
-            Returns an empty list if any :class:`MetVariable` is missing.
+            Returns an empty list if any :class:`~pycontrails.core.met_var.MetVariable` is missing.
 
         Raises
         ------
@@ -1024,7 +1025,7 @@ class MetDataset(MetBase[xr.Dataset]):
         ----------
         hash : str
             Saved hash to load.
-        cachestore : :class:`CacheStore`, optional
+        cachestore : :class:`~pycontrails.core.cache.CacheStore`, optional
             Cache datastore to use for sourcing files.
             Defaults to DiskCacheStore.
         chunks : dict[str: int], optional
@@ -1048,20 +1049,20 @@ class MetDataset(MetBase[xr.Dataset]):
         return da
 
     def to_vector(self, transfer_attrs: bool = True) -> vector_module.GeoVectorDataset:
-        """Convert a :class:`MetDataset` to a :class:`GeoVectorDataset` by raveling data.
+        """Convert to a :class:`~pycontrails.GeoVectorDataset` by raveling data.
 
         If :attr:`data` is lazy, it will be loaded.
 
         Parameters
         ----------
         transfer_attrs : bool, optional
-            Transfer attributes from :attr:`data` to output :class:`GeoVectorDataset`.
+            Transfer attributes from :attr:`data` to output :class:`~pycontrails.GeoVectorDataset`.
             By default, True, meaning that attributes are transferred.
 
         Returns
         -------
         GeoVectorDataset
-            Converted :class:`GeoVectorDataset`. The variables on the returned instance
+            Converted :class:`~pycontrails.GeoVectorDataset`. The variables on the returned instance
             include all of those on the input instance, plus the four core spatial temporal
             variables.
 
@@ -1371,7 +1372,7 @@ class MetDataArray(MetBase[xr.DataArray]):
         xr.DataArray or other array-like data source.
         When array-like input is provided, input ``**kwargs`` passed directly to
         xr.DataArray constructor.
-    cachestore : :class:`CacheStore`, optional
+    cachestore : :class:`~pycontrails.core.cache.CacheStore`, optional
         Cache datastore for staging intermediates with :meth:`save`.
         Defaults to DiskCacheStore.
     wrap_longitude : bool, optional
@@ -1577,9 +1578,9 @@ class MetDataArray(MetBase[xr.DataArray]):
         precise ``dtype`` of:
 
         - underlying :attr:`data`
-        - :attr:`data.longitude`
-        - :attr:`data.latitude`
-        - :attr:`data.level`
+        - ``data.longitude``
+        - ``data.latitude``
+        - ``data.level``
         - ``longitude``
         - ``latitude``
 
@@ -1621,9 +1622,9 @@ class MetDataArray(MetBase[xr.DataArray]):
             memory consumption with large numbers of points at the cost of increased runtime.
             By default False.
         indices: tuple | None, optional
-            Experimental. See :func:`interpolation.interp`. None by default.
+            Experimental. See :func:`~pycontrails.core.interpolation.interp`. None by default.
         return_indices: bool, optional
-            Experimental. See :func:`interpolation.interp`. False by default.
+            Experimental. See :func:`~pycontrails.core.interpolation.interp`. False by default.
             Note that values returned differ when ``lowmem=True`` and ``lowmem=False``,
             so output should only be re-used in calls with the same ``lowmem`` value.
 
@@ -1634,7 +1635,7 @@ class MetDataArray(MetBase[xr.DataArray]):
 
         See Also
         --------
-        :meth:`GeoVectorDataset.intersect_met`
+        :meth:`~pycontrails.GeoVectorDataset.intersect_met`
 
         Examples
         --------
@@ -2051,16 +2052,18 @@ class MetDataArray(MetBase[xr.DataArray]):
 
         Notes
         -----
-        :class:`Cocip` and :class:`CocipGrid` set some quantities to 0 and other quantities
-        to ``np.nan`` in regions where no contrails form. When computing polygons from
-        :class:`Cocip` or :class:`CocipGrid` output, take care that the choice of
-        ``fill_value`` correctly includes or excludes contrail-free regions. See the
-        :class:`Cocip` documentation for details about ``np.nan`` in model output.
+        :class:`~pycontrails.models.cocip.Cocip` and
+        :class:`~pycontrails.models.cocipgrid.CocipGrid` set some quantities to 0 and other
+        quantities to ``np.nan`` in regions where no contrails form. When computing polygons from
+        :class:`~pycontrails.models.cocip.Cocip` or :class:`~pycontrails.models.cocipgrid.CocipGrid`
+        output, take care that the choice of ``fill_value`` correctly includes or excludes
+        contrail-free regions. See the :class:`~pycontrails.models.cocip.Cocip` documentation for
+        details about ``np.nan`` in model output.
 
         See Also
         --------
         :meth:`to_polyhedra`
-        :func:`polygons.find_multipolygons`
+        :func:`~pycontrails.core.polygon.find_multipolygon`
 
         Examples
         --------
@@ -2153,7 +2156,7 @@ class MetDataArray(MetBase[xr.DataArray]):
         -------
         dict[str, Any]
             Python representation of GeoJSON FeatureCollection. This dictionary is
-            comprised of individual GeoJON Features, one per :attr:`self.data["level"]`.
+            comprised of individual GeoJON Features, one per ``self.data["level"]``.
         """
         base_properties = properties or {}
         features = []
@@ -2474,7 +2477,7 @@ def shift_longitude[X: (xr.Dataset, xr.DataArray)](data: X, bound: float = -180.
     Parameters
     ----------
     data : X
-        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
+        :class:`~xarray.Dataset` or :class:`~xarray.DataArray` with longitude dimension
     bound : float, optional
         Lower bound of the domain.
         Output domain will be [bound, 360 + bound).
@@ -2483,7 +2486,8 @@ def shift_longitude[X: (xr.Dataset, xr.DataArray)](data: X, bound: float = -180.
     Returns
     -------
     X
-        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude values on [a, 360 + a).
+        :class:`~xarray.Dataset` or :class:`~xarray.DataArray` with longitude values on [a, 360 +
+        a).
     """
     return data.assign_coords(
         longitude=((data["longitude"].values - bound) % 360.0) + bound
@@ -2511,12 +2515,13 @@ def _wrap_longitude[X: (xr.Dataset, xr.DataArray)](data: X) -> X:
     Parameters
     ----------
     data : X
-        :class:`xr.Dataset` or :class:`xr.DataArray` with longitude dimension
+        :class:`~xarray.Dataset` or :class:`~xarray.DataArray` with longitude dimension
 
     Returns
     -------
     X
-        Copy of :class:`xr.Dataset` or :class:`xr.DataArray` with wrapped longitude values.
+        Copy of :class:`~xarray.Dataset` or :class:`~xarray.DataArray` with wrapped longitude
+        values.
 
     Raises
     ------
@@ -2627,7 +2632,7 @@ def downselect[X: (xr.Dataset, xr.DataArray)](
     data: X,
     bbox: tuple[float, ...],
 ) -> X:
-    """Downselect :class:`xr.Dataset` or :class:`xr.DataArray` with spatial bounding box.
+    """Downselect :class:`~xarray.Dataset` or :class:`~xarray.DataArray` with spatial bounding box.
 
     Parameters
     ----------
@@ -2697,7 +2702,7 @@ def standardize_variables(ds: xr.Dataset, variables: Iterable[MetVariable]) -> x
     Parameters
     ----------
     ds : xr.Dataset
-        An :class:`xr.Dataset`.
+        An :class:`~xarray.Dataset`.
     variables : Iterable[MetVariable]
         Data source variables
 

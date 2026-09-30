@@ -53,7 +53,8 @@ def flight_waypoint_summary_statistics(
     Parameters
     ----------
     flight_waypoints : GeoVectorDataset | pd.DataFrame
-        Flight waypoints that were used in :meth:`Cocip.eval` to produce ``contrails``.
+        Flight waypoints that were used in :meth:`~pycontrails.models.cocip.Cocip.eval` to produce
+        ``contrails``.
     contrails : GeoVectorDataset | pd.DataFrame | None
         Contrail evolution outputs from CoCiP, :attr:`Cocip.contrail`
 

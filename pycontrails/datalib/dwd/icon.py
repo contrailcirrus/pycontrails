@@ -371,10 +371,11 @@ class ICON(metsource.MetDataSource):
           - 6h
           - N/A
 
-    This datalib currently supports only those variables required to run :class:`Cocip`
-    and :class:`CocipGrid`. Please
-    `contact the pycontrails developers <https://github.com/contrailcirrus/pycontrails/issues/new?template=feature_request.md>`_
-    to request support for additional variables.
+    This datalib currently supports only those variables required to run
+    :class:`~pycontrails.models.cocip.Cocip` and :class:`~pycontrails.models.cocipgrid.CocipGrid`.
+    Please `contact the pycontrails developers
+    <https://github.com/contrailcirrus/pycontrails/issues/new?template=feature_request.md>`_ to
+    request support for additional variables.
 
     Parameters
     ----------
@@ -397,7 +398,7 @@ class ICON(metsource.MetDataSource):
         or 'germany' (regional domain centered on Germany with ~2.2 km resolution).
 
     timestep_freq : str | timedelta | None, optional
-        Manually set the timestep interval within the bounds defined by :attr:`time`.
+        Manually set the timestep interval within the bounds defined by ``time``.
         Supports any value that can be passed to ``pandas.date_range(freq=...)``.
         By default, this is set to the highest frequency that can supported the requested
         time range on the requested domain.
@@ -632,7 +633,7 @@ class ICON(metsource.MetDataSource):
 
     @property
     def steps(self) -> list[int]:
-        """Forecast steps corresponding to input :attr:`time`.
+        """Forecast steps corresponding to input ``time``.
 
         Returns
         -------
@@ -764,14 +765,15 @@ class ICON(metsource.MetDataSource):
         ]
 
     def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> MetDataset:
-        """Process the :class:`xr.Dataset` opened from cached files.
+        """Process the :class:`~xarray.Dataset` opened from cached files.
 
         Parameters
         ----------
         ds : xr.Dataset
             Dataset loaded from netcdf cache files.
         **kwargs : Any
-            Keyword arguments passed through directly into :class:`MetDataset` constructor.
+            Keyword arguments passed through directly into :class:`~pycontrails.MetDataset`
+            constructor.
 
         Returns
         -------

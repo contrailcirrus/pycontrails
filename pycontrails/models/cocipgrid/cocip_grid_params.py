@@ -11,7 +11,7 @@ from pycontrails.models.cocip.cocip_params import CocipParams
 
 @dataclasses.dataclass
 class CocipGridParams(CocipParams):
-    """Default parameters for :class:`CocipGrid`."""
+    """Default parameters for :class:`~pycontrails.models.cocipgrid.CocipGrid`."""
 
     # ---------
     # Algorithm
@@ -120,8 +120,9 @@ class CocipGridParams(CocipParams):
     #: - aircraft_mass
     #:
     #: If None and :attr:`CocipGrid.source` or :class:`CocipGridParams` do not provide
-    #: the above variables, a ValueError is raised. See :class:`PSGrid` for an open-source
-    #: implementation of a :class:`AircraftPerformanceGrid` model.
+    #: the above variables, a ValueError is raised. See
+    #: :class:`~pycontrails.models.ps_model.PSGrid` for an open-source implementation of a
+    #: :class:`~pycontrails.core.aircraft_performance.AircraftPerformanceGrid` model.
     aircraft_performance: AircraftPerformanceGrid | None = None
 
     # ------------
@@ -129,7 +130,7 @@ class CocipGridParams(CocipParams):
     # ------------
 
     #: Attach additional formation specific data to the output. If True, attach
-    #: all possible formation data. See :mod:`pycontrails.models.cocipgrid.cocip_grid`
+    #: all possible formation data. See ``pycontrails.models.cocipgrid.cocip_grid``
     #: for a list of supported formation data.
     verbose_outputs_formation: bool | set[str] = False
 

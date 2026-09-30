@@ -87,7 +87,7 @@ class ERA5ModelLevel(ECMWFAPI):
         To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.ERA5`.
         Defaults to pressure levels that match model levels at a nominal surface pressure.
     timestep_freq : str, optional
-        Manually set the timestep interval within the bounds defined by :attr:`time`.
+        Manually set the timestep interval within the bounds defined by ``time``.
         Supports any string that can be passed to ``pd.date_range(freq=...)``.
         By default, this is set to "1h" for reanalysis products and "3h" for ensemble products.
     product_type : str, optional

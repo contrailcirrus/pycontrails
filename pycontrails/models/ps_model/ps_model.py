@@ -36,7 +36,7 @@ PS_SYNONYM_FILE_PATH = pathlib.Path(__file__).parent / "static" / "ps-synonym-li
 
 @dataclasses.dataclass
 class PSFlightParams(AircraftPerformanceParams):
-    """Default parameters for :class:`PSFlight`."""
+    """Default parameters for :class:`~pycontrails.models.ps_model.PSFlight`."""
 
     #: Clip the ratio of the overall propulsion efficiency to the maximum propulsion
     #: efficiency to always exceed this value.
@@ -57,7 +57,7 @@ class PSFlight(AircraftPerformance):
 
     See Also
     --------
-    pycontrails.physics.jet.aircraft_load_factor
+    pycontrails.physics.jet.passenger_load_factor
     """
 
     name = "PSFlight"

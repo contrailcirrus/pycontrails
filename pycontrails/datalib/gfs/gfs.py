@@ -73,9 +73,9 @@ class GFSForecast(metsource.MetDataSource):
     forecast_time : `DatetimeLike`, optional
         Specify forecast run by runtime. If None (default), the forecast time
         is set to the 6 hour floor of the first timestep.
-    cachestore : :class:`cache.CacheStore` | None, optional
+    cachestore : :class:`~pycontrails.core.cache.CacheStore` | None, optional
         Cache data store for staging data files.
-        Defaults to :class:`cache.DiskCacheStore`.
+        Defaults to :class:`~pycontrails.core.cache.DiskCacheStore`.
         If None, cachestore is turned off.
     show_progress : bool, optional
         Show progress when downloading files from GFS AWS Bucket.
@@ -567,14 +567,15 @@ class GFSForecast(metsource.MetDataSource):
         return ds.drop_vars(["step", "nominalTop", "surface"], errors="ignore")
 
     def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> met.MetDataset:
-        """Process the :class:`xr.Dataset` opened from cache or local files.
+        """Process the :class:`~xarray.Dataset` opened from cache or local files.
 
         Parameters
         ----------
         ds : xr.Dataset
             Dataset loaded from netcdf cache files or input paths.
         **kwargs : Any
-            Keyword arguments passed through directly into :class:`MetDataset` constructor.
+            Keyword arguments passed through directly into :class:`~pycontrails.MetDataset`
+            constructor.
 
         Returns
         -------

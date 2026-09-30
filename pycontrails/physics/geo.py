@@ -378,7 +378,7 @@ def forward_azimuth(
 ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     r"""Calculate coordinates along forward azimuth.
 
-    This function is identical to the `pyproj.Geod.fwd` method when working on
+    This function is identical to the :meth:`pyproj.Geod.fwd` method when working on
     a spherical earth. Both signatures are also identical. This implementation
     is generally more performant.
 
@@ -401,7 +401,7 @@ def forward_azimuth(
 
     See Also
     --------
-    :meth:pyproj.Geod.fwd
+    :meth:`pyproj.Geod.fwd`
     """
     az_rad = units.degrees_to_radians(az)
     sin_az = np.sin(az_rad)
@@ -445,7 +445,7 @@ def solar_direct_radiation(
     latitude : ArrayLike
         Latitude, [:math:`\deg`]
     time : ArrayLike
-        Time, formatted as :class:`np.datetime64`
+        Time, formatted as :class:`~numpy.datetime64`
     threshold_cos_sza : float, optional
         Set the SDR to 0 when the :func:`cosine_solar_zenith_angle` is below a certain value.
         By default, set to 0.
@@ -537,7 +537,7 @@ def cosine_solar_zenith_angle(
     latitude : ArrayLike
         Latitude, [:math:`\deg`]
     time : ArrayLike
-        Time, formatted as :class:`np.datetime64`
+        Time, formatted as :class:`~numpy.datetime64`
     theta_rad : ArrayLike
         Orbital position, [:math:`rad`]. Output of :func:`orbital_position`.
 
@@ -571,7 +571,7 @@ def orbital_position(time: ArrayLike) -> ArrayLike:
     Parameters
     ----------
     time : ArrayLike
-        ArrayLike of :class:`np.datetime64` times
+        ArrayLike of :class:`~numpy.datetime64` times
 
     Returns
     -------
@@ -589,7 +589,7 @@ def days_since_reference_year(time: ArrayLike, ref_year: int = 2000) -> ArrayLik
     Parameters
     ----------
     time : ArrayLike
-        ArrayLike of :class:`np.datetime64` times
+        ArrayLike of :class:`~numpy.datetime64` times
     ref_year : int, optional
         Year of reference
 
@@ -620,7 +620,7 @@ def hours_since_start_of_day(time: ArrayLike) -> ArrayLike:
     Parameters
     ----------
     time : ArrayLike
-        ArrayLike of :class:`np.datetime64` times
+        ArrayLike of :class:`~numpy.datetime64` times
 
     Returns
     -------
@@ -684,7 +684,7 @@ def solar_hour_angle(longitude: ArrayLike, time: ArrayLike, theta_rad: ArrayLike
     longitude : ArrayLike
         Longitude, [:math:`\deg`]
     time : ArrayLike
-        ArrayLike of :class:`np.datetime64` times
+        ArrayLike of :class:`~numpy.datetime64` times
     theta_rad : ArrayLike
         Orbital position, [:math:`rad`]. Output of :func:`orbital_position`.
 
@@ -748,7 +748,7 @@ def advect_longitude(
     u_wind: ArrayLike,
     dt: npt.NDArray[np.timedelta64] | np.timedelta64,
 ) -> ArrayLike:
-    r"""Calculate the longitude of a particle after time `dt` caused by advection due to wind.
+    r"""Calculate the longitude of a particle after time ``dt`` caused by advection due to wind.
 
     Automatically wrap over the antimeridian if necessary.
 
@@ -788,9 +788,9 @@ def advect_latitude(
     .. note::
 
         It is possible for advected latitude values to lie outside of the WGS84 domain
-        ``[-90, 90]``. In :class:`Cocip` models, latitude values close to the poles
-        create an end of life condition, thereby avoiding this issue. In practice,
-        such situations are very rare.
+        ``[-90, 90]``. In :class:`~pycontrails.models.cocip.Cocip` models, latitude values close to
+        the poles create an end of life condition, thereby avoiding this issue. In practice, such
+        situations are very rare.
 
         These polar divergence issues could also be addressed by reflecting the
         longitude values 180 degrees via a spherical equivalence such as

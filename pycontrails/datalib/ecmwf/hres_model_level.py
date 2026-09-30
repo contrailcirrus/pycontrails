@@ -77,7 +77,7 @@ class HRESModelLevel(ECMWFAPI):
         ensures that exactly one request is submitted per file on tape accessed.
         If ``forecast_time`` is unspecified, the forecast time will
         be assumed to be the nearest synoptic hour available in the operational archive (00 or 12).
-        All subsequent times will be downloaded for relative to :attr:`forecast_time`.
+        All subsequent times will be downloaded for relative to ``forecast_time``.
     variables : metsource.VariableInput
         Variable name (i.e. "t", "air_temperature", ["air_temperature, specific_humidity"])
     pressure_levels : metsource.PressureLevelInput, optional
@@ -85,7 +85,7 @@ class HRESModelLevel(ECMWFAPI):
         To download surface-level parameters, use :class:`pycontrails.datalib.ecmwf.HRES`.
         Defaults to pressure levels that match model levels at a nominal surface pressure.
     timestep_freq : str, optional
-        Manually set the timestep interval within the bounds defined by :attr:`time`.
+        Manually set the timestep interval within the bounds defined by ``time``.
         Supports any string that can be passed to ``pandas.date_range(freq=...)``.
         By default, this is set to the highest frequency that can supported the requested
         time range ("1h" out to 96 hours, "3h" out to 144 hours, and "6h" out to 240 hours)
@@ -241,7 +241,7 @@ class HRESModelLevel(ECMWFAPI):
 
     @property
     def step_offset(self) -> int:
-        """Difference between :attr:`forecast_time` and first timestep.
+        """Difference between ``forecast_time`` and first timestep.
 
         Returns
         -------
@@ -252,12 +252,12 @@ class HRESModelLevel(ECMWFAPI):
 
     @property
     def steps(self) -> list[int]:
-        """Forecast steps corresponding to input :attr:`time`.
+        """Forecast steps corresponding to input ``time``.
 
         Returns
         -------
         list[int]
-            List of forecast steps relative to :attr:`forecast_time`
+            List of forecast steps relative to ``forecast_time``
         """
         return self.get_forecast_steps(self.timesteps)
 

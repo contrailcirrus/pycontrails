@@ -36,7 +36,7 @@ def parallax_correct(
     If the point of interest is not visible from the satellite (ie, on the opposite side of the
     earth), the function returns nan for the corrected coordinates.
 
-    This function requires the :mod:`pyproj` package to be installed.
+    This function requires the ``pyproj`` package to be installed.
 
     Parameters
     ----------
@@ -48,7 +48,7 @@ def parallax_correct(
         A 1D array of altitudes in meters.
     goes_da : xr.DataArray
         DataArray containing the GOES projection information. Only the ``goes_imager_projection``
-        field of the :attr:`xr.DataArray.attrs` is used.
+        field of the :attr:`~xarray.DataArray.attrs` is used.
 
     Returns
     -------

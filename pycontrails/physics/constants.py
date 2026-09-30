@@ -48,7 +48,8 @@ M_d: float = 28.9647e-3
 #: Molar mass of water :math:`[kg \ mol^{-1}]`
 M_v: float = 18.0153e-3
 
-#: Ratio of heat capacities, TODO: which heat capacities?
+# TODO: which heat capacities?
+#: Ratio of heat capacities
 gamma: float = 1.4
 
 #: Molar gas constant :math:`[J \ mol^{-1} \ K^{-1}]`

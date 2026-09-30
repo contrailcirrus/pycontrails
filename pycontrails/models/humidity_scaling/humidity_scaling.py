@@ -127,7 +127,7 @@ class HumidityScaling(models.Model):
         -------
         GeoVectorDataset | MetDataset
             Source data with updated "specific_humidity" and "rhi". If ``source``
-            is :class:`GeoVectorDataset`, "air_pressure" data is also attached.
+            is :class:`~pycontrails.GeoVectorDataset`, "air_pressure" data is also attached.
 
         See Also
         --------
@@ -220,7 +220,8 @@ class ExponentialBoostHumidityScalingParams(ConstantHumidityScalingParams):
     """Parameters for :class:`ExponentialBoostHumidityScaling`."""
 
     #: Boost RHi values exceeding 1 as described in :cite:`teohAviationContrailClimate2022`.
-    #: In :meth:`eval`, this can be overridden by a keyword argument with the same name.
+    #: In :meth:`ExponentialBoostHumidityScaling.eval`, this can be overridden by a keyword
+    #: argument with the same name.
     rhi_boost_exponent: float = 1.7
 
     #: Used to clip overinflated unrealistic RHi values.
@@ -1031,7 +1032,7 @@ class HistogramMatchingWithEckel(HumidityScaling):
         """Scale specific humidity values via histogram matching and Eckel scaling.
 
         Unlike the method on the base class, the method assumes each of the input
-        arrays are :class:`np.ndarray` and not :class:`xr.DataArray` objects.
+        arrays are :class:`~numpy.ndarray` and not :class:`~xarray.DataArray` objects.
 
         Parameters
         ----------

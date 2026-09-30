@@ -165,7 +165,7 @@ class DiskCacheStore(CacheStore):
     cache_dir : str | pathlib.Path | None, optional
         Root cache directory.
         By default, looks first for ``PYCONTRAILS_CACHE_DIR`` environment variable,
-        then uses the OS specific :func:`platformdirs.user_cache_dir` function.
+        then uses the OS specific ``platformdirs.user_cache_dir`` function.
     allow_clear : bool, optional
         Allow this cache to be cleared using :meth:`clear()`. Defaults to False.
 
@@ -396,16 +396,16 @@ class GCPCacheStore(CacheStore):
     read_only : bool, optional
         Only enable reading from cache. Defaults to ``True``.
     allow_clear : bool, optional
-        Allow this cache to be cleared using :meth:`clear()`. Defaults to ``False``.
+        Allow this cache to be cleared using ``_dangerous_clear()``. Defaults to ``False``.
     pickleable : bool, optional
-        If ``False`` (default), the underlying :class:`google.cloud.storage.Client`
+        If ``False`` (default), the underlying ``google.cloud.storage.Client``
         and bucket handle are constructed once and cached on the instance.
         If ``True``, a fresh client/bucket is constructed on every access instead,
         so the instance holds no unpicklable state and can be pickled (e.g. sent to
         an Apache Beam worker as a ``Map``/``ParDo`` kwarg). Defaults to ``False``.
     disk_cache : DiskCacheStore, optional
         Specify a custom local disk cache store to mirror files.
-        Defaults to :class:`DiskCacheStore(cache_dir="{user_cache_dir}/.gcp/{bucket}")`
+        Defaults to ``DiskCacheStore(cache_dir="{user_cache_dir}/.gcp/{bucket}")``
     show_progress : bool, optional
         Show progress bar on cache :meth:`put`.
         Defaults to False
@@ -550,7 +550,7 @@ class GCPCacheStore(CacheStore):
 
         Returns
         -------
-        :class:`google.cloud.storage.Client`
+        ``google.cloud.storage.Client``
             Handle to Google Cloud Storage client
         """
         if self._cached_client is not None:
@@ -787,7 +787,7 @@ class GCPCacheStore(CacheStore):
         Parameters
         ----------
         cache_path : str, optional
-            Path in mirrored cache store. Passed into :meth:`_disk_clear.clear`. By
+            Path in mirrored cache store. Passed into :meth:`~pycontrails.DiskCacheStore.clear`. By
             default, this method will clear the entire mirrored cache store.
 
         Examples

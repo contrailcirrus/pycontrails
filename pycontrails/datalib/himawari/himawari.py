@@ -593,15 +593,15 @@ def extract_visualization(
     ----------
     da : xr.DataArray
         DataArray of Himawari data as returned by :meth:`Himawari.get`. Must have the channels
-        required by :func:`to_ash`.
+        required by :func:`~pycontrails.datalib.geo_utils.to_ash`.
     color_scheme : str
         Color scheme to use for visualization. Must be one of {"true", "ash"}.
         If "true", the ``da`` must contain channels B01, B02, and B03.
         If "ash", the ``da`` must contain channels B11, B14, and B15 (SEVIRI convention)
         or channels B11, B13, B14, and B15 (standard convention).
     ash_convention : str
-        Passed into :func:`to_ash`. Only used if ``color_scheme="ash"``. Must be one
-        of {"SEVIRI", "standard"}. By default, "SEVIRI" is used.
+        Passed into :func:`~pycontrails.datalib.geo_utils.to_ash`. Only used if
+        ``color_scheme="ash"``. Must be one of {"SEVIRI", "standard"}. By default, "SEVIRI" is used.
     gamma : float
         Passed into :func:`to_true_color`. Only used if ``color_scheme="true"``. By
         default, 2.2 is used.

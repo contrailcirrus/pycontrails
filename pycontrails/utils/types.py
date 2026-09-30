@@ -34,13 +34,13 @@ def apply_nan_mask_to_arraylike[T: (np.ndarray, xr.DataArray)](arr: T, nan_mask:
 
     The parameter ``arr`` should have a ``float`` ``dtype``.
 
-    This function is tested against :class:`xr.DataArray`, :class:`pd.Series`, and
-    :class:`np.ndarray` types.
+    This function is tested against :class:`~xarray.DataArray`, :class:`~pandas.Series`, and
+    :class:`~numpy.ndarray` types.
 
     Parameters
     ----------
     arr : T
-        A :class:`np.ndarray` or :class:`xr.DataArray` with ``np.float64`` entries
+        A :class:`~numpy.ndarray` or :class:`~xarray.DataArray` with ``np.float64`` entries
     nan_mask : np.ndarray
         Boolean array of the same shape as ``arr``
 
@@ -48,12 +48,12 @@ def apply_nan_mask_to_arraylike[T: (np.ndarray, xr.DataArray)](arr: T, nan_mask:
     -------
     T
         Array ``arr`` with values in ``nan_mask`` set to ``np.nan``. The ``arr`` is
-        mutated in place if it is a :class:`np.ndarray`. For :class:`xr.DataArray`,
+        mutated in place if it is a :class:`~numpy.ndarray`. For :class:`~xarray.DataArray`,
         a copy is returned.
 
     Notes
     -----
-    When ``arr`` is a :class:`xr.DataArray`, this function keeps any ``attrs``
+    When ``arr`` is a :class:`~xarray.DataArray`, this function keeps any ``attrs``
     from ``arr`` in the returned instance.
     """
     if isinstance(arr, xr.DataArray):
@@ -86,7 +86,7 @@ def type_guard[T](
 
     Returns
     -------
-    _Object
+    T
         Returns the input object ensured to be ``type_``
 
     Raises

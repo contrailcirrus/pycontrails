@@ -203,13 +203,13 @@ class Cocip(Model):
     See Also
     --------
     :class:`CocipFlightParams`
-    :mod:`wake_vortex`
-    :mod:`contrail_properties`
-    :mod:`radiative_forcing`
-    :mod:`humidity_scaling`
-    :class:`Emissions`
-    :mod:`sac`
-    :mod:`tau_cirrus`
+    :mod:`~pycontrails.models.cocip.wake_vortex`
+    :mod:`~pycontrails.models.cocip.contrail_properties`
+    :mod:`~pycontrails.models.cocip.radiative_forcing`
+    :mod:`~pycontrails.models.humidity_scaling`
+    :class:`~pycontrails.models.emissions.Emissions`
+    :mod:`~pycontrails.models.sac`
+    :mod:`~pycontrails.models.tau_cirrus`
     """
 
     __slots__ = (
@@ -550,7 +550,7 @@ class Cocip(Model):
 
         See Also
         --------
-        :method:`Flight.resample_and_fill`
+        :meth:`Flight.resample_and_fill`
         """
         logger.debug("Pre-processing flight parameters")
 
@@ -687,7 +687,7 @@ class Cocip(Model):
     def _process_emissions(self) -> None:
         """Process flight emissions.
 
-        See :class:`Emissions`.
+        See :class:`~pycontrails.models.emissions.Emissions`.
 
         We should consider supporting OpenAP (https://github.com/TUDelft-CNS-ATM/openap)
         and alternate performance models in the future.
@@ -1880,7 +1880,7 @@ def _eval_aircraft_performance(
 
 
 def _eval_emissions(emissions: Emissions, flight: Flight) -> Flight:
-    """Evaluate the :class:`Emissions` model.
+    """Evaluate the :class:`~pycontrails.models.emissions.Emissions` model.
 
     Parameters
     ----------
@@ -1940,9 +1940,10 @@ def calc_timestep_geometry(contrail: GeoVectorDataset) -> None:
 
     See Also
     --------
-    - :func:`wind_shear.wind_shear_normal` to see how "sin_a" and "cos_a"
-    are used to compute wind shear terms.
-    - :func:`calc_timestep_contrail_evolution` to see how "segment_length" is used.
+    wind_shear.wind_shear_normal
+        How ``sin_a`` and ``cos_a`` are used to compute wind shear terms.
+    calc_timestep_contrail_evolution
+        How ``segment_length`` is used.
 
     Parameters
     ----------

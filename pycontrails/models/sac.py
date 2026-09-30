@@ -79,9 +79,9 @@ class SAC(Model):
 
         .. versionchanged:: 0.48.0
 
-            If the ``source`` is a :class:`MetDataset`, the returned object will
-            also be a :class:`MetDataset`. Previous the "sac" :class:`MetDataArray`
-            was returned.
+            If the ``source`` is a :class:`~pycontrails.MetDataset`, the returned object will also
+            be a :class:`~pycontrails.MetDataset`. Previous the "sac"
+            :class:`~pycontrails.MetDataArray` was returned.
 
         Parameters
         ----------
@@ -282,7 +282,7 @@ def T_sat_liquid_high_accuracy(
 
     See Also
     --------
-    :func:`T_sat_liquid_high`
+    :func:`T_sat_liquid`
     """
     init_guess = T_sat_liquid(G)
 
@@ -350,7 +350,7 @@ def sac(
 ) -> ArrayLike:
     r"""Points at which the Schmidt-Appleman Criteria is satisfied.
 
-    Parameters of type :class:`ArrayLike` must have compatible shapes.
+    Parameters of type :class:`~pycontrails.utils.types.ArrayLike` must have compatible shapes.
 
     Parameters
     ----------
@@ -362,8 +362,8 @@ def sac(
     Returns
     -------
     ArrayLike
-        SAC state of each point indexed by the :class:`ArrayLike` parameters.
-        Returned array has floating ``dtype`` with values
+        SAC state of each point indexed by the :class:`~pycontrails.utils.types.ArrayLike`
+        parameters. Returned array has floating ``dtype`` with values
 
             - 0.0 signifying SAC fails
             - 1.0 signifying SAC holds
