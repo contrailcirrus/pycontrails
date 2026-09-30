@@ -382,12 +382,7 @@ def run(
 
 
 def normal_wind_shear[A: (np.ndarray, xr.DataArray, float)](
-    u_hi: A,
-    u_lo: A,
-    v_hi: A,
-    v_lo: A,
-    azimuth: A,
-    dz: float
+    u_hi: A, u_lo: A, v_hi: A, v_lo: A, azimuth: A, dz: float
 ) -> A:
     r"""Compute segment-normal wind shear from wind speeds at lower and upper levels.
 
