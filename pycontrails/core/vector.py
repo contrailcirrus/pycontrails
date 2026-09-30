@@ -1966,9 +1966,9 @@ class GeoVectorDataset(VectorDataset):
         ):
             self.data.pop(key, None)
 
-    def downselect_met[MetDataType: (met_module.MetDataset, met_module.MetDataArray)](
+    def downselect_met[M: (met_module.MetDataset, met_module.MetDataArray)](
         self,
-        met: MetDataType,
+        met: M,
         *,
         longitude_buffer: tuple[float, float] = (0.0, 0.0),
         latitude_buffer: tuple[float, float] = (0.0, 0.0),
@@ -1977,7 +1977,7 @@ class GeoVectorDataset(VectorDataset):
             np.timedelta64(0, "h"),
             np.timedelta64(0, "h"),
         ),
-    ) -> MetDataType:
+    ) -> M:
         """Downselect ``met`` to encompass a spatiotemporal region of the data.
 
         .. versionchanged:: 0.54.5
@@ -1986,7 +1986,7 @@ class GeoVectorDataset(VectorDataset):
 
         Parameters
         ----------
-        met : MetDataType
+        met : M
             MetDataset or MetDataArray to downselect.
         longitude_buffer : tuple[float, float], optional
             Extend longitude domain past by ``longitude_buffer[0]`` on the low side
@@ -2011,7 +2011,7 @@ class GeoVectorDataset(VectorDataset):
 
         Returns
         -------
-        MetDataType
+        M
             Copy of downselected MetDataset or MetDataArray.
         """
         indexes = met.indexes
