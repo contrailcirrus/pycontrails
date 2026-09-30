@@ -115,7 +115,7 @@ def hres_dummy_rad() -> MetDataset:
         coords={
             "longitude": longitude,
             "latitude": latitude,
-            "level": [1],
+            "level": [-1],
             "time": time,
         },
         attrs={"radiation_accumulated": True},

@@ -1283,7 +1283,7 @@ def test_wrap_longitude_new_patterns():
         coords={
             "longitude": np.arange(-180, 180),
             "latitude": np.arange(0, 50, 10),
-            "level": np.arange(50, 500, 100),
+            "level": np.arange(100, 600, 100),
             "time": [datetime(2000, 1, 1, 0)],
         },
     )

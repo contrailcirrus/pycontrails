@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import numpy.typing as npt
 
@@ -97,11 +99,18 @@ def m_to_T_isa(h: ArrayScalarLike) -> ArrayScalarLike:
     -----
     See https://en.wikipedia.org/wiki/International_Standard_Atmosphere
 
+    This implementation agrees with the ISA only up to 20000 m. A warning is emitted for
+    higher altitudes.
+
     See Also
     --------
     m_to_pl
     ft_to_pl
     """
+    if np.any(h > 20000.0):
+        msg = "Altitude exceeds 20000 m, above which this implementation disagrees with the ISA."
+        warnings.warn(msg, skip_file_prefixes=(__file__,))
+
     h_min = np.minimum(h, constants.h_tropopause)
     return constants.T_msl + h_min * constants.T_lapse_rate  # type: ignore[return-value]
 
@@ -131,6 +140,9 @@ def m_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     -----
     See https://en.wikipedia.org/wiki/Barometric_formula
 
+    This implementation agrees with the ISA only up to 20000 m. A warning is emitted for
+    higher altitudes.
+
     See Also
     --------
     m_to_T_isa
@@ -145,6 +157,9 @@ def m_to_pl(h: ArrayScalarLike) -> ArrayScalarLike:
     decay_factor = np.exp(_DECAY * excess_altitude)
 
     return p_isa * decay_factor / 100.0
+
+
+_PL_20KM = m_to_pl(20000.0).item()  # type: ignore[attr-defined]
 
 
 def pl_to_m(pl: ArrayScalarLike) -> ArrayScalarLike:
@@ -175,12 +190,22 @@ def pl_to_m(pl: ArrayScalarLike) -> ArrayScalarLike:
     -----
     See https://en.wikipedia.org/wiki/Barometric_formula
 
+    This implementation agrees with the ISA only for pressure levels above the ISA pressure at
+    20000 m. A warning is emitted for lower pressure levels.
+
     See Also
     --------
     pl_to_ft
     m_to_pl
     m_to_T_isa
     """
+    if np.any(pl < _PL_20KM):
+        msg = (
+            f"Pressure level is below {_PL_20KM:.2f} hPa, the ISA pressure at "
+            "20000 m, above which this implementation disagrees with the ISA."
+        )
+        warnings.warn(msg, skip_file_prefixes=(__file__,))
+
     pl_tropopause = m_to_pl(constants.h_tropopause).item()  # type: ignore[attr-defined]
 
     p_ratio = 100.0 * np.maximum(pl, pl_tropopause) / constants.p_surface
