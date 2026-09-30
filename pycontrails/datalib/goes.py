@@ -361,7 +361,7 @@ class GOES:
 
     cachestore : cache.CacheStore | None, optional
         Cache store for GOES data. If None, data is downloaded directly into
-        memory. By default, a :class:`cache.DiskCacheStore` is used.
+        memory. By default, a :class:`~pycontrails.core.cache.DiskCacheStore` is used.
     bucket : str | None, optional
         GCP bucket for GOES data. If None, the default option, the bucket is automatically
         set to ``GOES_16_BUCKET`` if the requested time is before
@@ -674,15 +674,15 @@ def extract_visualization(
     ----------
     da : xr.DataArray
         DataArray of GOES data as returned by :meth:`GOES.get`. Must have the bands
-        required by :func:`to_ash`.
+        required by :func:`~pycontrails.datalib.geo_utils.to_ash`.
     color_scheme : str
         Color scheme to use for visualization. Must be one of {"true", "ash"}.
         If "true", the ``da`` must contain bands C01, C02, and C03.
         If "ash", the ``da`` must contain bands C11, C14, and C15 (SEVIRI convention)
         or bands C11, C13, C14, and C15 (standard convention).
     ash_convention : str
-        Passed into :func:`to_ash`. Only used if ``color_scheme="ash"``. Must be one
-        of {"SEVIRI", "standard"}. By default, "SEVIRI" is used.
+        Passed into :func:`~pycontrails.datalib.geo_utils.to_ash`. Only used if
+        ``color_scheme="ash"``. Must be one of {"SEVIRI", "standard"}. By default, "SEVIRI" is used.
     gamma : float
         Passed into :func:`to_true_color`. Only used if ``color_scheme="true"``. By
         default, 2.2 is used.

@@ -73,7 +73,7 @@ class PSGrid(AircraftPerformanceGrid):
     def eval(
         self, source: GeoVectorDataset | MetDataset | None = None, **params: Any
     ) -> GeoVectorDataset | MetDataset:
-        """Evaluate the PS model over a :class:`MetDataset` or :class:`GeoVectorDataset`.
+        """Evaluate the PS model over a grid or vector source.
 
         Parameters
         ----------
@@ -382,14 +382,14 @@ def ps_nominal_grid(
         to avoid ambiguity. If a :class:`numpy.ndarray` is passed, it is assumed to be 1
         dimensional with the same shape as the ``level`` argument.
     q_fuel : float, optional
-        The fuel heating value, by default :attr:`JetA.q_fuel`
+        The fuel heating value, by default :attr:`~pycontrails.JetA.q_fuel`
     mach_number : float | None, optional
         The Mach number. If None (default), the PS design Mach number is used.
     maxiter : int, optional
         Passed into :func:`scipy.optimize.newton`.
     engine_deterioration_factor : float, optional
         The engine deterioration factor,
-        by default :attr:`PSGridParams.engine_deterioration_factor`.
+        by default ``PSGridParams.engine_deterioration_factor``.
 
     Returns
     -------
@@ -606,10 +606,10 @@ def ps_nominal_optimize_mach(
         The cosine between the true bearing of flight and the longitudinal axis. Must be
         specified if wind data is provided. Will be ignored if wind data is not provided.
     q_fuel : float, optional
-        The fuel heating value, by default :attr:`JetA.q_fuel`.
+        The fuel heating value, by default :attr:`~pycontrails.JetA.q_fuel`.
     engine_deterioration_factor : float, optional
         The engine deterioration factor,
-        by default :attr:`PSGridParams.engine_deterioration_factor`.
+        by default ``PSGridParams.engine_deterioration_factor``.
 
     Returns
     -------

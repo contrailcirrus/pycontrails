@@ -53,7 +53,7 @@ class ERA5(ECMWFAPI):
     time : metsource.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
-        (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
+        (`datetime`, :class:`~pandas.Timestamp`, :class:`~numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
         Datafiles will be downloaded from CDS for each day to reduce requests.
         If None, ``paths`` must be defined and all time coordinates will be loaded from files.
@@ -68,7 +68,7 @@ class ERA5(ECMWFAPI):
         Can include glob patterns to load specific files.
         Defaults to None, which looks for files in the :attr:`cachestore` or CDS.
     timestep_freq : str, optional
-        Manually set the timestep interval within the bounds defined by :attr:`time`.
+        Manually set the timestep interval within the bounds defined by ``time``.
         Supports any string that can be passed to `pd.date_range(freq=...)`.
         By default, this is set to "1h" for reanalysis products and "3h" for ensemble products.
     product_type : str, optional
@@ -78,7 +78,7 @@ class ERA5(ECMWFAPI):
         By default, this is set to 0.25 for reanalysis products and 0.5 for ensemble products.
     cachestore : cache.CacheStore | None, optional
         Cache data store for staging ECMWF ERA5 files.
-        Defaults to :class:`cache.DiskCacheStore`.
+        Defaults to :class:`~pycontrails.core.cache.DiskCacheStore`.
         If None, cache is turned off.
     url : str | None
         Override the default `cdsapi <https://github.com/ecmwf/cdsapi>`_ url.
@@ -414,7 +414,7 @@ class ERA5(ECMWFAPI):
         )
 
     def _open_and_cache(self, xr_kwargs: dict[str, Any]) -> xr.Dataset:
-        """Open and cache :class:`xr.Dataset` from :attr:`self.paths`.
+        """Open and cache :class:`~xarray.Dataset` from :attr:`self.paths`.
 
         Parameters
         ----------
@@ -521,12 +521,12 @@ class ERA5(ECMWFAPI):
         Parameters
         ----------
         ds : xr.Dataset
-            Loaded :class:`xr.Dataset`
+            Loaded :class:`~xarray.Dataset`
 
         Returns
         -------
         xr.Dataset
-            Processed :class:`xr.Dataset`
+            Processed :class:`~xarray.Dataset`
         """
         if "pycontrails_version" in ds.attrs:
             LOG.debug("Input dataset processed with pycontrails > 0.29")

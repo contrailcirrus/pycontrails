@@ -472,7 +472,7 @@ def pressure_dz(T: ArrayScalarLike, p: ArrayScalarLike, dz: float) -> ArrayScala
     r"""Calculate the pressure altitude ``dz`` meters below input pressure.
 
     Returns surface pressure if the calculated pressure altitude is greater
-    than :const:`constants.p_surface`.
+    than :const:`~pycontrails.physics.constants.p_surface`.
 
     Parameters
     ----------
@@ -542,7 +542,7 @@ def T_potential(T: ArrayScalarLike, p: ArrayScalarLike) -> ArrayScalarLike:
 
     The potential temperature is the temperature that
     an air parcel would attain if adiabatically
-    brought to a standard reference pressure, :const:`constants.p_surface`.
+    brought to a standard reference pressure, :const:`~pycontrails.physics.constants.p_surface`.
 
     Parameters
     ----------

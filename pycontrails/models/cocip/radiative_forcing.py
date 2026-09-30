@@ -169,7 +169,7 @@ def habit_weights(
     For example:
 
     - For waypoints with r_vol_um < 5 um, the mix of ice particle habits will
-      be from Group 1 (100% Droxtals, refer to :attr:`CocipParams().habit_distributions`).
+      be from Group 1 (100% Droxtals, refer to ``CocipParams().habit_distributions``).
     - For waypoints with 5 um <= ``r_vol_um`` < 9.5 um, the mix of ice particle
       habits will be from Group 2 (30% solid columns, 70% droxtals)
 
@@ -179,10 +179,10 @@ def habit_weights(
         Contrail ice particle volume mean radius, [:math:`\mu m`]
     habit_distributions : npt.NDArray[np.floating]
         Habit weight distributions.
-        See :attr:`CocipParams().habit_distributions`
+        See ``CocipParams().habit_distributions``
     radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
-        See :attr:`CocipParams.radius_threshold_um`
+        See :attr:`~pycontrails.models.cocip.CocipParams.radius_threshold_um`
 
     Returns
     -------
@@ -223,12 +223,12 @@ def habit_weight_regime_idx(
         Contrail ice particle volume mean radius, [:math:`\mu m`]
     radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
-        See :attr:`CocipParams.radius_threshold_um`
+        See :attr:`~pycontrails.models.cocip.CocipParams.radius_threshold_um`
 
     Returns
     -------
     npt.NDArray[np.intp]
-        Row index of the habit distribution in array :attr:`CocipParams().habit_distributions`
+        Row index of the habit distribution in array ``CocipParams().habit_distributions``
     """
     # find the regime for each waypoint using thresholds
     idx = np.digitize(r_vol_um, radius_threshold_um)
@@ -739,7 +739,7 @@ def contrail_effective_emissivity(
     ----------
     r_eff_um : npt.NDArray[np.floating]
         Effective radius for each waypoint, n_waypoints x 8 (habit) columns, [:math:`\mu m`]
-        See :func:`effective_radius_habit`.
+        See :func:`effective_radius_by_habit`.
     delta_lr : npt.NDArray[np.floating]
         Habit specific parameter to approximate the effective emissivity of the contrail.
 
@@ -808,7 +808,7 @@ def contrail_albedo(
         Cosine of the solar zenith angle (theta), mue = cos(theta) = sdr/sd0
     r_eff_um : npt.NDArray[np.floating]
         Effective radius for each waypoint, n_waypoints x 8 (habit) columns, [:math:`\mu m`]
-        See :func:`effective_radius_habit`.
+        See :func:`effective_radius_by_habit`.
     A_mu : npt.NDArray[np.floating]
         Habit-specific parameter to approximate the albedo of the contrail
     B_mu : npt.NDArray[np.floating]
@@ -1277,24 +1277,24 @@ def contrail_contrail_overlap_radiative_effects(
 
     habit_distributions : npt.NDArray[np.floating]
         Habit weight distributions.
-        See :attr:`CocipParams.habit_distributions`
+        See :attr:`~pycontrails.models.cocip.CocipParams.habit_distributions`
     radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
-        See :attr:`CocipParams.radius_threshold_um`
+        See :attr:`~pycontrails.models.cocip.CocipParams.radius_threshold_um`
     min_altitude_m : float
         Minimum altitude domain in simulation, [:math:`m`]
-        See :attr:`CocipParams.min_altitude_m`
+        See :attr:`~pycontrails.models.cocip.CocipParams.min_altitude_m`
     max_altitude_m : float
         Maximum altitude domain in simulation, [:math:`m`]
-        See :attr:`CocipParams.min_altitude_m`
+        See :attr:`~pycontrails.models.cocip.CocipParams.min_altitude_m`
     dz_overlap_m : float
         Altitude interval used to segment contrail waypoints, [:math:`m`]
-        See :attr:`CocipParams.dz_overlap_m`
+        See :attr:`~pycontrails.models.cocip.CocipParams.dz_overlap_m`
     spatial_grid_res : float
         Spatial grid resolution, [:math:`\deg`]
     rf_model_s2025 : bool
         Use alternative parametric RF model (Schumann, 2025)
-        See :attr:`CocipParams.parametric_rf_model_s2025`
+        See :attr:`~pycontrails.models.cocip.CocipParams.parametric_rf_model_s2025`
 
     Returns
     -------
@@ -1533,13 +1533,13 @@ def _local_sw_and_lw_rf_with_contrail_overlap(
         Contrail waypoints at the current altitude layer.
     habit_distributions : npt.NDArray[np.floating]
         Habit weight distributions.
-        See :attr:`CocipParams().habit_distributions`
+        See ``CocipParams().habit_distributions``
     radius_threshold_um : npt.NDArray[np.floating]
         Radius thresholds for habit distributions.
-        See :attr:`CocipParams.radius_threshold_um`
+        See :attr:`~pycontrails.models.cocip.CocipParams.radius_threshold_um`
     rf_model_s2025 : bool
         Use alternative parametric RF model (Schumann, 2025)
-        See :attr:`CocipParams.parametric_rf_model_s2025`
+        See :attr:`~pycontrails.models.cocip.CocipParams.parametric_rf_model_s2025`
 
     Returns
     -------

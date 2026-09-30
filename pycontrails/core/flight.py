@@ -28,7 +28,8 @@ if TYPE_CHECKING:
 class FlightPhase(enum.IntEnum):
     """Flight phase enumeration.
 
-    Use :func:`segment_phase` or :meth:`Flight.segment_phase` to determine flight phase.
+    Use :func:`~pycontrails.core.flight.segment_phase` or :meth:`Flight.segment_phase` to determine
+    flight phase.
     """
 
     #: Waypoints at which the flight is in a climb phase
@@ -78,7 +79,7 @@ class Flight(GeoVectorDataset):
         Must include columns ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``.
         Keyword arguments for ``time``, ``latitude``, ``longitude``, ``altitude`` or ``level``
         will override ``data`` inputs. Expects ``altitude`` in meters and ``time`` as a
-        DatetimeLike (or array that can processed with :func:`pd.to_datetime`).
+        DatetimeLike (or array that can processed with :func:`~pandas.to_datetime`).
         Additional waypoint-specific data can be included as additional keys/columns.
     longitude : npt.ArrayLike | None, optional
         Flight trajectory waypoint longitude.
@@ -103,7 +104,7 @@ class Flight(GeoVectorDataset):
         pycontrails applies the following conventions:
 
         - ``flight_id``: An internal flight identifier. Used internally
-          for :class:`Fleet` interoperability.
+          for :class:`~pycontrails.Fleet` interoperability.
         - ``aircraft_type``: Aircraft type ICAO, e.g. ``"A320"``.
         - ``wingspan``: Aircraft wingspan, [:math:`m`].
         - ``n_engine``: Number of aircraft engines.
@@ -120,7 +121,7 @@ class Flight(GeoVectorDataset):
         Copy data on Flight creation.
         Defaults to True.
     fuel : Fuel | None, optional
-        Fuel used in flight trajectory. Defaults to :class:`JetA`.
+        Fuel used in flight trajectory. Defaults to :class:`~pycontrails.JetA`.
     drop_duplicated_times : bool, optional
         Drop duplicate times in flight trajectory. Defaults to False.
     **attrs_kwargs : Any
@@ -512,10 +513,9 @@ class Flight(GeoVectorDataset):
 
         See Also
         --------
-        :func:`geo.segment_angle`
-        :func:`units.heading_to_longitudinal_angle`
+        :func:`~pycontrails.physics.geo.segment_angle`
         :meth:`segment_azimuth`
-        :func:`geo.forward_azimuth`
+        :func:`~pycontrails.physics.geo.forward_azimuth`
 
         Examples
         --------
@@ -554,7 +554,7 @@ class Flight(GeoVectorDataset):
         See Also
         --------
         :meth:`segment_angle`
-        :func:`geo.forward_azimuth`
+        :func:`~pycontrails.physics.geo.forward_azimuth`
         """
         lon = self["longitude"]
         lat = self["latitude"]
@@ -734,12 +734,12 @@ class Flight(GeoVectorDataset):
         -------
         npt.NDArray[np.uint8]
             Array of values enumerating the flight phase.
-            See :attr:`flight.FlightPhase` for enumeration.
+            See :class:`~pycontrails.FlightPhase` for enumeration.
 
         See Also
         --------
-        :attr:`FlightPhase`
-        :func:`segment_phase`
+        :class:`~pycontrails.FlightPhase`
+        :func:`~pycontrails.core.flight.segment_phase`
         :func:`segment_rocd`
         """
         return segment_phase(
@@ -826,14 +826,14 @@ class Flight(GeoVectorDataset):
             values are interpolated linearly.
         nominal_rocd : float, optional
             Nominal rate of climb / descent for aircraft type.
-            Defaults to :attr:`constants.nominal_rocd`.
+            Defaults to :data:`~pycontrails.physics.constants.nominal_rocd`.
         drop : bool, optional
             Drop any columns that are not resampled and filled.
             Defaults to ``True``, dropping all keys outside of "time", "latitude",
             "longitude" and "altitude". If set to False, the extra keys will be
             kept but filled with ``nan`` or ``None`` values, depending on the data type.
         keep_original_index : bool, optional
-            Keep the original index of the :class:`Flight` in addition to the new
+            Keep the original index of the :class:`~pycontrails.Flight` in addition to the new
             resampled index. Defaults to ``False``.
             .. versionadded:: 0.45.2
         time : npt.NDArray[np.datetime64] | None, optional
@@ -1092,7 +1092,7 @@ class Flight(GeoVectorDataset):
             values are interpolated linearly.
         nominal_rocd : float, optional
             Nominal rate of climb / descent for aircraft type.
-            Defaults to :attr:`constants.nominal_rocd`.
+            Defaults to :data:`~pycontrails.physics.constants.nominal_rocd`.
         kernel_size : int, optional
             Passed directly to :func:`scipy.signal.medfilt`, by default 11.
             Passed also to :func:`scipy.signal.medfilt`
@@ -1107,7 +1107,7 @@ class Flight(GeoVectorDataset):
             "longitude" and "altitude". If set to False, the extra keys will be
             kept but filled with ``nan`` or ``None`` values, depending on the data type.
         keep_original_index : bool, optional
-            Keep the original index of the :class:`Flight` in addition to the new
+            Keep the original index of the :class:`~pycontrails.Flight` in addition to the new
             resampled index. Defaults to ``False``.
             .. versionadded:: 0.45.2
 
@@ -1196,7 +1196,7 @@ class Flight(GeoVectorDataset):
 
         See Also
         --------
-        :meth:`traffic.core.flight.Flight.filter`
+        :meth:`~traffic.core.Flight.filter`
         :func:`scipy.signal.medfilt`
         """
         out = self.copy()
@@ -2106,7 +2106,7 @@ def segment_phase(
     -------
     npt.NDArray[np.uint8]
         Array of values enumerating the flight phase.
-        See :attr:`flight.FlightPhase` for enumeration.
+        See :class:`~pycontrails.FlightPhase` for enumeration.
 
     Notes
     -----
@@ -2119,7 +2119,7 @@ def segment_phase(
 
     See Also
     --------
-    :attr:`FlightPhase`
+    :class:`~pycontrails.FlightPhase`
     :func:`segment_rocd`
     """
     nan = np.isnan(rocd)

@@ -210,22 +210,22 @@ class PCC(Model):
 
         Parameters
         ----------
-        T : :class:`xarray:DataArray`
+        T : :class:`~xarray.DataArray`
             Air Temperature, [:math:`K`]
-        p : :class:`xarray:DataArray`
+        p : :class:`~xarray.DataArray`
             Air Pressure, [:math:`Pa`]
-        iwc : :class:`xarray:DataArray`
+        iwc : :class:`~xarray.DataArray`
             Cloud ice water content, [:math:`kg \ kg^{-1}`]
-        q : :class:`xarray:DataArray`
+        q : :class:`~xarray.DataArray`
             Specific humidity
-        rh_crit_old : :class:`xarray:DataArray`
+        rh_crit_old : :class:`~xarray.DataArray`
             Critical relative humidity, [:math:`[0 - 1]`]
-        rh_crit_new : :class:`xarray:DataArray`
+        rh_crit_new : :class:`~xarray.DataArray`
             Critical relative humidity, [:math:`[0 - 1]`]
 
         Returns
         -------
-        :class:`xarray:DataArray`
+        :class:`~xarray.DataArray`
             Probability of cirrus formation, [:math:`[0 - 1]`]
         """
         r = thermo.rh(q, T, p)
@@ -259,22 +259,22 @@ class PCC(Model):
 
         Parameters
         ----------
-        T : :class:`xarray:DataArray`
+        T : :class:`~xarray.DataArray`
             Air Temperature, [:math:`K`]
-        p : :class:`xarray:DataArray`
+        p : :class:`~xarray.DataArray`
             Air Pressure, [:math:`Pa`]
-        iwc : :class:`xarray:DataArray`
+        iwc : :class:`~xarray.DataArray`
             Cloud ice water content, [:math:`kg \ kg^{-1}`]
-        q : :class:`xarray:DataArray`
+        q : :class:`~xarray.DataArray`
             Specific humidity
-        rh_crit_old : :class:`xarray:DataArray`
+        rh_crit_old : :class:`~xarray.DataArray`
             Critical relative humidity, [:math:`[0 - 1]`]
-        rh_crit_new : :class:`xarray:DataArray`
+        rh_crit_new : :class:`~xarray.DataArray`
             Critical relative humidity, [:math:`[0 - 1]`]
 
         Returns
         -------
-        :class:`xarray:DataArray`
+        :class:`~xarray.DataArray`
             Probability of cirrus formation, [:math:`[0 - 1]`]
         """
         r = thermo.rh(q, T, p)
@@ -298,22 +298,22 @@ class PCC(Model):
 
         Parameters
         ----------
-        T : :class:`xarray:DataArray`
+        T : :class:`~xarray.DataArray`
             Air Temperature, [:math:`K`]
-        p : :class:`xarray:DataArray`
+        p : :class:`~xarray.DataArray`
             Air Pressure, [:math:`Pa`]
-        iwc : :class:`xarray:DataArray`
+        iwc : :class:`~xarray.DataArray`
             Cloud ice water content, [:math:`kg \ kg^{-1}`]
-        q : :class:`xarray:DataArray`
+        q : :class:`~xarray.DataArray`
             Specific humidity
-        rh_crit_old : :class:`xarray:DataArray`
+        rh_crit_old : :class:`~xarray.DataArray`
             Critical relative humidity, [:math:`[0 - 1]`]
-        rh_crit_new : :class:`xarray:DataArray`
+        rh_crit_new : :class:`~xarray.DataArray`
             Critical relative humidity, [:math:`[0 - 1]`]
 
         Returns
         -------
-        :class:`xarray:DataArray`
+        :class:`~xarray.DataArray`
             Probability of cirrus formation, [:math:`[0 - 1]`]
         """
         r = thermo.rh(q, T, p)

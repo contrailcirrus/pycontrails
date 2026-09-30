@@ -600,7 +600,7 @@ def number_ei_scope11(
     ----------
     nvpm_ei_m_e : npt.NDArray[np.floating]
         nvPM mass emissions index at the engine exit, [:math:`kg \ kg_{fuel}^{-1}`]
-        See :func:`estimate_nvpm_mass_ei_scope11`
+        See :func:`mass_ei_scope11`
     sn : npt.NDArray[np.floating]
         Smoke number, unitless
     air_temperature: npt.NDArray[np.floating]
@@ -1485,8 +1485,8 @@ def exhaust_gas_volume_per_kg_fuel(
     ----------
     - :cite:`stettlerGlobalCivilAviation2013`
     - (Agarwal et al., 2019) https://doi.org/10.1021/acs.est.8b04060
-    # TODO: Add to bibliography
     """
+    # TODO: Add Agarwal et al. (2019) to bibliography
     return 0.776 * afr * (1 + bypass_ratio) + 0.877
 
 

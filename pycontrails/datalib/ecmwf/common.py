@@ -31,14 +31,15 @@ class ECMWFAPI(metsource.MetDataSource):
         return [v.ecmwf_id for v in self.variables if v.ecmwf_id is not None]
 
     def _process_dataset(self, ds: xr.Dataset, **kwargs: Any) -> met.MetDataset:
-        """Process the :class:`xr.Dataset` opened from cache or local files.
+        """Process the :class:`~xarray.Dataset` opened from cache or local files.
 
         Parameters
         ----------
         ds : xr.Dataset
             Dataset loaded from netcdf cache files or input paths.
         **kwargs : Any
-            Keyword arguments passed through directly into :class:`MetDataset` constructor.
+            Keyword arguments passed through directly into :class:`~pycontrails.MetDataset`
+            constructor.
 
         Returns
         -------

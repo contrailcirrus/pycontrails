@@ -92,7 +92,7 @@ def query(
 
     See Also
     --------
-    :func:`search.query`
+    ``search.query``
     """
     extent = extent or BQ_DEFAULT_EXTENT
     roi = search.ROI(start_time, end_time, extent)
@@ -133,7 +133,7 @@ def intersect(
 
     See Also
     --------
-    :func:`search.intersect`
+    ``search.intersect``
     """
     columns = columns or BQ_DEFAULT_COLUMNS
     return search.intersect(BQ_TABLE, flight, columns, BQ_EXTRA_FILTERS)
@@ -176,7 +176,7 @@ class Landsat:
         - B10, B11: 30 m (upsampled from true resolution of 100 m)
 
     cachestore : cache.CacheStore | None, optional
-        Cache store for Landsat data. If None, a :class:`DiskCacheStore` is used.
+        Cache store for Landsat data. If None, a :class:`~pycontrails.DiskCacheStore` is used.
 
     See Also
     --------

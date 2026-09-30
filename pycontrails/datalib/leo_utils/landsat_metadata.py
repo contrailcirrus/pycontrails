@@ -154,7 +154,7 @@ def open_landsat_metadata(
     ----------
     cachestore : cache.CacheStore | None, optional
         Cache store for Landsat metadata.
-        Defaults to :class:`cache.DiskCacheStore`.
+        Defaults to :class:`~pycontrails.core.cache.DiskCacheStore`.
     update_cache : bool, optional
         Force update to cached Landsat metadata. The remote file is updated
         daily, so this is useful to ensure you have the latest metadata.

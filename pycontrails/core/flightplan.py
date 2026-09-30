@@ -241,7 +241,7 @@ def parse_ofp_xml(raw_xml: str | bytes | IO[str] | IO[bytes]) -> flight.Flight:
 
     Extracts waypoint-level information such as latitude, longitude, altitude, and
     time for the main flight plan (departure, waypoints, arrival) to construct a
-    :class:`Flight` instance.
+    :class:`~pycontrails.Flight` instance.
 
     Parameters
     ----------
@@ -251,7 +251,7 @@ def parse_ofp_xml(raw_xml: str | bytes | IO[str] | IO[bytes]) -> flight.Flight:
     Returns
     -------
     Flight
-        A :class:`Flight` instance containing the parsed waypoints.
+        A :class:`~pycontrails.Flight` instance containing the parsed waypoints.
     """
     if isinstance(raw_xml, bytes):
         raw_xml = io.BytesIO(raw_xml)

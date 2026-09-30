@@ -403,16 +403,16 @@ class MetDataSource(abc.ABC):
 
     __slots__ = ("grid", "paths", "pressure_levels", "timesteps", "variables")
 
-    #: List of individual timesteps from data source derived from :attr:`time`
-    #: Use :func:`parse_time` to handle :class:`TimeInput`.
+    #: List of individual timesteps from data source derived from ``time``
+    #: Use ``parse_time`` to handle ``TimeInput``.
     timesteps: list[datetime]
 
     #: Variables requested from data source
-    #: Use :func:`parse_variables` to handle :class:`VariableInput`.
+    #: Use ``parse_variables`` to handle ``VariableInput``.
     variables: list[MetVariable]
 
     #: List of pressure levels. Set to [-1] for data without level coordinate.
-    #: Use :func:`parse_pressure_levels` to handle :class:`PressureLevelInput`.
+    #: Use ``parse_pressure_levels`` to handle ``PressureLevelInput``.
     pressure_levels: list[int]
 
     #: Lat / Lon grid spacing
@@ -613,14 +613,15 @@ class MetDataSource(abc.ABC):
         Parameters
         ----------
         dataset : xr.Dataset | None, optional
-            Input :class:`xr.Dataset` loaded manually.
+            Input :class:`~xarray.Dataset` loaded manually.
             The dataset must have the same format as the original data source API or files.
         xr_kwargs : dict[str, Any] | None, optional
             Dictionary of keyword arguments passed into :func:`xarray.open_mfdataset`
             when opening files. Examples include "chunks", "engine", "parallel", etc.
             Ignored if ``dataset`` is input.
         **kwargs : Any
-            Keyword arguments passed through directly into :class:`MetDataset` constructor.
+            Keyword arguments passed through directly into :class:`~pycontrails.MetDataset`
+            constructor.
 
         Returns
         -------
@@ -637,7 +638,7 @@ class MetDataSource(abc.ABC):
         """Set met source metadata on ``ds.attrs``.
 
         This is called within the :meth:`open_metdataset` method to set metadata
-        on the returned :class:`MetDataset` instance.
+        on the returned :class:`~pycontrails.MetDataset` instance.
 
         Parameters
         ----------
@@ -687,8 +688,8 @@ class MetDataSource(abc.ABC):
     def is_datafile_cached(self, t: datetime, **xr_kwargs: Any) -> bool:
         """Check datafile defined by datetime for variables and pressure levels in class.
 
-        If using a cloud cache store (i.e. :class:`cache.GCPCacheStore`), this is where the datafile
-        will be mirrored to a local file for access.
+        If using a cloud cache store (i.e. :class:`~pycontrails.core.cache.GCPCacheStore`), this is
+        where the datafile will be mirrored to a local file for access.
 
         Parameters
         ----------

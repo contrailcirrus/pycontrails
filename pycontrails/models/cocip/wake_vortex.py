@@ -3,7 +3,7 @@
 This module includes equations from the original CoCiP model
 :cite:`schumannContrailCirrusPrediction2012`. An alternative set of equations based on
 :cite:`unterstrasserPropertiesYoungContrails2016` is available in
-:py:mod:`unterstrasser_wake_vortex`.
+``unterstrasser_wake_vortex``.
 
 Unterstrasser Notes
 -------------------
@@ -62,9 +62,10 @@ def max_downward_displacement(
     air_pressure : npt.NDArray[np.floating]
         pressure altitude at each waypoint, [:math:`Pa`]
     effective_vertical_resolution: float
-        Passed through to :func:`wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
+        Passed through to
+        :func:`~pycontrails.models.cocip.wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
     wind_shear_enhancement_exponent: npt.NDArray[np.floating] | float
-        Passed through to :func:`wind_shear.wind_shear_enhancement_factor`
+        Passed through to :func:`~pycontrails.models.cocip.wind_shear.wind_shear_enhancement_factor`
     turbulent_vertical_velocity_scale : npt.NDArray[np.floating] | float
         Passed through to :func:`turbulent_kinetic_energy_dissipation_rate`, [:math:`m s^{-1}`]
 
@@ -222,9 +223,10 @@ def downward_displacement_weakly_stratified(
     t_0 : npt.NDArray[np.floating]
         Wake vortex effective time scale, [:math:`s`]
     effective_vertical_resolution: float
-        Passed through to :func:`wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
+        Passed through to
+        :func:`~pycontrails.models.cocip.wind_shear.wind_shear_enhancement_factor`, [:math:`m`]
     wind_shear_enhancement_exponent: npt.NDArray[np.floating] | float
-        Passed through to :func:`wind_shear.wind_shear_enhancement_factor`
+        Passed through to :func:`~pycontrails.models.cocip.wind_shear.wind_shear_enhancement_factor`
     turbulent_vertical_velocity_scale : npt.NDArray[np.floating] | float
         Passed through to :func:`turbulent_kinetic_energy_dissipation_rate`, [:math:`m s^{-1}`]
 

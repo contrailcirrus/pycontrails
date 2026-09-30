@@ -25,7 +25,7 @@ from pycontrails.physics import geo, thermo
 
 @dataclasses.dataclass
 class DryAdvectionParams(models.AdvectionBuffers):
-    """Parameters for the :class:`DryAdvection` model."""
+    """Parameters for the :class:`~pycontrails.models.dry_advection.DryAdvection` model."""
 
     #: Apply Euler's method with a fixed step size of ``dt_integration``. Advected waypoints
     #: are interpolated against met data once each ``dt_integration``.
@@ -76,10 +76,10 @@ class DryAdvectionParams(models.AdvectionBuffers):
 class DryAdvection(models.Model):
     """Simulate "dry advection" of an emissions plume with an elliptical cross section.
 
-    The model simulates both horizontal and vertical advection of a weightless
-    plume without any sedimentation effects. Unlike :class:`Cocip`, humidity is
-    not considered, and radiative forcing is not simulated. The model is
-    therefore useful simulating plume advection and dispersion itself.
+    The model simulates both horizontal and vertical advection of a weightless plume without any
+    sedimentation effects. Unlike :class:`~pycontrails.models.cocip.Cocip`, humidity is not
+    considered, and radiative forcing is not simulated. The model is therefore useful simulating
+    plume advection and dispersion itself.
 
     .. versionadded:: 0.46.0
 
@@ -90,9 +90,10 @@ class DryAdvection(models.Model):
         the advection algorithm itself, and for simulating the evolution of
         a single point.
     - **Wind shear effects**: If ``azimuth`` is not None, then the model will
-        advect points with wind shear effects. At each time step, the model
-        will evolve the plume geometry according to diffusion and wind shear
-        effects. This mode is also used in :class:`CocipGrid` and :class:`Cocip`.
+        advect points with wind shear effects. At each time step, the model will evolve the plume
+        geometry according to diffusion and wind shear effects. This mode is also used in
+        :class:`~pycontrails.models.cocipgrid.CocipGrid` and
+        :class:`~pycontrails.models.cocip.Cocip`.
 
     Parameters
     ----------
@@ -127,13 +128,14 @@ class DryAdvection(models.Model):
     def eval(self, source: GeoVectorDataset | None = None, **params: Any) -> GeoVectorDataset:
         """Simulate dry advection (no sedimentation) of arbitrary points.
 
-        Like :class:`Cocip`, this model adds a "waypoint" column to the :attr:`source`.
+        Like :class:`~pycontrails.models.cocip.Cocip`, this model adds a "waypoint" column to the
+        :attr:`source`.
 
         Parameters
         ----------
         source : GeoVectorDataset | None
-            Arbitrary points to advect. A :class:`Flight` instance is not treated any
-            differently than a :class:`GeoVectorDataset`. In particular, the user must
+            Arbitrary points to advect. A :class:`~pycontrails.Flight` instance is not treated any
+            differently than a :class:`~pycontrails.GeoVectorDataset`. In particular, the user must
             explicitly set ``flight["azimuth"] = flight.segment_azimuth()`` if they
             want to use wind shear effects for a flight.
             In the current implementation, any existing meteorological variables in the ``source``

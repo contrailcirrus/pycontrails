@@ -240,6 +240,7 @@ Aircraft Performance
     models.ps_model.PSGrid
     models.ps_model.PSAircraftEngineParams
     models.ps_model.ps_nominal_grid
+    models.ps_model.ps_nominal_optimize_mach
 
 
 Emissions

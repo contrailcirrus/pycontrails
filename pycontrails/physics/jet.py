@@ -780,6 +780,7 @@ def initial_aircraft_mass(
         TOM = min(TOM, MTOW)
 
     where:
+
     - TOM is the aircraft take-off mass
     - OEM is the aircraft operating empty weight
     - OEM_uplift is a multiple applied to the operating empty weight to account for biases
@@ -813,7 +814,7 @@ def initial_aircraft_mass(
     ----------
     - :cite:`wasiukAircraftPerformanceModel2015`
     - Cirium EmeraldSky Emissions Methodology 2025: Detailed Description v1.8, p. 9.
-    https://assets.fta.cirium.com/wp-content/uploads/2025/11/11122423/Cirium-EmeraldSky-Emissions-Methodology-2025-Detailed-Description-v1.8.pdf
+      https://assets.fta.cirium.com/wp-content/uploads/2025/11/11122423/Cirium-EmeraldSky-Emissions-Methodology-2025-Detailed-Description-v1.8.pdf
 
     See Also
     --------
@@ -866,7 +867,7 @@ def update_aircraft_mass(
     fuel_burn
     reserve_fuel_requirements
     initial_aircraft_mass
-    aircraft_load_factor
+    passenger_load_factor
     """
     if takeoff_mass is None:
         takeoff_mass = initial_aircraft_mass(

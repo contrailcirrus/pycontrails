@@ -131,7 +131,7 @@ def open_arco_era5_model_level_data(
     -------
     xr.Dataset
         Dataset with the requested variables on the target grid and pressure levels.
-        Data is reformatted for :class:`MetDataset` conventions.
+        Data is reformatted for :class:`~pycontrails.MetDataset` conventions.
 
     References
     ----------
@@ -164,7 +164,7 @@ def open_arco_era5_single_level(
     -------
     xr.Dataset
         Dataset with the requested variables.
-        Data is reformatted for :class:`MetDataset` conventions.
+        Data is reformatted for :class:`~pycontrails.MetDataset` conventions.
 
     Raises
     ------
@@ -227,8 +227,8 @@ class ERA5ARCO(ecmwf_common.ECMWFAPI):
 
     See Also
     --------
-    :func:`open_arco_era5_model_level_data`
-    :func:`open_arco_era5_single_level`
+    :func:`~pycontrails.datalib.ecmwf.arco_era5.open_arco_era5_model_level_data`
+    :func:`~pycontrails.datalib.ecmwf.arco_era5.open_arco_era5_single_level`
     """
 
     __marker = object()

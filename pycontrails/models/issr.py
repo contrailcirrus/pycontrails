@@ -30,7 +30,7 @@ class ISSRParams(ModelParams):
 
 
 class ISSR(Model):
-    """Ice super-saturated regions over a :class:`Flight` trajectory or :class:`MetDataset` grid.
+    """Ice super-saturated regions over a flight trajectory or meteorology grid.
 
     This model calculates points where the relative humidity over ice is greater than 1.
 
@@ -94,9 +94,9 @@ class ISSR(Model):
 
         .. versionchanged:: 0.48.0
 
-            If the ``source`` is a :class:`MetDataset`, the returned object will
-            also be a :class:`MetDataset`. Previous the "issr" :class:`MetDataArray`
-            was returned.
+            If the ``source`` is a :class:`~pycontrails.MetDataset`, the returned object will also
+            be a :class:`~pycontrails.MetDataset`. Previous the "issr"
+            :class:`~pycontrails.MetDataArray` was returned.
 
         Parameters
         ----------

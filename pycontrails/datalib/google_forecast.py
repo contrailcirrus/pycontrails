@@ -52,8 +52,9 @@ ExpectedEffectiveEnergyForcing = MetVariable(
 class GoogleForecast(metsource.MetDataSource):
     """Google Forecast datalib to download precomputed contrail forecasts from API sources.
 
-    This class provides an interface to the `Google Contrails Forecast API <https://developers.google.com/contrails>`_.
-    It returns a :class:`MetDataset` containing the forecast severity and/or energy forcing.
+    This class provides an interface to the `Google Contrails Forecast API
+    <https://developers.google.com/contrails>`_. It returns a :class:`~pycontrails.MetDataset`
+    containing the forecast severity and/or energy forcing.
 
     .. versionadded:: 0.60.3
 
@@ -62,14 +63,14 @@ class GoogleForecast(metsource.MetDataSource):
     time : metsource.TimeInput | None
         The time range for data retrieval, either a single datetime or (start, end) datetime range.
         Input must be datetime-like or tuple of datetime-like
-        (`datetime`, :class:`pd.Timestamp`, :class:`np.datetime64`)
+        (`datetime`, :class:`~pandas.Timestamp`, :class:`~numpy.datetime64`)
         specifying the (start, end) of the date range, inclusive.
     variables : metsource.VariableInput
         Variable name (i.e. "contrails", "eeef_per_m", ["contrails", "eeef_per_m"])
     key : str | google.auth.credentials.Credentials | None, optional
         Google Cloud Platform credentials or API key.
         If None, looks for ``GOOGLE_API_KEY`` environment variable.
-        If that is not found, uses :func:`google.auth.default`.
+        If that is not found, uses ``google.auth.default``.
     url : str, optional
         Google Contrails Forecast API URL.
         Defaults to "https://contrails.googleapis.com/v2/grids".

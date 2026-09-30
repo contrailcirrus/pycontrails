@@ -110,7 +110,7 @@ def query(
 
     See Also
     --------
-    :func:`search.query`
+    ``search.query``
     """
     extent = extent or BQ_DEFAULT_EXTENT
     roi = search.ROI(start_time, end_time, extent)
@@ -147,7 +147,7 @@ def intersect(
 
     See Also
     --------
-    :func:`search.intersect`
+    ``search.intersect``
     """
     columns = columns or BQ_DEFAULT_COLUMNS
     scenes = search.intersect(BQ_TABLE, flight, columns)
@@ -181,7 +181,7 @@ class Sentinel:
         - B01, B09, B10: 60 m
 
     cachestore : cache.CacheStore | None, optional
-        Cache store for Landsat data. If None, a :class:`DiskCacheStore` is used.
+        Cache store for Landsat data. If None, a :class:`~pycontrails.DiskCacheStore` is used.
 
     See Also
     --------
@@ -241,7 +241,9 @@ class Sentinel:
     def get_viewing_angle_metadata(self, scale: int = 10) -> xr.Dataset:
         """Return the dataset with viewing angles.
 
-        See :func:`parse_high_res_viewing_incidence_angles` for details.
+        See
+        :func:`~pycontrails.datalib.leo_utils.sentinel_metadata.parse_high_res_viewing_incidence_angles`
+        for details.
         """
         granule_meta_path, _ = self._get_meta()
         _, detector_band_path = self._get_correction_meta()

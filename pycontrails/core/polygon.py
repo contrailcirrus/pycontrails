@@ -168,14 +168,14 @@ def _contours_to_polygons(
     buffer: float,
     i: int = 0,
 ) -> list[shapely.Polygon]:
-    """Convert the outputs of :func:`cv2.findContours` to :class:`shapely.Polygon`.
+    """Convert the outputs of ``cv2.findContours`` to :class:`shapely.Polygon`.
 
     Parameters
     ----------
     contours : Sequence[npt.NDArray[np.floating]]
-        The contours output from :func:`cv2.findContours`.
+        The contours output from ``cv2.findContours``.
     hierarchy : npt.NDArray[np.int_]
-        The hierarchy output from :func:`cv2.findContours`.
+        The hierarchy output from ``cv2.findContours``.
     min_area : float
         Minimum area of a polygon to be included in the output.
     convex_hull : bool
@@ -297,14 +297,14 @@ def find_multipolygon(
     arr : npt.NDArray[np.floating]
         Array to convert to a multipolygon. The array will be converted to a binary
         array by comparing each element to ``threshold``. This binary array is then
-        passed into :func:`cv2.findContours` to find the contours.
+        passed into ``cv2.findContours`` to find the contours.
     threshold : float
         Threshold to use when converting ``arr`` to a binary array.
     min_area : float
         Minimum area of a polygon to be included in the output.
     epsilon : float
         Epsilon value to use when simplifying the polygons. Passed into shapely's
-        :meth:`shapely.geometry.Polygon.simplify` method.
+        ``shapely.geometry.Polygon.simplify`` method.
     lower_bound : bool, optional
         Whether to treat ``threshold`` as a lower or upper bound on values in polygon interiors.
         By default, True.

@@ -1,4 +1,4 @@
-"""Pycontrails :class:`Model` interface to APCEMM."""
+"""Pycontrails :class:`~pycontrails.Model` interface to APCEMM."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class APCEMMParams(models.ModelParams):
-    """Default parameters for the pycontrails :class:`APCEMM` interface."""
+    """Default parameters for the :class:`~pycontrails.models.apcemm.APCEMM` interface."""
 
     #: Maximum contrail age
     max_age: np.timedelta64 = np.timedelta64(20, "h")
@@ -68,7 +68,8 @@ class APCEMMParams(models.ModelParams):
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
 
     #: Altitude coordinates [:math:`m`] for meteorology in generated APCEMM input file.
-    #: If not provided, uses estimated altitudes for levels in input :class:`Metdataset`.
+    #: If not provided, uses estimated altitudes for levels in input
+    #: :class:`~pycontrails.MetDataset`.
     altitude_input_met: list[float] | None = None
 
     #: Humidity scaling
@@ -95,7 +96,7 @@ class APCEMMParams(models.ModelParams):
     waypoints: list[int] | None = None
 
     #: If defined, use to override ``input_background_conditions`` and
-    #: ``input_engine_emissions`` in :class:`APCEMMInput` assuming that
+    #: ``input_engine_emissions`` in ``APCEMMInput`` assuming that
     #: ``apcemm_root`` points to the root of the APCEMM git repository.
     apcemm_root: pathlib.Path | str | None = None
 
@@ -114,9 +115,9 @@ class APCEMMParams(models.ModelParams):
 
 
 class APCEMM(models.Model):
-    """Run APCEMM as a pycontrails :class:`Model`.
+    """Run APCEMM as a pycontrails :class:`~pycontrails.Model`.
 
-    This class acts as an adapter between the pycontrails :class:`Model` interface
+    This class acts as an adapter between the pycontrails :class:`~pycontrails.Model` interface
     (shared with other contrail models) and APCEMM's native interface.
 
     `APCEMM <https://github.com/MIT-LAE/APCEMM>`__ was developed at the
@@ -135,16 +136,16 @@ class APCEMM(models.Model):
         Path to APCEMM root directory, used to set ``input_background_conditions`` and
         ``input_engine_emissions`` based on the structure of the
         `APCEMM GitHub repository <https://github.com/MIT-LAE/APCEMM>`__.
-        If not provided, pycontrails will use the default paths defined in :class:`APCEMMInput`.
+        If not provided, pycontrails will use the default paths defined in ``APCEMMInput``.
     apcemm_input_params : APCEMMInput, optional
-        Value for APCEMM input parameters defined in :class:`APCEMMInput`. If provided, values
+        Value for APCEMM input parameters defined in ``APCEMMInput``. If provided, values
         for ``input_background_condition`` or ``input_engine_emissions`` will override values
         set based on ``apcemm_root``. Attempting to provide values for input parameters
         that are determined automatically by this interface will result in an error.
         See *Notes* for detailed information about YAML file generation.
     cachestore : CacheStore, optional
-        :class:`CacheStore` used to store APCEMM run directories.
-        If not provided, uses a :class:`DiskCacheStore`.
+        :class:`~pycontrails.core.cache.CacheStore` used to store APCEMM run directories.
+        If not provided, uses a :class:`~pycontrails.DiskCacheStore`.
         See *Notes* for detailed information about the file structure for APCEMM
         simulations.
     params : dict[str,Any], optional
@@ -202,7 +203,7 @@ class APCEMM(models.Model):
 
     **Configuring APCEMM YAML files**
 
-    :class:`APCEMMInput` provides low-level control over the contents of YAML files used
+    ``APCEMMInput`` provides low-level control over the contents of YAML files used
     as APCEMM input. YAML file contents can be controlled by passing custom parameters
     in a dictionary through the ``apcemm_input_params`` parameter. Note, however, that
     :class:`APCEMM` sets a number of APCEMM input parameters automatically, and attempting
@@ -214,13 +215,13 @@ class APCEMM(models.Model):
 
     This interface initializes, runs, and postprocesses APCEMM simulations in four stages:
 
-    1. A :class:`DryAdvection` model is used to generate trajectories for contrails
-       initialized at each flight waypoint. This is a necessary preprocessing step because
-       APCEMM is a Lagrangian model and does not explicitly track changes in plume
-       location over time. This step also provides time-dependent azimuths that define the
-       orientation of advected contrails, which is required to compute contrail-normal
-       wind shear from horizontal winds.
-       Results from the trajectory calculation are stored in :attr:`trajectories`.
+    1. A :class:`~pycontrails.models.dry_advection.DryAdvection` model is used to generate
+       trajectories for contrails initialized at each flight waypoint. This is a necessary
+       preprocessing step because APCEMM is a Lagrangian model and does not explicitly track changes
+       in plume location over time. This step also provides time-dependent azimuths that define the
+       orientation of advected contrails, which is required to compute contrail-normal wind shear
+       from horizontal winds. Results from the trajectory calculation are stored in
+       :attr:`trajectories`.
     2. Model parameters and results from the trajectory calculation are used to generate
        YAML files with APCEMM input parameters and netCDF files with meteorology data
        used by APCEMM simulations. A separate pair of files is generated for each
@@ -239,14 +240,14 @@ class APCEMM(models.Model):
       This column contains ``"NoSimulation"`` for waypoints where no simulation
       was run and the contents of the APCEMM ``status_case0`` output file for
       other waypoints.
-    - A :class:`pd.DataFrame` is created and stored in :attr:`vortex`. This dataframe
+    - A :class:`~pandas.DataFrame` is created and stored in :attr:`vortex`. This dataframe
       contains time series output from the APCEMM "early plume model" of the aircraft
       exhaust plume and downwash vortex, read from ``Micro_000000.out`` output files
       saved by APCEMM.
-    - If APCEMM simulated at least one persistent contrail, A :class:`pd.DataFrame` is
+    - If APCEMM simulated at least one persistent contrail, A :class:`~pandas.DataFrame` is
       created and stored in :attr:`contrail`. This dataframe contains paths to netCDF
       files, saved at prescribed time intervals during the APCEMM simulation, and can be
-      used to open APCEMM output (e.g., using :func:`xr.open_dataset`) for further analysis.
+      used to open APCEMM output (e.g., using :func:`~xarray.open_dataset`) for further analysis.
 
     **Numerics**
 
@@ -254,8 +255,9 @@ class APCEMM(models.Model):
     cross-section of contrails formed at each waypoint. APCEMM does not explicitly model the length
     of contrail segments and does not include any representation of deformation by divergent flow.
     APCEMM output represents properties of cross-sections of contrails formed at flight waypoints,
-    not properties of contrail segments that form between flight waypoints. Unlike :class:`Cocip`,
-    output produced by this interface does not include trailing NaN values.
+    not properties of contrail segments that form between flight waypoints. Unlike
+    :class:`~pycontrails.models.cocip.Cocip`, output produced by this interface does not include
+    trailing NaN values.
 
     **Known limitations**
 
@@ -451,7 +453,10 @@ class APCEMM(models.Model):
         self._attach_aircraft_performance()
 
     def compute_lagrangian_trajectories(self) -> None:
-        """Calculate Lagrangian trajectories using a :class:`DryAdvection` model.
+        """Calculate Lagrangian trajectories.
+
+        Trajectories are computed with a :class:`~pycontrails.models.dry_advection.DryAdvection`
+        model.
 
         Lagrangian trajectories provide the expected time-dependent location
         (longitude, latitude, and altitude) and orientation (azimuth) of
@@ -620,9 +625,9 @@ class APCEMM(models.Model):
 
     @property
     def dynamic_yaml_params(self) -> set[str]:
-        """Set of :class:`APCEMMInput` attributes set dynamically by this model.
+        """Set of ``APCEMMInput`` attributes set dynamically by this model.
 
-        Other :class:`APCEMMInput` attributes can be set statically by passing
+        Other ``APCEMMInput`` attributes can be set statically by passing
         parameters in ``apcemm_input_params`` to the :class:`APCEMM` constructor.
         """
         return {

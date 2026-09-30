@@ -59,7 +59,8 @@ class CocipParams(AdvectionBuffers):
     # Implementation parameters
     # -------------------------
 
-    #: Determines whether :meth:`Cocip.process_emissions` runs on model :meth:`Cocip.eval`
+    #: Determines whether ``Cocip._process_emissions`` runs on model
+    #: :meth:`~pycontrails.models.cocip.Cocip.eval`
     #: Set to ``False`` when input Flight includes emissions data.
     process_emissions: bool = True
 
@@ -88,7 +89,7 @@ class CocipParams(AdvectionBuffers):
 
     #: Experimental. If ``True``, attempt to reduce memory consumption during
     #: aircraft performance and initial contrail formation/persistent calculations
-    #: by calling :meth:`MetDataArray.interpolate` with ``lowmem=True``.
+    #: by calling :meth:`~pycontrails.MetDataArray.interpolate` with ``lowmem=True``.
     #:
     #: **IMPORTANT**:
     #:
@@ -150,8 +151,8 @@ class CocipParams(AdvectionBuffers):
 
     #: Add additional values to the flight and contrail that are not explicitly
     #: necessary for calculation.
-    #: See also :attr:`CocipGridParams.verbose_outputs_formation` and
-    #: :attr:`CocipGridParams.verbose_outputs_evolution`.
+    #: See also :attr:`~pycontrails.models.cocipgrid.CocipGridParams.verbose_outputs_formation` and
+    #: :attr:`~pycontrails.models.cocipgrid.CocipGridParams.verbose_outputs_evolution`.
     verbose_outputs: bool = False
 
     #: Add additional metric of ATR20 and global yearly mean RF to model output.
@@ -333,7 +334,7 @@ class CocipParams(AdvectionBuffers):
     #: Primarily used to support uncertainty estimation.
     rf_lw_enhancement_factor: float = 1.0
 
-    #: Experimental: use revised contrail ice budget (to be described in a forthcoming paper).
+    #: Experimental. Use revised contrail ice budget (to be described in a forthcoming paper).
     #: In brief, the revised ice budget includes tendencies associated with sedimentation across an
     #: ambient humidity gradient and ensures that contrails conserve total ice when in air at 100%
     #: RHi. This feature should be activated with caution, as it changes the optical properties of

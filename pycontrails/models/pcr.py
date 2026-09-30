@@ -38,10 +38,10 @@ class PCR(Model):
         Dataset containing "air_temperature", "specific_humidity" variables
     params : dict[str, Any], optional
         Override PCR model parameters with dictionary.
-        See :class:`PCRGridParams` for model parameters.
+        See :class:`PCRParams` for model parameters.
     **params_kwargs
         Override PCR model parameters with keyword arguments.
-        See :class:`PCRGridParams` for model parameters.
+        See :class:`PCRParams` for model parameters.
     """
 
     name = "pcr"
@@ -108,7 +108,7 @@ def pcr(
 
     Ice Super Saturated Regions (ISSR) where the Schmidt-Appleman Criteria (SAC) is satisfied.
 
-    Parameters of type :class:`ArrayLike` must have compatible shapes.
+    Parameters of type :class:`~pycontrails.utils.types.ArrayLike` must have compatible shapes.
 
     Parameters
     ----------
@@ -128,7 +128,8 @@ def pcr(
     Returns
     -------
     pcr : ArrayLike
-        PCR state of each point indexed by the :class:`ArrayLike` parameters.
+        PCR state of each point indexed by the :class:`~pycontrails.utils.types.ArrayLike`
+        parameters.
     sac : ArrayLike
         SAC state
     issr : ArrayLike

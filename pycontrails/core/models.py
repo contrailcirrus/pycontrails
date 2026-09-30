@@ -88,35 +88,35 @@ class ModelParams:
     #: table to account for the specific humidity lapse rate bias. The ``"log-q-log-p"``
     #: method interpolates in the log of specific humidity and pressure, then converts
     #: back to specific humidity.
-    #: Only used by models calling to :func:`interpolate_met`.
+    #: Only used by models calling to :func:`~pycontrails.core.models.interpolate_met`.
     interpolation_q_method: str | None = None
 
     # -----------
     # Meteorology
     # -----------
 
-    #: Call :meth:`_verify_met` on model instantiation.
+    #: Call ``_verify_met`` on model instantiation.
     verify_met: bool = True
 
-    #: Downselect input :class:`MetDataset`` to region around ``source``.
+    #: Downselect input :class:`~pycontrails.MetDataset` to region around ``source``.
     downselect_met: bool = True
 
-    #: Met longitude buffer for input to :meth:`Flight.downselect_met`,
+    #: Met longitude buffer for input to :meth:`~pycontrails.Flight.downselect_met`,
     #: in WGS84 coordinates.
     #: Only applies when :attr:`downselect_met` is True.
     met_longitude_buffer: tuple[float, float] = (0.0, 0.0)
 
-    #: Met latitude buffer for input to :meth:`Flight.downselect_met`,
+    #: Met latitude buffer for input to :meth:`~pycontrails.Flight.downselect_met`,
     #: in WGS84 coordinates.
     #: Only applies when :attr:`downselect_met` is True.
     met_latitude_buffer: tuple[float, float] = (0.0, 0.0)
 
-    #: Met level buffer for input to :meth:`Flight.downselect_met`,
+    #: Met level buffer for input to :meth:`~pycontrails.Flight.downselect_met`,
     #: in [:math:`hPa`].
     #: Only applies when :attr:`downselect_met` is True.
     met_level_buffer: tuple[float, float] = (0.0, 0.0)
 
-    #: Met time buffer for input to :meth:`Flight.downselect_met`
+    #: Met time buffer for input to :meth:`~pycontrails.Flight.downselect_met`
     #: Only applies when :attr:`downselect_met` is True.
     met_time_buffer: tuple[np.timedelta64, np.timedelta64] = (
         np.timedelta64(0, "h"),
@@ -256,12 +256,12 @@ class Model(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Get model name for use as a data key in :class:`xr.DataArray` or :class`Flight`."""
+        """Get model name for use as a data key in :class:`~xarray.DataArray` or :class`Flight`."""
 
     @property
     @abstractmethod
     def long_name(self) -> str:
-        """Get long name descriptor, annotated on :class:`xr.DataArray` outputs."""
+        """Get long name descriptor, annotated on :class:`~xarray.DataArray` outputs."""
 
     @property
     def hash(self) -> str:
@@ -417,7 +417,8 @@ class Model(ABC):
     def interp_kwargs(self) -> dict[str, Any]:
         """Shortcut to create interpolation arguments from :attr:`params`.
 
-        The output of this is useful for passing to :func:`interpolate_met`.
+        The output of this is useful for passing to
+        :func:`~pycontrails.core.models.interpolate_met`.
 
         Returns
         -------
@@ -568,16 +569,16 @@ class Model(ABC):
         Override this method if special handling is needed in met down-selection.
 
         - :attr:`source` must be defined before calling :meth:`downselect_met`.
-        - This method copies and re-assigns :attr:`met` using :meth:`met.copy()`
+        - This method copies and re-assigns :attr:`met` using ``met.copy()``
           to avoid side-effects.
 
         Raises
         ------
         ValueError
             Raised if :attr:`source` is not defined.
-            Raised if :attr:`source` is not a :class:`GeoVectorDataset`.
+            Raised if :attr:`source` is not a :class:`~pycontrails.GeoVectorDataset`.
         TypeError
-            Raised if :attr:`met` is not a :class:`MetDataset`.
+            Raised if :attr:`met` is not a :class:`~pycontrails.MetDataset`.
         """
         try:
             source = self.source
@@ -621,10 +622,10 @@ class Model(ABC):
         For each variable in :attr:`met_variables`, check :attr:`source` for data variable
         with the same name.
 
-        For :class:`GeoVectorDataset` sources, try to interpolate :attr:`met`
+        For :class:`~pycontrails.GeoVectorDataset` sources, try to interpolate :attr:`met`
         if variable does not exist.
 
-        For :class:`MetDataset` sources, try to get data from :attr:`met`
+        For :class:`~pycontrails.MetDataset` sources, try to get data from :attr:`met`
         if variable does not exist.
 
         Parameters
@@ -714,12 +715,12 @@ class Model(ABC):
 
         Retrieves data with the following hierarchy:
 
-        1. :attr:`other.data[key]`. Returns ``np.ndarray | xr.DataArray``.
-        2. :attr:`other.attrs[key]`
-        3. :attr:`params[key]`
+        1. ``other.data[key]``. Returns ``np.ndarray | xr.DataArray``.
+        2. ``other.attrs[key]``
+        3. ``params[key]``
         4. ``default``
 
-        In case 3., the value of :attr:`params[key]` is attached to :attr:`other.attrs[key]`
+        In case 3., the value of ``params[key]`` is attached to ``other.attrs[key]``
         unless ``set_attr`` is set to False.
 
         Parameters
@@ -729,7 +730,7 @@ class Model(ABC):
         default : Any, optional
             Default value if key is not found.
         set_attr : bool, optional
-            If True (default), set :attr:`source.attrs[key]` to :attr:`params[key]` if found.
+            If True (default), set ``source.attrs[key]`` to ``params[key]`` if found.
             This allows for better post model evaluation tracking.
 
         Returns
@@ -776,12 +777,12 @@ class Model(ABC):
 
         Retrieves data with the following hierarchy:
 
-        1. :attr:`source.data[key]`. Returns ``np.ndarray | xr.DataArray``.
-        2. :attr:`source.attrs[key]`
-        3. :attr:`params[key]`
+        1. ``source.data[key]``. Returns ``np.ndarray | xr.DataArray``.
+        2. ``source.attrs[key]``
+        3. ``params[key]``
         4. ``default``
 
-        In case 3., the value of :attr:`params[key]` is attached to :attr:`source.attrs[key]`
+        In case 3., the value of ``params[key]`` is attached to ``source.attrs[key]``
         unless ``set_attr`` is set to False.
 
         Parameters
@@ -791,7 +792,7 @@ class Model(ABC):
         default : Any, optional
             Default value if key is not found.
         set_attr : bool, optional
-            If True (default), set :attr:`source.attrs[key]` to :attr:`params[key]` if found.
+            If True (default), set ``source.attrs[key]`` to ``params[key]`` if found.
             This allows for better post model evaluation tracking.
 
         Returns
@@ -985,8 +986,8 @@ def interpolate_met(
         Experimental method to use for interpolating specific humidity. See
         :class:`ModelParams` for more information.
     **interp_kwargs : Any,
-        Additional keyword only arguments passed to :meth:`GeoVectorDataset.intersect_met`.
-        For example, ``level=[...]``.
+        Additional keyword only arguments passed to
+        :meth:`~pycontrails.GeoVectorDataset.intersect_met`. For example, ``level=[...]``.
 
     Returns
     -------
@@ -1027,7 +1028,7 @@ def interpolate_met(
 
 
 def _extract_q(met: MetDataset, met_key: str, q_method: str) -> tuple[MetDataArray, bool]:
-    """Extract specific humidity from ``met`` :class:`MetDataset`.
+    """Extract specific humidity from ``met`` :class:`~pycontrails.MetDataset`.
 
     Parameters
     ----------

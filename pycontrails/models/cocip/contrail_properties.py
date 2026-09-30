@@ -233,7 +233,7 @@ def initial_ice_particle_number(
     -------
     npt.NDArray[np.floating]
         The initial number of ice particles per distance before the wake vortex
-        phase, [:math:`# m^{-1}`]
+        phase, [:math:`m^{-1}`]
     """
     if min_aei is not None:
         aei = np.clip(aei, min_aei, None)
@@ -400,9 +400,9 @@ def contrail_persistent(
     tau_contrail : npt.NDArray[np.floating]
         Contrail optical depth
     n_ice_per_m3 : npt.NDArray[np.floating]
-        Contrail ice particle number per volume of air, [:math:`# m^{-3}`]
+        Contrail ice particle number per volume of air, [:math:`m^{-3}`]
     params : dict[str, Any]
-        Dictionary of :class:`CocipParams` parameters determining the
+        Dictionary of :class:`~pycontrails.models.cocip.CocipParams` parameters determining the
         conditions for end of contrail life.
 
     Returns
@@ -500,12 +500,13 @@ def contrail_edges(
     """
     Calculate the longitude and latitude of the contrail edges to account for contrail spreading.
 
-    (lon_edge_l, lat_edge_l)        x---------------------
+    ::
 
-    (Contrail midpoint: lon, lat)   X===================== ->
+        (lon_edge_l, lat_edge_l)        x---------------------
 
-    (lon_edge_r, lat_edge_r)        x---------------------
+        (Contrail midpoint: lon, lat)   X===================== ->
 
+        (lon_edge_r, lat_edge_r)        x---------------------
 
     Parameters
     ----------
@@ -561,12 +562,13 @@ def contrail_vertices(
     and associating the next continuous waypoint with the previous.
     This method is helpful when you want to treat each contrail waypoint independently.
 
-    (lon_1, lat_1)                  x--------------------x   (lon_4, lat_4)
+    ::
 
-    (Contrail waypoint: lon, lat)   X==================== ->
+        (lon_1, lat_1)                  x--------------------x   (lon_4, lat_4)
 
-    (lon_2, lat_2)                  x--------------------x   (lon_3, lat_3)
+        (Contrail waypoint: lon, lat)   X==================== ->
 
+        (lon_2, lat_2)                  x--------------------x   (lon_3, lat_3)
 
     Parameters
     ----------
@@ -699,7 +701,7 @@ def ice_particle_number_per_volume_of_plume(
     Returns
     -------
     npt.NDArray[np.floating]
-        number of ice particles per volume of contrail plume at time t, [:math:`# m^{-3}`]
+        number of ice particles per volume of contrail plume at time t, [:math:`m^{-3}`]
     """
     return n_ice_per_m / area_eff
 
@@ -713,14 +715,14 @@ def ice_particle_number_per_mass_of_air(
     Parameters
     ----------
     n_ice_per_vol : npt.NDArray[np.floating]
-        number of ice particles per volume of contrail plume at time t, [:math:`# m^{-3}`]
+        number of ice particles per volume of contrail plume at time t, [:math:`m^{-3}`]
     rho_air : npt.NDArray[np.floating]
         density of air for each waypoint, [:math:`kg m^{-3}`]
 
     Returns
     -------
     npt.NDArray[np.floating]
-        number of ice particles per mass of air at time t, [:math:`# kg^{-1}`]
+        number of ice particles per mass of air at time t, [:math:`kg^{-1}`]
     """
     return n_ice_per_vol / rho_air
 
@@ -738,7 +740,7 @@ def ice_particle_volume_mean_radius(
         kg of air, [:math:`kg_{H_{2}O}/kg_{air}`]
 
     n_ice_per_kg_air : npt.NDArray[np.floating]
-        number of ice particles per mass of air, [:math:`# kg^{-1}`]
+        number of ice particles per mass of air, [:math:`kg^{-1}`]
 
     Returns
     -------
@@ -752,7 +754,7 @@ def ice_particle_volume_mean_radius(
 
     ``r_ice_vol`` calculated by dividing the total volume of contrail
     ice particle per kg of air (``total_ice_volume``, :math:`m**3/kg-air`) with the
-    number of contrail ice particles per kg of air (``n_ice_per_kg_air``, :math:`#/kg-air`).
+    number of contrail ice particles per kg of air (``n_ice_per_kg_air``, :math:`kg_{air}^{-1}`).
     """
     total_ice_volume = iwc / constants.rho_ice
     r_ice_vol = ((3 / (4.0 * np.pi)) * (total_ice_volume / n_ice_per_kg_air)) ** (1 / 3)
@@ -874,7 +876,7 @@ def phase_relaxation_rate(
 
     See Also
     --------
-    :func:`thermo.diffusivity_water_vapor`
+    :func:`~pycontrails.physics.thermo.diffusivity_water_vapor`
     """
     return 4.0 * np.pi * r_ice_vol * n_ice_per_vol * diffusivity_water_vapor
 
@@ -1045,7 +1047,7 @@ def particle_losses_aggregation(
     -------
     npt.NDArray[np.floating]
         Rate of contrail ice particle losses due to sedimentation-induced
-        aggregation, [:math:`# s^{-1}`]
+        aggregation, [:math:`s^{-1}`]
 
     Notes
     -----
@@ -1089,7 +1091,7 @@ def particle_losses_turbulence(
     Returns
     -------
     npt.NDArray[np.floating]
-        Rate of contrail ice particle losses due to plume-internal turbulence, [:math:`# s^{-1}`]
+        Rate of contrail ice particle losses due to plume-internal turbulence, [:math:`s^{-1}`]
 
     Notes
     -----
@@ -1574,9 +1576,9 @@ def new_ice_particle_number(
         number of contrail ice particles per distance at the start of
         the time step, [:math:`m^{-1}`]
     dn_dt_agg : npt.NDArray[np.floating]
-        rate of ice particle losses due to sedimentation-induced aggregation, [:math:`# s^{-1}`]
+        rate of ice particle losses due to sedimentation-induced aggregation, [:math:`s^{-1}`]
     dn_dt_turb : npt.NDArray[np.floating]
-        rate of contrail ice particle losses due to plume-internal turbulence, [:math:`# s^{-1}`]
+        rate of contrail ice particle losses due to plume-internal turbulence, [:math:`s^{-1}`]
     seg_ratio : npt.NDArray[np.floating] | float
         Segment length ratio before and after it is advected to the new location.
     dt : npt.NDArray[np.timedelta64] | np.timedelta64
@@ -1702,7 +1704,8 @@ def mean_energy_flux_per_m(
     -----
     Implementation differs from original fortran in two ways:
 
-    - Discontinuity is no longer set to 0 (this occurs directly in model :class:`Cocip`)
+    - Discontinuity is no longer set to 0 (this occurs directly in model
+      :class:`~pycontrails.models.cocip.Cocip`)
     - Instead of taking an average of the previous and following segments,
       energy flux is only calculated for the following segment.
 

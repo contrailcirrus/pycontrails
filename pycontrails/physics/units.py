@@ -359,7 +359,8 @@ def m_to_longitude_distance(
     r"""
     Convert cartesian distance (meters) to differences in longitude degrees.
 
-    Small angle approximation for ``distance_m`` << :attr:`constants.radius_earth`
+    Small angle approximation for ``distance_m`` <<
+    :data:`~pycontrails.physics.constants.radius_earth`
 
     Parameters
     ----------
@@ -382,7 +383,8 @@ def m_to_latitude_distance(distance_m: ArrayScalarLike) -> ArrayScalarLike:
     r"""
     Convert cartesian distance (meters) to differences in latitude degrees.
 
-    Small angle approximation for ``distance_m`` << :attr:`constants.radius_earth`
+    Small angle approximation for ``distance_m`` <<
+    :data:`~pycontrails.physics.constants.radius_earth`
 
     Parameters
     ----------
