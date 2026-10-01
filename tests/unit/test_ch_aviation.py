@@ -118,7 +118,8 @@ def test_eval_function_with_inconsistent_atyp_icao():
     )
 
     ch_a = ChAviation()
-    fl2 = ch_a.eval(fl)
+    with pytest.warns(UserWarning, match="Existing aircraft type disagrees with ch-aviation"):
+        fl2 = ch_a.eval(fl)
     assert fl.attrs == fl2.attrs  # No changes made to flight
 
 

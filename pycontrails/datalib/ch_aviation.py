@@ -6,6 +6,7 @@ import dataclasses
 import functools
 import os
 import pathlib
+import warnings
 from typing import Any, ClassVar
 
 import pandas as pd
@@ -351,6 +352,7 @@ class ChAviation(Model):
         # result in unrealistic aircraft mass estimates.
         existing_atyp_icao = self.source.get_constant("aircraft_type", None)
         if existing_atyp_icao and existing_atyp_icao != aircraft_props.aircraft_type_icao:
+            warnings.warn("Existing aircraft type disagrees with ch-aviation.", stacklevel=2)
             return self.source
 
         # Happy path: aircraft properties are available in ch-aviation
