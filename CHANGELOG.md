@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.64.1 [unreleased]
+
+### Fixes
+
+- Add a consistency check between the ADS-B and ch-aviation `aircraft_type` fields, which prevents incorrect aircraft characteristics from being assigned. This ensures that the simulated aircraft mass is realistic.
+
 ## 0.64.0
 
 ### Features

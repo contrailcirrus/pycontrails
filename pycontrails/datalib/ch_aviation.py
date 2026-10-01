@@ -345,17 +345,16 @@ class ChAviation(Model):
             _set_value_skip_nan(attrs, "operator_iata", engine_props.operator_iata)
             return self.source
 
-        # Ensure that `aircraft_type` in self.source.attrs is the same as provided by ch-aviation
-        attrs = self.source.attrs
-
         # Do not attach ch-aviation data when aircraft types are inconsistent.
         # A small subset of flights may have incorrect `tail_number` matches in the ADS-B database.
         # In these cases, attaching ch-aviation data could assign the wrong aircraft type and
         # result in unrealistic aircraft mass estimates.
-        if attrs["aircraft_type"] != aircraft_props.aircraft_type_icao:
+        existing_atyp_icao = self.source.get_constant("aircraft_type", None)
+        if existing_atyp_icao and existing_atyp_icao != aircraft_props.aircraft_type_icao:
             return self.source
 
         # Happy path: aircraft properties are available in ch-aviation
+        attrs = self.source.attrs
         _set_value_skip_nan(attrs, "msn", aircraft_props.msn)
         _set_value_skip_nan(
             attrs, "country_of_registration", aircraft_props.country_of_registration
