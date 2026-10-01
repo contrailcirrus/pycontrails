@@ -105,6 +105,23 @@ def test_eval_function_with_tail_number():
     assert not missing, f"Missing attributes: {missing}"
 
 
+def test_eval_function_with_inconsistent_atyp_icao():
+    fl = Flight(
+        longitude=[10, 50],
+        latitude=[30, 40],
+        altitude=[10000, 11000],
+        time=[np.datetime64("2023-03-14T00"), np.datetime64("2023-03-14T05")],
+        flight_id="Killer Whale",
+        icao_address="750457",
+        aircraft_type="A20N",
+        tail_number="9M-AGM",
+    )
+
+    ch_a = ChAviation()
+    fl2 = ch_a.eval(fl)
+    assert fl.attrs == fl2.attrs  # No changes made to flight
+
+
 def test_eval_function_with_uncovered_tail_number():
     """Test ``ChAviation.eval`` when the tail number is not available within the fleet database.
 
