@@ -498,6 +498,9 @@ class ERA5(ECMWFAPI):
                 xr.open_dataset(cds_temp_filename, engine=metsource.NETCDF_ENGINE)
             )
 
+            ds = ds.swap_dims ({'valid_time' : 'time', 'pressure_level' : 'level'})
+            ds = ds.rename_vars({'valid_time' : 'time', 'pressure_level' : 'level'})
+            
             # run preprocessing before cache
             ds = self._preprocess_era5_dataset(ds)
 

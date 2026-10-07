@@ -100,7 +100,8 @@ class ECMWFAPI(metsource.MetDataSource):
             return
 
         for t, ds_t in dataset.groupby("time", squeeze=False):
-            cache_path = self.create_cachepath(pd.Timestamp(t).to_pydatetime())
+#            cache_path = self.create_cachepath(pd.Timestamp(t).to_pydatetime())
+            cache_path = self.create_cachepath(pd.Timestamp(ds_t.time.values[0]).to_pydatetime())
             if os.path.exists(cache_path):
                 LOG.debug(f"Overwriting existing cache file {cache_path}")
                 # This may raise a PermissionError if the file is already open
