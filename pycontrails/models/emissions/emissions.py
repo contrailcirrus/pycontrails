@@ -28,7 +28,7 @@ from pycontrails.physics import jet, units
 _path_to_static = pathlib.Path(__file__).parent / "static"
 EDB_ENGINE_PATH = _path_to_static / "edb-gaseous-v32-engines.csv"
 EDB_NVPM_PATH = _path_to_static / "edb-nvpm-v32-engines.csv"
-ENGINE_UID_PATH = _path_to_static / "default-engine-uids.csv"
+ENGINE_UID_PATH = _path_to_static / "default-engine-uids-v32.csv"
 
 
 @dataclasses.dataclass
@@ -1163,5 +1163,11 @@ def load_default_aircraft_engine_mapping() -> pd.DataFrame:
         - engine_uid
         - engine_name
         - n-engines
+
+    Notes
+    -----
+    This .csv file is manually created based on the following steps:
+     (1) identify each  unique jet passenger aircraft provided in BADA 3.16,
+     (2) Assign a default aircraft-engine pair based on BADA 3.16 and manual checks.
     """
     return pd.read_csv(ENGINE_UID_PATH, index_col=0)
