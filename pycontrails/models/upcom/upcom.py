@@ -29,8 +29,8 @@ class UPCOMParams(ModelParams):
 
     # Schmidt-Appleman contrail formation parameters
     # Based on Schumann (1996) and Ponater et al. (2002)
-    ei_h2o: float = 1.21  # Water vapor emission index [kg H2O / kg fuel]
-    Q: float = 43.0e6  # Specific combustion heat [J/kg]
+    ei_h2o: float = 1.23  # Water vapor emission index [kg H2O / kg fuel]
+    Q: float = 43.13e6  # Specific combustion heat [J/kg]
     eta: float = 0.3  # Propulsion efficiency (dimensionless)
 
     # Humidity scaling
@@ -127,7 +127,7 @@ def sac(
         G,
         tzeroC=params["tzeroC"],
     )
-    sac_flag = ((air_temperature < T_contr) & (rh_liquid > RH_contr)).astype(
+    sac_flag = ((air_temperature <= T_contr) & (rh_liquid > RH_contr)).astype(
         air_temperature.dtype
     )
 
@@ -399,8 +399,12 @@ def calculate_contrail_temperature_and_rh(
 
     # Critical RH over liquid water
     # Use xarray arithmetic which handles broadcasting
+#    esat_l = thermo.e_sat_liquid(air_temperature)
+#    RH_contr = (G * (air_temperature - T_contr) + esat_l) / esat_l
+
     esat_l = thermo.e_sat_liquid(air_temperature)
-    RH_contr = (G * (air_temperature - T_contr) + esat_l) / esat_l
+    esat_contr = thermo.e_sat_liquid(T_contr)
+    RH_contr = (G * (air_temperature - T_contr) + esat_contr) / esat_l
 
     # Clip RH_contr to [0, 1] - use xr.where to preserve structure
     RH_contr = xr.where(RH_contr < 0, 0.0, RH_contr)
