@@ -5,6 +5,8 @@
 ### Fixes
 
 - Add a consistency check between the ADS-B and ch-aviation `aircraft_type` fields, which prevents incorrect aircraft characteristics from being assigned. This ensures that the simulated aircraft mass is realistic.
+- Update `models/emissions/static/default-engine-uids-v32.csv` to correct for errors and use the latest engine_uids in the ICAO EDB (v32).
+- Add simple versioning of this static file (`*-v32.csv`) for tracking purposes.
 
 ## 0.64.0
 
