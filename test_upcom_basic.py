@@ -3,10 +3,12 @@
 import numpy as np
 import xarray as xr
 from pycontrails.core.met import MetDataset
-from pycontrails.models.upcom import UPCOM, UPCOMParams
+from pycontrails.models.upcom import UPCOM, UPCOMParams, sac
 
 def create_test_met():
     """Create a simple test MetDataset."""
+    rng = np.random.default_rng(0)
+
     # Create coordinate arrays
     time = np.array(['2022-01-01T00:00:00'], dtype='datetime64[ns]')
     level = np.array([200, 250, 300])  # hPa
@@ -28,11 +30,11 @@ def create_test_met():
     T_base = np.array([220, 230, 240])  # K, for each level
     air_temperature = np.zeros(shape)
     for i, T in enumerate(T_base):
-        air_temperature[0, i, :, :] = T + np.random.randn(len(latitude), len(longitude)) * 2
+        air_temperature[0, i, :, :] = T + rng.normal(size=(len(latitude), len(longitude))) * 2
     
     # Create specific humidity field
     # Typical values: ~1e-5 to 1e-4 kg/kg at cruise altitude
-    specific_humidity = np.random.uniform(3e-5, 8e-5, shape)
+    specific_humidity = rng.uniform(3e-5, 8e-5, shape)
     
     # Create xarray Dataset
     ds = xr.Dataset(
@@ -78,10 +80,48 @@ def main():
     
     RH_contr = result.data['RH_contr'].values
     print(f"RH_contr range: {np.nanmin(RH_contr):.3f} - {np.nanmax(RH_contr):.3f}")
+
+    # Check SAC and both optional helper return modes
+    sac_output = result.data['sac']
+    sac_points = np.sum(sac_output.values > 0)
+    print(f"\nSAC points: {sac_points} / {sac_output.size} ({100*sac_points/sac_output.size:.1f}%)")
+
+    sac_only = sac(
+        result.data['air_temperature'],
+        result.data['rh_liquid'],
+        result.data['air_pressure'],
+        model.params,
+    )
+    np.testing.assert_array_equal(sac_only, sac_output)
+
+    sac_flag, sac_G, sac_T_contr, sac_RH_contr = sac(
+        result.data['air_temperature'],
+        result.data['rh_liquid'],
+        result.data['air_pressure'],
+        model.params,
+        return_diagnostics=True,
+    )
+    np.testing.assert_array_equal(sac_flag, sac_output)
+    np.testing.assert_array_equal(sac_G, result.data['G'])
+    np.testing.assert_array_equal(sac_T_contr, result.data['T_contr'])
+    np.testing.assert_array_equal(sac_RH_contr, result.data['RH_contr'])
     
     # Check potential persistent contrails
     ppc = result.data['potential_persistent_contrail'].values
     print(f"\nPotential persistent contrail points: {np.sum(ppc > 0)} / {ppc.size} ({100*np.sum(ppc)/ppc.size:.1f}%)")
+
+    legacy_ppc = (
+        (result.data['rhi'] > 1.0)
+        & (result.data['air_temperature'] < result.data['T_contr'])
+        & (result.data['rh_liquid'] > result.data['RH_contr'])
+    ).astype(result.data['rhi'].dtype)
+    np.testing.assert_array_equal(ppc, legacy_ppc)
+    np.testing.assert_array_equal(
+        result.data['potential_persistent_contrail'],
+        ((result.data['issr'] == 1) & (result.data['sac'] == 1)).astype(
+            result.data['rhi'].dtype
+        ),
+    )
     
     # Check G parameter
     G = result.data['G'].values

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, overload
 
@@ -78,6 +79,61 @@ class UPCOMParams(ModelParams):
             self.cp_air = _pc_constants.c_pd
             # Ratio R_d / R_v [dimensionless]; equivalent: 287.05 / 461.51
             self.epsilon = _pc_constants.epsilon
+
+
+def sac(
+    air_temperature: ArrayLike,
+    rh_liquid: ArrayLike,
+    air_pressure: ArrayLike,
+    params: Mapping[str, Any] | UPCOMParams | None = None,
+    *,
+    return_diagnostics: bool = False,
+) -> ArrayLike | tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
+    """Calculate the Schmidt-Appleman contrail formation criterion.
+
+    Parameters
+    ----------
+    air_temperature : ArrayLike
+        Air temperature, [K].
+    rh_liquid : ArrayLike
+        Relative humidity over liquid water.
+    air_pressure : ArrayLike
+        Air pressure, [Pa].
+    params : Mapping[str, Any] | UPCOMParams, optional
+        UPCOM parameters used to calculate the mixing-line slope and thresholds.
+        Defaults to :class:`UPCOMParams`.
+    return_diagnostics : bool, optional
+        If True, also return ``G``, ``T_contr``, and ``RH_contr`` after the SAC flag.
+
+    Returns
+    -------
+    ArrayLike | tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike]
+        A 0/1 SAC flag, optionally followed by ``G``, ``T_contr``, and ``RH_contr``.
+    """
+    if params is None:
+        params = UPCOMParams().as_dict()
+    elif isinstance(params, UPCOMParams):
+        params = params.as_dict()
+
+    if hasattr(air_pressure, "broadcast_like"):
+        air_pressure = air_pressure.broadcast_like(air_temperature)
+
+    G = (params["ei_h2o"] * params["cp_air"] * air_pressure) / (
+        params["epsilon"] * params["Q"] * (1.0 - params["eta"])
+    )
+    T_contr, RH_contr = calculate_contrail_temperature_and_rh(
+        air_temperature,
+        air_pressure,
+        G,
+        tzeroC=params["tzeroC"],
+    )
+    sac_flag = ((air_temperature < T_contr) & (rh_liquid > RH_contr)).astype(
+        air_temperature.dtype
+    )
+
+    if return_diagnostics:
+        return sac_flag, G, T_contr, RH_contr
+    return sac_flag
 
 
 class UPCOM(Model):
@@ -159,6 +215,7 @@ class UPCOM(Model):
             - ``rhi``: Relative humidity over ice
             - ``rh_liquid``: Relative humidity over liquid water
             - ``issr``: Ice supersaturated regions (1 where RHi > threshold, 0 elsewhere)
+            - ``sac``: Schmidt-Appleman criterion (1 where both SAC thresholds are met)
             - ``G``: Schmidt-Appleman G parameter
             - ``T_contr``: Critical contrail formation temperature [K]
             - ``RH_contr``: Critical relative humidity threshold
@@ -204,42 +261,17 @@ class UPCOM(Model):
         # Create ISSR mask
         issr = (rhi > self.params["rhi_threshold"]).astype(rhi.dtype)
 
-        # Calculate Schmidt-Appleman contrail formation thresholds
-        # Physical constants are held in params (loaded from pycontrails or hard-coded)
-        epsilon = self.params["epsilon"]
-        cp_air = self.params["cp_air"]
-        ei_h2o = self.params["ei_h2o"]
-        Q = self.params["Q"]
-        eta = self.params["eta"]
-        
-        # Broadcast air_pressure to match temperature's dimensions
-        # Use broadcast_like which preserves dimension order
-        if hasattr(air_pressure, 'broadcast_like'):
-            # For xarray DataArrays, use broadcast_like to match dimensions exactly
-            air_pressure_broadcast = air_pressure.broadcast_like(air_temperature)
-        else:
-            # For numpy arrays, just use as-is
-            air_pressure_broadcast = air_pressure
-        
-        # Now compute G with the broadcast pressure
-        G = (ei_h2o * cp_air * air_pressure_broadcast) / (epsilon * Q * (1.0 - eta))
-        
-        # Calculate the threshold values
-        T_contr, RH_contr = calculate_contrail_temperature_and_rh(
+        # Calculate the SAC flag and expose its diagnostics in the model output.
+        sac_flag, G, T_contr, RH_contr = sac(
             air_temperature,
-            air_pressure_broadcast,
-            G,
-            tzeroC=self.params["tzeroC"],
+            rh_liquid,
+            air_pressure,
+            self.params,
+            return_diagnostics=True,
         )
 
-        # Calculate potential persistent contrail regions
-        # All three conditions must be met:
-        # 1. Ice supersaturated (RHi > 1.0)
-        # 2. Temperature below critical threshold
-        # 3. RH over liquid above critical threshold
-        potential_persistent_contrail = (
-            (rhi > 1.0) & (air_temperature < T_contr) & (rh_liquid > RH_contr)
-        ).astype(rhi.dtype)
+        # Potential persistence requires both ice supersaturation and SAC.
+        potential_persistent_contrail = ((issr == 1) & (sac_flag == 1)).astype(rhi.dtype)
 
         # Update source with calculated fields and set proper attributes
         self.source.data["rhi"] = rhi
@@ -259,6 +291,13 @@ class UPCOM(Model):
             "long_name": "Ice supersaturated region",
             "units": "dimensionless",
             "description": "1 where RHi > threshold, 0 elsewhere",
+        }
+
+        self.source.data["sac"] = sac_flag
+        self.source.data["sac"].attrs = {
+            "long_name": "Schmidt-Appleman criterion",
+            "units": "dimensionless",
+            "description": "1 where air_temperature < T_contr and rh_liquid > RH_contr",
         }
         
         self.source.data["G"] = G
