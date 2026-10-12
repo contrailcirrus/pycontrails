@@ -294,6 +294,9 @@ def parse_ofp_xml(raw_xml: str | bytes | IO[str] | IO[bytes]) -> flight.Flight:
     if aircraft_el is not None and (val := aircraft_el.get("aircraftRegistration")):
         attrs["tail_number"] = val
 
+    if val := root.findtext(".//{*}TakeoffWeight//{*}Value"):
+        attrs["takeoff_weight"] = float(val)
+
     return flight.Flight(data=df, attrs=attrs)
 
 
