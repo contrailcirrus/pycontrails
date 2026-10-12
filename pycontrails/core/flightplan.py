@@ -2,11 +2,11 @@
 
 import datetime
 import io
+import math
 import re
 import xml.etree.ElementTree as ET
 from typing import IO, Any
 
-import numpy as np
 import pandas as pd
 
 from pycontrails.core import flight
@@ -296,12 +296,9 @@ def parse_ofp_xml(raw_xml: str | bytes | IO[str] | IO[bytes]) -> flight.Flight:
         attrs["tail_number"] = val
 
     if val := root.findtext(".//{*}TakeoffWeight//{*}Value"):
-        try:
-            takeoff_weight = float(val)
-            if np.isfinite(takeoff_weight) and takeoff_weight > 0:
-                attrs["takeoff_weight"] = takeoff_weight
-        except ValueError:
-            pass
+        takeoff_weight = float(val)
+        if 0.0 < takeoff_weight < math.inf:
+            attrs["takeoff_weight"] = takeoff_weight
 
     return flight.Flight(data=df, attrs=attrs)
 
