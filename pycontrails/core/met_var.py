@@ -45,7 +45,7 @@ class MetVariable:
 
     #: WMO Grib v1 variable id, if defined.
     #: See `WMO Codes Registry, Grib Edition 1 <https://codes.wmo.int/_grib1>`_
-    #: and `CF Standard Names, version 77 <https://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html>`_  # noqa: E501
+    #: and `CF Standard Names, version 77 <https://cfconventions.org/Data/cf-standard-names/77/build/cf-standard-name-table.html>`_
     grib1_id: int | None = None
 
     #: WMO Grib 2 variable id, if defined.
