@@ -1558,7 +1558,7 @@ class TestCargoLoadFactorEstimates:
 
 @pytest.mark.parametrize("sign", [1.0, -1.0])
 def test_step_is_flown_at_nominal_rocd(sign: float) -> None:
-    """Confirm a shallow 2000 ft step becomes level flight followed by a nominal-rate step."""
+    """Confirm a shallow 2000 ft step becomes a nominal-rate step followed by level flight."""
     minimum_rocd = 500.0
     nominal_rocd = 2000.0
 
@@ -1578,10 +1578,10 @@ def test_step_is_flown_at_nominal_rocd(sign: float) -> None:
     assert out.size == fl.size + 1  # a single waypoint added
     assert np.sum(out["waypoint_name"] == "PS") == 1
 
-    # Level flight, then the step at the nominal rate, then level again
-    np.testing.assert_allclose(out.segment_rocd()[:-1], [0.0, sign * nominal_rocd, 0.0])
-    np.testing.assert_allclose(out.altitude_ft[1], fl.altitude_ft[0])
-    assert out["time"][1] == np.datetime64("2025-01-01T00:59:00")
+    # The step at the nominal rate, then level flight
+    np.testing.assert_allclose(out.segment_rocd()[:-1], [sign * nominal_rocd, 0.0, 0.0])
+    np.testing.assert_allclose(out.altitude_ft[1], fl.altitude_ft[1])
+    assert out["time"][1] == np.datetime64("2025-01-01T00:01:00")
 
 
 @pytest.mark.parametrize("resolution", ["1s", "1min", "2min", "10min"])
@@ -1615,5 +1615,5 @@ def test_no_segment_left_below_minimum_rocd(resolution: str) -> None:
 
     step = np.flatnonzero(out["waypoint_name"] == "PS")
     assert step.size == 2
-    assert np.all(rocd[step] <= nominal_rocd + 1e-6)
+    assert np.all(rocd[step - 1] <= nominal_rocd + 1e-6)
     assert np.all(np.diff(out["time"]) > np.timedelta64(0, "s"))

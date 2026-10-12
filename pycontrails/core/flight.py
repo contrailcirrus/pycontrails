@@ -976,6 +976,7 @@ class Flight(GeoVectorDataset):
         and a pseudo waypoint is inserted where the step climb or descent ends. In this way, the
         segment becomes a step climb or descent at ``nominal_rocd``, followed by level flight.
         ::
+
             original                        with pseudo waypoint PS
 
             FL360                  B        FL360      PS -------- B
@@ -987,7 +988,8 @@ class Flight(GeoVectorDataset):
         The pseudo waypoint lands on the first multiple of ``resolution`` at or after the exact
         step end. Rounding up lengthens the step duration, which keeps the resulting ROCD
         at or below ``nominal_rocd``. For a step shorter than ``resolution``, snapping would
-        push the ROCD back below ``minimum_rocd``, and the exact time is kept instead.
+        push the ROCD back below ``minimum_rocd``, and the exact time, rounded up to the
+        second, is kept instead.
 
         Parameters
         ----------
@@ -1030,8 +1032,10 @@ class Flight(GeoVectorDataset):
 
         t_snap = np.ceil(t_exact / res_s) * res_s
 
-        # Snapping down can drag the ROCD back below minimum_rocd, keep the exact time in that case
-        t = np.where(t_snap >= time_s[idx] + d_t * nominal_rocd / minimum_rocd, t_exact, t_snap)
+        # Snapping up can drag the ROCD back below minimum_rocd, keep the exact time in that case.
+        t = np.where(
+            t_snap >= time_s[idx] + d_t * nominal_rocd / minimum_rocd, np.ceil(t_exact), t_snap
+        )
 
         # Could interpolate on the geodesic with pyproj if needed. For now, use a straight
         # line in the Plate Carree space (same as resample_and_fill for short segments).
