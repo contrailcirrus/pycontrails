@@ -964,28 +964,28 @@ class Flight(GeoVectorDataset):
         minimum_rocd: float = 500.0,
         nominal_rocd: float = 2000.0,
     ) -> Self:
-        """Add pseudo waypoints as necessary at the start of each step climb or descent.
+        """Add pseudo waypoints as necessary at the end of each step climb or descent.
 
         .. versionadded:: 0.63.4
 
         Flight plans encode a step climb (or descent) as a pair of cruise waypoints at different
         altitudes. Linearly interpolating altitude between them implies an unrealistic shallow
         climb that ATC would not clear. Any segment whose ROCD is nonzero but below the
-        ``minimum_rocd`` is treated as such a step. For these segments, a pseudo waypoint is
-        inserted where the step climb actually begins. In this way, the segment becomes a level
-        flight followed by a step climb at ``nominal_rocd``.
+        ``minimum_rocd`` is treated as such a step. For these segments, the altitude change is
+        assumed to commence at the first waypoint, consistent with ICAO flight-planning conventions,
+        and a pseudo waypoint is inserted where the step climb or descent ends. In this way, the
+        segment becomes a step climb or descent at ``nominal_rocd``, followed by level flight.
         ::
-
             original                        with pseudo waypoint PS
 
-            FL360                  B        FL360                  B
-                               ,-'                                /
-                           ,-'                                   /
-            FL340   A  ,-'                  FL340   A -------- PS
+            FL360                  B        FL360      PS -------- B
+                               ,-'                    /
+                           ,-'                       /
+            FL340   A  ,-'                  FL340   A
 
 
-        The pseudo waypoint lands on the last multiple of ``resolution`` at or before the
-        exact step start. Rounding down lengthens the step duration, which keeps the resulting ROCD
+        The pseudo waypoint lands on the first multiple of ``resolution`` at or after the exact
+        step end. Rounding up lengthens the step duration, which keeps the resulting ROCD
         at or below ``nominal_rocd``. For a step shorter than ``resolution``, snapping would
         push the ROCD back below ``minimum_rocd``, and the exact time is kept instead.
 
@@ -998,7 +998,7 @@ class Flight(GeoVectorDataset):
             ROCD below which an altitude change is treated as a step climb, by default 500.0,
             [:math:`ft min^{-1}`].
         nominal_rocd : float, optional
-            ROCD at which the step climb or descent is flown, by default 2000.0,
+            Nominal ROCD for the step climb or descent, by default 2000.0,
             [:math:`ft min^{-1}`].
 
         Returns
@@ -1007,7 +1007,7 @@ class Flight(GeoVectorDataset):
             Copy of the flight with pseudo waypoints inserted. Pseudo waypoints are named
             "PS" if the flight has a ``waypoint_name`` key.
         """
-        if nominal_rocd < minimum_rocd:
+        if nominal_rocd <= minimum_rocd:
             raise ValueError("The nominal ROCD must exceed the minimum ROCD")
 
         res_s = pd.Timedelta(resolution) // pd.Timedelta("1s")
@@ -1026,12 +1026,12 @@ class Flight(GeoVectorDataset):
 
         d_alt_ft = alt_ft[idx + 1] - alt_ft[idx]
         d_t = np.abs(d_alt_ft) / nominal_rocd * 60.0  # minute -> second
-        t_exact = time_s[idx + 1] - d_t
+        t_exact = time_s[idx] + d_t
 
-        t_snap = np.floor(t_exact / res_s) * res_s
+        t_snap = np.ceil(t_exact / res_s) * res_s
 
         # Snapping down can drag the ROCD back below minimum_rocd, keep the exact time in that case
-        t = np.where(t_snap <= time_s[idx + 1] - d_t * nominal_rocd / minimum_rocd, t_exact, t_snap)
+        t = np.where(t_snap >= time_s[idx] + d_t * nominal_rocd / minimum_rocd, t_exact, t_snap)
 
         # Could interpolate on the geodesic with pyproj if needed. For now, use a straight
         # line in the Plate Carree space (same as resample_and_fill for short segments).
@@ -1045,7 +1045,7 @@ class Flight(GeoVectorDataset):
 
         for vert_key in self.vertical_keys:
             if vert_key in self:
-                data[vert_key] = self[vert_key][idx]
+                data[vert_key] = self[vert_key][idx + 1]
 
         ps = Flight(
             longitude=lon,
