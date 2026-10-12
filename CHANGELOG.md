@@ -7,6 +7,8 @@
 - Add a consistency check between the ADS-B and ch-aviation `aircraft_type` fields, which prevents incorrect aircraft characteristics from being assigned. This ensures that the simulated aircraft mass is realistic.
 - Update `models/emissions/static/default-engine-uids-v32.csv` to correct for errors and use the latest engine_uids in the ICAO EDB (v32).
 - Add simple versioning of this static file (`*-v32.csv`) for tracking purposes.
+- Fix the `add_pseudo_waypoints` function to initiate any step climbs and descents at the beginning of the flight segment, rather than near its end. This is consistent with ICAO flight-planning conventions.
+- Add `takeoff_weight` to the flight attributes when parsing OFP XML, if available. This is an important parameter that can influence the simulated fuel consumption and aircraft performance.
 
 ### Internals
 
