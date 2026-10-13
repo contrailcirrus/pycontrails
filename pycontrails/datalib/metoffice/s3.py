@@ -37,10 +37,6 @@ PRODUCT_PREFIX = "global-deterministic-10km"
 #: Cruise pressure levels to fetch, in hPa
 CRUISE_LEVELS_HPA = (300, 275, 250, 225, 200, 175, 150)
 
-#: Example extent covering CONUS, (lon_min, lon_max, lat_min, lat_max). Not used as
-#: a default anywhere in this module; callers pass it explicitly if they want it.
-CONUS_EXTENT = (-134, -63, 20, 50)
-
 #: Run cadence (hours): Met Office global deterministic runs at 00/06/12/18Z
 RUN_CADENCE_HOURS = 6
 
@@ -388,7 +384,7 @@ def fetch_pressure_level_field(
     """Download the object in full, then fetch the cruise-level, region-cropped subset.
 
     Downloads the whole object to a local temp file via ``fs.get``, opens it with
-    ``h5netcdf``, and loads only the selected subset into memory. The temp file is
+    ``netcdf4``, and loads only the selected subset into memory. The temp file is
     removed once the dataset has been closed, even if the download or selection
     fails.
 
@@ -425,7 +421,7 @@ def fetch_pressure_level_field(
     with temp.temp_file() as target:
         fs.get(s3_path, target)
         with xr.open_dataset(
-            target, engine="h5netcdf", decode_times=True, decode_timedelta=True
+            target, engine="netcdf4", decode_times=True, decode_timedelta=True
         ) as ds:
             _assert_time_coords_match(ds, run=run, validity=validity, lead_hours=lead_hours)
             return select_cruise_subset(ds, parameter, key=key, extent=extent).load()

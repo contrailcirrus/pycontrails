@@ -24,6 +24,9 @@ from pycontrails.datalib.metoffice.ukmo import (
 from pycontrails.physics import thermo
 from tests import OFFLINE
 
+#: Example extent covering CONUS, (lon_min, lon_max, lat_min, lat_max)
+CONUS_EXTENT = (-134, -63, 20, 50)
+
 ##############
 # s3 utilities
 ##############
@@ -225,10 +228,10 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
     fixture_path = _cached_reference_file(parameter)
 
     local_ds = xr.open_dataset(
-        fixture_path, engine="h5netcdf", decode_times=True, decode_timedelta=True
+        fixture_path, engine="netcdf4", decode_times=True, decode_timedelta=True
     )
     expected = s3.select_cruise_subset(
-        local_ds, parameter, key=str(fixture_path), extent=s3.CONUS_EXTENT
+        local_ds, parameter, key=str(fixture_path), extent=CONUS_EXTENT
     ).load()
 
     key = s3.object_key(REFERENCE_RUN, REFERENCE_VALIDITY, REFERENCE_LEAD_HOURS, parameter)
@@ -243,7 +246,7 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
         run=REFERENCE_RUN,
         validity=REFERENCE_VALIDITY,
         lead_hours=REFERENCE_LEAD_HOURS,
-        extent=s3.CONUS_EXTENT,
+        extent=CONUS_EXTENT,
     )
 
     np.testing.assert_array_equal(actual.values, expected.values)
