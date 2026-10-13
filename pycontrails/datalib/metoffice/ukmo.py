@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import sys
 import warnings
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -10,6 +11,11 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 import pycontrails
 from pycontrails.core import met_var
@@ -248,9 +254,9 @@ class MetOfficeUM(metsource.MetDataSource):
         """Transform one hour of raw fetched data into the cached schema.
 
         Selects the requested pressure levels, computes ``specific_humidity``,
-        and renames to the short names :meth:`~pycontrails.datalib._met_utils.\
-metsource.MetDataSource._check_is_ds_complete` (and the rest of pycontrails)
-        expect.
+        and renames to the short names expected by
+        :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource._check_is_ds_complete`
+        (and the rest of pycontrails).
 
         Returns
         -------
@@ -262,7 +268,7 @@ metsource.MetDataSource._check_is_ds_complete` (and the rest of pycontrails)
         # silently mask a non-ascending latitude axis -- check it here instead,
         # while it's still attributable to this hour's raw fetched data.
         latitude = raw_ds["latitude"].values
-        if not np.all(np.diff(latitude) > 0):
+        if not np.all(np.diff(latitude) > 0.0):
             msg = f"expected ascending latitude ordering, got {latitude[:3]}...{latitude[-3:]}"
             raise AssertionError(msg)
 
@@ -287,25 +293,23 @@ metsource.MetDataSource._check_is_ds_complete` (and the rest of pycontrails)
         q = ds["relative_humidity"] * thermo.q_sat_liquid(ds["air_temperature"], level_pa)
         ds = ds.assign(specific_humidity=q)
 
-        rename = {"air_temperature": "t", "specific_humidity": "q", "relative_humidity": "r"}
+        rename = {v.standard_name: v.short_name for v in self.pressure_level_variables}
         ds = ds.rename({k: v for k, v in rename.items() if k in ds})
 
-        keep = [name for name in ("t", "q", "r") if name == "q" or name in self.variable_shortnames]
+        keep = [
+            v.short_name
+            for v in self.pressure_level_variables
+            if v == met_var.SpecificHumidity or v.short_name in self.variable_shortnames
+        ]
         return ds[keep]
 
+    @override
     def open_metdataset(
         self,
         dataset: xr.Dataset | None = None,
         xr_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> MetDataset:
-        """Open the requested window as a ``MetDataset``.
-
-        Returns
-        -------
-        MetDataset
-            The processed dataset for the requested window.
-        """
         if dataset is not None:
             msg = "Parameter 'dataset' is not supported for MetOfficeUM data"
             raise ValueError(msg)
