@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import itertools
 import pathlib
 import warnings
 from unittest import mock
@@ -55,88 +56,161 @@ def _cached_reference_file(parameter: str) -> pathlib.Path:
     return cache_path
 
 
-def test_run_for_valid_time_within_cycle():
-    assert s3.run_for_valid_time(datetime.datetime(2024, 9, 15, 3)) == datetime.datetime(
-        2024, 9, 15, 0
-    )
+def dt(*args) -> datetime.datetime:
+    return datetime.datetime(*args)
 
 
-def test_lead_for_valid_time_within_cycle():
-    assert s3.lead_for_valid_time(datetime.datetime(2024, 9, 15, 3)) == 3
+def hours(n: float) -> datetime.timedelta:
+    return datetime.timedelta(hours=n)
 
 
-def test_run_for_valid_time_on_cycle_boundary():
-    assert s3.run_for_valid_time(datetime.datetime(2024, 9, 15, 18)) == datetime.datetime(
-        2024, 9, 15, 18
-    )
+def test_latest_forecast_within_cycle():
+    assert s3.latest_forecast(dt(2026, 3, 15, 3)) == dt(2026, 3, 15, 0)
+    assert s3.latest_forecast(dt(2026, 3, 15, 17, 59)) == dt(2026, 3, 15, 12)
 
 
-def test_lead_for_valid_time_on_cycle_boundary():
-    assert s3.lead_for_valid_time(datetime.datetime(2024, 9, 15, 18)) == 0
+def test_latest_forecast_on_cycle_boundary():
+    assert s3.latest_forecast(dt(2026, 3, 15, 18)) == dt(2026, 3, 15, 18)
 
 
-def test_run_for_valid_time_rejects_non_hourly():
-    with pytest.raises(ValueError, match="must fall on the hour"):
-        s3.run_for_valid_time(datetime.datetime(2024, 9, 15, 3, 30))
+@pytest.mark.parametrize("hour", [1, 3, 5, 7, 23])
+def test_check_forecast_time_rejects_hours_that_are_not_cycles(hour):
+    with pytest.raises(ValueError, match="must be one of"):
+        s3.check_forecast_time(dt(2026, 3, 15, hour))
+
+
+def test_check_forecast_time_rejects_non_hourly():
+    with pytest.raises(ValueError, match="must be one of"):
+        s3.check_forecast_time(dt(2026, 3, 15, 6, 30))
+
+
+@pytest.mark.parametrize("hour", [0, 12])
+def test_last_step_long_cycles(hour):
+    forecast_time = dt(2026, 3, 15, hour)
+    assert s3.last_step(forecast_time) == forecast_time + hours(168)
+    assert s3.last_3hourly_step(forecast_time) == forecast_time + hours(144)
+    assert s3.last_hourly_step(forecast_time) == forecast_time + hours(54)
+
+
+@pytest.mark.parametrize("hour", [6, 18])
+def test_last_step_short_cycles(hour):
+    forecast_time = dt(2026, 3, 15, hour)
+    assert s3.last_step(forecast_time) == forecast_time + hours(69)
+    assert s3.last_3hourly_step(forecast_time) == forecast_time + hours(69)
+    assert s3.last_hourly_step(forecast_time) == forecast_time + hours(54)
+
+
+def test_last_step_of_short_cycles_changed_on_2026_01_21():
+    """06/18Z forecasts ended at +66h until the 2026-01-21 18Z forecast, which ends at +69h.
+    Checked against the archive."""
+    assert s3.last_step(dt(2026, 1, 21, 6)) == dt(2026, 1, 21, 6) + hours(66)
+    assert s3.last_step(dt(2026, 1, 21, 18)) == dt(2026, 1, 21, 18) + hours(69)
+    assert s3.last_step(dt(2026, 1, 22, 6)) == dt(2026, 1, 22, 6) + hours(69)
+    assert s3.last_step(dt(2025, 6, 15, 18)) == dt(2025, 6, 15, 18) + hours(66)
+
+
+def test_last_step_unaffected_by_2026_01_21_change_for_long_cycles():
+    assert s3.last_step(dt(2025, 6, 15, 0)) == dt(2025, 6, 15, 0) + hours(168)
+
+
+@pytest.mark.parametrize(
+    ("forecast_time", "last_lead", "expected"),
+    [
+        (dt(2026, 3, 15, 0), 0, "1h"),
+        (dt(2026, 3, 15, 0), 54, "1h"),
+        (dt(2026, 3, 15, 0), 55, "3h"),
+        (dt(2026, 3, 15, 0), 144, "3h"),
+        (dt(2026, 3, 15, 0), 145, "6h"),
+        (dt(2026, 3, 15, 0), 168, "6h"),
+        (dt(2026, 3, 15, 6), 54, "1h"),
+        (dt(2026, 3, 15, 6), 55, "3h"),
+        (dt(2026, 3, 15, 6), 69, "3h"),
+    ],
+)
+def test_forecast_timestep_freq(forecast_time, last_lead, expected):
+    assert s3.forecast_timestep_freq(forecast_time, forecast_time + hours(last_lead)) == expected
+
+
+def test_forecast_for_time_range_single_time_is_latest_forecast():
+    assert s3.forecast_for_time_range(dt(2026, 3, 15, 7), dt(2026, 3, 15, 7)) == dt(2026, 3, 15, 6)
+
+
+def test_forecast_for_time_range_within_latest_forecast():
+    assert s3.forecast_for_time_range(dt(2026, 3, 15, 7), dt(2026, 3, 17, 7)) == dt(2026, 3, 15, 6)
+
+
+def test_forecast_for_time_range_uses_older_forecast_when_latest_is_too_short():
+    # The 06Z forecast ends at +69h and can't reach 70h after 07Z. 00Z reaches +168h.
+    first, last = dt(2026, 3, 15, 7), dt(2026, 3, 15, 7) + hours(70)
+    assert s3.forecast_for_time_range(first, last) == dt(2026, 3, 15, 0)
+
+
+def test_forecast_for_time_range_picks_most_recent_covering_forecast():
+    # 12Z is the latest forecast at 13Z. It is a long cycle, so it reaches 100h out.
+    first = dt(2026, 3, 15, 13)
+    assert s3.forecast_for_time_range(first, first + hours(100)) == dt(2026, 3, 15, 12)
+
+
+def test_forecast_for_time_range_raises_when_no_forecast_is_long_enough():
+    first = dt(2026, 3, 15, 0)
+    with pytest.raises(ValueError, match="not contained in any single forecast"):
+        s3.forecast_for_time_range(first, first + hours(169))
+
+
+def test_lead_for_valid_time_within_hourly_period():
+    assert s3.lead_for_valid_time(dt(2026, 3, 15, 6), dt(2026, 3, 15, 9)) == 3
+    assert s3.lead_for_valid_time(dt(2026, 3, 15, 6), dt(2026, 3, 15, 6)) == 0
+
+
+@pytest.mark.parametrize(("lead", "valid"), [(54, True), (55, False), (57, True), (144, True)])
+def test_lead_for_valid_time_steps_for_long_cycle(lead, valid):
+    forecast_time = dt(2026, 3, 15, 0)
+    valid_time = forecast_time + hours(lead)
+    if valid:
+        assert s3.lead_for_valid_time(forecast_time, valid_time) == lead
+    else:
+        with pytest.raises(ValueError, match="only publishes every"):
+            s3.lead_for_valid_time(forecast_time, valid_time)
+
+
+@pytest.mark.parametrize(("lead", "valid"), [(147, False), (150, True), (153, False), (168, True)])
+def test_lead_for_valid_time_six_hourly_tail_of_long_cycle(lead, valid):
+    forecast_time = dt(2026, 3, 15, 12)
+    valid_time = forecast_time + hours(lead)
+    if valid:
+        assert s3.lead_for_valid_time(forecast_time, valid_time) == lead
+    else:
+        with pytest.raises(ValueError, match="only publishes every 6h"):
+            s3.lead_for_valid_time(forecast_time, valid_time)
+
+
+def test_lead_for_valid_time_short_cycle_ends_at_69():
+    forecast_time = dt(2026, 3, 15, 6)
+    assert s3.lead_for_valid_time(forecast_time, forecast_time + hours(69)) == 69
+    with pytest.raises(ValueError, match="after the end"):
+        s3.lead_for_valid_time(forecast_time, forecast_time + hours(72))
+
+
+def test_lead_for_valid_time_short_cycle_before_2026_01_21_ends_at_66():
+    forecast_time = dt(2025, 9, 15, 6)
+    assert s3.lead_for_valid_time(forecast_time, forecast_time + hours(66)) == 66
+    with pytest.raises(ValueError, match="after the end"):
+        s3.lead_for_valid_time(forecast_time, forecast_time + hours(69))
+
+
+def test_lead_for_valid_time_rejects_valid_time_before_forecast():
+    with pytest.raises(ValueError, match="before the forecast time"):
+        s3.lead_for_valid_time(dt(2026, 3, 15, 6), dt(2026, 3, 15, 5))
 
 
 def test_lead_for_valid_time_rejects_non_hourly():
-    with pytest.raises(ValueError, match="must fall on the hour"):
-        s3.lead_for_valid_time(datetime.datetime(2024, 9, 15, 3, 30))
+    with pytest.raises(ValueError, match="only publishes every"):
+        s3.lead_for_valid_time(dt(2026, 3, 15, 6), dt(2026, 3, 15, 7, 30))
 
 
-def test_run_hours_for_lead_all_cycles_at_and_below_boundary():
-    assert s3.run_hours_for_lead(69) == (0, 6, 12, 18)
-
-
-def test_run_hours_for_lead_long_cycles_only_above_boundary():
-    assert s3.run_hours_for_lead(72) == (0, 12)
-
-
-def test_run_for_valid_time_at_lead_matches_shortest_lead_at_lead_zero():
-    valid_time = datetime.datetime(2024, 9, 15, 18)
-    expected_run = s3.run_for_valid_time(valid_time)
-    assert s3.run_for_valid_time_at_lead(valid_time, 0) == expected_run
-
-
-def test_run_for_valid_time_at_lead_solves_run_minus_lead():
-    run = s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 12), 24)
-    assert run == datetime.datetime(2024, 9, 14, 12)
-
-
-def test_run_for_valid_time_at_lead_rejects_unreachable_run_hour():
-    # valid time 2024-09-15T06 at lead 72 implies run 2024-09-12T06, but only 00/12Z
-    # runs reach lead 72 (06Z/18Z stop at lead 69).
-    with pytest.raises(ValueError, match="does not reach that lead"):
-        s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 6), 72)
-
-
-def test_run_for_valid_time_at_lead_accepts_06z_at_lead_69():
-    # Confirmed against the live archive: 06Z/18Z runs DO publish lead 69 (the
-    # true short-cycle cutoff), not just up to 54 as an earlier, less precise
-    # version of this boundary assumed.
-    valid_time = datetime.datetime(2024, 9, 15, 6) + datetime.timedelta(hours=69)
-    run = s3.run_for_valid_time_at_lead(valid_time, 69)
-    assert run == datetime.datetime(2024, 9, 15, 6)
-
-
-def test_run_for_valid_time_at_lead_rejects_non_hourly():
-    with pytest.raises(ValueError, match="must fall on the hour"):
-        s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 3, 30), 24)
-
-
-def test_run_for_valid_time_at_lead_rejects_lead_off_extended_cadence():
-    # Beyond T+54 the archive only publishes every 3rd hour; 55 isn't one of them.
-    with pytest.raises(ValueError, match="not a valid archive lead"):
-        s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 6), 55)
-
-
-def test_run_for_valid_time_at_lead_accepts_lead_on_extended_cadence():
-    # 57 = 54 + 3: a valid extended-cadence lead, previously (incorrectly)
-    # rejected for 06Z/18Z runs since it exceeds the old 54h boundary.
-    expected_run = datetime.datetime(2024, 9, 15, 6)
-    valid_time = expected_run + datetime.timedelta(hours=57)
-    assert s3.run_for_valid_time_at_lead(valid_time, 57) == expected_run
+def test_lead_for_valid_time_rejects_forecast_time_that_is_not_a_cycle():
+    with pytest.raises(ValueError, match="must be one of"):
+        s3.lead_for_valid_time(dt(2026, 3, 15, 7), dt(2026, 3, 15, 9))
 
 
 def test_object_key_format_for_pressure_level_variable():
@@ -687,7 +761,7 @@ def test_provider_dataset_attrs_no_warning(tmp_path, monkeypatch):
 
 
 def test_create_cachepath_differs_by_lead_hours(tmp_path):
-    t = datetime.datetime(2024, 9, 1, 0)
+    t = dt(2024, 9, 1, 0)
     cachestore = DiskCacheStore(tmp_path)
     default_um = UM10(t, cachestore=cachestore)
     fixed_um = UM10(t, cachestore=cachestore, lead_hours=24)
@@ -695,20 +769,30 @@ def test_create_cachepath_differs_by_lead_hours(tmp_path):
     assert default_um.create_cachepath(t) != fixed_um.create_cachepath(t)
 
 
-def test_fixed_lead_zero_cachepath_differs_from_shortest_lead(tmp_path):
-    """lead_hours=0 must never be conflated with lead_hours=None (truthiness bug)."""
-    t = datetime.datetime(2024, 9, 1, 0)
+def test_create_cachepath_differs_by_forecast_time(tmp_path):
+    t = dt(2024, 9, 1, 12)
     cachestore = DiskCacheStore(tmp_path)
-    default_um = UM10(t, cachestore=cachestore)
-    lead_zero_um = UM10(t, cachestore=cachestore, lead_hours=0)
+    latest = UM10(t, cachestore=cachestore)
+    earlier = UM10(t, cachestore=cachestore, forecast_time=dt(2024, 9, 1, 6))
 
-    assert default_um.create_cachepath(t) != lead_zero_um.create_cachepath(t)
+    assert latest.forecast_time == dt(2024, 9, 1, 12)
+    assert latest.create_cachepath(t) != earlier.create_cachepath(t)
+
+
+def test_create_cachepath_same_for_same_forecast_file_however_requested(tmp_path):
+    """A fixed lead of 24h at ``t`` reads the same file as the forecast one day earlier."""
+    t = dt(2024, 9, 1, 0)
+    cachestore = DiskCacheStore(tmp_path)
+    at_lead = UM10(t, cachestore=cachestore, lead_hours=24)
+    from_forecast = UM10(t, cachestore=cachestore, forecast_time=dt(2024, 8, 31, 0))
+
+    assert at_lead.create_cachepath(t) == from_forecast.create_cachepath(t)
 
 
 def test_lead_hours_threaded_through_to_live_fetch(tmp_path, monkeypatch):
     """A fixed ``lead_hours`` must be used for the S3 object key, not the
-    shortest-available lead."""
-    hour = datetime.datetime(2024, 9, 1, 12)
+    latest forecast."""
+    hour = dt(2024, 9, 1, 12)
     _patch_fetch_with_values(monkeypatch)
 
     captured = {}
@@ -724,4 +808,210 @@ def test_lead_hours_threaded_through_to_live_fetch(tmp_path, monkeypatch):
     UM10(hour, cachestore=DiskCacheStore(tmp_path), lead_hours=24).open_metdataset()
 
     assert captured["lead_hours"] == 24
-    assert captured["run"] == s3.run_for_valid_time_at_lead(hour, 24)
+    assert captured["run"] == hour - hours(24)
+
+
+def test_forecast_time_threaded_through_to_live_fetch(tmp_path, monkeypatch):
+    """Every hour is read from the one forecast, at its own lead."""
+    time_range = (dt(2024, 9, 1, 12), dt(2024, 9, 1, 14))
+    _patch_fetch_with_values(monkeypatch)
+
+    captured = []
+    original_object_key = s3.object_key
+
+    def capturing_object_key(run, valid_time, lead_hours, parameter):
+        captured.append((run, lead_hours))
+        return original_object_key(run, valid_time, lead_hours, parameter)
+
+    monkeypatch.setattr(s3, "object_key", capturing_object_key)
+
+    UM10(
+        time_range, forecast_time=dt(2024, 9, 1, 6), cachestore=DiskCacheStore(tmp_path)
+    ).open_metdataset()
+
+    assert {run for run, _ in captured} == {dt(2024, 9, 1, 6)}
+    assert {lead for _, lead in captured} == {6, 7, 8}
+
+
+##########################
+# time and forecast cycles
+##########################
+
+
+def make(time, tmp_path, **kwargs) -> UM10:
+    return UM10(time, cachestore=DiskCacheStore(tmp_path), **kwargs)
+
+
+def test_default_forecast_is_latest_at_or_before_start(tmp_path):
+    dlib = make(dt(2026, 3, 15, 7), tmp_path)
+
+    assert dlib.forecast_time == dt(2026, 3, 15, 6)
+    assert dlib.timesteps == [dt(2026, 3, 15, 7)]
+
+
+def test_default_forecast_for_time_range_is_one_forecast(tmp_path):
+    dlib = make((dt(2026, 3, 15, 7), dt(2026, 3, 16, 7)), tmp_path)
+
+    assert dlib.forecast_time == dt(2026, 3, 15, 6)
+    assert dlib.timesteps[0] == dt(2026, 3, 15, 7)
+    assert dlib.timesteps[-1] == dt(2026, 3, 16, 7)
+    assert len(dlib.timesteps) == 25
+
+
+def test_default_forecast_is_older_when_latest_is_too_short(tmp_path):
+    """70 hours from 07Z is beyond the 06Z forecast (+69h), so the 00Z forecast is used."""
+    start = dt(2026, 3, 15, 7)
+    dlib = make((start, start + hours(70)), tmp_path)
+
+    assert dlib.forecast_time == dt(2026, 3, 15, 0)
+
+
+def test_default_forecast_range_too_long_for_any_forecast(tmp_path):
+    start = dt(2026, 3, 15, 0)
+    with pytest.raises(ValueError, match="not contained in any single forecast"):
+        make((start, start + hours(170)), tmp_path)
+
+
+def test_forecast_time_explicit(tmp_path):
+    dlib = make(dt(2026, 3, 15, 9), tmp_path, forecast_time="2026-03-15 00:00")
+
+    assert dlib.forecast_time == dt(2026, 3, 15, 0)
+
+
+@pytest.mark.parametrize("forecast_time", ["2026-03-15 03:00", "2026-03-15 06:30"])
+def test_forecast_time_must_be_a_forecast_cycle(tmp_path, forecast_time):
+    with pytest.raises(ValueError, match="must be one of"):
+        make(dt(2026, 3, 15, 9), tmp_path, forecast_time=forecast_time)
+
+
+def test_forecast_time_must_be_parseable(tmp_path):
+    with pytest.raises(ValueError, match="Failed to parse forecast time"):
+        make(dt(2026, 3, 15, 9), tmp_path, forecast_time="not a time")
+
+
+def test_forecast_time_after_first_timestep_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="after first timestep"):
+        make(dt(2026, 3, 15, 5), tmp_path, forecast_time="2026-03-15 06:00")
+
+
+def test_forecast_time_beyond_end_of_forecast_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="beyond end of forecast"):
+        make(dt(2026, 3, 18, 7), tmp_path, forecast_time="2026-03-15 06:00")  # +73h > +69h
+
+
+def test_timestep_freq_hourly_within_first_54_hours(tmp_path):
+    dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 17, 6)), tmp_path)  # +54h
+
+    assert dlib.timesteps[1] - dlib.timesteps[0] == hours(1)
+    assert len(dlib.timesteps) == 55
+
+
+def test_timestep_freq_three_hourly_beyond_54_hours(tmp_path):
+    dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 17, 12)), tmp_path)  # +60h
+
+    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(3)}
+    assert len(dlib.timesteps) == 21
+
+
+def test_timestep_freq_six_hourly_beyond_144_hours(tmp_path):
+    dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 21, 6)), tmp_path)  # +150h
+
+    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(6)}
+    assert dlib.timesteps[-1] == dt(2026, 3, 21, 6)
+
+
+def test_timesteps_stay_on_the_forecast_grid(tmp_path):
+    """3-hourly timesteps are 3-hourly from the forecast time, not from midnight."""
+    dlib = make((dt(2026, 3, 15, 13, 30), dt(2026, 3, 18, 13)), tmp_path)  # 12Z, to +73h
+
+    assert dlib.forecast_time == dt(2026, 3, 15, 12)
+    assert all((t - dlib.forecast_time) % hours(3) == hours(0) for t in dlib.timesteps)
+    assert dlib.timesteps[0] >= dlib.forecast_time
+
+
+def test_explicit_timestep_freq_coarser_than_available(tmp_path):
+    dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 15, 12)), tmp_path, timestep_freq="6h")
+
+    assert dlib.timesteps == [dt(2026, 3, 15, h) for h in (0, 6, 12)]
+
+
+def test_explicit_timestep_freq_finer_than_available_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="cannot support requested timestep frequency"):
+        make((dt(2026, 3, 15, 0), dt(2026, 3, 17, 12)), tmp_path, timestep_freq="1h")
+
+
+def test_explicit_timestep_freq_ceiling_past_end_of_forecast_is_rejected(tmp_path):
+    """6-hourly timesteps ending at +68h round up to +72h, past the end of a 06Z forecast."""
+    with pytest.raises(ValueError, match="beyond end of forecast"):
+        make(
+            (dt(2026, 3, 15, 6), dt(2026, 3, 18, 2)),  # +68h
+            tmp_path,
+            forecast_time="2026-03-15 06:00",
+            timestep_freq="6h",
+        )
+
+
+def test_forecast_time_and_lead_hours_are_exclusive(tmp_path):
+    with pytest.raises(ValueError, match="Only one of forecast_time and lead_hours"):
+        make(dt(2026, 3, 15, 0), tmp_path, forecast_time="2026-03-14 00:00", lead_hours=24)
+
+
+def test_lead_hours_defaults_to_six_hourly_timesteps_on_the_lead_grid(tmp_path):
+    dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 16, 0)), tmp_path, lead_hours=3)
+
+    assert dlib.forecast_time is None
+    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(6)}
+    assert all((t - hours(3)).hour in (0, 6, 12, 18) for t in dlib.timesteps)
+
+
+def test_lead_hours_has_no_single_forecast_length_limit(tmp_path):
+    dlib = make((dt(2026, 3, 1, 0), dt(2026, 3, 31, 0)), tmp_path, lead_hours=24)
+
+    assert len(dlib.timesteps) == 121
+
+
+@pytest.mark.parametrize("timestep_freq", ["1h", "3h", "9h"])
+def test_lead_hours_requires_timestep_freq_multiple_of_six_hours(tmp_path, timestep_freq):
+    with pytest.raises(ValueError, match="multiple of 6h"):
+        make(dt(2026, 3, 15, 0), tmp_path, lead_hours=24, timestep_freq=timestep_freq)
+
+
+def test_lead_hours_beyond_short_forecasts_defaults_to_twelve_hourly_timesteps(tmp_path):
+    """Only 00/12Z forecasts reach a lead of 150h, so timesteps are 12 hours apart."""
+    dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 17, 0)), tmp_path, lead_hours=150)
+
+    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(12)}
+    assert all((t - hours(150)).hour in (0, 12) for t in dlib.timesteps)
+    for t in dlib.timesteps:
+        assert dlib._run_and_lead(t)[1] == 150
+
+
+def test_lead_hours_beyond_short_forecasts_rejects_six_hourly_timesteps(tmp_path):
+    with pytest.raises(ValueError, match="multiple of 12h"):
+        make(dt(2026, 3, 15, 0), tmp_path, lead_hours=150, timestep_freq="6h")
+
+
+@pytest.mark.parametrize(("lead_hours", "cadence"), [(0, 6), (69, 6), (70, 12), (168, 12)])
+def test_run_cadence_hours_for_lead(lead_hours, cadence):
+    assert s3.run_cadence_hours_for_lead(lead_hours) == cadence
+
+
+def test_lead_hours_accepts_twelve_hourly_timesteps(tmp_path):
+    dlib = make(
+        (dt(2026, 3, 15, 0), dt(2026, 3, 16, 0)), tmp_path, lead_hours=24, timestep_freq="12h"
+    )
+
+    assert dlib.timesteps == [dt(2026, 3, 15, 0), dt(2026, 3, 15, 12), dt(2026, 3, 16, 0)]
+
+
+@pytest.mark.parametrize(
+    ("lead_hours", "match"),
+    [
+        (-6, "before the forecast time"),
+        (169, "after the end"),
+        (153, "only publishes every 6h"),
+    ],
+)
+def test_lead_hours_the_archive_does_not_publish_is_rejected(tmp_path, lead_hours, match):
+    with pytest.raises(ValueError, match=match):
+        make(dt(2026, 3, 15, 0), tmp_path, lead_hours=lead_hours)
