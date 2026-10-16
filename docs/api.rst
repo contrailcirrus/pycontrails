@@ -94,6 +94,17 @@ DWD
     datalib.dwd.ods
 
 
+UKMO
+""""
+
+.. autosummary::
+    :toctree: api/
+
+    datalib.ukmo.UM10
+    datalib.ukmo.s3
+    datalib.ukmo.ukmo
+
+
 Geostationary Satellites
 """"""""""""""""""""""""
 
