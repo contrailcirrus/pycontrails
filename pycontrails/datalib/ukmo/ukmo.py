@@ -257,26 +257,68 @@ class UM10(metsource.MetDataSource):
         :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource.is_datafile_cached`
         has already determined are missing from :attr:`cachestore`.
 
-        An hour genuinely absent from the archive (:class:`UM10DataNotFoundError`)
-        doesn't abort the rest of the batch: it's collected and, if any hours failed,
-        raised as a single :class:`UM10DataNotFoundError` once every hour has been
-        attempted, so one missing hour doesn't prevent the others from being fetched
-        and cached. Any other exception -- e.g. a fixed ``lead_hours``/valid time
-        combination the archive can't produce (see :func:`s3.run_for_valid_time_at_lead`,
-        which raises ``ValueError``) -- is a caller or programming error, not a data
-        availability issue, and propagates immediately instead.
+        Fails fast: before downloading anything, every object needed for ``times`` is
+        checked against a listing of the archive, and a single
+        :class:`UM10DataNotFoundError` naming every missing hour is raised if any are
+        absent. Each hour is roughly 370 MB to download, so a request for data that does
+        not exist is reported straight away instead of after the available hours have
+        been downloaded. If an object nonetheless disappears between the check and its
+        download, :class:`UM10DataNotFoundError` is raised at that hour. Hours already
+        downloaded are cached and are not fetched again by a repeated call.
+
+        Raises
+        ------
+        UM10DataNotFoundError
+            If any requested hour is not in the S3 archive.
+        ValueError
+            If a fixed ``lead_hours``/valid time combination is one the archive can't
+            produce (see :func:`s3.run_for_valid_time_at_lead`). This is a caller error,
+            not a data availability issue, and so is not wrapped as
+            :class:`UM10DataNotFoundError`.
         """
         fs = s3.filesystem()
-        errors: dict[datetime, UM10DataNotFoundError] = {}
+        self._check_archive_has(fs, times)
         for t in times:
-            try:
-                self._download_convert_cache_handler(fs, t)
-            except UM10DataNotFoundError as exc:
-                errors[t] = exc
+            self._download_convert_cache_handler(fs, t)
 
-        if errors:
-            detail = "; ".join(f"{t.isoformat()}: {exc}" for t, exc in errors.items())
-            msg = f"{len(errors)} of {len(times)} hour(s) could not be fetched: {detail}"
+    def _run_and_lead(self, t: datetime) -> tuple[datetime, int]:
+        """Get the forecast run and lead time (hours) fetched for valid time ``t``."""
+        if self.lead_hours is not None:
+            return s3.run_for_valid_time_at_lead(t, self.lead_hours), self.lead_hours
+        return s3.run_for_valid_time(t), s3.lead_for_valid_time(t)
+
+    def _check_archive_has(self, fs: s3fs.S3FileSystem, times: list[datetime]) -> None:
+        """Check that every object needed for ``times`` is in the S3 archive.
+
+        Lists each distinct run once rather than querying each object.
+
+        Raises
+        ------
+        UM10DataNotFoundError
+            If any needed object is absent. The message names every missing hour.
+        ValueError
+            If ``t`` isn't hourly, or (with a fixed :attr:`lead_hours`) if the implied
+            run doesn't reach that lead.
+        """
+        published: dict[datetime, set[str]] = {}
+        missing: dict[datetime, list[str]] = {}
+        for t in times:
+            run, lead = self._run_and_lead(t)
+            if run not in published:
+                published[run] = s3.list_run_keys(fs, run)
+            for parameter in s3.PARAMETER_VARIABLE:
+                key = s3.object_key(run, t, lead, parameter)
+                if key not in published[run]:
+                    missing.setdefault(t, []).append(key)
+
+        if missing:
+            detail = "; ".join(
+                f"{t.isoformat()} (missing {', '.join(k)})" for t, k in missing.items()
+            )
+            msg = (
+                f"{len(missing)} of {len(times)} hour(s) could not be fetched from the "
+                f"S3 archive: {detail}"
+            )
             raise UM10DataNotFoundError(msg)
 
     def _download_convert_cache_handler(self, fs: s3fs.S3FileSystem, t: datetime) -> None:
@@ -291,12 +333,7 @@ class UM10(metsource.MetDataSource):
             run doesn't reach that lead -- a caller error, not a data availability
             issue, so it isn't wrapped as :class:`UM10DataNotFoundError`.
         """
-        if self.lead_hours is not None:
-            run = s3.run_for_valid_time_at_lead(t, self.lead_hours)
-            lead = self.lead_hours
-        else:
-            run = s3.run_for_valid_time(t)
-            lead = s3.lead_for_valid_time(t)
+        run, lead = self._run_and_lead(t)
 
         data_vars = {}
         for parameter, variable in s3.PARAMETER_VARIABLE.items():

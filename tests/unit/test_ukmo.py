@@ -272,6 +272,23 @@ class _FakeClient:
     functions themselves are replaced below."""
 
 
+class _Listing:
+    """Stand-in for the set returned by :func:`s3.list_run_keys`: contains every key
+    except those ``absent`` reports as missing."""
+
+    def __init__(self, absent=lambda key: False):
+        self._absent = absent
+
+    def __contains__(self, key: str) -> bool:
+        return not self._absent(key)
+
+
+def _patch_listing(monkeypatch, *, absent=lambda key: False) -> None:
+    """Patch :func:`s3.list_run_keys` so the pre-download existence check sees every
+    object, except those for which ``absent(key)`` is true."""
+    monkeypatch.setattr(s3, "list_run_keys", lambda fs, run: _Listing(absent))
+
+
 def _patch_fetch_with_values(
     monkeypatch,
     *,
@@ -288,6 +305,7 @@ def _patch_fetch_with_values(
     it would return.
     """
     monkeypatch.setattr(s3, "filesystem", _FakeClient)
+    _patch_listing(monkeypatch)
 
     def fake_fetch(fs, key, parameter, **kwargs):
         variable = s3.PARAMETER_VARIABLE[parameter]
@@ -412,7 +430,9 @@ def test_cache_dataset_writes_correctly_to_gcp_cache_store(tmp_path, monkeypatch
 
 
 def test_download_dataset_raises_when_live_fetch_fails(tmp_path, monkeypatch):
+    """An object listed in the archive that is gone by the time it's fetched."""
     monkeypatch.setattr(s3, "filesystem", _FakeClient)
+    _patch_listing(monkeypatch)
 
     def failing_fetch(fs, key, parameter, **kwargs):
         raise FileNotFoundError("simulated 404")
@@ -429,6 +449,7 @@ def test_download_dataset_propagates_programming_errors_unwrapped(tmp_path, monk
     """A non-``FileNotFoundError`` failure (a bug, not a missing S3 object) must
     propagate as itself, not be relabeled as :class:`UM10DataNotFoundError`."""
     monkeypatch.setattr(s3, "filesystem", _FakeClient)
+    _patch_listing(monkeypatch)
 
     def buggy_fetch(fs, key, parameter, **kwargs):
         raise TypeError("simulated bug")
@@ -441,40 +462,75 @@ def test_download_dataset_propagates_programming_errors_unwrapped(tmp_path, monk
         ).open_metdataset()
 
 
-def test_download_dataset_continues_past_one_missing_hour(tmp_path, monkeypatch):
-    """A missing hour among several requested must not prevent the others from
-    being fetched and cached; the aggregated error names how many hours failed."""
+def test_download_dataset_raises_before_downloading_when_hour_missing(tmp_path, monkeypatch):
+    """A missing hour among several requested is reported before any hour is downloaded,
+    and the error names every missing hour."""
     time_range = (datetime.datetime(2024, 9, 1, 0), datetime.datetime(2024, 9, 1, 2))
     hours = pd.date_range(*time_range, freq="1h").to_pydatetime().tolist()
-    missing_hour = hours[1]
-    monkeypatch.setattr(s3, "filesystem", _FakeClient)
-
-    def fake_fetch(fs, key, parameter, *, valid_time, **kwargs):
-        if valid_time == missing_hour:
-            raise FileNotFoundError("simulated 404")
-        variable = s3.PARAMETER_VARIABLE[parameter]
-        value = 220.0 if variable == "air_temperature" else 0.8
-        shape = (len(UKMO_PRESSURE_PA), len(UKMO_LATITUDE), len(UKMO_LONGITUDE))
-        data = np.full(shape, value, dtype=np.float64)
-        return xr.DataArray(
-            data,
-            dims=("pressure", "latitude", "longitude"),
-            coords={
-                "pressure": UKMO_PRESSURE_PA,
-                "latitude": UKMO_LATITUDE,
-                "longitude": UKMO_LONGITUDE,
-            },
-        )
-
-    monkeypatch.setattr(s3, "fetch_pressure_level_field", fake_fetch)
+    missing_hour = hours[2]
+    fetch_mock = _patch_fetch_with_values(monkeypatch)
+    _patch_listing(monkeypatch, absent=lambda key: missing_hour.strftime("%Y%m%dT%H%MZ-") in key)
 
     dlib = UM10(time_range, cachestore=DiskCacheStore(tmp_path))
-    with pytest.raises(UM10DataNotFoundError, match="1 of 3 hour"):
+    with pytest.raises(UM10DataNotFoundError, match="1 of 3 hour") as excinfo:
         dlib.download_dataset(hours)
 
+    assert missing_hour.isoformat() in str(excinfo.value)
+    fetch_mock.assert_not_called()
+    for hour in hours:
+        assert not dlib.cachestore.exists(dlib.create_cachepath(hour))
+
+
+def test_download_dataset_stops_at_first_hour_vanishing_during_download(tmp_path, monkeypatch):
+    """An object that vanishes after the existence check raises at that hour, without
+    fetching the hours after it."""
+    time_range = (datetime.datetime(2024, 9, 1, 0), datetime.datetime(2024, 9, 1, 2))
+    hours = pd.date_range(*time_range, freq="1h").to_pydatetime().tolist()
+    fetch_mock = _patch_fetch_with_values(monkeypatch)
+    fetched_valid_times = []
+
+    def fetch(fs, key, parameter, *, valid_time, **kwargs):
+        fetched_valid_times.append(valid_time)
+        if valid_time == hours[1]:
+            raise FileNotFoundError("simulated 404")
+        return fetch_mock.side_effect(fs, key, parameter)
+
+    monkeypatch.setattr(s3, "fetch_pressure_level_field", fetch)
+
+    dlib = UM10(time_range, cachestore=DiskCacheStore(tmp_path))
+    with pytest.raises(UM10DataNotFoundError, match=hours[1].isoformat()):
+        dlib.download_dataset(hours)
+
+    assert hours[2] not in fetched_valid_times
     assert dlib.cachestore.exists(dlib.create_cachepath(hours[0]))
-    assert not dlib.cachestore.exists(dlib.create_cachepath(missing_hour))
-    assert dlib.cachestore.exists(dlib.create_cachepath(hours[2]))
+
+
+class _FakeLsFilesystem:
+    """Stand-in for an s3fs filesystem supporting only ``ls``."""
+
+    def __init__(self, paths: list[str] | None):
+        self.paths = paths
+        self.ls_kwargs: dict = {}
+
+    def ls(self, path, **kwargs):
+        self.ls_kwargs = {"path": path, **kwargs}
+        if self.paths is None:
+            raise FileNotFoundError(path)
+        return self.paths
+
+
+def test_list_run_keys_returns_keys_relative_to_bucket():
+    run = datetime.datetime(2024, 9, 1, 0)
+    key = s3.object_key(run, run, 0, "temperature_on_pressure_levels")
+    fs = _FakeLsFilesystem([f"{s3.BUCKET}/{key}"])
+
+    assert s3.list_run_keys(fs, run) == {key}
+    assert fs.ls_kwargs["path"] == f"{s3.BUCKET}/{s3.PRODUCT_PREFIX}/20240901T0000Z"
+    assert fs.ls_kwargs["refresh"] is True
+
+
+def test_list_run_keys_empty_for_unpublished_run():
+    assert s3.list_run_keys(_FakeLsFilesystem(None), datetime.datetime(2024, 9, 1, 0)) == set()
 
 
 def test_open_metdataset_rejects_descending_latitude(tmp_path, monkeypatch):
