@@ -1,4 +1,4 @@
-"""Support for Met Office UM ``global-deterministic-10km`` forecast data."""
+"""Support for UK Met Office UM ``global-deterministic-10km`` forecast data."""
 
 from __future__ import annotations
 
@@ -16,24 +16,24 @@ from pycontrails.core import met_var
 from pycontrails.core.cache import CacheStore, DiskCacheStore
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib._met_utils import metsource
-from pycontrails.datalib.metoffice import s3
+from pycontrails.datalib.ukmo import s3
 from pycontrails.physics import thermo
 from pycontrails.utils import temp
 
 if TYPE_CHECKING:
     import s3fs
 
-#: MetDataset.attrs values set by :meth:`MetOfficeUM.set_metadata`.
-PROVIDER = "Met Office"
-DATASET = "UM-Global-Deterministic-10km"
+#: MetDataset.attrs values set by :meth:`UM10.set_metadata`.
+PROVIDER = "UKMO"
+DATASET = "UM-10"
 PRODUCT = "forecast"
 
 
-class MetOfficeDataNotFoundError(Exception):
+class UM10DataNotFoundError(Exception):
     """Raised when requested data could not be fetched from the S3 archive."""
 
 
-class MetOfficeUM(metsource.MetDataSource):
+class UM10(metsource.MetDataSource):
     """pycontrails datalib for the UK Met Office ``global-deterministic-10km`` product.
 
     Live-fetches cruise-level pressure data directly from the public S3 archive on
@@ -52,7 +52,7 @@ class MetOfficeUM(metsource.MetDataSource):
         keep the raw fetched value.
     pressure_levels : metsource.PressureLevelInput, optional
         Requested pressure levels in hPa. Defaults to
-        :data:`pycontrails.datalib.metoffice.s3.CRUISE_LEVELS_HPA` (the 7
+        :data:`pycontrails.datalib.ukmo.s3.CRUISE_LEVELS_HPA` (the 7
         cruise-relevant levels this datalib selects from each fetched file).
     grid : float, optional
         Not supported. The archive serves fixed native-grid data; regridding
@@ -60,7 +60,7 @@ class MetOfficeUM(metsource.MetDataSource):
         is ignored with a warning.
     lead_hours : int, optional
         ``None`` (default) fetches the shortest-available lead for each requested
-        validity time. A fixed int fetches instead at that lead for every hour.
+        valid time. A fixed int fetches instead at that lead for every hour.
     cachestore : cache.CacheStore, optional
         Cache store for fetched, processed hourly data. Defaults to
         :class:`pycontrails.core.cache.DiskCacheStore`. Pass
@@ -86,7 +86,7 @@ class MetOfficeUM(metsource.MetDataSource):
     ) -> None:
         if grid is not None:
             warnings.warn(
-                f"MetOfficeUM serves fixed native-grid data; regridding is expected "
+                f"UM10 serves fixed native-grid data; regridding is expected "
                 f"to happen downstream of this datalib, not within it. "
                 f"Ignoring grid={grid!r}."
             )
@@ -187,57 +187,57 @@ class MetOfficeUM(metsource.MetDataSource):
         :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource.is_datafile_cached`
         has already determined are missing from :attr:`cachestore`.
 
-        An hour genuinely absent from the archive (:class:`MetOfficeDataNotFoundError`)
+        An hour genuinely absent from the archive (:class:`UM10DataNotFoundError`)
         doesn't abort the rest of the batch: it's collected and, if any hours failed,
-        raised as a single :class:`MetOfficeDataNotFoundError` once every hour has been
+        raised as a single :class:`UM10DataNotFoundError` once every hour has been
         attempted, so one missing hour doesn't prevent the others from being fetched
-        and cached. Any other exception -- e.g. a fixed ``lead_hours``/validity
-        combination the archive can't produce (see :func:`s3.run_for_validity_at_lead`,
+        and cached. Any other exception -- e.g. a fixed ``lead_hours``/valid time
+        combination the archive can't produce (see :func:`s3.run_for_valid_time_at_lead`,
         which raises ``ValueError``) -- is a caller or programming error, not a data
         availability issue, and propagates immediately instead.
         """
         fs = s3.filesystem()
-        errors: dict[datetime, MetOfficeDataNotFoundError] = {}
+        errors: dict[datetime, UM10DataNotFoundError] = {}
         for t in times:
             try:
                 self._download_convert_cache_handler(fs, t)
-            except MetOfficeDataNotFoundError as exc:
+            except UM10DataNotFoundError as exc:
                 errors[t] = exc
 
         if errors:
             detail = "; ".join(f"{t.isoformat()}: {exc}" for t, exc in errors.items())
             msg = f"{len(errors)} of {len(times)} hour(s) could not be fetched: {detail}"
-            raise MetOfficeDataNotFoundError(msg)
+            raise UM10DataNotFoundError(msg)
 
     def _download_convert_cache_handler(self, fs: s3fs.S3FileSystem, t: datetime) -> None:
         """Fetch, process, and cache one missing hour.
 
         Raises
         ------
-        MetOfficeDataNotFoundError
+        UM10DataNotFoundError
             If any requested parameter's object is missing from the S3 archive.
         ValueError
             If ``t`` isn't hourly, or (with a fixed :attr:`lead_hours`) if the implied
             run doesn't reach that lead -- a caller error, not a data availability
-            issue, so it isn't wrapped as :class:`MetOfficeDataNotFoundError`.
+            issue, so it isn't wrapped as :class:`UM10DataNotFoundError`.
         """
         if self.lead_hours is not None:
-            run = s3.run_for_validity_at_lead(t, self.lead_hours)
+            run = s3.run_for_valid_time_at_lead(t, self.lead_hours)
             lead = self.lead_hours
         else:
-            run = s3.run_for_validity(t)
-            lead = s3.lead_for_validity(t)
+            run = s3.run_for_valid_time(t)
+            lead = s3.lead_for_valid_time(t)
 
         data_vars = {}
         for parameter, variable in s3.PARAMETER_VARIABLE.items():
             key = s3.object_key(run, t, lead, parameter)
             try:
                 data_vars[variable] = s3.fetch_pressure_level_field(
-                    fs, key, parameter, run=run, validity=t, lead_hours=lead
+                    fs, key, parameter, run=run, valid_time=t, lead_hours=lead
                 )
             except FileNotFoundError as exc:
                 msg = f"{t.isoformat()} could not be fetched from the S3 archive (key={key}): {exc}"
-                raise MetOfficeDataNotFoundError(msg) from exc
+                raise UM10DataNotFoundError(msg) from exc
 
         ds = xr.Dataset(data_vars).expand_dims(time=[pd.Timestamp(t)])
         ds = self._process_hour(ds)
@@ -305,7 +305,7 @@ class MetOfficeUM(metsource.MetDataSource):
         **kwargs: Any,
     ) -> MetDataset:
         if dataset is not None:
-            msg = "Parameter 'dataset' is not supported for MetOfficeUM data"
+            msg = "Parameter 'dataset' is not supported for UM10 data"
             raise ValueError(msg)
         if self.cachestore is None:
             msg = "Cachestore is required to download data"

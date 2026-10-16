@@ -50,7 +50,7 @@ Repository = "https://github.com/contrailcirrus/pycontrails"
 
 # All non-development dependencies
 # Only dependencies that work on all python versions
-complete = ["pycontrails[dwd,ecmwf,gcp,gfs,jupyter,metoffice,pyproj,sat,vis,zarr]"]
+complete = ["pycontrails[dwd,ecmwf,gcp,gfs,jupyter,pyproj,sat,ukmo,vis,zarr]"]
 
 # Development dependencies
 dev = [
@@ -117,8 +117,8 @@ gfs = [
 # Jupyter notebook and lab interface
 jupyter = ["ipywidgets>=7.6", "jupyterlab>=2.2"]
 
-# Met Office datalib interfaces
-metoffice = ["netcdf4>=1.6.1", "platformdirs>=3.0", "s3fs>=2022.3"]
+# UK Met Office (UKMO) datalib interfaces
+ukmo = ["netcdf4>=1.6.1", "platformdirs>=3.0", "s3fs>=2022.3"]
 
 # Satellite datalibs
 sat = [

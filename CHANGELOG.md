@@ -9,7 +9,7 @@
 - Add simple versioning of this static file (`*-v32.csv`) for tracking purposes.
 - Fix the `add_pseudo_waypoints` function to initiate any step climbs and descents at the beginning of the flight segment, rather than near its end. This is consistent with ICAO flight-planning conventions.
 - Add `takeoff_weight` to the flight attributes when parsing OFP XML, if available. This is an important parameter that can influence the simulated fuel consumption and aircraft performance.
-- Add new `pycontrails.datalib.metoffice` module for accessing UK Met Office UM global-deterministic-10km forecast data from the public `met-office-atmospheric-model-data` S3 bucket.
+- Add new `pycontrails.datalib.ukmo` module for accessing UK Met Office UM global-deterministic-10km forecast data from the public `met-office-atmospheric-model-data` S3 bucket.
 
 ### Internals
 
