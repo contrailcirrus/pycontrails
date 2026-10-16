@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, override
 
 import numpy as np
@@ -41,6 +41,7 @@ from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ukmo import s3
 from pycontrails.physics import thermo
+from pycontrails.utils.types import DatetimeLike
 
 if TYPE_CHECKING:
     import s3fs
@@ -129,7 +130,9 @@ class UM10(metsource.MetDataSource):
     Parameters
     ----------
     time : metsource.TimeInput
-        Single datetime or ``(start, end)`` range. Parsed to hourly timesteps.
+        The time range for data retrieval, either a single datetime or (start, end) datetime
+        range. Input must be datetime-like or tuple of datetime-like specifying the (start, end)
+        of the date range, inclusive.
     variables : metsource.VariableInput, optional
         Requested variables. Defaults to
         ``[met_var.AirTemperature, met_var.SpecificHumidity]``.
@@ -142,12 +145,32 @@ class UM10(metsource.MetDataSource):
         44,600 ft). Each requested level and variable is held in memory as a full global
         field while a forecast hour is processed, so requesting many levels uses a lot of
         memory.
+    timestep_freq : str | timedelta | None, optional
+        Manually set the timestep interval within the bounds defined by ``time``.
+        Supports any value that can be passed to ``pandas.date_range(freq=...)``.
+        By default, this is set to the highest frequency that the forecast supports over the
+        requested time range: hourly if the time range ends within 54 hours of the start of
+        the forecast, then 3-hourly, then (for 00 and 12 UTC forecasts) 6-hourly. If
+        ``lead_hours`` is set, this defaults to 6 hours (12 hours if ``lead_hours`` is more than
+        69) and must be a multiple of that interval.
     grid : float, optional
         Not supported. This datalib does not support regridding. A non-``None`` value
         is ignored with a warning.
+    forecast_time : DatetimeLike | None, optional
+        Specify the forecast by initialization time. Must be 00, 06, 12, or 18 UTC.
+        By default, set to the forecast with the shortest lead times that covers the requested
+        time range: the most recent forecast initialized at or before the start of the time
+        range, or an older one if it is needed to reach the end of the time range. All data
+        come from this single forecast. A ``ValueError`` is raised if no single forecast covers
+        the time range.
     lead_hours : int, optional
-        ``None`` (default) fetches the shortest-available lead for each requested
-        valid time. A fixed int fetches instead at that lead for every hour.
+        Fetch data at this fixed lead time, in hours, instead of from a single forecast.
+        Each timestep then comes from the forecast initialized ``lead_hours`` earlier, so the
+        time range may be longer than any single forecast. Because forecasts are initialized
+        every 6 hours, timesteps are 6-hourly (or a multiple of 6 hours). Only forecasts
+        initialized at 00 and 12 UTC reach beyond a lead of 69 hours, so timesteps are
+        12-hourly (or a multiple of 12 hours) for longer leads. Cannot be combined with
+        ``forecast_time``. By default, ``None``.
     cachestore : cache.CacheStore, optional
         Cache store for fetched, processed hourly data. Defaults to
         :class:`pycontrails.core.cache.DiskCacheStore`. Other cache stores, such as
@@ -159,7 +182,10 @@ class UM10(metsource.MetDataSource):
 
     __marker = object()
 
-    __slots__ = ("cachestore", "lead_hours")
+    __slots__ = ("cachestore", "forecast_time", "lead_hours")
+
+    #: Forecast initialization time, or None if fetching at a fixed ``lead_hours``
+    forecast_time: datetime | None
 
     def __init__(
         self,
@@ -167,7 +193,9 @@ class UM10(metsource.MetDataSource):
         *,
         variables: metsource.VariableInput | None = None,
         pressure_levels: metsource.PressureLevelInput | None = None,
+        timestep_freq: str | timedelta | None = None,
         grid: float | None = None,
+        forecast_time: DatetimeLike | None = None,
         lead_hours: int | None = None,
         cachestore: CacheStore = __marker,  # type: ignore[assignment]
     ) -> None:
@@ -189,7 +217,10 @@ class UM10(metsource.MetDataSource):
             variables = [met_var.AirTemperature, met_var.SpecificHumidity]
         self.variables = metsource.parse_variables(variables, self.supported_variables)
 
-        self.timesteps = metsource.parse_timesteps(time, freq="1h")
+        if lead_hours is not None:
+            self._set_timesteps_at_lead(time, timestep_freq, forecast_time, lead_hours)
+        else:
+            self._set_timesteps_in_forecast(time, timestep_freq, forecast_time)
 
         if cachestore is None:
             msg = "A cachestore is required: fetched data is only available through the cache"
@@ -197,6 +228,87 @@ class UM10(metsource.MetDataSource):
 
         self.lead_hours = lead_hours
         self.cachestore = DiskCacheStore() if cachestore is self.__marker else cachestore
+
+    def _set_timesteps_at_lead(
+        self,
+        time: metsource.TimeInput,
+        timestep_freq: str | timedelta | None,
+        forecast_time: DatetimeLike | None,
+        lead_hours: int,
+    ) -> None:
+        """Set :attr:`timesteps` for data at a fixed lead, rather than from one forecast."""
+        if forecast_time is not None:
+            msg = "Only one of forecast_time and lead_hours can be set."
+            raise ValueError(msg)
+        self.forecast_time = None
+
+        cadence = f"{s3.run_cadence_hours_for_lead(lead_hours)}h"
+        if timestep_freq is None:
+            timestep_freq = cadence
+        if not metsource.validate_timestep_freq(timestep_freq, cadence):
+            msg = (
+                f"lead_hours={lead_hours} requires a timestep frequency that is a multiple "
+                f"of {cadence}, because each timestep comes from a different forecast. "
+                f"Got {timestep_freq}."
+            )
+            raise ValueError(msg)
+
+        self.timesteps = metsource.parse_timesteps(
+            time, freq=timestep_freq, shift=timedelta(hours=lead_hours)
+        )
+        for t in self.timesteps:
+            s3.lead_for_valid_time(t - timedelta(hours=lead_hours), t)
+
+    def _set_timesteps_in_forecast(
+        self,
+        time: metsource.TimeInput,
+        timestep_freq: str | timedelta | None,
+        forecast_time: DatetimeLike | None,
+    ) -> None:
+        """Set :attr:`forecast_time` and :attr:`timesteps` for data from a single forecast."""
+        forecast_hours = metsource.parse_timesteps(time, freq="1h")
+        first_hour, last_hour = forecast_hours[0], forecast_hours[-1]
+
+        if forecast_time is None:
+            self.forecast_time = s3.forecast_for_time_range(first_hour, last_hour)
+        else:
+            try:
+                self.forecast_time = pd.to_datetime(forecast_time).to_pydatetime()
+            except ValueError as e:
+                msg = (
+                    f"Failed to parse forecast time {forecast_time}. "
+                    "Value must be compatible with 'pd.to_datetime'."
+                )
+                raise ValueError(msg) from e
+            s3.check_forecast_time(self.forecast_time)
+
+        if last_hour > (end := s3.last_step(self.forecast_time)):
+            msg = f"Requested times extend to {last_hour}, beyond end of forecast at {end}."
+            raise ValueError(msg)
+
+        datasource_timestep_freq = s3.forecast_timestep_freq(self.forecast_time, last_hour)
+        if timestep_freq is None:
+            timestep_freq = datasource_timestep_freq
+        if not metsource.validate_timestep_freq(timestep_freq, datasource_timestep_freq):
+            msg = (
+                f"Forecast out to time {last_hour} "
+                f"has timestep frequency of {datasource_timestep_freq} "
+                f"and cannot support requested timestep frequency of {timestep_freq}."
+            )
+            raise ValueError(msg)
+
+        self.timesteps = metsource.parse_timesteps(
+            time, freq=timestep_freq, shift=timedelta(hours=self.forecast_time.hour)
+        )
+        if (start := self.timesteps[0]) < self.forecast_time:
+            msg = f"Selected forecast time {self.forecast_time} is after first timestep at {start}."
+            raise ValueError(msg)
+        if (stop := self.timesteps[-1]) > end:
+            msg = (
+                f"Timesteps extend to {stop} at frequency {timestep_freq}, "
+                f"beyond end of forecast at {end}."
+            )
+            raise ValueError(msg)
 
     @property
     def pressure_level_variables(self) -> list[MetVariable]:
@@ -242,7 +354,7 @@ class UM10(metsource.MetDataSource):
     def create_cachepath(self, t: datetime) -> str:
         """Return the cache path for the processed hourly data covering ``t``.
 
-        Hashes the timestamp, the lead selection, the requested pressure
+        Hashes the forecast initialization time, the valid time, the requested pressure
         levels, and the requested variables, so two differently-configured
         instances sharing a :attr:`cachestore` can't collide on the same path.
 
@@ -260,9 +372,9 @@ class UM10(metsource.MetDataSource):
             msg = "Cachestore is required to create cache path"
             raise ValueError(msg)
 
-        lead = "shortest" if self.lead_hours is None else f"{self.lead_hours:03d}"
+        run, _ = self._run_and_lead(t)
         string = (
-            f"{lead}-{t:%Y%m%d%H}-"
+            f"{run:%Y%m%d%H}-{t:%Y%m%d%H}-"
             f"{'.'.join(str(p) for p in self.pressure_levels)}-"
             f"{'.'.join(sorted(self.variable_shortnames))}"
         )
@@ -334,8 +446,11 @@ class UM10(metsource.MetDataSource):
     def _run_and_lead(self, t: datetime) -> tuple[datetime, int]:
         """Get the forecast run and lead time (hours) fetched for valid time ``t``."""
         if self.lead_hours is not None:
-            return s3.run_for_valid_time_at_lead(t, self.lead_hours), self.lead_hours
-        return s3.run_for_valid_time(t), s3.lead_for_valid_time(t)
+            run = t - timedelta(hours=self.lead_hours)
+        else:
+            assert self.forecast_time is not None  # set whenever lead_hours is None
+            run = self.forecast_time
+        return run, s3.lead_for_valid_time(run, t)
 
     def _check_archive_has(self, fs: s3fs.S3FileSystem, times: list[datetime]) -> None:
         """Check that every object needed for ``times`` is in the S3 archive.

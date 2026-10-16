@@ -37,149 +37,288 @@ PRODUCT_PREFIX = "global-deterministic-10km"
 #: Run cadence (hours): Met Office global deterministic runs at 00/06/12/18Z
 RUN_CADENCE_HOURS = 6
 
+#: Run hours (UTC)
+RUN_HOURS = (0, 6, 12, 18)
+
 #: Mapping from file-name parameter to in-file variable name
 PARAMETER_VARIABLE = {
     "temperature_on_pressure_levels": "air_temperature",
     "relative_humidity_on_pressure_levels": "relative_humidity",
 }
 
+#: Lead (hours) up to which every run publishes hourly
+_LAST_HOURLY_LEAD_HOURS = 54
 
-def _check_hourly(valid_time: datetime.datetime) -> None:
-    """Raise if ``valid_time`` doesn't fall on the hour."""
-    if valid_time.minute or valid_time.second or valid_time.microsecond:
-        msg = f"valid time {valid_time} must fall on the hour"
-        raise ValueError(msg)
+#: Run hours (UTC) with the longest forecasts. Runs at 06/18Z end sooner.
+_LONG_RUN_HOURS = (0, 12)
+
+#: Long runs (00/12Z) publish every 3 hours until this lead (hours), then every 6 hours
+#: until :data:`_LONG_RUN_LAST_LEAD_HOURS`
+_LONG_RUN_LAST_3HOURLY_LEAD_HOURS = 144
+_LONG_RUN_LAST_LEAD_HOURS = 168
+
+#: Short runs (06/18Z) publish every 3 hours after the hourly period until this lead (hours)
+_SHORT_RUN_LAST_LEAD_HOURS = 69
+
+#: Short runs initialized before this time end at +66h instead of +69h. The archive holds
+#: both kinds of run.
+_SHORT_RUN_EXTENDED_FROM = datetime.datetime(2026, 1, 21, 18)
+_SHORT_RUN_LAST_LEAD_HOURS_BEFORE_EXTENDED = 66
 
 
-def run_for_valid_time(valid_time: datetime.datetime) -> datetime.datetime:
-    """Get the run time for the shortest lead covering an hourly valid time.
-
-    Shortest available lead, cycling T+0 -> T+5. Runs occur every
-    :data:`RUN_CADENCE_HOURS` hours, so the run is the preceding cadence boundary.
+def latest_forecast(time: datetime.datetime) -> datetime.datetime:
+    """Get the most recent forecast cycle initialized at or before a time.
 
     Parameters
     ----------
-    valid_time : datetime.datetime
-        Valid time. Must fall on the hour.
+    time : datetime.datetime
+        Specified time
 
     Returns
     -------
     datetime.datetime
-        Run time.
+        Initialization time of the most recent forecast at or before ``time``.
 
     """
-    _check_hourly(valid_time)
-    run_hour = (valid_time.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
-    return valid_time.replace(hour=run_hour, minute=0, second=0, microsecond=0)
+    return pd.Timestamp(time).floor(f"{RUN_CADENCE_HOURS}h").to_pydatetime()
 
 
-def lead_for_valid_time(valid_time: datetime.datetime) -> int:
-    """Get the shortest lead, in whole hours, covering an hourly valid time.
+def check_forecast_time(forecast_time: datetime.datetime) -> None:
+    """Raise if ``forecast_time`` isn't a time at which forecasts are initialized.
 
-    See :func:`run_for_valid_time` for the corresponding run time.
+    Raises
+    ------
+    ValueError
+        If ``forecast_time`` isn't exactly 00, 06, 12, or 18 UTC.
+
+    """
+    if (
+        forecast_time.hour not in RUN_HOURS
+        or forecast_time.minute
+        or forecast_time.second
+        or forecast_time.microsecond
+    ):
+        msg = (
+            f"Forecast time {forecast_time} must be one of "
+            f"{[f'{h:02d}:00' for h in RUN_HOURS]} UTC."
+        )
+        raise ValueError(msg)
+
+
+def last_step(forecast_time: datetime.datetime) -> datetime.datetime:
+    """Get the time of the last step of a forecast.
 
     Parameters
     ----------
+    forecast_time : datetime.datetime
+        Forecast initialization time
+
+    Returns
+    -------
+    datetime.datetime
+        Time of the last forecast step available in the archive.
+
+    Raises
+    ------
+    ValueError
+        If ``forecast_time`` isn't a time at which forecasts are initialized.
+
+    """
+    check_forecast_time(forecast_time)
+    if forecast_time.hour in _LONG_RUN_HOURS:
+        lead_hours = _LONG_RUN_LAST_LEAD_HOURS
+    elif forecast_time >= _SHORT_RUN_EXTENDED_FROM:
+        lead_hours = _SHORT_RUN_LAST_LEAD_HOURS
+    else:
+        lead_hours = _SHORT_RUN_LAST_LEAD_HOURS_BEFORE_EXTENDED
+    return forecast_time + datetime.timedelta(hours=lead_hours)
+
+
+def last_hourly_step(forecast_time: datetime.datetime) -> datetime.datetime:
+    """Get the time of the last forecast step with hourly frequency.
+
+    Parameters
+    ----------
+    forecast_time : datetime.datetime
+        Forecast initialization time
+
+    Returns
+    -------
+    datetime.datetime
+        Time of the last hourly forecast step.
+
+    Raises
+    ------
+    ValueError
+        If ``forecast_time`` isn't a time at which forecasts are initialized.
+
+    """
+    check_forecast_time(forecast_time)
+    return forecast_time + datetime.timedelta(hours=_LAST_HOURLY_LEAD_HOURS)
+
+
+def last_3hourly_step(forecast_time: datetime.datetime) -> datetime.datetime:
+    """Get the time of the last forecast step with 3-hourly frequency.
+
+    Forecasts that end before 6-hourly steps begin (06/18Z) end with their last 3-hourly step.
+
+    Parameters
+    ----------
+    forecast_time : datetime.datetime
+        Forecast initialization time
+
+    Returns
+    -------
+    datetime.datetime
+        Time of the last 3-hourly forecast step.
+
+    Raises
+    ------
+    ValueError
+        If ``forecast_time`` isn't a time at which forecasts are initialized.
+
+    """
+    check_forecast_time(forecast_time)
+    if forecast_time.hour in _LONG_RUN_HOURS:
+        return forecast_time + datetime.timedelta(hours=_LONG_RUN_LAST_3HOURLY_LEAD_HOURS)
+    return last_step(forecast_time)
+
+
+def forecast_timestep_freq(forecast_time: datetime.datetime, last_time: datetime.datetime) -> str:
+    """Get the coarsest timestep needed to reach ``last_time`` in a forecast.
+
+    The archive publishes a forecast hourly, then every 3 hours, then (00/12Z forecasts only)
+    every 6 hours. Requesting times up to ``last_time`` limits timesteps to the coarsest
+    frequency found up to that time.
+
+    Parameters
+    ----------
+    forecast_time : datetime.datetime
+        Forecast initialization time
+    last_time : datetime.datetime
+        Last time requested. Must not be after :func:`last_step`.
+
+    Returns
+    -------
+    str
+        ``"1h"``, ``"3h"``, or ``"6h"``.
+
+    """
+    if last_time <= last_hourly_step(forecast_time):
+        return "1h"
+    if last_time <= last_3hourly_step(forecast_time):
+        return "3h"
+    return "6h"
+
+
+def forecast_for_time_range(
+    first_time: datetime.datetime, last_time: datetime.datetime
+) -> datetime.datetime:
+    """Get the forecast with the shortest lead times that covers a time range.
+
+    This is the most recent forecast initialized at or before ``first_time`` that reaches
+    ``last_time``. It is the most recent forecast for time ranges that are short enough.
+    Forecasts initialized at 00/12Z are longer than those initialized at 06/18Z, so a longer
+    time range may need an older forecast.
+
+    Parameters
+    ----------
+    first_time : datetime.datetime
+        First time requested
+    last_time : datetime.datetime
+        Last time requested
+
+    Returns
+    -------
+    datetime.datetime
+        Forecast initialization time.
+
+    Raises
+    ------
+    ValueError
+        If no single forecast covers the time range.
+
+    """
+    forecast_time = latest_forecast(first_time)
+    oldest = last_time - datetime.timedelta(hours=_LONG_RUN_LAST_LEAD_HOURS)
+    while forecast_time >= oldest:
+        if last_step(forecast_time) >= last_time:
+            return forecast_time
+        forecast_time -= datetime.timedelta(hours=RUN_CADENCE_HOURS)
+
+    msg = (
+        f"Requested times from {first_time} to {last_time} are not contained in any single "
+        f"forecast: forecasts reach at most {_LONG_RUN_LAST_LEAD_HOURS} hours after their "
+        "initialization time. Request a shorter time range, or use lead_hours to combine "
+        "forecasts."
+    )
+    raise ValueError(msg)
+
+
+def run_cadence_hours_for_lead(lead_hours: int) -> int:
+    """Get the interval, in hours, between valid times at a fixed lead.
+
+    Each valid time at a fixed lead comes from a different forecast, initialized
+    ``lead_hours`` earlier. Forecasts are initialized every :data:`RUN_CADENCE_HOURS`, but
+    only the 00 and 12 UTC forecasts reach beyond :data:`_SHORT_RUN_LAST_LEAD_HOURS`, so
+    valid times at longer leads are twice as far apart.
+
+    Parameters
+    ----------
+    lead_hours : int
+        Lead time in whole hours.
+
+    Returns
+    -------
+    int
+        6 for leads that every forecast reaches, otherwise 12.
+
+    """
+    if lead_hours > _SHORT_RUN_LAST_LEAD_HOURS:
+        return 2 * RUN_CADENCE_HOURS
+    return RUN_CADENCE_HOURS
+
+
+def lead_for_valid_time(forecast_time: datetime.datetime, valid_time: datetime.datetime) -> int:
+    """Get the lead time, in whole hours, of a valid time in a forecast.
+
+    Parameters
+    ----------
+    forecast_time : datetime.datetime
+        Forecast initialization time
     valid_time : datetime.datetime
-        Valid time. Must fall on the hour.
+        Valid time. Must be a time at which the forecast is published.
 
     Returns
     -------
     int
         Lead time in whole hours.
 
-    """
-    _check_hourly(valid_time)
-    run_hour = (valid_time.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
-    return valid_time.hour - run_hour
-
-
-#: Lead (hours) up to which every run publishes hourly. Beyond this, the archive
-#: only publishes every :data:`_EXTENDED_CADENCE_HOURS`-th hour
-_HOURLY_CADENCE_MAX_LEAD_HOURS = 54
-
-#: Cadence (hours) beyond :data:`_HOURLY_CADENCE_MAX_LEAD_HOURS`.
-_EXTENDED_CADENCE_HOURS = 3
-
-#: Run hours (UTC) every cycle reaches: 00/06/12/18Z all publish out to
-#: :data:`_ALL_CYCLE_MAX_LEAD_HOURS`.
-_ALL_RUN_HOURS = (0, 6, 12, 18)
-
-#: Run hours (UTC) that continue publishing beyond :data:`_ALL_CYCLE_MAX_LEAD_HOURS`.
-#: 06Z/18Z stop there; only 00Z/12Z continue.
-_LONG_RUN_HOURS = (0, 12)
-
-#: Lead (hours) at/below which every cycle still reaches it
-_ALL_CYCLE_MAX_LEAD_HOURS = 69
-
-
-def _check_valid_lead(lead_hours: int) -> None:
-    """Raise if ``lead_hours`` isn't a lead the archive ever publishes at."""
-    if lead_hours > _HOURLY_CADENCE_MAX_LEAD_HOURS and lead_hours % _EXTENDED_CADENCE_HOURS != 0:
-        msg = (
-            f"lead {lead_hours}h is not a valid archive lead: beyond "
-            f"T+{_HOURLY_CADENCE_MAX_LEAD_HOURS}h, only every "
-            f"{_EXTENDED_CADENCE_HOURS}h is published"
-        )
-        raise ValueError(msg)
-
-
-def run_hours_for_lead(lead_hours: int) -> tuple[int, ...]:
-    """Get the run hours (UTC) whose published forecast reaches ``lead_hours``.
-
-    Pure calendar lookup, not a network call.
-
-    Parameters
-    ----------
-    lead_hours : int
-        Lead time in whole hours.
-
-    Returns
-    -------
-    tuple[int, ...]
-        Run hours (UTC) that publish out to at least ``lead_hours``.
-
-    """
-    return _ALL_RUN_HOURS if lead_hours <= _ALL_CYCLE_MAX_LEAD_HOURS else _LONG_RUN_HOURS
-
-
-def run_for_valid_time_at_lead(valid_time: datetime.datetime, lead_hours: int) -> datetime.datetime:
-    """Get the run time for a fixed lead, given a valid time.
-
-    Unlike :func:`run_for_valid_time` (shortest-lead), this fixes ``lead_hours``
-    and solves for ``run = valid_time - lead_hours``.
-
-    Parameters
-    ----------
-    valid_time : datetime.datetime
-        Valid time. Must fall on the hour.
-    lead_hours : int
-        Fixed lead time in whole hours.
-
-    Returns
-    -------
-    datetime.datetime
-        Run time.
-
     Raises
     ------
     ValueError
-        If ``valid_time`` isn't hourly, if ``lead_hours`` isn't a lead the archive
-        ever publishes at (see :func:`_check_valid_lead`), or if the implied run
-        hour is not one that reaches ``lead_hours``. Calling this for a
-        valid time/lead combination the archive can't produce is a caller bug.
+        If ``forecast_time`` isn't a time at which forecasts are initialized, or if the
+        archive doesn't publish the forecast at ``valid_time``: it falls before the forecast,
+        after its end, or between the steps of its 3-hourly or 6-hourly period.
 
     """
-    _check_hourly(valid_time)
-    _check_valid_lead(lead_hours)
-    run = valid_time - datetime.timedelta(hours=lead_hours)
-    if run.hour not in run_hours_for_lead(lead_hours):
+    check_forecast_time(forecast_time)
+    if valid_time < forecast_time:
+        msg = f"Valid time {valid_time} is before the forecast time {forecast_time}."
+        raise ValueError(msg)
+    if valid_time > (end := last_step(forecast_time)):
+        msg = f"Valid time {valid_time} is after the end of the {forecast_time} forecast at {end}."
+        raise ValueError(msg)
+
+    lead = (valid_time - forecast_time) / datetime.timedelta(hours=1)
+    step = int(forecast_timestep_freq(forecast_time, valid_time).removesuffix("h"))
+    if lead % step:
         msg = (
-            f"lead {lead_hours}h at valid time {valid_time} implies run {run}, but run "
-            f"hour {run.hour} does not reach that lead"
+            f"Valid time {valid_time} is a lead of {lead:g}h in the {forecast_time} forecast, "
+            f"which only publishes every {step}h at that lead."
         )
         raise ValueError(msg)
-    return run
+    return int(lead)
 
 
 def object_key(
