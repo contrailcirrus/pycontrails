@@ -41,7 +41,6 @@ from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ukmo import s3
 from pycontrails.physics import thermo
-from pycontrails.utils import temp
 
 if TYPE_CHECKING:
     import s3fs
@@ -146,10 +145,9 @@ class UM10(metsource.MetDataSource):
         valid time. A fixed int fetches instead at that lead for every hour.
     cachestore : cache.CacheStore, optional
         Cache store for fetched, processed hourly data. Defaults to
-        :class:`pycontrails.core.cache.DiskCacheStore`. Pass
-        ``cache.GCPCacheStore(bucket=...)`` to read from a
-        pre-populated archive (falling back to a live fetch for any hour it
-        doesn't have).
+        :class:`pycontrails.core.cache.DiskCacheStore`. Other cache stores, such as
+        ``cache.GCPCacheStore(bucket=...)``, can be used to read from a pre-populated archive,
+        but hours missing from it can only be fetched live with a ``DiskCacheStore``.
         A cache store is required: a ``cachestore`` of ``None`` raises a ``ValueError``.
 
     """
@@ -246,24 +244,13 @@ class UM10(metsource.MetDataSource):
         return self.cachestore.path(f"ukmo-{name}.nc")
 
     def cache_dataset(self, dataset: xr.Dataset) -> None:
-        """Write processed hourly data to :attr:`cachestore`.
-
-        Stages each hour through a local temp file, then writes via
-        :meth:`~pycontrails.core.cache.CacheStore.put`. A read-only
-        :attr:`cachestore` raises ``RuntimeError`` from ``put``, which is
-        caught and ignored; any other ``RuntimeError`` propagates.
-        """
+        """Write processed hourly data to :attr:`cachestore`."""
         if self.cachestore is None:
             return
+
         for t, ds in dataset.groupby("time", squeeze=False):
             cache_path = self.create_cachepath(pd.Timestamp(t).to_pydatetime())
-            with temp.temp_file() as tmp_path:
-                ds.to_netcdf(tmp_path, mode="w")
-                try:
-                    self.cachestore.put(tmp_path, cache_path)
-                except RuntimeError:
-                    if not getattr(self.cachestore, "read_only", False):
-                        raise
+            ds.to_netcdf(cache_path, mode="w")
 
     def download_dataset(self, times: list[datetime]) -> None:
         """Fetch missing hours directly from the public Met Office S3 archive.
@@ -273,6 +260,10 @@ class UM10(metsource.MetDataSource):
         with hours that
         :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource.is_datafile_cached`
         has already determined are missing from :attr:`cachestore`.
+
+        Writing fetched hours to the cache is only supported for a
+        :class:`~pycontrails.core.cache.DiskCacheStore`. Other cache stores, such as a
+        :class:`~pycontrails.core.cache.GCPCacheStore`, can only provide hours already in them.
 
         Fails fast: before downloading anything, every object needed for ``times`` is
         checked against a listing of the archive, and a single
@@ -285,6 +276,8 @@ class UM10(metsource.MetDataSource):
 
         Raises
         ------
+        NotImplementedError
+            If :attr:`cachestore` is not a :class:`~pycontrails.core.cache.DiskCacheStore`.
         UM10DataNotFoundError
             If any requested hour is not in the S3 archive.
         ValueError
@@ -293,6 +286,14 @@ class UM10(metsource.MetDataSource):
             not a data availability issue, and so is not wrapped as
             :class:`UM10DataNotFoundError`.
         """
+        if not isinstance(self.cachestore, DiskCacheStore):
+            msg = (
+                "Downloading data is only supported with a DiskCacheStore, got "
+                f"{type(self.cachestore).__name__}. Other cache stores can only provide "
+                "hours that are already in them."
+            )
+            raise NotImplementedError(msg)
+
         fs = s3.filesystem()
         self._check_archive_has(fs, times)
         for t in times:

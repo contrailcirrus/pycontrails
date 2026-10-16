@@ -399,34 +399,19 @@ def test_open_metdataset_partial_hit_only_fetches_miss(tmp_path, monkeypatch):
     assert np.isclose(miss_val, 210.0)
 
 
-def test_cache_dataset_writes_correctly_to_gcp_cache_store(tmp_path, monkeypatch):
-    """``cache_dataset`` must stage through a real local file, since
-    ``GCPCacheStore.path()`` returns a bucket-relative key, not a local
-    filesystem path -- writing straight to it (as a plain ``CacheStore.path()``
-    would suggest) is only safe for ``DiskCacheStore``.
-    """
-    _patch_fetch_with_values(monkeypatch)
+def test_download_dataset_rejects_non_disk_cache_store(tmp_path, monkeypatch):
+    """Fetched hours can only be written to a ``DiskCacheStore``, so any other store must
+    fail before a download rather than download data that can't be stored."""
+    fetch_mock = _patch_fetch_with_values(monkeypatch)
     hour = datetime.datetime(2024, 9, 1, 0)
+    cachestore = GCPCacheStore(
+        bucket="fake-bucket", disk_cache=DiskCacheStore(tmp_path / "mirror"), read_only=True
+    )
 
-    class _FakeBlob:
-        def exists(self):
-            return False
+    with pytest.raises(NotImplementedError, match="DiskCacheStore"):
+        UM10(hour, cachestore=cachestore).download_dataset([hour])
 
-    class _FakeBucket:
-        def blob(self, key):
-            return _FakeBlob()
-
-    disk_mirror = DiskCacheStore(tmp_path / "gcp-mirror")
-    cachestore = GCPCacheStore(bucket="fake-bucket", disk_cache=disk_mirror, read_only=True)
-    # `_bucket` is a read-only property that returns `_cached_bucket` when set;
-    # set the cache slot directly rather than the property itself.
-    monkeypatch.setattr(cachestore, "_cached_bucket", _FakeBucket())
-
-    dlib = UM10(hour, cachestore=cachestore)
-    mds = dlib.open_metdataset()
-
-    assert mds.data.sizes["time"] == 1
-    assert cachestore.exists(dlib.create_cachepath(hour))
+    fetch_mock.assert_not_called()
 
 
 def test_download_dataset_raises_when_live_fetch_fails(tmp_path, monkeypatch):
