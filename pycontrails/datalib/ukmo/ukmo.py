@@ -105,9 +105,11 @@ class UM10(metsource.MetDataSource):
 
     The archive provides fields on 37 pressure levels between 1000 hPa and 0.4 hPa
     (temperature) and on 33 pressure levels between 1000 hPa and 10 hPa (relative humidity).
-    Near cruise altitude the pressure levels are 300, 275, 250, 225, 200, 175, and 150 hPa
-    (approximately 30,000 to 44,600 ft). The spacing between these levels varies from
-    about 1,900 ft to 3,200 ft. This is coarse compared to model-level data.
+    This datalib supports the 33 levels between 1000 hPa and 10 hPa that both fields share
+    (see :attr:`supported_pressure_levels`). Near cruise altitude the pressure levels are
+    300, 275, 250, 225, 200, 175, and 150 hPa (approximately 30,000 to 44,600 ft). The spacing
+    between these levels varies from about 1,900 ft to 3,200 ft. This is coarse compared to
+    model-level data.
 
     This datalib currently supports only air temperature, relative humidity, and specific
     humidity (derived from temperature and relative humidity). These fields are sufficient
@@ -135,8 +137,11 @@ class UM10(metsource.MetDataSource):
         temperature and relative humidity, so requesting it downloads both of those fields.
         Requesting only ``air_temperature`` or ``relative_humidity`` downloads only that field.
     pressure_levels : metsource.PressureLevelInput, optional
-        Requested pressure levels in hPa. Defaults to 300, 275, 250, 225, 200, 175, and
-        150 hPa (approximately 30,000 to 44,600 ft).
+        Requested pressure levels in hPa. Must be in :attr:`supported_pressure_levels`.
+        Defaults to 300, 275, 250, 225, 200, 175, and 150 hPa (approximately 30,000 to
+        44,600 ft). Each requested level and variable is held in memory as a full global
+        field while a forecast hour is processed, so requesting many levels uses a lot of
+        memory.
     grid : float, optional
         Not supported. This datalib does not support regridding. A non-``None`` value
         is ignored with a warning.
@@ -161,7 +166,7 @@ class UM10(metsource.MetDataSource):
         time: metsource.TimeInput,
         *,
         variables: metsource.VariableInput | None = None,
-        pressure_levels: metsource.PressureLevelInput = s3.CRUISE_LEVELS_HPA,
+        pressure_levels: metsource.PressureLevelInput | None = None,
         grid: float | None = None,
         lead_hours: int | None = None,
         cachestore: CacheStore = __marker,  # type: ignore[assignment]
@@ -174,8 +179,10 @@ class UM10(metsource.MetDataSource):
         self.grid = None
         self.paths = None
 
+        if pressure_levels is None:
+            pressure_levels = [300, 275, 250, 225, 200, 175, 150]
         self.pressure_levels = metsource.parse_pressure_levels(
-            pressure_levels, supported=list(s3.CRUISE_LEVELS_HPA)
+            pressure_levels, self.supported_pressure_levels
         )
 
         if variables is None:
@@ -201,6 +208,25 @@ class UM10(metsource.MetDataSource):
             Available pressure-level variables.
         """
         return [met_var.AirTemperature, met_var.SpecificHumidity, met_var.RelativeHumidity]
+
+    @property
+    @override
+    def supported_pressure_levels(self) -> list[int]:
+        """Get pressure levels available.
+
+        These are the pressure levels shared by the temperature and relative humidity fields.
+        Temperature is also available at 5, 2, 1, and 0.4 hPa, but these levels are not
+        supported.
+
+        Returns
+        -------
+        list[int]
+            List of integer pressure level values, in hPa
+        """
+        return [
+            1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 375,
+            350, 325, 300, 275, 250, 225, 200, 175, 150, 125, 100, 70, 50, 40, 30, 20, 10,
+        ]  # fmt: skip
 
     @property
     def single_level_variables(self) -> list[MetVariable]:
@@ -365,7 +391,13 @@ class UM10(metsource.MetDataSource):
             key = s3.object_key(run, t, lead, parameter)
             try:
                 data_vars[variable] = s3.fetch_pressure_level_field(
-                    fs, key, parameter, run=run, valid_time=t, lead_hours=lead
+                    fs,
+                    key,
+                    parameter,
+                    levels_hpa=self.pressure_levels,
+                    run=run,
+                    valid_time=t,
+                    lead_hours=lead,
                 )
             except FileNotFoundError as exc:
                 msg = f"{t.isoformat()} could not be fetched from the S3 archive (key={key}): {exc}"
