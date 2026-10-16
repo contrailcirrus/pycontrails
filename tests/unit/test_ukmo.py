@@ -560,18 +560,56 @@ def test_specific_humidity_round_trips_to_relative_humidity(tmp_path, monkeypatc
     assert np.isclose(recovered_rh, rh_value, rtol=1e-4)
 
 
-def test_specific_humidity_retained_even_when_only_temperature_requested(tmp_path, monkeypatch):
-    """``q`` must survive even if the caller only asked for temperature: downstream
-    ISSR/SAC-style humidity scaling always needs it, per the class docstring."""
-    _patch_fetch_with_values(monkeypatch)
+@pytest.mark.parametrize(
+    ("variable", "short_name", "parameters"),
+    [
+        (met_var.AirTemperature, "t", {"temperature_on_pressure_levels"}),
+        (met_var.RelativeHumidity, "r", {"relative_humidity_on_pressure_levels"}),
+        (
+            met_var.SpecificHumidity,
+            "q",
+            {"temperature_on_pressure_levels", "relative_humidity_on_pressure_levels"},
+        ),
+    ],
+)
+def test_only_requested_variable_is_fetched_and_cached(
+    tmp_path, monkeypatch, variable, short_name, parameters
+):
+    """Only the requested variable is cached, and only the S3 parameters it needs are
+    downloaded: no derived or companion fields are added."""
+    fetch_mock = _patch_fetch_with_values(monkeypatch)
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    dlib = UM10(hour, variables=[met_var.AirTemperature], cachestore=DiskCacheStore(tmp_path))
-    mds = dlib.open_metdataset()
+    mds = UM10(hour, variables=[variable], cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
-    assert "t" in mds.data.data_vars
-    assert "q" in mds.data.data_vars
-    assert "r" not in mds.data.data_vars
+    assert list(mds.data.data_vars) == [short_name]
+    assert {call.args[2] for call in fetch_mock.call_args_list} == parameters
+
+
+def test_parameters_are_unique_and_follow_requested_variables(tmp_path):
+    hour = datetime.datetime(2024, 9, 1, 0)
+    variables = [met_var.AirTemperature, met_var.SpecificHumidity, met_var.RelativeHumidity]
+
+    dlib = UM10(hour, variables=variables, cachestore=DiskCacheStore(tmp_path))
+
+    assert dlib._parameters == [
+        "temperature_on_pressure_levels",
+        "relative_humidity_on_pressure_levels",
+    ]
+
+
+def test_missing_unrequested_parameter_does_not_fail_existence_check(tmp_path, monkeypatch):
+    """Relative humidity absent from the archive doesn't matter if only temperature is
+    requested."""
+    _patch_fetch_with_values(monkeypatch)
+    _patch_listing(monkeypatch, absent=lambda key: "relative_humidity" in key)
+    hour = datetime.datetime(2024, 9, 1, 0)
+
+    mds = UM10(
+        hour, variables=[met_var.AirTemperature], cachestore=DiskCacheStore(tmp_path)
+    ).open_metdataset()
+
+    assert list(mds.data.data_vars) == ["t"]
 
 
 def test_hand_computed_rhi_matches_thermo_rhi_via_q(tmp_path, monkeypatch):

@@ -52,6 +52,18 @@ DATASET = "UM-10"
 PRODUCT = "forecast"
 
 
+#: S3 parameters (the keys of :data:`s3.PARAMETER_VARIABLE`) fetched to provide each variable.
+#: Specific humidity is derived from temperature and relative humidity.
+_VARIABLE_PARAMETERS = {
+    met_var.AirTemperature: ("temperature_on_pressure_levels",),
+    met_var.RelativeHumidity: ("relative_humidity_on_pressure_levels",),
+    met_var.SpecificHumidity: (
+        "temperature_on_pressure_levels",
+        "relative_humidity_on_pressure_levels",
+    ),
+}
+
+
 class UM10DataNotFoundError(Exception):
     """Raised when requested data could not be fetched from the S3 archive."""
 
@@ -120,8 +132,9 @@ class UM10(metsource.MetDataSource):
     variables : metsource.VariableInput, optional
         Requested variables. Defaults to
         ``[met_var.AirTemperature, met_var.SpecificHumidity]``.
-        ``specific_humidity`` is always computed internally regardless of what's requested;
-        pass ``met_var.RelativeHumidity`` explicitly to also keep the raw fetched value.
+        Only the requested variables are cached. ``specific_humidity`` is derived from
+        temperature and relative humidity, so requesting it downloads both of those fields.
+        Requesting only ``air_temperature`` or ``relative_humidity`` downloads only that field.
     pressure_levels : metsource.PressureLevelInput, optional
         Requested pressure levels in hPa. Defaults to 300, 275, 250, 225, 200, 175, and
         150 hPa (approximately 30,000 to 44,600 ft).
@@ -281,6 +294,12 @@ class UM10(metsource.MetDataSource):
         for t in times:
             self._download_convert_cache_handler(fs, t)
 
+    @property
+    def _parameters(self) -> list[str]:
+        """S3 parameters that must be fetched to provide the requested variables."""
+        parameters = (p for v in self.variables for p in _VARIABLE_PARAMETERS[v])
+        return list(dict.fromkeys(parameters))
+
     def _run_and_lead(self, t: datetime) -> tuple[datetime, int]:
         """Get the forecast run and lead time (hours) fetched for valid time ``t``."""
         if self.lead_hours is not None:
@@ -306,7 +325,7 @@ class UM10(metsource.MetDataSource):
             run, lead = self._run_and_lead(t)
             if run not in published:
                 published[run] = s3.list_run_keys(fs, run)
-            for parameter in s3.PARAMETER_VARIABLE:
+            for parameter in self._parameters:
                 key = s3.object_key(run, t, lead, parameter)
                 if key not in published[run]:
                     missing.setdefault(t, []).append(key)
@@ -336,7 +355,8 @@ class UM10(metsource.MetDataSource):
         run, lead = self._run_and_lead(t)
 
         data_vars = {}
-        for parameter, variable in s3.PARAMETER_VARIABLE.items():
+        for parameter in self._parameters:
+            variable = s3.PARAMETER_VARIABLE[parameter]
             key = s3.object_key(run, t, lead, parameter)
             try:
                 data_vars[variable] = s3.fetch_pressure_level_field(
@@ -354,22 +374,22 @@ class UM10(metsource.MetDataSource):
     def _process_hour(self, raw_ds: xr.Dataset) -> xr.Dataset:
         """Transform one hour of raw fetched data into the cached schema.
 
-        Selects the requested pressure levels, computes ``specific_humidity``,
-        and renames to the short names expected by
+        Selects the requested pressure levels, computes ``specific_humidity`` if it was
+        requested, and renames to the short names expected by
         :meth:`~pycontrails.datalib._met_utils.metsource.MetDataSource._check_is_ds_complete`
         (and the rest of pycontrails).
 
         Returns
         -------
         xr.Dataset
-            Processed dataset with cruise levels selected, ``specific_humidity``
-            computed, and variables named by short name.
+            Processed dataset with the requested pressure levels and variables only,
+            named by short name.
 
         Raises
         ------
         ValueError
-            If latitude isn't in ascending order, if ``relative_humidity`` isn't a 0-1
-            fraction, or if a requested pressure level isn't in the fetched data.
+            If latitude isn't in ascending order, if a fetched ``relative_humidity`` isn't
+            a 0-1 fraction, or if a requested pressure level isn't in the fetched data.
         """
         # MetDataset sorts coordinates on construction (copy=True), which would
         # silently mask a non-ascending latitude axis -- check it here instead,
@@ -379,13 +399,14 @@ class UM10(metsource.MetDataSource):
             msg = f"expected ascending latitude ordering, got {latitude[:3]}...{latitude[-3:]}"
             raise ValueError(msg)
 
-        relative_humidity = raw_ds["relative_humidity"].values
-        if np.any(relative_humidity < -1e-3) or np.any(relative_humidity > 1.5):
-            msg = (
-                f"expected relative_humidity as a 0-1 fraction, got values in "
-                f"[{relative_humidity.min():.3g}, {relative_humidity.max():.3g}]"
-            )
-            raise ValueError(msg)
+        if "relative_humidity" in raw_ds:
+            relative_humidity = raw_ds["relative_humidity"].values
+            if np.any(relative_humidity < -1e-3) or np.any(relative_humidity > 1.5):
+                msg = (
+                    f"expected relative_humidity as a 0-1 fraction, got values in "
+                    f"[{relative_humidity.min():.3g}, {relative_humidity.max():.3g}]"
+                )
+                raise ValueError(msg)
 
         pressure_pa = raw_ds["pressure"].values.astype(np.float64)
         level_indices = s3.level_indices_for(pressure_pa, self.pressure_levels)
@@ -394,20 +415,15 @@ class UM10(metsource.MetDataSource):
         ds = ds.rename(pressure="level")
         ds = ds.assign_coords(level=ds["level"] / 100.0)
 
-        # q is always computed and retained, regardless of what was requested:
-        # downstream ISSR/SAC-style humidity scaling needs it.
-        level_pa = ds["level"] * 100.0
-        q = ds["relative_humidity"] * thermo.q_sat_liquid(ds["air_temperature"], level_pa)
-        ds = ds.assign(specific_humidity=q)
+        if met_var.SpecificHumidity in self.variables:
+            level_pa = ds["level"] * 100.0
+            q = ds["relative_humidity"] * thermo.q_sat_liquid(ds["air_temperature"], level_pa)
+            ds = ds.assign(specific_humidity=q)
 
         rename = {v.standard_name: v.short_name for v in self.pressure_level_variables}
         ds = ds.rename({k: v for k, v in rename.items() if k in ds})
 
-        keep = [
-            v.short_name
-            for v in self.pressure_level_variables
-            if v == met_var.SpecificHumidity or v.short_name in self.variable_shortnames
-        ]
+        keep = [v.short_name for v in self.pressure_level_variables if v in self.variables]
         return ds[keep]
 
     @override
