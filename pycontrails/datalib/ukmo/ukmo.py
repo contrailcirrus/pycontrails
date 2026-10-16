@@ -1,4 +1,27 @@
-"""Support for UK Met Office UM ``global-deterministic-10km`` forecast data."""
+"""UK Met Office (UKMO) Unified Model (UM) data access.
+
+This module supports
+
+- Retrieving global deterministic 10 km UM forecasts from the public
+  ``met-office-atmospheric-model-data`` S3 bucket.
+- Selecting pressure levels and deriving specific humidity from relative humidity.
+- Local caching of processed forecasts as netCDF files.
+- Opening processed and cached files as a :class:`pycontrails.MetDataset`.
+
+.. warning::
+
+    This datalib currently supports only air temperature, relative humidity, and specific
+    humidity. Therefore, it cannot be used to run
+    :class:`~pycontrails.models.cocip.Cocip` or :class:`~pycontrails.models.cocipgrid.CocipGrid`
+    without additional external data.
+    It does provide the fields required by :class:`~pycontrails.models.issr.ISSR`,
+    :class:`~pycontrails.models.sac.SAC`, and :class:`~pycontrails.models.pcr.PCR`.
+
+    Forecasts are provided on a small set of standard pressure levels rather than on model
+    levels. Near cruise altitudes the levels are spaced 25 hPa apart, which is roughly 1,900
+    to 3,200 ft. This vertical resolution is coarse compared to model-level data, so thin
+    ice-supersaturated layers are not resolved.
+"""
 
 from __future__ import annotations
 
@@ -34,11 +57,61 @@ class UM10DataNotFoundError(Exception):
 
 
 class UM10(metsource.MetDataSource):
-    """pycontrails datalib for the UK Met Office ``global-deterministic-10km`` product.
+    """Class to support UK Met Office UM global deterministic 10 km forecast data access.
 
-    Live-fetches cruise-level pressure data directly from the public S3 archive on
-    a cache miss. :attr:`cachestore` also supports reading from a pre-populated
-    archive.
+    Access is credential-free. Data is read anonymously from the
+    ``met-office-atmospheric-model-data`` S3 bucket (``eu-west-2``), which requires the optional
+    dependency `s3fs <https://s3fs.readthedocs.io/>`_ (``pip install pycontrails[ukmo]``).
+
+    The Met Office Unified Model (UM) is the Met Office's operational numerical weather
+    prediction model. This datalib provides the global deterministic configuration. Fields are
+    provided on a regular latitude-longitude grid with 2560 x 1920 points (0.140625 degrees in
+    longitude and 0.09375 degrees in latitude, approximately 10 km at mid-latitudes).
+    Longitude runs from -179.93 to 179.93 degrees and latitude from -89.95 to 89.95 degrees.
+
+    The bucket holds a rolling two year archive of forecasts, as well as
+    the latest forecasts. At the time of writing, the earliest available forecast was
+    initialized at 2024-10-14 18Z. Forecasts are initialized every 6 hours (00, 06, 12, and
+    18 UTC). The forecast horizon and time step depend on the initialization time:
+
+    .. list-table:: UM forecast horizon
+        :header-rows: 1
+
+        * - Forecast
+          - Global (00, 12)
+          - Global (06, 18)
+        * - Horizon (hourly forecast)
+          - +54h
+          - +54h
+        * - Horizon (3-hourly forecast)
+          - +144h
+          - +69h
+        * - Horizon (6-hourly forecast)
+          - +168h
+          - N/A
+
+    The 06 and 18 UTC forecasts ended at +66h rather than +69h before 2026-01-21 18Z.
+
+    The archive provides fields on 37 pressure levels between 1000 hPa and 0.4 hPa
+    (temperature) and on 33 pressure levels between 1000 hPa and 10 hPa (relative humidity).
+    Near cruise altitude the pressure levels are 300, 275, 250, 225, 200, 175, and 150 hPa
+    (approximately 30,000 to 44,600 ft). The spacing between these levels varies from
+    about 1,900 ft to 3,200 ft. This is coarse compared to model-level data.
+
+    This datalib currently supports only air temperature, relative humidity, and specific
+    humidity (derived from temperature and relative humidity). These fields are sufficient
+    to run :class:`~pycontrails.models.issr.ISSR`, :class:`~pycontrails.models.sac.SAC`, and
+    :class:`~pycontrails.models.pcr.PCR`, but this datalib does not provide winds and so cannot
+    be used to run :class:`~pycontrails.models.cocip.Cocip` or
+    :class:`~pycontrails.models.cocipgrid.CocipGrid`. The archive includes other fields
+    (for example geopotential height, wind speed and direction, and vertical velocity on pressure
+    levels). Please `contact the pycontrails developers
+    <https://github.com/contrailcirrus/pycontrails/issues/new?template=feature_request.md>`_ to
+    request support for additional variables.
+
+    Fields are served on the native latitude-longitude grid. This datalib does not support
+    regridding. Users who want forecasts at a different resolution must regrid the returned
+    :class:`~pycontrails.MetDataset` themselves.
 
     Parameters
     ----------
@@ -47,16 +120,13 @@ class UM10(metsource.MetDataSource):
     variables : metsource.VariableInput, optional
         Requested variables. Defaults to
         ``[met_var.AirTemperature, met_var.SpecificHumidity]``.
-        ``specific_humidity`` is always computed internally regardless of
-        what's requested; pass ``met_var.RelativeHumidity`` explicitly to also
-        keep the raw fetched value.
+        ``specific_humidity`` is always computed internally regardless of what's requested;
+        pass ``met_var.RelativeHumidity`` explicitly to also keep the raw fetched value.
     pressure_levels : metsource.PressureLevelInput, optional
-        Requested pressure levels in hPa. Defaults to
-        :data:`pycontrails.datalib.ukmo.s3.CRUISE_LEVELS_HPA` (the 7
-        cruise-relevant levels this datalib selects from each fetched file).
+        Requested pressure levels in hPa. Defaults to 300, 275, 250, 225, 200, 175, and
+        150 hPa (approximately 30,000 to 44,600 ft).
     grid : float, optional
-        Not supported. The archive serves fixed native-grid data; regridding
-        happens downstream of this datalib, not within it. A non-``None`` value
+        Not supported. This datalib does not support regridding. A non-``None`` value
         is ignored with a warning.
     lead_hours : int, optional
         ``None`` (default) fetches the shortest-available lead for each requested
@@ -64,9 +134,10 @@ class UM10(metsource.MetDataSource):
     cachestore : cache.CacheStore, optional
         Cache store for fetched, processed hourly data. Defaults to
         :class:`pycontrails.core.cache.DiskCacheStore`. Pass
-        ``cache.GCPCacheStore(bucket=..., read_only=True)`` to read from a
+        ``cache.GCPCacheStore(bucket=...)`` to read from a
         pre-populated archive (falling back to a live fetch for any hour it
-        doesn't have); pass ``None`` to disable caching (every call re-fetches).
+        doesn't have).
+        A cache store is required: :meth:`open_metdataset` raises if ``cachestore`` is ``None``.
 
     """
 
@@ -86,9 +157,8 @@ class UM10(metsource.MetDataSource):
     ) -> None:
         if grid is not None:
             warnings.warn(
-                f"UM10 serves fixed native-grid data; regridding is expected "
-                f"to happen downstream of this datalib, not within it. "
-                f"Ignoring grid={grid!r}."
+                f"UM10 does not support regridding. Ignoring grid={grid!r}. "
+                f"Regrid the returned MetDataset to obtain a different resolution."
             )
         self.grid = None
         self.paths = None
