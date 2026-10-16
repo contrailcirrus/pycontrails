@@ -419,10 +419,9 @@ class UM10(metsource.MetDataSource):
         UM10DataNotFoundError
             If any requested hour is not in the S3 archive.
         ValueError
-            If a fixed ``lead_hours``/valid time combination is one the archive can't
-            produce (see :func:`s3.run_for_valid_time_at_lead`). This is a caller error,
-            not a data availability issue, and so is not wrapped as
-            :class:`UM10DataNotFoundError`.
+            If a time in ``times`` is one the forecast doesn't publish (see
+            :func:`s3.lead_for_valid_time`). This is a caller error, not a data
+            availability issue, and so is not wrapped as :class:`UM10DataNotFoundError`.
         """
         if not isinstance(self.cachestore, DiskCacheStore):
             msg = (
@@ -462,8 +461,7 @@ class UM10(metsource.MetDataSource):
         UM10DataNotFoundError
             If any needed object is absent. The message names every missing hour.
         ValueError
-            If ``t`` isn't hourly, or (with a fixed :attr:`lead_hours`) if the implied
-            run doesn't reach that lead.
+            If a time isn't one the forecast publishes (see :func:`s3.lead_for_valid_time`).
         """
         published: dict[datetime, set[str]] = {}
         missing: dict[datetime, list[str]] = {}
@@ -494,9 +492,9 @@ class UM10(metsource.MetDataSource):
         UM10DataNotFoundError
             If any requested parameter's object is missing from the S3 archive.
         ValueError
-            If ``t`` isn't hourly, or (with a fixed :attr:`lead_hours`) if the implied
-            run doesn't reach that lead -- a caller error, not a data availability
-            issue, so it isn't wrapped as :class:`UM10DataNotFoundError`.
+            If ``t`` isn't a time the forecast publishes (see :func:`s3.lead_for_valid_time`)
+            -- a caller error, not a data availability issue, so it isn't wrapped as
+            :class:`UM10DataNotFoundError`.
         """
         run, lead = self._run_and_lead(t)
 
