@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import itertools
 import pathlib
+import shutil
 import warnings
 from unittest import mock
 
@@ -23,37 +24,13 @@ from pycontrails.datalib.ukmo.ukmo import (
     UM10DataNotFoundError,
 )
 from pycontrails.physics import thermo
-from tests import OFFLINE
 
 #: Pressure levels (hPa) used by default
 CRUISE_LEVELS_HPA = (300, 275, 250, 225, 200, 175, 150)
 
-#: Example extent covering CONUS, (lon_min, lon_max, lat_min, lat_max)
-CONUS_EXTENT = (-134, -63, 20, 50)
-
 ##############
 # s3 utilities
 ##############
-
-FIXTURE_DIR = pathlib.Path(__file__).parents[1] / "fixtures" / "cache" / "ukmo"
-CACHE_DIR = FIXTURE_DIR / ".cache"
-
-#: The run/valid time/lead fetched as the reference object for the bit-identity check
-REFERENCE_RUN = datetime.datetime(2026, 8, 3, 0, 0)
-REFERENCE_VALID_TIME = datetime.datetime(2026, 8, 3, 0, 0)
-REFERENCE_LEAD_HOURS = 0
-
-
-def _cached_reference_file(parameter: str) -> pathlib.Path:
-    """Download (and locally cache) the full reference object for ``parameter``."""
-    key = s3.object_key(REFERENCE_RUN, REFERENCE_VALID_TIME, REFERENCE_LEAD_HOURS, parameter)
-    cache_path = CACHE_DIR / pathlib.PurePosixPath(key).name
-    if cache_path.exists():
-        return cache_path
-
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    s3.filesystem().get(f"s3://{s3.BUCKET}/{key}", str(cache_path))
-    return cache_path
 
 
 def dt(*args) -> datetime.datetime:
@@ -301,43 +278,114 @@ def test_select_pressure_levels_rejects_extent_producing_empty_crop():
         )
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
-@pytest.mark.parametrize(
-    "parameter", ["temperature_on_pressure_levels", "relative_humidity_on_pressure_levels"]
-)
-def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parameter, monkeypatch):
-    fixture_path = _cached_reference_file(parameter)
+class _FakeGetFilesystem:
+    """Stand-in for an s3fs filesystem whose ``get`` copies a local file."""
 
-    local_ds = xr.open_dataset(
-        fixture_path, engine="netcdf4", decode_times=True, decode_timedelta=True
+    def __init__(self, source: pathlib.Path):
+        self.source = source
+        self.get_calls: list[tuple[str, str]] = []
+
+    def get(self, rpath: str, lpath: str) -> None:
+        self.get_calls.append((rpath, lpath))
+        shutil.copy(self.source, lpath)
+
+
+FILE_PRESSURE_PA = np.array([40000.0, 30000.0, 25000.0, 20000.0, 15000.0])
+FILE_RUN = dt(2026, 3, 10, 0)
+FILE_LEAD_HOURS = 15
+FILE_VALID_TIME = FILE_RUN + hours(FILE_LEAD_HOURS)
+
+
+def _write_archive_like_file(path: pathlib.Path, variable: str) -> xr.DataArray:
+    """Write a small file laid out like an archive object, returning the data written."""
+    shape = (len(FILE_PRESSURE_PA), 3, 4)
+    data = xr.DataArray(
+        np.arange(np.prod(shape), dtype=np.float32).reshape(shape),
+        dims=("pressure", "latitude", "longitude"),
+        coords={
+            "pressure": FILE_PRESSURE_PA.astype(np.float32),
+            "latitude": np.array([30.0, 31.0, 32.0], dtype=np.float32),
+            "longitude": np.array([-100.0, -99.0, -98.0, -97.0], dtype=np.float32),
+        },
     )
-    expected = s3.select_pressure_levels(
-        local_ds, parameter, CRUISE_LEVELS_HPA, key=str(fixture_path), extent=CONUS_EXTENT
-    ).load()
+    ds = xr.Dataset(
+        {variable: data},
+        coords={
+            "forecast_reference_time": np.datetime64(FILE_RUN, "ns"),
+            "time": np.datetime64(FILE_VALID_TIME, "ns"),
+            "forecast_period": np.timedelta64(FILE_LEAD_HOURS, "h"),
+        },
+    )
+    ds.attrs["um_version"] = "13.8"
+    ds.to_netcdf(path)
+    return data
 
-    key = s3.object_key(REFERENCE_RUN, REFERENCE_VALID_TIME, REFERENCE_LEAD_HOURS, parameter)
-    fs = s3.filesystem()
-    get_mock = mock.MagicMock(wraps=fs.get)
-    monkeypatch.setattr(fs, "get", get_mock)
+
+@pytest.mark.parametrize("parameter", list(s3.PARAMETER_VARIABLE))
+def test_fetch_pressure_level_field_downloads_object_once_and_loads_requested_levels(
+    tmp_path, parameter
+):
+    """Each object is fetched with a single whole-object ``fs.get``, then only the requested
+    levels are loaded, and the temp file is removed.
+
+    The single download is the point of this test. Reading the object remotely in chunks
+    makes one S3 request per chunk that overlaps the data requested, which was very slow
+    (around 10 minutes per file) for these objects. Chunked reads wouldn't call ``fs.get``,
+    so this also fails if the implementation goes back to them.
+    """
+    variable = s3.PARAMETER_VARIABLE[parameter]
+    written = _write_archive_like_file(tmp_path / "source.nc", variable)
+    fs = _FakeGetFilesystem(tmp_path / "source.nc")
+    key = s3.object_key(FILE_RUN, FILE_VALID_TIME, FILE_LEAD_HOURS, parameter)
 
     actual = s3.fetch_pressure_level_field(
         fs,
         key,
         parameter,
-        levels_hpa=CRUISE_LEVELS_HPA,
-        run=REFERENCE_RUN,
-        valid_time=REFERENCE_VALID_TIME,
-        lead_hours=REFERENCE_LEAD_HOURS,
-        extent=CONUS_EXTENT,
+        levels_hpa=[300, 200],
+        run=FILE_RUN,
+        valid_time=FILE_VALID_TIME,
+        lead_hours=FILE_LEAD_HOURS,
     )
 
-    np.testing.assert_array_equal(actual.values, expected.values)
-    assert list(actual.dims) == ["pressure", "latitude", "longitude"]
-    assert actual.sizes["pressure"] == len(CRUISE_LEVELS_HPA)
+    assert len(fs.get_calls) == 1
+    rpath, lpath = fs.get_calls[0]
+    assert rpath == f"s3://{s3.BUCKET}/{key}"
+    assert not pathlib.Path(lpath).exists()
 
-    # Guards against regressing back to many small per-chunk reads (the actual bug
-    # that caused ~10-minute opens): exactly one whole-object download per fetch.
-    assert get_mock.call_count == 1
+    assert list(actual.dims) == ["pressure", "latitude", "longitude"]
+    np.testing.assert_array_equal(actual["pressure"].values, [30000.0, 20000.0])
+    np.testing.assert_array_equal(actual.values, written.sel(pressure=[30000.0, 20000.0]).values)
+    assert actual.attrs["um_version"] == "13.8"
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"run": FILE_RUN + hours(6)}, "does not match in-file forecast_reference_time"),
+        ({"valid_time": FILE_VALID_TIME + hours(1)}, "does not match in-file time"),
+        ({"lead_hours": FILE_LEAD_HOURS + 1}, "does not match in-file forecast_period"),
+    ],
+)
+def test_fetch_pressure_level_field_rejects_file_that_does_not_match_its_key(
+    tmp_path, kwargs, match
+):
+    parameter = "temperature_on_pressure_levels"
+    _write_archive_like_file(tmp_path / "source.nc", s3.PARAMETER_VARIABLE[parameter])
+    fs = _FakeGetFilesystem(tmp_path / "source.nc")
+    expected = {"run": FILE_RUN, "valid_time": FILE_VALID_TIME, "lead_hours": FILE_LEAD_HOURS}
+
+    with pytest.raises(ValueError, match=match):
+        s3.fetch_pressure_level_field(fs, "key", parameter, levels_hpa=[300], **(expected | kwargs))
+
+
+def test_fetch_pressure_level_field_rejects_level_missing_from_file(tmp_path):
+    parameter = "temperature_on_pressure_levels"
+    _write_archive_like_file(tmp_path / "source.nc", s3.PARAMETER_VARIABLE[parameter])
+    fs = _FakeGetFilesystem(tmp_path / "source.nc")
+
+    with pytest.raises(ValueError, match="expected exactly one 500"):
+        s3.fetch_pressure_level_field(fs, "key", parameter, levels_hpa=[300, 500])
 
 
 ######
