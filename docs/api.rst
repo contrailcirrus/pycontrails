@@ -94,15 +94,15 @@ DWD
     datalib.dwd.ods
 
 
-Met Office
-""""""""""
+UKMO
+""""
 
 .. autosummary::
     :toctree: api/
 
-    datalib.metoffice.MetOfficeUM
-    datalib.metoffice.s3
-    datalib.metoffice.ukmo
+    datalib.ukmo.UM10
+    datalib.ukmo.s3
+    datalib.ukmo.ukmo
 
 
 Geostationary Satellites

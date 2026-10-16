@@ -14,12 +14,12 @@ import xarray as xr
 
 from pycontrails.core import met_var
 from pycontrails.core.cache import DiskCacheStore, GCPCacheStore
-from pycontrails.datalib.metoffice import s3
-from pycontrails.datalib.metoffice.ukmo import (
+from pycontrails.datalib.ukmo import s3
+from pycontrails.datalib.ukmo.ukmo import (
     DATASET,
     PROVIDER,
-    MetOfficeDataNotFoundError,
-    MetOfficeUM,
+    UM10,
+    UM10DataNotFoundError,
 )
 from pycontrails.physics import thermo
 from tests import OFFLINE
@@ -31,18 +31,18 @@ CONUS_EXTENT = (-134, -63, 20, 50)
 # s3 utilities
 ##############
 
-FIXTURE_DIR = pathlib.Path(__file__).parents[1] / "fixtures" / "cache" / "metoffice"
+FIXTURE_DIR = pathlib.Path(__file__).parents[1] / "fixtures" / "cache" / "ukmo"
 CACHE_DIR = FIXTURE_DIR / ".cache"
 
-#: The run/validity/lead fetched as the reference object for the bit-identity check
+#: The run/valid time/lead fetched as the reference object for the bit-identity check
 REFERENCE_RUN = datetime.datetime(2026, 8, 3, 0, 0)
-REFERENCE_VALIDITY = datetime.datetime(2026, 8, 3, 0, 0)
+REFERENCE_VALID_TIME = datetime.datetime(2026, 8, 3, 0, 0)
 REFERENCE_LEAD_HOURS = 0
 
 
 def _cached_reference_file(parameter: str) -> pathlib.Path:
     """Download (and locally cache) the full reference object for ``parameter``."""
-    key = s3.object_key(REFERENCE_RUN, REFERENCE_VALIDITY, REFERENCE_LEAD_HOURS, parameter)
+    key = s3.object_key(REFERENCE_RUN, REFERENCE_VALID_TIME, REFERENCE_LEAD_HOURS, parameter)
     cache_path = CACHE_DIR / pathlib.PurePosixPath(key).name
     if cache_path.exists():
         return cache_path
@@ -52,34 +52,34 @@ def _cached_reference_file(parameter: str) -> pathlib.Path:
     return cache_path
 
 
-def test_run_for_validity_within_cycle():
-    assert s3.run_for_validity(datetime.datetime(2024, 9, 15, 3)) == datetime.datetime(
+def test_run_for_valid_time_within_cycle():
+    assert s3.run_for_valid_time(datetime.datetime(2024, 9, 15, 3)) == datetime.datetime(
         2024, 9, 15, 0
     )
 
 
-def test_lead_for_validity_within_cycle():
-    assert s3.lead_for_validity(datetime.datetime(2024, 9, 15, 3)) == 3
+def test_lead_for_valid_time_within_cycle():
+    assert s3.lead_for_valid_time(datetime.datetime(2024, 9, 15, 3)) == 3
 
 
-def test_run_for_validity_on_cycle_boundary():
-    assert s3.run_for_validity(datetime.datetime(2024, 9, 15, 18)) == datetime.datetime(
+def test_run_for_valid_time_on_cycle_boundary():
+    assert s3.run_for_valid_time(datetime.datetime(2024, 9, 15, 18)) == datetime.datetime(
         2024, 9, 15, 18
     )
 
 
-def test_lead_for_validity_on_cycle_boundary():
-    assert s3.lead_for_validity(datetime.datetime(2024, 9, 15, 18)) == 0
+def test_lead_for_valid_time_on_cycle_boundary():
+    assert s3.lead_for_valid_time(datetime.datetime(2024, 9, 15, 18)) == 0
 
 
-def test_run_for_validity_rejects_non_hourly():
+def test_run_for_valid_time_rejects_non_hourly():
     with pytest.raises(ValueError, match="must fall on the hour"):
-        s3.run_for_validity(datetime.datetime(2024, 9, 15, 3, 30))
+        s3.run_for_valid_time(datetime.datetime(2024, 9, 15, 3, 30))
 
 
-def test_lead_for_validity_rejects_non_hourly():
+def test_lead_for_valid_time_rejects_non_hourly():
     with pytest.raises(ValueError, match="must fall on the hour"):
-        s3.lead_for_validity(datetime.datetime(2024, 9, 15, 3, 30))
+        s3.lead_for_valid_time(datetime.datetime(2024, 9, 15, 3, 30))
 
 
 def test_run_hours_for_lead_all_cycles_at_and_below_boundary():
@@ -90,56 +90,56 @@ def test_run_hours_for_lead_long_cycles_only_above_boundary():
     assert s3.run_hours_for_lead(72) == (0, 12)
 
 
-def test_run_for_validity_at_lead_matches_shortest_lead_at_lead_zero():
-    validity = datetime.datetime(2024, 9, 15, 18)
-    expected_run = s3.run_for_validity(validity)
-    assert s3.run_for_validity_at_lead(validity, 0) == expected_run
+def test_run_for_valid_time_at_lead_matches_shortest_lead_at_lead_zero():
+    valid_time = datetime.datetime(2024, 9, 15, 18)
+    expected_run = s3.run_for_valid_time(valid_time)
+    assert s3.run_for_valid_time_at_lead(valid_time, 0) == expected_run
 
 
-def test_run_for_validity_at_lead_solves_run_minus_lead():
-    run = s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 12), 24)
+def test_run_for_valid_time_at_lead_solves_run_minus_lead():
+    run = s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 12), 24)
     assert run == datetime.datetime(2024, 9, 14, 12)
 
 
-def test_run_for_validity_at_lead_rejects_unreachable_run_hour():
-    # validity 2024-09-15T06 at lead 72 implies run 2024-09-12T06, but only 00/12Z
+def test_run_for_valid_time_at_lead_rejects_unreachable_run_hour():
+    # valid time 2024-09-15T06 at lead 72 implies run 2024-09-12T06, but only 00/12Z
     # runs reach lead 72 (06Z/18Z stop at lead 69).
     with pytest.raises(ValueError, match="does not reach that lead"):
-        s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 6), 72)
+        s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 6), 72)
 
 
-def test_run_for_validity_at_lead_accepts_06z_at_lead_69():
+def test_run_for_valid_time_at_lead_accepts_06z_at_lead_69():
     # Confirmed against the live archive: 06Z/18Z runs DO publish lead 69 (the
     # true short-cycle cutoff), not just up to 54 as an earlier, less precise
     # version of this boundary assumed.
-    validity = datetime.datetime(2024, 9, 15, 6) + datetime.timedelta(hours=69)
-    run = s3.run_for_validity_at_lead(validity, 69)
+    valid_time = datetime.datetime(2024, 9, 15, 6) + datetime.timedelta(hours=69)
+    run = s3.run_for_valid_time_at_lead(valid_time, 69)
     assert run == datetime.datetime(2024, 9, 15, 6)
 
 
-def test_run_for_validity_at_lead_rejects_non_hourly():
+def test_run_for_valid_time_at_lead_rejects_non_hourly():
     with pytest.raises(ValueError, match="must fall on the hour"):
-        s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 3, 30), 24)
+        s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 3, 30), 24)
 
 
-def test_run_for_validity_at_lead_rejects_lead_off_extended_cadence():
+def test_run_for_valid_time_at_lead_rejects_lead_off_extended_cadence():
     # Beyond T+54 the archive only publishes every 3rd hour; 55 isn't one of them.
     with pytest.raises(ValueError, match="not a valid archive lead"):
-        s3.run_for_validity_at_lead(datetime.datetime(2024, 9, 15, 6), 55)
+        s3.run_for_valid_time_at_lead(datetime.datetime(2024, 9, 15, 6), 55)
 
 
-def test_run_for_validity_at_lead_accepts_lead_on_extended_cadence():
+def test_run_for_valid_time_at_lead_accepts_lead_on_extended_cadence():
     # 57 = 54 + 3: a valid extended-cadence lead, previously (incorrectly)
     # rejected for 06Z/18Z runs since it exceeds the old 54h boundary.
     expected_run = datetime.datetime(2024, 9, 15, 6)
-    validity = expected_run + datetime.timedelta(hours=57)
-    assert s3.run_for_validity_at_lead(validity, 57) == expected_run
+    valid_time = expected_run + datetime.timedelta(hours=57)
+    assert s3.run_for_valid_time_at_lead(valid_time, 57) == expected_run
 
 
 def test_object_key_format_for_pressure_level_variable():
     run = datetime.datetime(2026, 8, 3, 0, 0)
-    validity = datetime.datetime(2026, 8, 3, 0, 0)
-    key = s3.object_key(run, validity, 0, "temperature_on_pressure_levels")
+    valid_time = datetime.datetime(2026, 8, 3, 0, 0)
+    key = s3.object_key(run, valid_time, 0, "temperature_on_pressure_levels")
     assert key == (
         "global-deterministic-10km/20260803T0000Z/"
         "20260803T0000Z-PT0000H00M-temperature_on_pressure_levels.nc"
@@ -148,8 +148,8 @@ def test_object_key_format_for_pressure_level_variable():
 
 def test_object_key_lead_and_minutes_padding():
     run = datetime.datetime(2026, 8, 3, 0, 0)
-    validity = datetime.datetime(2026, 8, 4, 0, 0)
-    key = s3.object_key(run, validity, 24, "temperature_on_pressure_levels")
+    valid_time = datetime.datetime(2026, 8, 4, 0, 0)
+    key = s3.object_key(run, valid_time, 24, "temperature_on_pressure_levels")
     assert key == (
         "global-deterministic-10km/20260803T0000Z/"
         "20260804T0000Z-PT0024H00M-temperature_on_pressure_levels.nc"
@@ -234,7 +234,7 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
         local_ds, parameter, key=str(fixture_path), extent=CONUS_EXTENT
     ).load()
 
-    key = s3.object_key(REFERENCE_RUN, REFERENCE_VALIDITY, REFERENCE_LEAD_HOURS, parameter)
+    key = s3.object_key(REFERENCE_RUN, REFERENCE_VALID_TIME, REFERENCE_LEAD_HOURS, parameter)
     fs = s3.filesystem()
     get_mock = mock.MagicMock(wraps=fs.get)
     monkeypatch.setattr(fs, "get", get_mock)
@@ -244,7 +244,7 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
         key,
         parameter,
         run=REFERENCE_RUN,
-        validity=REFERENCE_VALIDITY,
+        valid_time=REFERENCE_VALID_TIME,
         lead_hours=REFERENCE_LEAD_HOURS,
         extent=CONUS_EXTENT,
     )
@@ -305,7 +305,7 @@ def _patch_fetch_with_values(
 
 
 def _write_cache_hit(
-    dlib: MetOfficeUM,
+    dlib: UM10,
     t: datetime.datetime,
     *,
     t_value: float = 220.0,
@@ -313,7 +313,7 @@ def _write_cache_hit(
 ) -> None:
     """Pre-populate ``dlib.cachestore`` with a correctly-shaped hit for hour ``t``.
 
-    Matches exactly what :meth:`MetOfficeUM._process_hour` would itself write --
+    Matches exactly what :meth:`UM10._process_hour` would itself write --
     short-named variables, ``level`` in hPa -- so the inherited completeness
     check reports a hit.
     """
@@ -343,7 +343,7 @@ def test_download_dataset_fetches_on_miss(tmp_path, monkeypatch):
     fetch_mock = _patch_fetch_with_values(monkeypatch)
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    mds = MetOfficeUM(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
+    mds = UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
     assert fetch_mock.call_count == 2  # one per required parameter
     assert mds.data.sizes["time"] == 1
@@ -352,7 +352,7 @@ def test_download_dataset_fetches_on_miss(tmp_path, monkeypatch):
 def test_open_metdataset_reads_archive_hit_without_fetching(tmp_path, monkeypatch):
     fetch_mock = _patch_fetch_with_values(monkeypatch)
     hour = datetime.datetime(2024, 9, 1, 0)
-    dlib = MetOfficeUM(hour, cachestore=DiskCacheStore(tmp_path))
+    dlib = UM10(hour, cachestore=DiskCacheStore(tmp_path))
     _write_cache_hit(dlib, hour, t_value=999.0)
 
     mds = dlib.open_metdataset()
@@ -364,7 +364,7 @@ def test_open_metdataset_reads_archive_hit_without_fetching(tmp_path, monkeypatc
 def test_open_metdataset_partial_hit_only_fetches_miss(tmp_path, monkeypatch):
     fetch_mock = _patch_fetch_with_values(monkeypatch, t_value=210.0)
     hours = [datetime.datetime(2024, 9, 1, 0), datetime.datetime(2024, 9, 1, 1)]
-    dlib = MetOfficeUM(hours, cachestore=DiskCacheStore(tmp_path))
+    dlib = UM10(hours, cachestore=DiskCacheStore(tmp_path))
     _write_cache_hit(dlib, hours[0], t_value=999.0)
 
     mds = dlib.open_metdataset()
@@ -404,7 +404,7 @@ def test_cache_dataset_writes_correctly_to_gcp_cache_store(tmp_path, monkeypatch
     # set the cache slot directly rather than the property itself.
     monkeypatch.setattr(cachestore, "_cached_bucket", _FakeBucket())
 
-    dlib = MetOfficeUM(hour, cachestore=cachestore)
+    dlib = UM10(hour, cachestore=cachestore)
     mds = dlib.open_metdataset()
 
     assert mds.data.sizes["time"] == 1
@@ -419,15 +419,15 @@ def test_download_dataset_raises_when_live_fetch_fails(tmp_path, monkeypatch):
 
     monkeypatch.setattr(s3, "fetch_pressure_level_field", failing_fetch)
 
-    with pytest.raises(MetOfficeDataNotFoundError, match="could not be fetched"):
-        MetOfficeUM(
+    with pytest.raises(UM10DataNotFoundError, match="could not be fetched"):
+        UM10(
             datetime.datetime(2024, 9, 1, 0), cachestore=DiskCacheStore(tmp_path)
         ).open_metdataset()
 
 
 def test_download_dataset_propagates_programming_errors_unwrapped(tmp_path, monkeypatch):
     """A non-``FileNotFoundError`` failure (a bug, not a missing S3 object) must
-    propagate as itself, not be relabeled as :class:`MetOfficeDataNotFoundError`."""
+    propagate as itself, not be relabeled as :class:`UM10DataNotFoundError`."""
     monkeypatch.setattr(s3, "filesystem", _FakeClient)
 
     def buggy_fetch(fs, key, parameter, **kwargs):
@@ -436,7 +436,7 @@ def test_download_dataset_propagates_programming_errors_unwrapped(tmp_path, monk
     monkeypatch.setattr(s3, "fetch_pressure_level_field", buggy_fetch)
 
     with pytest.raises(TypeError, match="simulated bug"):
-        MetOfficeUM(
+        UM10(
             datetime.datetime(2024, 9, 1, 0), cachestore=DiskCacheStore(tmp_path)
         ).open_metdataset()
 
@@ -449,8 +449,8 @@ def test_download_dataset_continues_past_one_missing_hour(tmp_path, monkeypatch)
     missing_hour = hours[1]
     monkeypatch.setattr(s3, "filesystem", _FakeClient)
 
-    def fake_fetch(fs, key, parameter, *, validity, **kwargs):
-        if validity == missing_hour:
+    def fake_fetch(fs, key, parameter, *, valid_time, **kwargs):
+        if valid_time == missing_hour:
             raise FileNotFoundError("simulated 404")
         variable = s3.PARAMETER_VARIABLE[parameter]
         value = 220.0 if variable == "air_temperature" else 0.8
@@ -468,8 +468,8 @@ def test_download_dataset_continues_past_one_missing_hour(tmp_path, monkeypatch)
 
     monkeypatch.setattr(s3, "fetch_pressure_level_field", fake_fetch)
 
-    dlib = MetOfficeUM(time_range, cachestore=DiskCacheStore(tmp_path))
-    with pytest.raises(MetOfficeDataNotFoundError, match="1 of 3 hour"):
+    dlib = UM10(time_range, cachestore=DiskCacheStore(tmp_path))
+    with pytest.raises(UM10DataNotFoundError, match="1 of 3 hour"):
         dlib.download_dataset(hours)
 
     assert dlib.cachestore.exists(dlib.create_cachepath(hours[0]))
@@ -482,7 +482,7 @@ def test_open_metdataset_rejects_descending_latitude(tmp_path, monkeypatch):
     hour = datetime.datetime(2024, 9, 1, 0)
 
     with pytest.raises(AssertionError, match="latitude"):
-        MetOfficeUM(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
+        UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
 
 def test_specific_humidity_round_trips_to_relative_humidity(tmp_path, monkeypatch):
@@ -490,7 +490,7 @@ def test_specific_humidity_round_trips_to_relative_humidity(tmp_path, monkeypatc
     _patch_fetch_with_values(monkeypatch, t_value=t_value, rh_value=rh_value)
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    mds = MetOfficeUM(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
+    mds = UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
     # MetDataset sorts `level` ascending, so index 0 is 150 hPa, not
     # CRUISE_LEVELS_HPA[0] (300 hPa) -- read the actual level back rather than
@@ -510,9 +510,7 @@ def test_specific_humidity_retained_even_when_only_temperature_requested(tmp_pat
     _patch_fetch_with_values(monkeypatch)
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    dlib = MetOfficeUM(
-        hour, variables=[met_var.AirTemperature], cachestore=DiskCacheStore(tmp_path)
-    )
+    dlib = UM10(hour, variables=[met_var.AirTemperature], cachestore=DiskCacheStore(tmp_path))
     mds = dlib.open_metdataset()
 
     assert "t" in mds.data.data_vars
@@ -525,7 +523,7 @@ def test_hand_computed_rhi_matches_thermo_rhi_via_q(tmp_path, monkeypatch):
     _patch_fetch_with_values(monkeypatch, t_value=t_value, rh_value=rh_value)
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    mds = MetOfficeUM(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
+    mds = UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
     level_pa = mds.data["level"].isel(level=0).compute().item() * 100.0
     q = mds.data["q"].isel(level=0, latitude=0, longitude=0, time=0).compute().item()
@@ -546,14 +544,14 @@ def test_open_metdataset_rejects_missing_pressure_level_in_fetched_data(tmp_path
     _patch_fetch_with_values(monkeypatch, pressure_pa=levels_missing_300)
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    dlib = MetOfficeUM(hour, pressure_levels=[300], cachestore=DiskCacheStore(tmp_path))
+    dlib = UM10(hour, pressure_levels=[300], cachestore=DiskCacheStore(tmp_path))
     with pytest.raises(ValueError, match="expected exactly one 300"):
         dlib.open_metdataset()
 
 
 def test_construction_rejects_pressure_level_outside_supported_set(tmp_path):
     with pytest.raises(ValueError, match="not supported"):
-        MetOfficeUM(
+        UM10(
             datetime.datetime(2024, 9, 1, 0),
             pressure_levels=[100],
             cachestore=DiskCacheStore(tmp_path),
@@ -564,7 +562,7 @@ def test_provider_dataset_attrs_no_warning(tmp_path, monkeypatch):
     _patch_fetch_with_values(monkeypatch)
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    mds = MetOfficeUM(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
+    mds = UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
     assert mds.attrs["provider"] == PROVIDER
     assert mds.attrs["dataset"] == DATASET
@@ -580,8 +578,8 @@ def test_provider_dataset_attrs_no_warning(tmp_path, monkeypatch):
 def test_create_cachepath_differs_by_lead_hours(tmp_path):
     t = datetime.datetime(2024, 9, 1, 0)
     cachestore = DiskCacheStore(tmp_path)
-    default_um = MetOfficeUM(t, cachestore=cachestore)
-    fixed_um = MetOfficeUM(t, cachestore=cachestore, lead_hours=24)
+    default_um = UM10(t, cachestore=cachestore)
+    fixed_um = UM10(t, cachestore=cachestore, lead_hours=24)
 
     assert default_um.create_cachepath(t) != fixed_um.create_cachepath(t)
 
@@ -590,8 +588,8 @@ def test_fixed_lead_zero_cachepath_differs_from_shortest_lead(tmp_path):
     """lead_hours=0 must never be conflated with lead_hours=None (truthiness bug)."""
     t = datetime.datetime(2024, 9, 1, 0)
     cachestore = DiskCacheStore(tmp_path)
-    default_um = MetOfficeUM(t, cachestore=cachestore)
-    lead_zero_um = MetOfficeUM(t, cachestore=cachestore, lead_hours=0)
+    default_um = UM10(t, cachestore=cachestore)
+    lead_zero_um = UM10(t, cachestore=cachestore, lead_hours=0)
 
     assert default_um.create_cachepath(t) != lead_zero_um.create_cachepath(t)
 
@@ -605,14 +603,14 @@ def test_lead_hours_threaded_through_to_live_fetch(tmp_path, monkeypatch):
     captured = {}
     original_object_key = s3.object_key
 
-    def capturing_object_key(run, validity, lead_hours, parameter):
+    def capturing_object_key(run, valid_time, lead_hours, parameter):
         captured["run"] = run
         captured["lead_hours"] = lead_hours
-        return original_object_key(run, validity, lead_hours, parameter)
+        return original_object_key(run, valid_time, lead_hours, parameter)
 
     monkeypatch.setattr(s3, "object_key", capturing_object_key)
 
-    MetOfficeUM(hour, cachestore=DiskCacheStore(tmp_path), lead_hours=24).open_metdataset()
+    UM10(hour, cachestore=DiskCacheStore(tmp_path), lead_hours=24).open_metdataset()
 
     assert captured["lead_hours"] == 24
-    assert captured["run"] == s3.run_for_validity_at_lead(hour, 24)
+    assert captured["run"] == s3.run_for_valid_time_at_lead(hour, 24)

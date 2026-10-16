@@ -1,4 +1,4 @@
-"""Whole-file access layer for the Met Office ``global-deterministic-10km`` product.
+"""Whole-file access layer for the UK Met Office ``global-deterministic-10km`` product.
 
 Anonymous access to ``s3://met-office-atmospheric-model-data`` (eu-west-2). Requires
 the additional dependency `s3fs <https://s3fs.readthedocs.io/>`_.
@@ -19,10 +19,10 @@ try:
     import s3fs
 except ModuleNotFoundError as exc:
     dependencies.raise_module_not_found_error(
-        name="metoffice.s3 module",
+        name="ukmo.s3 module",
         package_name="s3fs",
         module_not_found_error=exc,
-        pycontrails_optional_package="metoffice",
+        pycontrails_optional_package="ukmo",
     )
 
 #: S3 bucket (anonymous, eu-west-2)
@@ -47,23 +47,23 @@ PARAMETER_VARIABLE = {
 }
 
 
-def _check_hourly(validity: datetime.datetime) -> None:
-    """Raise if ``validity`` doesn't fall on the hour."""
-    if validity.minute or validity.second or validity.microsecond:
-        msg = f"validity time {validity} must fall on the hour"
+def _check_hourly(valid_time: datetime.datetime) -> None:
+    """Raise if ``valid_time`` doesn't fall on the hour."""
+    if valid_time.minute or valid_time.second or valid_time.microsecond:
+        msg = f"valid time {valid_time} must fall on the hour"
         raise ValueError(msg)
 
 
-def run_for_validity(validity: datetime.datetime) -> datetime.datetime:
-    """Get the run time for the shortest lead covering an hourly validity time.
+def run_for_valid_time(valid_time: datetime.datetime) -> datetime.datetime:
+    """Get the run time for the shortest lead covering an hourly valid time.
 
     Shortest available lead, cycling T+0 -> T+5. Runs occur every
     :data:`RUN_CADENCE_HOURS` hours, so the run is the preceding cadence boundary.
 
     Parameters
     ----------
-    validity : datetime.datetime
-        Validity (forecast) time. Must fall on the hour.
+    valid_time : datetime.datetime
+        Valid time. Must fall on the hour.
 
     Returns
     -------
@@ -71,20 +71,20 @@ def run_for_validity(validity: datetime.datetime) -> datetime.datetime:
         Run time.
 
     """
-    _check_hourly(validity)
-    run_hour = (validity.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
-    return validity.replace(hour=run_hour, minute=0, second=0, microsecond=0)
+    _check_hourly(valid_time)
+    run_hour = (valid_time.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
+    return valid_time.replace(hour=run_hour, minute=0, second=0, microsecond=0)
 
 
-def lead_for_validity(validity: datetime.datetime) -> int:
-    """Get the shortest lead, in whole hours, covering an hourly validity time.
+def lead_for_valid_time(valid_time: datetime.datetime) -> int:
+    """Get the shortest lead, in whole hours, covering an hourly valid time.
 
-    See :func:`run_for_validity` for the corresponding run time.
+    See :func:`run_for_valid_time` for the corresponding run time.
 
     Parameters
     ----------
-    validity : datetime.datetime
-        Validity (forecast) time. Must fall on the hour.
+    valid_time : datetime.datetime
+        Valid time. Must fall on the hour.
 
     Returns
     -------
@@ -92,9 +92,9 @@ def lead_for_validity(validity: datetime.datetime) -> int:
         Lead time in whole hours.
 
     """
-    _check_hourly(validity)
-    run_hour = (validity.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
-    return validity.hour - run_hour
+    _check_hourly(valid_time)
+    run_hour = (valid_time.hour // RUN_CADENCE_HOURS) * RUN_CADENCE_HOURS
+    return valid_time.hour - run_hour
 
 
 #: Lead (hours) up to which every run publishes hourly. Beyond this, the archive
@@ -146,16 +146,16 @@ def run_hours_for_lead(lead_hours: int) -> tuple[int, ...]:
     return _ALL_RUN_HOURS if lead_hours <= _ALL_CYCLE_MAX_LEAD_HOURS else _LONG_RUN_HOURS
 
 
-def run_for_validity_at_lead(validity: datetime.datetime, lead_hours: int) -> datetime.datetime:
-    """Get the run time for a fixed lead, given a validity time.
+def run_for_valid_time_at_lead(valid_time: datetime.datetime, lead_hours: int) -> datetime.datetime:
+    """Get the run time for a fixed lead, given a valid time.
 
-    Unlike :func:`run_for_validity` (shortest-lead), this fixes ``lead_hours``
-    and solves for ``run = validity - lead_hours``.
+    Unlike :func:`run_for_valid_time` (shortest-lead), this fixes ``lead_hours``
+    and solves for ``run = valid_time - lead_hours``.
 
     Parameters
     ----------
-    validity : datetime.datetime
-        Validity (forecast) time. Must fall on the hour.
+    valid_time : datetime.datetime
+        Valid time. Must fall on the hour.
     lead_hours : int
         Fixed lead time in whole hours.
 
@@ -167,18 +167,18 @@ def run_for_validity_at_lead(validity: datetime.datetime, lead_hours: int) -> da
     Raises
     ------
     ValueError
-        If ``validity`` isn't hourly, if ``lead_hours`` isn't a lead the archive
+        If ``valid_time`` isn't hourly, if ``lead_hours`` isn't a lead the archive
         ever publishes at (see :func:`_check_valid_lead`), or if the implied run
         hour is not one that reaches ``lead_hours``. Calling this for a
-        validity/lead combination the archive can't produce is a caller bug.
+        valid time/lead combination the archive can't produce is a caller bug.
 
     """
-    _check_hourly(validity)
+    _check_hourly(valid_time)
     _check_valid_lead(lead_hours)
-    run = validity - datetime.timedelta(hours=lead_hours)
+    run = valid_time - datetime.timedelta(hours=lead_hours)
     if run.hour not in run_hours_for_lead(lead_hours):
         msg = (
-            f"lead {lead_hours}h at validity {validity} implies run {run}, but run "
+            f"lead {lead_hours}h at valid time {valid_time} implies run {run}, but run "
             f"hour {run.hour} does not reach that lead"
         )
         raise ValueError(msg)
@@ -187,15 +187,15 @@ def run_for_validity_at_lead(validity: datetime.datetime, lead_hours: int) -> da
 
 def object_key(
     run: datetime.datetime,
-    validity: datetime.datetime,
+    valid_time: datetime.datetime,
     lead_hours: int,
     parameter: str,
 ) -> str:
-    """Build the S3 object key for a given run, validity, lead and parameter.
+    """Build the S3 object key for a given run, valid_time, lead and parameter.
 
-    String template (validity time leads, not run time)::
+    String template (valid time leads, not run time)::
 
-        global-deterministic-10km/{RUN}Z/{VALIDITY}Z-PT{LEAD}H{MIN}M-{parameter}.nc
+        global-deterministic-10km/{RUN}Z/{VALID_TIME}Z-PT{LEAD}H{MIN}M-{parameter}.nc
 
     ``lead_hours`` is always zero-padded to 4 digits and minutes are hardcoded to
     ``00M``, since this product only ever publishes on-the-hour leads.
@@ -207,9 +207,9 @@ def object_key(
 
     """
     run_str = run.strftime("%Y%m%dT%H%MZ")
-    validity_str = validity.strftime("%Y%m%dT%H%MZ")
+    valid_time_str = valid_time.strftime("%Y%m%dT%H%MZ")
     lead_str = f"PT{lead_hours:04d}H00M"
-    return f"{PRODUCT_PREFIX}/{run_str}/{validity_str}-{lead_str}-{parameter}.nc"
+    return f"{PRODUCT_PREFIX}/{run_str}/{valid_time_str}-{lead_str}-{parameter}.nc"
 
 
 def filesystem() -> s3fs.S3FileSystem:
@@ -231,15 +231,15 @@ def _assert_time_coords_match(
     ds: xr.Dataset,
     *,
     run: datetime.datetime | None,
-    validity: datetime.datetime | None,
+    valid_time: datetime.datetime | None,
     lead_hours: int | None,
 ) -> None:
-    """Assert filename-derived run/validity/lead match in-file time coordinates.
+    """Assert filename-derived run/valid time/lead match in-file time coordinates.
 
     Raises
     ------
     AssertionError
-        If any of ``run``, ``validity``, ``lead_hours`` is given and doesn't match
+        If any of ``run``, ``valid_time``, ``lead_hours`` is given and doesn't match
         the corresponding in-file coordinate.
 
     """
@@ -249,10 +249,10 @@ def _assert_time_coords_match(
             msg = f"filename run {run} does not match in-file forecast_reference_time {file_run}"
             raise AssertionError(msg)
 
-    if validity is not None:
-        file_validity = pd.Timestamp(ds["time"].item())
-        if file_validity != pd.Timestamp(validity):
-            msg = f"filename validity {validity} does not match in-file time {file_validity}"
+    if valid_time is not None:
+        file_valid_time = pd.Timestamp(ds["time"].item())
+        if file_valid_time != pd.Timestamp(valid_time):
+            msg = f"filename valid time {valid_time} does not match in-file time {file_valid_time}"
             raise AssertionError(msg)
 
     if lead_hours is not None:
@@ -268,7 +268,7 @@ def level_indices_for(
     """Get the index of each of ``levels_hpa`` within ``pressure_pa``.
 
     Shared by :func:`select_cruise_subset` and
-    :meth:`~pycontrails.datalib.metoffice.ukmo.MetOfficeUM._process_hour`, which both
+    :meth:`~pycontrails.datalib.ukmo.ukmo.UM10._process_hour`, which both
     need to locate the same fixed set of pressure levels within a fetched field's
     native ``pressure`` coordinate.
 
@@ -377,7 +377,7 @@ def fetch_pressure_level_field(
     parameter: str,
     *,
     run: datetime.datetime | None = None,
-    validity: datetime.datetime | None = None,
+    valid_time: datetime.datetime | None = None,
     lead_hours: int | None = None,
     extent: tuple[float, float, float, float] | None = None,
 ) -> xr.DataArray:
@@ -400,8 +400,8 @@ def fetch_pressure_level_field(
     run : datetime.datetime, optional
         Filename-derived run time. If given, asserted against the in-file
         ``forecast_reference_time``.
-    validity : datetime.datetime, optional
-        Filename-derived validity time. If given, asserted against the in-file
+    valid_time : datetime.datetime, optional
+        Filename-derived valid time. If given, asserted against the in-file
         ``time``.
     lead_hours : int, optional
         Filename-derived lead time. If given, asserted against the in-file
@@ -423,5 +423,5 @@ def fetch_pressure_level_field(
         with xr.open_dataset(
             target, engine="netcdf4", decode_times=True, decode_timedelta=True
         ) as ds:
-            _assert_time_coords_match(ds, run=run, validity=validity, lead_hours=lead_hours)
+            _assert_time_coords_match(ds, run=run, valid_time=valid_time, lead_hours=lead_hours)
             return select_cruise_subset(ds, parameter, key=key, extent=extent).load()
