@@ -24,6 +24,9 @@ from pycontrails.datalib.ukmo.ukmo import (
 from pycontrails.physics import thermo
 from tests import OFFLINE
 
+#: Pressure levels (hPa) used by default
+CRUISE_LEVELS_HPA = (300, 275, 250, 225, 200, 175, 150)
+
 #: Example extent covering CONUS, (lon_min, lon_max, lat_min, lat_max)
 CONUS_EXTENT = (-134, -63, 20, 50)
 
@@ -156,8 +159,8 @@ def test_object_key_lead_and_minutes_padding():
     )
 
 
-def test_select_cruise_subset_crops_to_passed_in_extent():
-    pressure_pa = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
+def test_select_pressure_levels_crops_to_passed_in_extent():
+    pressure_pa = np.asarray(CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
     latitude = np.linspace(30.0, 70.0, 41)  # ascending, 1 degree steps
     longitude = np.linspace(-40.0, 0.0, 41)  # 1 degree steps
     data = np.zeros((len(pressure_pa), len(latitude), len(longitude)), dtype=np.float32)
@@ -167,7 +170,9 @@ def test_select_cruise_subset_crops_to_passed_in_extent():
     )
 
     shanwick_extent = (-30.0, -10.0, 45.0, 61.0)
-    da = s3.select_cruise_subset(ds, "temperature_on_pressure_levels", extent=shanwick_extent)
+    da = s3.select_pressure_levels(
+        ds, "temperature_on_pressure_levels", CRUISE_LEVELS_HPA, extent=shanwick_extent
+    )
 
     assert da["longitude"].values.min() >= -30.0
     assert da["longitude"].values.max() <= -10.0
@@ -175,8 +180,8 @@ def test_select_cruise_subset_crops_to_passed_in_extent():
     assert da["latitude"].values.max() <= 61.0
 
 
-def test_select_cruise_subset_no_extent_returns_full_domain():
-    pressure_pa = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
+def test_select_pressure_levels_no_extent_returns_full_domain():
+    pressure_pa = np.asarray(CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
     latitude = np.linspace(10.0, 60.0, 51)
     longitude = np.linspace(-140.0, -50.0, 91)
     data = np.zeros((len(pressure_pa), len(latitude), len(longitude)), dtype=np.float32)
@@ -185,14 +190,14 @@ def test_select_cruise_subset_no_extent_returns_full_domain():
         coords={"pressure": pressure_pa, "latitude": latitude, "longitude": longitude},
     )
 
-    da = s3.select_cruise_subset(ds, "temperature_on_pressure_levels")
+    da = s3.select_pressure_levels(ds, "temperature_on_pressure_levels", CRUISE_LEVELS_HPA)
 
     np.testing.assert_array_equal(da["longitude"].values, longitude)
     np.testing.assert_array_equal(da["latitude"].values, latitude)
 
 
-def test_select_cruise_subset_rejects_descending_longitude():
-    pressure_pa = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
+def test_select_pressure_levels_rejects_descending_longitude():
+    pressure_pa = np.asarray(CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
     latitude = np.linspace(30.0, 70.0, 5)
     longitude = np.array([10.0, 5.0, 0.0])  # descending
     data = np.zeros((len(pressure_pa), len(latitude), len(longitude)), dtype=np.float32)
@@ -202,11 +207,11 @@ def test_select_cruise_subset_rejects_descending_longitude():
     )
 
     with pytest.raises(ValueError, match="longitude"):
-        s3.select_cruise_subset(ds, "temperature_on_pressure_levels")
+        s3.select_pressure_levels(ds, "temperature_on_pressure_levels", CRUISE_LEVELS_HPA)
 
 
-def test_select_cruise_subset_rejects_extent_producing_empty_crop():
-    pressure_pa = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
+def test_select_pressure_levels_rejects_extent_producing_empty_crop():
+    pressure_pa = np.asarray(CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
     latitude = np.linspace(30.0, 70.0, 41)
     longitude = np.linspace(-40.0, 0.0, 41)
     data = np.zeros((len(pressure_pa), len(latitude), len(longitude)), dtype=np.float32)
@@ -217,7 +222,9 @@ def test_select_cruise_subset_rejects_extent_producing_empty_crop():
 
     outside_extent = (100.0, 110.0, 80.0, 85.0)  # entirely outside the dataset's domain
     with pytest.raises(ValueError, match="empty result"):
-        s3.select_cruise_subset(ds, "temperature_on_pressure_levels", extent=outside_extent)
+        s3.select_pressure_levels(
+            ds, "temperature_on_pressure_levels", CRUISE_LEVELS_HPA, extent=outside_extent
+        )
 
 
 @pytest.mark.skipif(OFFLINE, reason="offline")
@@ -230,8 +237,8 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
     local_ds = xr.open_dataset(
         fixture_path, engine="netcdf4", decode_times=True, decode_timedelta=True
     )
-    expected = s3.select_cruise_subset(
-        local_ds, parameter, key=str(fixture_path), extent=CONUS_EXTENT
+    expected = s3.select_pressure_levels(
+        local_ds, parameter, CRUISE_LEVELS_HPA, key=str(fixture_path), extent=CONUS_EXTENT
     ).load()
 
     key = s3.object_key(REFERENCE_RUN, REFERENCE_VALID_TIME, REFERENCE_LEAD_HOURS, parameter)
@@ -243,6 +250,7 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
         fs,
         key,
         parameter,
+        levels_hpa=CRUISE_LEVELS_HPA,
         run=REFERENCE_RUN,
         valid_time=REFERENCE_VALID_TIME,
         lead_hours=REFERENCE_LEAD_HOURS,
@@ -251,7 +259,7 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
 
     np.testing.assert_array_equal(actual.values, expected.values)
     assert list(actual.dims) == ["pressure", "latitude", "longitude"]
-    assert actual.sizes["pressure"] == len(s3.CRUISE_LEVELS_HPA)
+    assert actual.sizes["pressure"] == len(CRUISE_LEVELS_HPA)
 
     # Guards against regressing back to many small per-chunk reads (the actual bug
     # that caused ~10-minute opens): exactly one whole-object download per fetch.
@@ -264,7 +272,7 @@ def test_whole_file_fetch_bit_identical_to_reference_with_single_download(parame
 
 UKMO_LATITUDE = np.array([30.0, 31.0])
 UKMO_LONGITUDE = np.array([-100.0, -99.0])
-UKMO_PRESSURE_PA = np.asarray(s3.CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
+UKMO_PRESSURE_PA = np.asarray(CRUISE_LEVELS_HPA, dtype=np.float64) * 100.0
 
 
 class _FakeClient:
@@ -623,7 +631,7 @@ def test_hand_computed_rhi_matches_thermo_rhi_via_q(tmp_path, monkeypatch):
 
 def test_open_metdataset_rejects_missing_pressure_level_in_fetched_data(tmp_path, monkeypatch):
     """A fetched field missing one of the *requested but otherwise-supported* cruise
-    levels (as opposed to a level outside ``s3.CRUISE_LEVELS_HPA`` entirely, which
+    levels (as opposed to a level outside ``supported_pressure_levels`` entirely, which
     ``parse_pressure_levels`` already rejects at construction time) must fail loudly
     in ``_process_hour``, not silently select the wrong level."""
     levels_missing_300 = UKMO_PRESSURE_PA[1:]  # drops 300 hPa, keeps the other 6
@@ -635,13 +643,30 @@ def test_open_metdataset_rejects_missing_pressure_level_in_fetched_data(tmp_path
         dlib.open_metdataset()
 
 
-def test_construction_rejects_pressure_level_outside_supported_set(tmp_path):
+@pytest.mark.parametrize("level", [5, 1013, -1])
+def test_construction_rejects_pressure_level_outside_supported_set(tmp_path, level):
+    """5 hPa exists in the temperature field only, not relative humidity, so isn't supported."""
     with pytest.raises(ValueError, match="not supported"):
         UM10(
             datetime.datetime(2024, 9, 1, 0),
-            pressure_levels=[100],
+            pressure_levels=[level],
             cachestore=DiskCacheStore(tmp_path),
         )
+
+
+def test_construction_accepts_every_supported_pressure_level(tmp_path):
+    hour = datetime.datetime(2024, 9, 1, 0)
+    supported = UM10(hour, cachestore=DiskCacheStore(tmp_path)).supported_pressure_levels
+
+    dlib = UM10(hour, pressure_levels=supported, cachestore=DiskCacheStore(tmp_path))
+
+    assert dlib.pressure_levels == sorted(supported)
+
+
+def test_default_pressure_levels_are_the_cruise_levels(tmp_path):
+    dlib = UM10(datetime.datetime(2024, 9, 1, 0), cachestore=DiskCacheStore(tmp_path))
+
+    assert dlib.pressure_levels == sorted(CRUISE_LEVELS_HPA)
 
 
 def test_provider_dataset_attrs_no_warning(tmp_path, monkeypatch):

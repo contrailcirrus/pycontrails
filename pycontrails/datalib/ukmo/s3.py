@@ -34,9 +34,6 @@ REGION = "eu-west-2"
 #: Product prefix within the bucket
 PRODUCT_PREFIX = "global-deterministic-10km"
 
-#: Cruise pressure levels to fetch, in hPa
-CRUISE_LEVELS_HPA = (300, 275, 250, 225, 200, 175, 150)
-
 #: Run cadence (hours): Met Office global deterministic runs at 00/06/12/18Z
 RUN_CADENCE_HOURS = 6
 
@@ -296,9 +293,9 @@ def level_indices_for(
 ) -> list[int]:
     """Get the index of each of ``levels_hpa`` within ``pressure_pa``.
 
-    Shared by :func:`select_cruise_subset` and
+    Shared by :func:`select_pressure_levels` and
     :meth:`~pycontrails.datalib.ukmo.ukmo.UM10._process_hour`, which both
-    need to locate the same fixed set of pressure levels within a fetched field's
+    need to locate the same set of pressure levels within a fetched field's
     native ``pressure`` coordinate.
 
     Parameters
@@ -334,14 +331,15 @@ def level_indices_for(
     return indices
 
 
-def select_cruise_subset(
+def select_pressure_levels(
     ds: xr.Dataset,
     parameter: str,
+    levels_hpa: Sequence[float],
     key: str = "<dataset>",
     *,
     extent: tuple[float, float, float, float] | None = None,
 ) -> xr.DataArray:
-    """Select the cruise-level, region-cropped subset of a parameter from a dataset.
+    """Select the requested pressure levels, optionally region-cropped, of a parameter.
 
     Pure selection logic, factored out so the same subsetting can be applied
     regardless of how ``ds`` was opened; notably used to build ground truth in
@@ -355,18 +353,19 @@ def select_cruise_subset(
     parameter : str
         Parameter name as it appears in the file name. Must be a key of
         :data:`PARAMETER_VARIABLE`.
+    levels_hpa : Sequence[float]
+        Pressure levels to select, in hPa.
     key : str, optional
         Identifier used only in error messages.
     extent : tuple[float, float, float, float], optional
         ``(lon_min, lon_max, lat_min, lat_max)`` to crop to. ``None`` (default)
-        returns the full longitude/latitude range, cropped only to
-        :data:`CRUISE_LEVELS_HPA`.
+        returns the full longitude/latitude range, cropped only to ``levels_hpa``.
 
     Returns
     -------
     xr.DataArray
         Lazy array with dims ``(pressure, latitude, longitude)``, restricted to
-        :data:`CRUISE_LEVELS_HPA` and, if given, ``extent``. Carries ``um_version``
+        ``levels_hpa`` and, if given, ``extent``. Carries ``um_version``
         and ``mosg__grid_version`` in ``.attrs`` when present on ``ds``, copied from
         the file's global attrs so callers can log per-file provenance without a
         second fetch.
@@ -375,7 +374,7 @@ def select_cruise_subset(
     ------
     ValueError
         If latitude or longitude isn't in ascending order, if any of
-        :data:`CRUISE_LEVELS_HPA` isn't matched by exactly one in-file pressure level,
+        ``levels_hpa`` isn't matched by exactly one in-file pressure level,
         or if ``extent`` crops to an empty result.
 
     """
@@ -392,7 +391,7 @@ def select_cruise_subset(
         raise ValueError(msg)
 
     pressure_pa = ds["pressure"].values.astype(np.float64)
-    level_indices = level_indices_for(pressure_pa, CRUISE_LEVELS_HPA, key=key)
+    level_indices = level_indices_for(pressure_pa, levels_hpa, key=key)
 
     da = ds[variable].isel(pressure=level_indices)
     if extent is not None:
@@ -412,12 +411,13 @@ def fetch_pressure_level_field(
     key: str,
     parameter: str,
     *,
+    levels_hpa: Sequence[float],
     run: datetime.datetime | None = None,
     valid_time: datetime.datetime | None = None,
     lead_hours: int | None = None,
     extent: tuple[float, float, float, float] | None = None,
 ) -> xr.DataArray:
-    """Download the object in full, then fetch the cruise-level, region-cropped subset.
+    """Download the object in full, then fetch the requested pressure levels.
 
     Downloads the whole object to a local temp file via ``fs.get``, opens it with
     ``netcdf4``, and loads only the selected subset into memory. The temp file is
@@ -433,6 +433,8 @@ def fetch_pressure_level_field(
     parameter : str
         Parameter name as it appears in the file name. Must be a key of
         :data:`PARAMETER_VARIABLE`.
+    levels_hpa : Sequence[float]
+        Pressure levels to load, in hPa.
     run : datetime.datetime, optional
         Filename-derived run time. If given, checked against the in-file
         ``forecast_reference_time``.
@@ -450,13 +452,13 @@ def fetch_pressure_level_field(
     -------
     xr.DataArray
         Loaded array with dims ``(pressure, latitude, longitude)``, restricted to
-        :data:`CRUISE_LEVELS_HPA` and, if given, ``extent``.
+        ``levels_hpa`` and, if given, ``extent``.
 
     Raises
     ------
     ValueError
         If any of ``run``, ``valid_time``, ``lead_hours`` doesn't match the in-file
-        coordinates, or for any of the reasons given in :func:`select_cruise_subset`.
+        coordinates, or for any of the reasons given in :func:`select_pressure_levels`.
 
     """
     s3_path = f"s3://{BUCKET}/{key}"
@@ -466,4 +468,4 @@ def fetch_pressure_level_field(
             target, engine="netcdf4", decode_times=True, decode_timedelta=True
         ) as ds:
             _check_time_coords_match(ds, run=run, valid_time=valid_time, lead_hours=lead_hours)
-            return select_cruise_subset(ds, parameter, key=key, extent=extent).load()
+            return select_pressure_levels(ds, parameter, levels_hpa, key=key, extent=extent).load()
