@@ -1,4 +1,4 @@
-"""UK Met Office data access."""
+"""UK Met Office (UKMO) data access."""
 
 from __future__ import annotations
 
