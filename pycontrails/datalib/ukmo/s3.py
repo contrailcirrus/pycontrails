@@ -212,6 +212,35 @@ def object_key(
     return f"{PRODUCT_PREFIX}/{run_str}/{valid_time_str}-{lead_str}-{parameter}.nc"
 
 
+def list_run_keys(fs: s3fs.S3FileSystem, run: datetime.datetime) -> set[str]:
+    """List the object keys published for a run.
+
+    Costs a few paginated S3 requests per run, however many objects are then looked up
+    in the result. The listing bypasses any directory cache held by ``fs``, so a run still
+    being published is not reported from a stale listing.
+
+    Parameters
+    ----------
+    fs : s3fs.S3FileSystem
+        Filesystem to read through, e.g. from :func:`filesystem`.
+    run : datetime.datetime
+        Run time.
+
+    Returns
+    -------
+    set[str]
+        Object keys relative to :data:`BUCKET`, in the form returned by :func:`object_key`.
+        Empty if the run has not been published.
+
+    """
+    run_prefix = f"{PRODUCT_PREFIX}/{run.strftime('%Y%m%dT%H%MZ')}"
+    try:
+        paths = fs.ls(f"{BUCKET}/{run_prefix}", detail=False, refresh=True)
+    except FileNotFoundError:
+        return set()
+    return {path.removeprefix(f"{BUCKET}/") for path in paths}
+
+
 def filesystem() -> s3fs.S3FileSystem:
     """Get an anonymous-access s3fs filesystem for :data:`BUCKET`.
 
