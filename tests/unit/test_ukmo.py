@@ -756,6 +756,19 @@ def test_open_metdataset_output_can_be_used_by_models(tmp_path, monkeypatch):
     assert "sac" in SAC(met=mds).eval().data
 
 
+def test_derived_specific_humidity_has_its_own_attrs(tmp_path, monkeypatch):
+    """Not the attributes of the pressure coordinate it is computed with."""
+    _patch_fetch_with_values(monkeypatch)
+    hour = datetime.datetime(2024, 9, 1, 0)
+
+    mds = UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
+
+    assert mds.data["specific_humidity"].attrs == {
+        "standard_name": "specific_humidity",
+        "units": "kg kg**-1",
+    }
+
+
 def test_hand_computed_rhi_matches_thermo_rhi_via_q(tmp_path, monkeypatch):
     t_value, rh_value = 210.0, 0.9
     _patch_fetch_with_values(monkeypatch, t_value=t_value, rh_value=rh_value)

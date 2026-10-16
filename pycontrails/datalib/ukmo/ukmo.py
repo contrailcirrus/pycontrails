@@ -568,6 +568,12 @@ class UM10(metsource.MetDataSource):
         if met_var.SpecificHumidity in self.variables:
             level_pa = ds["level"] * 100.0
             q = ds["relative_humidity"] * thermo.q_sat_liquid(ds["air_temperature"], level_pa)
+            # arithmetic carries over attributes from the operands, including those of the
+            # pressure coordinate, so replace them
+            q.attrs = {
+                "standard_name": met_var.SpecificHumidity.standard_name,
+                "units": met_var.SpecificHumidity.units,
+            }
             ds = ds.assign(specific_humidity=q)
 
         rename = {v.standard_name: v.short_name for v in self.pressure_level_variables}
