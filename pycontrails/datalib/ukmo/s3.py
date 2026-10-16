@@ -227,18 +227,18 @@ def filesystem() -> s3fs.S3FileSystem:
     return s3fs.S3FileSystem(anon=True, client_kwargs={"region_name": REGION})
 
 
-def _assert_time_coords_match(
+def _check_time_coords_match(
     ds: xr.Dataset,
     *,
     run: datetime.datetime | None,
     valid_time: datetime.datetime | None,
     lead_hours: int | None,
 ) -> None:
-    """Assert filename-derived run/valid time/lead match in-file time coordinates.
+    """Check that filename-derived run/valid time/lead match in-file time coordinates.
 
     Raises
     ------
-    AssertionError
+    ValueError
         If any of ``run``, ``valid_time``, ``lead_hours`` is given and doesn't match
         the corresponding in-file coordinate.
 
@@ -247,19 +247,19 @@ def _assert_time_coords_match(
         file_run = pd.Timestamp(ds["forecast_reference_time"].item())
         if file_run != pd.Timestamp(run):
             msg = f"filename run {run} does not match in-file forecast_reference_time {file_run}"
-            raise AssertionError(msg)
+            raise ValueError(msg)
 
     if valid_time is not None:
         file_valid_time = pd.Timestamp(ds["time"].item())
         if file_valid_time != pd.Timestamp(valid_time):
             msg = f"filename valid time {valid_time} does not match in-file time {file_valid_time}"
-            raise AssertionError(msg)
+            raise ValueError(msg)
 
     if lead_hours is not None:
         file_lead = pd.Timedelta(ds["forecast_period"].item())
         if file_lead != pd.Timedelta(hours=lead_hours):
             msg = f"filename lead {lead_hours}h does not match in-file forecast_period {file_lead}"
-            raise AssertionError(msg)
+            raise ValueError(msg)
 
 
 def level_indices_for(
@@ -342,18 +342,25 @@ def select_cruise_subset(
         the file's global attrs so callers can log per-file provenance without a
         second fetch.
 
+    Raises
+    ------
+    ValueError
+        If latitude or longitude isn't in ascending order, if any of
+        :data:`CRUISE_LEVELS_HPA` isn't matched by exactly one in-file pressure level,
+        or if ``extent`` crops to an empty result.
+
     """
     variable = PARAMETER_VARIABLE[parameter]
 
     latitude = ds["latitude"].values
     if not np.all(np.diff(latitude) > 0):
         msg = f"expected ascending latitude ordering in {key}"
-        raise AssertionError(msg)
+        raise ValueError(msg)
 
     longitude = ds["longitude"].values
     if not np.all(np.diff(longitude) > 0):
         msg = f"expected ascending longitude ordering in {key}"
-        raise AssertionError(msg)
+        raise ValueError(msg)
 
     pressure_pa = ds["pressure"].values.astype(np.float64)
     level_indices = level_indices_for(pressure_pa, CRUISE_LEVELS_HPA, key=key)
@@ -364,7 +371,7 @@ def select_cruise_subset(
         da = da.sel(longitude=slice(lon_min, lon_max), latitude=slice(lat_min, lat_max))
         if da.sizes["longitude"] == 0 or da.sizes["latitude"] == 0:
             msg = f"extent {extent} crop produced an empty result for {key}"
-            raise AssertionError(msg)
+            raise ValueError(msg)
     for attr in ("um_version", "mosg__grid_version"):
         if attr in ds.attrs:
             da.attrs[attr] = ds.attrs[attr]
@@ -398,13 +405,13 @@ def fetch_pressure_level_field(
         Parameter name as it appears in the file name. Must be a key of
         :data:`PARAMETER_VARIABLE`.
     run : datetime.datetime, optional
-        Filename-derived run time. If given, asserted against the in-file
+        Filename-derived run time. If given, checked against the in-file
         ``forecast_reference_time``.
     valid_time : datetime.datetime, optional
-        Filename-derived valid time. If given, asserted against the in-file
+        Filename-derived valid time. If given, checked against the in-file
         ``time``.
     lead_hours : int, optional
-        Filename-derived lead time. If given, asserted against the in-file
+        Filename-derived lead time. If given, checked against the in-file
         ``forecast_period``.
     extent : tuple[float, float, float, float], optional
         ``(lon_min, lon_max, lat_min, lat_max)`` to crop to. ``None`` (default)
@@ -416,6 +423,12 @@ def fetch_pressure_level_field(
         Loaded array with dims ``(pressure, latitude, longitude)``, restricted to
         :data:`CRUISE_LEVELS_HPA` and, if given, ``extent``.
 
+    Raises
+    ------
+    ValueError
+        If any of ``run``, ``valid_time``, ``lead_hours`` doesn't match the in-file
+        coordinates, or for any of the reasons given in :func:`select_cruise_subset`.
+
     """
     s3_path = f"s3://{BUCKET}/{key}"
     with temp.temp_file() as target:
@@ -423,5 +436,5 @@ def fetch_pressure_level_field(
         with xr.open_dataset(
             target, engine="netcdf4", decode_times=True, decode_timedelta=True
         ) as ds:
-            _assert_time_coords_match(ds, run=run, valid_time=valid_time, lead_hours=lead_hours)
+            _check_time_coords_match(ds, run=run, valid_time=valid_time, lead_hours=lead_hours)
             return select_cruise_subset(ds, parameter, key=key, extent=extent).load()
