@@ -327,6 +327,12 @@ class UM10(metsource.MetDataSource):
         xr.Dataset
             Processed dataset with cruise levels selected, ``specific_humidity``
             computed, and variables named by short name.
+
+        Raises
+        ------
+        ValueError
+            If latitude isn't in ascending order, if ``relative_humidity`` isn't a 0-1
+            fraction, or if a requested pressure level isn't in the fetched data.
         """
         # MetDataset sorts coordinates on construction (copy=True), which would
         # silently mask a non-ascending latitude axis -- check it here instead,
@@ -334,7 +340,7 @@ class UM10(metsource.MetDataSource):
         latitude = raw_ds["latitude"].values
         if not np.all(np.diff(latitude) > 0.0):
             msg = f"expected ascending latitude ordering, got {latitude[:3]}...{latitude[-3:]}"
-            raise AssertionError(msg)
+            raise ValueError(msg)
 
         relative_humidity = raw_ds["relative_humidity"].values
         if np.any(relative_humidity < -1e-3) or np.any(relative_humidity > 1.5):
@@ -342,7 +348,7 @@ class UM10(metsource.MetDataSource):
                 f"expected relative_humidity as a 0-1 fraction, got values in "
                 f"[{relative_humidity.min():.3g}, {relative_humidity.max():.3g}]"
             )
-            raise AssertionError(msg)
+            raise ValueError(msg)
 
         pressure_pa = raw_ds["pressure"].values.astype(np.float64)
         level_indices = s3.level_indices_for(pressure_pa, self.pressure_levels)
@@ -392,7 +398,7 @@ class UM10(metsource.MetDataSource):
                 f"expected {len(self.timesteps)} timesteps after selection, got "
                 f"{raw_ds.sizes['time']} -- an hour was silently dropped"
             )
-            raise AssertionError(msg)
+            raise ValueError(msg)
 
         mds = MetDataset(raw_ds, **kwargs)
         self.set_metadata(mds)

@@ -201,7 +201,7 @@ def test_select_cruise_subset_rejects_descending_longitude():
         coords={"pressure": pressure_pa, "latitude": latitude, "longitude": longitude},
     )
 
-    with pytest.raises(AssertionError, match="longitude"):
+    with pytest.raises(ValueError, match="longitude"):
         s3.select_cruise_subset(ds, "temperature_on_pressure_levels")
 
 
@@ -216,7 +216,7 @@ def test_select_cruise_subset_rejects_extent_producing_empty_crop():
     )
 
     outside_extent = (100.0, 110.0, 80.0, 85.0)  # entirely outside the dataset's domain
-    with pytest.raises(AssertionError, match="empty result"):
+    with pytest.raises(ValueError, match="empty result"):
         s3.select_cruise_subset(ds, "temperature_on_pressure_levels", extent=outside_extent)
 
 
@@ -481,7 +481,7 @@ def test_open_metdataset_rejects_descending_latitude(tmp_path, monkeypatch):
     _patch_fetch_with_values(monkeypatch, latitude=np.array([31.0, 30.0]))
     hour = datetime.datetime(2024, 9, 1, 0)
 
-    with pytest.raises(AssertionError, match="latitude"):
+    with pytest.raises(ValueError, match="latitude"):
         UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
 
