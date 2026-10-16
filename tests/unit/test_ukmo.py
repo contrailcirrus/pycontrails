@@ -533,6 +533,13 @@ def test_list_run_keys_empty_for_unpublished_run():
     assert s3.list_run_keys(_FakeLsFilesystem(None), datetime.datetime(2024, 9, 1, 0)) == set()
 
 
+def test_construction_rejects_none_cachestore():
+    """Without a cache store fetched data would be downloaded and then discarded, so
+    this must fail before any download."""
+    with pytest.raises(ValueError, match="cachestore is required"):
+        UM10(datetime.datetime(2024, 9, 1, 0), cachestore=None)
+
+
 def test_open_metdataset_rejects_descending_latitude(tmp_path, monkeypatch):
     _patch_fetch_with_values(monkeypatch, latitude=np.array([31.0, 30.0]))
     hour = datetime.datetime(2024, 9, 1, 0)

@@ -150,7 +150,7 @@ class UM10(metsource.MetDataSource):
         ``cache.GCPCacheStore(bucket=...)`` to read from a
         pre-populated archive (falling back to a live fetch for any hour it
         doesn't have).
-        A cache store is required: :meth:`open_metdataset` raises if ``cachestore`` is ``None``.
+        A cache store is required: a ``cachestore`` of ``None`` raises a ``ValueError``.
 
     """
 
@@ -166,7 +166,7 @@ class UM10(metsource.MetDataSource):
         pressure_levels: metsource.PressureLevelInput = s3.CRUISE_LEVELS_HPA,
         grid: float | None = None,
         lead_hours: int | None = None,
-        cachestore: CacheStore | None = __marker,  # type: ignore[assignment]
+        cachestore: CacheStore = __marker,  # type: ignore[assignment]
     ) -> None:
         if grid is not None:
             warnings.warn(
@@ -185,6 +185,10 @@ class UM10(metsource.MetDataSource):
         self.variables = metsource.parse_variables(variables, self.supported_variables)
 
         self.timesteps = metsource.parse_timesteps(time, freq="1h")
+
+        if cachestore is None:
+            msg = "A cachestore is required: fetched data is only available through the cache"
+            raise ValueError(msg)
 
         self.lead_hours = lead_hours
         self.cachestore = DiskCacheStore() if cachestore is self.__marker else cachestore
