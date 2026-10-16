@@ -23,6 +23,7 @@ from pycontrails.datalib.ukmo.ukmo import (
     UM10,
     UM10DataNotFoundError,
 )
+from pycontrails.models.sac import SAC
 from pycontrails.physics import thermo
 
 #: Pressure levels (hPa) used by default
@@ -506,7 +507,7 @@ def test_open_metdataset_reads_archive_hit_without_fetching(tmp_path, monkeypatc
     mds = dlib.open_metdataset()
 
     fetch_mock.assert_not_called()
-    np.testing.assert_allclose(mds.data["t"].values, 999.0)
+    np.testing.assert_allclose(mds.data["air_temperature"].values, 999.0)
 
 
 def test_open_metdataset_partial_hit_only_fetches_miss(tmp_path, monkeypatch):
@@ -520,10 +521,16 @@ def test_open_metdataset_partial_hit_only_fetches_miss(tmp_path, monkeypatch):
     assert fetch_mock.call_count == 2  # only hours[1]'s 2 parameters
     assert mds.data.sizes["time"] == 2
     hit_val = (
-        mds.data.sel(time=hours[0])["t"].isel(level=0, latitude=0, longitude=0).compute().item()
+        mds.data.sel(time=hours[0])["air_temperature"]
+        .isel(level=0, latitude=0, longitude=0)
+        .compute()
+        .item()
     )
     miss_val = (
-        mds.data.sel(time=hours[1])["t"].isel(level=0, latitude=0, longitude=0).compute().item()
+        mds.data.sel(time=hours[1])["air_temperature"]
+        .isel(level=0, latitude=0, longitude=0)
+        .compute()
+        .item()
     )
     assert np.isclose(hit_val, 999.0)
     assert np.isclose(miss_val, 210.0)
@@ -675,7 +682,12 @@ def test_specific_humidity_round_trips_to_relative_humidity(tmp_path, monkeypatc
     # assuming which physical level ends up at a given index.
     level_pa = mds.data["level"].isel(level=0).compute().item() * 100.0
     expected_q = rh_value * thermo.q_sat_liquid(np.float64(t_value), np.float64(level_pa))
-    q = mds.data["q"].isel(level=0, latitude=0, longitude=0, time=0).compute().item()
+    q = (
+        mds.data["specific_humidity"]
+        .isel(level=0, latitude=0, longitude=0, time=0)
+        .compute()
+        .item()
+    )
     assert np.isclose(q, expected_q, rtol=1e-4)
 
     recovered_rh = q / thermo.q_sat_liquid(np.float64(t_value), np.float64(level_pa))
@@ -685,11 +697,11 @@ def test_specific_humidity_round_trips_to_relative_humidity(tmp_path, monkeypatc
 @pytest.mark.parametrize(
     ("variable", "short_name", "parameters"),
     [
-        (met_var.AirTemperature, "t", {"temperature_on_pressure_levels"}),
-        (met_var.RelativeHumidity, "r", {"relative_humidity_on_pressure_levels"}),
+        (met_var.AirTemperature, "air_temperature", {"temperature_on_pressure_levels"}),
+        (met_var.RelativeHumidity, "relative_humidity", {"relative_humidity_on_pressure_levels"}),
         (
             met_var.SpecificHumidity,
-            "q",
+            "specific_humidity",
             {"temperature_on_pressure_levels", "relative_humidity_on_pressure_levels"},
         ),
     ],
@@ -731,7 +743,17 @@ def test_missing_unrequested_parameter_does_not_fail_existence_check(tmp_path, m
         hour, variables=[met_var.AirTemperature], cachestore=DiskCacheStore(tmp_path)
     ).open_metdataset()
 
-    assert list(mds.data.data_vars) == ["t"]
+    assert list(mds.data.data_vars) == ["air_temperature"]
+
+
+def test_open_metdataset_output_can_be_used_by_models(tmp_path, monkeypatch):
+    """The returned variables use standard names, as the models expect."""
+    _patch_fetch_with_values(monkeypatch)
+    hour = datetime.datetime(2024, 9, 1, 0)
+
+    mds = UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
+
+    assert "sac" in SAC(met=mds).eval().data
 
 
 def test_hand_computed_rhi_matches_thermo_rhi_via_q(tmp_path, monkeypatch):
@@ -742,7 +764,12 @@ def test_hand_computed_rhi_matches_thermo_rhi_via_q(tmp_path, monkeypatch):
     mds = UM10(hour, cachestore=DiskCacheStore(tmp_path)).open_metdataset()
 
     level_pa = mds.data["level"].isel(level=0).compute().item() * 100.0
-    q = mds.data["q"].isel(level=0, latitude=0, longitude=0, time=0).compute().item()
+    q = (
+        mds.data["specific_humidity"]
+        .isel(level=0, latitude=0, longitude=0, time=0)
+        .compute()
+        .item()
+    )
 
     rhi_expected = (
         rh_value * thermo.e_sat_liquid(np.float64(t_value)) / thermo.e_sat_ice(np.float64(t_value))

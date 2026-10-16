@@ -37,7 +37,7 @@ import xarray as xr
 import pycontrails
 from pycontrails.core import met_var
 from pycontrails.core.cache import CacheStore, DiskCacheStore
-from pycontrails.core.met import MetDataset, MetVariable
+from pycontrails.core.met import MetDataset, MetVariable, standardize_variables
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.datalib.ukmo import s3
 from pycontrails.physics import thermo
@@ -602,6 +602,10 @@ class UM10(metsource.MetDataSource):
                 f"{raw_ds.sizes['time']} -- an hour was silently dropped"
             )
             raise ValueError(msg)
+
+        raw_ds = standardize_variables(raw_ds, self.variables)
+
+        kwargs.setdefault("cachestore", self.cachestore)
 
         mds = MetDataset(raw_ds, **kwargs)
         self.set_metadata(mds)
