@@ -255,30 +255,6 @@ def forecast_for_time_range(
     raise ValueError(msg)
 
 
-def run_cadence_hours_for_lead(lead_hours: int) -> int:
-    """Get the interval, in hours, between valid times at a fixed lead.
-
-    Each valid time at a fixed lead comes from a different forecast, initialized
-    ``lead_hours`` earlier. Forecasts are initialized every :data:`RUN_CADENCE_HOURS`, but
-    only the 00 and 12 UTC forecasts reach beyond :data:`_SHORT_RUN_LAST_LEAD_HOURS`, so
-    valid times at longer leads are twice as far apart.
-
-    Parameters
-    ----------
-    lead_hours : int
-        Lead time in whole hours.
-
-    Returns
-    -------
-    int
-        6 for leads that every forecast reaches, otherwise 12.
-
-    """
-    if lead_hours > _SHORT_RUN_LAST_LEAD_HOURS:
-        return 2 * RUN_CADENCE_HOURS
-    return RUN_CADENCE_HOURS
-
-
 def lead_for_valid_time(forecast_time: datetime.datetime, valid_time: datetime.datetime) -> int:
     """Get the lead time, in whole hours, of a valid time in a forecast.
 

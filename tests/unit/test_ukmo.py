@@ -1044,44 +1044,71 @@ def test_forecast_time_and_lead_hours_are_exclusive(tmp_path):
         make(dt(2026, 3, 15, 0), tmp_path, forecast_time="2026-03-14 00:00", lead_hours=24)
 
 
-def test_lead_hours_defaults_to_six_hourly_timesteps_on_the_lead_grid(tmp_path):
+def test_lead_hours_defaults_to_hourly_timesteps_for_short_leads(tmp_path):
     dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 16, 0)), tmp_path, lead_hours=3)
 
     assert dlib.forecast_time is None
-    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(6)}
-    assert all((t - hours(3)).hour in (0, 6, 12, 18) for t in dlib.timesteps)
+    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(1)}
+    for t in dlib.timesteps:
+        run, lead = dlib._run_and_lead(t)
+        assert run.hour in (0, 6, 12, 18)
+        assert 3 <= lead < 3 + 6
+
+
+def test_lead_hours_uses_the_most_recent_forecast_at_least_that_old(tmp_path):
+    dlib = make((dt(2026, 3, 15, 6), dt(2026, 3, 15, 13)), tmp_path, lead_hours=4)
+
+    assert [dlib._run_and_lead(t) for t in dlib.timesteps] == [
+        (dt(2026, 3, 15, 0), 6),
+        (dt(2026, 3, 15, 0), 7),
+        (dt(2026, 3, 15, 0), 8),
+        (dt(2026, 3, 15, 0), 9),
+        (dt(2026, 3, 15, 6), 4),
+        (dt(2026, 3, 15, 6), 5),
+        (dt(2026, 3, 15, 6), 6),
+        (dt(2026, 3, 15, 6), 7),
+    ]
+
+
+def test_lead_hours_zero_uses_the_latest_forecast_at_each_timestep(tmp_path):
+    dlib = make((dt(2026, 3, 15, 4), dt(2026, 3, 15, 8)), tmp_path, lead_hours=0)
+
+    assert [dlib._run_and_lead(t) for t in dlib.timesteps] == [
+        (dt(2026, 3, 15, 0), 4),
+        (dt(2026, 3, 15, 0), 5),
+        (dt(2026, 3, 15, 6), 0),
+        (dt(2026, 3, 15, 6), 1),
+        (dt(2026, 3, 15, 6), 2),
+    ]
 
 
 def test_lead_hours_has_no_single_forecast_length_limit(tmp_path):
     dlib = make((dt(2026, 3, 1, 0), dt(2026, 3, 31, 0)), tmp_path, lead_hours=24)
 
-    assert len(dlib.timesteps) == 121
+    assert len(dlib.timesteps) == 721
 
 
-@pytest.mark.parametrize("timestep_freq", ["1h", "3h", "9h"])
-def test_lead_hours_requires_timestep_freq_multiple_of_six_hours(tmp_path, timestep_freq):
-    with pytest.raises(ValueError, match="multiple of 6h"):
-        make(dt(2026, 3, 15, 0), tmp_path, lead_hours=24, timestep_freq=timestep_freq)
+def test_lead_hours_beyond_hourly_leads_defaults_to_six_hourly_timesteps(tmp_path):
+    dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 16, 0)), tmp_path, lead_hours=60)
+
+    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(6)}
+    for t in dlib.timesteps:
+        assert dlib._run_and_lead(t)[1] == 60
 
 
-def test_lead_hours_beyond_short_forecasts_defaults_to_twelve_hourly_timesteps(tmp_path):
-    """Only 00/12Z forecasts reach a lead of 150h, so timesteps are 12 hours apart."""
+def test_lead_hours_beyond_short_forecasts_uses_long_forecasts(tmp_path):
+    """Only 00/12Z forecasts reach a lead of 150h."""
     dlib = make((dt(2026, 3, 15, 0), dt(2026, 3, 17, 0)), tmp_path, lead_hours=150)
 
-    assert {b - a for a, b in itertools.pairwise(dlib.timesteps)} == {hours(12)}
-    assert all((t - hours(150)).hour in (0, 12) for t in dlib.timesteps)
     for t in dlib.timesteps:
-        assert dlib._run_and_lead(t)[1] == 150
+        run, lead = dlib._run_and_lead(t)
+        assert run.hour in (0, 12)
+        assert 150 <= lead < 150 + 12
 
 
-def test_lead_hours_beyond_short_forecasts_rejects_six_hourly_timesteps(tmp_path):
-    with pytest.raises(ValueError, match="multiple of 12h"):
-        make(dt(2026, 3, 15, 0), tmp_path, lead_hours=150, timestep_freq="6h")
-
-
-@pytest.mark.parametrize(("lead_hours", "cadence"), [(0, 6), (69, 6), (70, 12), (168, 12)])
-def test_run_cadence_hours_for_lead(lead_hours, cadence):
-    assert s3.run_cadence_hours_for_lead(lead_hours) == cadence
+def test_lead_hours_requires_timestep_freq_multiple_of_one_hour(tmp_path):
+    with pytest.raises(ValueError, match="multiple of 1h"):
+        make(dt(2026, 3, 15, 0), tmp_path, lead_hours=24, timestep_freq="30min")
 
 
 def test_lead_hours_accepts_twelve_hourly_timesteps(tmp_path):
@@ -1092,12 +1119,16 @@ def test_lead_hours_accepts_twelve_hourly_timesteps(tmp_path):
     assert dlib.timesteps == [dt(2026, 3, 15, 0), dt(2026, 3, 15, 12), dt(2026, 3, 16, 0)]
 
 
+def test_lead_hours_rejects_timesteps_between_published_leads(tmp_path):
+    with pytest.raises(ValueError, match="only publishes every 3h"):
+        make((dt(2026, 3, 15, 0), dt(2026, 3, 15, 3)), tmp_path, lead_hours=60, timestep_freq="1h")
+
+
 @pytest.mark.parametrize(
     ("lead_hours", "match"),
     [
         (-6, "before the forecast time"),
-        (169, "after the end"),
-        (153, "only publishes every 6h"),
+        (169, "not contained in any single forecast"),
     ],
 )
 def test_lead_hours_the_archive_does_not_publish_is_rejected(tmp_path, lead_hours, match):
