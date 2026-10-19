@@ -596,6 +596,7 @@ class UM10(metsource.MetDataSource):
             raise ValueError(msg)
 
         xr_kwargs = dict(xr_kwargs or {})
+        xr_kwargs.setdefault("coords", "different")
         self.download(**xr_kwargs)
 
         disk_paths = [self.cachestore.get(f) for f in self._cachepaths]
