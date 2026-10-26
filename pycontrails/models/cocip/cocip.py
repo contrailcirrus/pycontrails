@@ -1427,6 +1427,9 @@ class Cocip(Model):
                 agg_dict[f"{key}_{agg}"] = (key, agg)
 
         aggregated = grouped.agg(**agg_dict)
+        aggregated = aggregated.astype(  # pandas 3.1 groupby aggs can upcast to float64
+            {name: self.contrail[col].dtype for name, (col, _) in agg_dict.items()}
+        )
 
         # Join aggregated contrail data to source
         df = df.join(aggregated)
