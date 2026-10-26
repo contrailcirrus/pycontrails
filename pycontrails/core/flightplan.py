@@ -298,7 +298,7 @@ def parse_ofp_xml(raw_xml: str | bytes | IO[str] | IO[bytes]) -> flight.Flight:
     if val := root.findtext(".//{*}TakeoffWeight//{*}Value"):
         takeoff_weight = float(val)
         if 0.0 < takeoff_weight < math.inf:
-            attrs["takeoff_weight"] = takeoff_weight
+            attrs["takeoff_mass"] = takeoff_weight
 
     return flight.Flight(data=df, attrs=attrs)
 
