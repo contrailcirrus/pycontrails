@@ -26,7 +26,7 @@ repos:
         name: nb-clean
         language: python
         entry: nb-clean clean
-        files: \.ipynb$
+        files: ^docs/.*\.ipynb$
         args:
           - --remove-empty-cells
           - --preserve-cell-metadata
