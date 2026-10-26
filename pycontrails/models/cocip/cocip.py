@@ -1415,25 +1415,18 @@ class Cocip(Model):
         grouped = self.contrail.groupby(col_idx)
 
         # Build aggregation dict for contrail -> source aggregation
-        agg_dict = {"ef": ["sum"], "age": ["max"]}
+        agg_dict = {"ef": ("ef", "sum"), "contrail_age": ("age", "max")}
         if compute_atr20:
-            agg_dict["global_yearly_mean_rf"] = ["sum"]
-            agg_dict["atr20"] = ["sum"]
+            agg_dict["global_yearly_mean_rf"] = ("global_yearly_mean_rf", "sum")
+            agg_dict["atr20"] = ("atr20", "sum")
 
         # Radiative forcing columns: always include mean, optionally min/max
         rad_keys = ["sdr", "rsr", "olr", "rf_sw", "rf_lw", "rf_net"]
         for key in rad_keys:
-            agg_dict[key] = ["mean", "min", "max"] if verbose_outputs else ["mean"]
+            for agg in ["mean", "min", "max"] if verbose_outputs else ["mean"]:
+                agg_dict[f"{key}_{agg}"] = (key, agg)
 
-        aggregated = grouped.agg(agg_dict)
-        aggregated.columns = [f"{k1}_{k2}" for k1, k2 in aggregated.columns]
-
-        # Rename aggregated columns to standard names
-        rename_cols = {"ef_sum": "ef", "age_max": "contrail_age"}
-        if compute_atr20:
-            rename_cols["global_yearly_mean_rf_sum"] = "global_yearly_mean_rf"
-            rename_cols["atr20_sum"] = "atr20"
-        aggregated = aggregated.rename(columns=rename_cols)
+        aggregated = grouped.agg(**agg_dict)
 
         # Join aggregated contrail data to source
         df = df.join(aggregated)
