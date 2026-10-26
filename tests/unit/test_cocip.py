@@ -1262,13 +1262,15 @@ def test_flight_waypoint_and_flight_summary_statistics() -> None:
         np.nansum(flight_waypoints_out["segment_length"]),
         rtol=1,
     )
-    assert np.all(
-        flight_summary["total_flight_distance_flown"] >= flight_summary["total_contrails_formed"]
-    )
-    assert np.all(
-        flight_summary["total_contrails_formed"]
-        >= flight_summary["total_persistent_contrails_formed"]
-    )
+
+    # Starting with pandas 3.1, we need the additional tolerance to allow for rounding differences
+    distance = flight_summary["total_flight_distance_flown"]
+    formed = flight_summary["total_contrails_formed"]
+    persistent = flight_summary["total_persistent_contrails_formed"]
+    atol = 1e-3
+    assert np.all(distance >= formed - atol)
+    assert np.all(formed >= persistent - atol)
+
     np.testing.assert_allclose(
         np.nansum(flight_waypoints_out["persistent_contrail_length"]),
         np.nansum(flight_summary["total_persistent_contrails_formed"]),
