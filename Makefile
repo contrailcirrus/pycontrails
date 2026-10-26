@@ -66,8 +66,8 @@ dev-pycontrails-bada:
 # -----------
 
 lint:
-	ruff check pycontrails tests docs
-	ruff format --check pycontrails tests docs
+	pre-commit run ruff-lint --all-files
+	pre-commit run ruff-format --all-files
 
 format:
 	ruff format pycontrails tests docs
@@ -169,26 +169,16 @@ doctest: ensure-numpy-2 ensure-era5-cached ensure-gcp-credentials
 		pycontrails -vv
 
 doc8:
-	doc8 docs
+	pre-commit run doc8 --all-files
 
 nb-format-check:
-	ruff format --check docs/**/*.ipynb
+	pre-commit run ruff-format --files docs/**/*.ipynb
 
-# Note must be kept in sync with 
-# `.pre-commit-config.yaml` and `make nb-clean-check`
 nb-clean:
-	nb-clean clean docs/**/*.ipynb \
-        --remove-empty-cells \
-		--preserve-cell-metadata tags \
-		--preserve-cell-outputs \
-		--preserve-execution-counts
+	pre-commit run nb-clean --all-files
 
 nb-clean-check:
-	nb-clean check docs/**/*.ipynb \
-        --remove-empty-cells \
-		--preserve-cell-metadata tags \
-		--preserve-cell-outputs \
-		--preserve-execution-counts
+	pre-commit run nb-clean --all-files
 
 # Makes sure that all cells can execute without errors
 # Add `nbval-skip` cell tag if you want to skip a cell
@@ -235,7 +225,8 @@ nb-execute: ensure-era5-cached nb-format-check nb-check-links
 		docs/notebooks/*.ipynb
 
 	# clean notebooks after execution
-	make nb-clean
+	# pre-commit exits non-zero when it modifies files, so ignore the exit code
+	-make nb-clean
 
 docs-build: doc8
 	sphinx-build -b html $(DOCS_DIR) $(DOCS_BUILD_DIR)/html
