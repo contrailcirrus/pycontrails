@@ -29,7 +29,7 @@ repos:
         files: ^docs/.*\.ipynb$
         args:
           - --remove-empty-cells
-          - --preserve-cell-metadata
+          - --preserve-cell-metadata-field
           - tags
           - --preserve-cell-outputs
           - --preserve-execution-counts
