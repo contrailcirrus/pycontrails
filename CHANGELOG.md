@@ -12,12 +12,13 @@
 - Update `models/emissions/static/default-engine-uids-v32.csv` to correct for errors and use the latest engine_uids in the ICAO EDB (v32).
 - Add simple versioning of this static file (`*-v32.csv`) for tracking purposes.
 - Fix the `add_pseudo_waypoints` function to initiate any step climbs and descents at the beginning of the flight segment, rather than near its end. This is consistent with ICAO flight-planning conventions.
-- Add `takeoff_weight` to the flight attributes when parsing OFP XML, if available. This is an important parameter that can influence the simulated fuel consumption and aircraft performance.
+- Add `takeoff_mass` to the flight attributes when parsing OFP XML, if available. This is an important parameter that can influence the simulated fuel consumption and aircraft performance.
 
 ### Internals
 
 - Skip GRUAN unit tests if the GRUAN FTP path is unreachable.
 - Remove the nightly wheels index workaround for python 3.15 from CI and cibuildwheel.
+- Use `.pre-commit-config.yaml` as the single definition of the `ruff`, `doc8`, and `nb-clean` checks.
 
 ## 0.64.0
 
