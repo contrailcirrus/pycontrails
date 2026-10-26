@@ -289,8 +289,7 @@ structures and models.
 The project uses `mypy <http://mypy-lang.org/>`__ for static type
 checking. All code should have specific, clear type annotations.
 
-The project uses `Black <https://black.readthedocs.io/en/stable/>`__,
-`ruff <https://github.com/charliermarsh/ruff>`__ and
+The project uses `ruff <https://github.com/charliermarsh/ruff>`__ and
 `doc8 <https://doc8.readthedocs.io/en/latest/readme.html>`__ to
 standardize code-formatting. These tools are run automatically in a
 pre-commit hook.
