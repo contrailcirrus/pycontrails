@@ -21,6 +21,8 @@ jobs:
         run: sudo apt-get install -y curl jq
 
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Check main test status
         run: make main-test-status
@@ -38,6 +40,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # cibuildwheel config in pyproject.toml
       - name: Build wheels
@@ -56,6 +59,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Build sdist
         run: pipx run build --sdist

@@ -34,6 +34,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # Remove any .dev suffix from the version
       # This is useful when running between tags from a workflow-dispatch

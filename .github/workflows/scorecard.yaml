@@ -28,6 +28,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Run OpenSSF Security Scorecard
         uses: ossf/scorecard-action@v2.5.0
