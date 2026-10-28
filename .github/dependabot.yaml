@@ -8,5 +8,13 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every week
-      interval: "weekly"
+      # Check for updates to GitHub Actions every month
+      interval: "monthly"
+    # Wait 7 days after a release before proposing it
+    cooldown:
+      default-days: 7
+    # Combine all action updates into a single PR
+    groups:
+      actions:
+        patterns:
+          - "*"
