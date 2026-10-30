@@ -21,18 +21,13 @@ END_COLOR = \033[0m
 # the latest open3d and accf packages often don't support the latest
 # versions of python
 pip-install:
-	python -m pip install -U pip wheel
+	python -m pip install -U pip
 	python -m pip install -e ".[complete]"
 
-	# open3d wheels not available for latest python versions; install manually
-	# pip install -e ".[open3d]"
-
 # development installation
-dev-install: pip-install
-
-	python -m pip install -e ".[dev,docs]"
-
-	# install pre-commit
+dev-install:
+	python -m pip install -U pip
+	python -m pip install -e ".[complete,dev,docs]"
 	pre-commit install
 
 clean: docs-clean
