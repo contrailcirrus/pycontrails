@@ -1939,7 +1939,7 @@ def test_cocip_vpm_activation(
         filter_sac=False,
         vpm_activation=vpm_activation,
     )
-    fl["nvpm_ei_n"] = np.full(fl.size, 1e11)  # lean-burn engine
+    fl["nvpm_ei_n"] = np.full(fl.size, 1e10)  # lean-burn engine
     cocip.eval(fl)
 
     # Pin values
