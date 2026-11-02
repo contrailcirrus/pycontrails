@@ -970,7 +970,7 @@ class Cocip(Model):
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
         if self.params["vpm_activation"]:
-            is_lean_burn = nvpm_ei_n < 1.0e12
+            is_lean_burn = nvpm_ei_n < 1.0e11
 
             aei = np.empty_like(nvpm_ei_n)
 
