@@ -343,6 +343,13 @@ class CocipParams(AdvectionBuffers):
     #:  .. versionadded:: 0.62.0
     revised_contrail_ice_budget: bool = False
 
+    #: Experimental: when ``radiative_heating_effects`` and ``revised_contrail_ice_budget`` are
+    #: both ``True``, reduce cumulative radiative heating to account for sedimentation into
+    #: unheated air.
+    #:
+    #:   .. versionadded:: 0.65.1
+    sedimentation_reduces_cumulative_radiative_heating: bool = True
+
     # ---------------------------------------
     # Conditions for end of contrail lifetime
     # ---------------------------------------
