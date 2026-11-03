@@ -9,6 +9,7 @@
 ### Internals
 
 - Pin GitHub actions to commit shas.
+- Build the `rgi_cython` extension without numpy. The extension is now completely declared in `pyproject.toml` under `[[tool.setuptools.ext-modules]]` and `setup.py` is removed.
 
 ## 0.65.0
 
