@@ -2597,6 +2597,20 @@ def calc_timestep_contrail_evolution(
         cumul_differential_heat = cumul_differential_heat - d_heat_rate_1 * dt_sec  # avoid +=
         contrail_2["cumul_differential_heat"] = cumul_differential_heat
 
+    # When using revised ice budget with radiative heating effects active,
+    # reduce cumulative heating to account for sedimentation into unheated air.
+    if (
+        params["radiative_heating_effects"]
+        and params["revised_contrail_ice_budget"]
+        and params["sedimentation_reduces_cumulative_radiative_heating"]
+    ):
+        area_eff_1 = contrail_properties.plume_effective_cross_sectional_area(
+            width_1, depth_1, sigma_yz_1
+        )
+        depth_eff_1 = contrail_properties.plume_effective_depth(width_1, area_eff_1)
+        sed_ratio_1 = np.maximum(0.0, 1.0 - terminal_fall_speed_1 * dt_sec / depth_eff_1)
+        contrail_2["cumul_heat"] = contrail_2["cumul_heat"] * sed_ratio_1
+
     # Attach a few more artifacts for disabled filtering
     if not params["filter_sac"]:
         contrail_2["sac"] = contrail_1["sac"]
