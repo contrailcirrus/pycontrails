@@ -261,21 +261,20 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
         out = np.empty(n_points, dtype=self._values.dtype)
 
         if ndim == 4:
-            return rgi_cython.evaluate_linear_4d(values, indices, norm_distances, out)
-
-        if ndim == 3:
-            return rgi_cython.evaluate_linear_3d(values, indices, norm_distances, out)
-
-        if ndim == 2:
-            return rgi_cython.evaluate_linear_2d(values, indices, norm_distances, out)
-
-        if ndim == 1:
+            rgi_cython.evaluate_linear_4d(values, indices, norm_distances, out)
+        elif ndim == 3:
+            rgi_cython.evaluate_linear_3d(values, indices, norm_distances, out)
+        elif ndim == 2:
+            rgi_cython.evaluate_linear_2d(values, indices, norm_distances, out)
+        elif ndim == 1:
             # np.interp could be better ... although that may also promote the dtype
             # 1-d view is required for evaluate_linear_1d
-            return rgi_cython.evaluate_linear_1d(values, indices[0, :], norm_distances[0, :], out)
+            rgi_cython.evaluate_linear_1d(values, indices[0, :], norm_distances[0, :], out)
+        else:
+            msg = f"Invalid number of dimensions: {ndim}"
+            raise ValueError(msg)
 
-        msg = f"Invalid number of dimensions: {ndim}"
-        raise ValueError(msg)
+        return out
 
 
 def _floatize_time(

@@ -1,4 +1,4 @@
-# cython: language_level=3
+# cython: language_level=3, boundscheck=False, wraparound=False, initializedcheck=False, nonecheck=False
 """Cythonized routines for the PycontrailsRegularGridInterpolator.
 
 This module expands upon the cython interpolation routines introduced in
@@ -11,9 +11,6 @@ scipy 1.10 in several ways:
 """
 
 from libc.math cimport NAN
-import numpy as np
-
-cimport cython
 
 
 # See https://cython.readthedocs.io/en/latest/src/userguide/fusedtypes.html
@@ -22,16 +19,12 @@ ctypedef fused floating:
     double
 
 
-@cython.wraparound(False)
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.nonecheck(False)
 def evaluate_linear_4d(
     const floating[:, :, :, :] values,
     const Py_ssize_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
-) -> np.ndarray:
+) -> None:
     cdef:
         long n_points = indices.shape[1]
         long i0, i1, i2, i3, p
@@ -71,20 +64,13 @@ def evaluate_linear_4d(
             values[i0+1, i1+1, i2+1, i3+1] * y0 * y1 * y2 * y3
         )
 
-    return np.asarray(out)
 
-
-
-@cython.wraparound(False)
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.nonecheck(False)
 def evaluate_linear_3d(
     const floating[:, :, :] values,
     const Py_ssize_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
-) -> np.ndarray:
+) -> None:
     cdef:
         long n_points = indices.shape[1]
         long i0, i1, i2, p
@@ -114,19 +100,13 @@ def evaluate_linear_3d(
             values[i0+1, i1+1, i2+1] * y0 * y1 * y2
         )
 
-    return np.asarray(out)
 
-
-@cython.wraparound(False)
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.nonecheck(False)
 def evaluate_linear_2d(
     const floating[:, :] values,
     const Py_ssize_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
-) -> np.ndarray:
+) -> None:
     cdef:
         long n_points = indices.shape[1]
         long i0, i1, p
@@ -150,20 +130,13 @@ def evaluate_linear_2d(
             values[i0+1, i1+1] * y0 * y1
         )
 
-    return np.asarray(out
-)
 
-
-@cython.wraparound(False)
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.nonecheck(False)
 def evaluate_linear_1d(
     const floating[:] values,
     const Py_ssize_t[:] indices,
     const double[:] norm_distances,
     floating[:] out,
-) -> np.ndarray:
+) -> None:
     cdef:
         long n_points = indices.shape[0]
         long i0, p
@@ -177,5 +150,3 @@ def evaluate_linear_1d(
 
         y0 = norm_distances[p]
         out[p] = values[i0] * (1 - y0) + values[i0+1] * y0
-
-    return np.asarray(out)
