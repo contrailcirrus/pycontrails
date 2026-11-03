@@ -14,9 +14,6 @@ from libc.math cimport NAN
 import numpy as np
 
 cimport cython
-cimport numpy as np
-
-np.import_array()
 
 
 # See https://cython.readthedocs.io/en/latest/src/userguide/fusedtypes.html
@@ -31,7 +28,7 @@ ctypedef fused floating:
 @cython.nonecheck(False)
 def evaluate_linear_4d(
     const floating[:, :, :, :] values,
-    const np.intp_t[:, :] indices,
+    const Py_ssize_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
 ) -> np.ndarray:
@@ -84,7 +81,7 @@ def evaluate_linear_4d(
 @cython.nonecheck(False)
 def evaluate_linear_3d(
     const floating[:, :, :] values,
-    const np.intp_t[:, :] indices,
+    const Py_ssize_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
 ) -> np.ndarray:
@@ -126,7 +123,7 @@ def evaluate_linear_3d(
 @cython.nonecheck(False)
 def evaluate_linear_2d(
     const floating[:, :] values,
-    const np.intp_t[:, :] indices,
+    const Py_ssize_t[:, :] indices,
     const double[:, :] norm_distances,
     floating[:] out,
 ) -> np.ndarray:
@@ -163,7 +160,7 @@ def evaluate_linear_2d(
 @cython.nonecheck(False)
 def evaluate_linear_1d(
     const floating[:] values,
-    const np.intp_t[:] indices,
+    const Py_ssize_t[:] indices,
     const double[:] norm_distances,
     floating[:] out,
 ) -> np.ndarray:

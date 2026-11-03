@@ -1,6 +1,6 @@
 # https://setuptools.readthedocs.io/en/latest/
 [build-system]
-requires = ["cython>=3", "numpy>=2.0.0", "setuptools>=77", "setuptools-scm>=8"]
+requires = ["cython>=3", "setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -177,6 +177,12 @@ exclude = ["docs*", "tests*"]
 "pycontrails.models.apcemm" = ["static/*.yaml"]
 "pycontrails.models.ps_model" = ["static/*.csv"]
 "pycontrails.physics" = ["static/*.csv"]
+
+# https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
+[[tool.setuptools.ext-modules]]
+name = "pycontrails.core.rgi_cython"
+sources = ["pycontrails/core/rgi_cython.pyx"]
+language = "c"
 
 # https://github.com/pypa/setuptools_scm/
 [tool.setuptools_scm]
