@@ -182,7 +182,6 @@ exclude = ["docs*", "tests*"]
 [[tool.setuptools.ext-modules]]
 name = "pycontrails.core.rgi_cython"
 sources = ["pycontrails/core/rgi_cython.pyx"]
-language = "c"
 
 # https://github.com/pypa/setuptools_scm/
 [tool.setuptools_scm]

@@ -74,7 +74,7 @@ Wheels for common platforms are available on `PyPI <https://pypi.org/project/pyc
 - macOS (x86_64 and arm64)
 - Windows (x86_64)
 
-It's possible to build the wheels from source using `Cython <https://cython.org/>`__ and a C compiler with the usual ``pip install`` process. The source distribution on PyPI includes the C files, so it's not necessary to have Cython installed to build from source.
+Building from source with ``pip install`` requires a C compiler.
 
 
 Extensions
