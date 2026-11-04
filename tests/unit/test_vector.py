@@ -243,6 +243,39 @@ def test_vector_not_dict_like(random_path: VectorDataset) -> None:
     assert vds != vds2
 
 
+@pytest.mark.parametrize(
+    "values",
+    [
+        np.array([1, 2, 3]),
+        np.array([True, False, True]),
+        np.array([1.0, np.nan, 3.0]),
+        np.array(["2020-01-01", "NaT", "2020-01-02"], dtype="datetime64[ns]"),
+        np.array([1, 2, 3], dtype="timedelta64[s]"),
+        np.array(["a", "bb", "ccc"]),
+        np.array([b"a", b"bb", b"ccc"]),
+        np.array(["a", None, 3], dtype=object),
+    ],
+    ids=lambda arr: arr.dtype.str,
+)
+def test_vector_eq_dtypes(values: np.ndarray) -> None:
+    """Confirm `VectorDataset.__eq__` compares data and array attrs of any dtype."""
+    vds = VectorDataset({"x": values}, attrs={"arr": values})
+    assert vds == vds.copy()
+
+    changed = values.copy()
+    changed[0] = changed[1]
+    assert vds != VectorDataset({"x": changed}, attrs={"arr": values})
+    assert vds != VectorDataset({"x": values}, attrs={"arr": changed})
+
+
+def test_vector_eq_mixed_dtypes() -> None:
+    """Confirm `VectorDataset.__eq__` returns False when dtypes differ."""
+    vds_float = VectorDataset({"x": np.array([1.0, np.nan])}, attrs={"arr": np.array([1.0])})
+    vds_str = VectorDataset({"x": np.array(["a", "b"])}, attrs={"arr": np.array(["a"])})
+    assert vds_float != vds_str
+    assert vds_str != vds_float
+
+
 def test_vector_repr() -> None:
     """Confirm `VectorDataset.__repr__` clips very long attributes."""
     attrs = {"short_key": "short_val", "long_key": "long_val" * 100}
