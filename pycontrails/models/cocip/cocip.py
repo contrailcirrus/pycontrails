@@ -2872,13 +2872,10 @@ def _ambient_density_base(
     ----------
     met : MetDataset
         Meteorology data
-
     contrail : GeoVectorDataset
         Contrail properties
-
     params : dict[str, Any]
         Cocip parameters
-
     **interp_kwargs : Any
         Interpolation keyword arguments
 
@@ -2886,7 +2883,6 @@ def _ambient_density_base(
     -------
     npt.NDArray[np.floating]
         Array of ambient air density (:math:`kg m$^{-3}`) at plume base.
-
     npt.NDArray[np.floating]
         Array of ambient water vapor density (:math:`kg m$^{-3}`) at plume base.
 
@@ -2940,13 +2936,10 @@ def _plume_density_top(
     ----------
     met : MetDataset
         Meteorology data
-
     contrail : GeoVectorDataset
         Contrail properties
-
     params : dict[str, Any]
         Cocip parameters
-
     **interp_kwargs : Any
         Interpolation keyword arguments
 
@@ -2954,7 +2947,6 @@ def _plume_density_top(
     -------
     npt.NDArray[np.floating]
         Array of plume air density (:math:`kg m$^{-3}`) at plume top.
-
     npt.NDArray[np.floating]
         Array of plume water vapor density (:math:`kg m$^{-3}`) at plume top.
 
