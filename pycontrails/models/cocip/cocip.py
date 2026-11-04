@@ -2891,7 +2891,7 @@ def _ambient_density_base(
         Array of ambient water vapor density (:math:`kg m$^{-3}`) at plume base.
 
     """
-    contrail = contrail.copy()  # avoid mutation
+    contrail = contrail.copy()  # avoid mutation by interpolate_met
     area_eff = contrail_properties.plume_effective_cross_sectional_area(
         contrail["width"], contrail["depth"], contrail["sigma_yz"]
     )
@@ -2959,7 +2959,7 @@ def _plume_density_top(
         Array of plume water vapor density (:math:`kg m$^{-3}`) at plume top.
 
     """
-    contrail = contrail.copy()  # avoid mutation
+    contrail = contrail.copy()  # avoid mutation by interpolate_met
     area_eff = contrail_properties.plume_effective_cross_sectional_area(
         contrail["width"], contrail["depth"], contrail["sigma_yz"]
     )
