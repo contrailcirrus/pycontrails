@@ -211,6 +211,19 @@ class VectorDataDict(dict[str, np.ndarray]):
             raise ValueError(f"Incompatible array sizes: {arr.size} and {size}.")
 
 
+def _array_equal(a: np.ndarray, b: Any) -> bool:
+    """Return True if ``a`` and ``b`` have the same shape and elements.
+
+    NaN values are considered equal. String and object arrays are compared
+    element by element without NaN handling.
+    """
+    try:
+        return np.array_equal(a, b, equal_nan=True)
+    except TypeError:
+        # equal_nan calls np.isnan, which raises TypeError for strings and objects
+        return np.array_equal(a, b, equal_nan=False)
+
+
 def _empty_vector_dict(keys: Iterable[str]) -> dict[str, np.ndarray]:
     """Create a dictionary with keys defined by ``keys`` and empty arrays.
 
@@ -738,9 +751,7 @@ class VectorDataset:  # noqa: PLW1641
 
         for key, val in self.attrs.items():
             if isinstance(val, np.ndarray):
-                # equal_nan not supported for non-numeric data
-                equal_nan = not np.issubdtype(val.dtype, "O")
-                if not np.array_equal(val, other.attrs[key], equal_nan=equal_nan):
+                if not _array_equal(val, other.attrs[key]):
                     return False
             elif val != other.attrs[key]:
                 return False
@@ -749,13 +760,7 @@ class VectorDataset:  # noqa: PLW1641
         if self.data.keys() != other.data.keys():
             return False
 
-        for key, val in self.data.items():
-            # equal_nan not supported for non-numeric data (e.g. strings)
-            equal_nan = not np.issubdtype(val.dtype, "O")
-            if not np.array_equal(val, other[key], equal_nan=equal_nan):
-                return False
-
-        return True
+        return all(_array_equal(val, other[key]) for key, val in self.data.items())
 
     @property
     def size(self) -> int:
