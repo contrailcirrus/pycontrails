@@ -2,9 +2,18 @@
 
 ## 0.65.1 [Unreleased]
 
+### Breaking changes
+
+- Drop support for ``revised_contrail_ice_budget`` in ``CocipGrid``. Setting ``revised_contrail_ice_budget`` to ``True`` in ``CocipGrid`` now raises a ``NotImplementedError``.
+
+### Features
+
+- Experimental: add a `sedimentation_reduces_cumulative_radiative_heating` parameter to `Cocip`. This parameter has no effect unless ``radiative_heating_effects`` and ``revised_contrail_ice_budget`` are both ``True``. When this parameter is set to ``True`` (default) and ``radiative_heating_effects`` and ``revised_contrail_ice_budget`` are ``True``, sedimentation of contrail ice crystals is assumed to reduce cumulative radiative heating in the contrail plume by transporting ice crystals into lower unheated layers of the atmosphere. This improves consistency with the treatment of sedimentation in the revised contrail ice budget but can be disabled by setting ``sedimentation_reduces_cumulative_radiative_heating`` to ``False``.
+
 ### Fixes
 
 - Update heuristic for identifying waypoints with lean-burn engines operating in lean-burn mode. According to the ICAO EDB Issue 32, lean-burn engines in lean-burn mode have an nvPM EI_n of around 1e10 (GEnx and CFM LEAP engine families), whereas the minimum nvPM EIn for conventional rich-burn engines is approximately 1e12 during idle and descent (CF34 engine family). To provide a buffer between the two combustor types, the nvPM EI_n threshold has been lowered from 1e12 to 1e11, which prevents lean-burn vPM properties from being incorrectly assigned to rich-burn engines when using 100% SAF (SAF100). This change is immaterial for using Jet A-1 fuel.
+- Update implementation of revised CoCiP contrail ice budget introduced in version 0.62.0. The update fixes an issue identified by Jin Maruhashi that affected simulations with ``revised_contrail_ice_budget`` and ``radiative_heating_effects`` parameters both set to ``True``. The initial implementation of the revised contrail ice budget neglected the effect of radiative heating on air temperature when calculating saturation specific humidity in the contrail plume, and this is accounted for in the updated implementation.
 
 ### Internals
 
