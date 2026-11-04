@@ -468,7 +468,7 @@ def rhi[A: (np.ndarray, xr.DataArray, float)](q: A, T: A, p: A) -> A:
 # --------------
 
 
-def pressure_dz[A: (np.ndarray, xr.DataArray, float)](T: A, p: A, dz: float) -> A:
+def pressure_dz[A: (np.ndarray, xr.DataArray, float)](T: A, p: A, dz: A | float) -> A:
     r"""Calculate the pressure altitude ``dz`` meters below input pressure.
 
     Returns surface pressure if the calculated pressure altitude is greater
@@ -480,7 +480,7 @@ def pressure_dz[A: (np.ndarray, xr.DataArray, float)](T: A, p: A, dz: float) -> 
         Temperature, [:math:`K`]
     p : A
         Pressure, [:math:`Pa`]
-    dz : float
+    dz : A | float
         Difference in altitude between measurements, [:math:`m`]
 
     Returns
@@ -510,7 +510,7 @@ def T_potential_gradient[A: (np.ndarray, xr.DataArray, float)](
     p_top: A,
     T_btm: A,
     p_btm: A,
-    dz: float,
+    dz: A | float,
 ) -> A:
     r"""Calculate the potential temperature gradient between two altitudes.
 
@@ -524,7 +524,7 @@ def T_potential_gradient[A: (np.ndarray, xr.DataArray, float)](
         Temperature at lower altitude, [:math:`K`]
     p_btm : A
         Pressure at lower altitude, [:math:`Pa`]
-    dz : float
+    dz : A | float
         Difference in altitude between measurements, [:math:`m`]
 
     Returns
