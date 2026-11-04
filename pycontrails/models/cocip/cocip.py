@@ -2865,7 +2865,7 @@ def _ambient_density_base(
     contrail: GeoVectorDataset,
     params: dict[str, Any],
     **interp_kwargs: Any,
-) -> npt.NDArray[np.floating]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Compute ambient density of air and water vapor at plume base.
 
     Parameters
@@ -2933,7 +2933,7 @@ def _plume_density_top(
     contrail: GeoVectorDataset,
     params: dict[str, Any],
     **interp_kwargs: Any,
-) -> npt.NDArray[np.floating]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Compute plume air and water vapor density at plume top.
 
     Parameters
