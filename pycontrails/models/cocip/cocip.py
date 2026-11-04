@@ -2609,7 +2609,7 @@ def calc_timestep_contrail_evolution(
         )
         depth_eff_1 = contrail_properties.plume_effective_depth(width_1, area_eff_1)
         sed_ratio_1 = np.maximum(0.0, 1.0 - terminal_fall_speed_1 * dt_sec / depth_eff_1)
-        contrail_2["cumul_heat"] = contrail_2["cumul_heat"] * sed_ratio_1
+        contrail_2.update(cumul_heat=contrail_2["cumul_heat"] * sed_ratio_1)
 
     # Attach a few more artifacts for disabled filtering
     if not params["filter_sac"]:
