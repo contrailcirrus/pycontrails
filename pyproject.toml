@@ -111,6 +111,7 @@ gfs = [
     "eccodes>=2.38",
     "netcdf4>=1.6.1",
     "platformdirs>=3.0",
+    "s3fs>=2022.3",
     "tqdm>=4.61",
 ]
 
