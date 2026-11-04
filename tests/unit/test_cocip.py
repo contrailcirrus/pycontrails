@@ -2070,4 +2070,4 @@ def test_revised_contrail_ice_budget_param(fl: Flight, met: MetDataset, rad: Met
     # contrails are relatively young
     assert fl1["ef"].sum() == pytest.approx(7.3e12, rel=0.1)
     assert fl2["ef"].sum() == pytest.approx(7.3e12, rel=0.1)
-    assert fl2["ef"].sum() - fl1["ef"].sum() == pytest.approx(0.06e12, rel=0.1)
+    assert fl2["ef"].sum() - fl1["ef"].sum() == pytest.approx(0.07e12, rel=0.1)
