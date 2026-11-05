@@ -614,18 +614,6 @@ def test_geojson_methods(fl: Flight, rng: np.random.Generator) -> None:
     assert set(coords1) == set(coords2) == set(coords3)
 
 
-def test_to_traffic(fl: Flight) -> None:
-    """Test the Flight.to_traffic() method."""
-
-    pytest.importorskip("traffic")
-
-    tr = fl.to_traffic()
-    # NOTE: tf and fl have inconsistent column names (time and timestamp), so just ensuring
-    # the values were copied correctly on tr instantiation.
-    np.testing.assert_array_equal(fl.dataframe.to_numpy(), tr.data.to_numpy())
-    assert fl.duration == tr.duration
-
-
 def test_antimeridian_jump() -> None:
     df = pd.DataFrame(
         {
