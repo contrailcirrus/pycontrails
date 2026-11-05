@@ -14,6 +14,15 @@ on:
 
   # Allows run manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      network:
+        description: Run the full test suite, including network tests, on a single python and OS
+        type: boolean
+        default: false
+
+  # Run full test suite each night, including network tests, for a single python and OS
+  schedule:
+    - cron: '0 6 * * *'
 
 # Global variables
 env:
@@ -27,7 +36,7 @@ permissions: {}
 
 # This allows a subsequently queued workflow run to interrupt previous runs
 concurrency:
-  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  group: '${{ github.workflow }} @ ${{ github.event_name }} @ ${{ inputs.network }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
 
 jobs:
@@ -35,8 +44,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        pyversion: ['3.12', '3.13', '3.14', '3.15']
+        os: ${{ (github.event_name == 'schedule' || inputs.network) && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest"]') }}
+        pyversion: ${{ (github.event_name == 'schedule' || inputs.network) && fromJSON('["3.14"]') || fromJSON('["3.12", "3.13", "3.14", "3.15"]') }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -106,4 +115,4 @@ jobs:
         run: |
           pip check
           make lint
-          make pytest
+          make ${{ (github.event_name == 'schedule' || inputs.network) && 'pytest-network' || 'pytest' }}
