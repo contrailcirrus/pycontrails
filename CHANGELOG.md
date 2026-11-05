@@ -12,6 +12,7 @@
 - Pin GitHub actions to commit shas.
 - Build the `rgi_cython` extension without numpy. The extension is now completely declared in `pyproject.toml` under `[[tool.setuptools.ext-modules]]` and `setup.py` is removed.
 - Fix unit tests whose assertions could not fail.
+- Mark unit tests that require network access with `pytest.mark.network`. These tests are skipped unless `--run-network-tests` is passed (run locally with `make pytest-network`). The unit test workflow now also runs nightly with network tests included. The `make pytest` target uses `pytest-socket` (new dev dependency) to fail any unmarked test that connects to a non-loopback host. The `PYCONTRAILS_OFFLINE` and `PYCONTRAILS_SKIP_LEO_TESTS` environment variables are removed.
 
 ## 0.65.0
 
