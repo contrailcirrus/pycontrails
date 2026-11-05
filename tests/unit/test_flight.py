@@ -1459,6 +1459,13 @@ class TestPassengerLoadFactorEstimates:
         lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
         assert lf == pytest.approx(0.439, abs=1e-3)
 
+    @pytest.mark.parametrize("year", [1996, 2096])
+    def test_leap_day_out_of_bounds(self, year: int) -> None:
+        origin_airport_icao = "KJFK"
+        lf_leap = jet.passenger_load_factor(origin_airport_icao, pd.Timestamp(f"{year}-02-29"))
+        lf_28 = jet.passenger_load_factor(origin_airport_icao, pd.Timestamp(f"{year}-02-28"))
+        assert lf_leap == lf_28
+
 
 class TestCargoLoadFactorEstimates:
     def test_europe_to_usa_on_pax_ac(self) -> None:
