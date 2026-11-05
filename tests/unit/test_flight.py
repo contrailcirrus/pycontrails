@@ -1500,6 +1500,7 @@ class TestCargoLoadFactorEstimates:
         )
         assert lf == pytest.approx(0.640, abs=1e-3)
 
+    @pytest.mark.network
     def test_usa_to_europe_on_cargo_ac_no_dist(self) -> None:
         # Distance not provided
         origin_airport_icao = "KJFK"
@@ -1511,6 +1512,7 @@ class TestCargoLoadFactorEstimates:
         )
         assert lf == pytest.approx(0.640, abs=1e-3)
 
+    @pytest.mark.network
     def test_cargo_ac_no_origin_no_dist(self) -> None:
         # Output should be the 2019 annual mean values for dedicated freighters
         origin_airport_icao = " "
@@ -1522,6 +1524,7 @@ class TestCargoLoadFactorEstimates:
         )
         assert lf == pytest.approx(0.553, abs=1e-3)
 
+    @pytest.mark.network
     def test_pax_ac_no_origin_no_dist(self) -> None:
         # Output should be the 2019 annual mean values for passenger aircraft
         origin_airport_icao = " "

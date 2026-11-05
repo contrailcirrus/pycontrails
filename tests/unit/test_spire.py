@@ -156,6 +156,7 @@ def test_timestamp_ordering(df_schema: pd.DataFrame) -> None:
     assert isinstance(exc, OrderingError)
 
 
+@pytest.mark.network
 def test_round3_violations(df_single_callsign: pd.DataFrame) -> None:
     """Confirm some of the round 3 violations are raised.
 
@@ -174,6 +175,7 @@ def test_round3_violations(df_single_callsign: pd.DataFrame) -> None:
     assert isinstance(exc3, ROCDError)
 
 
+@pytest.mark.network
 def test_violation_df(df_single_callsign: pd.DataFrame) -> None:
     """Confirm the ``validation_df`` property returns a DataFrame that extends the input."""
     df_in = df_single_callsign
