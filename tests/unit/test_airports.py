@@ -64,6 +64,7 @@ def test_invalid_altitude(airport_database: pd.DataFrame) -> None:
         airports.find_nearest_airport(airport_database, longitude, latitude, altitude)
 
 
+@pytest.mark.network
 def test_distance_to_airports(airport_database: pd.DataFrame) -> None:
     """Ensure distance to airports are correctly identified."""
     apts = airport_database[airport_database["iata_code"].isin(["BOS", "JFK"])]
