@@ -25,7 +25,7 @@ from tests.unit import get_static_path
 def test_aircraft_type_coverage() -> None:
     ps_model = ps.PSFlight()
 
-    # There are currently 63 aircraft types supported by the PS model
+    # Number of aircraft types supported by the PS model
     assert len(ps_model.aircraft_engine_params) == 68
 
     # Test PS model coverage: commonly used aircraft types
@@ -54,10 +54,10 @@ def test_aircraft_engine_params_types() -> None:
 def test_synonym_list() -> None:
     ps_model = ps.PSFlight()
 
-    # PS model now supports 102 aircraft types with the synonym list
+    # Number of aircraft types supported with the synonym list
     assert len(ps_model.synonym_dict) == 103
 
-    # There are 67 unique aircraft types supported by the PS model
+    # Number of unique aircraft types supported by the PS model
     assert len(set(ps_model.synonym_dict.values())) == 68
     assert len(ps_model.aircraft_engine_params) == len(set(ps_model.synonym_dict.values()))
 
@@ -113,25 +113,25 @@ def test_ps_model() -> None:
     rn = ps.reynolds_number(
         atyp_param.wing_surface_area, mach_number, air_temperature, air_pressure
     )
-    np.testing.assert_array_almost_equal(rn / 1e7, [6.777, 4.863], decimal=2)
+    np.testing.assert_allclose(rn / 1e7, [6.777, 4.863], rtol=5e-3)
 
     # Test skin friction coefficient
     c_f = ps.skin_friction_coefficient(rn)
-    np.testing.assert_array_almost_equal(c_f, [2.15e-3, 2.26e-3], decimal=2)
+    np.testing.assert_allclose(c_f, [2.15e-3, 2.26e-3], rtol=5e-3)
 
     # Test lift coefficient
     c_lift = ps.lift_coefficient(
         atyp_param.wing_surface_area, aircraft_mass, air_pressure, mach_number, climb_angle
     )
-    np.testing.assert_array_almost_equal(c_lift, [0.475, 0.679], decimal=2)
+    np.testing.assert_allclose(c_lift, [0.475, 0.679], rtol=5e-3)
 
     # Test zero-lift drag coefficient
     c_drag_0 = ps.zero_lift_drag_coefficient(c_f, atyp_param.psi_0)
-    np.testing.assert_array_almost_equal(c_drag_0, [0.0181, 0.0190], decimal=2)
+    np.testing.assert_allclose(c_drag_0, [0.0181, 0.0190], rtol=5e-3)
 
     # Test Oswald efficiency factor
     e_ls = ps.oswald_efficiency_factor(c_drag_0, atyp_param)
-    np.testing.assert_array_almost_equal(e_ls, [0.7805, 0.7740], decimal=2)
+    np.testing.assert_allclose(e_ls, [0.7805, 0.7740], rtol=5e-3)
 
     # Test wave drag coefficient
     c_drag_w = ps.wave_drag_coefficient(mach_number, c_lift, atyp_param)
@@ -145,7 +145,7 @@ def test_ps_model() -> None:
 
     # Test thrust force
     f_thrust = ps.thrust_force(aircraft_mass, c_lift, c_drag, dv_dt, climb_angle)
-    np.testing.assert_array_almost_equal(f_thrust / 1e4, [3.4638, 3.4156], decimal=2)
+    np.testing.assert_allclose(f_thrust / 1e4, [3.4638, 3.4156], rtol=5e-3)
 
     # Test thrust force at climb/descent
     theta_climb = np.array([2.5, 2.5])
@@ -168,7 +168,7 @@ def test_ps_model() -> None:
     c_t_eta_b = ps.thrust_coefficient_at_max_efficiency(
         mach_number, atyp_param.m_des, atyp_param.c_t_des
     )
-    np.testing.assert_array_almost_equal(c_t_eta_b, [0.0347, 0.0347], decimal=2)
+    np.testing.assert_allclose(c_t_eta_b, [0.0347, 0.0347], rtol=5e-3)
 
     # Test overall propulsion efficiency
     engine_efficiency = ps.overall_propulsion_efficiency(
@@ -355,7 +355,7 @@ def test_aircraft_mass_limits_ps_grid(aircraft_type: str) -> None:
 
 
 def test_fuel_flow_limits() -> None:
-    """Check the ps.correct_fuel_flow function."""
+    """Check the ps.fuel_flow_correction function."""
     ps_model = ps.PSFlight()
     atyp_param = ps_model.aircraft_engine_params["A320"]
 
@@ -381,6 +381,21 @@ def test_fuel_flow_limits() -> None:
         fuel_flow_corrected, [1.261, 1.261, 1.261, 0.11, 0.11], decimal=2
     )
     assert np.all(fuel_flow_corrected < atyp_param.ff_max_sls)
+
+    # In descent, fuel flow is capped at 30% of the sea level maximum
+    flight_phase = np.full(fuel_flow_est.shape, FlightPhase.DESCENT, dtype=np.uint8)
+    fuel_flow_descent = ps.fuel_flow_correction(
+        fuel_flow_est,
+        altitude_ft,
+        air_temperature,
+        air_pressure,
+        mach_num,
+        atyp_param.ff_idle_sls,
+        atyp_param.ff_max_sls,
+        flight_phase,
+    )
+    np.testing.assert_allclose(fuel_flow_descent[:3], 0.3 * atyp_param.ff_max_sls)
+    np.testing.assert_allclose(fuel_flow_descent[3:], fuel_flow_corrected[3:])
 
 
 def test_normalised_aircraft_performance_curves() -> None:

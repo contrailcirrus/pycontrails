@@ -107,12 +107,13 @@ def test_SAC_met_source(met_issr: MetDataset) -> None:
 
     met_copy = met_issr.copy()
     del met_copy.data["air_temperature"]
-    met_copy.data["engine_efficiency"] = 0.35
+
+    met_copy.data["engine_efficiency"] = np.float32(0.35)
     out2 = model.eval(source=met_copy)
 
     assert isinstance(out2, MetDataset)
     assert np.all(out2.data["engine_efficiency"] == 0.35)
-    assert all(v == np.float32 for v in out1.data.dtypes.values())
+    assert all(v == np.float32 for v in out2.data.dtypes.values())
 
     # Pin some counts
     # Values are now different because humidity was not scaled
@@ -240,7 +241,7 @@ def test_ISSR_flight_high_altitude(met_era5_fake: MetDataset, flight_fake: Fligh
     assert isinstance(fl, Flight)
     low_level_waypoints = fl.level < met_era5_fake.data["level"].min().item()
     assert np.isnan(fl["issr"][low_level_waypoints]).all()
-    assert ~np.isnan(fl["issr"][~low_level_waypoints]).all()
+    assert np.isfinite(fl["issr"][~low_level_waypoints]).all()
 
 
 @pytest.mark.parametrize("interpolation_use_indices", [True, False])
@@ -279,7 +280,7 @@ def test_ISSR_flight_outside_met(
     # Waypoints with low altitude are also nan-filled
     low_waypoints = fl.altitude < met_era5_fake["altitude"].values.min()
     assert np.sum(low_waypoints) == 257
-    assert np.isnan(fl["issr"][late_waypoints]).all()
+    assert np.isnan(issr[low_waypoints]).all()
 
     # Anything remaining is non-nan
     remaining = ~late_waypoints & ~low_waypoints

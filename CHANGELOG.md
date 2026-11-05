@@ -5,11 +5,13 @@
 ### Fixes
 
 - Update heuristic for identifying waypoints with lean-burn engines operating in lean-burn mode. According to the ICAO EDB Issue 32, lean-burn engines in lean-burn mode have an nvPM EI_n of around 1e10 (GEnx and CFM LEAP engine families), whereas the minimum nvPM EIn for conventional rich-burn engines is approximately 1e12 during idle and descent (CF34 engine family). To provide a buffer between the two combustor types, the nvPM EI_n threshold has been lowered from 1e12 to 1e11, which prevents lean-burn vPM properties from being incorrectly assigned to rich-burn engines when using 100% SAF (SAF100). This change is immaterial for using Jet A-1 fuel.
+- Fix `VectorDataset.__eq__` raising `TypeError` when a data variable or array attribute has a string dtype. Previously, comparing datasets with a string column such as `flight_id` failed.
 
 ### Internals
 
 - Pin GitHub actions to commit shas.
 - Build the `rgi_cython` extension without numpy. The extension is now completely declared in `pyproject.toml` under `[[tool.setuptools.ext-modules]]` and `setup.py` is removed.
+- Fix unit tests whose assertions could not fail.
 
 ## 0.65.0
 
