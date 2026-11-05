@@ -5,6 +5,7 @@
 ### Breaking changes
 
 - Remove `Flight.to_traffic`.
+- Remove `MetDataArray.to_polyhedra` and the `open3d` optional dependency.
 
 ### Fixes
 
