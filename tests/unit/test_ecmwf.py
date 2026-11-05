@@ -951,13 +951,20 @@ def test_HRES_dissemination_filename_errors() -> None:
 
 @pytest.mark.parametrize("variables", ["t", "tsr"])
 @pytest.mark.parametrize("field_type", ["fc", "an", "pf"])
-def test_hres_set_met_source_metadata(field_type: str, variables: str) -> None:
+@pytest.mark.parametrize(
+    ("hour", "stream", "product"),
+    [(0, "oper", "forecast"), (6, "scda", "forecast"), (0, "enfo", "ensemble")],
+)
+def test_hres_set_met_source_metadata(
+    field_type: str, variables: str, hour: int, stream: str, product: str
+) -> None:
     """Test HRES.get_met_source_metadata method."""
 
     hres = HRES(
-        time=datetime(2000, 1, 1),
+        time=datetime(2000, 1, 1, hour),
         variables=variables,
         pressure_levels=200 if variables == "t" else -1,
+        stream=stream,
         field_type=field_type,
     )
 
@@ -966,10 +973,8 @@ def test_hres_set_met_source_metadata(field_type: str, variables: str) -> None:
 
     assert ds.attrs["provider"] == "ECMWF"
     assert ds.attrs["dataset"] == "HRES"
-    if field_type == "pc":
-        assert ds.attrs["product"] == "ensemble"
-    else:
-        assert ds.attrs["product"] == "forecast"
+    assert ds.attrs["product"] == product
+    assert ds.attrs["radiation_accumulated"] is True
 
 
 ##########################

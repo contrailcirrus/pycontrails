@@ -326,7 +326,7 @@ def test_exp_boost_lat_correction_invalid_level_type(
     met_issr: MetDataset,
     ensemble_vector: GeoVectorDataset,
 ) -> None:
-    """Test histogram matching with invalid level type."""
+    """Test exponential boost latitude correction with invalid level type."""
     models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
     models.interpolate_met(met_issr, ensemble_vector, "specific_humidity")
     model = hs.ExponentialBoostLatitudeCorrectionHumidityScaling(level_type="foo")
@@ -413,7 +413,7 @@ def test_histogram_matching_members(
     member: int,
     q_method: str,
 ) -> None:
-    """Test the HistogramMatchingWithEckel scaling."""
+    """Test HistogramMatching on each ensemble member."""
 
     models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
     mds_q = MetDataset(ensemble_q[member].data.to_dataset(name="specific_humidity"))

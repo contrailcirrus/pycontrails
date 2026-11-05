@@ -333,7 +333,7 @@ def test_scipy19_interpolation_methods(mda: MetDataArray, method: str) -> None:
 
     out1 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)
     assert np.all(np.isfinite(out1))
-    assert out1.dtype == np.float32 if method == "nearest" else np.float64
+    assert out1.dtype == (np.float32 if method == "nearest" else np.float64)
 
     kwargs = {"method": "linear", "bounds_error": True, "fill_value": np.nan, "localize": True}
     out2 = interp_mod.interp(x0, y0, z0, t0, da=da, **kwargs)

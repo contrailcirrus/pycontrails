@@ -1043,7 +1043,8 @@ def test_met_wrap_longitude_chunks(met_ecmwf_pl_path: str, override_cache: DiskC
     assert chunks["longitude"] == (15,)
 
     wrapped2 = mds2.wrap_longitude()
-    assert len(wrapped.data["longitude"]) == len(mds.data["longitude"]) + 2
+    assert len(wrapped2.data["longitude"]) == len(mds2.data["longitude"]) + 2
+    np.testing.assert_array_equal(wrapped2.data["longitude"], wrapped.data["longitude"])
 
     # successfully incremented chunks
     assert wrapped2.data.chunks["longitude"] == (17,)

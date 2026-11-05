@@ -33,7 +33,7 @@ def test_emissions_class_variables():
     emissions2 = Emissions()
     assert emissions1 is not emissions2
     assert emissions1.edb_engine_gaseous is emissions2.edb_engine_gaseous
-    assert emissions2.edb_engine_nvpm is emissions2.edb_engine_nvpm
+    assert emissions1.edb_engine_nvpm is emissions2.edb_engine_nvpm
 
     # Update if emissions data changes
     assert len(emissions1.edb_engine_gaseous) == 884
