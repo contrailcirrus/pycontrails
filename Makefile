@@ -85,6 +85,9 @@ pytest:
 pytest-regenerate-results:
 	pytest tests/unit --regenerate-results
 
+pytest-network:
+	pytest tests/unit --run-network-tests
+
 pytest-cov:
 	pytest \
 		-v \

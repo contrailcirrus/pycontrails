@@ -203,6 +203,10 @@ show_error_codes = true
 # pytest
 # https://docs.pytest.org/en/7.1.x/reference/customize.html
 [tool.pytest.ini_options]
+addopts = ["--strict-markers"]
+markers = [
+    "network: test requires network access (skipped unless --run-network-tests is passed)",
+]
 doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE", "NUMBER"]
 filterwarnings = [
     "error::UserWarning",
@@ -299,7 +303,5 @@ build = ["cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 skip = ["*-win32", "*-musllinux*"]
 build-verbosity = 3
 test-extras = ["complete", "dev"]
-# Force tests that make network calls to be skipped (see tests/__init__.py)
-environment = { PYCONTRAILS_OFFLINE = "1" }
 test-command = "python -m pytest ./tests -vv"
 test-sources = ["tests", "pyproject.toml"]

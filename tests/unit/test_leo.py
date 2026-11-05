@@ -13,7 +13,7 @@ import xarray as xr
 from pycontrails.core import Flight, cache
 from pycontrails.datalib import landsat, sentinel
 from pycontrails.datalib.leo_utils import search
-from tests import BIGQUERY_ACCESS, OFFLINE
+from tests import BIGQUERY_ACCESS
 
 PYCONTRAILS_SKIP_LEO_TESTS = bool(os.getenv("PYCONTRAILS_SKIP_LEO_TESTS"))
 
@@ -260,7 +260,7 @@ def landsat_cachestore() -> Generator[cache.DiskCacheStore, None, None]:
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_landsat_empty_query() -> None:
     """Test Landsat imagery query that returns an empty result."""
     start_time = np.datetime64("2019-01-01 00:00:00")
@@ -273,7 +273,7 @@ def test_landsat_empty_query() -> None:
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_landsat_query(landsat_base_url: str) -> None:
     """Test Landsat imagery query that returns a non-empty result."""
     start_time = np.datetime64("2019-01-01 00:00:00")
@@ -287,7 +287,7 @@ def test_landsat_query(landsat_base_url: str) -> None:
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_landsat_empty_intersection() -> None:
     """Test Landsat flight intersection that return an empty result."""
     flight = Flight(
@@ -303,7 +303,7 @@ def test_landsat_empty_intersection() -> None:
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_landsat_intersection(landsat_base_url: str) -> None:
     """Test Landsat flight intersection that return an non-empty result."""
     flight = Flight(
@@ -345,7 +345,7 @@ def test_landsat_band_resolution(bands: set[str], succeed: bool) -> None:
 
 
 @pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("band", [f"B{i}" for i in range(1, 9)])
 @pytest.mark.parametrize("processing", ["raw", "radiance", "reflectance"])
 def test_landsat_get_reflective_bands(
@@ -374,7 +374,7 @@ def test_landsat_get_reflective_bands(
 
 
 @pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("band", ["B10", "B11"])
 @pytest.mark.parametrize("processing", ["raw", "radiance", "brightness_temperature"])
 def test_landsat_get_thermal_bands(
@@ -403,7 +403,7 @@ def test_landsat_get_thermal_bands(
 
 
 @pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_landsat_generate_true_color_rgb(
     landsat_cachestore: cache.DiskCacheStore, landsat_base_url: str
 ) -> None:
@@ -426,7 +426,7 @@ def test_landsat_generate_true_color_rgb(
 
 
 @pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_landsat_generate_google_contrails_rgb(
     landsat_cachestore: cache.DiskCacheStore, landsat_base_url: str
 ) -> None:
@@ -478,7 +478,7 @@ def sentinel_cachestore() -> Generator[cache.DiskCacheStore, None, None]:
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_sentinel_empty_query() -> None:
     """Test Sentinel imagery query that returns an empty result."""
     start_time = np.datetime64("2019-01-01 00:00:00")
@@ -491,7 +491,7 @@ def test_sentinel_empty_query() -> None:
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_sentinel_query(sentinel_base_url: str, sentinel_granule_id: str) -> None:
     """Test Sentinel imagery query that returns a non-empty result."""
     start_time = np.datetime64("2019-01-01 00:00:00")
@@ -506,7 +506,7 @@ def test_sentinel_query(sentinel_base_url: str, sentinel_granule_id: str) -> Non
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_sentinel_empty_intersection() -> None:
     """Test Sentinel flight intersection that return an empty result."""
     flight = Flight(
@@ -522,7 +522,7 @@ def test_sentinel_empty_intersection() -> None:
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_sentinel_intersection(sentinel_base_url: str, sentinel_granule_id: str) -> None:
     """Test Sentinel flight intersection that return an non-empty result."""
     flight = Flight(
@@ -569,7 +569,7 @@ def test_sentinel_band_resolution(bands: set[str], succeed: bool) -> None:
 
 
 @pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("band", [f"B{i:02d}" for i in range(1, 13)] + ["B8A"])
 @pytest.mark.parametrize("processing", ["raw", "reflectance"])
 def test_sentinel_get_reflective_bands(
@@ -599,7 +599,7 @@ def test_sentinel_get_reflective_bands(
 
 
 @pytest.mark.skipif(PYCONTRAILS_SKIP_LEO_TESTS, reason="PYCONTRAILS_SKIP_LEO_TESTS set")
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_sentinel_generate_true_color_rgb(
     sentinel_cachestore: cache.DiskCacheStore, sentinel_base_url: str, sentinel_granule_id: str
 ) -> None:
