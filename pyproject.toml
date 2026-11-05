@@ -139,9 +139,6 @@ sat = [
     "shapely>=2.0",
 ]
 
-# Polyhedra contruction methods
-open3d = ["open3d>=0.14"]
-
 # Geospatial coordinate transformations
 pyproj = ["pyproj>=3.5"]
 

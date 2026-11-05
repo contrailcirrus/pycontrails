@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import pathlib
 from datetime import datetime
 from typing import Any
 
@@ -16,7 +15,6 @@ from pycontrails import DiskCacheStore, MetDataArray, MetDataset, MetVariable
 from pycontrails.core import cache as cache_module
 from pycontrails.core.met import originates_from_ecmwf, shift_longitude
 from pycontrails.datalib.ecmwf import ERA5
-from tests import OPEN3D_AVAILABLE
 
 DISK_CACHE_DIR = cache_module._get_user_cache_dir()
 
@@ -829,100 +827,6 @@ def test_polygon_iso_value(island_slice: MetDataArray, iso_value: float) -> None
     geojson = island_slice.to_polygon_feature(iso_value=iso_value, epsilon=0.1)
     coords = geojson["geometry"]["coordinates"]
     assert len(coords[0][0]) == 9
-
-
-@pytest.fixture()
-def median_binary_slice(median_binary: MetDataArray) -> MetDataArray:
-    return MetDataArray(median_binary.data.isel(time=[0]))
-
-
-@pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")
-@pytest.mark.parametrize("return_type", ["geojson", "mesh"])
-def test_polyhedra_save(median_binary_slice: MetDataArray, return_type: str) -> None:
-    assert len(median_binary_slice.data["time"]) == 1
-    path: str | pathlib.Path
-    path = "test_mesh.json" if return_type == "geojson" else "test_mesh.ply"
-    median_binary_slice.to_polyhedra(return_type=return_type, path=path)
-
-    path = pathlib.Path(path)
-    assert path.is_file()
-    path.unlink()
-
-
-@pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")
-def test_polyhedra_specify_time(sparse_binary: tuple[MetDataArray, dict]) -> None:
-    mda, _ = sparse_binary
-    with pytest.raises(ValueError, match="time input must be defined when the length"):
-        mda.to_polyhedra()
-    time = mda.data["time"][0]
-    assert mda.to_polyhedra(time=time)
-
-
-@pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")
-def test_polyhedra_mesh(sparse_binary: tuple[MetDataArray, dict]) -> None:
-    """Test the `to_polyhedra` method with return_type = "mesh"."""
-    mda, nonzero = sparse_binary
-    mda = MetDataArray(mda.data.isel(time=[0]))
-
-    mesh = mda.to_polyhedra(return_type="mesh")
-    assert len(mesh.triangles) in [4, 8]
-    if len(mesh.triangles) == 4:
-        assert len(mesh.vertices) == 5
-        assert not mesh.is_watertight()
-    else:
-        assert len(mesh.vertices) == 6
-        assert mesh.is_watertight()
-
-    lon, lat, _ = mesh.get_center()
-    assert lon == nonzero["lon"]
-    assert lat == nonzero["lat"]
-
-    mesh2 = mda.to_polyhedra(return_type="mesh", closed=True)
-    assert len(mesh2.triangles) == 8
-    assert len(mesh2.vertices) == 6
-    assert mesh2.is_watertight()
-
-
-@pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")
-def test_polyhedra_geojson(sparse_binary: tuple[MetDataArray, dict]) -> None:
-    """Test the `to_polyhedra` method."""
-
-    mda, _ = sparse_binary
-    mda = MetDataArray(mda.data.isel(time=[0]))
-
-    # TODO: this test was written where closed=False, should add a test for closed
-    geojson = mda.to_polyhedra(closed=False)
-    assert isinstance(geojson, dict)
-    assert geojson["type"] == "Feature"
-    assert geojson["geometry"]["type"] == "MultiPolygon"
-    coords = geojson["geometry"]["coordinates"]
-    assert len(coords) in [4, 8]
-
-    # comprised of triangles
-    assert all(len(face) == 3 for poly in coords for face in poly)
-
-    # and each point has three components
-    assert all(len(point) == 3 for poly in coords for face in poly for point in face)
-
-    # and altitude values are reasonable
-    mda_altitude = set(mda.data["altitude"].values.astype(int))
-    geojson_altitude = set([int(point[2]) for poly in coords for face in poly for point in face])
-    assert geojson_altitude.issubset(mda_altitude)
-
-
-@pytest.mark.skipif(not OPEN3D_AVAILABLE, reason="Open3D not available")
-def test_polyhedra_lower_upper_bound(sparse_binary: tuple[MetDataArray, dict]) -> None:
-    """Test the `to_polyhedra` method with lower and upper bounds on interior values."""
-
-    mda, _ = sparse_binary
-    mda1 = MetDataArray(mda.data.isel(time=[0]))
-    mda2 = MetDataArray(-mda.data.isel(time=[0]))
-
-    geojson1 = mda1.to_polyhedra(iso_value=0.5, lower_bound=True)
-    geojson2 = mda2.to_polyhedra(iso_value=-0.5, lower_bound=True)
-    geojson3 = mda2.to_polyhedra(iso_value=-0.5, lower_bound=False)
-    assert geojson1 != geojson2
-    assert geojson1 == geojson3
 
 
 def test_save_load(met_ecmwf_pl_path: str, met_era5_fake: MetDataset) -> None:

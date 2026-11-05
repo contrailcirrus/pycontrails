@@ -30,13 +30,6 @@ extended_k15.EXPERIMENTAL_WARNING = False
 
 
 try:
-    import open3d  # noqa: F401
-except ModuleNotFoundError:
-    OPEN3D_AVAILABLE = False
-else:
-    OPEN3D_AVAILABLE = True
-
-try:
     from google.cloud import storage
 
     storage.Client()

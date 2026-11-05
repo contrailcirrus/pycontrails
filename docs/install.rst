@@ -57,10 +57,6 @@ The ``pycontrails`` package uses optional dependencies for specific features:
     $ pip install "pycontrails[vis]"      # Polygon construction methods and plotting support
     $ pip install "pycontrails[zarr]"     # Load data from remote Zarr stores
 
-    # These packages may not support the latest python version
-    # and are excluded from "complete"
-    $ pip install "pycontrails[open3d]"   # Polyhedra contruction methods
-
 See ``[project.optional-dependencies]`` in `pyproject.toml <https://github.com/contrailcirrus/pycontrails/blob/main/pyproject.toml>`__
 for the latest optional dependencies.
 
