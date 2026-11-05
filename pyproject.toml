@@ -60,6 +60,7 @@ dev = [
     "pyarrow>=5.0",
     "pytest>=8.2",
     "pytest-cov>=2.11",
+    "pytest-socket>=0.8.1",
     "requests>=2.33.1",
     "ruff>=0.15.0",
     "types-requests>=2.25",
