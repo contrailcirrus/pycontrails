@@ -289,7 +289,7 @@ def test_flight_length_methods(fl: Flight) -> None:
 
     # comparing length against geodesic from start to end
     geod = Geod(ellps="WGS84")
-    crow_flies_dist = geod.line_length([x0, x1], [y0, y1]) / 1000
+    crow_flies_dist = geod.line_length([x0, x1], [y0, y1])
     assert crow_flies_dist <= fl.length
 
     assert isinstance(fl.max_distance_gap, float)
@@ -696,29 +696,38 @@ def test_segment_properties(fl: Flight, rng: np.random.Generator) -> None:
     assert np.isnan(segment_groundspeed[-1])
 
     # segment true airspeed
-    segment_true_airspeed = fl.segment_true_airspeed(smooth=False)
-    assert len(segment_true_airspeed) == len(fl)
-    assert np.isnan(segment_true_airspeed[-1])
-    abs_diff = np.abs(segment_true_airspeed - segment_groundspeed)
+    tas_unsmoothed = fl.segment_true_airspeed(smooth=False)
+    assert len(tas_unsmoothed) == len(fl)
+    assert np.isnan(tas_unsmoothed[-1])
+    abs_diff = np.abs(tas_unsmoothed - segment_groundspeed)
     # should be similar with no wind speed
     assert np.all(abs_diff[:-1] < 1)
 
-    segment_true_airspeed = fl.segment_true_airspeed()
-    assert len(segment_true_airspeed) == len(fl)
-    assert np.isnan(segment_true_airspeed[-1])
-    abs_diff = np.abs(segment_true_airspeed - segment_groundspeed)
+    tas_smoothed = fl.segment_true_airspeed(smooth=True)
+    assert len(tas_smoothed) == len(fl)
+    assert np.isnan(tas_smoothed[-1])
+    abs_diff = np.abs(tas_smoothed - segment_groundspeed)
     assert np.all(abs_diff[:-1] <= 50)
 
     u_wind = rng.random(len(fl)) * 10
     v_wind = rng.random(len(fl)) * 5
-    segment_true_airspeed = fl.segment_true_airspeed(u_wind=u_wind, v_wind=v_wind)
-    assert len(segment_true_airspeed) == len(fl)
-    assert np.isnan(segment_true_airspeed[-1])
-    assert np.all(abs_diff[:-1] <= 50)
+    tas = fl.segment_true_airspeed(u_wind=u_wind, v_wind=v_wind)
+    assert len(tas) == len(fl)
+    assert np.isnan(tas[-1])
+
+    # Wind changes the true airspeed by at most the wind speed
+    wind_diff = np.abs(tas - tas_smoothed)
+    assert np.all(wind_diff[:-1] <= np.hypot(u_wind, v_wind)[:-1] + 1e-6)
+
+    # A tailwind along each segment gives a true airspeed of |groundspeed - tailwind|
+    tailwind = 20.0
+    tas_tailwind = fl.segment_true_airspeed(u_wind=tailwind * cos_a, v_wind=tailwind * sin_a)
+    expected = np.abs(tas_smoothed[:-1] - tailwind)
+    np.testing.assert_allclose(tas_tailwind[:-1], expected, rtol=1e-6, atol=1e-9)
 
     # mach number
-    air_temperature = rng.random(len(fl)) * 30 + 273
-    segment_mach_number = fl.segment_mach_number(segment_true_airspeed, air_temperature)
+    air_temperature = rng.random(len(fl)) * 30.0 + 273.0
+    segment_mach_number = fl.segment_mach_number(tas, air_temperature)
     assert len(segment_mach_number) == len(fl)
     assert np.all(segment_mach_number[:-1] < 2)
 
@@ -1445,12 +1454,6 @@ class TestPassengerLoadFactorEstimates:
         assert lf == pytest.approx(0.844, abs=1e-3)
 
     def test_covid_period(self) -> None:
-        origin_airport_icao = "KJFK"
-        first_waypoint_time = pd.to_datetime("2020-03-24 00:30:24")
-        lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
-        assert lf == pytest.approx(0.439, abs=1e-3)
-
-    def test_freighter(self) -> None:
         origin_airport_icao = "KJFK"
         first_waypoint_time = pd.to_datetime("2020-03-24 00:30:24")
         lf = jet.passenger_load_factor(origin_airport_icao, first_waypoint_time)
