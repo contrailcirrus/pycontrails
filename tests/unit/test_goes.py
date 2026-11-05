@@ -10,7 +10,6 @@ import xarray as xr
 
 from pycontrails import DiskCacheStore
 from pycontrails.datalib import goes
-from tests import OFFLINE
 
 
 @pytest.mark.parametrize(
@@ -59,7 +58,7 @@ def test_band_resolution(bands: tuple[str, ...], succeed: bool) -> None:
         goes._check_band_resolution(bands)
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("t", ["2023-06-15T15:34", "2019-03-14T15:34"])
 def test_goes_get_no_cache_default_bands(t: str) -> None:
     downloader = goes.GOES(region="m1", cachestore=None)
@@ -91,7 +90,7 @@ def test_goes_get_no_cache_default_bands(t: str) -> None:
     assert len(src_extent) == 4
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_goes_get_no_cache_rgb_bands() -> None:
     downloader = goes.GOES(region="m1", cachestore=None, bands=("C01", "C02", "C03"))
     assert downloader.cachestore is None
@@ -121,7 +120,7 @@ def cachestore() -> Generator[DiskCacheStore, None, None]:
         out.clear()
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("t", ["2023-06-15T15:34", "2021-01-15T00", "2019-03-14T15:34"])
 def test_goes_get_with_cache(t: str, cachestore: DiskCacheStore) -> None:
     downloader = goes.GOES(region="m2", cachestore=cachestore, bands="C02")
@@ -147,7 +146,7 @@ def goes_data() -> xr.DataArray:
     return downloader.get("2023-09-15T15:34")
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_goes_parallax_correct_above_nadir(goes_data: xr.DataArray) -> None:
     """Test the ``parallax_correct`` function."""
     # If we're right above nadir, the parallax correction shouldn't change anything
@@ -159,7 +158,7 @@ def test_goes_parallax_correct_above_nadir(goes_data: xr.DataArray) -> None:
     assert lat0 == pytest.approx(lat1)
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_goes_parallax_correct_due_north(goes_data: xr.DataArray) -> None:
     """Test the ``parallax_correct`` function."""
     # If we're due north, the parallax correction should shift the latitude only
@@ -171,7 +170,7 @@ def test_goes_parallax_correct_due_north(goes_data: xr.DataArray) -> None:
     assert lat1.item() == pytest.approx(44.11, abs=0.01)
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_goes_parallax_correct_due_east(goes_data: xr.DataArray) -> None:
     """Test the ``parallax_correct`` function."""
     # If we're due east, the parallax correction should shift the longitude only
@@ -183,7 +182,7 @@ def test_goes_parallax_correct_due_east(goes_data: xr.DataArray) -> None:
     assert lon1.item() == pytest.approx(-32.90, abs=0.01)
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_goes_parallax_correct_random(goes_data: xr.DataArray) -> None:
     """Test the ``parallax_correct`` function."""
     # In general, parallax correction doesn't shift more than +/- 0.1 degrees
@@ -199,7 +198,7 @@ def test_goes_parallax_correct_random(goes_data: xr.DataArray) -> None:
     assert np.mean(np.abs(lat0 - lat1)) == pytest.approx(0.11, abs=0.01)
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_goes_parallax_correct_opposite_side(goes_data: xr.DataArray) -> None:
     """Test the ``parallax_correct`` function."""
 
@@ -221,7 +220,7 @@ def test_goes_parallax_correct_opposite_side(goes_data: xr.DataArray) -> None:
     assert np.all(np.isfinite(lat1[~opposite_side][12:-12]))
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_goes_19() -> None:
     """Confirm that we can access GOES-19 data."""
     downloader = goes.GOES(region="m1", cachestore=None, bands="C02")
@@ -237,7 +236,7 @@ def test_goes_19() -> None:
     assert da["band_id"].values.tolist() == [2]
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_gcs_goes_path_errors() -> None:
     """Test errors during GCS path lookup."""
 

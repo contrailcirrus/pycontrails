@@ -4,8 +4,6 @@ import os
 import pathlib
 import platform
 
-import requests
-
 import pycontrails
 from pycontrails.datalib import ch_aviation
 
@@ -55,16 +53,3 @@ except Exception:
     BIGQUERY_ACCESS = False
 else:
     BIGQUERY_ACCESS = True
-
-# Tests that make network calls are skipped when OFFLINE is True. Set the
-# PYCONTRAILS_OFFLINE environment variable to force these tests to be skipped
-# regardless of network availability (e.g., in the release workflow).
-if os.getenv("PYCONTRAILS_OFFLINE"):
-    OFFLINE = True
-else:
-    try:
-        requests.get("https://github.com", timeout=5)
-    except Exception:
-        OFFLINE = True
-    else:
-        OFFLINE = False
