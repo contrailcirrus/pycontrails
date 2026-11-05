@@ -12,7 +12,7 @@ import pytest
 
 from pycontrails import DiskCacheStore, GCPCacheStore
 from pycontrails.core import cache
-from tests import GCP_CREDENTIALS, OFFLINE
+from tests import GCP_CREDENTIALS
 
 ############
 # Disk Cache Store
@@ -146,7 +146,7 @@ BUCKET = "contrails-301217-unit-test"
 CACHE_DIR = datetime.now().isoformat().replace(":", "-")
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.skipif(not GCP_CREDENTIALS, reason="No GCS credentials")
 class TestGCPCacheStore:
     def test_cache_init(self) -> None:
