@@ -149,7 +149,9 @@ def test_model_copy_source(met_era5_fake: MetDataset, flight_fake: Flight) -> No
     flight_model2 = ModelTestFlight(met_era5_fake)
     flight_model2.eval(source=flight_fake)
     assert flight_model2.source is not flight_fake
-    assert flight_model.source.data == flight_fake.data
+    for key, arr in flight_fake.data.items():
+        np.testing.assert_array_equal(flight_model2.source[key], arr)
+        assert not np.shares_memory(flight_model2.source[key], arr)  # copy_source=True
 
 
 def test_model_type_guards(met_era5_fake: MetDataset, flight_fake: Flight) -> None:

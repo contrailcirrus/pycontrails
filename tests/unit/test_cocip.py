@@ -776,7 +776,12 @@ def test_flight_overrides_emissions(
     assert out4.attrs["wingspan"] == fl4.attrs["wingspan"]
 
 
-def test_flight_output(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
+def test_flight_output(
+    fl: Flight,
+    met: MetDataset,
+    rad: MetDataset,
+    tmp_path: pathlib.Path,  # built-in pytest fixture
+) -> None:
     """Check `Cocip` outputs against data in static directory."""
     cocip = Cocip(
         met,
@@ -793,29 +798,23 @@ def test_flight_output(fl: Flight, met: MetDataset, rad: MetDataset) -> None:
     assert np.all(out["latitude"] == fl["latitude"])
     assert np.all(out["longitude"] == fl["longitude"])
     assert np.all(out["time"] == fl["time"])
-    assert np.all(out.level == out.level)
+    np.testing.assert_array_equal(out.level, fl.level)
 
     assert "rf_net_mean" in cocip.source
 
     assert out.attrs["flight_id"] == fl.attrs["flight_id"]
 
     # Ensure we can save flight dataframe as parquet
-    try:
-        out.dataframe.to_parquet(".test.pq")
-        assert pathlib.Path(".test.pq").exists()
+    path = tmp_path / "flight.pq"
+    out.dataframe.to_parquet(path)
+    df = pd.read_parquet(path)
 
-        df = pd.read_parquet(".test.pq")
-
-        # Compare as float nanoseconds (passing timedelta64 to assert_allclose
-        # trips a numpy 2.5 deprecation warning)
-        np.testing.assert_allclose(
-            df["contrail_age"] / np.timedelta64(1, "ns"),
-            out.dataframe["contrail_age"] / np.timedelta64(1, "ns"),
-        )
-
-    finally:
-        # clean up
-        pathlib.Path(".test.pq").unlink()
+    # Compare as float nanoseconds (passing timedelta64 to assert_allclose
+    # trips a numpy 2.5 deprecation warning)
+    np.testing.assert_allclose(
+        df["contrail_age"] / np.timedelta64(1, "ns"),
+        out.dataframe["contrail_age"] / np.timedelta64(1, "ns"),
+    )
 
 
 def test_eval_no_ef(cocip_no_ef: Cocip) -> None:
@@ -1050,12 +1049,12 @@ def test_eval_generic(reference: str, generic: str, request: pytest.FixtureReque
     """Check that CoCiP output does not change when equivalent generic met data is used."""
     cocip = request.getfixturevalue(reference)
     cocip_generic = request.getfixturevalue(generic)
-    # pd.testing.assert_frame_equal(
-    #     cocip.source.dataframe.rename(
-    #         {"specific_cloud_ice_water_content": "mass_fraction_of_cloud_ice_in_air"}, axis=1
-    #     ),
-    #     cocip_generic.source.dataframe,
-    # )
+    pd.testing.assert_frame_equal(
+        cocip.source.dataframe.rename(
+            {"specific_cloud_ice_water_content": "mass_fraction_of_cloud_ice_in_air"}, axis=1
+        ),
+        cocip_generic.source.dataframe,
+    )
     pd.testing.assert_frame_equal(
         cocip.contrail.drop(["top_net_thermal_radiation", "top_net_solar_radiation"], axis=1),
         cocip_generic.contrail.drop(["toa_net_downward_shortwave_flux"], axis=1),
@@ -1249,7 +1248,7 @@ def test_flight_waypoint_and_flight_summary_statistics() -> None:
     )
     assert n_contrails_unique == (~np.isnan(flight_waypoints_out["ef"])).sum()
     np.testing.assert_allclose(
-        np.nansum(flight_waypoints_out["ef"]), np.nansum(contrails_opened["ef"]), rtol=1
+        np.nansum(flight_waypoints_out["ef"]), np.nansum(contrails_opened["ef"])
     )
 
     # ------------------------------
@@ -1260,7 +1259,6 @@ def test_flight_waypoint_and_flight_summary_statistics() -> None:
     np.testing.assert_allclose(
         np.nansum(flight_summary["total_flight_distance_flown"]),
         np.nansum(flight_waypoints_out["segment_length"]),
-        rtol=1,
     )
 
     # Starting with pandas 3.1, we need the additional tolerance to allow for rounding differences
@@ -1274,7 +1272,6 @@ def test_flight_waypoint_and_flight_summary_statistics() -> None:
     np.testing.assert_allclose(
         np.nansum(flight_waypoints_out["persistent_contrail_length"]),
         np.nansum(flight_summary["total_persistent_contrails_formed"]),
-        rtol=1,
     )
     assert (flight_summary["total_persistent_contrails_formed"] == 0.0).sum() == (
         np.nan_to_num(flight_summary["total_energy_forcing"]) == 0.0
@@ -1285,7 +1282,6 @@ def test_flight_waypoint_and_flight_summary_statistics() -> None:
     np.testing.assert_allclose(
         np.nansum(flight_summary["total_energy_forcing"]),
         np.nansum(flight_waypoints_out["ef"]),
-        rtol=1,
     )
 
 
@@ -1365,12 +1361,12 @@ def test_gridded_and_time_slice_outputs() -> None:
         t_start, t_end, flight_waypoints_t, contrails_t, met=met, spatial_bbox=(-12, 35, 20, 60)
     )
 
+    # flight_distance_flown is in km
     np.testing.assert_allclose(
-        ds["flight_distance_flown"].sum().values,
+        ds["flight_distance_flown"].sum() * 1000.0,
         np.nansum(flight_waypoints_t["segment_length"]),
-        rtol=1,
     )
-    np.testing.assert_allclose(ds["ef"].sum().values, contrails_t["ef"].sum(), rtol=1)
+    np.testing.assert_allclose(ds["ef"].sum().values, contrails_t["ef"].sum())
 
     # The number of grid cells at `t_end` with contrails must be equal
     assert np.count_nonzero(ds["persistent_contrails"]) == np.count_nonzero(ds["tau_contrail"])
@@ -1392,7 +1388,7 @@ def test_gridded_and_time_slice_outputs() -> None:
 
     assert t_slice_stats["n_waypoints"] == len(flight_waypoints_t)
     np.testing.assert_allclose(
-        t_slice_stats["total_flight_distance"], ds["flight_distance_flown"].sum(), rtol=1
+        t_slice_stats["total_flight_distance"], ds["flight_distance_flown"].sum()
     )
     assert (
         t_slice_stats["n_waypoints_forming_persistent_contrails"]
@@ -1401,9 +1397,8 @@ def test_gridded_and_time_slice_outputs() -> None:
     np.testing.assert_allclose(
         t_slice_stats["total_persistent_contrails_formed"] * 1000,
         np.nansum(flight_waypoints_t["segment_length"][flight_waypoints_t["persistent_1"] == 1.0]),
-        rtol=1,
     )
-    np.testing.assert_allclose(t_slice_stats["total_contrail_ef"], ds["ef"].sum(), rtol=1)
+    np.testing.assert_allclose(t_slice_stats["total_contrail_ef"], ds["ef"].sum())
 
 
 def test_contrail_edges(cocip_persistent: Cocip, regenerate_results: bool) -> None:
@@ -1903,16 +1898,22 @@ def test_cocip_survival_fraction(fl: Flight, met: MetDataset, rad: MetDataset):
     )
 
     cocip = Cocip(**params, unterstrasser_ice_survival_fraction=False)
-    assert not hasattr(cocip, "_sac_flight")
     cocip.eval(fl)
-    assert len(cocip._sac_flight) == len(fl)
-    assert "n_ice_per_m_1" in cocip._sac_flight
+    sac_default = cocip._sac_flight
 
     cocip = Cocip(**params, unterstrasser_ice_survival_fraction=True)
-    assert not hasattr(cocip, "_sac_flight")
     cocip.eval(fl)
-    assert len(cocip._sac_flight) == len(fl)
-    assert "n_ice_per_m_1" in cocip._sac_flight
+    sac_unterstrasser = cocip._sac_flight
+
+    for sac_flight in (sac_default, sac_unterstrasser):
+        assert len(sac_flight) == len(fl)
+        assert "n_ice_per_m_1" in sac_flight
+        assert np.nanmin(sac_flight["f_surv"]) >= 0.0
+        assert np.nanmax(sac_flight["f_surv"]) <= 1.0
+
+    # The parameterizations share the initial ice number but differ in survival fraction
+    np.testing.assert_array_equal(sac_default["n_ice_per_m_0"], sac_unterstrasser["n_ice_per_m_0"])
+    assert not np.allclose(sac_default["f_surv"], sac_unterstrasser["f_surv"], equal_nan=True)
 
 
 @pytest.mark.filterwarnings("ignore")
