@@ -68,7 +68,7 @@ jobs:
       - name: Test
         run: pytest tests/unit/test_accf.py
 
-  # The compiler, vcpkg binary cache, and build steps follow the APCEMM CI workflow
+  # The compiler and build steps follow the APCEMM CI workflow
   # https://github.com/MIT-LAE/APCEMM/blob/main/.github/workflows/ci.yml
   apcemm:
     runs-on: ubuntu-latest
@@ -79,8 +79,6 @@ jobs:
       # GCC 14 is one of the compilers tested in the APCEMM CI workflow
       CC: gcc-14
       CXX: g++-14
-      # vcpkg stores built dependencies here, and actions/cache saves them between runs
-      VCPKG_DEFAULT_BINARY_CACHE: '${{ github.workspace }}/vcpkg-binary-cache'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -104,19 +102,23 @@ jobs:
           "$CXX" --version
           cmake --version
 
-      - name: Cache vcpkg binary cache
+      # vcpkg links the APCEMM dependencies statically, so the executable can be cached alone
+      - name: Cache APCEMM executable
+        id: cache-apcemm
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: vcpkg-binary-cache
-          key: vcpkg-${{ runner.os }}-gcc14-${{ env.APCEMM_VERSION }}
+          path: APCEMM/build/APCEMM
+          key: apcemm-${{ runner.os }}-gcc14-${{ env.APCEMM_VERSION }}
 
       - name: Build APCEMM
+        if: steps.cache-apcemm.outputs.cache-hit != 'true'
         working-directory: APCEMM
         run: |
-          mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
           cmake -B build -S Code.v05-00 -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target APCEMM -j"$(nproc)"
-          echo "$GITHUB_WORKSPACE/APCEMM/build" >> "$GITHUB_PATH"
+
+      - name: Add APCEMM to PATH
+        run: echo "$GITHUB_WORKSPACE/APCEMM/build" >> "$GITHUB_PATH"
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
