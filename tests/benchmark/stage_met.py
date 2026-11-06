@@ -44,7 +44,7 @@ def main() -> None:
         ds = open_kind(kind)
         encoding = {v: {"zlib": True, "complevel": 4} for v in ds.data_vars}
         with tempfile.NamedTemporaryFile(suffix=".nc") as tmp:
-            ds.to_netcdf(tmp.name, encoding=encoding)
+            ds.load().to_netcdf(tmp.name, encoding=encoding)  # much faster if .load is used
             fs.put(tmp.name, f"{OUTPUT}/{name}")
 
 
