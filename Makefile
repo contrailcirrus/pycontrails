@@ -18,7 +18,7 @@ END_COLOR = \033[0m
 # -----------
 
 # generic pip install all dependencies
-# the latest open3d and accf packages often don't support the latest
+# the latest accf package often doesn't support the latest
 # versions of python
 pip-install:
 	python -m pip install -U pip
@@ -102,7 +102,6 @@ pytest-cov:
 		--cov-report=html:coverage \
 		--cov-report=term-missing \
 		--durations=10 \
-		--ignore=tests/unit/test_zarr.py \
 		tests/unit
 
 test: lint mypy pytest doctest nb-test

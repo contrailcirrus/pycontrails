@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import pathlib
 import typing
 import warnings
 from abc import ABC, abstractmethod
@@ -38,15 +36,12 @@ from pycontrails.core import vector as vector_module
 from pycontrails.core.cache import CacheStore, DiskCacheStore
 from pycontrails.core.met_var import AirPressure, Altitude, MetVariable
 from pycontrails.physics import units
-from pycontrails.utils import dependencies
 from pycontrails.utils import temp as temp_module
 
 logger = logging.getLogger(__name__)
 
 # optional imports
 if TYPE_CHECKING:
-    import open3d as o3d
-
     from pycontrails.core import interpolation
 
 COORD_DTYPE = np.float64
@@ -554,24 +549,6 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
         """
         data = downselect(self.data, bbox)
         return type(self)._from_fastpath(data, cachestore=self.cachestore)
-
-    @property
-    def is_zarr(self) -> bool:
-        """Check if underlying :attr:`data` is sourced from a Zarr group.
-
-        Implementation is very brittle, and may break as external libraries change.
-
-        Some ``dask`` intermediate artifact is cached when this is called. Typically,
-        subsequent calls to this method are much faster than the initial call.
-
-        .. versionadded:: 0.26.0
-
-        Returns
-        -------
-        bool
-            If ``data`` is based on a Zarr group.
-        """
-        return _is_zarr(self.data)
 
     def downselect_met[M: (MetDataset, MetDataArray)](
         self,
@@ -2078,7 +2055,6 @@ class MetDataArray(MetBase[xr.DataArray]):
 
         See Also
         --------
-        :meth:`to_polyhedra`
         :func:`~pycontrails.core.polygon.find_multipolygon`
 
         Examples
@@ -2202,248 +2178,6 @@ class MetDataArray(MetBase[xr.DataArray]):
             "features": features,
         }
 
-    @overload
-    def to_polyhedra(
-        self,
-        *,
-        time: datetime | None = ...,
-        iso_value: float = ...,
-        simplify_fraction: float = ...,
-        lower_bound: bool = ...,
-        return_type: Literal["geojson"],
-        path: str | None = ...,
-        altitude_scale: float = ...,
-        output_vertex_normals: bool = ...,
-        closed: bool = ...,
-    ) -> dict[str, Any]: ...
-
-    @overload
-    def to_polyhedra(
-        self,
-        *,
-        time: datetime | None = ...,
-        iso_value: float = ...,
-        simplify_fraction: float = ...,
-        lower_bound: bool = ...,
-        return_type: Literal["mesh"],
-        path: str | None = ...,
-        altitude_scale: float = ...,
-        output_vertex_normals: bool = ...,
-        closed: bool = ...,
-    ) -> o3d.geometry.TriangleMesh: ...
-
-    def to_polyhedra(
-        self,
-        *,
-        time: datetime | None = None,
-        iso_value: float = 0.0,
-        simplify_fraction: float = 1.0,
-        lower_bound: bool = True,
-        return_type: str = "geojson",
-        path: str | None = None,
-        altitude_scale: float = 1.0,
-        output_vertex_normals: bool = False,
-        closed: bool = True,
-    ) -> dict[str, Any] | o3d.geometry.TriangleMesh:
-        """Create a collection of polyhedra from spatial array corresponding to a single time slice.
-
-        Parameters
-        ----------
-        time : datetime, optional
-            Time slice to create mesh.
-            If the "time" coordinate is length 1, then the single time slice will be selected
-            automatically.
-        iso_value : float, optional
-            Value in field to create iso-surface. Defaults to 0.
-        simplify_fraction : float, optional
-            Apply `open3d` `simplify_quadric_decimation` method to simplify the polyhedra geometry.
-            This parameter must be in the half-open interval (0.0, 1.0].
-            Defaults to 1.0, corresponding to no reduction.
-        lower_bound : bool, optional
-            Whether to use ``iso_value`` as a lower or upper bound on values in polyhedra interiors.
-            By default, True.
-        return_type : str, optional
-            Must be one of "geojson" or "mesh". Defaults to "geojson".
-            If "geojson", this method returns a dictionary representation of a geojson MultiPolygon
-            object whose polygons are polyhedra faces.
-            If "mesh", this method returns an `open3d` `TriangleMesh` instance.
-        path : str, optional
-            Output geojson or mesh to file.
-            If `return_type` is "mesh", see `Open3D File I/O for Mesh
-            <http://www.open3d.org/docs/release/tutorial/geometry/file_io.html#Mesh>`_ for
-            file type options.
-        altitude_scale : float, optional
-            Rescale the altitude dimension of the mesh, [:math:`m`]
-        output_vertex_normals : bool, optional
-            If ``path`` is defined, write out vertex normals.
-            Defaults to False.
-        closed : bool, optional
-            If True, pad spatial array along all axes to ensure polyhedra are "closed".
-            This flag often gives rise to cleaner visualizations. Defaults to True.
-
-        Returns
-        -------
-        dict | open3d.geometry.TriangleMesh
-            Python representation of geojson object or `Open3D Triangle Mesh
-            <http://www.open3d.org/docs/release/tutorial/geometry/mesh.html>`_ depending on the
-            `return_type` parameter.
-
-        Raises
-        ------
-        ModuleNotFoundError
-            Method requires the `vis` optional dependencies
-        ValueError
-            If input parameters are invalid.
-
-        See Also
-        --------
-        :meth:`to_polygon_feature`
-        :func:`skimage.measure.marching_cubes`
-        :class:`open3d.geometry.TriangleMesh`
-
-        Notes
-        -----
-        Uses the `scikit-image Marching Cubes  <https://scikit-image.org/docs/dev/auto_examples/edges/plot_marching_cubes.html>`_
-        algorithm to reconstruct a surface from the point-cloud like arrays.
-        """
-        try:
-            from skimage import measure
-        except ModuleNotFoundError as e:
-            dependencies.raise_module_not_found_error(
-                name="MetDataArray.to_polyhedra method",
-                package_name="scikit-image",
-                pycontrails_optional_package="vis",
-                module_not_found_error=e,
-            )
-
-        try:
-            import open3d as o3d
-        except ModuleNotFoundError as e:
-            dependencies.raise_module_not_found_error(
-                name="MetDataArray.to_polyhedra method",
-                package_name="open3d",
-                pycontrails_optional_package="open3d",
-                module_not_found_error=e,
-            )
-
-        if len(self.data["level"]) == 1:
-            raise ValueError(
-                "Found single `level` coordinate in DataArray. This method requires at least two."
-            )
-
-        # select time
-        if time is None and len(self.data["time"]) == 1:
-            time = self.data["time"].values[0]
-
-        if time is None:
-            raise ValueError(
-                "time input must be defined when the length of the time coordinates are > 1"
-            )
-
-        if simplify_fraction > 1 or simplify_fraction <= 0:
-            raise ValueError("Parameter `simplify_fraction` must be in the interval (0, 1].")
-
-        return_types = ["geojson", "mesh"]
-        if return_type not in return_types:
-            raise ValueError(f"Parameter `return_type` must be one of {', '.join(return_types)}")
-
-        # 3d array of longitude, latitude, altitude values
-        volume = self.data.sel(time=time).values
-
-        # invert if iso_value is an upper bound on interior values
-        if not lower_bound:
-            volume = -volume
-            iso_value = -iso_value
-
-        # convert from array index back to coordinates
-        longitude = self.indexes["longitude"].values
-        latitude = self.indexes["latitude"].values
-        altitude = units.pl_to_m(self.indexes["level"].values)
-
-        # Pad volume on all axes to close the volumes
-        if closed:
-            # pad values to domain
-            longitude0 = longitude[0] - (longitude[1] - longitude[0])
-            longitude1 = longitude[-1] + longitude[-1] - longitude[-2]
-            longitude = np.pad(longitude, pad_width=1, constant_values=(longitude0, longitude1))
-
-            latitude0 = latitude[0] - (latitude[1] - latitude[0])
-            latitude1 = latitude[-1] + latitude[-1] - latitude[-2]
-            latitude = np.pad(latitude, pad_width=1, constant_values=(latitude0, latitude1))
-
-            altitude0 = altitude[0] - (altitude[1] - altitude[0])
-            altitude1 = altitude[-1] + altitude[-1] - altitude[-2]
-            altitude = np.pad(altitude, pad_width=1, constant_values=(altitude0, altitude1))
-
-            # Pad along axes to ensure polygons are closed
-            volume = np.pad(volume, pad_width=1, constant_values=iso_value)
-
-        # Use marching cubes to obtain the surface mesh
-        # Coordinates of verts are indexes of volume array
-        verts, faces, normals, _ = measure.marching_cubes(
-            volume, iso_value, allow_degenerate=False, gradient_direction="ascent"
-        )
-
-        # Convert from indexes to longitude, latitude, altitude values
-        verts[:, 0] = longitude[verts[:, 0].astype(int)]
-        verts[:, 1] = latitude[verts[:, 1].astype(int)]
-        verts[:, 2] = altitude[verts[:, 2].astype(int)]
-
-        # rescale altitude
-        verts[:, 2] = verts[:, 2] * altitude_scale
-
-        # create mesh in open3d
-        mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(verts)
-        mesh.triangles = o3d.utility.Vector3iVector(faces)
-        mesh.vertex_normals = o3d.utility.Vector3dVector(normals)
-
-        # simplify mesh according to sim
-        if simplify_fraction < 1:
-            target_n_triangles = int(faces.shape[0] * simplify_fraction)
-            mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=target_n_triangles)
-            mesh.compute_vertex_normals()
-
-        if path is not None:
-            path = str(pathlib.Path(path).absolute())
-
-        if return_type == "geojson":
-            verts = np.round(
-                np.asarray(mesh.vertices), decimals=4
-            )  # rounding to reduce the size of resultant json arrays
-            faces = np.asarray(mesh.triangles)
-
-            # TODO: technically this is not valid GeoJSON because each polygon (triangle)
-            # does not have the last element equal to the first (not a linear ring)
-            # but it still works for now in Deck.GL
-            coords = [[verts[face].tolist()] for face in faces]
-
-            geojson = {
-                "type": "Feature",
-                "properties": {},
-                "geometry": {"type": "MultiPolygon", "coordinates": coords},
-            }
-
-            if path is not None:
-                if not path.endswith(".json"):
-                    path += ".json"
-                with open(path, "w") as file:
-                    json.dump(geojson, file)
-            return geojson
-
-        if path is not None:
-            o3d.io.write_triangle_mesh(
-                path,
-                mesh,
-                write_ascii=False,
-                compressed=True,
-                write_vertex_normals=output_vertex_normals,
-                write_vertex_colors=False,
-                write_triangle_uvs=True,
-                print_progress=False,
-            )
-        return mesh
-
     @override
     def broadcast_coords(self, name: str) -> xr.DataArray:
         da = xr.ones_like(self.data) * self.data[name]
@@ -2455,34 +2189,6 @@ class MetDataArray(MetBase[xr.DataArray]):
 def _is_wrapped(longitude: np.ndarray) -> bool:
     """Check if ``longitude`` covers ``[-180, 180]``."""
     return longitude[0] <= -180.0 and longitude[-1] >= 180.0
-
-
-def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
-    """Check if ``ds`` appears to be Zarr-based.
-
-    Neither ``xarray`` nor ``dask`` readily expose such information, so
-    implementation is very narrow and brittle.
-    """
-    if isinstance(ds, xr.Dataset):
-        # Attempt 1: xarray binds the zarr close function to the instance
-        # This gives us an indicator of the data is zarr based
-        try:
-            if ds._close.__func__.__qualname__ == "ZarrStore.close":  # type: ignore
-                return True
-        except AttributeError:
-            pass
-
-        # Grab the first data variable, get underlying DataArray
-        ds = ds[next(iter(ds.data_vars))]
-
-    # Attempt 2: Examine the dask graph
-    darr = ds.variable._data  # dask array in some cases
-    try:
-        # Get the first dask instruction
-        dask0 = darr.dask[next(iter(darr.dask))]  # type: ignore[union-attr]
-    except AttributeError:
-        return False
-    return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
 
 
 def shift_longitude[X: (xr.Dataset, xr.DataArray)](data: X, bound: float = -180.0) -> X:

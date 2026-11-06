@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 # optional imports
 if TYPE_CHECKING:
     import matplotlib.axes
-    import traffic.core
 
 
 class FlightPhase(enum.IntEnum):
@@ -1465,36 +1464,6 @@ class Flight(GeoVectorDataset):
 
         features = [_group_to_feature(name, group) for name, group in groups]
         return {"type": "FeatureCollection", "features": features}
-
-    def to_traffic(self) -> traffic.core.Flight:
-        """Convert to :class:`traffic.core.Flight` instance.
-
-        Returns
-        -------
-        traffic.core.Flight
-            traffic flight instance
-
-        Raises
-        ------
-        ModuleNotFoundError
-            `traffic` package not installed
-
-        See Also
-        --------
-        :class:`traffic.core.Flight`
-        """
-        try:
-            import traffic.core
-        except ModuleNotFoundError as e:
-            dependencies.raise_module_not_found_error(
-                name="Flight.to_traffic method",
-                package_name="traffic",
-                module_not_found_error=e,
-            )
-
-        return traffic.core.Flight(
-            self.to_dataframe(copy=True).rename(columns={"time": "timestamp"})
-        )
 
     # ------------
     # MET
