@@ -1,0 +1,141 @@
+# Run unit tests for wrappers of external models (ACCF, APCEMM)
+# These models are not pycontrails dependencies, so their tests are skipped in test.yaml
+
+name: External model tests
+
+on:
+  # run on push to main and on PRs that touch a wrapper, its tests, or this workflow
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/test-external-models.yaml
+      - pycontrails/models/accf.py
+      - pycontrails/models/apcemm/**
+      - tests/unit/test_accf.py
+      - tests/unit/test_apcemm.py
+
+  pull_request:
+    paths:
+      - .github/workflows/test-external-models.yaml
+      - pycontrails/models/accf.py
+      - pycontrails/models/apcemm/**
+      - tests/unit/test_accf.py
+      - tests/unit/test_apcemm.py
+
+  # Allows run manually from the Actions tab
+  workflow_dispatch:
+
+  # Run weekly to catch breakage from changes elsewhere in pycontrails or from dependencies
+  schedule:
+    - cron: '0 6 * * 1'
+
+# disable all permissions at the top level
+# https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+permissions: {}
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event_name }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  accf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # climaccf is installed without its dependencies (see pyproject.toml)
+      - name: Install pycontrails and climaccf
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e ".[complete]" --group dev --group accf
+          python -m pip install --no-deps --group accf-nodeps
+
+      # test_accf.py skips if climaccf can't be imported, so fail here instead
+      - name: Check climaccf import
+        run: python -c "import climaccf.accf"
+
+      - name: Test
+        run: pytest tests/unit/test_accf.py
+
+  # The compiler, vcpkg binary cache, and build steps follow the APCEMM CI workflow
+  # https://github.com/MIT-LAE/APCEMM/blob/main/.github/workflows/ci.yml
+  apcemm:
+    runs-on: ubuntu-latest
+
+    env:
+      # APCEMM release documented in pycontrails/models/apcemm/apcemm.py
+      APCEMM_VERSION: v1.2.1
+      # GCC 14 is one of the compilers tested in the APCEMM CI workflow
+      CC: gcc-14
+      CXX: g++-14
+      # vcpkg stores built dependencies here, and actions/cache saves them between runs
+      VCPKG_DEFAULT_BINARY_CACHE: '${{ github.workspace }}/vcpkg-binary-cache'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: pycontrails
+          persist-credentials: false
+
+      # The test fixture requires the executable in build/ of the APCEMM checkout
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: MIT-LAE/APCEMM
+          ref: ${{ env.APCEMM_VERSION }}
+          path: APCEMM
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-14
+          "$CXX" --version
+          cmake --version
+
+      - name: Cache vcpkg binary cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: vcpkg-binary-cache
+          key: vcpkg-${{ runner.os }}-gcc14-${{ env.APCEMM_VERSION }}
+
+      - name: Build APCEMM
+        working-directory: APCEMM
+        run: |
+          mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+          cmake -B build -S Code.v05-00 -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target APCEMM -j"$(nproc)"
+          echo "$GITHUB_WORKSPACE/APCEMM/build" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15'
+          cache: pip
+          cache-dependency-path: pycontrails/pyproject.toml
+
+      - name: Install pycontrails
+        working-directory: pycontrails
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e ".[complete]" --group dev
+
+      # test_apcemm.py skips if APCEMM is not on the PATH, so fail here instead
+      - name: Check APCEMM executable
+        run: which APCEMM
+
+      # APCEMM can hang on bad met input
+      - name: Test
+        working-directory: pycontrails
+        timeout-minutes: 15
+        run: pytest tests/unit/test_apcemm.py
