@@ -67,11 +67,6 @@ class APCEMMParams(models.ModelParams):
     #: Time step of meteorology in generated APCEMM input file.
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
 
-    #: Altitude coordinates [:math:`m`] for meteorology in generated APCEMM input file.
-    #: If not provided, uses estimated altitudes for levels in input
-    #: :class:`~pycontrails.MetDataset`.
-    altitude_input_met: list[float] | None = None
-
     #: Humidity scaling
     humidity_scaling: HumidityScaling | None = None
 
@@ -936,17 +931,11 @@ class APCEMM(models.Model):
         interp_lat = np.interp(target_elapsed, elapsed, traj["latitude"].values)
         interp_az = np.interp(target_elapsed, elapsed, traj["azimuth"].values)
 
-        if self.params["altitude_input_met"] is None:
-            altitude = self.met["altitude"].values
-        else:
-            altitude = np.array(self.params["altitude_input_met"])
-
         ds = utils.generate_apcemm_input_met(
             time=target_time,
             longitude=interp_lon,
             latitude=interp_lat,
             azimuth=interp_az,
-            altitude=altitude,
             met=self.met,
             humidity_scaling=self.params["humidity_scaling"],
             dz_m=self.params["dz_m"],
