@@ -471,7 +471,10 @@ class APCEMM(models.Model):
             f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
             for coord in ("longitude", "latitude", "level")
         }
-        buffers["time_buffer"] = (0, self.params["max_age"] + self.params["dt_lagrangian"])
+        buffers["time_buffer"] = (
+            np.timedelta64(0, "ns"),
+            self.params["max_age"] + self.params["dt_lagrangian"],
+        )
         met = self.source.downselect_met(self.met, **buffers)
         model = DryAdvection(
             met=met,
@@ -694,7 +697,7 @@ class APCEMM(models.Model):
         self.source.setdefault(
             "day_of_year",
             # APCEMM doesn't accept 366 on leap years
-            self.source.dataframe["time"].dt.dayofyear.clip(upper=365),
+            self.source.dataframe["time"].dt.day_of_year.clip(upper=365),
         )
         self.source.setdefault(
             "hour_of_day",
