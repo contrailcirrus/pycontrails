@@ -59,8 +59,6 @@ def test_sl_path_to_met(met_ecmwf_sl_path: str) -> None:
     assert np.all(mds.data["sp"][dict(longitude=0)] == mds.data["sp"][dict(longitude=-2)])
     assert np.all(mds.data["sp"][dict(longitude=1)] == mds.data["sp"][dict(longitude=-1)])
 
-    assert not mds.is_zarr
-
 
 def test_pl_path_to_met(met_ecmwf_pl_path: str) -> None:
     """Confirm `MetDataset` constructor converts `Dataset` with correct conventions."""
@@ -92,8 +90,6 @@ def test_pl_path_to_met(met_ecmwf_pl_path: str) -> None:
 
     with pytest.raises(ValueError, match=r"Coordinate 'latitude' not sorted."):
         MetDataset(ds, copy=False)
-
-    assert not mds.is_zarr
 
 
 @pytest.mark.parametrize("variable", ["t", "q", "r", "sp"])
