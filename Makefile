@@ -102,7 +102,6 @@ pytest-cov:
 		--cov-report=html:coverage \
 		--cov-report=term-missing \
 		--durations=10 \
-		--ignore=tests/unit/test_zarr.py \
 		tests/unit
 
 test: lint mypy pytest doctest nb-test

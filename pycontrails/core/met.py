@@ -550,24 +550,6 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
         data = downselect(self.data, bbox)
         return type(self)._from_fastpath(data, cachestore=self.cachestore)
 
-    @property
-    def is_zarr(self) -> bool:
-        """Check if underlying :attr:`data` is sourced from a Zarr group.
-
-        Implementation is very brittle, and may break as external libraries change.
-
-        Some ``dask`` intermediate artifact is cached when this is called. Typically,
-        subsequent calls to this method are much faster than the initial call.
-
-        .. versionadded:: 0.26.0
-
-        Returns
-        -------
-        bool
-            If ``data`` is based on a Zarr group.
-        """
-        return _is_zarr(self.data)
-
     def downselect_met[M: (MetDataset, MetDataArray)](
         self,
         met: M,
@@ -2207,34 +2189,6 @@ class MetDataArray(MetBase[xr.DataArray]):
 def _is_wrapped(longitude: np.ndarray) -> bool:
     """Check if ``longitude`` covers ``[-180, 180]``."""
     return longitude[0] <= -180.0 and longitude[-1] >= 180.0
-
-
-def _is_zarr(ds: xr.Dataset | xr.DataArray) -> bool:
-    """Check if ``ds`` appears to be Zarr-based.
-
-    Neither ``xarray`` nor ``dask`` readily expose such information, so
-    implementation is very narrow and brittle.
-    """
-    if isinstance(ds, xr.Dataset):
-        # Attempt 1: xarray binds the zarr close function to the instance
-        # This gives us an indicator of the data is zarr based
-        try:
-            if ds._close.__func__.__qualname__ == "ZarrStore.close":  # type: ignore
-                return True
-        except AttributeError:
-            pass
-
-        # Grab the first data variable, get underlying DataArray
-        ds = ds[next(iter(ds.data_vars))]
-
-    # Attempt 2: Examine the dask graph
-    darr = ds.variable._data  # dask array in some cases
-    try:
-        # Get the first dask instruction
-        dask0 = darr.dask[next(iter(darr.dask))]  # type: ignore[union-attr]
-    except AttributeError:
-        return False
-    return dask0.array.array.array.__class__.__name__ == "ZarrArrayWrapper"
 
 
 def shift_longitude[X: (xr.Dataset, xr.DataArray)](data: X, bound: float = -180.0) -> X:
