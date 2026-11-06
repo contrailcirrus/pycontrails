@@ -824,8 +824,12 @@ class APCEMM(models.Model):
         met = self.source.downselect_met(self.met)
         met.ensure_vars(vars)
         met.standardize_variables(vars)
+        # AircraftPerformance uses short names u_wind and v_wind
+        source_keys = {"eastward_wind": "u_wind", "northward_wind": "v_wind"}
         for var in vars:
-            models.interpolate_met(met, self.source, var.standard_name, **self.interp_kwargs)
+            met_key = var.standard_name
+            source_key = source_keys.get(met_key)
+            models.interpolate_met(met, self.source, met_key, source_key, **self.interp_kwargs)
 
         # Apply humidity scaling
         if scale_humidity:
