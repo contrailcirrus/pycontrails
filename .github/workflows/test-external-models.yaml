@@ -71,7 +71,9 @@ jobs:
   # The compiler and build steps follow the APCEMM CI workflow
   # https://github.com/MIT-LAE/APCEMM/blob/main/.github/workflows/ci.yml
   apcemm:
-    runs-on: ubuntu-latest
+    # The vcpkg in APCEMM v1.2.1 (December 2023) predates CMake 4, which fails to build
+    # ubuntu-24.04 has CMake 3.x, ubuntu-latest (26.04) has CMake 4
+    runs-on: ubuntu-24.04
 
     env:
       # APCEMM release documented in pycontrails/models/apcemm/apcemm.py
