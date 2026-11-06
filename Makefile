@@ -27,7 +27,7 @@ pip-install:
 # development installation
 dev-install:
 	python -m pip install -U pip
-	python -m pip install -e ".[complete,dev,docs]"
+	python -m pip install -e ".[complete]" --group dev --group docs
 	pre-commit install
 
 clean: docs-clean
