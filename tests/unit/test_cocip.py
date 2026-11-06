@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pathlib
-import time as pythontime
 
 import numpy as np
 import pandas as pd
@@ -1467,49 +1466,6 @@ def test_cocip_fleet(fl: Flight, met: MetDataset, rad: MetDataset):
         # Removing anything that is different between flights
         del fl.data["flight_id"]
         pd.testing.assert_frame_equal(fl.dataframe, out[0].dataframe)
-
-
-# This is not explicitly necessary, but I've added for benchmarking
-@pytest.mark.skipif(True, reason="Profiling test off")
-def test_cocip_performance(met: MetDataset, rad: MetDataset) -> None:
-    """Test the performance of the CoCip algorithm over a wide domain."""
-    # Demo flight
-    n = 10000
-    flight_parameters = {
-        "flight_id": "test",
-        "aircraft_type": "A380",
-        "wingspan": 48,
-        "bc_ei_n": 1.897462e15,
-    }
-    df = pd.DataFrame()
-    df["longitude"] = np.linspace(-39, -21, n)
-    df["latitude"] = np.linspace(50, 59, n)
-    df["altitude"] = np.linspace(10900, 10900, n)
-    df["time"] = pd.date_range("2019-01-01T00:15:00", "2019-01-01T02:05:00", periods=n)
-    df["engine_efficiency"] = np.linspace(0.32, 0.45, n)  # ope
-    df["fuel_flow"] = np.linspace(2.1, 2.4, n)  # kg/s
-    df["aircraft_mass"] = np.linspace(154445, 154345, n)  # kg
-    df["bc_ei_n"] = np.linspace(1.8e15, 1.9e15, n)  # kg
-    fl = Flight(df, **flight_parameters)
-
-    # run CoCip
-    params = {
-        "max_age": np.timedelta64(5, "h"),
-        "process_emissions": False,
-        "verbose_outputs": True,
-    }
-
-    # time 10 cocip calls
-    start = pythontime.perf_counter()
-
-    for _ in range(10):
-        cocip = Cocip(met.copy(), rad=rad.copy(), params=params)
-        cocip.eval(source=fl)
-
-    duration = pythontime.perf_counter() - start
-
-    # most recently 5.0 seconds on macbook air M1 2020 with 16GB ram
-    print(f"10 Cocip runs took {duration:.2f} seconds")
 
 
 def test_cocip_gfs(fl: Flight, met_gfs: MetDataset, rad_gfs: MetDataset) -> None:
