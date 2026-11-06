@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ftplib
+import functools
 from collections.abc import Generator
 
 import pytest
@@ -11,9 +12,9 @@ import xarray as xr
 import pycontrails.datalib.gruan
 from pycontrails import DiskCacheStore
 from pycontrails.datalib.gruan import GRUAN, extract_gruan_time
-from tests import OFFLINE
 
 
+@functools.cache
 def _gruan_reachable() -> bool:
     """Return True if the GRUAN base path exists on the FTP server."""
     try:
@@ -25,13 +26,14 @@ def _gruan_reachable() -> bool:
     return True
 
 
-requires_gruan = pytest.mark.skipif(
-    OFFLINE or not _gruan_reachable(),
-    reason="offline or GRUAN FTP path unreachable",
-)
+@pytest.fixture(autouse=True)
+def _skip_if_gruan_unreachable(request: pytest.FixtureRequest) -> None:
+    """Skip network tests when the GRUAN FTP base path is unreachable."""
+    if request.node.get_closest_marker("network") and not _gruan_reachable():
+        pytest.skip("GRUAN FTP path unreachable")
 
 
-@requires_gruan
+@pytest.mark.network
 def test_available_sites_live() -> None:
     """Test live retrieval of available sites.
 
@@ -67,7 +69,7 @@ def test_gruan_repr(gruan: GRUAN) -> None:
     assert repr_str == "GRUAN(product='RS92-GDP.2', site='LIN')"
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_ftp_reuse(gruan: GRUAN) -> None:
     """Test that FTP connection is reused."""
     ftp1 = gruan._connect()
@@ -76,7 +78,7 @@ def test_ftp_reuse(gruan: GRUAN) -> None:
     assert ftp1.pwd() == "/"
 
 
-@requires_gruan
+@pytest.mark.network
 def test_available_products_live(gruan: GRUAN) -> None:
     """Test live retrieval of available products."""
     base_path = "/pub/data/gruan/processing/level2"
@@ -89,7 +91,7 @@ def test_available_products_live(gruan: GRUAN) -> None:
     assert {p for p in products if "." not in p} == expected
 
 
-@requires_gruan
+@pytest.mark.network
 def test_years(gruan: GRUAN) -> None:
     """Test available years retrieval."""
     years = gruan.years()
@@ -97,7 +99,7 @@ def test_years(gruan: GRUAN) -> None:
     assert years == list(range(2005, 2022))
 
 
-@requires_gruan
+@pytest.mark.network
 def test_list_files_and_extract_time(gruan: GRUAN) -> None:
     """Test listing files for a given year."""
     files = gruan.list_files(2020)
@@ -111,7 +113,7 @@ def test_list_files_and_extract_time(gruan: GRUAN) -> None:
         assert version == 1
 
 
-@requires_gruan
+@pytest.mark.network
 def test_get_with_cache_live(gruan: GRUAN, cachestore: DiskCacheStore) -> None:
     """Test cached retrieval using live FTP."""
     try:
@@ -133,7 +135,7 @@ def test_get_with_cache_live(gruan: GRUAN, cachestore: DiskCacheStore) -> None:
         gruan.cachestore = None  # restore
 
 
-@requires_gruan
+@pytest.mark.network
 def test_get_with_no_cache_live(gruan: GRUAN) -> None:
     """Test cached retrieval using live FTP."""
     assert gruan.cachestore is None
@@ -151,14 +153,14 @@ def test_paths(gruan: GRUAN) -> None:
     assert gruan.base_path_site.endswith("/RS92-GDP/version-002/LIN")
 
 
-@requires_gruan
+@pytest.mark.network
 def test_gruan_unknown_product() -> None:
     """Test GRUAN with unknown product."""
     with pytest.raises(ValueError, match="Unknown GRUAN product"):
         GRUAN(product="UNKNOWN", site="LIN")
 
 
-@requires_gruan
+@pytest.mark.network
 def test_gruan_unknown_site() -> None:
     """Test GRUAN with unknown site."""
     with pytest.raises(ValueError, match="Unknown GRUAN site"):

@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 
 from pycontrails.core import airports
-from tests import OFFLINE
 
 
 @pytest.fixture()
@@ -15,14 +14,14 @@ def airport_database() -> pd.DataFrame:
     return airports.global_airport_database()
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_global_airports_database(airport_database: pd.DataFrame) -> None:
     """Ensure that airport database exists."""
     assert "type" in airport_database
     assert "elevation_m" in airport_database
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_nearest_airport_identification(airport_database: pd.DataFrame) -> None:
     """Ensure that the nearest airport for a given coordinates is correctly identified."""
     # Somewhere near Singapore Changi Airport (1.36 N, 103.99 E)
@@ -54,7 +53,7 @@ def test_nearest_airport_identification(airport_database: pd.DataFrame) -> None:
     assert airport_icao is None
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 def test_invalid_altitude(airport_database: pd.DataFrame) -> None:
     """Ensure that function will not execute if provided altitude is too high."""
     longitude = -1
@@ -65,6 +64,7 @@ def test_invalid_altitude(airport_database: pd.DataFrame) -> None:
         airports.find_nearest_airport(airport_database, longitude, latitude, altitude)
 
 
+@pytest.mark.network
 def test_distance_to_airports(airport_database: pd.DataFrame) -> None:
     """Ensure distance to airports are correctly identified."""
     apts = airport_database[airport_database["iata_code"].isin(["BOS", "JFK"])]

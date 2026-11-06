@@ -8,7 +8,6 @@ import xarray as xr
 
 from pycontrails.datalib import himawari
 from pycontrails.datalib.himawari import himawari as himawari_module
-from tests import OFFLINE
 
 
 @pytest.mark.parametrize(
@@ -53,7 +52,7 @@ def test_band_resolution(bands: tuple[str, ...], succeed: bool) -> None:
         himawari_module._check_band_resolution(bands)
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("t", ["2024-06-15T12:17:30", "2021-03-14T00:02:30"])
 def test_himawari_get_no_cache_default_bands(t: str) -> None:
     """Test the ``Himawari.get`` method with default bands and no cache over the Target region.
@@ -89,7 +88,7 @@ def test_himawari_get_no_cache_default_bands(t: str) -> None:
     assert rgb.max() > 0.9
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("t", ["2024-06-15T02:17:30"])
 def test_himawari_b03(t: str) -> None:
     """Test the ``Himawari.get`` method with default bands and no cache over the Target region.

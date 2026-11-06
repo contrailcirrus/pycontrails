@@ -24,15 +24,33 @@ from tests.unit import get_static_path
 DISK_CACHE_DIR = cache._get_user_cache_dir()
 
 
-# Add command line option for re-generating static output data
-# Run with: pytest tests/unit --regenerate-results
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """Add command line option to regenerate static test results."""
+    """Add command line options to regenerate static test results and run network tests."""
+    # Run with: pytest tests/unit --regenerate-results
     parser.addoption(
         "--regenerate-results",
         action="store_true",  # boolean flag; False if absent, True if present
         help="Regenerate static test results",
     )
+    # Run with: pytest tests/unit --run-network-tests
+    parser.addoption(
+        "--run-network-tests",
+        action="store_true",
+        help="Run tests marked network, which require a network connection",
+    )
+
+
+# Tests marked "network" are skipped unless --run-network-tests is passed
+# This is how xarray does it:
+# https://github.com/pydata/xarray/blob/26e76f663383c7691ab4578c819a2470d0155a57/conftest.py#L108-L111
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip tests marked network unless ``--run-network-tests`` is passed."""
+    if config.getoption("--run-network-tests"):
+        return
+    skip_network = pytest.mark.skip(reason="set --run-network-tests to run tests marked network")
+    for item in items:
+        if item.get_closest_marker("network"):
+            item.add_marker(skip_network)
 
 
 @pytest.fixture()

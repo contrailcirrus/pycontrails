@@ -79,11 +79,21 @@ mypy:
 	python -c 'import numpy; assert tuple(int(x) for x in numpy.__version__.split(".", 2)) >= (2, 5, 2), f"numpy >= 2.5.2 required, got {numpy.__version__}"'
 	mypy pycontrails
 
-pytest:
-	pytest tests/unit
+# Check that pytest-socket (dev dependency) is available
+ensure-pytest-socket:
+	python -c 'import pytest_socket' 2>/dev/null \
+	|| ( \
+		echo -e "$(COLOR_YELLOW)make pytest requires pytest-socket, which is in the dev extras (make dev-install)$(END_COLOR)"; \
+		exit 1)
+
+pytest: ensure-pytest-socket
+	pytest tests/unit --allow-hosts=127.0.0.1,::1
 
 pytest-regenerate-results:
 	pytest tests/unit --regenerate-results
+
+pytest-network:
+	pytest tests/unit --run-network-tests
 
 pytest-cov:
 	pytest \

@@ -10,7 +10,6 @@ import pytest
 import xarray as xr
 
 from pycontrails.datalib.dwd import ICON, flight_level_pressure, icon, ods
-from tests import OFFLINE
 
 
 class ICONGlobal(ICON):
@@ -33,7 +32,7 @@ type AnyICONDatalibClass = ICON | ICONGlobal | ICONEurope | ICONGermany
 #############################
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize(("domain", "count"), [("global", 4), ("europe", 8), ("germany", 8)])
 def test_list_forecasts(domain: str, count: int) -> None:
     """Test forecast cycle listing."""
@@ -47,7 +46,7 @@ def test_list_forecasts_error() -> None:
         _ = ods.list_forecasts("foo")
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps(domain: str) -> None:
     """Test forecast step listing."""
@@ -57,7 +56,7 @@ def test_list_forecast_steps(domain: str) -> None:
     assert steps[-1] >= forecast + timedelta(hours=48)  # all forecasts have >= 48 hour horizon
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps_warning(domain: str) -> None:
     """Test warning when no data found for forecast."""
@@ -72,7 +71,7 @@ def test_list_forecast_steps_invalid_domain() -> None:
         _ = ods.list_forecast_steps("foo", datetime(1900, 1, 1))
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_list_forecast_steps_icon_datalib_consistency(domain: str) -> None:
     """Test consistency between available forecast steps and ICON datalib expectations."""
@@ -213,7 +212,7 @@ def test_rpaths(
     assert ods.rpath(domain, forecast, variable, step, level) == expected
 
 
-@pytest.mark.skipif(OFFLINE, reason="offline")
+@pytest.mark.network
 @pytest.mark.parametrize("domain", ["global", "europe", "germany"])
 def test_get(domain: str) -> None:
     """Test downloads"""
