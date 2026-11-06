@@ -71,7 +71,7 @@ or install dependencies manually using ``pip`` in editable mode:
 .. code-block:: bash
 
     # core development installation
-    $ pip install -e ".[docs,dev]"
+    $ pip install -e . --group dev --group docs
 
     # install optional dependencies as above
     $ pip install -e ".[ecmwf,gfs]"
