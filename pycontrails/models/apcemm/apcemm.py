@@ -190,11 +190,9 @@ class APCEMM(models.Model):
     available through `GitHub <https://github.com/MIT-LAE/APCEMM>`__, and instructions
     for compiling APCEMM are available in the repository.
 
-    Note that APCEMM does not provide versioned releases, and future updates may break
-    this interface. To guarantee compatibility between this interface and APCEMM,
-    users should use commit
-    `9d8e1ee <https://github.com/MIT-LAE/APCEMM/commit/9d8e1eeaa61cbdee1b1d03c65b5b033ded9159e4>`__
-    from the APCEMM repository.
+    This interface is tested against APCEMM release
+    `v1.2.1 <https://github.com/MIT-LAE/APCEMM/releases/tag/v1.2.1>`__.
+    Other APCEMM versions may not be compatible.
 
     **Configuring APCEMM YAML files**
 
