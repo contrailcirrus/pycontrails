@@ -51,7 +51,7 @@ def fl() -> Flight:
     level = np.full_like(longitude, 225)
 
     start = np.datetime64("2022-11-11")
-    time = pd.date_range(start, start + np.timedelta64(90, "m"), periods=n)
+    time = pd.date_range(start, start + np.timedelta64(90, "m"), periods=n, unit="ns")
     return Flight(
         longitude=longitude,
         latitude=latitude,

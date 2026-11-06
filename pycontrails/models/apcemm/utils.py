@@ -108,7 +108,6 @@ def generate_apcemm_input_met(
     longitude: np.ndarray,
     latitude: np.ndarray,
     azimuth: np.ndarray,
-    altitude: np.ndarray,
     met: MetDataset,
     humidity_scaling: HumidityScaling,
     dz_m: float,
@@ -119,7 +118,11 @@ def generate_apcemm_input_met(
     This dataset contains a sequence of atmospheric profiles along the
     Lagrangian trajectory of an advected flight segment. The along-trajectory
     dimension is parameterized by time (rather than latitude and longitude),
-    so the dataset coordinates are air pressure and time.
+    so the dataset coordinates are altitude and time.
+
+    All profiles use the geopotential heights of the ``met`` pressure levels
+    at the first point of the trajectory for their altitude coordinate, clipped
+    to the range of heights covered by ``met`` at every point.
 
     Parameters
     ----------
@@ -144,11 +147,6 @@ def generate_apcemm_input_met(
         the segment. The azimuth is used to convert horizontal winds into segment-normal
         wind shear. Must have the same shape as :param:`time`.
         Will be flattened before use if not 1-dimensional.
-    altitude : np.ndarray
-        Defines altitudes [:math:`m`] on which atmospheric profiles are computed.
-        Profiles are defined using the same set of altitudes at every point
-        along the Lagrangian trajectory of the advected flight segment. Note that
-        this parameter does not have to have the same shape as :param:`time`.
     met : MetDataset
         Meteorology used to generate the sequence of atmospheric profiles. Must contain:
         - air temperature [:math:`K`]
@@ -170,9 +168,6 @@ def generate_apcemm_input_met(
         Meteorology dataset in required format for APCEMM input.
     """
 
-    # Ensure that altitudes are sorted ascending
-    altitude = np.sort(altitude)
-
     # Check for required fields in met
     vars = (
         met_var.AirTemperature,
@@ -190,15 +185,13 @@ def generate_apcemm_input_met(
     longitude = longitude.ravel()
     latitude = latitude.ravel()
     azimuth = azimuth.ravel()
-    altitude = altitude.ravel()
 
-    # Estimate pressure levels close to target altitudes
-    # (not exact because this assumes the ISA temperature profile)
-    pressure = units.m_to_pl(altitude) * 1e2
+    # Met pressure levels, ordered by increasing altitude
+    pressure = np.sort(met.data["level"].values)[::-1] * 1e2
 
     # Broadcast to required shape and create vector for initial interpolation
     # onto original pressure levels at target horizontal location.
-    shape = (time.size, altitude.size)
+    shape = (time.size, pressure.size)
     time = np.broadcast_to(time[:, np.newaxis], shape).ravel()
     longitude = np.broadcast_to(longitude[:, np.newaxis], shape).ravel()
     latitude = np.broadcast_to(latitude[:, np.newaxis], shape).ravel()
@@ -256,7 +249,7 @@ def generate_apcemm_input_met(
     )
 
     # Reshape interpolated fields to (time, level).
-    nlev = altitude.size
+    nlev = pressure.size
     ntime = len(vector) // nlev
     shape = (ntime, nlev)
     time = np.unique(vector["time"])
@@ -266,14 +259,20 @@ def generate_apcemm_input_met(
     z = vector["geopotential_height"].reshape(shape)
     rhi = vector["rhi"].reshape(shape)
     shear = vector["normal_shear"].reshape(shape)
-    shear[:, -1] = shear[:, -2]  # lowest level will be nan
+    shear[:, 0] = shear[:, 1]  # lowest level will be nan
     omega = vector["lagrangian_tendency_of_air_pressure"].reshape(shape)
     virtual_temperature = temperature * (1 + qv / constants.epsilon) / (1 + qv)
     density = pressure[np.newaxis, :] / (constants.R_d * virtual_temperature)
     w = -omega / (density * constants.g)
 
+    # For target altitudes, use the first-profile heights, clipped to the heights of every profile
+    z_bottom = np.nanmax(z[:, 0])
+    z_top = np.nanmin(z[:, -1])
+    altitude = np.unique(np.clip(z[0, :], z_bottom, z_top))
+
     # Interpolate fields to target altitudes profile-by-profile
     # to obtain 2D arrays with dimensions (time, altitude).
+    shape = (ntime, altitude.size)
     temperature_on_z = np.zeros(shape, dtype=temperature.dtype)
     rhi_on_z = np.zeros(shape, dtype=rhi.dtype)
     shear_on_z = np.zeros(shape, dtype=shear.dtype)
@@ -301,10 +300,10 @@ def generate_apcemm_input_met(
         fi = np.interp(z, z0, f0, left=f0[0], right=f0[-1])
 
         # restore nans at start and end of profile
-        if mask[0]:  # nans at top of profile
-            fi[z > z0.max()] = np.nan
-        if mask[-1]:  # nans at end of profile
+        if mask[0]:  # nans at bottom of profile
             fi[z < z0.min()] = np.nan
+        if mask[-1]:  # nans at top of profile
+            fi[z > z0.max()] = np.nan
         return fi
 
     # The manual for loop is unlikely to be a bottleneck since a

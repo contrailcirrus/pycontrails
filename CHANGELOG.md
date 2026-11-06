@@ -7,11 +7,15 @@
 - Remove `Flight.to_traffic`.
 - Remove `MetDataArray.to_polyhedra` and the `open3d` optional dependency.
 - Remove `MetBase.is_zarr`.
+- Remove the `altitude_input_met` parameter from `APCEMMParams` and the `altitude` argument from `pycontrails.models.apcemm.utils.generate_apcemm_input_met`. APCEMM input meteorology now uses the geopotential heights of the `met` pressure levels.
+- Move the `dev` and `docs` optional dependencies to dependency groups in `pyproject.toml`.
 
 ### Fixes
 
 - Update heuristic for identifying waypoints with lean-burn engines operating in lean-burn mode. According to the ICAO EDB Issue 32, lean-burn engines in lean-burn mode have an nvPM EI_n of around 1e10 (GEnx and CFM LEAP engine families), whereas the minimum nvPM EIn for conventional rich-burn engines is approximately 1e12 during idle and descent (CF34 engine family). To provide a buffer between the two combustor types, the nvPM EI_n threshold has been lowered from 1e12 to 1e11, which prevents lean-burn vPM properties from being incorrectly assigned to rich-burn engines when using 100% SAF (SAF100). This change is immaterial for using Jet A-1 fuel.
 - Fix `VectorDataset.__eq__` raising `TypeError` when a data variable or array attribute has a string dtype. Previously, comparing datasets with a string column such as `flight_id` failed.
+- Fix `APCEMM.eval` failing to compute true airspeed. Winds are now attached to the source as `u_wind` and `v_wind`.
+- Fix NaN values in the APCEMM input meteorology file. Profiles are now interpolated on the `met` pressure levels.
 
 ### Internals
 
@@ -19,6 +23,7 @@
 - Build the `rgi_cython` extension without numpy. The extension is now completely declared in `pyproject.toml` under `[[tool.setuptools.ext-modules]]` and `setup.py` is removed.
 - Fix unit tests whose assertions could not fail.
 - Mark unit tests that require network access with `pytest.mark.network`. These tests are skipped unless `--run-network-tests` is passed (run locally with `make pytest-network`). The unit test workflow now also runs nightly with network tests included. The `make pytest` target uses `pytest-socket` (new dev dependency) to fail any unmarked test that connects to a non-loopback host. The `PYCONTRAILS_OFFLINE` and `PYCONTRAILS_SKIP_LEO_TESTS` environment variables are removed.
+- Add the `test-external-models.yaml` workflow, which runs the `ACCF` and `APCEMM` unit tests weekly.
 
 ## 0.65.0
 

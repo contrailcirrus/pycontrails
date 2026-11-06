@@ -67,11 +67,6 @@ class APCEMMParams(models.ModelParams):
     #: Time step of meteorology in generated APCEMM input file.
     dt_input_met: np.timedelta64 = np.timedelta64(1, "h")
 
-    #: Altitude coordinates [:math:`m`] for meteorology in generated APCEMM input file.
-    #: If not provided, uses estimated altitudes for levels in input
-    #: :class:`~pycontrails.MetDataset`.
-    altitude_input_met: list[float] | None = None
-
     #: Humidity scaling
     humidity_scaling: HumidityScaling | None = None
 
@@ -195,11 +190,9 @@ class APCEMM(models.Model):
     available through `GitHub <https://github.com/MIT-LAE/APCEMM>`__, and instructions
     for compiling APCEMM are available in the repository.
 
-    Note that APCEMM does not provide versioned releases, and future updates may break
-    this interface. To guarantee compatibility between this interface and APCEMM,
-    users should use commit
-    `9d8e1ee <https://github.com/MIT-LAE/APCEMM/commit/9d8e1eeaa61cbdee1b1d03c65b5b033ded9159e4>`__
-    from the APCEMM repository.
+    This interface is tested against APCEMM release
+    `v1.2.1 <https://github.com/MIT-LAE/APCEMM/releases/tag/v1.2.1>`__.
+    Other APCEMM versions may not be compatible.
 
     **Configuring APCEMM YAML files**
 
@@ -478,7 +471,10 @@ class APCEMM(models.Model):
             f"{coord}_buffer": self.params[f"met_{coord}_buffer"]
             for coord in ("longitude", "latitude", "level")
         }
-        buffers["time_buffer"] = (0, self.params["max_age"] + self.params["dt_lagrangian"])
+        buffers["time_buffer"] = (
+            np.timedelta64(0, "ns"),
+            self.params["max_age"] + self.params["dt_lagrangian"],
+        )
         met = self.source.downselect_met(self.met, **buffers)
         model = DryAdvection(
             met=met,
@@ -701,7 +697,7 @@ class APCEMM(models.Model):
         self.source.setdefault(
             "day_of_year",
             # APCEMM doesn't accept 366 on leap years
-            self.source.dataframe["time"].dt.dayofyear.clip(upper=365),
+            self.source.dataframe["time"].dt.day_of_year.clip(upper=365),
         )
         self.source.setdefault(
             "hour_of_day",
@@ -824,8 +820,12 @@ class APCEMM(models.Model):
         met = self.source.downselect_met(self.met)
         met.ensure_vars(vars)
         met.standardize_variables(vars)
+        # AircraftPerformance uses short names u_wind and v_wind
+        source_keys = {"eastward_wind": "u_wind", "northward_wind": "v_wind"}
         for var in vars:
-            models.interpolate_met(met, self.source, var.standard_name, **self.interp_kwargs)
+            met_key = var.standard_name
+            source_key = source_keys.get(met_key)
+            models.interpolate_met(met, self.source, met_key, source_key, **self.interp_kwargs)
 
         # Apply humidity scaling
         if scale_humidity:
@@ -932,17 +932,11 @@ class APCEMM(models.Model):
         interp_lat = np.interp(target_elapsed, elapsed, traj["latitude"].values)
         interp_az = np.interp(target_elapsed, elapsed, traj["azimuth"].values)
 
-        if self.params["altitude_input_met"] is None:
-            altitude = self.met["altitude"].values
-        else:
-            altitude = np.array(self.params["altitude_input_met"])
-
         ds = utils.generate_apcemm_input_met(
             time=target_time,
             longitude=interp_lon,
             latitude=interp_lat,
             azimuth=interp_az,
-            altitude=altitude,
             met=self.met,
             humidity_scaling=self.params["humidity_scaling"],
             dz_m=self.params["dz_m"],

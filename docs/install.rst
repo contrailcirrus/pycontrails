@@ -48,8 +48,6 @@ The ``pycontrails`` package uses optional dependencies for specific features:
     $ pip install "pycontrails[complete]"
 
     # install specific optional dependencies
-    $ pip install "pycontrails[dev]"      # Development dependencies
-    $ pip install "pycontrails[docs]"     # Documentation / Sphinx dependencies
     $ pip install "pycontrails[ecmwf]"    # ECMWF datalib interfaces
     $ pip install "pycontrails[gcp]"      # Google Cloud Platform caching interface
     $ pip install "pycontrails[gfs]"      # GFS datalib interfaces

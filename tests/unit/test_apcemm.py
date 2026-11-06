@@ -19,64 +19,31 @@ from pycontrails.models.ps_model import PSFlight
 from pycontrails.physics import constants
 from tests.unit import get_static_path
 
-APCEMM_GIT_COMMIT = "9d8e1eeaa61cbdee1b1d03c65b5b033ded9159e4"
-
 
 @pytest.fixture()
 def apcemm_paths() -> tuple[str, str]:
     """Return APCEMM executable and root directory, if found.
 
     This test looks for an ``APCEMM`` executable on the ``PATH`` using
-    :py:func:`shutil.which` and attempts to set the APCEMM root directory
-    based on the location of the executable.
+    :py:func:`shutil.which` and sets the APCEMM root directory to the parent
+    of the ``build`` directory containing the executable.
 
-    For APCEMM tests to run, APCEMM must be in the ``build`` subdirectory
-    of an otherwise-unmodified APCEMM git repository, and the repository
-    must be at the appropriate git hash.
+    The APCEMM version is set by the workflow that builds APCEMM
+    (``.github/workflows/test-external-models.yaml``).
     """
-
-    # GitPython required to inspect repositories
-    # https://pypi.org/project/GitPython/
-    git = pytest.importorskip("git")
 
     # Attempt to find APCEMM executable
     apcemm_path = shutil.which("APCEMM")
     if apcemm_path is None:
         pytest.skip("APCEMM executable not found")
 
-    # If found, check that it is in a directory called build...
+    # If found, check that it is in a directory called build
     dirname = os.path.dirname(apcemm_path)
     if os.path.basename(dirname) != "build":
         msg = "APCEMM executable is not in a directory called 'build'"
         raise ValueError(msg)
 
-    # ... and check that the parent of the build directory is a git repository
     apcemm_root = os.path.dirname(dirname)
-    try:
-        repo = git.Repo(apcemm_root)
-    except git.InvalidGitRepositoryError as exc:
-        msg = f"{apcemm_root} is not a valid git repository"
-        raise ValueError(msg) from exc
-
-    # Check commit hash
-    if repo.head.object.hexsha != APCEMM_GIT_COMMIT:
-        msg = "APCEMM repository has wrong commit hash"
-        raise ValueError(msg)
-
-    # Check repository state:
-    # - no untracked files outside of build directory
-    if any(f.split(os.path.sep)[0] != "build" for f in repo.untracked_files):
-        msg = "APCEMM repository has untracked files outside build directory"
-        raise ValueError(msg)
-    # - no unstaged changes to working directory
-    if len(repo.index.diff(None)) != 0:
-        msg = "APCEMM working directory contains unstaged changes"
-        raise ValueError(msg)
-    # - no uncommitted changes in staging area
-    if len(repo.index.diff(repo.head.object.hexsha)) != 0:
-        msg = "APCEMM working directory contains staged changes"
-        raise ValueError(msg)
-
     return apcemm_path, apcemm_root
 
 
