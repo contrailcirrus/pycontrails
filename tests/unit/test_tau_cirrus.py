@@ -9,8 +9,42 @@ import pytest
 import xarray as xr
 
 from pycontrails import MetDataset
-from pycontrails.models.tau_cirrus import tau_cirrus
-from tests._deprecated import tau_cirrus_original
+from pycontrails.models.tau_cirrus import (
+    _assign_attrs,
+    cirrus_effective_extinction_coef,
+    tau_cirrus,
+)
+from pycontrails.physics import constants
+
+
+def tau_cirrus_original(met: MetDataset) -> xr.DataArray:
+    """Calculate the optical depth of NWP cirrus around each pressure level.
+
+    This implementation of `tau_cirrus` more closely aligned with Schumann's Fortran implementation.
+    See `tau_cirrus`.
+    """
+
+    da = xr.zeros_like(met.data["specific_cloud_ice_water_content"])
+
+    levels = met.data["level"]
+    geopotential_height = met.data["geopotential"] / constants.g  # m
+
+    for z in np.arange(len(levels)):
+        z_top = max(z - 1, 0)  # Top Layer Index
+        z_btm = min(z + 1, len(levels) - 1)  # Bottom Layer Index
+        ds = met.data[dict(level=z)]
+
+        beta_e = cirrus_effective_extinction_coef(
+            ds["specific_cloud_ice_water_content"],
+            ds["air_temperature"],
+            ds["air_pressure"],
+        )
+
+        dz = 0.5 * (geopotential_height[dict(level=z_top)] - geopotential_height[dict(level=z_btm)])
+
+        da[dict(level=z)] = da[dict(level=z_top)] + (beta_e * dz)
+
+    return _assign_attrs(da)
 
 
 @pytest.mark.parametrize("formula", [tau_cirrus, tau_cirrus_original])
