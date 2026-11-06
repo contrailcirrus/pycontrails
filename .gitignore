@@ -42,11 +42,6 @@ coverage
 *.prof
 tests/fixtures/cache
 tests/integration/data
-tests/benchmark/north-atlantic-study/inputs
-tests/benchmark/north-atlantic-study/outputs
-tests/benchmark/cocip-fortran/outputs
-tests/benchmark/cocip/inputs
-tests/benchmark/cocip/outputs
 *.log
 
 # docs
