@@ -1,8 +1,9 @@
 """
 Build assets for second set of cocip unit tests.
 
-Built from static data in `/tests/regression/cocip-fortran/inputs`.
-See `/tests/regression/cocip-fortran/README.md` for instructions to download inputs.
+Built from static data archived at
+`gs://contrails-301217-admin-data/benchmark-data-archive/cocip-fortran/inputs`.
+Download that directory to `inputs/` next to this file before running.
 
 Run this file from the terminal to generate assets:
 
@@ -34,7 +35,7 @@ disk_cache = DiskCacheStore(cache_dir="cache")
 # setup
 flight_input_filename = "flight1.csv"
 
-input_path = pathlib.Path("../regression/cocip-fortran/inputs")
+input_path = pathlib.Path("inputs")
 output_path = pathlib.Path("../unit/static")
 
 
