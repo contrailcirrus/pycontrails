@@ -259,7 +259,7 @@ def generate_apcemm_input_met(
     z = vector["geopotential_height"].reshape(shape)
     rhi = vector["rhi"].reshape(shape)
     shear = vector["normal_shear"].reshape(shape)
-    shear[:, -1] = shear[:, -2]  # lowest level will be nan
+    shear[:, 0] = shear[:, 1]  # lowest level will be nan
     omega = vector["lagrangian_tendency_of_air_pressure"].reshape(shape)
     virtual_temperature = temperature * (1 + qv / constants.epsilon) / (1 + qv)
     density = pressure[np.newaxis, :] / (constants.R_d * virtual_temperature)
@@ -300,10 +300,10 @@ def generate_apcemm_input_met(
         fi = np.interp(z, z0, f0, left=f0[0], right=f0[-1])
 
         # restore nans at start and end of profile
-        if mask[0]:  # nans at top of profile
-            fi[z > z0.max()] = np.nan
-        if mask[-1]:  # nans at end of profile
+        if mask[0]:  # nans at bottom of profile
             fi[z < z0.min()] = np.nan
+        if mask[-1]:  # nans at top of profile
+            fi[z > z0.max()] = np.nan
         return fi
 
     # The manual for loop is unlikely to be a bottleneck since a
