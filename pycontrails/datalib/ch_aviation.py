@@ -351,7 +351,8 @@ class ChAviation(Model):
         # In these cases, attaching ch-aviation data could assign the wrong aircraft type and
         # result in unrealistic aircraft mass estimates.
         existing_atyp_icao = self.source.get_constant("aircraft_type", None)
-        if existing_atyp_icao and existing_atyp_icao != aircraft_props.aircraft_type_icao:
+        cha_atyp_icao = aircraft_props.aircraft_type_icao
+        if existing_atyp_icao and pd.notna(cha_atyp_icao) and existing_atyp_icao != cha_atyp_icao:
             warnings.warn("Existing aircraft type disagrees with ch-aviation.", stacklevel=2)
             return self.source
 
