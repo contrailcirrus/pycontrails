@@ -214,14 +214,14 @@ class VectorDataDict(dict[str, np.ndarray]):
 def _array_equal(a: np.ndarray, b: Any) -> bool:
     """Return True if ``a`` and ``b`` have the same shape and elements.
 
-    NaN values are considered equal. String and object arrays are compared
-    element by element without NaN handling.
+    NaN and NaT compare equal when both arrays have a float, complex, datetime64 or
+    timedelta64 dtype. For other dtypes, np.array_equal will raise a TypeError
+    when ``equal_nan=True``.
     """
-    try:
-        return np.array_equal(a, b, equal_nan=True)
-    except TypeError:
-        # equal_nan calls np.isnan, which raises TypeError for strings and objects
-        return np.array_equal(a, b, equal_nan=False)
+    b = np.asarray(b)
+    nan_types = (np.inexact, np.datetime64, np.timedelta64)
+    equal_nan = issubclass(a.dtype.type, nan_types) and issubclass(b.dtype.type, nan_types)
+    return np.array_equal(a, b, equal_nan=equal_nan)
 
 
 def _empty_vector_dict(keys: Iterable[str]) -> dict[str, np.ndarray]:
