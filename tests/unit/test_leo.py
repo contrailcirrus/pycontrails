@@ -246,9 +246,9 @@ def landsat_base_url() -> str:
     return "gs://gcp-public-data-landsat/LC08/01/095/055/LC08_L1TP_095055_20190101_20190130_01_T1"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def landsat_cachestore() -> Generator[cache.DiskCacheStore, None, None]:
-    """Clearable cache for Landsat data."""
+    """Yield a Landsat cache shared by the tests in this module and clear it after them."""
     cache_root = cache._get_user_cache_dir()
     cache_dir = f"{cache_root}/landsat-unit-test"
     cachestore = cache.DiskCacheStore(cache_dir=cache_dir, allow_clear=True)
@@ -361,7 +361,7 @@ def test_landsat_get_reflective_bands(
     assert da.ndim == 2
     assert da.name == band
     assert da.dims == ("y", "x")
-    assert da.dtype == "uint16" if processing == "raw" else "float32"
+    assert da.dtype == ("uint16" if processing == "raw" else "float32")
     assert da.attrs["units"] == (
         "none" if processing == "raw" else "W/m^2/sr/um" if processing == "radiance" else "nondim"
     )
@@ -389,7 +389,7 @@ def test_landsat_get_thermal_bands(
     assert da.ndim == 2
     assert da.name == band
     assert da.dims == ("y", "x")
-    assert da.dtype == "uint16" if processing == "raw" else "float32"
+    assert da.dtype == ("uint16" if processing == "raw" else "float32")
     assert da.attrs["units"] == (
         "none" if processing == "raw" else "W/m^2/sr/um" if processing == "radiance" else "K"
     )
@@ -460,9 +460,9 @@ def sentinel_granule_id() -> str:
     return "L1C_T59VND_A018417_20181231T235957"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def sentinel_cachestore() -> Generator[cache.DiskCacheStore, None, None]:
-    """Clearable cache for Sentinel data."""
+    """Yield a Sentinel cache shared by the tests in this module and clear it after them."""
     cache_root = cache._get_user_cache_dir()
     cache_dir = f"{cache_root}/sentinel-unit-test"
     cachestore = cache.DiskCacheStore(cache_dir=cache_dir, allow_clear=True)
@@ -584,8 +584,8 @@ def test_sentinel_get_reflective_bands(
     assert da.ndim == 2
     assert da.name == band
     assert da.dims == ("y", "x")
-    assert da.dtype == "uint16" if processing == "raw" else "float32"
-    assert da.attrs["units"] == "none" if processing == "raw" else "nondim"
+    assert da.dtype == ("uint16" if processing == "raw" else "float32")
+    assert da.attrs["units"] == ("none" if processing == "raw" else "nondim")
 
     ds.close()
 
