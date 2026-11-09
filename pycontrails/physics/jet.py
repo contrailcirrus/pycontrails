@@ -88,6 +88,13 @@ def climb_descent_angle(
     """
     rocd_ms = units.ft_to_m(rocd) / 60.0
     sin_theta = rocd_ms / true_airspeed
+    # Avoid numpy warning when |sin_theta| exceeds 1 (np.arcsin undefined).
+    # This happens if |rocd_ms| exceeds true_airspeed, which is unrealistic but
+    # shows up in bad ADS-B data. Downstream in PS, this angle feeds into the thrust
+    # coefficient c_t, which is then clipped to [0, c_t_available] when
+    # `correct_fuel_flow` is enabled. So the clip here simply keeps aircraft
+    # performance at these waypoints from going NaN.
+    sin_theta = np.clip(sin_theta, -1.0, 1.0)
     return units.radians_to_degrees(np.arcsin(sin_theta))
 
 
