@@ -156,7 +156,7 @@ jobs:
         working-directory: pycontrails
         run: |
           python -m pip install -U pip
-          python -m pip install -e ".[complete]" --group dev
+          python -m pip install -e ".[complete]" --group dev --group docs
 
       # test_apcemm.py skips if APCEMM is not on the PATH, so fail here instead
       - name: Check APCEMM executable
@@ -167,3 +167,8 @@ jobs:
         working-directory: pycontrails
         timeout-minutes: 15
         run: pytest tests/unit/test_apcemm.py
+
+      - name: Test notebook
+        working-directory: pycontrails
+        timeout-minutes: 30
+        run: pytest --nbval-lax docs/integrations/APCEMM.ipynb
