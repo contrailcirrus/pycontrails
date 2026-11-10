@@ -15,7 +15,7 @@ Learn more at `Contrails.org <https://contrails.org>`_.
    * - **Citation**
      - |DOI|
    * - **Tests**
-     - |Unit test| |Docs| |Release| |OpenSSF scorecard|
+     - |Unit test| |External model tests| |Docs| |Release| |OpenSSF scorecard|
    * - **License**
      - |Apache License 2.0|
    * - **Community**
@@ -89,6 +89,10 @@ Learn more at `Contrails.org <https://contrails.org>`_.
 .. |Unit test| image:: https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yaml/badge.svg
    :alt: Unit test
    :target: https://github.com/contrailcirrus/pycontrails/actions/workflows/test.yaml
+
+.. |External model tests| image:: https://github.com/contrailcirrus/pycontrails/actions/workflows/test-external-models.yaml/badge.svg
+   :alt: External model tests
+   :target: https://github.com/contrailcirrus/pycontrails/actions/workflows/test-external-models.yaml
 
 .. |Docs| image:: https://github.com/contrailcirrus/pycontrails/actions/workflows/docs.yaml/badge.svg?event=push
    :alt: Docs
