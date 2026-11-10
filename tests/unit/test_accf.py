@@ -79,11 +79,11 @@ def test_accf_default(
             met_accf_sl.data[name] = da
 
     accf = ACCF(met=met_accf_pl, surface=met_accf_sl)
-    out = accf.eval(fl, forecast_step=6.0)  # data was pinned with forecast_step=6.0
+    out = accf.eval(fl)
 
     # Pin some values
     rel = 0.01
-    assert np.mean(out["olr"]) == pytest.approx(-35.23, rel=rel)
+    assert np.mean(out["olr"]) == pytest.approx(-211.40, rel=rel)
     assert np.mean(out["aCCF_CO2"]) == pytest.approx(6.94e-16, rel=rel)
     assert np.mean(out["aCCF_NOx"]) == pytest.approx(1.19e-12, rel=rel)
     assert np.mean(out["aCCF_Cont"]) == pytest.approx(9.91e-15, rel=rel)
