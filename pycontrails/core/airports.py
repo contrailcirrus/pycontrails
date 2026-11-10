@@ -239,7 +239,9 @@ def distance_between_airports(
     Parameters
     ----------
     airports : pd.DataFrame
-        Airport database in the format returned from :func:`global_airport_database`.
+        Airport database in the format returned from :func:`global_airport_database`,
+        optionally indexed by ``icao_code``. Passing an indexed database avoids re-indexing
+        on every call.
     origin_airport_icao : str
         ICAO code of origin airport.
     destination_airport_icao : str
@@ -255,14 +257,14 @@ def distance_between_airports(
     --------
     :func:`~pycontrails.physics.geo.haversine`
     """
-    # Set icao_code to index, so it can be queried
-    airports_idx = airports.set_index("icao_code")
+    if airports.index.name != "icao_code":
+        airports = airports.set_index("icao_code")
 
     try:
-        origin_lon = airports_idx.loc[origin_airport_icao, "longitude"]
-        origin_lat = airports_idx.loc[origin_airport_icao, "latitude"]
-        destination_lon = airports_idx.loc[destination_airport_icao, "longitude"]
-        destination_lat = airports_idx.loc[destination_airport_icao, "latitude"]
+        origin_lon = airports.at[origin_airport_icao, "longitude"]
+        origin_lat = airports.at[origin_airport_icao, "latitude"]
+        destination_lon = airports.at[destination_airport_icao, "longitude"]
+        destination_lat = airports.at[destination_airport_icao, "latitude"]
     except KeyError:
         return None
 

@@ -436,6 +436,37 @@ def _dray_cargo_load_factor_database(path: pathlib.Path) -> pd.DataFrame:
     return df
 
 
+@functools.cache
+def _cargo_load_factor_rows(origin_region: str, destination_region: str) -> pd.DataFrame:
+    """Return the Dray et al. rows for one region pair, sorted by ``dist_mid``.
+
+    Fall back to the global rows when the pair has no data.
+    """
+    clf_database = _dray_cargo_load_factor_database(CLF_PATH)
+    filt = (clf_database["origin"] == origin_region) & (
+        clf_database["destination"] == destination_region
+    )
+    rows = clf_database[filt]
+
+    if rows.empty:
+        logger.debug(
+            "No cargo load factor data found for origin region %s and destination region %s. "
+            "Assuming global mean values.",
+            origin_region,
+            destination_region,
+        )
+        filt = (clf_database["origin"] == "Global") & (clf_database["destination"] == "Global")
+        rows = clf_database[filt]
+
+    return rows.sort_values(by="dist_mid")
+
+
+@functools.cache
+def _airports_by_icao() -> pd.DataFrame:
+    """Return the global airport database indexed by ``icao_code``."""
+    return global_airport_database().set_index("icao_code")
+
+
 AIRPORT_TO_REGION = {
     "A": "Asia Pacific",
     "B": "Europe",
@@ -601,27 +632,12 @@ def cargo_load_factor(
         origin_region = "Global"
         destination_region = "Global"
 
-    # Load Dray et al. (2024) cargo database
-    clf_database = _dray_cargo_load_factor_database(CLF_PATH)
-
-    # Filter for region of interest
-    rows = clf_database.query("origin == @origin_region and destination == @destination_region")
-    if rows.empty:
-        logger.debug(
-            "No cargo load factor data found for origin region %s and destination region %s. "
-            "Assuming global mean values.",
-            origin_region,
-            destination_region,
-        )
-        rows = clf_database.query("origin == 'Global' and destination == 'Global'")
-
-    rows = rows.sort_values(by="dist_mid")
+    rows = _cargo_load_factor_rows(origin_region, destination_region)
 
     # If distance is not provided, then try to estimate with origin and destination airport pairs
     if total_flight_dist is None and origin_airport_icao and destination_airport_icao:
-        airports = global_airport_database()
         total_flight_dist = distance_between_airports(
-            airports,
+            _airports_by_icao(),
             origin_airport_icao,
             destination_airport_icao,
         )
