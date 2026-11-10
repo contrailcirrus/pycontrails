@@ -182,9 +182,13 @@ class ACCF(Model):
             warnings.filterwarnings("ignore", module="pycontrails.core.models")
             super().__init__(met, params=params, **params_kwargs)
 
+        self._surface_from_instantaneous = False
         if surface:
             surface = surface.copy()
             surface = surface.standardize_variables(self.sur_variables)
+            self._surface_from_instantaneous = any(
+                da.attrs.get("units") == "W m**-2" for da in surface.data.data_vars.values()
+            )
             surface.data = _rad_instantaneous_to_accumulated(surface.data)
             self.surface = surface
 
@@ -230,6 +234,15 @@ class ACCF(Model):
             raise ModuleNotFoundError(msg) from e
 
         self.update_params(params)
+
+        forecast_step = self.params["forecast_step"]
+        if self._surface_from_instantaneous and forecast_step not in (None, 1):
+            msg = (
+                "Surface radiation given in 'W m**-2' is converted to 1-hour accumulations, "
+                f"so 'forecast_step' must be None or 1, not {forecast_step}."
+            )
+            raise ValueError(msg)
+
         self.set_source(source)
 
         if isinstance(self.source, GeoVectorDataset):
