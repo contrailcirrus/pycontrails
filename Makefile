@@ -147,16 +147,22 @@ ensure-gcp-credentials:
 		exit 1)
 
 # Cache common ERA5 data for nb-tests and doctests in DiskCacheStore
+# The ACCF requests match docs/integrations/ACCF.ipynb (run in test-external-models.yaml)
 ensure-era5-cached:
 	python -c 'from pycontrails.datalib.ecmwf import ERA5; \
 		from pycontrails import DiskCacheStore; \
+		from pycontrails.models.accf import ACCF; \
 		cache = DiskCacheStore(); \
 		time = "2022-03-01", "2022-03-01T23"; \
 		lev = [300, 250, 200]; \
 		met_vars = ["t", "q", "u", "v", "w", "ciwc", "z", "cc"]; \
 		rad_vars = ["tsr", "ttr"]; \
 		ERA5(time=time, variables=met_vars, pressure_levels=lev, cachestore=cache).download(); \
-		ERA5(time=time, variables=rad_vars, cachestore=cache).download()' \
+		ERA5(time=time, variables=rad_vars, cachestore=cache).download(); \
+		accf_time = "2022-01-01T12", "2022-01-01T15"; \
+		accf_lev = [200, 225, 250]; \
+		ERA5(time=accf_time, variables=ACCF.met_variables, pressure_levels=accf_lev, cachestore=cache).download(); \
+		ERA5(time=accf_time, variables=ACCF.sur_variables, cachestore=cache).download()' \
 		|| ( \
 		echo -e \
 			"$(COLOR_YELLOW)CDS Credentials required to run notebooks and doc tests\n" \
