@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.65.1 [Unreleased]
+## 0.66.0
 
 ### Breaking changes
 
@@ -30,6 +30,8 @@
 - Fix unit tests with assertions that could not fail.
 - Mark unit tests that require network access with `pytest.mark.network`. These tests are skipped unless `--run-network-tests` is passed (run locally with `make pytest-network`). The unit test workflow now also runs nightly with network tests included. The `make pytest` target uses `pytest-socket` (new dev dependency) to fail any unmarked test that connects to a non-loopback host. The `PYCONTRAILS_OFFLINE` and `PYCONTRAILS_SKIP_LEO_TESTS` environment variables are removed.
 - Add the `test-external-models.yaml` workflow, which runs the `ACCF` and `APCEMM` unit tests weekly.
+- Test the `APCEMM` interface against APCEMM release v1.2.1. The APCEMM unit tests no longer check the git state of the APCEMM repository.
+- Cache the ERA5 data used by the ACCF notebook in `make ensure-era5-cached`.
 
 ## 0.65.0
 
