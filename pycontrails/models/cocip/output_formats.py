@@ -362,8 +362,6 @@ def longitude_latitude_grid(
     # mean radiative forcing over the window divides it by the window length, not by one step
     t_window_sec = (pd.Timestamp(t_end) - pd.Timestamp(t_start)).total_seconds()
 
-    da_area = geo.grid_surface_area(met["longitude"].values, met["latitude"].values)
-
     flight_waypoints["persistent_contrails"] = np.where(
         np.isnan(flight_waypoints["ef"]), 0.0, flight_waypoints["segment_length"]
     )
@@ -379,6 +377,15 @@ def longitude_latitude_grid(
         spatial_bbox=spatial_bbox,
         spatial_grid_res=spatial_grid_res,
     )
+
+    # Surface area of the output grid cells, not of the `met` grid cells, which can have a
+    # different resolution. `vector_to_lon_lat_grid` labels each cell by its south-west corner,
+    # while `geo.grid_surface_area` takes the northern edge of each cell.
+    lon_grid = ds_wypts_t["longitude"].values
+    lat_grid = ds_wypts_t["latitude"].values
+    da_area = geo.grid_surface_area(
+        lon_grid, np.minimum(lat_grid + spatial_grid_res, 90.0)
+    ).assign_coords(latitude=lat_grid)
 
     # (2) Contrail properties at `t_end`
     contrails_t_end = contrails.filter(contrails["time"] == t_end)
