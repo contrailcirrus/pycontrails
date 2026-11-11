@@ -11,9 +11,8 @@
 #   pycontrails-bada-from-registry  optional, "true" to install it from Artifact Registry
 #   n-batches                       optional, number of batches of flights, 1 by default
 #   sample-flights                  optional, "1" to run only the sample of flights
-#   delete-on-exit                  optional, "false" to keep the VM
 #
-# On exit, print BENCHMARK_EXIT_CODE=<code>.
+# On exit, print BENCHMARK_EXIT_CODE=<code> and delete the VM.
 
 set -eu
 
@@ -23,14 +22,8 @@ metadata() {
         "http://metadata.google.internal/computeMetadata/v1/instance/$1"
 }
 
-delete_on_exit=$(metadata attributes/delete-on-exit || echo true)
-
 finish() {
     echo "BENCHMARK_EXIT_CODE=$?"
-    if [ "$delete_on_exit" = false ]; then
-        return
-    fi
-
     # Give the guest agent time to send the last output lines to Cloud Logging
     sleep 10
     zone=$(metadata zone)
