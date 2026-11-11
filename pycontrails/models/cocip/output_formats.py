@@ -358,6 +358,9 @@ def longitude_latitude_grid(
     # Calculate additional variables
     t_slices = np.unique(contrails["time"])
     dt_integration_sec = (t_slices[1] - t_slices[0]) / np.timedelta64(1, "s")
+    # The energy forcing is accumulated over every CoCiP time step in (t_start, t_end], so the
+    # mean radiative forcing over the window divides it by the window length, not by one step
+    t_window_sec = (pd.Timestamp(t_end) - pd.Timestamp(t_start)).total_seconds()
 
     da_area = geo.grid_surface_area(met["longitude"].values, met["latitude"].values)
 
@@ -420,9 +423,9 @@ def longitude_latitude_grid(
         spatial_bbox=spatial_bbox,
         spatial_grid_res=spatial_grid_res,
     )
-    ds_forcing["rf_sw"] = ds_forcing["ef_sw"] / (da_area * dt_integration_sec)
-    ds_forcing["rf_lw"] = ds_forcing["ef_lw"] / (da_area * dt_integration_sec)
-    ds_forcing["rf_net"] = ds_forcing["ef"] / (da_area * dt_integration_sec)
+    ds_forcing["rf_sw"] = ds_forcing["ef_sw"] / (da_area * t_window_sec)
+    ds_forcing["rf_lw"] = ds_forcing["ef_lw"] / (da_area * t_window_sec)
+    ds_forcing["rf_net"] = ds_forcing["ef"] / (da_area * t_window_sec)
 
     # -----------------------
     # Package gridded outputs
@@ -492,15 +495,15 @@ def _create_attributes() -> dict[Hashable, dict[str, str]]:
             "units": " ",
         },
         "rf_sw": {
-            "long_name": "Mean contrail cirrus shortwave radiative forcing at t_end",
+            "long_name": "Mean contrail cirrus shortwave radiative forcing from t_start to t_end",
             "units": "mW/m**2",
         },
         "rf_lw": {
-            "long_name": "Mean contrail cirrus longwave radiative forcing at t_end",
+            "long_name": "Mean contrail cirrus longwave radiative forcing from t_start to t_end",
             "units": "mW/m**2",
         },
         "rf_net": {
-            "long_name": "Mean contrail cirrus net radiative forcing at t_end",
+            "long_name": "Mean contrail cirrus net radiative forcing from t_start to t_end",
             "units": "mW/m**2",
         },
         "ef": {
