@@ -1368,11 +1368,17 @@ def test_gridded_and_time_slice_outputs() -> None:
     )
     np.testing.assert_allclose(ds["ef"].sum().values, contrails_t["ef"].sum())
 
-    # rf_net is the mean over [t_start, t_end], which spans two CoCiP time steps here:
-    # integrated over the grid and the window, it must give back the energy forcing
+    # rf_net is the mean over [t_start, t_end], which spans several CoCiP time steps here, on
+    # a 0.5 degree grid that is coarser than the 0.25 degree met. Integrated over the grid and the
+    # window, it must give back the energy forcing.
     t_window_sec = (t_end - t_start).total_seconds()
     assert len(np.unique(contrails_t["time"])) > 1
-    da_area = geo.grid_surface_area(ds["longitude"].values, ds["latitude"].values)
+    assert np.diff(ds["latitude"].values)[0] != np.diff(met["latitude"].values)[0]
+    # Grid cells are labelled by their south-west corner; grid_surface_area takes the north edge
+    lat = ds["latitude"].values
+    da_area = geo.grid_surface_area(
+        ds["longitude"].values, np.minimum(lat + 0.5, 90.0)
+    ).assign_coords(latitude=lat)
     rf_net = ds["rf_net"].squeeze("time", drop=True) / 1000.0  # mW m-2 to W m-2
     np.testing.assert_allclose(
         float((rf_net * da_area).sum()) * t_window_sec, contrails_t["ef"].sum(), rtol=1e-6
