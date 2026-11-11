@@ -226,22 +226,18 @@ def intersect(
 
     # second pass: keep images with where flight waypoints
     # bounding sensing time are both within bounding box
-    flight_data = flight.dataframe
+    df = flight.dataframe
 
     def intersects(scene: pd.Series) -> bool:
         if scene["west_lon"] <= scene["east_lon"]:  # scene does not span antimeridian
-            bbox_data = flight_data[
-                flight_data["longitude"].between(scene["west_lon"], scene["east_lon"])
-                & flight_data["latitude"].between(scene["south_lat"], scene["north_lat"])
+            bbox_data = df[
+                df["longitude"].between(scene["west_lon"], scene["east_lon"])
+                & df["latitude"].between(scene["south_lat"], scene["north_lat"])
             ]
         else:  # scene spans antimeridian
-            bbox_data = flight_data[
-                (
-                    flight_data["longitude"]
-                    > scene["west_lon"] | flight.data["longitude"]
-                    < scene["east_lon"]
-                )
-                & flight_data["latitude"].between(scene["south_lat"], scene["north_lat"])
+            bbox_data = df[
+                ((df["longitude"] > scene["west_lon"]) | (df["longitude"] < scene["east_lon"]))
+                & df["latitude"].between(scene["south_lat"], scene["north_lat"])
             ]
         sensing_time = pd.Timestamp(scene["sensing_time"]).tz_localize(None)
         return bbox_data["time"].min() <= sensing_time and bbox_data["time"].max() >= sensing_time

@@ -532,6 +532,21 @@ def test_sentinel_intersection(sentinel_base_url: str, sentinel_granule_id: str)
     assert df["granule_id"][0] == sentinel_granule_id
 
 
+@pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")
+@pytest.mark.network
+def test_sentinel_intersection_antimeridian() -> None:
+    """Test Sentinel flight intersection with a scene that spans the antimeridian."""
+    flight = Flight(
+        longitude=[179.5, -179.9],
+        latitude=[-18.5, -18.5],
+        altitude=[10_000, 10_000],
+        time=[np.datetime64("2019-01-14 22:15:00"), np.datetime64("2019-01-14 22:30:00")],
+    )
+
+    df = sentinel.intersect(flight)
+    assert df["granule_id"].tolist() == ["L1C_T01KAV_A018616_20190114T221935"]
+
+
 @pytest.mark.parametrize(
     ("bands", "succeed"),
     [
