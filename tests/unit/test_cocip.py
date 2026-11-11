@@ -37,6 +37,7 @@ from pycontrails.models.humidity_scaling import (
     ExponentialBoostHumidityScaling,
     ExponentialBoostLatitudeCorrectionHumidityScaling,
 )
+from pycontrails.physics import geo
 from tests.unit import get_static_path
 
 
@@ -1366,6 +1367,16 @@ def test_gridded_and_time_slice_outputs() -> None:
         np.nansum(flight_waypoints_t["segment_length"]),
     )
     np.testing.assert_allclose(ds["ef"].sum().values, contrails_t["ef"].sum())
+
+    # rf_net is the mean over [t_start, t_end], which spans two CoCiP time steps here:
+    # integrated over the grid and the window, it must give back the energy forcing
+    t_window_sec = (t_end - t_start).total_seconds()
+    assert len(np.unique(contrails_t["time"])) > 1
+    da_area = geo.grid_surface_area(ds["longitude"].values, ds["latitude"].values)
+    rf_net = ds["rf_net"].squeeze("time", drop=True) / 1000.0  # mW m-2 to W m-2
+    np.testing.assert_allclose(
+        float((rf_net * da_area).sum()) * t_window_sec, contrails_t["ef"].sum(), rtol=1e-6
+    )
 
     # The number of grid cells at `t_end` with contrails must be equal
     assert np.count_nonzero(ds["persistent_contrails"]) == np.count_nonzero(ds["tau_contrail"])

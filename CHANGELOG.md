@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Fix the radiative forcing in `longitude_latitude_grid`. The `rf_sw`, `rf_lw` and `rf_net` outputs divided the energy forcing accumulated over every CoCiP time step in `(t_start, t_end]` by a single time step, so they were too large by the number of time steps in the window. They are now divided by the window length, `t_end - t_start`, and are the mean radiative forcing over the window ([#325](https://github.com/contrailcirrus/pycontrails/issues/325)).
+
 ## 0.66.0
 
 ### Breaking changes
