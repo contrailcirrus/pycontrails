@@ -177,7 +177,7 @@ def query(table: str, roi: ROI, columns: list[str], extra_filters: str = "") -> 
         )
 
     result = client.query(query_str)
-    return result.to_dataframe()
+    return result.to_arrow(create_bqstorage_client=False).to_pandas()
 
 
 def intersect(
