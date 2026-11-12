@@ -69,6 +69,11 @@ jobs:
       #   run: |
       #     make nb-execute
 
+      # Write the figures and tables of the benchmark page from the benchmark results bucket
+      - name: Generate benchmark page
+        run: |
+          python docs/benchmark/generate.py
+
       - name: Build docs
         run: |
           make docs-build
