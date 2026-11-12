@@ -49,6 +49,7 @@ tests/integration/data
 docs/_build
 docs/api/
 docs/examples/airports
+docs/benchmark/_generated/
 
 # data
 .ecmwf
