@@ -43,8 +43,9 @@ PYCONTRAILS_VERSION = tuple(int(x) for x in pycontrails.__version__.split(".")[:
 # Package of the geo, units and constants modules, which are top-level before v0.5.0
 PHYSICS = "pycontrails.physics" if PYCONTRAILS_VERSION >= (0, 5, 0) else "pycontrails"
 
-# Number of batches for Cocip Fleet-mode (workaround for early pycontrails memory explosion)
-N_BATCHES = int(os.environ.get("N_BATCHES", "1"))
+# Number of batches of flights for Fleet-mode. From 0.19.1 to 0.28.2, CoCiP builds a dense
+# (flight * time step * waypoint) array of the contrail output that does not fit in memory.
+N_BATCHES = 64 if (0, 19, 1) <= PYCONTRAILS_VERSION < (0, 28, 3) else 1
 
 # Fixes from later releases applied to the installed pycontrails or pycontrails-bada
 PATCHES: list[str] = []
@@ -52,15 +53,11 @@ PATCHES: list[str] = []
 # Releases that raise for every flight (or nearly every flight) and that the benchmark leaves out
 BROKEN_RELEASES = {(0, 9, 0), (0, 15, 1)}
 
-# Number of flights, chosen at random with seed SAMPLE_SEED, to run for versions without Fleet,
-# and for versions with Fleet if SAMPLE_FLIGHTS is set to 1
+# Number of flights, chosen at random with seed SAMPLE_SEED, to run for versions without Fleet
 SAMPLE_SIZE = 2000
 SAMPLE_SEED = 0
-SAMPLE_FLIGHTS = os.environ.get("SAMPLE_FLIGHTS", "0") == "1"
 
 OUTPUT = f"gs://contrails-301217-benchmark-data/results/{pycontrails.__version__}"
-if SAMPLE_FLIGHTS:
-    OUTPUT += "/sample"
 
 # For a run on a sample: the sample size, the number of staged flights and the met processing
 # time in seconds, which summarize uses to extrapolate the totals to all staged flights
@@ -551,7 +548,7 @@ def run_cocip_fleet(
         ap = PSFlightWithBADA3Backup(**ap_params)
         covers = ap.covers
 
-    flights = load_flights(sample_flight_ids() if SAMPLE_FLIGHTS else None)
+    flights = load_flights()
     keys = [(fl.attrs["aircraft_type"], fl.attrs.get("engine_uid")) for fl in flights]
     covered = {key for key in set(keys) if covers(*key)}
     kept = [fl for fl, key in zip(flights, keys) if key in covered]  # noqa: B905
