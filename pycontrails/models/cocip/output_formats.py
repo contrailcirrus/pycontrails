@@ -295,9 +295,11 @@ def longitude_latitude_grid(
     Parameters
     ----------
     t_start : np.datetime64 | pd.Timestamp
-        UTC time at beginning of time step.
+        UTC time at the beginning of the aggregation window.
+        Expected to fall on a CoCiP time step (not enforced).
     t_end : np.datetime64 | pd.Timestamp
-        UTC time at end of time step.
+        UTC time at the end of the aggregation window.
+        Expected to fall on a CoCiP time step (not enforced).
     flight_waypoints : GeoVectorDataset
         Flight waypoint outputs with contrail summary statistics attached.
         See :func:`flight_waypoint_summary_statistics`.
@@ -358,8 +360,8 @@ def longitude_latitude_grid(
     # Calculate additional variables
     t_slices = np.unique(contrails["time"])
     dt_integration_sec = (t_slices[1] - t_slices[0]) / np.timedelta64(1, "s")
-    # The energy forcing is accumulated over every CoCiP time step in (t_start, t_end], so the
-    # mean radiative forcing over the window divides it by the window length, not by one step
+
+    # Mean radiative forcing over (t_start, t_end]
     t_window_sec = (pd.Timestamp(t_end) - pd.Timestamp(t_start)).total_seconds()
 
     flight_waypoints["persistent_contrails"] = np.where(
@@ -378,9 +380,11 @@ def longitude_latitude_grid(
         spatial_grid_res=spatial_grid_res,
     )
 
-    # Surface area of the output grid cells, not of the `met` grid cells, which can have a
-    # different resolution. `vector_to_lon_lat_grid` labels each cell by its south-west corner,
-    # while `geo.grid_surface_area` takes the northern edge of each cell.
+    # TODO: Label cells by their center in `vector_to_lon_lat_grid` and `geo.grid_surface_area`,
+    # which removes this shift and matches the met grid convention
+
+    # `vector_to_lon_lat_grid` labels each cell by its south-west corner, whereas
+    # `geo.grid_surface_area` uses its north edge, so pass the north latitude and relabel
     lon_grid = ds_wypts_t["longitude"].values
     lat_grid = ds_wypts_t["latitude"].values
     da_area = geo.grid_surface_area(

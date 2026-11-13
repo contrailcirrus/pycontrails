@@ -1368,7 +1368,7 @@ def test_gridded_and_time_slice_outputs() -> None:
     )
     np.testing.assert_allclose(ds["ef"].sum().values, contrails_t["ef"].sum())
 
-    # rf_net is the mean over [t_start, t_end], which spans several CoCiP time steps here, on
+    # rf_net is the mean over (t_start, t_end], which spans several CoCiP time steps here, on
     # a 0.5 degree grid that is coarser than the 0.25 degree met. Integrated over the grid and the
     # window, it must give back the energy forcing.
     t_window_sec = (t_end - t_start).total_seconds()
