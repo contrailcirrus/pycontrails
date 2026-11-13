@@ -6,6 +6,11 @@
 
 - Fix the radiative forcing in `longitude_latitude_grid`. The `rf_sw`, `rf_lw` and `rf_net` outputs divided the energy forcing accumulated over every CoCiP time step in `(t_start, t_end]` by a single CoCiP time step, so they were too large by the ratio of the window length to the time step (12 for a 1 hour window with 5 minute steps). They are now divided by the window length, `t_end - t_start`, and are the mean radiative forcing over the window ([#325](https://github.com/contrailcirrus/pycontrails/issues/325)).
 - Fix the grid cell area in `longitude_latitude_grid`. The area was computed on the `met` grid, but the outputs are aggregated on the `spatial_grid_res` grid, so when the two resolutions differ (for example 0.25 degree ERA5 and the default 0.5 degree output) `rf_sw`, `rf_lw`, `rf_net` and `tau_contrail` were scaled by the ratio of the cell areas, about 4 in that example. The area is now computed on the output grid.
+- In `met_utils.ml_to_pl` and `ecmwf.ml_to_pl` with `extrapolate=True`, columns with any NaN pressure are now NaN at every target level. Previously they were extrapolated from the first two model levels, which gave wrong values for targets inside the column.
+
+### Internals
+
+- Reduce the memory used by `met_utils.ml_to_pl` and `ecmwf.ml_to_pl` by interpolating one target pressure level at a time instead of building arrays over all target levels at once.
 
 ## 0.66.0
 
