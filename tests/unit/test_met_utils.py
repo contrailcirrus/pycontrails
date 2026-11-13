@@ -145,6 +145,16 @@ def test_ml_to_pl_nan_in_pressure(ds_ml: xr.Dataset) -> None:
     assert np.isnan(ds_pl["air_temperature"].sel(x=0, y=0)).all()
 
 
+def test_ml_to_pl_nan_in_pressure_extrapolated(ds_ml: xr.Dataset) -> None:
+    """Test behavior with nans in pressure data when extrapolating."""
+
+    ds_ml["pressure_level"].loc[dict(x=0, y=0, model_level=3)] = np.nan
+    ds_pl = met_utils.ml_to_pl(ds_ml, [150, 250, 350, 450], extrapolate=True)
+
+    assert np.isnan(ds_pl["air_temperature"]).sum() == 4
+    assert np.isnan(ds_pl["air_temperature"].sel(x=0, y=0)).all()
+
+
 def test_ml_to_pl_nan_in_target_pl(ds_ml: xr.Dataset) -> None:
     """Test behavior with nans in target pressure levels."""
 
