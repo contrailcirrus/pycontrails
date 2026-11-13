@@ -9,8 +9,6 @@
 #   pycontrails-bada-version        optional, version of the staged pycontrails-bada source
 #   pycontrails-bada-source         optional, URL of the staged pycontrails-bada source
 #   pycontrails-bada-from-registry  optional, "true" to install it from Artifact Registry
-#   n-batches                       optional, number of batches of flights, 1 by default
-#   sample-flights                  optional, "1" to run only the sample of flights
 #
 # On exit, print BENCHMARK_EXIT_CODE=<code> and delete the VM.
 
@@ -41,8 +39,6 @@ pycontrails_source=$(metadata attributes/pycontrails-source || true)
 pycontrails_bada_version=$(metadata attributes/pycontrails-bada-version || true)
 pycontrails_bada_source=$(metadata attributes/pycontrails-bada-source || true)
 pycontrails_bada_from_registry=$(metadata attributes/pycontrails-bada-from-registry || echo false)
-n_batches=$(metadata attributes/n-batches || echo 1)
-sample_flights=$(metadata attributes/sample-flights || echo 0)
 machine_type=$(metadata machine-type)
 
 # Index URL of the project's Artifact Registry, with the VM's access token, to install
@@ -169,8 +165,6 @@ docker run \
     --env PYCONTRAILS_BADA_VERSION="$pycontrails_bada_version" \
     --env PYCONTRAILS_BADA_INDEX_URL="$pycontrails_bada_index_url" \
     --env MACHINE_TYPE="${machine_type##*/}" \
-    --env N_BATCHES="$n_batches" \
-    --env SAMPLE_FLIGHTS="$sample_flights" \
     --env PIP_ROOT_USER_ACTION=ignore \
     "python:$python_version" \
     bash -eu container.sh
