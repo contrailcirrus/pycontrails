@@ -8,20 +8,44 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 
-from pycontrails.utils import array
-
 
 def _interp_artifacts(
-    xp: npt.NDArray[np.floating], x: npt.NDArray[np.floating]
-) -> tuple[npt.NDArray[np.int64], npt.NDArray[np.floating], npt.NDArray[np.bool_]]:
-    """Compute the indices and distances for linear interpolation."""
-    idx = array.searchsorted2d(xp, x)
-    out_of_bounds = (idx == 0) | (idx == xp.shape[1])
-    idx.clip(1, xp.shape[1] - 1, out=idx)
+    xp: npt.NDArray[np.floating], x: float
+) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.floating], npt.NDArray[np.bool_]]:
+    """Compute the indices and distances for linear interpolation to the level ``x``.
 
-    x0 = np.take_along_axis(xp, idx - 1, axis=1)
-    x1 = np.take_along_axis(xp, idx, axis=1)
-    dist = (x.reshape(1, -1) - x0) / (x1 - x0)
+    Parameters
+    ----------
+    xp : npt.NDArray[np.floating]
+        Log pressure at each model level. The last axis runs over the model levels in
+        order of increasing pressure. The leading axes are the grid dimensions,
+        e.g. latitude, longitude and time.
+    x : float
+        Log of the target pressure level.
+
+    Returns
+    -------
+    idx : npt.NDArray[np.intp]
+        Index of the first model level whose pressure is at least ``x``, clipped to
+        ``[1, n_ml - 1]``. ``x`` lies between model levels ``idx - 1`` and ``idx``.
+    dist : npt.NDArray[np.floating]
+        Fractional distance of ``x`` from model level ``idx - 1`` to model level ``idx``.
+        Outside ``[0, 1]`` where ``x`` is out of bounds.
+    out_of_bounds : npt.NDArray[np.bool_]
+        True where ``x`` is outside the range of ``xp``.
+
+    All returned arrays have the shape of ``xp`` with a last axis of length 1.
+    """
+    n_ml = xp.shape[-1]
+
+    # The number of model levels below x is the index searchsorted(side="left") returns
+    idx = np.count_nonzero(xp < x, axis=-1, keepdims=True)
+    out_of_bounds = (idx == 0) | (idx == n_ml)
+    idx.clip(1, n_ml - 1, out=idx)
+
+    x0 = np.take_along_axis(xp, idx - 1, axis=-1)
+    x1 = np.take_along_axis(xp, idx, axis=-1)
+    dist = (x - x0) / (x1 - x0)
 
     return idx, dist, out_of_bounds
 
@@ -58,41 +82,47 @@ def _interp_on_chunk(
 
     pl_chunk = ds_chunk["pressure_level"]
 
-    # Put the model_level column in the second dimension
-    # And stack the horizontal dimensions into the first dimension
-    xp = pl_chunk.values.reshape(-1, len(pl_chunk["model_level"]))
-
     # AFAICT, metview performs linear interpolation in xp and target_pl by default
     # However, the conversion_from_ml_to_pl.py script in https://confluence.ecmwf.int/x/JJh0CQ
     # suggests interpolating in the log space. If using consecutive model levels,
     # the difference between the two methods is negligible. We use the log space
     # method here for consistency with the ECMWF script. This only changes
     # the `dist` calculation below.
-    idx, dist, out_of_bounds = _interp_artifacts(np.log(xp), np.log(target_pl))
+    xp = np.log(pl_chunk.values)
+    x = np.log(target_pl)
+    has_nan = np.isnan(xp).any(axis=-1, keepdims=True)  # columns that contain any nan pressure
 
-    shape4d = pl_chunk.shape[:-1] + target_pl.shape
-    idx = idx.reshape(shape4d)
-    dist = dist.reshape(shape4d)
-    out_of_bounds = out_of_bounds.reshape(shape4d)
+    fps = {name: da.values for name, da in ds_chunk.items() if name != "pressure_level"}
+    interped = {
+        name: np.empty(fp.shape[:-1] + x.shape, dtype=np.result_type(fp, xp))
+        for name, fp in fps.items()
+    }
+
+    # Interpolate one target pressure level at a time so that the intermediate arrays
+    # hold values for a single target pressure level rather than for all of them.
+    # This keeps memory down compared with vectorizing over all target pressure levels at once.
+    for i in range(x.size):
+        idx, dist, out_of_bounds = _interp_artifacts(xp, x[i])
+
+        for name, fp in fps.items():
+            f0 = np.take_along_axis(fp, idx - 1, axis=-1)
+            f1 = np.take_along_axis(fp, idx, axis=-1)
+            interped_level = f0 + dist * (f1 - f0)
+            if not extrapolate:
+                interped_level[out_of_bounds] = np.nan
+
+            interped_level[has_nan] = np.nan
+            interped[name][..., i] = interped_level[..., 0]
 
     interped_dict = {}
 
-    for name, da in ds_chunk.items():
-        if name == "pressure_level":
-            continue
-
-        fp = da.values
-        f0 = np.take_along_axis(fp, idx - 1, axis=-1)
-        f1 = np.take_along_axis(fp, idx, axis=-1)
-        interped = f0 + dist * (f1 - f0)
-        if not extrapolate:
-            interped[out_of_bounds] = np.nan
-
+    for name, data in interped.items():
+        da = ds_chunk[name]
         coords = {k: da.coords[k] for k in da.dims[:-1]}
         coords["level"] = target_pl
 
         interped_dict[name] = xr.DataArray(
-            interped,
+            data,
             dims=tuple(coords),
             coords=coords,
             attrs=da.attrs,
@@ -142,7 +172,8 @@ def ml_to_pl(ds: xr.Dataset, target_pl: npt.ArrayLike, extrapolate: bool = False
     extrapolate : bool
         The new model levels may be outside the bounds of the old levels.
         If extrapolate is True, values outside the bounds will be linearly extrapolated.
-        Otherwise they will be set to NaN.
+        Otherwise they will be set to NaN. Columns with any NaN pressure are NaN
+        at every target level regardless of ``extrapolate``.
 
     Returns
     -------
