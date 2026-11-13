@@ -345,7 +345,6 @@ Utilities
     utils.iteration
     utils.temp
     utils.json
-    utils.array
     .. utils.synthetic_flight
 
 
