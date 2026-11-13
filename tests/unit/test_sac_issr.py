@@ -20,7 +20,6 @@ from pycontrails.models.issr import ISSR
 from pycontrails.models.pcr import PCR
 from pycontrails.models.sac import SAC
 from pycontrails.physics import constants, thermo, units
-from tests import _deprecated
 
 # TODO: Include tests for all simple models here
 # 1) Downselect met results in copy
@@ -519,13 +518,104 @@ def test_T_critical_sac_implementation() -> None:
     # We get a bunch of warnings here
     # We acknowledge them and continue
     with pytest.warns(RuntimeWarning):
-        t_crit2 = _deprecated.T_critical_sac(t, q, p, eta)  # type: ignore[arg-type]
+        t_crit2 = deprecated_T_critical_sac(t, q, p, eta)  # type: ignore[arg-type]
 
     assert np.all(np.isfinite(t_crit1))
     assert np.all(np.isfinite(t_crit2))
 
     # Close agreement
     np.testing.assert_allclose(t_crit1, t_crit2, atol=0.15)
+
+
+def deprecated_T_critical_sac[A: (np.ndarray, xr.DataArray)](
+    air_temperature: A,
+    specific_humidity: A,
+    air_pressure: A,
+    engine_efficiency: float = 0.3,
+    ei_h2o: float = JetA().ei_h2o,
+    q_fuel: float = JetA().q_fuel,
+    *,
+    n_iter: int = 10,
+    dx_threshold: float = 1e-3,
+) -> A:
+    r"""Estimate actual Temperature threshold for persistent contrail formation iteratively.
+
+    Applies Newton iteration and the Schmidt-Appleman criterion.
+
+    This is required to estimate the activation rate of the aircraft emitted
+    black carbon to contrail ice particles.
+
+    Parameters
+    ----------
+    air_temperature : A
+        A sequence or array of temperature values, [:math:`K`]
+    specific_humidity : A
+        A sequence or array of specific humidity values, [:math:`kg_{H_{2}O} \ kg_{air}`]
+    air_pressure : A
+        A sequence or array of atmospheric pressure values, [:math:`Pa`].
+    engine_efficiency: float, optional
+        Engine efficiency, [:math:`0 - 1`]
+    ei_h2o : float, optional
+        Emission index of water vapor, [:math:`kg \ kg^{-1}`]
+    q_fuel : float, optional
+        Specific combustion heat of fuel combustion, [:math:`J \ kg^{-1} \ K^{-1}`]
+    n_iter : int, optional
+        Max number of iterations
+    dx_threshold : float, optional
+        Stop iteration once all elements of `dx` are smaller than `dx_threshold` in absolute value
+
+    Returns
+    -------
+    A
+        Estimated Temperature threshold for contrail formation, [:math:`K`]
+
+    Notes
+    -----
+    Source: Schumann, U., 1996. On conditions for contrail formation from aircraft exhausts.
+            Meteorologische Zeitschrift, pp.4-23.
+    """
+    relative_humidity = thermo.rh(specific_humidity, air_temperature, air_pressure)
+    G = sac.slope_mixing_line(specific_humidity, air_pressure, engine_efficiency, ei_h2o, q_fuel)
+    T_sat_liquid_ = sac.T_sat_liquid(G)
+    e_sat_T_sat_liquid = thermo.e_sat_liquid(T_sat_liquid_)
+
+    # guess initial temperature
+    relative_humidity_bounded = xr.where(relative_humidity < 1, relative_humidity, 0.9999)
+    T0 = T_sat_liquid_ - (e_sat_T_sat_liquid / G)
+    e_sat_T0 = thermo.e_sat_liquid(T0)
+    c_1 = e_sat_T_sat_liquid * (T_sat_liquid_ - T0) / (2 * relative_humidity_bounded * e_sat_T0)
+    c_2 = (
+        1
+        - (
+            1
+            + (4 * relative_humidity_bounded * e_sat_T0)
+            / ((1 - relative_humidity_bounded) * e_sat_T_sat_liquid)
+        )
+        ** 0.5
+    )
+    T_crit_est = T_sat_liquid_ + (1 - relative_humidity) * c_1 * c_2
+
+    # iterate up to n_iter until all elements of |dx| are smaller than dx_threshold
+    for _ in np.arange(n_iter):
+        e_sat_T_est = thermo.e_sat_liquid(T_crit_est)
+        de_dt = (thermo.e_sat_liquid(T_crit_est + 1) - thermo.e_sat_liquid(T_crit_est - 1)) / 2
+        dx = (
+            e_sat_T_sat_liquid - G * (T_sat_liquid_ - T_crit_est) - relative_humidity * e_sat_T_est
+        ) / (G - relative_humidity * de_dt)
+        T_crit_est = T_crit_est - dx
+
+        if (np.abs(dx) < dx_threshold).all():
+            break
+
+    # mask values where relative humidity is low
+    is_dry = relative_humidity < 1e-6
+    T_crit_est[is_dry] = T_sat_liquid_[is_dry] - (e_sat_T_sat_liquid[is_dry] / G[is_dry])
+
+    # mask values where relative humidity is high
+    is_liq_sat = relative_humidity > 0.9999
+    T_crit_est[is_liq_sat] = T_sat_liquid_[is_liq_sat]
+
+    return T_crit_est
 
 
 def test_T_sat_liquid() -> None:

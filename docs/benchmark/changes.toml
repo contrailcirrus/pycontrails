@@ -1,0 +1,294 @@
+# Changes in the CoCiP benchmark results, written by hand. generate.py numbers them in release
+# order, marks each number on the panels whose value changes at the release (see
+# CHANGE_THRESHOLDS in generate.py), and lists them in a table on the page.
+#
+# release: the first release with the change
+# bullets: one reStructuredText item for each separate change, shown as a bulleted list
+
+[[change]]
+release = "0.2.0"
+bullets = [
+    "CoCiP fails for 72 sample flights because of the misspelled parameter ``deafult_thrust``, and the benchmark drops them.",
+    "Persistent contrail length is available.",
+]
+
+[[change]]
+release = "0.3.0"
+bullets = [
+    "CoCiP attaches ``persistent_1`` and the other initial contrail properties to the first waypoints of each flight instead of the waypoints that satisfy the SAC, so the persistent contrail length is wrong until 0.19.1.",
+    "A performance bug in the SAC flight model meteorology handling is fixed, improving memory footprint.",
+]
+
+[[change]]
+release = "0.6.0"
+bullets = [
+    "CoCiP computes the solar direct radiation from the solar geometry instead of from the ERA5 TOA incident solar radiation, and shifts the radiation times to the middle of each accumulation hour.",
+]
+
+[[change]]
+release = "0.7.1"
+bullets = [
+    "Fix of the ``deafult_thrust`` typo, so the 72 sample flights run again.",
+]
+
+[[change]]
+release = "0.8.1"
+bullets = [
+    "CoCiP fails with ``ValueError`` for flights whose waypoints do not intersect the meteorology: 255 sample flights, 229 that previously failed with ``IndexError`` and 26 more.",
+]
+
+[[change]]
+release = "0.11.0"
+bullets = [
+    "First release with ``Fleet``-mode. The benchmark runs CoCiP on all flights at once.",
+    "The benchmark drops 971 flights that fail in this release.",
+    "The results have no persistent contrail length.",
+]
+
+[[change]]
+release = "0.12.3"
+bullets = [
+    "Fix of CoCiP running with ``Fleet``-mode: the contrail waypoints are sorted by flight and time after new waypoints are added. Before, the segment joining the older and newer contrail waypoints of each flight was discontinuous, so it had no energy forcing.",
+]
+
+[[change]]
+release = "0.16.0"
+bullets = [
+    "BADA3 fuel flow is clipped at every waypoint to the nominal range of its flight phase. Earlier releases corrected only fuel flows above the maximum climb fuel flow or below 0.",
+]
+
+[[change]]
+release = "0.17.1"
+bullets = [
+    "36 more flights now run (earlier releases failed for engines whose EDB fuel flows repeat a value).",
+]
+
+[[change]]
+release = "0.18.0"
+bullets = [
+    "The wind shear of a partially initialized segment no longer contributes to the plume geometry.",
+]
+
+[[change]]
+release = "0.19.1"
+bullets = [
+    "Persistent contrail length is available again.",
+    "CoCiP builds a dense (flight * time step * waypoint) array of the contrail output that does not fit in memory, so the benchmark runs CoCiP on 64 batches of flights, one after another. Runtime is the sum over batches.",
+]
+
+[[change]]
+release = "0.20.2"
+bullets = [
+    "565 more flights now run. From 0.11.0 to 0.20.1, CoCiP failed for flights whose waypoints are all outside the meteorology but whose engine has an nvPM profile, and the benchmark dropped those flights.",
+]
+
+[[change]]
+release = "0.22.0"
+bullets = [
+    "CoCiP copies the full meteorology in ``eval`` instead of when created, which increases the runtime.",
+]
+
+[[change]]
+release = "0.25.9"
+bullets = [
+    "New engine thrust setting methodology, based on ECLIF II nvPM measurements, which changes the nvPM number emissions index.",
+    "370 more flights now run. Earlier releases failed for piston aircraft, and the benchmark dropped them.",
+]
+
+[[change]]
+release = "0.26.0"
+bullets = [
+    "CoCiP selects the meteorology around the flights for initialization and around the contrails at each evolution step, without copying it. This improves runtime.",
+]
+
+[[change]]
+release = "0.27.0"
+bullets = [
+    "Humidity scaling becomes a separate model. Before, CoCiP scaled only RHi, with ``rhi_adj = 0.97`` set by the benchmark; now the benchmark passes ``ExponentialBoostLatitudeCorrectionHumidityScaling`` with its defaults, which also scales specific humidity.",
+]
+
+[[change]]
+release = "0.28.3"
+bullets = [
+    "CoCiP no longer builds the dense array, so the benchmark now runs all flights in one batch again.",
+]
+
+[[change]]
+release = "0.28.9"
+bullets = [
+    "The benchmark sets ``radiative_heating_effects=True``, a CoCiP parameter added in this release.",
+]
+
+[[change]]
+release = "0.29.0"
+bullets = [
+    "The EDB is indexed by engine, with 557 engines for gaseous emissions and 178 for nvPM instead of 117 and 47.",
+    "This release fails for flights whose engine is missing from its EDB, and the benchmark drops those 2,862 flights.",
+]
+
+[[change]]
+release = "0.29.1"
+bullets = [
+    "2,748 of the 2,862 flights dropped in 0.29.0 run again.",
+    "BADA3 has new default aircraft and engine pairs.",
+    "Staged combustors get a step change in nvPM emissions.",
+    "BADA3 looks up each aircraft type's engine in a static table of 250 BADA types, which lacks the types of 114 flights (mostly light and piston aircraft, plus CL35, LJ75 and DHC6). BADA3 fails for them and the benchmark drops them.",
+]
+
+[[change]]
+release = "0.31.4"
+bullets = [
+    "With radiative heating effects, the contrail plume temperature includes the cumulative heating, up to 1.5 K, instead of the ambient temperature. Until 0.60.4, the heating is mistakenly added to the stored air temperature in place more than once per time step.",
+]
+
+[[change]]
+release = "0.33.0"
+bullets = [
+    "Fix of the BADA3 fuel flow in slow climb and descent.",
+]
+
+[[change]]
+release = "0.36.0"
+bullets = [
+    "The benchmark runs this release with pycontrails-bada 0.2.1, which reverts the flight phase handling of 0.33.0.",
+]
+
+[[change]]
+release = "0.40.0"
+bullets = [
+    "Linear interpolation is cythonized and the interpolation module overhauled for speed.",
+]
+
+[[change]]
+release = "0.43.0"
+bullets = [
+    "The benchmark passes ``HistogramMatching``, new in this release, with its defaults, instead of ``ExponentialBoostLatitudeCorrectionHumidityScaling``.",
+]
+
+[[change]]
+release = "0.44.0"
+bullets = [
+    "The benchmark runs the PS model, new in this release, with BADA3 for aircraft types the PS model does not cover. Earlier releases ran BADA3 only.",
+    "In pycontrails-bada 0.4.0, BADA3 assumes a load factor of 70% instead of the BADA reference mass.",
+]
+
+[[change]]
+release = "0.46.0"
+bullets = [
+    "Fix of a unit error in ``wake_vortex.turbulent_kinetic_energy_dissipation_rate``, which increases the dissipation rate.",
+]
+
+[[change]]
+release = "0.47.3"
+bullets = [
+    "Fix of ``radiative_forcing.effective_tau_contrail``, which changes the shortwave radiative forcing only.",
+]
+
+[[change]]
+release = "0.49.0"
+bullets = [
+    "PS model version 2.0, with new aircraft and engine parameters.",
+]
+
+[[change]]
+release = "0.50.1"
+bullets = [
+    "The benchmark sets ``unterstrasser_ice_survival_fraction=True``, a CoCiP parameter added in this release.",
+]
+
+[[change]]
+release = "0.50.2"
+bullets = [
+    "The ICAO EDB is updated from v28c to v29b.",
+    "New PS model coefficients.",
+    "The EDB adds engine ``1ZM001`` with no idle fuel flow, for which the FFM2 emissions profiles fail, so the benchmark drops the one flight with it.",
+]
+
+[[change]]
+release = "0.51.0"
+bullets = [
+    "The benchmark sets ``level_type=\"model\"`` in ``HistogramMatching``, new in this release, which uses quantiles calibrated for ERA5 model-level data.",
+]
+
+[[change]]
+release = "0.51.1"
+bullets = [
+    "The PS model's ``engine_deterioration_factor`` increases average fuel burn by 2.5%.",
+    "PS model aircraft type synonyms move more flights from BADA3 to the PS model.",
+]
+
+[[change]]
+release = "0.52.2"
+bullets = [
+    "The benchmark sets ``fill_low_altitude_with_isa_temperature`` and ``fill_low_altitude_with_zero_wind``, aircraft performance parameters added in this release. Waypoints below the lowest meteorology level had no fuel flow before, so the climb and descent fuel is now counted.",
+    "Peak memory falls with an improved ``Cocip._bundle_results``.",
+    "The EDB fills in the idle fuel flow of ``1ZM001``, so its one flight runs again. No release from here on fails for EDB fuel flows.",
+]
+
+[[change]]
+release = "0.54.3"
+bullets = [
+    "The default load factor rises from 70% to 83% in the PS model and in BADA3.",
+    "The benchmark uses pycontrails-bada 0.7.0, whose aircraft-engine table adds the BADA 3.16 aircraft types, so 113 of the 114 flights dropped since 0.29.1 now run.",
+]
+
+[[change]]
+release = "0.54.7"
+bullets = [
+    "The ice crystal survival fraction is updated to Lottermoser and Unterstrasser (2025).",
+]
+
+[[change]]
+release = "0.55.0"
+bullets = [
+    "The benchmark sets ``vpm_activation=False``, a CoCiP parameter added in this release, because the extended K15 model runs out of memory on the benchmark VM.",
+]
+
+[[change]]
+release = "0.59.1"
+bullets = [
+    "The benchmark passes the MEEM2 nvPM emissions model, new to the ``emissions`` CoCiP parameter in this release.",
+    "MEEM2 fails for engines with DAC, TAPS or TAPS II combustors, and the benchmark drops those 770 flights.",
+    "The ICAO EDB is updated from v29b to v31.",
+]
+
+[[change]]
+release = "0.60.1"
+bullets = [
+    "MEEM2 no longer fails for DAC, TAPS and TAPS II combustors; the 770 flights run again.",
+]
+
+[[change]]
+release = "0.60.2"
+bullets = [
+    "The benchmark sets ``vpm_activation=True``, which increases runtime.",
+    "The benchmark sets ``max_horizontal_diffusivity`` and ``max_vertical_diffusivity``, CoCiP parameters added in this release.",
+]
+
+[[change]]
+release = "0.60.5"
+bullets = [
+    "The extended K15 model is updated to align with pyrcel, and splits waypoints into rich burn and lean burn by nvPM number emissions index.",
+    "The engine deterioration factor of the PS model, and of BADA3 in pycontrails-bada 0.8.3, comes from each flight's ``aircraft_age_yrs`` instead of a fixed 2.5%. For narrow-body aircraft it rises to 6% at 10 years, so fuel burn rises by 1.8%.",
+]
+
+[[change]]
+release = "0.61.0"
+bullets = [
+    "The vertical diffusivity with ``radiative_heating_effects`` uses the square of the turbulent vertical velocity, but squares its minimum too, by mistake.",
+    "Take-off mass comes from an estimated payload instead of a load factor.",
+    "The cargo load factor table has no rows between Africa and Asia Pacific, so this release fails for the 7 flights between those regions, and the benchmark drops them.",
+    "The payload estimate calls ``jet.cargo_load_factor`` once per flight, and each call runs a pandas query and re-indexes the airport table. This increases runtime significantly.",
+]
+
+[[change]]
+release = "0.63.0"
+bullets = [
+    "The cargo load factor table falls back to global values, so the 7 flights between Africa and Asia Pacific run again.",
+]
+
+[[change]]
+release = "0.63.1"
+bullets = [
+    "Fix of the minimum turbulent vertical velocity squared in 0.61.0.",
+]

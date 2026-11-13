@@ -1,0 +1,162 @@
+# Run the CoCiP benchmark in tests/benchmark against one version of pycontrails
+# on a GCE VM, which writes the results to the benchmark bucket.
+
+name: CoCiP benchmark
+
+on:
+  # benchmark each release
+  release:
+    types:
+      - published
+
+  # benchmark any tag, branch or commit
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: pycontrails tag, branch or commit to benchmark
+        type: string
+        default: main
+
+# Global variables
+env:
+  PROJECT: contrails-301217
+  ZONE: us-east1-b
+  SERVICE_ACCOUNT: ci-service-account@contrails-301217.iam.gserviceaccount.com
+  VM: pycontrails-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+  PYCONTRAILS_REF: ${{ inputs.ref || github.event.release.tag_name || github.event.repository.default_branch }}
+
+# disable all permissions at the top level
+# https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+permissions: {}
+
+# Queue runs of the same ref instead of cancelling them
+concurrency:
+  group: '${{ github.workflow }} @ ${{ inputs.ref || github.event.release.tag_name || github.ref }}'
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # The benchmark scripts come from the branch the workflow runs on
+      - name: Check out benchmark scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || github.ref }}
+          sparse-checkout: tests/benchmark
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The VM installs the packages uploaded before the commit date, and writes the results to
+      # the folder of the pycontrails version that setuptools-scm gives the commit
+      - name: Get the commit date and version of the ref
+        id: ref
+        run: |
+          commit=$(git rev-parse --verify --quiet "origin/$PYCONTRAILS_REF^{commit}" \
+            || git rev-parse --verify "$PYCONTRAILS_REF^{commit}")
+          cutoff=$(TZ=UTC git log -1 --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd "$commit")
+          worktree="$RUNNER_TEMP/ref"
+          git worktree add --quiet --detach "$worktree" "$commit"
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet setuptools-scm
+          version=$("$RUNNER_TEMP/venv/bin/python" -m setuptools_scm \
+            --root "$worktree" --config "$worktree/pyproject.toml")
+          echo "cutoff=$cutoff" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Benchmarking pycontrails $version"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      # The VM deletes itself when the benchmark ends, and after 1 hour at the latest
+      - name: Create VM
+        id: create
+        env:
+          CUTOFF: ${{ steps.ref.outputs.cutoff }}
+          SUMMARY: gs://contrails-301217-benchmark-data/results/${{ steps.ref.outputs.version }}/summary.json
+        run: |
+          # Generation of the existing summary, if any, to tell a new summary from it
+          generation=$(gcloud storage objects describe "$SUMMARY" --format="value(generation)" 2>/dev/null || true)
+          echo "generation=$generation" >> "$GITHUB_OUTPUT"
+          gcloud compute instances create "$VM" \
+            --project "$PROJECT" \
+            --zone "$ZONE" \
+            --machine-type c3-highmem-4 \
+            --image-family debian-12 \
+            --image-project debian-cloud \
+            --boot-disk-size 50GB \
+            --boot-disk-type pd-balanced \
+            --service-account "$SERVICE_ACCOUNT" \
+            --scopes cloud-platform \
+            --max-run-duration 1h \
+            --instance-termination-action DELETE \
+            --metadata pycontrails-ref="$PYCONTRAILS_REF",cutoff="$CUTOFF",pycontrails-bada-from-registry=true \
+            --metadata-from-file startup-script=tests/benchmark/vm_startup.sh,run-benchmark=tests/benchmark/run_benchmark.py
+
+      - name: Wait for benchmark to run
+        env:
+          SUMMARY: gs://contrails-301217-benchmark-data/results/${{ steps.ref.outputs.version }}/summary.json
+          GENERATION: ${{ steps.create.outputs.generation }}
+        run: |
+          while gcloud compute instances describe "$VM" --project "$PROJECT" --zone "$ZONE" > /dev/null 2>&1; do
+            sleep 60
+          done
+          generation=$(gcloud storage objects describe "$SUMMARY" --format="value(generation)" 2>/dev/null || true)
+          if [ -z "$generation" ] || [ "$generation" = "$GENERATION" ]; then
+            echo "The benchmark on $VM wrote no summary; its output is in Cloud Logging"
+            exit 1
+          fi
+          echo "The benchmark on $VM wrote $SUMMARY"
+
+      # Compare the totals with the newest earlier release.
+      - name: Compare with the previous release
+        env:
+          VERSION: ${{ steps.ref.outputs.version }}
+        run: |
+          results=gs://contrails-301217-benchmark-data/results
+          # Newest release below VERSION: sort the releases in the bucket with VERSION, and take
+          # the one before its first occurrence
+          baseline=$(
+            { gcloud storage ls "$results/" | sed "s#^$results/##; s#/\$##" | grep -v dev; echo "$VERSION"; } \
+              | sort -V \
+              | awk -v version="$VERSION" '$0 == version { print previous; exit } { previous = $0 }'
+          )
+          if [ -z "$baseline" ]; then
+            echo "No release before $VERSION in the bucket" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gcloud storage cat "$results/$baseline/summary.json" > baseline.json
+          gcloud storage cat "$results/$VERSION/summary.json" > new.json
+          python3 - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import json
+
+          old = json.load(open("baseline.json"))
+          new = json.load(open("new.json"))
+          rows = [
+              ("Flights run", "n_flights", "{:,.0f}"),
+              ("Flights dropped", "n_dropped", "{:,.0f}"),
+              ("Energy forcing (J)", "ef_J", "{:.4e}"),
+              ("Contrail length x age (km h)", "contrail_length_age_km_h", "{:.4e}"),
+              ("Persistent contrail length (km)", "persistent_length_km", "{:.4e}"),
+              ("Fuel burn (kg)", "fuel_burn_kg", "{:.4e}"),
+              ("CoCiP runtime (s)", "runtime_s", "{:,.0f}"),
+              ("Peak RSS (GB)", "peak_rss_gb", "{:.1f}"),
+          ]
+          print(f"### pycontrails {new['pycontrails_version']} against {old['pycontrails_version']}\n")
+          print(f"| | {old['pycontrails_version']} | {new['pycontrails_version']} | Change |")
+          print("|---|---:|---:|---:|")
+          for label, key, fmt in rows:
+              a = old.get(key)
+              b = new.get(key)
+              old_text = "—" if a is None else fmt.format(a)
+              new_text = "—" if b is None else fmt.format(b)
+              change = "—" if a in (None, 0) or b is None else f"{(b / a - 1) * 100:+.3f}%"
+              print(f"| {label} | {old_text} | {new_text} | {change} |")
+          EOF

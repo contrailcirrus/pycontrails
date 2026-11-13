@@ -59,6 +59,7 @@ Learn more at `Contrails.org <https://contrails.org>`_.
    literature
    contributing
    changelog
+   benchmark
 
 .. toctree::
    :titlesonly:
