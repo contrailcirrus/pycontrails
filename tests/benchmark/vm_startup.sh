@@ -87,7 +87,6 @@ python_version=$(
     cat \
         /src/pycontrails/pyproject.toml \
         /src/pycontrails/setup.cfg \
-        /src/pycontrails/setup.py \
         2>/dev/null \
         | grep -o "Programming Language :: Python :: 3\.[0-9]*" \
         | grep -o "3\.[0-9]*" \
