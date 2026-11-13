@@ -234,6 +234,12 @@ def ml_to_pl(
         If extrapolate is True, values outside the bounds will be linearly extrapolated.
         Otherwise they will be set to NaN.
 
+        .. versionchanged:: 0.66.1
+
+            Columns with any NaN pressure are NaN at every target level regardless
+            of ``extrapolate``. Previously they were extrapolated from the first
+            two model levels.
+
     Returns
     -------
     xr.Dataset
