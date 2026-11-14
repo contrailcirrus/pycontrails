@@ -127,7 +127,7 @@ class Fleet(Flight):
         return super().copy(**kwargs)
 
     @override
-    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
+    def filter(self, mask: npt.NDArray[np.bool_], **kwargs: Any) -> Self:
         flight_ids = set(np.unique(self["flight_id"][mask]))
         fl_attrs = {k: v for k, v in self.fl_attrs.items() if k in flight_ids}
         kwargs.setdefault("fl_attrs", fl_attrs)
@@ -139,7 +139,7 @@ class Fleet(Flight):
         final_waypoints[-1:] = True
         kwargs.setdefault("final_waypoints", final_waypoints)
 
-        return super().filter(mask, copy=copy, **kwargs)
+        return super().filter(mask, **kwargs)
 
     @override
     def sort(self, by: str | list[str]) -> NoReturn:

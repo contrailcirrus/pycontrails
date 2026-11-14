@@ -1241,7 +1241,6 @@ class Cocip(Model):
         future_contrails = self._downwash_flight.filter(
             (self._downwash_flight["time"] >= time_end)
             & (self._downwash_flight["time"] <= lookahead),
-            copy=False,
         )
         vector = GeoVectorDataset._from_fastpath(
             {

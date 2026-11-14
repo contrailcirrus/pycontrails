@@ -374,7 +374,7 @@ def longitude_latitude_grid(
     # (1) Waypoint properties between `t_start` and `t_end`
     is_between_time = flight_waypoints.dataframe["time"].between(t_start, t_end, inclusive="right")
     ds_wypts_t = vector_to_lon_lat_grid(
-        flight_waypoints.filter(is_between_time, copy=True),
+        flight_waypoints.filter(is_between_time),
         agg={"segment_length": "sum", "persistent_contrails": "sum", "ef": "sum"},
         spatial_bbox=spatial_bbox,
         spatial_grid_res=spatial_grid_res,

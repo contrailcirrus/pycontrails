@@ -190,7 +190,7 @@ class DryAdvection(models.Model):
             filt = (source_time < t) & (source_time >= tmin)
             tmin = t
 
-            vector1 = vector2 + self.source.filter(filt, copy=False)
+            vector1 = vector2 + self.source.filter(filt)
             if vector1.size == 0:
                 vector2 = GeoVectorDataset()
                 continue

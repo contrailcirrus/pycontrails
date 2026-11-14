@@ -1372,7 +1372,7 @@ def contrail_contrail_overlap_radiative_effects(
         is_in_layer = (altitude >= alt_layer0) & (altitude < alt_layer1)
 
         # Get contrail waypoints at current altitude layer
-        contrails_level = contrails.filter(is_in_layer, copy=True)
+        contrails_level = contrails.filter(is_in_layer)
 
         # Skip altitude layer if no contrails are present
         if not contrails_level:
@@ -1380,7 +1380,7 @@ def contrail_contrail_overlap_radiative_effects(
 
         # Get contrails above altitude layer
         is_above_layer = (altitude >= alt_layer1) & (altitude <= max_altitude_m)
-        contrails_above = contrails.filter(is_above_layer, copy=True)
+        contrails_above = contrails.filter(is_above_layer)
 
         contrails_level = _contrail_optical_depth_above_contrail_layer(
             contrails_level,

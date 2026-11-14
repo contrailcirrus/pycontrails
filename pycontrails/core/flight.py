@@ -264,7 +264,7 @@ class Flight(GeoVectorDataset):
         if self and np.any(duplicated_times):
             if drop_duplicated_times:
                 mask = np.insert(duplicated_times, 0, False)
-                filtered_flight = self.filter(~mask, copy=False)
+                filtered_flight = self.filter(~mask)
                 self.data = filtered_flight.data
             else:
                 warnings.warn(
@@ -279,9 +279,9 @@ class Flight(GeoVectorDataset):
         return super().copy(**kwargs)
 
     @override
-    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
+    def filter(self, mask: npt.NDArray[np.bool_], **kwargs: Any) -> Self:
         kwargs.setdefault("fuel", self.fuel)
-        return super().filter(mask, copy=copy, **kwargs)
+        return super().filter(mask, **kwargs)
 
     @override
     def sort(self, by: str | list[str]) -> NoReturn:

@@ -1300,7 +1300,7 @@ def test_gridded_and_time_slice_outputs() -> None:
         pd.read_parquet(get_static_path("cocip-output-flts-20190101-eu.pq")),
     )
     is_time = contrails.dataframe["time"].between(t_start, t_end, inclusive="right")
-    contrails_t = contrails.filter(is_time, copy=True)
+    contrails_t = contrails.filter(is_time)
 
     # Load meteorology
     era5_met = ERA5(

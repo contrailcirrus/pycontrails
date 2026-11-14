@@ -152,8 +152,8 @@ def test_dry_advection_flight_id_in_output(
     assert "flight_id" not in source
     assert "flight_id" not in out
 
-    source1 = source.filter(source["latitude"] < 55.0, copy=True)
-    source2 = source.filter(source["latitude"] >= 55, copy=True)
+    source1 = source.filter(source["latitude"] < 55.0)
+    source2 = source.filter(source["latitude"] >= 55)
     source1["flight_id"] = np.full(len(source1), "flight1")
     source2["flight_id"] = np.full(len(source2), "flight2")
     source = source1 + source2

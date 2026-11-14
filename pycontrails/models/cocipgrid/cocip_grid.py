@@ -647,13 +647,12 @@ class CocipGrid(models.Model):
                 self.params["target_split_size_pre_SAC_boost"] * self.params["target_split_size"]
             )
             n_splits = max(filt.sum() // split_size, 1)
-            # Don't copy here ... we copy when we call `generate_splits`
-            vector = self.source.filter(filt, copy=False)
+            vector = self.source.filter(filt)
             if vector:
                 vector["index"] = np.flatnonzero(filt)
 
                 # Split into chunks
-                for subvector in vector.generate_splits(n_splits, copy=True):
+                for subvector in vector.generate_splits(n_splits):
                     subvector = self._build_subvector(subvector)
                     logger.debug("Yield new vector with size %s", subvector.size)
                     yield subvector

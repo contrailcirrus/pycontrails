@@ -848,7 +848,7 @@ class VectorDataset:  # noqa: PLW1641
         data = {key: np.array(self[key], copy=copy) for key in keys}
         return VectorDataset._from_fastpath(data, self.attrs)
 
-    def filter(self, mask: npt.NDArray[np.bool_], copy: bool = True, **kwargs: Any) -> Self:
+    def filter(self, mask: npt.NDArray[np.bool_], **kwargs: Any) -> Self:
         """Filter :attr:`data` according to a boolean array ``mask``.
 
         Entries corresponding to ``mask == True`` are kept.
@@ -857,10 +857,6 @@ class VectorDataset:  # noqa: PLW1641
         ----------
         mask : npt.NDArray[np.bool_]
             Boolean array with compatible shape.
-        copy : bool, optional
-            Copy data on filter. Defaults to True. See
-            `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_
-            for insight into whether copy is appropriate.
         **kwargs : Any
             Additional keyword arguments passed into the constructor of the returned class.
 
@@ -874,11 +870,22 @@ class VectorDataset:  # noqa: PLW1641
         TypeError
             If ``mask`` is not a boolean array.
         """
+        if "copy" in kwargs:
+            del kwargs["copy"]
+            warnings.warn(
+                "The 'copy' parameter has no effect and will be removed in a future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         self.data._validate_array(mask)
         if mask.dtype != bool:
             raise TypeError("Parameter `mask` must be a boolean array.")
 
-        data = {key: np.array(value[mask], copy=copy) for key, value in self.data.items()}
+        # Typically faster to filter by integer indices, especially when many keys present
+        idx = np.flatnonzero(mask)
+
+        data = {key: value[idx] for key, value in self.data.items()}
         return type(self)._from_fastpath(data, self.attrs, **kwargs)
 
     def sort(self, by: str | list[str]) -> Self:
@@ -1267,16 +1274,15 @@ class VectorDataset:  # noqa: PLW1641
 
         return cls(data=data, attrs=attrs, copy=copy)
 
-    def generate_splits(self, n_splits: int, copy: bool = True) -> Generator[Self, None, None]:
+    def generate_splits(self, n_splits: int, **kwargs: Any) -> Generator[Self, None, None]:
         """Split instance into ``n_split`` sub-vectors.
 
         Parameters
         ----------
         n_splits : int
             Number of splits.
-        copy : bool, optional
-            Passed into :meth:`filter`. Defaults to True. Recommend to keep as True
-            based on `numpy best practices <https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding>`_.
+        **kwargs : Any
+            Additional keyword arguments passed into :meth:`filter`.
 
         Yields
         ------
@@ -1292,7 +1298,7 @@ class VectorDataset:  # noqa: PLW1641
         for index in index_splits:
             filt = np.zeros(self.size, dtype=bool)
             filt[index] = True
-            yield self.filter(filt, copy=copy)
+            yield self.filter(filt, **kwargs)
 
 
 class GeoVectorDataset(VectorDataset):
