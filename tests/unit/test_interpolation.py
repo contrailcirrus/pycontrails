@@ -18,7 +18,7 @@ def mda(met_pcc_pl: MetDataset) -> MetDataArray:
     return met_pcc_pl["air_temperature"]
 
 
-def test_basic_interpolation(mda: MetDataArray, caplog: pytest.LogCaptureFixture) -> None:
+def test_basic_interpolation(mda: MetDataArray) -> None:
     """Test basic interpolation patterns."""
     assert mda.shape == (15, 8, 3, 2)
 
@@ -33,13 +33,9 @@ def test_basic_interpolation(mda: MetDataArray, caplog: pytest.LogCaptureFixture
     assert not mda.in_memory  # should not retain gridded data in memory
     assert out0.dtype == mda.data.dtype
 
-    with caplog.at_level("DEBUG", logger="pycontrails.core.interpolation"):
-        out1 = mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=False)
-        assert len(caplog.records) == 0
-        assert mda.in_memory  # gridded data should now be in memory
-        out2 = mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=True)
-        # Confirm that the logger in _localize emitted messages
-        assert len(caplog.records) == 4
+    out1 = mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=False)
+    assert mda.in_memory  # gridded data should now be in memory
+    out2 = mda.interpolate(longitude, latitude, level, time, bounds_error=True, localize=True)
 
     assert out1.dtype == mda.data.dtype
     assert out2.dtype == mda.data.dtype

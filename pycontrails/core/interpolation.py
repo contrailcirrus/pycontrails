@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-import logging
 from typing import Any, Literal, overload
 
 import numpy as np
@@ -16,9 +15,6 @@ from pycontrails.core import rgi_cython  # type: ignore[attr-defined]
 # ------------------------------------------------------------------------------
 # Multidimensional interpolation
 # ------------------------------------------------------------------------------
-
-
-logger = logging.getLogger(__name__)
 
 
 class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolator):
@@ -357,15 +353,6 @@ def _localize(da: xr.DataArray, coords: dict[str, np.ndarray]) -> xr.DataArray:
         imin = max(0, imin)
         imax = np.searchsorted(dim_vals, maxval, side="left") + 1
         indexes[dim] = slice(imin, imax)
-
-        # Logging
-        n_in_bounds = np.sum((arr >= minval) & (arr <= maxval))
-        logger.debug(
-            "Interpolation in bounds along dimension %s: %d/%d",
-            dim,
-            n_in_bounds,
-            arr.size,
-        )
 
     return da.isel(**indexes)
 

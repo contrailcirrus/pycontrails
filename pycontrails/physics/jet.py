@@ -135,13 +135,6 @@ def clip_mach_number(
     if not np.any(is_unrealistic):
         return true_airspeed, mach_num
 
-    msg = (
-        f"Unrealistic Mach numbers found. Discovered {np.sum(is_unrealistic)} / "
-        f"{is_unrealistic.size} values exceeding this, the largest of which "
-        f"is {np.nanmax(mach_num):.4f}. These are all clipped at {max_mach_number}."
-    )
-    logger.debug(msg)
-
     max_tas = units.mach_number_to_tas(max_mach_number, air_temperature)
     adjusted_mach_num = np.where(is_unrealistic, max_mach_number, mach_num)
     adjusted_true_airspeed = np.where(is_unrealistic, max_tas, true_airspeed)
