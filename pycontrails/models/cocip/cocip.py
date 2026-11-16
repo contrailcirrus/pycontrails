@@ -969,32 +969,40 @@ class Cocip(Model):
         )
         iwc_1 = contrail_properties.iwc_post_wake_vortex(iwc, iwc_ad)
 
+        # Check for persistent initial_contrails
+        persistent_1 = contrail_properties.initial_persistent(iwc_1, rhi_1)
+
         if self.params["vpm_activation"]:
+            # Compute the apparent emission index only at the waypoints kept in _downwash_flight,
+            # unless verbose_outputs asks for it at every SAC waypoint.
+            if self.params["filter_initially_persistent"] and not self.params["verbose_outputs"]:
+                keep = persistent_1.astype(bool)
+            else:
+                keep = np.ones(persistent_1.shape, dtype=bool)
+
             is_lean_burn = nvpm_ei_n < 1.0e11
+            is_rich = keep & ~is_lean_burn
+            is_lean = keep & is_lean_burn
 
-            aei = np.empty_like(nvpm_ei_n)
+            aei = np.full_like(nvpm_ei_n, np.nan)
 
-            # Rich-burn engines
-            aei[~is_lean_burn] = extended_k15.droplet_apparent_emission_index(
-                specific_humidity=specific_humidity[~is_lean_burn],
-                T_ambient=air_temperature[~is_lean_burn],
-                T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
-                air_pressure=air_pressure[~is_lean_burn],
-                nvpm_ei_n=nvpm_ei_n[~is_lean_burn],
-                G=self._sac_flight["G"][~is_lean_burn],
-                particles=self.params["particles_rich_burn"],
-            )
-
-            # Lean-burn engines
-            aei[is_lean_burn] = extended_k15.droplet_apparent_emission_index(
-                specific_humidity=specific_humidity[is_lean_burn],
-                T_ambient=air_temperature[is_lean_burn],
-                T_exhaust=self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T),
-                air_pressure=air_pressure[is_lean_burn],
-                nvpm_ei_n=nvpm_ei_n[is_lean_burn],
-                G=self._sac_flight["G"][is_lean_burn],
-                particles=self.params["particles_lean_burn"],
-            )
+            T_exhaust = self.source.attrs.get("T_exhaust", extended_k15.DEFAULT_EXHAUST_T)
+            G = self._sac_flight["G"]
+            for filt, particles in (
+                (is_rich, self.params["particles_rich_burn"]),
+                (is_lean, self.params["particles_lean_burn"]),
+            ):
+                if not np.any(filt):
+                    continue
+                aei[filt] = extended_k15.droplet_apparent_emission_index(
+                    specific_humidity=specific_humidity[filt],
+                    T_ambient=air_temperature[filt],
+                    T_exhaust=T_exhaust,
+                    air_pressure=air_pressure[filt],
+                    nvpm_ei_n=nvpm_ei_n[filt],
+                    G=G[filt],
+                    particles=particles,
+                )
 
             min_aei = None  # don't clip
 
@@ -1026,9 +1034,6 @@ class Cocip(Model):
             f_surv = contrail_properties.ice_particle_survival_fraction(iwc, iwc_1)
 
         n_ice_per_m_1 = n_ice_per_m_0 * f_surv
-
-        # Check for persistent initial_contrails
-        persistent_1 = contrail_properties.initial_persistent(iwc_1, rhi_1)
 
         self._sac_flight["altitude_1"] = altitude_1
         self._sac_flight["level_1"] = level_1

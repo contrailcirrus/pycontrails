@@ -1912,6 +1912,7 @@ def test_cocip_vpm_activation(
         humidity_scaling=ConstantHumidityScaling(rhi_adj=0.6),
         filter_sac=False,
         vpm_activation=vpm_activation,
+        verbose_outputs=True,
     )
     fl["nvpm_ei_n"] = np.full(fl.size, 1e10)  # lean-burn engine
     cocip.eval(fl)

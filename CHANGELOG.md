@@ -12,6 +12,7 @@
 - Deprecate the `copy` parameter on `VectorDataset.filter`. Filtering always returned a copy, regardless of this parameter.
 - Speed up `VectorDataset.filter` by converting the mask to integer indices.
 - Speed up `VectorDataset.sort` by replacing `pd.DataFrame.sort_values` with `np.lexsort`.
+- Speed up `Cocip` with `vpm_activation` by computing the apparent emission index only at initially persistent waypoints, unless `verbose_outputs` is enabled.
 
 ## 0.66.0
 
