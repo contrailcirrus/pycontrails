@@ -1435,7 +1435,8 @@ class Cocip(Model):
 
         # Fill missing values for ef and contrail_age per conventions
         # Note: radiative forcing mean, max, and min values are *not* filled with 0
-        df.fillna({"ef": 0.0, "contrail_age": np.timedelta64(0, "ns")}, inplace=True)
+        df["ef"] = df["ef"].fillna(0.0)
+        df["contrail_age"] = df["contrail_age"].fillna(np.timedelta64(0, "ns"))
 
         # Cocip flag for each waypoint:
         # -1 if negative EF, 0 if no EF, 1 if positive EF, NaN for waypoints outside met domain
