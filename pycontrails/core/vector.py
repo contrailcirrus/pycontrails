@@ -891,20 +891,26 @@ class VectorDataset:  # noqa: PLW1641
     def sort(self, by: str | list[str]) -> Self:
         """Sort data by key(s).
 
-        This method always creates a copy of the data by calling
-        :meth:`pandas.DataFrame.sort_values`.
+        This method always creates a copy of the data.
 
         Parameters
         ----------
         by : str | list[str]
-            Key or list of keys to sort by.
+            Key or list of keys to sort by, the first key being the primary sort key.
 
         Returns
         -------
         Self
             Instance with sorted data.
         """
-        return type(self)(data=self.dataframe.sort_values(by=by), attrs=self.attrs, copy=False)
+        if isinstance(by, str):
+            by = [by]
+
+        # np.lexsort uses its last key as the primary key, the reverse of pandas
+        idx = np.lexsort([self.data[key] for key in reversed(by)])
+
+        data = {key: value[idx] for key, value in self.data.items()}
+        return type(self)._from_fastpath(data, self.attrs)
 
     def ensure_vars(self, vars: str | Iterable[str], raise_error: bool = True) -> bool:
         """Ensure variables exist in column of :attr:`data` or :attr:`attrs`.
