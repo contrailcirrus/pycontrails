@@ -74,7 +74,7 @@ for ref in "$@"; do
 
     gcloud compute instances create "pycontrails-benchmark-${ref//[._\/]/-}" \
         --project contrails-301217 \
-        --zone us-east1-b \
+        --zone "${ZONE:-us-east1-b}" \
         --machine-type c3-highmem-4 \
         --image-family debian-12 \
         --image-project debian-cloud \
