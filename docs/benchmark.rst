@@ -46,8 +46,10 @@ flights, and their totals and runtime are scaled by 19,326 / 2,000. When 0.11.0 
 sample, its scaled energy forcing is 5.5% above its result on all flights, which indicates the size
 of the sampling error.
 
-Releases 0.19.1 to 0.28.2 use too much memory to run ``Fleet``-mode on all flights at once, so they
-run it on 64 batches of flights, one after another. Their runtime is the sum of the batch runtimes.
+Releases 0.19.1 to 0.28.2 use too much memory to run ``Fleet``-mode on all flights at once, and
+releases 0.28.3 to 0.39.6 come close to or exceed the 32 GB limit. These releases run
+``Fleet``-mode on batches of flights, one after another: 64 batches up to 0.28.2 and 4 batches from
+0.28.3. Their runtime is the sum of the batch runtimes.
 
 In the plots below, the numbered markers link to a row in the table of changes.
 
