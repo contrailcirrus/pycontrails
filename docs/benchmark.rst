@@ -4,6 +4,9 @@ CoCiP Benchmark
 ..
    Figures and tables come from ``python docs/benchmark/generate.py``.
    Changes are in ``docs/benchmark/changes.toml``.
+   The day selection (``select_day.py``, ``day-selection.csv``) and the scripts that stage the
+   flights and meteorology (``stage_flights.py``, ``stage_met.py``) are in
+   https://github.com/contrailcirrus/admin/tree/main/data-staging/pycontrails-benchmark.
 
 Running CoCiP periodically on a fixed scenario helps identify both intended and unintended changes.
 Early in its development, pycontrails was evaluated against existing implementations of CoCiP
@@ -15,12 +18,9 @@ to the release that made them.
 The simulation covers 19,326 flights over Europe on 30 January 2020, using the ADS-B flight
 trajectories of GAIA :cite:`teohHighresolutionGlobalAviation2024` and ERA5 model-level meteorology.
 January 2020 predates the COVID-19 decline in air traffic, and according to ERA5, the 30th had the
-largest share of persistent contrail regions over Europe of any day that month
-(`select_day.py`_). For each release, the benchmark records CoCiP's output for every flight
-alongside the totals across all flights (`run_benchmark.py`_).
-
-.. _select_day.py:
-   https://github.com/contrailcirrus/pycontrails/blob/main/tests/benchmark/select_day.py
+largest share of persistent contrail regions over Europe of any day that month. For each
+release, the benchmark records CoCiP's output for every flight alongside the totals across all
+flights (`run_benchmark.py`_).
 
 .. _run_benchmark.py:
    https://github.com/contrailcirrus/pycontrails/blob/main/tests/benchmark/run_benchmark.py

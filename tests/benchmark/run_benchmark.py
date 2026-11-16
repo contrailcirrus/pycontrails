@@ -34,6 +34,8 @@ import xarray as xr
 
 import pycontrails
 
+# Flights and meteorology staged by the scripts in
+# https://github.com/contrailcirrus/admin/tree/main/data-staging/pycontrails-benchmark
 INPUTS = "gs://contrails-301217-benchmark-data/inputs"
 
 # Track versions of these core dependencies
