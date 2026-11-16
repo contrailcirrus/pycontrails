@@ -45,7 +45,13 @@ PHYSICS = "pycontrails.physics" if PYCONTRAILS_VERSION >= (0, 5, 0) else "pycont
 
 # Number of batches of flights for Fleet-mode. From 0.19.1 to 0.28.2, CoCiP builds a dense
 # (flight * time step * waypoint) array of the contrail output that does not fit in memory.
-N_BATCHES = 64 if (0, 19, 1) <= PYCONTRAILS_VERSION < (0, 28, 3) else 1
+# From 0.28.3 to 0.39.6, one batch peaks close to or above the 32 GB of a c3-highmem-4.
+if (0, 19, 1) <= PYCONTRAILS_VERSION < (0, 28, 3):
+    N_BATCHES = 64
+elif (0, 28, 3) <= PYCONTRAILS_VERSION < (0, 40, 0):
+    N_BATCHES = 4
+else:
+    N_BATCHES = 1
 
 # Fixes from later releases applied to the installed pycontrails or pycontrails-bada
 PATCHES: list[str] = []
