@@ -78,7 +78,7 @@ for ref in "$@"; do
         --machine-type c3-highmem-4 \
         --image-family debian-12 \
         --image-project debian-cloud \
-        --boot-disk-size 50GB \
+        --boot-disk-size 10GB \
         --boot-disk-type pd-balanced \
         --service-account ci-service-account@contrails-301217.iam.gserviceaccount.com \
         --scopes cloud-platform \
