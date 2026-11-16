@@ -49,7 +49,7 @@ PHYSICS = "pycontrails.physics" if PYCONTRAILS_VERSION >= (0, 5, 0) else "pycont
 if (0, 19, 1) <= PYCONTRAILS_VERSION < (0, 28, 3):
     N_BATCHES = 64
 elif (0, 28, 3) <= PYCONTRAILS_VERSION < (0, 40, 0):
-    N_BATCHES = 4
+    N_BATCHES = 2
 else:
     N_BATCHES = 1
 

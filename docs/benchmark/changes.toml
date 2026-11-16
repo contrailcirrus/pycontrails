@@ -110,7 +110,7 @@ bullets = [
 [[change]]
 release = "0.28.3"
 bullets = [
-    "CoCiP no longer builds the dense array, but one batch of all flights comes close to or exceeds the 32 GB of memory, so the benchmark runs CoCiP on 4 batches of flights instead of 64.",
+    "CoCiP no longer builds the dense array, but one batch of all flights comes close to or exceeds the 32 GB of memory, so the benchmark runs CoCiP on 2 batches of flights instead of 64.",
 ]
 
 [[change]]
