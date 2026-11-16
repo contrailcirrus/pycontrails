@@ -88,14 +88,16 @@ def tau_cirrus(met: MetDataset) -> xr.DataArray:
         met.data["air_pressure"],
     )
 
-    # dask.array.gradient expects at least 2 elements in each chunk
     level_axis = geopotential_height.get_axis_num("level")
-    if geopotential_height.chunks:
-        level_chunks = geopotential_height.chunks[level_axis]
-        if any(chunk < 2 for chunk in level_chunks):
-            geopotential_height = geopotential_height.chunk(level=-1)
-
-    dz = -dask.array.gradient(geopotential_height, axis=level_axis)
+    if geopotential_height._in_memory:
+        dz = -np.gradient(geopotential_height.values, axis=level_axis)
+    else:
+        # dask.array.gradient expects at least 2 elements in each chunk
+        if geopotential_height.chunks:
+            level_chunks = geopotential_height.chunks[level_axis]
+            if any(chunk < 2 for chunk in level_chunks):
+                geopotential_height = geopotential_height.chunk(level=-1)
+        dz = -dask.array.gradient(geopotential_height, axis=level_axis)
     dz = xr.DataArray(dz, dims=geopotential_height.dims)
 
     da = beta_e * dz
