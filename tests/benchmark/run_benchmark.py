@@ -89,8 +89,9 @@ COCIP_PARAMS: dict[str, Any] = {
     "interpolation_use_indices": True,
 }
 
-# First release with each parameter of AP_PARAMS, COCIP_PARAMS and HUMIDITY_SCALING_PARAMS that
-# earlier releases do not have. Earlier releases run without the parameter.
+# First release that runs with each parameter of AP_PARAMS, COCIP_PARAMS and
+# HUMIDITY_SCALING_PARAMS. Earlier releases run without the parameter: they do not have it, or,
+# for interpolation_use_indices before 0.42.1, CoCiP fails with it.
 PARAM_SINCE: dict[str, tuple[int, int, int]] = {
     "max_mach_buffer": (0, 63, 0),
     "fill_low_altitude_with_isa_temperature": (0, 52, 2),
@@ -101,7 +102,7 @@ PARAM_SINCE: dict[str, tuple[int, int, int]] = {
     "unterstrasser_ice_survival_fraction": (0, 50, 1),
     "max_depth": (0, 46, 0),
     "radiative_heating_effects": (0, 28, 9),
-    "interpolation_use_indices": (0, 26, 0),
+    "interpolation_use_indices": (0, 42, 1),
     "level_type": (0, 51, 0),
 }
 
