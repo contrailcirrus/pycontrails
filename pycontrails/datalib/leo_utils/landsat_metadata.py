@@ -27,6 +27,7 @@ except ModuleNotFoundError as exc:
 
 try:
     import shapely
+    import shapely.ops
 except ModuleNotFoundError as exc:
     dependencies.raise_module_not_found_error(
         name="landsat_metadata module",
