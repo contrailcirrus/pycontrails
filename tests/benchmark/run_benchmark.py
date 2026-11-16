@@ -70,7 +70,6 @@ AP_PARAMS: dict[str, Any] = {
     "max_mach_buffer": -0.03,
 }
 COCIP_PARAMS: dict[str, Any] = {
-    "preprocess_lowmem": True,
     "min_altitude_m": 6500.0,
     "max_altitude_m": 15000.0,
     "vpm_activation": True,
@@ -81,6 +80,7 @@ COCIP_PARAMS: dict[str, Any] = {
     "max_depth": None,
     "max_horizontal_diffusivity": 100.0,
     "max_vertical_diffusivity": 10.0,
+    "interpolation_use_indices": True,
 }
 
 # First release with each parameter of AP_PARAMS, COCIP_PARAMS and HUMIDITY_SCALING_PARAMS that
@@ -92,10 +92,10 @@ PARAM_SINCE: dict[str, tuple[int, int, int]] = {
     "max_horizontal_diffusivity": (0, 60, 2),
     "max_vertical_diffusivity": (0, 60, 2),
     "vpm_activation": (0, 55, 0),
-    "preprocess_lowmem": (0, 52, 3),
     "unterstrasser_ice_survival_fraction": (0, 50, 1),
     "max_depth": (0, 46, 0),
     "radiative_heating_effects": (0, 28, 9),
+    "interpolation_use_indices": (0, 26, 0),
     "level_type": (0, 51, 0),
 }
 
