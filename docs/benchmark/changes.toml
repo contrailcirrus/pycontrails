@@ -161,6 +161,12 @@ bullets = [
 ]
 
 [[change]]
+release = "0.42.1"
+bullets = [
+    "The benchmark sets ``interpolation_use_indices=True``, a CoCiP parameter added in 0.26.0. From 0.40.0 to 0.42.0, CoCiP failed with this parameter, so earlier releases ran without it.",
+]
+
+[[change]]
 release = "0.43.0"
 bullets = [
     "The benchmark passes ``HistogramMatching``, new in this release, with its defaults, instead of ``ExponentialBoostLatitudeCorrectionHumidityScaling``.",
