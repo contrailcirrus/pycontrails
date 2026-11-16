@@ -89,6 +89,7 @@ COCIP_PARAMS: dict[str, Any] = {
     "max_horizontal_diffusivity": 100.0,
     "max_vertical_diffusivity": 10.0,
     "interpolation_use_indices": True,
+    "compute_tau_cirrus_in_model_init": True,
 }
 
 # First release that runs with each parameter of AP_PARAMS, COCIP_PARAMS and
@@ -102,6 +103,7 @@ PARAM_SINCE: dict[str, tuple[int, int, int]] = {
     "max_vertical_diffusivity": (0, 60, 2),
     "vpm_activation": (0, 55, 0),
     "unterstrasser_ice_survival_fraction": (0, 50, 1),
+    "compute_tau_cirrus_in_model_init": (0, 47, 1),
     "max_depth": (0, 46, 0),
     "radiative_heating_effects": (0, 28, 9),
     "interpolation_use_indices": (0, 42, 1),
