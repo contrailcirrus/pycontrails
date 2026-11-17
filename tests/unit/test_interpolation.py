@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import scipy.interpolate
+import scipy.interpolate._rgi_cython
 
 from pycontrails import GeoVectorDataset, MetDataArray, MetDataset
 from pycontrails.core import interpolation as interp_mod
@@ -299,6 +300,41 @@ def test_regular_3d_grid_interpolator(mda: MetDataArray, dim: str, localize: boo
     assert np.all(np.isfinite(out2))
 
     np.testing.assert_allclose(out1, out2, rtol=1e-7)
+
+
+@pytest.mark.parametrize(
+    "grid",
+    [
+        np.arange(-180.0, 180.25, 0.25),
+        np.array([150.0, 200.0, 300.0, 500.0]),
+        np.arange(20.0, 70.0, 0.1),
+    ],
+)
+def test_find_indices_agrees_with_scipy(grid: np.ndarray) -> None:
+    """Confirm ``_find_indices`` agrees with scipy on uniform and non-uniform grids."""
+    # Include some random xi
+    rng = np.random.default_rng(555)
+    random = rng.uniform(grid[0] - 100.0, grid[-1] + 100.0, 1000)
+
+    # And some xi just below the grid values (these may get corrected in prgi._find_indices)
+    below_grid = np.nextafter(grid, -np.inf)
+
+    # Also include the grid itself, nan, and inf, then concatenate all together
+    xi = np.r_[random, grid, below_grid, np.nan, np.inf, -np.inf][np.newaxis]
+
+    prgi = interp_mod.PycontrailsRegularGridInterpolator(
+        (grid,),
+        np.zeros_like(grid),
+        method="linear",
+        bounds_error=False,
+        fill_value=np.nan,
+    )
+    indices, norm_distances = prgi._find_indices(xi)
+    expected = scipy.interpolate._rgi_cython.find_indices((grid,), xi)
+
+    # Agreement with scipy
+    np.testing.assert_array_equal(indices, expected[0])
+    np.testing.assert_array_equal(norm_distances, expected[1])
 
 
 @pytest.mark.parametrize("method", ["nearest", "slinear", "cubic", "quintic"])
