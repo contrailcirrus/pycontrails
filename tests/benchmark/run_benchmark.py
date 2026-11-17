@@ -2,7 +2,8 @@
 
     python tests/benchmark/run_benchmark.py
 
-Write ``summary.json`` and ``flight_summary.csv`` to ``OUTPUT``.
+Write ``summary.json`` and ``flight_summary.csv`` to
+``gs://contrails-301217-benchmark-data/results/<version>``, or to ``BENCHMARK_OUTPUT`` if set.
 """
 
 from __future__ import annotations
@@ -65,7 +66,10 @@ BROKEN_RELEASES = {(0, 9, 0), (0, 15, 1)}
 SAMPLE_SIZE = 2000
 SAMPLE_SEED = 0
 
-OUTPUT = f"gs://contrails-301217-benchmark-data/results/{pycontrails.__version__}"
+# Destination of the summaries: a gs:// URL or a local directory
+OUTPUT = os.environ.get(
+    "BENCHMARK_OUTPUT", f"gs://contrails-301217-benchmark-data/results/{pycontrails.__version__}"
+)
 
 # For a run on a sample: the sample size, the number of staged flights and the met processing
 # time in seconds, which summarize uses to extrapolate the totals to all staged flights
@@ -1101,6 +1105,16 @@ def summarize(flights: pd.DataFrame, runtime: float, n_dropped: int) -> dict[str
     }
 
 
+def open_output(fs: gcsfs.GCSFileSystem, name: str) -> Any:
+    """Open ``name`` under ``OUTPUT`` for writing, with ``fs`` if it is in GCS, else locally."""
+    if OUTPUT.startswith("gs://"):
+        return fs.open(f"{OUTPUT}/{name}", "w")
+
+    path = pathlib.Path(OUTPUT) / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path.open("w")
+
+
 def main() -> None:
     """Run CoCiP on the staged flights and write the summaries."""
     add_empty_plotting_modules()
@@ -1113,9 +1127,9 @@ def main() -> None:
 
     flights = summarize_flights(df, contrail)
     summary = summarize(flights, runtime, n_dropped)
-    with fs.open(f"{OUTPUT}/flight_summary.csv", "w") as f:
+    with open_output(fs, "flight_summary.csv") as f:
         flights.to_csv(f)
-    with fs.open(f"{OUTPUT}/summary.json", "w") as f:
+    with open_output(fs, "summary.json") as f:
         json.dump(summary, f, indent=2)
     print(json.dumps(summary, indent=2))
 
