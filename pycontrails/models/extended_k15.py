@@ -16,8 +16,8 @@ import numpy as np
 import numpy.typing as npt
 import scipy.optimize
 import scipy.special
-from scipy.interpolate import RegularGridInterpolator
 
+from pycontrails.core.interpolation import PycontrailsRegularGridInterpolator
 from pycontrails.physics import constants, thermo
 
 # See upcoming Teoh et. al paper "Impact of Volatile Particulate Matter on Global Contrail
@@ -373,8 +373,8 @@ def activation_radius(
 
 
 @functools.lru_cache(maxsize=8)
-def _activation_radius_rgi(kappa: float) -> RegularGridInterpolator:
-    """Construct ``RegularGridInterpolator`` to estimate :func:`activation_radius` for fixed kappa.
+def _activation_radius_rgi(kappa: float) -> PycontrailsRegularGridInterpolator:
+    """Construct an interpolator to estimate :func:`activation_radius` for fixed kappa.
 
     Here the grid is defined over ``log(log(S_w))`` and ``T``, and the interpolated
     values are ``log(r_act)``. The coordinates are chosen to provide an approximation with
@@ -390,7 +390,7 @@ def _activation_radius_rgi(kappa: float) -> RegularGridInterpolator:
     r_grid = activation_radius(S_w_coord[:, np.newaxis], kappa, T_coord[np.newaxis, :])
 
     log_r_grid = np.log(r_grid)
-    return RegularGridInterpolator(
+    return PycontrailsRegularGridInterpolator(
         (log_log_S_w_coord, T_coord),
         log_r_grid,
         method="linear",
@@ -417,7 +417,10 @@ def _activation_radius_lookup(
     rgi = _activation_radius_rgi(kappa)
 
     # rgi uses log(log(S_w)) and T as coordinates, and returns log(r_act)
-    r_act_cond = np.exp(rgi((np.log(np.log(S_w_cond)), temperature_cond)))
+    # PycontrailsRegularGridInterpolator requires float64 xi. In droplet_activation, temperature
+    # is T_plume, which _t_plume_test_points builds from float64 arrays, so we're okay.
+    xi = np.column_stack((np.log(np.log(S_w_cond)), temperature_cond))
+    r_act_cond = np.exp(rgi(xi))
 
     out = np.full_like(S_w, np.nan)
     out[cond] = r_act_cond
