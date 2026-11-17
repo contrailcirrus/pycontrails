@@ -18,16 +18,10 @@ limitations under the License.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 from importlib import metadata
 
 import dask.config
-
-# Work around for https://github.com/pydata/xarray/issues/7259
-# Only occurs for xarray 2022.11 and above
-with contextlib.suppress(ImportError):
-    import netCDF4  # noqa: F401
 
 from pycontrails.core.cache import DiskCacheStore, GCPCacheStore
 from pycontrails.core.fleet import Fleet
