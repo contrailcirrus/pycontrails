@@ -1,4 +1,4 @@
-# cython: language_level=3, boundscheck=False, wraparound=False, initializedcheck=False, nonecheck=False
+# cython: language_level=3, boundscheck=False, wraparound=False, initializedcheck=False, nonecheck=False, freethreading_compatible=True
 """Cythonized routines for the PycontrailsRegularGridInterpolator.
 
 This module expands upon the cython interpolation routines introduced in
