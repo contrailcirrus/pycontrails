@@ -8,6 +8,7 @@ from typing import Any, Literal, overload
 import numpy as np
 import numpy.typing as npt
 import scipy.interpolate
+import scipy.interpolate._rgi_cython
 import xarray as xr
 
 from pycontrails.core import rgi_cython  # type: ignore[attr-defined]
@@ -155,6 +156,28 @@ class PycontrailsRegularGridInterpolator(scipy.interpolate.RegularGridInterpolat
             return np.zeros(xi.shape[0], dtype=bool)
 
         return self._find_out_of_bounds(xi.T)
+
+    def _find_indices(
+        self, xi: npt.NDArray[np.floating]
+    ) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.float64]]:
+        """Return the grid indices and normalized distances of ``xi``.
+
+        Use a faster path for uniformly spaced dimensions.
+
+        The ``xi`` param must have ``float64`` dtype.
+        """
+        indices = np.empty(xi.shape, dtype=np.intp)
+        norm_distances = np.empty(xi.shape, dtype=np.float64)
+        for d, g in enumerate(self._grid):
+            if g.size > 1 and rgi_cython.is_uniform(g):
+                rgi_cython.find_indices_uniform(g, xi[d], indices[d], norm_distances[d])
+            else:
+                dim_indices, dim_norm_distances = scipy.interpolate._rgi_cython.find_indices(
+                    (g,), xi[d : d + 1]
+                )
+                indices[d] = dim_indices[0]
+                norm_distances[d] = dim_norm_distances[0]
+        return indices, norm_distances
 
     def __call__(
         self, xi: npt.NDArray[np.floating], method: str | None = None

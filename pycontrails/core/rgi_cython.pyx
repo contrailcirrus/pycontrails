@@ -8,9 +8,12 @@ scipy 1.10 in several ways:
   scipy implementation is only for 2D arrays.
 - The fast path routines are specialized for float and double arrays. The scipy
   implementation is only for double arrays.
+- Includes a ``find_indices_uniform`` routine that computes interpolation indices from
+  the grid spacing on equally spaced grids. The scipy implementation runs a binary search
+  (O(log n)) on every grid, starting from the interval of the previous point.
 """
 
-from libc.math cimport NAN
+from libc.math cimport NAN, fabs
 
 
 # See https://cython.readthedocs.io/en/latest/src/userguide/fusedtypes.html
@@ -150,3 +153,56 @@ def evaluate_linear_1d(
 
         y0 = norm_distances[p]
         out[p] = values[i0] * (1 - y0) + values[i0+1] * y0
+
+
+def is_uniform(const double[:] g) -> bool:
+    """Return True if ``g`` is equally spaced to within a relative tolerance of 1e-9."""
+    cdef:
+        Py_ssize_t n = g.shape[0]
+        Py_ssize_t k
+        double dx = (g[n - 1] - g[0]) / (n - 1)
+
+    if not dx > 0.0:
+        return False
+    for k in range(n):
+        if fabs(g[k] - (g[0] + k * dx)) > 1e-9 * dx:
+            return False
+    return True
+
+
+def find_indices_uniform(
+    const double[:] g,
+    const double[:] x,
+    Py_ssize_t[:] indices,
+    double[:] norm_distances,
+) -> None:
+    """Fill ``indices`` and ``norm_distances`` for the points ``x`` on the equally spaced ``g``."""
+    cdef:
+        Py_ssize_t n = g.shape[0]
+        Py_ssize_t i, p
+        double guess
+        double inv_dx = (n - 1) / (g[n - 1] - g[0])
+
+    for p in range(x.shape[0]):
+        if x[p] != x[p]:
+            indices[p] = -1
+            norm_distances[p] = NAN
+            continue
+
+        guess = (x[p] - g[0]) * inv_dx
+        if guess < 0.0:
+            i = 0
+        elif guess > n - 2:
+            i = n - 2
+        else:
+            i = <Py_ssize_t>guess
+
+        # Near a boundary, rounding can put the guess one cell off; step left or right to correct
+        # In practice, this is very rare
+        while i > 0 and x[p] < g[i]:
+            i -= 1
+        while i < n - 2 and x[p] >= g[i + 1]:
+            i += 1
+
+        indices[p] = i
+        norm_distances[p] = (x[p] - g[i]) / (g[i + 1] - g[i])
