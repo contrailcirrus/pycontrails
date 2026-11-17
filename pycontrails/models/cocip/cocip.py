@@ -2655,7 +2655,9 @@ def calc_timestep_contrail_evolution(
     air_temperature_2 = interpolate_met(met, contrail_2, "air_temperature", **interp_kwargs)
 
     if params["radiative_heating_effects"]:
-        air_temperature_2 = air_temperature_2 + contrail_2["cumul_heat"]
+        # Keep the dtype of the met data, which cumul_heat may not share
+        cumul_heat = contrail_2["cumul_heat"].astype(air_temperature_2.dtype, copy=False)
+        air_temperature_2 = air_temperature_2 + cumul_heat
         contrail_2.update(air_temperature=air_temperature_2)
 
     interpolate_met(met, contrail_2, "specific_humidity", **interp_kwargs)
