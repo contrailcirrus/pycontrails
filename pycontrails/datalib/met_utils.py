@@ -27,7 +27,8 @@ def _interp_artifacts(
     -------
     idx : npt.NDArray[np.intp]
         Index of the first model level whose pressure is at least ``x``, clipped to
-        ``[1, n_ml - 1]``. ``x`` lies between model levels ``idx - 1`` and ``idx``.
+        ``[1, n_ml - 1]``. ``x`` lies between model levels ``idx - 1`` and ``idx``
+        except where ``x`` is out of bounds.
     dist : npt.NDArray[np.floating]
         Fractional distance of ``x`` from model level ``idx - 1`` to model level ``idx``.
         Outside ``[0, 1]`` where ``x`` is out of bounds.
