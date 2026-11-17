@@ -110,6 +110,16 @@ profile:
 	python -m cProfile -o $(script).prof $(script)
 
 # -----------
+# Benchmark
+# -----------
+
+BENCHMARK_OUTPUT ?= benchmark-results
+
+# Run the CoCiP benchmark with the installed pycontrails and write the summaries to BENCHMARK_OUTPUT
+benchmark:
+	BENCHMARK_OUTPUT=$(BENCHMARK_OUTPUT) python tests/benchmark/run_benchmark.py
+
+# -----------
 # Release
 # -----------
 
