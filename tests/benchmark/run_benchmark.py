@@ -510,7 +510,7 @@ def run_cocip_fleet(
         bada3_module = importlib.import_module("pycontrails.models.bada.bada3")
         covers = functools.partial(bada3_covers, bada3_module.BADA3(cocip_params.get("bada3_path")))
     elif bada_only:
-        ap = bada.BADAFlight(**ap_params)
+        ap = bada.BADAFlight(**ap_params, bada_priority=3)
         covers = functools.partial(bada3_covers, bada.BADA3(ap.params["bada3_path"]))
     else:
         from pycontrails.models import ps_model
@@ -520,7 +520,7 @@ def run_cocip_fleet(
 
             def __init__(self, **params: Any) -> None:
                 super().__init__(**params)
-                self.bada_flight = bada.BADAFlight(**params)
+                self.bada_flight = bada.BADAFlight(**params, bada_priority=3)
                 self.bada3 = bada.BADA3(self.bada_flight.params["bada3_path"])
 
             def eval_flight(self, fl: pycontrails.Flight) -> pycontrails.Flight:
