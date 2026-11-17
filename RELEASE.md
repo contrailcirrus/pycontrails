@@ -16,3 +16,4 @@
    This will create a tag on `main` and trigger the [Release Action](https://github.com/contrailcirrus/pycontrails/actions/workflows/release.yaml).
 1. Confirm that the release is successfully deployed to [PyPI](https://pypi.org/project/pycontrails/).
 1. Confirm that the documentation is successfully deployed to [py.contrails.org](https://py.contrails.org).
+1. Once the [CoCiP benchmark](https://github.com/contrailcirrus/pycontrails/actions/workflows/benchmark.yaml) for the release finishes, update [changes.toml](docs/benchmark/changes.toml) with an entry for the release if its results change.
