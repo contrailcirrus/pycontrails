@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Speed up `PycontrailsRegularGridInterpolator` on uniformly spaced dimensions by computing grid indices from the grid spacing instead of running scipy's binary search. On typical weather data (uniform longitude, latitude and time; non-uniform level), `MetDataArray.interpolate` takes about half the time for 1,000 to 1,000,000 points. The output is unchanged.
+
 ### Fixes
 
 - Fix the radiative forcing in `longitude_latitude_grid`. The `rf_sw`, `rf_lw` and `rf_net` outputs divided the energy forcing accumulated over every CoCiP time step in `(t_start, t_end]` by a single CoCiP time step, so they were too large by the ratio of the window length to the time step (12 for a 1 hour window with 5 minute steps). They are now divided by the window length, `t_end - t_start`, and are the mean radiative forcing over the window ([#325](https://github.com/contrailcirrus/pycontrails/issues/325)).
@@ -24,6 +28,7 @@
 - Speed up `Cocip` with `vpm_activation` by computing the apparent emission index only at initially persistent waypoints, unless `verbose_outputs` is enabled.
 - Compute tau_cirrus with `np.gradient` instead of `dask.array.gradient` when geopotential height is in memory, so `tau_cirrus` on numpy-backed met is returned as a numpy array.
 - Remove the `tests/benchmark` CoCiP benchmarks (`cocip`, `north-atlantic-study`, `cocip-fortran`) and `tests/_deprecated`.
+- Use `PycontrailsRegularGridInterpolator` for the activation radius lookup table in `extended_k15`.
 
 ## 0.66.0
 
