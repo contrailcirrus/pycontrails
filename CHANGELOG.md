@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.66.1
 
 ### Features
 
+- Overhaul benchmark tests to run a fixed CoCiP simulation on every pycontrails release. Include new [page](https://py.contrails.org/benchmark.html) discussing results.
 - Speed up `PycontrailsRegularGridInterpolator` on uniformly spaced dimensions by computing grid indices from the grid spacing instead of running scipy's binary search. On typical weather data (uniform longitude, latitude and time; non-uniform level), `MetDataArray.interpolate` takes about half the time for 1,000 to 1,000,000 points. The output is unchanged.
 
 ### Fixes
@@ -14,14 +15,6 @@
 
 ### Internals
 
-- Reduce the memory used by `met_utils.ml_to_pl` and `ecmwf.ml_to_pl` by interpolating one target pressure level at a time instead of building arrays over all target levels at once.
-
-### Features
-
-- Overhaul benchmark tests to run a fixed CoCiP simulation on every pycontrails release. Include new [page](https://py.contrails.org/benchmark.html) discussing results.
-
-### Internals
-
 - Deprecate the `copy` parameter on `VectorDataset.filter`. Filtering always returned a copy, regardless of this parameter.
 - Speed up `VectorDataset.filter` by converting the mask to integer indices.
 - Speed up `VectorDataset.sort` by replacing `pd.DataFrame.sort_values` with `np.lexsort`.
@@ -29,6 +22,7 @@
 - Compute tau_cirrus with `np.gradient` instead of `dask.array.gradient` when geopotential height is in memory, so `tau_cirrus` on numpy-backed met is returned as a numpy array.
 - Remove the `tests/benchmark` CoCiP benchmarks (`cocip`, `north-atlantic-study`, `cocip-fortran`) and `tests/_deprecated`.
 - Use `PycontrailsRegularGridInterpolator` for the activation radius lookup table in `extended_k15`.
+- Reduce the memory used by `met_utils.ml_to_pl` and `ecmwf.ml_to_pl` by interpolating one target pressure level at a time instead of building arrays over all target levels at once.
 
 ## 0.66.0
 
