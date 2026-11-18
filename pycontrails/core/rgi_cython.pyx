@@ -9,8 +9,8 @@ scipy 1.10 in several ways:
 - The fast path routines are specialized for float and double arrays. The scipy
   implementation is only for double arrays.
 - Includes a ``find_indices_uniform`` routine that computes interpolation indices from
-  the grid spacing on equally spaced grids. The scipy implementation runs a binary search
-  (O(log n)) on every grid, starting from the interval of the previous point.
+  the grid spacing on equally spaced, ascending grids. The scipy implementation runs a
+  binary search (O(log n)) on every grid, starting from the interval of the previous point.
 """
 
 from libc.math cimport NAN, fabs
@@ -156,7 +156,7 @@ def evaluate_linear_1d(
 
 
 def is_uniform(const double[:] g) -> bool:
-    """Return True if ``g`` is equally spaced to within a relative tolerance of 1e-9."""
+    """Return True if ``g`` is ascending and equally spaced within a relative tolerance of 1e-9."""
     cdef:
         Py_ssize_t n = g.shape[0]
         Py_ssize_t k
