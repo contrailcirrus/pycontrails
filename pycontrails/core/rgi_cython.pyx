@@ -184,6 +184,7 @@ def find_indices_uniform(
         double inv_dx = (n - 1) / (g[n - 1] - g[0])
 
     for p in range(x.shape[0]):
+        # check if x[p] is nan
         if x[p] != x[p]:
             indices[p] = -1
             norm_distances[p] = NAN
