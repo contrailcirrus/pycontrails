@@ -23,6 +23,7 @@
 - Remove the `tests/benchmark` CoCiP benchmarks (`cocip`, `north-atlantic-study`, `cocip-fortran`) and `tests/_deprecated`.
 - Use `PycontrailsRegularGridInterpolator` for the activation radius lookup table in `extended_k15`.
 - Reduce the memory used by `met_utils.ml_to_pl` and `ecmwf.ml_to_pl` by interpolating one target pressure level at a time instead of building arrays over all target levels at once.
+- Reduce the memory used by `ecmwf.model_level_pressure`.
 
 ## 0.66.0
 

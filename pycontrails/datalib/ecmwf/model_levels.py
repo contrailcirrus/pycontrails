@@ -85,6 +85,21 @@ def _cache_model_level_dataframe() -> None:
     df.to_csv(new_file_path)
 
 
+def _model_level_pressure_eager(
+    a: xr.DataArray,
+    b: xr.DataArray,
+    sp: npt.NDArray[np.floating],
+    model_levels: npt.NDArray[np.integer],
+) -> npt.NDArray[np.floating]:
+    """Compute the pressure at each model level, one level at a time to limit memory use."""
+    out = np.empty((model_levels.size, *sp.shape), dtype=sp.dtype)
+    for i, ml in enumerate(model_levels):
+        p_half_below = a.sel(model_level=ml).values + b.sel(model_level=ml).values * sp
+        p_half_above = a.sel(model_level=ml - 1).values + b.sel(model_level=ml - 1).values * sp
+        out[i] = (p_half_above + p_half_below) / 2.0 / 100.0  # Pa -> hPa
+    return out
+
+
 def model_level_pressure(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.DataArray:
     r"""Return the pressure levels at each model level given the surface pressure.
 
@@ -183,11 +198,16 @@ def model_level_pressure(sp: xr.DataArray, model_levels: npt.ArrayLike) -> xr.Da
             msg = f"sp must be at model level 1, found model level {sp_model_levels.item()}"
             raise ValueError(msg)
         # Remove the model level dimension to allow automatic broadcasting below
-        sp = sp.squeeze("model_level")
+        sp = sp.squeeze("model_level", drop=True)
 
     dtype = sp.dtype
     a = a.astype(dtype, copy=False)
     b = b.astype(dtype, copy=False)
+
+    if sp.chunks is None and model_levels.ndim == 1:
+        out = _model_level_pressure_eager(a, b, sp.values, model_levels)
+        coords = {"model_level": model_levels, **sp.coords}
+        return xr.DataArray(out, dims=("model_level", *sp.dims), coords=coords, attrs=sp.attrs)
 
     indexer = {"model_level": model_levels}
     p_half_below = a.sel(indexer) + b.sel(indexer) * sp
