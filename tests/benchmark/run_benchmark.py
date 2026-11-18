@@ -149,7 +149,7 @@ def open_met(fs: gcsfs.GCSFileSystem, name: str) -> pycontrails.MetDataset:
     """Download ``name`` from ``INPUTS`` and load it as a MetDataset."""
     with tempfile.NamedTemporaryFile(suffix=".nc") as tmp:
         fs.download(f"{INPUTS}/{name}", tmp.name)
-        ds = xr.open_dataset(tmp.name).load()
+        ds = xr.load_dataset(tmp.name)
     return pycontrails.MetDataset(ds)
 
 
