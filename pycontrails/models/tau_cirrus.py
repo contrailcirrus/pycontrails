@@ -153,17 +153,25 @@ def cirrus_effective_extinction_coef[A: (np.ndarray, xr.DataArray)](
 
     rho_air = thermo.rho_d(T, p)
     riwc = ciwc * rho_air * 1000.0
-
-    # calculates the ice particle effective diameter in the NWP cirrus (in um)
-    # Computing these exponentials is expensive. If this is a bottleneck, numexpr
-    # should be used.
     tiwc = T + constants.absolute_zero + 190.0
-    d_eff = 45.8966 * riwc**0.2214 + 0.7957 * tiwc * riwc**0.2535
 
-    # explicitly clipping at 10
-    d_eff = d_eff.clip(min=10.0)
+    def beta_e(riwc: np.ndarray, tiwc: np.ndarray) -> np.ndarray:
+        # beta_e is 0 where riwc is 0, so only compute it where riwc is nonzero
+        nonzero = riwc != 0.0
+        r = riwc[nonzero]
+        t = np.broadcast_to(tiwc, riwc.shape)[nonzero]
 
-    return riwc * (a_0_beta + a_1_beta / d_eff)
+        # calculates the ice particle effective diameter in the NWP cirrus (in um)
+        d_eff = 45.8966 * r**0.2214 + 0.7957 * t * r**0.2535
+
+        # explicitly clipping at 10
+        d_eff = d_eff.clip(min=10.0)
+
+        out = np.zeros_like(riwc)
+        out[nonzero] = r * (a_0_beta + a_1_beta / d_eff)
+        return out
+
+    return xr.apply_ufunc(beta_e, riwc, tiwc, dask="parallelized", output_dtypes=[riwc.dtype])
 
 
 def _assign_attrs(da: xr.DataArray) -> xr.DataArray:
