@@ -1125,7 +1125,7 @@ def _prepare_q_log_q_log_p(
             warnings.filterwarnings("ignore", message="invalid value encountered in log")
             da = np.log(da)  # type: ignore[assignment]
 
-    mda = MetDataArray(da, copy=False)
+    mda = MetDataArray._from_fastpath(da)
 
     level = np.log(level)
     return mda, level
@@ -1140,7 +1140,7 @@ def _prepare_q_cubic_spline(
     ppoly = _load_spline()
 
     da = da.assign_coords(level=ppoly(da["level"]))
-    mda = MetDataArray(da, copy=False)
+    mda = MetDataArray._from_fastpath(da)
 
     level = ppoly(level)
 
