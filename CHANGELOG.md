@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Speed up `MetDataset` and `MetDataArray` construction. The constructors sort only the coordinates that are not already ascending, and `MetDataArray` no longer deep-copies its input. The data now shares memory with the input unless it needs to be sorted, deduplicated, shifted or wrapped.
+
+### Internals
+
+- Deprecate the `copy` parameter on `MetDataset` and `MetDataArray`. The constructors now always format the data as with `copy=True`, without copying arrays that are already in the right format.
+
 ## 0.66.1
 
 ### Features
