@@ -112,7 +112,6 @@ vis = [
     "matplotlib>=3.3",
     "opencv-python-headless>=4.5",
     "scikit-image>=0.18",
-    "seaborn>=0.11",
     "shapely>=2.0",
 ]
 
