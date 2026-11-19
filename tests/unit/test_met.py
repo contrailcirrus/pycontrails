@@ -85,12 +85,6 @@ def test_pl_path_to_met(met_ecmwf_pl_path: str) -> None:
         shapes = shapes + mds.data[coord].shape
     assert shapes == mds.data["t"].values.shape
 
-    with pytest.raises(ValueError, match=r"Set 'copy=True' when using 'wrap_longitude=True'."):
-        MetDataset(ds, wrap_longitude=True, copy=False)
-
-    with pytest.raises(ValueError, match=r"Coordinate 'latitude' not sorted."):
-        MetDataset(ds, copy=False)
-
 
 @pytest.mark.parametrize("variable", ["t", "q", "r", "sp"])
 def test_metdataarray_constructor(
@@ -115,9 +109,6 @@ def test_metdataarray_constructor(
     mda2 = MetDataArray(da, wrap_longitude=True)
     assert mda2.is_wrapped
     assert mda2.shape[0] == 17
-
-    with pytest.raises(ValueError, match=r"Set 'copy=True' when using 'wrap_longitude=True'."):
-        MetDataArray(mda.data, wrap_longitude=True, copy=False)
 
     # Cannot instantiate MetDataArray without time or level coord
     # This hacked DataArray only contains latitude and longitude
@@ -1290,25 +1281,18 @@ def test_vertical_coord(met_ecmwf_pl_path: str, coord: str) -> None:
     assert mds.data.coords[coord].values.dtype == np.float64
 
 
-@pytest.mark.parametrize("copy", [True, False])
-def test_float32_level(met_ecmwf_pl_path: str, copy: bool) -> None:
-    """Confirm that the level coordinate is cast to float64 or an error is raised."""
+def test_float32_level(met_ecmwf_pl_path: str) -> None:
+    """Confirm that the level coordinate is cast to float64."""
     ds = MetDataset(xr.open_dataset(met_ecmwf_pl_path)).data
 
     ds["level"] = ds["level"].astype(np.float32)
 
-    if copy:
-        mds = MetDataset(ds, copy=copy)
-        assert mds.data["level"].dtype == np.float64
-        return
-
-    with pytest.raises(ValueError, match=r"Level values must have dtype <class 'numpy.float64'>"):
-        MetDataset(ds, copy=copy)
+    mds = MetDataset(ds)
+    assert mds.data["level"].dtype == np.float64
 
 
 @pytest.mark.parametrize("coord", ["longitude", "latitude", "level", "time"])
-@pytest.mark.parametrize("copy", [True, False])
-def test_met_with_duplicated(met_ecmwf_pl_path: str, coord: str, copy: bool) -> None:
+def test_met_with_duplicated(met_ecmwf_pl_path: str, coord: str) -> None:
     """Test MetDataset with duplicated coordinates."""
     ds = MetDataset(xr.open_dataset(met_ecmwf_pl_path)).data
 
@@ -1316,11 +1300,6 @@ def test_met_with_duplicated(met_ecmwf_pl_path: str, coord: str, copy: bool) -> 
     ds[coord] = np.r_[ds[coord].values[0], ds[coord].values[0], ds[coord].values[2:]]
     assert not ds[coord].to_index().is_unique
 
-    if not copy:
-        with pytest.raises(ValueError, match=f"Coordinate '{coord}' contains duplicate values"):
-            MetDataset(ds, copy=False)
-        return
-
-    mds = MetDataset(ds, copy=True)
+    mds = MetDataset(ds)
     assert mds.data[coord].to_index().is_unique
     assert mds.data[coord].size == ds[coord].size - 1

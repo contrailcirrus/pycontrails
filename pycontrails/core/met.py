@@ -128,36 +128,17 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
         Raises
         ------
         ValueError
-            If longitude values are not contained in the interval [-180, 180].
+            If longitude values are not contained in the interval [-360, 360].
         """
         longitude = self.indexes["longitude"].to_numpy()
-        if longitude.dtype != COORD_DTYPE:
-            msg = f"Longitude values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
-            raise ValueError(msg)
-
-        if self.is_wrapped:
-            # Relax verification if the longitude has already been processed and wrapped
-            if longitude[-1] > 360.0:
-                raise ValueError(
-                    "Longitude contains values > 360. Shift to WGS84 with "
-                    "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
-                )
-            if longitude[0] < -360.0:
-                raise ValueError(
-                    "Longitude contains values < -360. Shift to WGS84 with "
-                    "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
-                )
-            return
-
-        # Strict!
-        if longitude[-1] > 180.0:
+        if longitude[-1] > 360.0:
             raise ValueError(
-                "Longitude contains values > 180. Shift to WGS84 with "
+                "Longitude contains values > 360. Shift to WGS84 with "
                 "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
             )
-        if longitude[0] < -180.0:
+        if longitude[0] < -360.0:
             raise ValueError(
-                "Longitude contains values < -180. Shift to WGS84 with "
+                "Longitude contains values < -360. Shift to WGS84 with "
                 "'data.assign_coords(longitude=(((data.longitude + 180) % 360) - 180))'"
             )
 
@@ -172,10 +153,6 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
             If latitude values are not contained in the interval [-90, 90].
         """
         latitude = self.indexes["latitude"].to_numpy()
-        if latitude.dtype != COORD_DTYPE:
-            msg = f"Latitude values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
-            raise ValueError(msg)
-
         if latitude[0] < -90.0:
             raise ValueError(
                 "Latitude contains values < -90 . "
@@ -186,64 +163,6 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
                 "Latitude contains values > 90 . "
                 "Latitude values must be contained in the interval [-90, 90]."
             )
-
-    def _validate_sorting(self) -> None:
-        """Check that all coordinates are sorted.
-
-        Raises
-        ------
-        ValueError
-            If one of the coordinates is not sorted or contains duplicate values.
-        """
-        indexes = self.indexes
-        for coord in self.dim_order:
-            arr = indexes[coord]
-            d = np.diff(arr)
-            zero = np.zeros((), dtype=d.dtype)  # ensure same dtype
-
-            if np.any(d <= zero):
-                if np.any(d == zero):
-                    msg = f"Coordinate '{coord}' contains duplicate values."
-                else:
-                    msg = f"Coordinate '{coord}' not sorted."
-
-                msg += " Instantiate with 'copy=True'."
-                raise ValueError(msg)
-
-    def _validate_transpose(self) -> None:
-        """Check that data is transposed according to :attr:`dim_order`."""
-
-        def _check_da(da: xr.DataArray, key: Hashable | None = None) -> None:
-            if da.dims != self.dim_order:
-                if key is not None:
-                    msg = (
-                        f"Data dimension not transposed on variable '{key}'. "
-                        "Instantiate with 'copy=True'."
-                    )
-                else:
-                    msg = "Data dimension not transposed. Instantiate with 'copy=True'."
-                raise ValueError(msg)
-
-        data = self.data
-        if isinstance(data, xr.DataArray):
-            _check_da(data)
-            return
-
-        for key, da in self.data.items():
-            _check_da(da, key)
-
-    def _validate_dims(self) -> None:
-        """Apply all validators."""
-        self._validate_dim_contains_coords()
-
-        # Apply this one first: validate_longitude and validate_latitude assume sorted
-        self._validate_sorting()
-        self._validate_longitude()
-        self._validate_latitude()
-        self._validate_transpose()
-        if self.data["level"].dtype != COORD_DTYPE:
-            msg = f"Level values must have dtype {COORD_DTYPE}. Instantiate with 'copy=True'."
-            raise ValueError(msg)
 
     def _preprocess_dims(self, wrap_longitude: bool) -> None:
         """Confirm DataArray or Dataset include required dimension in a consistent format.
@@ -289,7 +208,11 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
         self.data["time"] = self.data["time"].astype("datetime64[ns]", copy=False)
 
         # sortby to ensure each coordinate has ascending order
-        self.data = self.data.sortby(list(self.dim_order), ascending=True)
+        # sortby copies the data, so only sort the coordinates that are not already ascending
+        indexes = self.indexes
+        unsorted = [c for c in self.dim_order if not indexes[c].is_monotonic_increasing]
+        if unsorted:
+            self.data = self.data.sortby(unsorted, ascending=True)
 
         # Drop any duplicated dimension values
         indexes = self.indexes
@@ -312,8 +235,6 @@ class MetBase[X: (xr.Dataset, xr.DataArray)](ABC):
             # Only shift if necessary
             if np.any(lon >= 180.0) or np.any(lon < -180.0):
                 self.data = shift_longitude(self.data)
-            else:
-                self.data = self.data.sortby("longitude", ascending=True)
 
             # wrap longitude, if requested
             if wrap_longitude:
@@ -668,7 +589,7 @@ class MetDataset(MetBase[xr.Dataset]):
         values (ie, ``-180 -> 180``) to ensure that the longitude dimension covers the entire
         interval ``[-180, 180]``. Defaults to False.
     copy : bool, optional
-        Copy data on construction. Defaults to True.
+        Deprecated. This parameter has no effect and will be removed in a future release.
     attrs : dict[str, Any], optional
         Attributes to add to ``data.attrs``. Defaults to None. Generally, pycontrails
         :class:`~pycontrails.Model` may use the following attributes:
@@ -725,30 +646,26 @@ class MetDataset(MetBase[xr.Dataset]):
         data: xr.Dataset,
         cachestore: CacheStore | None = None,
         wrap_longitude: bool = False,
-        copy: bool = True,
+        copy: bool | None = None,
         attrs: dict[str, Any] | None = None,
         **attrs_kwargs: Any,
     ) -> None:
+        if copy is not None:
+            warnings.warn(
+                "The 'copy' parameter has no effect and will be removed in a future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         self.cachestore = cachestore
 
         data.attrs.update(attrs or {}, **attrs_kwargs)
 
-        # if input is already a Dataset, copy into data
         if not isinstance(data, xr.Dataset):
             raise TypeError("Input 'data' must be an xarray Dataset")
 
-        # copy Dataset into data
-        if copy:
-            self.data = data.copy()
-            self._preprocess_dims(wrap_longitude)
-
-        else:
-            if wrap_longitude:
-                raise ValueError("Set 'copy=True' when using 'wrap_longitude=True'.")
-            self.data = data
-            self._validate_dims()
-            if not self.is_single_level:
-                self.data = _add_vertical_coords(self.data)
+        self.data = data.copy()
+        self._preprocess_dims(wrap_longitude)
 
     def __getitem__(self, key: Hashable) -> MetDataArray:
         """Return DataArray of variable ``key`` cast to a :class:`MetDataArray` object.
@@ -1373,9 +1290,7 @@ class MetDataArray(MetBase[xr.DataArray]):
         values (ie, -180 -> 180) to ensure that the longitude dimension covers the entire
         interval ``[-180, 180]``. Defaults to False.
     copy : bool, optional
-        Copy `data` parameter on construction, by default `True`. If `data` is lazy-loaded
-        via `dask`, this parameter has no effect. If `data` is already loaded into memory,
-        a copy of the data (rather than a view) may be created if `True`.
+        Deprecated. This parameter has no effect and will be removed in a future release.
     name : Hashable, optional
         Name of the data variable. If not specified, the name will be set to "met".
 
@@ -1416,19 +1331,20 @@ class MetDataArray(MetBase[xr.DataArray]):
         data: xr.DataArray,
         cachestore: CacheStore | None = None,
         wrap_longitude: bool = False,
-        copy: bool = True,
+        copy: bool | None = None,
         name: Hashable | None = None,
     ) -> None:
+        if copy is not None:
+            warnings.warn(
+                "The 'copy' parameter has no effect and will be removed in a future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         self.cachestore = cachestore
 
-        if copy:
-            self.data = data.copy()
-            self._preprocess_dims(wrap_longitude)
-        elif wrap_longitude:
-            raise ValueError("Set 'copy=True' when using 'wrap_longitude=True'.")
-        else:
-            self.data = data
-            self._validate_dims()
+        self.data = data.copy(deep=False)
+        self._preprocess_dims(wrap_longitude)
 
         # Priority: name > data.name > "met"
         self.data.name = name or self.data.name or "met"
