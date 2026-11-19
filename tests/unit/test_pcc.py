@@ -33,7 +33,9 @@ def fancy_pcc(
     """Generate PCC models for each cloud model type."""
     params = {
         "cloud_model": request.param,
-        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
+        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(
+            level_type="pressure"
+        ),
     }
     return PCC(met_pcc_pl, surface=met_pcc_sl, params=params)
 

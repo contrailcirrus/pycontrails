@@ -1396,7 +1396,7 @@ def test_gridded_and_time_slice_outputs() -> None:
         t_end,
         flight_waypoints_t,
         contrails_t,
-        humidity_scaling=ExponentialBoostLatitudeCorrectionHumidityScaling(),
+        humidity_scaling=ExponentialBoostLatitudeCorrectionHumidityScaling(level_type="pressure"),
         met=met,
         rad=rad,
         spatial_bbox=(-12, 35, 20, 60),
@@ -1618,7 +1618,9 @@ def test_exponential_boost_coefficients(
         "max_age": np.timedelta64(30, "m"),
         "dt_integration": np.timedelta64(10, "m"),
         "process_emissions": False,
-        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
+        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(
+            level_type="pressure"
+        ),
         "interpolation_q_method": q_method,
         "verbose_outputs": True,
     }
@@ -1651,7 +1653,9 @@ def test_radiative_heating_effects_param(fl: Flight, met: MetDataset, rad: MetDa
         "max_age": np.timedelta64(90, "m"),  # keep short to avoid blowing out of bounds
         "dt_integration": np.timedelta64(10, "m"),
         "process_emissions": False,
-        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
+        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(
+            level_type="pressure"
+        ),
     }
 
     # Artificially shift time to get some SDR
@@ -2062,7 +2066,9 @@ def test_revised_contrail_ice_budget_param(fl: Flight, met: MetDataset, rad: Met
         "max_age": np.timedelta64(90, "m"),  # keep short to avoid blowing out of bounds
         "dt_integration": np.timedelta64(10, "m"),
         "process_emissions": False,
-        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(),
+        "humidity_scaling": ExponentialBoostLatitudeCorrectionHumidityScaling(
+            level_type="pressure"
+        ),
     }
 
     # Artificially shift time to get some SDR

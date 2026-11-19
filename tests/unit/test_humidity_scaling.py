@@ -79,6 +79,7 @@ class DefaultHumidityScaling(hs.HumidityScaling):
         return specific_humidity, rhi
 
 
+@pytest.mark.filterwarnings("ignore:The default level_type will change:DeprecationWarning")
 @pytest.mark.parametrize("scaler_cls", cls_list)
 def test_all_scalers(vector: GeoVectorDataset, scaler_cls: type) -> None:
     """Check basic usage of humidity scaler instances."""
@@ -145,11 +146,12 @@ def test_rhi_already_exists_warning(vector: GeoVectorDataset) -> None:
     assert "rhi" in vector
     assert "air_pressure" in vector
 
-    scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling()
+    scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling(level_type="pressure")
     with pytest.warns(UserWarning, match="Variable 'rhi' already found on source to be scaled."):
         scaler.eval(vector)
 
 
+@pytest.mark.filterwarnings("ignore:The default level_type will change:DeprecationWarning")
 @pytest.mark.parametrize("scaler_cls", cls_list)
 def test_description(scaler_cls: type) -> None:
     """Check description for scalers and ensure JSON serialization via NumpyEncoder."""
@@ -215,6 +217,7 @@ def test_rhi_boost_exponential(vector: GeoVectorDataset, exp: float) -> None:
     np.testing.assert_allclose(expected, rhi2[~filt], atol=atol)
 
 
+@pytest.mark.filterwarnings("ignore:The default level_type will change:DeprecationWarning")
 @pytest.mark.parametrize("scaler_cls", cls_list)
 def test_scalers_pass_nan_through(vector: GeoVectorDataset, scaler_cls: type) -> None:
     """Confirm each scaler pass nan values through when computing rhi."""
@@ -266,7 +269,7 @@ def test_exp_boost_lat_correction(
     custom: VectorDataset, q_method: str | None, level_type: str | None
 ) -> None:
     """Check `ExponentialBoostLatitudeCorrectionHumidityScaling` implementation."""
-    scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling()
+    scaler = hs.ExponentialBoostLatitudeCorrectionHumidityScaling(level_type=level_type)
 
     if level_type == "model" and q_method == "cubic-spline":
         with pytest.raises(ValueError, match="must be None"):
@@ -427,6 +430,7 @@ def test_histogram_matching_members(
     model = hs.HistogramMatching(
         product_type="ensemble_members",
         member=member,
+        level_type="pressure",
         interpolation_q_method=q_method,
     )
 
@@ -556,7 +560,7 @@ def test_histogram_matching_invalid_product_type(
     """Test histogram matching with invalid product type."""
     models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
     models.interpolate_met(met_issr, ensemble_vector, "specific_humidity")
-    model = hs.HistogramMatching(product_type="foo")
+    model = hs.HistogramMatching(product_type="foo", level_type="pressure")
     with pytest.raises(ValueError, match="Invalid 'product_type'"):
         model.eval(ensemble_vector)
 
@@ -568,6 +572,6 @@ def test_histogram_matching_invalid_q_method(
     """Test histogram matching with ensemble member and model-level quantiles."""
     models.interpolate_met(met_issr, ensemble_vector, "air_temperature")
     models.interpolate_met(met_issr, ensemble_vector, "specific_humidity")
-    model = hs.HistogramMatching(interpolation_q_method="foo")
+    model = hs.HistogramMatching(interpolation_q_method="foo", level_type="pressure")
     with pytest.raises(ValueError, match="Invalid 'q_method'"):
         model.eval(ensemble_vector)
