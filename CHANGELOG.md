@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Internals
+
+- Vectorize `Fleet.segment_groundspeed`.
+
 ## 0.66.1
 
 ### Features

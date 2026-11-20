@@ -10,9 +10,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from pycontrails.core import flight
 from pycontrails.core.flight import Flight
 from pycontrails.core.fuel import Fuel, JetA
 from pycontrails.core.vector import GeoVectorDataset, VectorDataDict, VectorDataset
+from pycontrails.physics import geo
 
 
 class Fleet(Flight):
@@ -274,72 +276,18 @@ class Fleet(Flight):
     # Flight methods involving segments
     ###################################
 
-    def segment_true_airspeed(
-        self,
-        u_wind: npt.NDArray[np.floating] | float = 0.0,
-        v_wind: npt.NDArray[np.floating] | float = 0.0,
-        smooth: bool = True,
-        window_length: int = 7,
-        polyorder: int = 1,
-    ) -> npt.NDArray[np.floating]:
-        """Calculate the true airspeed [:math:`m / s`] from the ground speed and horizontal winds.
-
-        Because Flight.segment_true_airspeed uses a smoothing pattern, waypoints in :attr:`data`
-        are not independent. Moreover, we expect the final waypoint of each flight to have a nan
-        value associated to any segment property. Consequently, we need to define a custom method
-        here to deal with these issues when applying this method on a fleet of flights.
-
-        See docstring for :meth:`~pycontrails.Flight.segment_true_airspeed`.
-
-        Raises
-        ------
-        RuntimeError
-            Unexpected key `__u_wind` or `__v_wind` found in :attr:`data`.
-        """
-        if isinstance(u_wind, np.ndarray):
-            # Choosing a key we don't think exists
-            key = "__u_wind"
-            if key in self:
-                msg = f"Unexpected key {key} found"
-                raise RuntimeError(msg)
-            self[key] = u_wind
-
-        if isinstance(v_wind, np.ndarray):
-            # Choosing a key we don't think exists
-            key = "__v_wind"
-            if key in self:
-                msg = f"Unexpected key {key} found"
-                raise RuntimeError(msg)
-            self[key] = v_wind
-
-        # Calculate TAS on each flight individually
-        def calc_tas(fl: Flight) -> npt.NDArray[np.floating]:
-            u = fl.get("__u_wind", u_wind)
-            v = fl.get("__v_wind", v_wind)
-
-            return fl.segment_true_airspeed(
-                u, v, smooth=smooth, window_length=window_length, polyorder=polyorder
-            )
-
-        fls = self.to_flight_list(copy=False)
-        tas = [calc_tas(fl) for fl in fls]
-
-        # Cleanup
-        self.data.pop("__u_wind", None)
-        self.data.pop("__v_wind", None)
-
-        # Making an assumption here that Fleet was instantiated by `from_seq`
-        # method. If this is not the case, the order may be off when to_flight_list
-        # is called.
-        # Currently, we expect to only use Fleet "internally", so this more general
-        # use case isn't seen.
-        return np.concatenate(tas)
-
     @override
-    def segment_groundspeed(self, *args: Any, **kwargs: Any) -> npt.NDArray[np.floating]:
-        fls = self.to_flight_list(copy=False)
-        gs = [fl.segment_groundspeed(*args, **kwargs) for fl in fls]
-        return np.concatenate(gs)
+    def segment_groundspeed(
+        self, smooth: bool = False, window_length: int = 7, polyorder: int = 1
+    ) -> npt.NDArray[np.floating]:
+        horizontal_segment_length = geo.segment_haversine(self["longitude"], self["latitude"])
+        dt_sec = self.segment_duration(dtype=horizontal_segment_length.dtype)
+        dt_sec[self.final_waypoints] = np.nan
+        groundspeed = horizontal_segment_length / dt_sec
+
+        if not smooth:
+            return groundspeed
+        return _fleet_sg_filter(groundspeed, self.final_waypoints, window_length, polyorder)
 
     @override
     def resample_and_fill(self, *args: Any, **kwargs: Any) -> Self:
@@ -489,3 +437,65 @@ def _validate_fl(
         fl["waypoint"] = np.arange(fl.size)
     if "flight_id" not in fl:
         fl["flight_id"] = np.full(fl.size, flight_id)
+
+
+def _fleet_sg_filter(
+    vals: npt.NDArray[np.floating],
+    final_waypoints: npt.NDArray[np.bool_],
+    window_length: int,
+    polyorder: int,
+) -> npt.NDArray[np.floating]:
+    """Apply :func:`flight._sg_filter` to each flight in a fleet.
+
+    A flight's values run from its first waypoint up to, not including, its final waypoint.
+    Values at final waypoints are NaN.
+    """
+    import scipy.signal
+
+    # Flight i has values vals[starts[i]:stops[i]]
+    stops = np.flatnonzero(final_waypoints)
+    starts = np.r_[0, stops[:-1] + 1]
+
+    # flight._sg_filter uses this window for every flight with at least this many values
+    window = window_length - 1 + window_length % 2
+    if window > polyorder:
+        is_long_flight = stops - starts >= window
+    else:
+        is_long_flight = np.zeros(stops.size, dtype=bool)
+
+    out = np.empty_like(vals)
+    out[final_waypoints] = np.nan
+
+    # Smooth flights too short for the full window with a for loop
+    # With default parameters, we don't expect many of these.
+    for start, stop in zip(starts[~is_long_flight], stops[~is_long_flight], strict=True):
+        out[start:stop] = flight._sg_filter(vals[start:stop], window_length, polyorder)
+
+    if not is_long_flight.any():
+        return out
+
+    # Keep the values of long flights and zero everything else
+    in_long_flight = np.repeat(is_long_flight, stops - starts + 1) & ~final_waypoints
+    if np.isnan(vals[in_long_flight]).any():
+        raise ArithmeticError("NaN values not supported by SG filter.")
+    x = np.where(in_long_flight, vals, 0.0)
+
+    # Correct except within half a window of each flight's ends. With the default
+    # params, every value of a flight except its first 3 and last 3 waypoints is smoothed
+    # correctly here. Those 6 exceptions get bad values because their windows reach into the
+    # zeroed final waypoint or a neighboring flight; they are replaced below.
+    x_smoothed = scipy.signal.savgol_filter(x, window, polyorder)
+
+    # The first and last `half` values of each flight come from a polynomial fit to the
+    # flight's first or last `window` values. Gather these windows into a 2D array with
+    # one row per long flight, and apply the filter along the rows.
+    half = window // 2
+    first = starts[is_long_flight, np.newaxis] + np.arange(window)
+    last = stops[is_long_flight, np.newaxis] - window + np.arange(window)
+    first_fit = scipy.signal.savgol_filter(x[first], window, polyorder, axis=1)
+    last_fit = scipy.signal.savgol_filter(x[last], window, polyorder, axis=1)
+    x_smoothed[first[:, :half]] = first_fit[:, :half]
+    x_smoothed[last[:, half + 1 :]] = last_fit[:, half + 1 :]
+
+    out[in_long_flight] = x_smoothed[in_long_flight]
+    return out

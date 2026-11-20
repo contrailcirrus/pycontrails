@@ -222,8 +222,31 @@ def test_fleet_true_airspeed(syn: SyntheticFlight) -> None:
         u_wind_slice = u_wind[slice_]
         v_wind_slice = v_wind[slice_]
         tas_slice = fl.segment_true_airspeed(u_wind_slice, v_wind_slice)
-        np.testing.assert_array_equal(tas_slice, tas[slice_])
+        np.testing.assert_allclose(tas_slice, tas[slice_], rtol=1e-12)
         i0 = i1
+
+
+@pytest.mark.parametrize(("window_length", "polyorder"), [(7, 1), (8, 1), (5, 2), (3, 3)])
+def test_fleet_groundspeed_short_flights(window_length: int, polyorder: int) -> None:
+    """Check smoothed groundspeed on flights shorter and longer than the window."""
+    rng = np.random.default_rng(5678)
+    fls = []
+    for i, n in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10, 30, 2, 8]):
+        fl = Flight(
+            longitude=rng.uniform(-1.0, 1.0, n).cumsum(),
+            latitude=rng.uniform(-1.0, 1.0, n).cumsum(),
+            altitude=np.full(n, 10_000.0),
+            time=np.datetime64("2022-01-01") + np.arange(n) * np.timedelta64(60, "s"),
+            flight_id=str(i),
+        )
+        fls.append(fl)
+    fleet = Fleet.from_seq(fls)
+
+    gs = fleet.segment_groundspeed(True, window_length, polyorder)
+
+    expected = np.r_[*[fl.segment_groundspeed(True, window_length, polyorder) for fl in fls]]
+
+    np.testing.assert_allclose(gs, expected, rtol=1e-12)
 
 
 @pytest.mark.parametrize("n_min", [5, 6, 7, 8])
