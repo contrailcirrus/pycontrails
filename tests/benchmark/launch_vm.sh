@@ -72,20 +72,32 @@ for ref in "$@"; do
         metadata+=",pycontrails-bada-source=$(stage "$PYCONTRAILS_BADA" pycontrails-bada "$bada_tag")"
     fi
 
-    gcloud compute instances create "pycontrails-benchmark-${ref//[._\/]/-}" \
-        --project contrails-301217 \
-        --zone "${ZONE:-us-east1-b}" \
-        --machine-type c3-highmem-4 \
-        --image-family debian-12 \
-        --image-project debian-cloud \
-        --boot-disk-size 10GB \
-        --boot-disk-type pd-balanced \
-        --service-account ci-service-account@contrails-301217.iam.gserviceaccount.com \
-        --scopes cloud-platform \
-        --max-run-duration 6h \
-        --instance-termination-action DELETE \
-        --metadata "$metadata" \
-        --metadata-from-file startup-script=tests/benchmark/vm_startup.sh,run-benchmark=tests/benchmark/run_benchmark.py \
-        --quiet > /dev/null
-    echo "$ref: ${repo##*/}, pycontrails-bada ${bada_tag:-none}"
+    # Try each zone in turn until one has capacity for the VM
+    vm="pycontrails-benchmark-${ref//[._\/]/-}"
+    created=
+    for zone in ${ZONES:-us-east1-b us-east1-c us-east1-d}; do
+        if gcloud compute instances create "$vm" \
+            --project contrails-301217 \
+            --zone "$zone" \
+            --machine-type c3-highmem-4 \
+            --image-family debian-12 \
+            --image-project debian-cloud \
+            --boot-disk-size 10GB \
+            --boot-disk-type pd-balanced \
+            --service-account ci-service-account@contrails-301217.iam.gserviceaccount.com \
+            --scopes cloud-platform \
+            --max-run-duration 6h \
+            --instance-termination-action DELETE \
+            --metadata "$metadata" \
+            --metadata-from-file startup-script=tests/benchmark/vm_startup.sh,run-benchmark=tests/benchmark/run_benchmark.py \
+            --quiet > /dev/null; then
+            created=$zone
+            break
+        fi
+    done
+    if [ -z "$created" ]; then
+        echo "$ref: no zone could create $vm" >&2
+        exit 1
+    fi
+    echo "$ref: ${repo##*/}, pycontrails-bada ${bada_tag:-none}, $created"
 done

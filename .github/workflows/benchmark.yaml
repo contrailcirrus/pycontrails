@@ -20,7 +20,8 @@ on:
 # Global variables
 env:
   PROJECT: contrails-301217
-  ZONE: us-east1-b
+  # Zones to try in turn until one has capacity for the VM
+  ZONES: us-east1-b us-east1-c us-east1-d
   SERVICE_ACCOUNT: ci-service-account@contrails-301217.iam.gserviceaccount.com
   VM: pycontrails-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
   PYCONTRAILS_REF: ${{ inputs.ref || github.event.release.tag_name || github.event.repository.default_branch }}
@@ -85,25 +86,34 @@ jobs:
           # Generation of the existing summary, if any, to tell a new summary from it
           generation=$(gcloud storage objects describe "$SUMMARY" --format="value(generation)" 2>/dev/null || true)
           echo "generation=$generation" >> "$GITHUB_OUTPUT"
-          gcloud compute instances create "$VM" \
-            --project "$PROJECT" \
-            --zone "$ZONE" \
-            --machine-type c3-highmem-4 \
-            --image-family debian-12 \
-            --image-project debian-cloud \
-            --boot-disk-size 10GB \
-            --boot-disk-type pd-balanced \
-            --service-account "$SERVICE_ACCOUNT" \
-            --scopes cloud-platform \
-            --max-run-duration 1h \
-            --instance-termination-action DELETE \
-            --metadata pycontrails-ref="$PYCONTRAILS_REF",cutoff="$CUTOFF",pycontrails-bada-from-registry=true \
-            --metadata-from-file startup-script=tests/benchmark/vm_startup.sh,run-benchmark=tests/benchmark/run_benchmark.py
+          for zone in $ZONES; do
+            if gcloud compute instances create "$VM" \
+              --project "$PROJECT" \
+              --zone "$zone" \
+              --machine-type c3-highmem-4 \
+              --image-family debian-12 \
+              --image-project debian-cloud \
+              --boot-disk-size 10GB \
+              --boot-disk-type pd-balanced \
+              --service-account "$SERVICE_ACCOUNT" \
+              --scopes cloud-platform \
+              --max-run-duration 1h \
+              --instance-termination-action DELETE \
+              --metadata pycontrails-ref="$PYCONTRAILS_REF",cutoff="$CUTOFF",pycontrails-bada-from-registry=true \
+              --metadata-from-file startup-script=tests/benchmark/vm_startup.sh,run-benchmark=tests/benchmark/run_benchmark.py
+            then
+              echo "zone=$zone" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "No zone in $ZONES could create $VM"
+          exit 1
 
       - name: Wait for benchmark to run
         env:
           SUMMARY: gs://contrails-301217-benchmark-data/results/${{ steps.ref.outputs.version }}/summary.json
           GENERATION: ${{ steps.create.outputs.generation }}
+          ZONE: ${{ steps.create.outputs.zone }}
         run: |
           while gcloud compute instances describe "$VM" --project "$PROJECT" --zone "$ZONE" > /dev/null 2>&1; do
             sleep 60
