@@ -474,7 +474,7 @@ def parse_ephemeris_sentinel(datatsrip_metadata_path: str) -> pd.DataFrame:
 
                 records.append(
                     {
-                        "EPHEMERIS_TIME": pd.Timestamp(utc_time).tz_localize(None),
+                        "EPHEMERIS_TIME": pd.Timestamp(utc_time).tz_localize(None).as_unit("ns"),
                         "EPHEMERIS_ECEF_X": x / 1000,
                         "EPHEMERIS_ECEF_Y": y / 1000,
                         "EPHEMERIS_ECEF_Z": z / 1000,

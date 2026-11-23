@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixes
+
+- Make `Sentinel.colocate_flight` compatible with pandas 3.
+
 ### Internals
 
 - Vectorize `Fleet.segment_groundspeed`.

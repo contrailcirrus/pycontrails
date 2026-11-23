@@ -1,5 +1,6 @@
 """Test low Earth orbit satellite utilites and datalibs."""
 
+import pathlib
 from collections.abc import Generator
 
 import geojson
@@ -468,6 +469,34 @@ def sentinel_cachestore() -> Generator[cache.DiskCacheStore, None, None]:
     cachestore = cache.DiskCacheStore(cache_dir=cache_dir, allow_clear=True)
     yield cachestore
     cachestore.clear()
+
+
+@pytest.mark.network
+def test_sentinel_colocate_flight(sentinel_cachestore: cache.DiskCacheStore) -> None:
+    """Test colocation of the IAGOS flight in the Sentinel-2 notebook."""
+    path = pathlib.Path(__file__).parents[2] / "docs/notebooks/data/iagos-flight-sentinel.csv"
+    df = pd.read_csv(path, parse_dates=["time"])
+    df["time"] += pd.Timedelta(seconds=9)  # IAGOS time delay, see the notebook
+    flight = Flight(df)
+
+    base_url = (
+        "gs://gcp-public-data-sentinel-2/tiles/30/U/WG/"
+        "S2B_MSIL1C_20191226T112359_N0208_R037_T30UWG_20191226T115227.SAFE"
+    )
+    granule_id = "L1C_T30UWG_A014649_20191226T112436"
+    handler = sentinel.Sentinel(base_url, granule_id, cachestore=sentinel_cachestore)
+
+    x, y, t = handler.colocate_flight(flight)
+
+    # Confirm the colocated position is inside the image
+    ds = handler.get_viewing_angle_metadata()
+    assert ds["x"].min() <= x <= ds["x"].max()
+    assert ds["y"].min() <= y <= ds["y"].max()
+
+    # Confirm the colocated time is during the flight and near the granule sensing time.
+    assert flight.time_start <= t <= flight.time_end
+    sensing_time = handler.get_sensing_time().tz_localize(None).to_datetime64()
+    assert abs(t - sensing_time) < np.timedelta64(10, "s")
 
 
 @pytest.mark.skipif(not BIGQUERY_ACCESS, reason="No BigQuery access")

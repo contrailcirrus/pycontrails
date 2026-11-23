@@ -286,9 +286,9 @@ class Sentinel:
         offset_list = []
         for did in unique_ids:
             if did == 0:
-                offset_list.append(np.timedelta64("NaT"))
+                offset_list.append(np.timedelta64("NaT", "ns"))
             else:
-                offset_list.append(delays.get(did, np.timedelta64("NaT")))
+                offset_list.append(delays.get(did, np.timedelta64("NaT", "ns")))
         offset_values = np.array(offset_list, dtype="timedelta64[ns]")
 
         # Map back to the original array
@@ -366,7 +366,7 @@ class Sentinel:
         valid = np.isfinite(x_proj) & np.isfinite(y_proj) & np.isfinite(scan_time)
 
         diff_times = flight["time"][valid] - scan_time[valid]
-        if diff_times[0] > np.timedelta64(0) or diff_times[-1] < np.timedelta64(0):
+        if diff_times[0] > np.timedelta64(0, "ns") or diff_times[-1] < np.timedelta64(0, "ns"):
             msg = "Flight track does not overlap with satellite image in time."
             raise ValueError(msg)
 
