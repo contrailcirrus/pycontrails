@@ -217,6 +217,7 @@ nb-test: ensure-era5-cached nb-clean-check nb-format-check nb-check-links
 		--ignore=docs/notebooks/model-levels.ipynb \
 		--ignore=docs/notebooks/ARCO-ERA5.ipynb \
 		--ignore=docs/notebooks/Sentinel.ipynb \
+		--ignore=docs/notebooks/Landsat.ipynb \
 		--ignore=docs/notebooks/GRUAN.ipynb \
 		--ignore=docs/notebooks/ARPEGE.ipynb \
 		docs/notebooks docs/integrations
