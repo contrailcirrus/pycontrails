@@ -6,7 +6,6 @@ STAC server, which lists Sentinel products from November 2016 onward.
 
 from __future__ import annotations
 
-import pathlib
 from collections.abc import Iterable
 from typing import Any
 from xml.etree import ElementTree
@@ -71,9 +70,6 @@ except ModuleNotFoundError as exc:
         pycontrails_optional_package="sat",
     )
 
-
-_path_to_static = pathlib.Path(__file__).parent / "static"
-ROI_QUERY_FILENAME = _path_to_static / "sentinel_roi_query.sql"
 
 #: Element 84 Earth Search STAC server
 STAC_URL = "https://earth-search.aws.element84.com/v1"
