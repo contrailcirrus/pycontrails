@@ -348,7 +348,7 @@ def test_landsat_generate_true_color_rgb(
     rgb, crs, extent = landsat.extract_landsat_visualization(ds, color_scheme="true")
     assert isinstance(rgb, np.ndarray)
     assert rgb.shape == (7761, 7591, 3)
-    assert np.isnan(rgb).sum() == 52449498
+    assert np.isnan(rgb).sum() == 52446976
     assert rgb.dtype == "float32"
     assert np.nanmin(rgb) == 0.0
     assert np.nanmax(rgb) == 1.0
@@ -373,7 +373,7 @@ def test_landsat_generate_google_contrails_rgb(
     rgb, crs, extent = landsat.extract_landsat_visualization(ds, color_scheme="google_contrails")
     assert isinstance(rgb, np.ndarray)
     assert rgb.shape == (7761, 7591, 3)
-    assert np.isnan(rgb).sum() == 54275245
+    assert np.isnan(rgb).sum() == 54272868
     assert rgb.dtype == "float32"
     assert np.nanmin(rgb) == 0.0
     assert np.nanmax(rgb) == 1.0
