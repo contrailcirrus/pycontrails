@@ -1,4 +1,16 @@
-"""Support for Landsat 8 Collection 1 imagery retrieval through Google Cloud Platform."""
+"""Support for Landsat 8 and 9 Collection 2 Level-1 imagery.
+
+Scenes are found with the USGS Landsat `STAC server <https://landsatlook.usgs.gov/stac-server>`__.
+:class:`Landsat` retrieves imagery from one of two sources:
+
+- ``"usgs"``: the USGS Machine-to-Machine (M2M) API, which is free but requires a USGS
+  account with M2M access. See :mod:`pycontrails.datalib.leo_utils.usgs_m2m`.
+- ``"gcs"``: a requester-pays Google Cloud Storage bucket ``gs://gee-public-data-landsat``
+  listed in the `Earth Engine data catalog
+  <https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C02_T1_L2>`__.
+  Reading from this bucket is billed to the default project of the Google Cloud credentials,
+  which can be set with the ``GOOGLE_CLOUD_PROJECT`` environment variable.
+"""
 
 from __future__ import annotations
 
@@ -9,8 +21,9 @@ import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
-from pycontrails.core import Flight, cache
-from pycontrails.datalib.leo_utils import search
+from pycontrails.core import Flight, GeoVectorDataset, cache
+from pycontrails.datalib.leo_utils import correction, search, usgs_m2m
+from pycontrails.datalib.leo_utils import landsat_metadata as lm
 from pycontrails.datalib.leo_utils.vis import equalize, normalize
 from pycontrails.utils import dependencies
 
@@ -34,42 +47,47 @@ except ModuleNotFoundError as exc:
         pycontrails_optional_package="sat",
     )
 
+try:
+    import shapely.geometry
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="landsat module",
+        package_name="shapely",
+        module_not_found_error=exc,
+        pycontrails_optional_package="sat",
+    )
 
-#: BigQuery table with imagery metadata
-BQ_TABLE = "bigquery-public-data.cloud_storage_geo_index.landsat_index"
+try:
+    import rasterio
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="landsat module",
+        package_name="rasterio",
+        module_not_found_error=exc,
+        pycontrails_optional_package="sat",
+    )
 
-#: Default columns to include in queries
-BQ_DEFAULT_COLUMNS = ["base_url", "sensing_time"]
 
-#: Default spatial extent for queries
-BQ_DEFAULT_EXTENT = search.GLOBAL_EXTENT
+#: USGS Landsat STAC server
+STAC_URL = "https://landsatlook.usgs.gov/stac-server"
 
-#: Extra filters for BigQuery queries
-BQ_EXTRA_FILTERS = 'AND spacecraft_id in ("LANDSAT_8", "LANDSAT_9")'
+#: STAC collection of Landsat Collection 2 Level-1 products
+STAC_COLLECTION = "landsat-c2l1"
+
+#: Requester-pays Google Cloud Storage bucket with Landsat Collection 2 files
+GCS_BUCKET = "gs://gee-public-data-landsat"
 
 #: Default Landsat channels to use if none are specified.
 #: These are visible bands for producing a true color composite.
 DEFAULT_BANDS = ["B2", "B3", "B4"]
-
-#: Strip this prefix from GCP URLs when caching Landsat files locally
-GCP_STRIP_PREFIX = "gs://gcp-public-data-landsat/"
 
 
 def query(
     start_time: np.datetime64,
     end_time: np.datetime64,
     extent: str | None = None,
-    columns: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Find Landsat 8 Collection 1 imagery within spatiotemporal region of interest.
-
-    This function requires access to the
-    `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
-    and uses the `BigQuery python library <https://cloud.google.com/python/docs/reference/bigquery/latest/index.html>`__.
-
-    See :func:`pycontrails.datalib.leo_utils.landsat_metadata.open_landsat_metadata`
-    to download and parse the daily bulk Landsat metadata CSV file from USGS. This CSV holds
-    Collection 2 metadata, so includes the most recent scenes from Landsat 8 and 9.
+    """Find Landsat 8 and 9 Collection 2 imagery within spatiotemporal region of interest.
 
     Parameters
     ----------
@@ -80,90 +98,76 @@ def query(
     extent : str | None, optional
         Spatial region of interest as a GeoJSON string. If not provided, defaults
         to a global extent.
-    columns : list[str] | None, optional
-        Columns to return from Google
-        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table>`__.
-        By default, returns imagery base URL and sensing time.
 
     Returns
     -------
     pd.DataFrame
         Query results in pandas DataFrame
-
-    See Also
-    --------
-    ``search.query``
     """
-    extent = extent or BQ_DEFAULT_EXTENT
-    roi = search.ROI(start_time, end_time, extent)
-    columns = columns or BQ_DEFAULT_COLUMNS
-    return search.query(BQ_TABLE, roi, columns, BQ_EXTRA_FILTERS)
+    if extent is None:
+        return _search(start_time, end_time, None)
+
+    geometry = shapely.from_geojson(extent)
+    scenes = _search(start_time, end_time, search.geometry_bbox(geometry))
+
+    # The STAC search uses the extent's bounding box; keep only scenes that intersect the extent
+    filt = shapely.intersects(scenes["geometry"], geometry)
+    return scenes[filt].reset_index(drop=True)
 
 
-def intersect(
-    flight: Flight,
-    columns: list[str] | None = None,
-) -> pd.DataFrame:
-    """Find Landsat 8 Collection 1 imagery intersecting with flight track.
+def intersect(flight: Flight) -> pd.DataFrame:
+    """Find Landsat 8 and 9 Collection 2 imagery intersecting the flight track.
 
-    This function will return all scenes with a bounding box that includes flight waypoints
-    both before and after the sensing time.
-
-    This function requires access to the
-    `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
-    and uses the `BigQuery python library <https://cloud.google.com/python/docs/reference/bigquery/latest/index.html>`__.
-
-    See :func:`pycontrails.datalib.leo_utils.landsat_metadata.open_landsat_metadata`
-    to download and parse the daily bulk Landsat metadata CSV file from USGS. This CSV holds
-    Collection 2 metadata, so includes the most recent scenes from Landsat 8 and 9.
+    This function will return all scenes whose footprint includes the flight
+    position interpolated to the scene's sensing time.
 
     Parameters
     ----------
     flight : Flight
         Flight for intersection
-    columns : list[str] | None, optional
-        Columns to return from Google
-        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table>`__.
-        By default, returns imagery base URL and sensing time.
 
     Returns
     -------
     pd.DataFrame
         Query results in pandas DataFrame
-
-    See Also
-    --------
-    ``search.intersect``
     """
-    columns = columns or BQ_DEFAULT_COLUMNS
-    return search.intersect(BQ_TABLE, flight, columns, BQ_EXTRA_FILTERS)
+    scenes = _search(flight.time_start, flight.time_end, search.vector_bbox(flight))
+    return search.intersect_scenes(scenes, flight)
+
+
+def _search(
+    start_time: np.datetime64 | pd.Timestamp,
+    end_time: np.datetime64 | pd.Timestamp,
+    bbox: tuple[float, float, float, float] | None,
+) -> pd.DataFrame:
+    """Return Landsat 8 and 9 scenes from the USGS STAC server."""
+    items = search.stac_search(STAC_URL, STAC_COLLECTION, start_time, end_time, bbox)
+    items = [item for item in items if item["id"].startswith(("LC08", "LC09"))]
+
+    props = [item["properties"] for item in items]
+
+    scenes = pd.DataFrame(
+        {
+            "product_id": [item["id"] for item in items],
+            "scene_id": [p["landsat:scene_id"] for p in props],
+            "platform": [p["platform"] for p in props],
+            "sensing_time": pd.to_datetime([p["datetime"] for p in props]).tz_localize(None),
+            "sun_elevation": [p["view:sun_elevation"] for p in props],
+            "geometry": [shapely.geometry.shape(item["geometry"]) for item in items],
+        }
+    )
+    return scenes.sort_values("sensing_time").reset_index(drop=True)
 
 
 class Landsat:
-    """Support for Landsat 8 Collection 1 data handling.
-
-    This interface does not support Landsat Collection 2, which includes all new
-    scenes from Landsat 8 and 9 and benefits from improved calibration and processing
-    algorithms. The USGS stopped updating Collection 1 in 2021, so this interface
-    works only with legacy data. In addition, Collection 1 does not include viewing angle
-    data, preventing scan angle or sensing time corrections.
-
-    To access Landsat Collection 2 data, use one of the following tools:
-
-    - `USGS M2M API <https://m2m.cr.usgs.gov/>`__ (requires registration)
-    - `USGS Earth Explorer <https://earthexplorer.usgs.gov/>`__ (requires registration;
-       includes a web interface)
-    - `Amazon Web Services (AWS) <https://registry.opendata.aws/usgs-landsat/>`__ (requester pays)
-    - `Google Earth Engine <https://developers.google.com/earth-engine/datasets/catalog/landsat>`__
-      (requires registration; stricter usage limits than the other options)
-
-    These services are not yet integrated with pycontrails.
+    """Support for Landsat 8 and 9 Collection 2 Level-1 data handling.
 
     Parameters
     ----------
-    base_url : str
-        Base URL of Landsat scene. To find URLs for Landsat scenes at
-        specific locations and times, see :func:`query` and :func:`intersect`.
+    product_id : str
+        Landsat product ID, for example ``"LC09_L1TP_095022_20250601_20250602_02_T1"``.
+        To find scenes at specific locations and times, see :func:`query` and
+        :func:`intersect`.
     bands : str | Iterable[str] | None
         Set of bands to retrieve. The 11 possible bands are represented by
         the string "B1" to "B11". For the Google Landsat contrails color scheme,
@@ -175,6 +179,9 @@ class Landsat:
         - B8: 15 m
         - B10, B11: 30 m (upsampled from true resolution of 100 m)
 
+    source : str, optional
+        ``"usgs"`` (default) or ``"gcs"``. See the :mod:`pycontrails.datalib.landsat`
+        module documentation.
     cachestore : cache.CacheStore | None, optional
         Cache store for Landsat data. If None, a :class:`~pycontrails.DiskCacheStore` is used.
 
@@ -186,14 +193,28 @@ class Landsat:
 
     def __init__(
         self,
-        base_url: str,
+        product_id: str,
         bands: str | Iterable[str] | None = None,
+        source: str = "usgs",
         cachestore: cache.CacheStore | None = None,
     ) -> None:
-        self.base_url = base_url
+        if not product_id.startswith(("LC08", "LC09")) or not product_id.endswith(
+            ("_02_T1", "_02_T2", "_02_RT")
+        ):
+            msg = (
+                f"'{product_id}' is not a Landsat 8 or 9 Collection 2 Level-1 product ID, "
+                "such as 'LC09_L1TP_095022_20250601_20250602_02_T1'."
+            )
+            raise ValueError(msg)
+
+        if source not in ("usgs", "gcs"):
+            msg = f"source must be 'usgs' or 'gcs', not '{source}'"
+            raise ValueError(msg)
+
+        self.product_id = product_id
         self.bands = _parse_bands(bands)
         _check_band_resolution(self.bands)
-        self.fs = gcsfs.GCSFileSystem(token="anon")
+        self.source = source
 
         if cachestore is None:
             cache_root = cache._get_user_cache_dir()
@@ -203,7 +224,10 @@ class Landsat:
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return f"Landsat(base_url='{self.base_url}', bands={sorted(self.bands)})"
+        return (
+            f"Landsat(product_id='{self.product_id}', bands={sorted(self.bands)}, "
+            f"source='{self.source}')"
+        )
 
     @property
     def reflective_bands(self) -> list[str]:
@@ -243,48 +267,140 @@ class Landsat:
         if thermal not in ["raw", "radiance", "brightness_temperature"]:
             msg = (
                 "thermal band processing must be one of "
-                "['raw', 'radiance', 'brighness_temperature']"
+                "['raw', 'radiance', 'brightness_temperature']"
             )
             raise ValueError(msg)
 
-        ds = xr.Dataset()
+        paths = self._fetch([f"{band}.TIF" for band in self.bands] + ["MTL.txt"])
+        meta = paths["MTL.txt"]
+
+        data = {}
         for band in self.reflective_bands:
-            ds[band] = self._get(band, reflective)
+            data[band] = _read(paths[f"{band}.TIF"], meta, band, reflective)
         for band in self.thermal_bands:
-            ds[band] = self._get(band, thermal)
-        return ds
+            data[band] = _read(paths[f"{band}.TIF"], meta, band, thermal)
 
-    def _get(self, band: str, processing: str) -> xr.DataArray:
-        """Download Landsat band to the :attr:`cachestore` and return processed data."""
-        tiff_path = self._get_tiff(band)
-        meta_path = self._get_meta()
-        return _read(tiff_path, meta_path, band, processing)
+        return xr.Dataset(data)
 
-    def _get_tiff(self, band: str) -> str:
-        """Download Landsat GeoTIFF imagery and return path to cached file."""
-        fs = self.fs
-        base_url = self.base_url
-        product_id = base_url.split("/")[-1]
-        fname = f"{product_id}_{band}.TIF"
-        url = f"{base_url}/{fname}"
+    def get_viewing_angle_metadata(self) -> xr.Dataset:
+        """Return the viewing zenith (``VZA``) and azimuth (``VAA``) angles in degrees."""
+        paths = self._fetch(["VZA.TIF", "VAA.TIF", "MTL.txt"])
+        return _read_viewing_angles(paths["VZA.TIF"], paths["VAA.TIF"], paths["MTL.txt"])
 
-        sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
-        if not self.cachestore.exists(sink):
-            fs.get(url, sink)
-        return sink
+    def get_ephemeris(self) -> pd.DataFrame:
+        """Return the satellite ephemeris from the angle coefficient (ANG) file."""
+        path = self._fetch(["ANG.txt"])["ANG.txt"]
+        with open(path) as f:
+            return lm.parse_ephemeris_landsat(f.read())
 
-    def _get_meta(self) -> str:
-        """Download Landsat metadata file and return path to cached file."""
-        fs = self.fs
-        base_url = self.base_url
-        product_id = base_url.split("/")[-1]
-        fname = f"{product_id}_MTL.txt"
-        url = f"{base_url}/{fname}"
+    def get_crs(self) -> pyproj.CRS:
+        """Return the CRS of the satellite image."""
+        path = self._fetch(["VAA.TIF"])["VAA.TIF"]
+        with rasterio.open(path) as src:
+            return pyproj.CRS.from_epsg(src.crs.to_epsg())
 
-        sink = self.cachestore.path(url.removeprefix(GCP_STRIP_PREFIX))
-        if not self.cachestore.exists(sink):
-            fs.get(url, sink)
-        return sink
+    def get_sensing_time(self) -> pd.Timestamp:
+        """Return the scene center time of the satellite image."""
+        meta = self._fetch(["MTL.txt"])["MTL.txt"]
+        date = _read_meta_str(meta, "DATE_ACQUIRED")
+        time = _read_meta_str(meta, "SCENE_CENTER_TIME")
+        return pd.Timestamp(f"{date}T{time}")
+
+    def colocate(
+        self,
+        vector: GeoVectorDataset,
+        group_by: str | list[str] | None = None,
+        variables: list[str] | None = None,
+    ) -> pd.DataFrame:
+        """Colocate groups of waypoints with satellite image pixels.
+
+        Each group is colocated as in :meth:`colocate_flight`.
+
+        Parameters
+        ----------
+        vector : GeoVectorDataset
+            Waypoints.
+        group_by : str | list[str] | None, optional
+            Columns of ``vector`` that identify groups, for example ``"flight_id"`` for
+            flights or ``["flight_id", "waypoint"]`` for advected waypoints. If None,
+            ``vector`` is one group.
+        variables : list[str] | None, optional
+            Variables of ``vector`` to interpolate to the scan time.
+
+        Returns
+        -------
+        pd.DataFrame
+            One row per group imaged by the satellite, with the ``group_by`` columns, the
+            ``x`` and ``y`` coordinates in the satellite image CRS, the scan ``time``, and
+            ``longitude``, ``latitude``, ``altitude``, and ``variables`` at that time.
+        """
+        crs = self.get_crs()
+        ds_angles = self.get_viewing_angle_metadata()
+        ephemeris = self.get_ephemeris()
+
+        x, y = correction.parallax_correct(vector, crs, ds_angles)
+        offset = lm.get_time_delay_detector(ds_angles, ephemeris, crs, x, y)
+        scan_time = correction.estimate_scan_time(ephemeris, crs, x, y) + offset
+        return correction.colocate(vector, x, y, scan_time, group_by, variables)
+
+    def colocate_flight(self, flight: Flight) -> tuple[float, float, np.datetime64]:
+        """Colocate a flight track with satellite image pixels.
+
+        This function first projects flight waypoints into the UTM coordinate system
+        of the satellite image, then applies a viewing angle correction to estimate
+        the actual ground position imaged by the satellite. Next, the scan time for
+        each point is estimated based on the satellite meta data. Finally, the
+        point along the flight track is found where the flight time matches the
+        satellite scan time.
+
+        Parameters
+        ----------
+        flight : Flight
+            The flight object.
+
+        Returns
+        -------
+        tuple[float, float, np.datetime64]
+            A tuple containing the x and y coordinates of the flight position in the
+            satellite image CRS, and the corrected sensing_time of the satellite image.
+        """
+        df = self.colocate(flight)
+        if df.empty:
+            msg = "Flight track does not overlap with satellite image in time."
+            raise ValueError(msg)
+
+        x = df["x"].iloc[0].item()
+        y = df["y"].iloc[0].item()
+        return x, y, df["time"].iloc[0].to_datetime64()
+
+    # -------------------------------------------------------------------------------------
+
+    def _cache_key(self, suffix: str) -> str:
+        return f"{self.product_id}/{self.product_id}_{suffix}"
+
+    def _gcs_url(self, suffix: str) -> str:
+        """Return the URL of a product file in the ``gee-public-data-landsat`` bucket."""
+        sensor = self.product_id[:4]
+        path = self.product_id[10:13]
+        row = self.product_id[13:16]
+        filename = f"{self.product_id}_{suffix}"
+        return f"{GCS_BUCKET}/{sensor}/L1/02/{path}/{row}/{self.product_id}/{filename}"
+
+    def _fetch(self, suffixes: list[str]) -> dict[str, str]:
+        """Download files to the cache and return their paths."""
+        sinks = {suffix: self.cachestore.path(self._cache_key(suffix)) for suffix in suffixes}
+        missing = {s: p for s, p in sinks.items() if not self.cachestore.exists(self._cache_key(s))}
+        if not missing:
+            return sinks
+
+        if self.source == "usgs":
+            usgs_m2m.download(self.product_id, missing)
+            return sinks
+
+        fs = gcsfs.GCSFileSystem(requester_pays=True)
+        for suffix, sink in missing.items():
+            fs.get(self._gcs_url(suffix), sink)
+        return sinks
 
 
 def _parse_bands(bands: str | Iterable[str] | None) -> set[str]:
@@ -323,16 +439,6 @@ def _check_band_resolution(bands: set[str]) -> None:
 
 def _read(path: str, meta: str, band: str, processing: str) -> xr.DataArray:
     """Read imagery data from Landsat files."""
-    try:
-        import rasterio
-    except ModuleNotFoundError as exc:
-        dependencies.raise_module_not_found_error(
-            name="landsat module",
-            package_name="rasterio",
-            module_not_found_error=exc,
-            pycontrails_optional_package="sat",
-        )
-
     with rasterio.open(path) as src:
         img = src.read(1)
         crs = pyproj.CRS.from_epsg(src.crs.to_epsg())
@@ -374,16 +480,53 @@ def _read(path: str, meta: str, band: str, processing: str) -> xr.DataArray:
     return da
 
 
-def _read_meta(meta: str, key: str) -> float:
-    """Read values from metadata file."""
+def _read_viewing_angles(vza_path: str, vaa_path: str, meta: str) -> xr.Dataset:
+    """Read the viewing zenith and azimuth angle bands.
+
+    The bands store hundredths of a degree.
+    Pixels outside the scene are 0 in both bands.
+    """
+    with rasterio.open(vza_path) as src:
+        vza = src.read(1)  # int16 dtype
+        crs = pyproj.CRS.from_epsg(src.crs.to_epsg())
+    with rasterio.open(vaa_path) as src:
+        vaa = src.read(1)  # int16 dtype
+
+    fill = (vza == 0) & (vaa == 0)
+    x, y = _read_image_coordinates(meta, "B1")
+
+    ds = xr.Dataset()
+    for name, img, long_name in (
+        ("VZA", vza, "viewing zenith angle"),
+        ("VAA", vaa, "viewing azimuth angle"),
+    ):
+        data = np.where(fill, np.nan, img.astype("float32") / 100.0)
+        ds[name] = xr.DataArray(
+            data=data,
+            coords={"y": y, "x": x},
+            dims=("y", "x"),
+            attrs={"long_name": long_name, "units": "degrees", "crs": crs},
+        )
+    ds["x"].attrs = {"long_name": "easting", "units": "m"}
+    ds["y"].attrs = {"long_name": "northing", "units": "m"}
+    return ds
+
+
+def _read_meta_str(meta: str, key: str) -> str:
+    """Read a value from a Landsat MTL metadata file."""
     with open(meta) as f:
         for line in f:
-            if line.strip().startswith(key):
-                split = line.split("=")
-                return float(split[1].strip())
+            name, sep, value = line.partition("=")
+            if sep and name.strip() == key:
+                return value.strip().strip('"')
 
     msg = f"Could not find {key} in Landsat metadata"
     raise ValueError(msg)
+
+
+def _read_meta(meta: str, key: str) -> float:
+    """Read a numeric value from a Landsat MTL metadata file."""
+    return float(_read_meta_str(meta, key))
 
 
 def _read_band_radiance_rescaling(meta: str, band: str) -> tuple[float, float]:
