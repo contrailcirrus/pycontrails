@@ -300,7 +300,7 @@ class Landsat:
             return pyproj.CRS.from_epsg(src.crs.to_epsg())
 
     def get_sensing_time(self) -> pd.Timestamp:
-        """Return the scene center time of the satellite image."""
+        """Return the scene center time of the satellite image as a naive UTC timestamp."""
         meta = self._fetch(["MTL.txt"])["MTL.txt"]
         date = _read_meta_str(meta, "DATE_ACQUIRED")
         time = _read_meta_str(meta, "SCENE_CENTER_TIME")

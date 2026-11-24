@@ -332,9 +332,9 @@ class Sentinel:
         return parse_sentinel_crs(granule_meta_path)
 
     def get_sensing_time(self) -> pd.Timestamp:
-        """Return the sensing_time of the satellite image."""
+        """Return the sensing_time of the satellite image as a naive UTC timestamp."""
         granule_meta_path, _ = self._get_meta()
-        return parse_sensing_time(granule_meta_path)
+        return parse_sensing_time(granule_meta_path).tz_localize(None)
 
     def colocate(
         self,

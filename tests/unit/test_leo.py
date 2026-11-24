@@ -544,7 +544,7 @@ def test_sentinel_colocate_flight(sentinel_cachestore: cache.DiskCacheStore) -> 
 
     # Confirm the colocated time is during the flight and near the granule sensing time.
     assert flight.time_start <= t <= flight.time_end
-    sensing_time = handler.get_sensing_time().tz_localize(None).to_datetime64()
+    sensing_time = handler.get_sensing_time().to_datetime64()
     assert abs(t - sensing_time) < np.timedelta64(10, "s")
 
 
