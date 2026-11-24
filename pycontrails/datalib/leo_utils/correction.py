@@ -9,6 +9,8 @@ import pyproj
 import shapely
 import xarray as xr
 
+from pycontrails.core import GeoVectorDataset
+
 
 def ephemeris_ecef_to_utm(ephemeris_df: pd.DataFrame, utm_crs: pyproj.CRS) -> pd.DataFrame:
     """Convert ephemeris data from ECEF to UTM coordinates.
@@ -263,4 +265,99 @@ def estimate_scan_time(
         ephemeris_utm["t"].iloc[::-1].astype(int),
     ).astype("datetime64[ns]")
 
+    return out
+
+
+def parallax_correct(
+    vector: GeoVectorDataset, crs: pyproj.CRS, ds_angles: xr.Dataset
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    """Return the image coordinates of the waypoints in a vector, corrected for parallax.
+
+    Waypoints are projected into the image CRS and corrected with
+    :func:`scan_angle_correction`.
+
+    Parameters
+    ----------
+    vector : GeoVectorDataset
+        Waypoints.
+    crs : pyproj.CRS
+        Image CRS.
+    ds_angles : xr.Dataset
+        Viewing zenith (``VZA``) and azimuth (``VAA``) angles in degrees on the image grid.
+
+    Returns
+    -------
+    x, y : npt.NDArray[np.floating]
+        Image coordinates of the waypoints.
+    """
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+    x, y = transformer.transform(vector["longitude"], vector["latitude"])
+    return scan_angle_correction(ds_angles, x, y, vector.altitude, maxiter=3)
+
+
+def colocate(
+    vector: GeoVectorDataset,
+    x: npt.NDArray[np.floating],
+    y: npt.NDArray[np.floating],
+    scan_time: npt.NDArray[np.datetime64],
+    group_by: str | list[str] | None = None,
+    variables: list[str] | None = None,
+) -> pd.DataFrame:
+    """Interpolate each group of waypoints in a vector to the time the satellite imaged it.
+
+    Each group is interpolated on its first segment over which the waypoint time passes
+    the scan time.
+
+    Parameters
+    ----------
+    vector : GeoVectorDataset
+        Waypoints of interest. For example, a collection of Flights or advected waypoints.
+    x, y : npt.NDArray[np.floating]
+        Image coordinates of the waypoints, from :func:`parallax_correct`.
+    scan_time : npt.NDArray[np.datetime64]
+        Time at which the satellite imaged each waypoint, or ``NaT``.
+    group_by : str | list[str] | None, optional
+        Columns of ``vector`` that identify groups, for example ``"flight_id"`` for
+        flights or ``["flight_id", "waypoint"]`` for advected waypoints. If None,
+        ``vector`` is one group.
+    variables : list[str] | None, optional
+        Variables of ``vector`` to interpolate to the scan time.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per group imaged by the satellite, with the ``group_by`` columns, the
+        ``x`` and ``y`` image coordinates, the scan ``time``, and ``longitude``,
+        ``latitude``, ``altitude``, and ``variables`` at that time.
+    """
+    group_by = [group_by] if isinstance(group_by, str) else group_by or []
+    variables = variables or []
+
+    cols = [*group_by, "time", "longitude", "latitude", *variables]
+    df = vector.select(cols, copy=False).dataframe
+    df = df.assign(altitude=vector.altitude, x=x, y=y, scan_time=scan_time)
+    df = df.sort_values([*group_by, "time"]).reset_index(drop=True)
+
+    if group_by:
+        group = df.groupby(group_by, sort=False).ngroup().to_numpy()
+    else:
+        group = np.zeros(len(df), int)
+
+    diff = ((df["time"] - df["scan_time"]) / pd.Timedelta(seconds=1)).to_numpy()
+
+    # Find first segment of each group over which the waypoint time passes the scan time
+    i = np.flatnonzero((group[:-1] == group[1:]) & (diff[:-1] <= 0) & (diff[1:] > 0))
+    i = i[np.unique(group[i], return_index=True)[1]]
+    frac = -diff[i] / (diff[i + 1] - diff[i])
+
+    out = df.loc[i, group_by].reset_index(drop=True)
+    for col in ["x", "y", "time", "longitude", "latitude", "altitude", *variables]:
+        v = df[col].to_numpy()
+        dv = v[i + 1] - v[i]
+        if col == "longitude":
+            # Wrap so segments crossing the antimeridian interpolate correctly
+            dv = (dv + 180.0) % 360.0 - 180.0
+            out[col] = (v[i] + frac * dv + 180.0) % 360.0 - 180.0
+        else:
+            out[col] = v[i] + frac * dv
     return out
