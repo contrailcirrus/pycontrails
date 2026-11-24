@@ -304,7 +304,7 @@ class Landsat:
         meta = self._fetch(["MTL.txt"])["MTL.txt"]
         date = _read_meta_str(meta, "DATE_ACQUIRED")
         time = _read_meta_str(meta, "SCENE_CENTER_TIME")
-        return pd.Timestamp(f"{date}T{time}")
+        return pd.Timestamp(f"{date}T{time}").tz_localize(None)
 
     def colocate(
         self,
@@ -334,6 +334,9 @@ class Landsat:
             ``x`` and ``y`` coordinates in the satellite image CRS, the scan ``time``, and
             ``longitude``, ``latitude``, ``altitude``, and ``variables`` at that time.
         """
+        # Fetch all files in one call so the USGS source logs in to M2M once
+        self._fetch(["VZA.TIF", "VAA.TIF", "MTL.txt", "ANG.txt"])
+
         crs = self.get_crs()
         ds_angles = self.get_viewing_angle_metadata()
         ephemeris = self.get_ephemeris()
@@ -516,9 +519,9 @@ def _read_meta_str(meta: str, key: str) -> str:
     """Read a value from a Landsat MTL metadata file."""
     with open(meta) as f:
         for line in f:
-            name, sep, value = line.partition("=")
-            if sep and name.strip() == key:
-                return value.strip().strip('"')
+            if line.strip().startswith(key):
+                split = line.split("=")
+                return split[1].strip().strip('"')
 
     msg = f"Could not find {key} in Landsat metadata"
     raise ValueError(msg)

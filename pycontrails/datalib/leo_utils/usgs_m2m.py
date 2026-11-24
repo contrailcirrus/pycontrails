@@ -92,6 +92,10 @@ def download(product_id: str, sinks: dict[str, str]) -> None:
             payload = {"datasetName": M2M_DATASET, "entityIds": [scene_id]}
             options = _post(session, "download-options", payload)
 
+            if not options or not options[0]["secondaryDownloads"]:
+                msg = f"M2M has no individual file downloads for {product_id}"
+                raise RuntimeError(msg)
+
             # All individual files of a scene share one M2M product ID
             file_product_id = options[0]["secondaryDownloads"][0]["id"]
             downloads = [{"productId": file_product_id, "entityId": eid} for eid in entity_ids]
@@ -100,6 +104,11 @@ def download(product_id: str, sinks: dict[str, str]) -> None:
             _post(session, "logout", None)
 
     urls = {d["entityId"]: d["url"] for d in result["availableDownloads"]}
+    unavailable = [entity_id for entity_id in entity_ids if entity_id not in urls]
+    if unavailable:
+        msg = f"M2M did not return download URLs for {unavailable}"
+        raise RuntimeError(msg)
+
     for entity_id, sink in entity_ids.items():
         _download_url(urls[entity_id], sink)
 
