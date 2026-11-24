@@ -38,11 +38,4 @@ except Exception:
 else:
     GCP_CREDENTIALS = True
 
-try:
-    from google.cloud import bigquery
-
-    bigquery.Client()
-except Exception:
-    BIGQUERY_ACCESS = False
-else:
-    BIGQUERY_ACCESS = True
+USGS_M2M_CREDENTIALS = "USGS_M2M_USERNAME" in os.environ and "USGS_M2M_TOKEN" in os.environ
