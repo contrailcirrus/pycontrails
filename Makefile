@@ -232,7 +232,8 @@ nb-check-links:
 		--check-links-ignore "https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast" \
 		docs/notebooks/*.ipynb \
 		--check-links-ignore "https://applications.icao.int" \
-		--check-links-ignore "https://www.dwd.de"
+		--check-links-ignore "https://www.dwd.de" \
+		--check-links-ignore "https://api.ecmwf.int"
 
 # Execute all notebooks in docs
 # NOTE notebooks from docs/integrations/ manually
