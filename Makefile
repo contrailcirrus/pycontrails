@@ -185,7 +185,6 @@ cache-era5-gcp: ensure-era5-cached
 
 doctest: ensure-numpy-2 ensure-era5-cached ensure-gcp-credentials
 	pytest --doctest-modules \
-		--ignore-glob=pycontrails/ext/* \
 		pycontrails -vv
 
 doc8:

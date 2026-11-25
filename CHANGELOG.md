@@ -9,6 +9,7 @@
 ### Internals
 
 - Vectorize `Fleet.segment_groundspeed`.
+- Remove the `empirical_grid` and `cirium` modules.
 
 ## 0.66.1
 

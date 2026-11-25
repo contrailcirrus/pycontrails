@@ -116,19 +116,6 @@ Once provided access, install using:
     pip install --index-url https://us-central1-python.pkg.dev/contrails-301217/pycontrails/simple \
         "pycontrails-bada==0.6.0"
 
-
-Cirium
-~~~~~~
-
-    This extension is private due to license restrictions
-
-`pycontrails-cirium <https://github.com/contrailcirrus/pycontrails-cirium>`__ is an extension
-to the `Cirium <https://www.cirium.com/>`__ database of jet engines.
-
-.. code-block:: bash
-
-    pip install "pycontrails-cirium @ git+ssh://git@github.com/contrailcirrus/pycontrails-cirium.git"
-
 .. _accf-install:
 
 ACCF
