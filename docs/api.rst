@@ -125,8 +125,11 @@ Low Earth Orbit Satellites
     datalib.landsat
     datalib.sentinel
     datalib.leo_utils
+    datalib.leo_utils.correction
     datalib.leo_utils.landsat_metadata
+    datalib.leo_utils.search
     datalib.leo_utils.sentinel_metadata
+    datalib.leo_utils.usgs_m2m
 
 
 GRUAN Radiosondes

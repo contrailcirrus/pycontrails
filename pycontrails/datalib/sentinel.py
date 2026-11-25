@@ -1,9 +1,13 @@
-"""Support for Sentinel-2 imagery retrieval through Google Cloud Platform."""
+"""Support for Sentinel-2 imagery retrieval through Google Cloud Platform.
+
+Scenes are found with the Element 84 `Earth Search <https://earth-search.aws.element84.com/v1>`__
+STAC server, which lists Sentinel products from November 2016 onward.
+"""
 
 from __future__ import annotations
 
-import pathlib
 from collections.abc import Iterable
+from typing import Any
 from xml.etree import ElementTree
 
 import numpy as np
@@ -11,7 +15,7 @@ import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 
-from pycontrails.core import Flight, cache
+from pycontrails.core import Flight, GeoVectorDataset, cache
 from pycontrails.datalib.leo_utils import correction, search
 from pycontrails.datalib.leo_utils.sentinel_metadata import (
     _band_id,
@@ -47,6 +51,16 @@ except ModuleNotFoundError as exc:
     )
 
 try:
+    import shapely.geometry
+except ModuleNotFoundError as exc:
+    dependencies.raise_module_not_found_error(
+        name="sentinel module",
+        package_name="shapely",
+        module_not_found_error=exc,
+        pycontrails_optional_package="sat",
+    )
+
+try:
     from PIL import Image
 except ModuleNotFoundError as exc:
     dependencies.raise_module_not_found_error(
@@ -57,17 +71,11 @@ except ModuleNotFoundError as exc:
     )
 
 
-_path_to_static = pathlib.Path(__file__).parent / "static"
-ROI_QUERY_FILENAME = _path_to_static / "sentinel_roi_query.sql"
+#: Element 84 Earth Search STAC server
+STAC_URL = "https://earth-search.aws.element84.com/v1"
 
-#: BigQuery table with imagery metadata
-BQ_TABLE = "bigquery-public-data.cloud_storage_geo_index.sentinel_2_index"
-
-#: Default columns to include in queries
-BQ_DEFAULT_COLUMNS = ["base_url", "granule_id", "sensing_time", "source_url"]
-
-#: Default spatial extent for queries
-BQ_DEFAULT_EXTENT = search.GLOBAL_EXTENT
+#: STAC collection of Sentinel-2 Level-1C products
+STAC_COLLECTION = "sentinel-2-l1c"
 
 #: Default Sentinel channels to use if none are specified.
 #: These are visible bands for producing a true color composite.
@@ -81,13 +89,8 @@ def query(
     start_time: np.datetime64,
     end_time: np.datetime64,
     extent: str | None = None,
-    columns: list[str] | None = None,
 ) -> pd.DataFrame:
     """Find Sentinel-2 imagery within spatiotemporal region of interest.
-
-    This function requires access to the
-    `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
-    and uses the `BigQuery python library <https://cloud.google.com/python/docs/reference/bigquery/latest/index.html>`__.
 
     Parameters
     ----------
@@ -98,65 +101,88 @@ def query(
     extent : str | None, optional
         Spatial region of interest as a GeoJSON string. If not provided, defaults
         to a global extent.
-    columns : list[str] | None, optional
-        Columns to return from Google
-        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-        By default, returns imagery base URL, granule ID, and sensing time.
 
     Returns
     -------
     pd.DataFrame
         Query results in pandas DataFrame
-
-    See Also
-    --------
-    ``search.query``
     """
-    extent = extent or BQ_DEFAULT_EXTENT
-    roi = search.ROI(start_time, end_time, extent)
-    columns = columns or BQ_DEFAULT_COLUMNS
-    return search.query(BQ_TABLE, roi, columns)
+    if extent is None:
+        return _search(start_time, end_time, None)
+
+    geometry = shapely.from_geojson(extent)
+    scenes = _search(start_time, end_time, search.geometry_bbox(geometry))
+
+    # The STAC search uses the extent's bounding box; keep only scenes that intersect the extent
+    filt = shapely.intersects(scenes["geometry"], geometry)
+    return scenes[filt].reset_index(drop=True)
 
 
-def intersect(
-    flight: Flight,
-    columns: list[str] | None = None,
-) -> pd.DataFrame:
-    """Find Sentinel-2 imagery intersecting with flight track.
+def intersect(flight: Flight) -> pd.DataFrame:
+    """Find Sentinel-2 imagery intersecting the flight track.
 
-    This function will return all scenes with a bounding box that includes flight waypoints
-    both before and after the sensing time.
-
-    This function requires access to the
-    `Google BigQuery API <https://cloud.google.com/bigquery?hl=en>`__
-    and uses the `BigQuery python library <https://cloud.google.com/python/docs/reference/bigquery/latest/index.html>`__.
+    This function will return all scenes whose footprint includes the flight
+    position interpolated to the scene's sensing time.
 
     Parameters
     ----------
     flight : Flight
         Flight for intersection
-    columns : list[str] | None, optional
-        Columns to return from Google
-        `BigQuery table <https://console.cloud.google.com/bigquery?p=bigquery-public-data&d=cloud_storage_geo_index&t=landsat_index&page=table&_ga=2.90807450.1051800793.1716904050-255800408.1705955196>`__.
-        By default, returns imagery base URL, granule ID, and sensing time.
 
     Returns
     -------
     pd.DataFrame
         Query results in pandas DataFrame
-
-    See Also
-    --------
-    ``search.intersect``
     """
-    columns = columns or BQ_DEFAULT_COLUMNS
-    scenes = search.intersect(BQ_TABLE, flight, columns)
+    scenes = _search(flight.time_start, flight.time_end, search.vector_bbox(flight))
+    return search.intersect_scenes(scenes, flight)
 
-    # overwrite the base_url with source_url.
-    # After 2024-03-14 there is a mistake in the Google BigQuery table,
-    # such that the base_url is written to the source_url column
-    scenes["base_url"] = scenes["base_url"].fillna(scenes["source_url"])
-    return scenes
+
+def _search(
+    start_time: np.datetime64 | pd.Timestamp,
+    end_time: np.datetime64 | pd.Timestamp,
+    bbox: tuple[float, float, float, float] | None,
+) -> pd.DataFrame:
+    """Return Sentinel-2 Level-1C scenes from the Earth Search STAC server."""
+    items = search.stac_search(STAC_URL, STAC_COLLECTION, start_time, end_time, bbox)
+    props = [item["properties"] for item in items]
+
+    scenes = pd.DataFrame(
+        {
+            "id": [item["id"] for item in items],
+            "base_url": [_base_url(p) for p in props],
+            "granule_id": [_granule_id(p) for p in props],
+            "platform": [p["platform"] for p in props],
+            "sensing_time": pd.to_datetime([p["datetime"] for p in props]).tz_localize(None),
+            "processing_baseline": [p["s2:processing_baseline"] for p in props],
+            "sun_elevation": [p["view:sun_elevation"] for p in props],
+            "cloud_cover": [p["eo:cloud_cover"] for p in props],
+            "geometry": [shapely.geometry.shape(item["geometry"]) for item in items],
+        }
+    )
+    return scenes.sort_values("sensing_time").reset_index(drop=True)
+
+
+def _base_url(props: dict[str, Any]) -> str:
+    """Return the URL of a product in the Google Cloud Storage bucket from STAC properties."""
+    zone = props["mgrs:utm_zone"]
+    band = props["mgrs:latitude_band"]
+    square = props["mgrs:grid_square"]
+    product = props["s2:product_uri"]
+    return f"{GCP_STRIP_PREFIX}tiles/{zone}/{band}/{square}/{product}"
+
+
+def _granule_id(props: dict[str, Any]) -> str:
+    """Return the granule directory name, ``L1C_T<tile>_A<orbit>_<datastrip start>``.
+
+    Earth Search gives the long granule ID as ``s2:granule_id`` or ``s2:tile_id``.
+    """
+    granule = props.get("s2:granule_id") or props["s2:tile_id"]
+    parts = granule.split("_")
+    tile = parts[-2]
+    orbit = parts[-3]
+    sensing_start = props["s2:datastrip_id"].split("_")[-2].removeprefix("S")
+    return f"L1C_{tile}_{orbit}_{sensing_start}"
 
 
 class Sentinel:
@@ -306,9 +332,49 @@ class Sentinel:
         return parse_sentinel_crs(granule_meta_path)
 
     def get_sensing_time(self) -> pd.Timestamp:
-        """Return the sensing_time of the satellite image."""
+        """Return the sensing_time of the satellite image as a naive UTC timestamp."""
         granule_meta_path, _ = self._get_meta()
-        return parse_sensing_time(granule_meta_path)
+        return parse_sensing_time(granule_meta_path).tz_localize(None)
+
+    def colocate(
+        self,
+        vector: GeoVectorDataset,
+        group_by: str | list[str] | None = None,
+        variables: list[str] | None = None,
+        band: str = "B03",
+    ) -> pd.DataFrame:
+        """Colocate groups of waypoints with satellite image pixels.
+
+        Each group is colocated as in :meth:`colocate_flight`.
+
+        Parameters
+        ----------
+        vector : GeoVectorDataset
+            Waypoints.
+        group_by : str | list[str] | None, optional
+            Columns of ``vector`` that identify groups, for example ``"flight_id"`` for
+            flights or ``["flight_id", "waypoint"]`` for advected waypoints. If None,
+            ``vector`` is one group.
+        variables : list[str] | None, optional
+            Variables of ``vector`` to interpolate to the scan time.
+        band : str, optional
+            Spectral band to use for geometry parsing. Default is "B03".
+
+        Returns
+        -------
+        pd.DataFrame
+            One row per group imaged by the satellite, with the ``group_by`` columns, the
+            ``x`` and ``y`` coordinates in the satellite image CRS, the scan ``time``, and
+            ``longitude``, ``latitude``, ``altitude``, and ``variables`` at that time.
+        """
+        crs = self.get_crs()
+        ds_angles = self.get_viewing_angle_metadata()
+        ephemeris = self.get_ephemeris()
+
+        x, y = correction.parallax_correct(vector, crs, ds_angles)
+        offset = self.get_time_delay_detector(self.get_detector_id(x, y), band=band)
+        scan_time = correction.estimate_scan_time(ephemeris, crs, x, y) + offset
+        return correction.colocate(vector, x, y, scan_time, group_by, variables)
 
     def colocate_flight(
         self,
@@ -337,47 +403,14 @@ class Sentinel:
             A tuple containing the x and y coordinates of the flight position in the
             satellite image CRS, and the corrected sensing_time of the satellite image.
         """
-        utm_crs = self.get_crs()
-
-        # Project from WGS84 to the x and y coordinates in the UTM coordinate system
-        transformer = pyproj.Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
-        x, y = transformer.transform(flight["longitude"], flight["latitude"])
-        z = flight.altitude
-
-        # Apply sensing angle correction
-        ds_angles = self.get_viewing_angle_metadata()
-        x_proj, y_proj = correction.scan_angle_correction(ds_angles, x, y, z, maxiter=3)
-
-        # Get the satellite ephemeris data prepared
-        ephemeris = self.get_ephemeris()
-
-        # Estimate the scan time for each point
-        scan_time_no_offset = correction.estimate_scan_time(ephemeris, utm_crs, x_proj, y_proj)
-
-        detector_id = self.get_detector_id(x_proj, y_proj)
-        offset = self.get_time_delay_detector(detector_id, band=band)
-        scan_time = scan_time_no_offset + offset
-
-        # To finish up, find the point along the project flight track at which the satellite
-        # scan time equals the flight time
-        # It's possible that if the flight has a really fine time resolution, that
-        # the diff_times array will have multiple zeros. This is okay, as np.interp
-        # will just return the first one.
-        valid = np.isfinite(x_proj) & np.isfinite(y_proj) & np.isfinite(scan_time)
-
-        diff_times = flight["time"][valid] - scan_time[valid]
-        if diff_times[0] > np.timedelta64(0, "ns") or diff_times[-1] < np.timedelta64(0, "ns"):
+        df = self.colocate(flight, band=band)
+        if df.empty:
             msg = "Flight track does not overlap with satellite image in time."
             raise ValueError(msg)
 
-        index = np.arange(len(diff_times))
-        frac_idx = np.interp(0, diff_times.astype(int), index)
-
-        x1 = np.interp(frac_idx, index, x_proj[valid]).item()
-        y1 = np.interp(frac_idx, index, y_proj[valid]).item()
-        t1 = np.interp(frac_idx, index, scan_time[valid].astype(int)).item()
-
-        return x1, y1, np.datetime64(int(t1), "ns")
+        x = df["x"].iloc[0].item()
+        y = df["y"].iloc[0].item()
+        return x, y, df["time"].iloc[0].to_datetime64()
 
     # -------------------------------------------------------------------------------------
 

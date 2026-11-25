@@ -112,6 +112,9 @@ jobs:
 
       - name: QC & Test
         shell: bash
+        env:
+          USGS_M2M_USERNAME: ${{ secrets.USGS_M2M_USERNAME }}
+          USGS_M2M_TOKEN: ${{ secrets.USGS_M2M_TOKEN }}
         run: |
           pip check
           make lint

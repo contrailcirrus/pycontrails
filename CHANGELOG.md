@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Update the `Landsat` datalib to Landsat Collection 2. `Landsat` now takes a product ID and retrieves imagery from the USGS M2M API (free but requires a USGS account with M2M access) or the requester-pays `gs://gee-public-data-landsat` Google Cloud Storage bucket. Remove support for Collection 1.
+- Use STAC servers instead of BigQuery in `landsat.query`, `landsat.intersect`, `sentinel.query`, and `sentinel.intersect`.
+
+### Features
+
+- Add `Landsat.colocate_flight`, and add `colocate` to `Landsat` and `Sentinel` to colocate many trajectories at once.
+
 ### Fixes
 
 - Make `Sentinel.colocate_flight` compatible with pandas 3.
